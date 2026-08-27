@@ -33,13 +33,19 @@ degrade down the documented chain (full_ensemble → dual_run → self_moa).
 Engine selection owns **loop semantics only**; pi model management owns
 provider communication for BOTH engines (DEC-10):
 
+`backend/app/core/agentic/dispatcher.py` owns the one module-level dispatcher
+instance. The package entry point (`backend/app/core/agentic/__init__.py`)
+re-exports that same object, so imports through either public path share the
+same Pi service, legacy executor, and instrumentation state; they must not
+instantiate a second authority.
+
 - **Istara is first-class and stub-free everywhere.** The unified resolver
   (`backend/app/core/agentic/model_source.py`) answers each turn's
-  "which endpoint/model, from which plane?" with owner-approved precedence:
-  explicit user selection outright → explicitly configured local endpoint →
-  Pi-managed endpoint. Healthy, consented Petals donors are projected into
-  this last plane by exact identity; the old compute-registry path survives
-  only as a compatibility fallback.
+  "which endpoint/model, from which plane?" through the Pi-managed catalog.
+  Explicit user selection is matched there, including local Ollama/LM Studio
+  entries. Healthy, consented Petals donors are projected into the same plane
+  by exact identity; the old compute-registry path survives only as a
+  compatibility boundary when no Pi catalog identity resolves.
 - **Execution-only provider bridge** (`pi_bridge.py`): when an Istara-loop turn
   resolves to a pi-managed endpoint, calls execute directly over that
   OpenAI-compatible endpoint under Istara identity — never advertised as

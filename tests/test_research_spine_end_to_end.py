@@ -289,6 +289,36 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
         assert json.loads(facts[0].nugget_ids) == ordered_nugget_ids
         assert json.loads(insights[0].fact_ids) == [fact_id]
         assert json.loads(recommendations[0].insight_ids) == [insight_id]
+        derivation_edges = (
+            (
+                await db.execute(
+                    select(ResearchEvidenceEdge).where(
+                        ResearchEvidenceEdge.project_id == project_id,
+                        ResearchEvidenceEdge.task_id == task_id,
+                        ResearchEvidenceEdge.relation == "derived_from",
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(derivation_edges) == 5
+        assert {
+            (edge.source_type, edge.target_type, edge.source_id, edge.target_id)
+            for edge in derivation_edges
+        } == {
+            *(('fact', 'nugget', fact_id, nugget_id) for nugget_id in ordered_nugget_ids),
+            ('insight', 'fact', insight_id, fact_id),
+            ('recommendation', 'insight', recommendation_id, insight_id),
+        }
+        assert all(edge.reliability_status == "uncoded" for edge in derivation_edges)
+        assert all(
+            json.loads(edge.metadata_json)["candidate_only"] is True
+            and json.loads(edge.metadata_json)["review_status"] == "pending"
+            and json.loads(edge.metadata_json)["promotion_rule"]
+            == "requires_accepted_evidence_and_human_review"
+            for edge in derivation_edges
+        )
         evidence_edges = (
             (
                 await db.execute(
@@ -409,3 +439,85 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
     assert trace["report_dependencies"][0]["task_ids"] == [task_id]
     assert len(decisions) == 9
     assert {decision.decided_by for decision in decisions} == {"human-researcher"}
+
+
+@pytest.mark.asyncio
+async def test_agent_findings_drop_cross_project_downstream_links():
+    """Agent-produced Atomic links must obey the same project boundary as API writes."""
+    from app.core.agent import AgentOrchestrator
+    from app.models.database import async_session, init_db
+    from app.models.finding import Fact, Nugget
+    from app.models.project import Project
+    from app.models.research_validity import ResearchEvidenceEdge
+    from app.models.task import Task, TaskStatus
+    from app.skills.base import SkillOutput
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"proj-agent-scope-{suffix}"
+    foreign_project_id = f"proj-agent-foreign-{suffix}"
+    task_id = f"task-agent-scope-{suffix}"
+    foreign_nugget_id = f"foreign-nugget-{suffix}"
+
+    await init_db()
+    async with async_session() as db:
+        task = Task(
+            id=task_id,
+            project_id=project_id,
+            title="Reject cross-project model links",
+            status=TaskStatus.IN_REVIEW,
+        )
+        db.add_all(
+            [
+                Project(id=project_id, name="Agent scope project"),
+                Project(id=foreign_project_id, name="Foreign project"),
+                task,
+                Nugget(
+                    id=foreign_nugget_id,
+                    project_id=foreign_project_id,
+                    text="Foreign source",
+                    source="foreign",
+                ),
+            ]
+        )
+        await db.commit()
+
+        await AgentOrchestrator()._store_findings(
+            db,
+            project_id,
+            SkillOutput(
+                success=True,
+                summary="Model emitted a stale foreign id",
+                facts=[
+                    {
+                        "text": "This candidate must not inherit another project's source.",
+                        "nugget_ids": [foreign_nugget_id],
+                    }
+                ],
+            ),
+            task,
+        )
+
+        fact = (
+            (
+                await db.execute(
+                    select(Fact).where(Fact.project_id == project_id, Fact.task_id == task_id)
+                )
+            )
+            .scalars()
+            .one()
+        )
+        assert json.loads(fact.nugget_ids) == []
+        leaked_edges = (
+            (
+                await db.execute(
+                    select(ResearchEvidenceEdge).where(
+                        ResearchEvidenceEdge.project_id == project_id,
+                        ResearchEvidenceEdge.task_id == task_id,
+                        ResearchEvidenceEdge.target_id == foreign_nugget_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert leaked_edges == []

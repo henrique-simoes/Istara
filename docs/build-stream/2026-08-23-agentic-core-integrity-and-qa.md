@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T17:04:00Z, ledger: L-384 }
-next_action: "Attach the fresh deterministic scorecard evidence to CF-SPEC-3 tasks and close only the criteria proved by those receipts; preserve the April Compass-origin/history distinction; keep F-R9-114 live three-model/provider identity, genuine human reconciliation/report acceptance, legacy no-coding-run migration, and live downstream transformation open until their explicit gates are met."
+last: { agent: gpt-5-codex, at: 2026-08-27T18:46:00Z, ledger: L-397 }
+next_action: "Audit and, where safe, remediate the remaining live/provider identity, legacy no-coding-run migration, Petals cooperation, two-call/long-horizon, and genuine human-review gates; keep deterministic and live acceptance separate."
 ```
 
 ## Plan overview / roadmap
@@ -9113,3 +9113,292 @@ Next: keep CF state provenance explicit in all reports and decide, under owner a
 whether a formal historical import/reconciliation is wanted. Do not merge or rewrite
 CF databases implicitly, and do not close live Research Spine gates from deterministic
 or historical bookkeeping evidence.
+
+### L-385 | 2026-08-27T17:18:00Z | S3-acceptance | gpt-5-codex | Closed deterministic CF-SPEC-3 scope only
+
+Compass Forge task evidence `355` through `363` was reviewed against the nine linked
+`CF-SPEC-3` requirements. Each task (`CF-38` through `CF-46`) had command evidence,
+and the receipts explicitly limit the claim to deterministic scorecard semantics:
+structural Research Spine traceability and weak donor topology cannot satisfy
+accepted three-model validation. All nine tasks were marked `done`, and native Rust
+`compass-forge spec accept CF-SPEC-3` completed with status `accepted`.
+
+This acceptance does not claim live provider/model execution, independent served
+identities, real Fleiss/Krippendorff values from three providers, human reconciliation,
+Done/report promotion, two concurrent calls, long-horizon behavior, or downstream
+artifact generation against live model output. Those remain under the open
+`CF-SPEC-2` implementation/test tasks (`CF-13`, `CF-15`, `CF-20`, `CF-21`) and the
+external F-R9-114 gate. The current repository remains clean on `testing` at
+`ba83a6df`; CF state mutations are local ignored state and do not change Git.
+
+Next: inspect the CF-SPEC-2 evidence/task graph and production/test seams to identify
+the next bounded remediation that can be implemented and verified without inventing
+live provider evidence.
+
+### L-386 | 2026-08-27T17:42:00Z | S2-execute | gpt-5-codex | Deepened Compass Forge historical provenance
+
+The earlier history note was too narrow. A full `git log --all` and tag-level inspection
+shows that Istara's Compass governance system was already present on April 3, not merely
+in August. Commit `741f3420` (`2026-04-03T15:39:09-03:00`) added the Compass entrypoint,
+change checklist, system-change matrix, system prompt, technical narrative, and persona
+updates. `AGENT_ENTRYPOINT.md` at that tag explicitly names Compass as Istara's
+comprehensive agentic development system and requires future agents to maintain its
+architecture, tests, documentation, and release doctrine. `e1f69570` the same day
+hardened the Compass doctrine; April 5 commits automated Compass-doc regeneration; and
+`1994ba33` (`2026-04-10T00:15:02-03:00`) embedded the three-layer testing architecture
+into Compass. `21ef99b1` (`2026-04-10T19:18:51-03:00`) then added the PR-required
+workflow, `TESTING.md`, and explicit Compass integration. The April history continues
+through security, testing, observability, and audit changes, so April is the verified
+origin of the continuously evolved Compass process in Istara.
+
+The naming distinction is also now explicit. The first literal `compass-forge` references
+in Istara's Git history appear on May 2–4; commit `7dca7368` (`2026-05-04`) introduced
+`CF-SPEC-6`/`CF-68` for a launch-hardening execution and `CF-SPEC-5` for the production
+readiness audit. The standalone Compass Forge repository's first retained snapshot is
+`6e7ed53` (`2026-05-26`), while its current shared state database begins on July 3.
+Therefore the durable answer is: Compass/CF governance has been in Istara since April;
+the named `compass-forge` spec command and retained spec databases are later persistence
+representations of that process. No April CF-SPEC database rows survive in the inspected
+state stores, so their absence cannot be used to claim CF was absent in April, nor can
+an April spec-row count be fabricated.
+
+Evidence consulted: `git log --all --reverse` for Compass, `git log -S'compass-forge'`,
+April tags `v2026.04.03.3`, `v2026.04.10.13`, and `v2026.04.20.4`, exact historical
+files `AGENT_ENTRYPOINT.md`, `CHANGE_CHECKLIST.md`, `SYSTEM_CHANGE_MATRIX.md`,
+`SYSTEM_PROMPT.md`, `TESTING.md`, and the retained CF databases under
+`/Users/user/Documents/compass-forge/.compass-forge/` and
+`/Users/user/Documents/Istara-main/.compass-forge/`. This was read-only provenance
+work; no code, provider, model, Docker, host, or testing data changed.
+
+Next: retain this two-layer history in all reports, then continue the open CF-SPEC-2
+implementation/test audit. Do not close live Research Spine gates from historical or
+deterministic bookkeeping evidence.
+
+### L-387 | 2026-08-27T18:02:00Z | S2-execute | gpt-5-codex | Confirmed April Compass lineage on current testing ancestry
+
+The deeper ancestry check resolves an important nuance that a date-only search can hide.
+Istara's April Compass commits exist in two equivalent histories because the repository
+contains duplicated/rebased commit pairs. The original April 3 commit `741f3420` is
+not the literal ancestor hash of the current `testing` ref, but its same-time equivalent
+`42e454b0` is an ancestor of `testing`; the two patches have the same stable patch ID.
+The same applies to the April 3 doctrine hardening (`e1f69570` / `ce19476e`), the April
+10 three-layer testing update (`1994ba33` / `16d18228`), and the April 10 testing/PR
+workflow (`21ef99b1`, directly present on `testing`). Therefore the current testing
+branch does contain the April Compass process, not merely an unrelated later copy.
+
+Current-testing ancestry evidence: `42e454b0`, `ce19476e`, `16d18228`, `21ef99b1`,
+and `c0ddf50c` all resolve as ancestors of `testing`; `741f3420`, `e1f69570`, and
+`1994ba33` are equivalent duplicate hashes on other refs. The April lineage continues
+through testing, security, observability, audit, and branch-governance commits throughout
+April. The named `compass-forge` string and explicit `CF-SPEC-*` references still first
+appear in Istara history on May 2–4, but that is a naming/persistence milestone, not the
+start of Compass governance.
+
+Result: report `April 3, 2026` as the verified Compass origin in Istara; report May 4
+as the first verified named `compass-forge`/`CF-SPEC` references; and report July 3 as
+the start of the retained shared Compass Forge database snapshot. Never use the July
+database's row count as the age of the process, and never claim April CF-SPEC rows that
+are not present in a surviving state store.
+
+### L-388 | 2026-08-27T17:20:19Z | S2-execute | gpt-5-codex | Full marker and state-store scan corrected the April boundary
+
+The deeper scan distinguishes the pre-Compass governance/test foundation from the
+named Compass system. Istara already had the System Integrity Guide and mandatory
+change checklist on 2026-03-28 (`67302d56`), and the April 1–2 history already contains
+the agent-architecture, report-pipeline, Plan-and-Execute, A2A, circuit-breaker, and
+testing-infrastructure work. The first literal `Compass` marker in all Istara Git
+history is the April 3, 2026 `15:39:09 -03:00` commit `741f3420` (with equivalent
+rebased hash `42e454b0` on current `testing`), which added the Compass entrypoint and
+governance doctrine. This makes April the verified Compass origin while acknowledging
+that its operational precursors began in late March.
+
+The later milestones remain separate: the first literal `Compass Forge` marker is
+May 2 (`0d0d9a24`), the first literal `CF-SPEC-` marker is May 4 (`7dca7368`, which is
+also an ancestor of current `testing`), the first retained standalone Compass Forge
+repository snapshot is May 26 (`6e7ed53`), and the current shared state database begins
+July 3. A complete scan of retained `state.sqlite3` files found no April CF-SPEC rows:
+the shared Compass Forge database has 60 rows (10 for `Istara-main` plus 1 for the
+August Pi migration worktree), the repo-local native Istara database has 5 rows dated
+August 23–26, and other databases belong to Compass Forge, Skills, or Kairos projects.
+These are persistence scopes, not the age of the Istara Compass process.
+
+Verification was read-only: all-ref Git history, marker searches, tag/file inspection,
+current-testing ancestry checks, and every retained Documents state database. No code,
+provider, model, Docker, host, or testing-data state changed. Keep the April Compass
+lineage in future reports; do not backdate CF-SPEC rows or use the July database count
+as a proxy for process age.
+
+Next: retain this corrected provenance and continue the open CF-SPEC-2 implementation/
+test audit. Live three-model/provider identity, served-model Fleiss/Krippendorff
+reliability, genuine human reconciliation and Done/report promotion, two-call and
+long-horizon live receipts, no-coding-run migration, and live downstream transformations
+remain unproven and must not be closed by this history work.
+
+### L-389 | 2026-08-27T17:33:20Z | S2-execute/S3-review | gpt-5-codex | Unified resolver stub-plane hardening
+
+The authority audit found a concrete contract gap after routing local selections through
+`PiModelManager`: the resolver documentation and existing QA tests define
+`LLM_PROVIDER_CONTRACT_STUB=true` as making the local Ollama/LM Studio plane invisible,
+but a real Pi catalog still carries those entries as `kind=local`. Without an explicit
+filter, a deterministic QA stack could resolve and execute its local fixture instead of
+using the admitted remote Pi fallback. This would make a green deterministic run look
+like provider execution and would violate the fail-closed stub contract.
+
+TDD evidence: the new regression was first run red (the default resolver returned
+`pi-local-ollama` instead of the expected `pi-remote`), then the smallest fix restored
+`settings` access and excluded `kind=local` catalog entries only when the stub marker is
+set. Explicit and default local selections still resolve through the Pi catalog on normal
+deployments, and remote Pi entries remain eligible on stub-marked stacks. The updated
+`tests/test_model_source.py` now has 13 passing tests; the focused authority/migration
+suite (`tests/test_model_source.py`, `test_ensemble_identity_parity.py`,
+`test_runtime_hardening.py`, `test_model_management_migration.py`, and
+`test_w6_engine_selection.py`) has 75 passing tests. `git diff --check` and the required
+feature-doc generator/check both pass (`224` generated artifacts, `86/86` features).
+
+The living chat model-controls architecture now records this stub/local admission rule
+and links the resolver regression. This change is still deterministic contract coverage:
+it does not prove a live provider request, three independent served model identities,
+Fleiss/Krippendorff values, Petals donation, human reconciliation, Done/report promotion,
+or live two-call/long-horizon behavior. Those F-R9-114 / CF-SPEC-2 gates remain open.
+
+No model was loaded, no provider was contacted, no Docker workload was started, and no
+Mac Studio host state or testing data changed. Next: attach this evidence to the open
+CF-SPEC-2 tasks, run the post-change Compass gate, and continue the live-proof and
+legacy no-coding-run/downstream-transformation audit without conflating deterministic
+Pi-authority evidence with Research Spine acceptance.
+
+### L-390 | 2026-08-27T17:42:33Z | S2-execute/S3-review | gpt-5-codex | April Compass provenance and current evidence reconciled
+
+The requested deeper history audit is complete and is now carried forward as the
+authoritative chronology for this delivery. Istara's Compass governance is verified in
+the April 3, 2026 lineage (`42e454b0` on current `testing`, patch-equivalent to
+`741f3420`), with the April 3 doctrine, April 10 three-layer testing, and April 10
+testing/PR workflow also confirmed as ancestors of `testing`. The explicit names
+`Compass Forge` and `CF-SPEC-*` appear later (May 2–4), while the retained shared
+Compass Forge state snapshot begins July 3. These are distinct milestones: the July
+database age must not be reported as the age of Compass in Istara, and no surviving
+state store justifies inventing April CF-SPEC rows.
+
+The evidence previously promised by L-389 is attached: CF task evidence rows 364
+(`CF-15`), 365 (`CF-20`), and 366 (`CF-13`), plus post-change gate record 313. The
+model-source regression suite is 13 passed; the focused authority/migration suite is
+75 passed; feature documentation generation/check is 224 artifacts with 86/86 checks;
+and `git diff --check` passes. Gate 313 reports no new issues, missing required paths,
+or import cycles attributable to this change; the inherited repository inventory gate
+remains unresolved.
+
+The remaining acceptance boundary is unchanged and deliberately open: deterministic
+tests do not prove live provider requests, three independent served model identities,
+real Fleiss/Krippendorff reliability, Petals donation, genuine human reconciliation,
+Done/report promotion, two concurrent calls, long-horizon receipts, no-coding-run
+migration, or live downstream transformations. Continue auditing those paths and the
+open CF-SPEC-2 tasks before any spec acceptance or release claim. No model/provider
+request, Docker workload, Mac Studio host mutation, or test-data deletion occurred in
+this checkpoint.
+
+### L-391 | 2026-08-27T18:06:00Z | S2-execute/S3-review | gpt-5-codex | Canonical dispatcher authority
+
+The authority audit found two module-level `AgenticDispatcher` instances: the
+package entry point (`backend/app/core/agentic/__init__.py`) constructed one and
+the implementation module (`backend/app/core/agentic/dispatcher.py`) constructed
+another. Current production imports use the package object, so no split behavior
+was observed in the existing call graph, but the duplicate was an unsafe
+maintenance seam: a future module import, monkeypatch, or instrumentation change
+could configure a different Pi service or usage ledger than the product path.
+
+TDD evidence was deliberately red first: the new singleton-identity regression
+failed with two different object identities. The minimal fix makes the package
+re-export the dispatcher's canonical module singleton. The regression is now green,
+and the focused authority/ensemble/manager slice passes 50 tests. Architecture and
+living chat-controls documentation now state the one-authority rule; feature site
+generation/check passes (224 artifacts, 86/86 features), and `git diff --check`
+passes.
+
+This closes an authority-drift defect, not the live scientific gate. No provider or
+model request was sent. Three independent served identities, real Fleiss/
+Krippendorff values, Petals donation, human reconciliation, Done/report promotion,
+two-call and long-horizon receipts, live downstream transformations, and Docker-only
+Mac Studio acceptance remain unproven. The post-change gate still reports inherited
+repository inventory/complexity/secret-flow warnings and the intentionally retained
+large ledger; no new issue attributable to this fix was identified.
+
+### L-392 | 2026-08-27T17:51:30Z | S3-review | gpt-5-codex | Evidence attached for canonical authority fix
+
+Compass Forge evidence rows 367 (CF-15), 368 (CF-20), and 369 (CF-13) record the
+50-test focused authority/ensemble/manager run. Row 370 records feature-doc
+regeneration (224 artifacts; 86/86 checks) and a clean diff check. Gate record 316,
+attached as row 371 to CF-15, reports no new issues, missing required paths, import
+cycles, or forbidden dependencies; the retained large ledger and inherited repository
+gate debt remain explicit. The fix is therefore reviewable and reproducible, but no
+CF-SPEC-2 task is closed by this evidence alone.
+
+### L-393 | 2026-08-27T18:14:00Z | S2-execute/S3-review | gpt-5-codex | Red test for downstream derivation traceability
+
+The production-path Research Spine proof now contains a deliberately red contract for
+the missing downstream graph edges: every Fact must be linked to its source Nuggets,
+every Insight to its Facts, and every Recommendation to its Insights by explicit
+`derived_from` edges. The test also requires candidate-only metadata, pending review,
+uncoded reliability, and the promotion rule that graph links cannot bypass accepted
+evidence and human review. The red run is reproducible (`tests/test_research_spine_end_to_end.py`:
+0 derived edges, expected 5), confirming that JSON ID links alone do not provide the
+complete graph traceability required by the Research Spine. No provider request,
+model load, Docker workload, or Mac Studio host mutation occurred in this checkpoint.
+
+### L-394 | 2026-08-27T18:32:00Z | S2-execute/S3-review | gpt-5-codex | Downstream graph provenance and project scoping fixed
+
+The production `_store_findings` path now emits five candidate-only `derived_from`
+edges for Fact → Nugget, Insight → Fact, and Recommendation → Insight. Each edge
+records pending review, uncoded reliability, and the explicit promotion rule requiring
+accepted evidence plus human review, so GraphRAG traversal cannot become an implicit
+reportability shortcut. Model-supplied upstream ids are normalized and project-scoped
+before persistence; stale or foreign ids are discarded, the task receives a human-review
+warning, and no cross-project edge is written.
+
+TDD evidence is red then green: the new edge contract first observed 0/5 edges, and
+the cross-project regression first observed a leaked foreign id; after the fix the
+two proof cases pass. The broader deterministic authority/reliability/findings slice
+passes 146 tests, and feature documentation regeneration/check passes (224 artifacts,
+86/86 features). This remains deterministic contract evidence: live served-model
+identity, real provider reliability receipts, Petals donation/cooperation, genuine
+human review, Done/report promotion, two-call and long-horizon receipts, legacy
+no-coding-run migration, and Docker-only Mac Studio execution remain open.
+
+### L-395 | 2026-08-27T18:38:00Z | S3-review | gpt-5-codex | Refactor and Compass Forge evidence recorded
+
+The new link/scoping helper was moved to
+`backend/app/services/research_finding_links.py` so the already-complex agent
+orchestration module did not absorb the full implementation. The focused proof remains
+green after the refactor. Compass Forge evidence 372 records the 146 deterministic
+tests, 373 records the 224 generated / 86-of-86 checked feature-doc artifacts, and
+374 records post-change gate 319. Gate 319 is fail because the touched
+`agent_research.py` complexity evidence changed and the durable ledger remains an
+explicit suppressed large-file path; no import cycle or architecture-rule regression
+was reported. These gate warnings are not relabeled as live failures, but they remain
+open remediation debt for the completion plan. No model/provider request or Docker
+workload was started in this checkpoint.
+
+### L-396 | 2026-08-27T18:42:00Z | S3-review | gpt-5-codex | Real-user benchmark contract evidence
+
+The deterministic real-user benchmark suite passes all 95 Node tests via
+`rtk npm test --prefix tests/real_user_benchmark`; Compass Forge evidence row 375
+is attached to CF-15. The suite verifies contract-level coding/source-span/model
+identity gates, Fleiss/Krippendorff bounds, reconciliation/reportability blockers,
+dual/three-donor acceptance rules, long-horizon receipt requirements, and
+Docker-only topology/provenance checks. It does not contact a provider, load a
+model, run Docker on the Mac Studio, or prove genuine three-model scientific
+agreement. Live provider identity, Petals cooperation, two-call concurrency,
+long-horizon execution, human reconciliation/Done/report promotion, and legacy
+no-coding-run migration therefore remain open gates. No host installation or
+remote workload mutation occurred in this checkpoint.
+
+### L-397 | 2026-08-27T18:46:00Z | S3-review | gpt-5-codex | Final post-gate checkpoint for current slice
+
+Compass Forge post-change gate record 320 is attached as evidence row 376. It
+continues to report two touched-file complexity warnings (`agent_research.py` at
+1,234 lines and `_store_findings` complexity 61) plus the intentionally retained
+large Build Stream ledger path. No new import cycle, architecture-rule issue, or
+missing required path was found. These are explicit remediation debt, not silently
+waived failures. The current code/tests/docs slice is ready for a clean testing
+branch commit, but the live three-model/provider, Petals, concurrency,
+long-horizon, human-review/report, migration, and Docker-only Mac Studio gates are
+still not proven.

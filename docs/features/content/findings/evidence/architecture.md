@@ -6,7 +6,7 @@ audience: architecture
 status: documented
 related_features: ["findings.phase-tabs", "findings.codebook", "findings.reports"]
 related_glossary: ["atomic-research", "triangulation"]
-code_references: ["frontend/src/components/findings/FindingsView.tsx", "backend/app/api/routes/findings.py", "backend/app/api/routes/research_validity.py", "backend/app/services/finding_validity_service.py", "backend/app/services/research_validity_service.py", "backend/app/core/research_validity.py", "backend/app/models/research_validity.py"]
+code_references: ["frontend/src/components/findings/FindingsView.tsx", "backend/app/api/routes/findings.py", "backend/app/api/routes/research_validity.py", "backend/app/services/finding_validity_service.py", "backend/app/services/research_validity_service.py", "backend/app/services/research_finding_links.py", "backend/app/core/research_validity.py", "backend/app/models/research_validity.py"]
 api_references: ["backend/app/api/routes/findings.py", "backend/app/api/routes/research_validity.py"]
 test_references: ["tests/test_findings.py", "tests/test_project_scope_contracts.py", "tests/test_research_validity_contract.py"]
 last_verified: 2026-05-22
@@ -55,6 +55,8 @@ The Findings evidence tab lists research insights and recommendations for the ac
 - Atomic drilldown uses the evidence-chain diagnostics to show when research-validity gates block promotion, including missing coding, unresolved reliability/reconciliation work, or the task not yet being human-approved Done.
 - Code applications created by governed coding runs link back to stable evidence units and carry coding-run, codebook, model, donor, route, reliability, reconciliation, and promotion handles before downstream findings can use them. Disputed applications must be resolved through durable reconciliation decisions rather than silent status changes.
 - Agent-created nuggets are converted into task-linked evidence units and evidence-graph edges before governed coding runs. This keeps task findings traceable to coded evidence units instead of keyword-like tags or final-answer summaries.
+- Agent-created downstream facts, insights, and recommendations retain explicit candidate-only `derived_from` graph edges to their linked upstream artifacts. These edges preserve the Nugget → Fact → Insight → Recommendation chain for GraphRAG and audit traversal, while pending review, uncoded reliability, and the promotion rule make clear that graph traversal cannot bypass accepted evidence, reconciliation, or human-approved Done gates.
+- Model-supplied downstream ids are project-scoped before persistence. Foreign or stale Nugget, Fact, or Insight ids are discarded, the task is flagged for human review, and no cross-project `derived_from` edge is written.
 - Manually created nuggets follow the same raw-source-first contract. They remain provisional and non-reportable after creation even though their source text has evidence-unit traceability; downstream acceptance still requires coded evidence, reconciliation where needed, and a human-approved Done task.
 - Evidence-unit extraction emits content-free `evidence_unit.extract` telemetry with project, task, evidence-unit, and retrieval-mode handles so Quality Dashboard and audit tools can prove source segmentation occurred without storing quotes or document content in telemetry.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
@@ -69,6 +71,8 @@ The Findings evidence tab lists research insights and recommendations for the ac
 - `tests/test_findings.py`
 - `tests/test_findings.py::test_nugget_creation_normalizes_integrity_fields`
 - `tests/test_findings.py::test_manual_atomic_chain_creation_rejects_cross_project_links`
+- `tests/test_research_spine_end_to_end.py` — production-path downstream `derived_from` graph edges remain candidate-only until evidence and human review gates pass.
+- `tests/test_research_spine_end_to_end.py::test_agent_findings_drop_cross_project_downstream_links`
 - `tests/test_project_scope_contracts.py`
 
 ## Related Features

@@ -51,6 +51,9 @@ The selected Chat model menu is a generation control only. It never changes the 
   model invocation. It exposes exactly five verbs — `chat_turn`, `completion`,
   `structured`, `ensemble`, and `embed` — and contains no business logic: it
   only resolves the engine, executes, and records usage.
+- `backend/app/core/agentic/__init__.py` re-exports that module singleton rather
+  than constructing a second dispatcher; package and module imports therefore
+  share one Pi authority and one usage/instrumentation state.
 - Engine selection resolves in a fixed precedence order (first match wins):
   per-call override (benchmark harness / A2A envelope metadata), then the
   `x-istara-agent-engine` request header predicate, then the project setting
@@ -149,7 +152,7 @@ The selected Chat model menu is a generation control only. It never changes the 
 
 ## Agentic Core Resolution (CF-SPEC-1)
 
-Each chat turn resolves its engine in one order: operator flag `pi_replacement_enabled` → per-request header `x-istara-agent-engine` → persisted `projects.agentic_engine` → global `settings.agentic_engine_default`. The model-catalog indicator calls the same resolver, so the picker cannot advertise a different engine under an operator flag or request override. The frontend echoes the core shown in the model-controls chip through that header (`chatStore.engine`, sourced from `/api/chat/model-catalog`); when the catalog is unavailable the header is omitted so the persisted choice governs. Deployments that declare their provider plane as a deterministic wire stub (`LLM_PROVIDER_CONTRACT_STUB=true`, set by the QA and connectivity-acceptance stacks) reject interactive chat before any session or message write with an SSE `provider_stub_chat_blocked` error instead of serving canned contract text. The legacy/Istara preflight asks the same Pi Model Management resolver with the requested `project_id`, so a Petals projection from another project's consent scope cannot admit a turn and an authorized later donor is still considered.
+Each chat turn resolves its engine in one order: operator flag `pi_replacement_enabled` → per-request header `x-istara-agent-engine` → persisted `projects.agentic_engine` → global `settings.agentic_engine_default`. The model-catalog indicator calls the same resolver, so the picker cannot advertise a different engine under an operator flag or request override. The frontend echoes the core shown in the model-controls chip through that header (`chatStore.engine`, sourced from `/api/chat/model-catalog`); when the catalog is unavailable the header is omitted so the persisted choice governs. Deployments that declare their provider plane as a deterministic wire stub (`LLM_PROVIDER_CONTRACT_STUB=true`, set by the QA and connectivity-acceptance stacks) reject interactive chat before any session or message write with an SSE `provider_stub_chat_blocked` error instead of serving canned contract text. The legacy/Istara preflight asks the same Pi Model Management resolver with the requested `project_id`, so a Petals projection from another project's consent scope cannot admit a turn and an authorized later donor is still considered. The resolver also excludes Pi catalog entries marked `kind=local` while that stub flag is set; a deterministic stack therefore cannot accidentally execute its local Ollama/LM Studio fixture while still allowing an admitted remote Pi endpoint to serve the test.
 
 ## Agents, Skills, LLM, MCP, And Permissions
 
@@ -159,6 +162,7 @@ Each chat turn resolves its engine in one order: operator flag `pi_replacement_e
 
 - `frontend/src/lib/modelProviders.test.ts`
 - `tests/test_settings_agentic_pi_endpoints.py`
+- `tests/test_model_source.py` — explicit/default local selections resolve through the Pi catalog, and stub-marked stacks filter local catalog entries before fallback.
 - `tests/pi_production/test_w1_agentic_contract.py`
 - `tests/pi_production/test_w1_dispatcher_authority.py` — shared Pi Model Management authority for both engine choices, including legacy/Istara multi-turn tool-loop execution, cumulative usage, and provider-served identity preservation.
 - `tests/pi_production/test_legacy_long_horizon.py` — seven-step legacy/Istara tool-loop horizon parity through the same shared manager, with cumulative usage and served-identity assertions.

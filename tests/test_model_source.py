@@ -1,7 +1,6 @@
 """CF-SPEC-1 Phase 6: unified model-source resolution and the execution-only
-pi bridge. Locks DEC-10 precedence: explicit selection > local direct >
-pi-managed fallback (stub-marked planes only); donations untouched; the
-bridge never advertises capacity."""
+pi bridge. Locks DEC-10 precedence: explicit selection through the Pi-managed
+catalog; donations untouched; the bridge never advertises capacity."""
 
 import json
 
@@ -11,15 +10,27 @@ from app.config import settings
 
 
 class _FakeEndpointInfo:
-    def __init__(self, endpoint_id: str, model: str, provider_kind: str = "openai_compat"):
+    def __init__(
+        self,
+        endpoint_id: str,
+        model: str,
+        provider_kind: str = "openai_compat",
+        kind: str = "remote",
+    ):
         self.endpoint_id = endpoint_id
         self.model = model
         self.provider_kind = provider_kind
+        self.kind = kind
 
 
 class _FakeManager:
     def __init__(self, endpoints: list[tuple[str, str]], secret: str = "sk-test"):
-        self._endpoints = [e if len(e) == 3 else (*e, "openai_compat") for e in endpoints]
+        self._endpoints = [
+            (*e, "openai_compat", "remote") if len(e) == 2
+            else (*e, "remote") if len(e) == 3
+            else e
+            for e in endpoints
+        ]
         self._secret = secret
 
     def catalog(self):
@@ -61,6 +72,14 @@ def _restore_settings():
     settings.llm_provider_contract_stub = False
 
 
+def test_package_and_module_dispatcher_singletons_are_one_authority():
+    """Both public import paths must expose the same Pi-aware dispatcher."""
+    from app.core.agentic import agentic as package_agentic
+    from app.core.agentic.dispatcher import agentic as module_agentic
+
+    assert package_agentic is module_agentic
+
+
 @pytest.mark.asyncio
 async def test_explicit_model_resolves_to_pi_managed(monkeypatch):
     from app.core.agentic import model_source as ms
@@ -87,13 +106,60 @@ async def test_legacy_loop_source_loads_persisted_pi_catalog_before_selection(mo
 
 
 @pytest.mark.asyncio
-async def test_explicit_local_model_prefers_local_plane(monkeypatch):
+async def test_explicit_local_model_resolves_through_pi_manager(monkeypatch):
     from app.core.agentic import model_source as ms
 
-    monkeypatch.setattr(ms, "_pi_manager", lambda: _FakeManager([]))
     monkeypatch.setattr(settings, "ollama_model", "qwen3:latest", raising=False)
+    monkeypatch.setattr(
+        ms,
+        "_pi_manager",
+        lambda: _FakeManager([("pi-local-ollama", "qwen3:latest")]),
+    )
     source = await ms.resolve_model_source("qwen3:latest")
-    assert source is not None and source.plane == "local-direct"
+    assert source is not None and source.plane == "pi-managed"
+    assert source.endpoint_id == "pi-local-ollama"
+
+
+@pytest.mark.asyncio
+async def test_default_local_model_is_resolved_by_pi_manager(monkeypatch):
+    """Both loop modes must use the Pi catalog, including local providers."""
+    from app.core.agentic import model_source as ms
+
+    monkeypatch.setattr(settings, "ollama_model", "qwen3:latest", raising=False)
+    monkeypatch.setattr(
+        ms,
+        "_pi_manager",
+        lambda: _FakeManager([("pi-local-ollama", "qwen3:latest")]),
+    )
+
+    source = await ms.resolve_model_source(None)
+
+    assert source is not None
+    assert source.plane == "pi-managed"
+    assert source.endpoint_id == "pi-local-ollama"
+
+
+@pytest.mark.asyncio
+async def test_stub_plane_filters_pi_catalog_local_entries(monkeypatch):
+    """A stub-marked deployment must not execute its Pi local catalog entry."""
+    from app.core.agentic import model_source as ms
+
+    monkeypatch.setattr(
+        ms,
+        "_pi_manager",
+        lambda: _FakeManager(
+            [
+                ("pi-local-ollama", "qwen3:latest", "openai_compat", "local"),
+                ("pi-remote", "deepseek-v4-pro"),
+            ]
+        ),
+    )
+    settings.llm_provider_contract_stub = True
+
+    source = await ms.resolve_model_source(None)
+
+    assert source is not None
+    assert source.endpoint_id == "pi-remote"
 
 
 @pytest.mark.asyncio

@@ -9,10 +9,11 @@ communication for either engine. This resolver answers one question per turn:
 
 Precedence (owner-approved):
   1. Explicit user selection wins outright (the chat picker's model).
-  2. An explicit local endpoint configured by the user.
-  3. A Pi-managed endpoint, including the sanctioned, identity-pinned Petals
+  2. The Pi-managed catalog resolves that selection, including local
+     Ollama/LM Studio entries and the sanctioned, identity-pinned Petals
      projection when donation consent, health, and project scope admit it.
-  4. The legacy donation-pool path only when no Pi catalog identity resolves.
+  3. The legacy donation-pool path remains a compatibility boundary only when
+     no Pi catalog identity resolves; it is never returned as a false Pi source.
 
 Provenance is explicit on every resolved source so usage/UI surfaces can show
 exactly where a turn was served from.
@@ -33,7 +34,6 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 PLANE_PI_MANAGED = "pi-managed"
-PLANE_LOCAL_DIRECT = "local-direct"
 
 
 @dataclass(frozen=True)
@@ -68,6 +68,10 @@ async def _configured_pi_endpoint(model: str | None, project_id: str | None = No
             info
             for info in manager.catalog()
             if getattr(info, "provider_kind", "") != "openai_codex"
+            and not (
+                getattr(settings, "llm_provider_contract_stub", False)
+                and getattr(info, "kind", "") == "local"
+            )
         ]
         if model:
             candidates = [
@@ -92,22 +96,6 @@ async def _configured_pi_endpoint(model: str | None, project_id: str | None = No
         return None
 
 
-def _local_direct_model() -> str | None:
-    """The explicitly configured local model, or None when absent/stub-marked.
-
-    On deployments whose Ollama-compatible plane is a declared wire stub, this
-    plane does not exist as far as chat is concerned (DEC-10: Istara never uses
-    stubs).
-    """
-    if getattr(settings, "llm_provider_contract_stub", False):
-        return None
-    for attr in ("ollama_model", "lmstudio_model"):
-        value = str(getattr(settings, attr, "") or "").strip()
-        if value and value.lower() != "default":
-            return value
-    return None
-
-
 async def resolve_model_source(
     model: str | None = None, project_id: str | None = None
 ) -> ModelSource | None:
@@ -116,46 +104,23 @@ async def resolve_model_source(
     Returns ``None`` when no non-stub source can serve the request; callers
     fail closed with their own actionable error.
     """
-    # 1/2/3 — an explicit model selection resolves across planes by name.
+    # Every selection, including local Ollama/LM Studio defaults, resolves
+    # through PiModelManager.  Returning a separate local-direct source here
+    # would make the legacy preflight disagree with the actual provider
+    # service, which already uses the Pi manager.
     if model:
         endpoint = await _configured_pi_endpoint(model, project_id)
-        if endpoint is not None:
-            return ModelSource(
-                plane=PLANE_PI_MANAGED,
-                endpoint_id=endpoint.endpoint_id,
-                base_url=endpoint.base_url,
-                api_key=endpoint.api_key,
-                model=endpoint.model,
-            )
-        if _local_direct_model() == model:
-            base = (
-                settings.lmstudio_host
-                if model == getattr(settings, "lmstudio_model", None)
-                else settings.ollama_host
-            )
-            return ModelSource(
-                plane=PLANE_LOCAL_DIRECT,
-                endpoint_id="local-direct",
-                base_url=str(base),
-                api_key="",
-                model=model,
-            )
-        return None  # legacy donation-pool routing remains the final compatibility path
-
-    # No explicit selection: preserve the legacy plane's historical default
-    # (local/registry routing). A pi-managed endpoint becomes the fallback ONLY
-    # where the local plane is a declared wire stub — so Istara never dies on
-    # acceptance-style stacks once the user has configured an endpoint, while
-    # normal dev machines keep serving from their local provider by default.
-    local_model = _local_direct_model()
-    if local_model:
+        if endpoint is None:
+            return None
         return ModelSource(
-            plane=PLANE_LOCAL_DIRECT,
-            endpoint_id="local-direct",
-            base_url=str(settings.ollama_host),
-            api_key="",
-            model=local_model,
+            plane=PLANE_PI_MANAGED,
+            endpoint_id=endpoint.endpoint_id,
+            base_url=endpoint.base_url,
+            api_key=endpoint.api_key,
+            model=endpoint.model,
         )
+
+    # No explicit selection: PiModelManager owns the default catalog choice.
     endpoint = await _configured_pi_endpoint(None, project_id)
     if endpoint is not None:
         return ModelSource(

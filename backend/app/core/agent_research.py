@@ -688,7 +688,6 @@ class AgentResearchMixin:
         """Store visible candidate findings without bypassing the Research Spine."""
         output.mark_research_artifacts_candidate()
 
-        # === VALIDATION GATE: sanitize tags before storage ===
         for nugget_data in output.nuggets or []:
             tags = nugget_data.get("tags", [])
             if isinstance(tags, str):
@@ -696,16 +695,12 @@ class AgentResearchMixin:
                     tags = json.loads(tags)
                 except (json.JSONDecodeError, TypeError):
                     tags = []
-            # Filter empty/too-short tags (but keep ux-law: tags)
             tags = [t for t in tags if t and (len(t.strip()) >= 2 or t.startswith("ux-law:"))]
             nugget_data["tags"] = tags
 
-        # Determine base phase from skill (Double Diamond)
         skill = registry.get(task.skill_name) if task.skill_name else None
         skill_phase = skill.phase.value if skill else None
 
-        # Each finding type has a natural phase in the Atomic Research hierarchy.
-        # If the skill specifies a phase, use it; otherwise use the type's default.
         nugget_phase = skill_phase or "discover"
         fact_phase = skill_phase or "define"
         insight_phase = skill_phase or "define"
@@ -718,6 +713,8 @@ class AgentResearchMixin:
         created_recommendation_ids: list[str] = []
         created_evidence_unit_ids: list[str] = []
         finding_agent_id = task.agent_id or self.agent_id
+
+        from app.services.research_finding_links import persist_scoped_derivation_links as persist_links  # noqa: E501,I001
 
         for nugget_data in output.nuggets:
             nid = str(uuid.uuid4())
@@ -827,7 +824,7 @@ class AgentResearchMixin:
 
         for fact_data in output.facts:
             fid = str(uuid.uuid4())
-            linked_nuggets = fact_data.get("nugget_ids") or created_nugget_ids[-5:]
+            linked_nuggets = await persist_links(db, Nugget, fact_data.get("nugget_ids"), created_nugget_ids[-5:], project_id, task, "fact", fid, "nugget")  # noqa: E501
             fact = Fact(
                 id=fid,
                 project_id=project_id,
@@ -842,7 +839,7 @@ class AgentResearchMixin:
 
         for insight_data in output.insights:
             iid = str(uuid.uuid4())
-            linked_facts = insight_data.get("fact_ids") or created_fact_ids[-3:]
+            linked_facts = await persist_links(db, Fact, insight_data.get("fact_ids"), created_fact_ids[-3:], project_id, task, "insight", iid, "fact")  # noqa: E501
             insight = Insight(
                 id=iid,
                 project_id=project_id,
@@ -858,7 +855,7 @@ class AgentResearchMixin:
 
         for rec_data in output.recommendations:
             rid = str(uuid.uuid4())
-            linked_insights = rec_data.get("insight_ids") or created_insight_ids[-2:]
+            linked_insights = await persist_links(db, Insight, rec_data.get("insight_ids"), created_insight_ids[-2:], project_id, task, "recommendation", rid, "insight")  # noqa: E501
             rec = Recommendation(
                 id=rid,
                 project_id=project_id,
