@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T21:53:21Z, ledger: L-426 }
-next_action: "Preserve the two-axis April Compass lineage versus CF-SPEC persistence wording, then continue CF-SPEC-2 implementation and the Docker-only live acceptance matrix; do not backdate or synthesize missing CF-SPEC rows."
+last: { agent: gpt-5-codex, at: 2026-08-27T22:03:17Z, ledger: L-427 }
+next_action: "Keep the April Compass process lineage distinct from persisted CF-SPEC state, then continue CF-SPEC-2 implementation and the Docker-only live acceptance matrix; do not backdate or synthesize missing CF-SPEC rows."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10256,3 +10256,36 @@ open CF-SPEC-2 live Research Spine acceptance gate.
 
 Next: resume CF-SPEC-2 implementation and Docker-only live acceptance when
 owner-approved provider/model inputs are available.
+
+### L-427 | 2026-08-27T22:03:17Z | S3-review | gpt-5-codex | Independent recheck confirms April Compass origin and later CF-SPEC persistence
+
+After the owner challenge, I repeated the historical search independently
+against all reachable Istara refs/tags and the retained Compass Forge stores.
+The earliest Istara Compass process evidence is the April 3, 2026 commit
+`42e454b0` (the `Compass` section in `AGENT_ENTRYPOINT.md`), followed by the
+April 3 doctrine hardening `ce19476e`, April 10 three-layer testing mandate
+`16d18228`, April 10 `TESTING.md`/PR workflow `21ef99b1`, and the related April
+test pass `c0ddf50c`. Each cited commit is an ancestor of `testing`; the April
+tags `v2026.04.03.3`, `v2026.04.10.13`, and `v2026.04.20.4` expose the same
+Compass material. Therefore the statement that Compass was present in Istara
+since April is confirmed.
+
+The naming and persistence milestones are different facts. The first literal
+`compass-forge` workflow block in Istara Git is `0d0d9a24` on May 2, 2026, and
+the first literal `CF-SPEC-*` document marker is `7dca7368` on May 4, 2026.
+The retained shared state database contains 60 specs overall, oldest
+`2026-07-03T01:11:53+00:00`; 11 rows are Istara-scoped across the two retained
+Istara roots, oldest `2026-08-01T19:46:34+00:00`. The repo-local Istara state
+database contains 5 rows, oldest `2026-08-23T15:04:20.958685Z`. No retained
+database contains an April CF-SPEC row, so database age must not be used as a
+proxy for the April process origin.
+
+This is a read-only provenance correction; no code, model, Docker, host, or
+testing data changed. It supersedes any report that says Compass itself began
+in July/August while preserving the truthful statement that April CF-SPEC rows
+are not present in retained state. The live Research Spine acceptance gate
+remains open.
+
+Evidence rechecked: `git log --all`/path history, `git show`/`git grep` for the
+April commits and tags, `git merge-base --is-ancestor` for every cited hash,
+and read-only `sqlite3` queries over the shared and repo-local `specs` tables.
