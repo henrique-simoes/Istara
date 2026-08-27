@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T09:25:19Z, ledger: L-306 }
+last: { agent: gpt-5-codex, at: 2026-08-27T09:30:18Z, ledger: L-307 }
 next_action: "Obtain owner-approved Docker-only env/model/provider inputs, then execute the staged provider, Petals, combined, engine-parity, ensemble, and Research Spine acceptance matrix below; keep every missing prerequisite fail-closed."
 ```
 
@@ -7266,3 +7266,21 @@ provisioning inputs in section 2, verify their digests and Compose rendering, an
 then begin the provider-only profile. Until that happens, all live provider,
 Petals, combined, same-session, three-rater, reliability, reconciliation, human-Done,
 and report gates remain `not_run`/open.
+
+### L-307 | 2026-08-27T09:30:18Z | S5-ship&learn | gpt-5-codex | detailed matrix transport and live-gate checkpoint
+
+The detailed completion matrix in L-306 is now committed and pushed as
+`94214a16fe0063bc31802a8c7347c8dffeb9f3a8`, with local `testing` and
+`origin/testing` equal and the Mac Studio detached retake
+`~/istara-testing-retake-47bf` clean at the same SHA. Compass Forge command evidence
+`184` records the L-306 pre-gate; gate evidence `186` links after record `230` and
+the Docker-only passive retake check. The after comparison found no new issues,
+forbidden dependencies, import cycles, or missing required paths; the remaining
+failure is the known inherited baseline plus the lifecycle file's path-suppressed
+large-file category.
+
+No provider, Petals, model, benchmark, or host workload was started. The next
+unchecked item is the owner-approved Docker-only provisioning gate in L-306 section
+2; until its env/config, model/provider identities, source/image digests, and
+three-model Compose inputs exist, all live scientific and operational gates remain
+open and no completion claim is permitted.
