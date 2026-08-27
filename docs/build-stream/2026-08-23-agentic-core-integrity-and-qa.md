@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T16:38:00Z, ledger: L-382 }
-next_action: "Continue F-R9-114 only with owner-approved Docker-only provider/model identities and a bounded live three-model run; preserve the passive Mac Studio boundary until those inputs are supplied. Keep the legacy no-coding-run migration decision, genuine human reconciliation/report acceptance, and live downstream transformation receipt open."
+last: { agent: gpt-5-codex, at: 2026-08-27T17:04:00Z, ledger: L-384 }
+next_action: "Attach the fresh deterministic scorecard evidence to CF-SPEC-3 tasks and close only the criteria proved by those receipts; preserve the April Compass-origin/history distinction; keep F-R9-114 live three-model/provider identity, genuine human reconciliation/report acceptance, legacy no-coding-run migration, and live downstream transformation open until their explicit gates are met."
 ```
 
 ## Plan overview / roadmap
@@ -9043,3 +9043,72 @@ identities, two concurrent calls, genuine human reconciliation, Done/report
 acceptance, or the real downstream transformation chain. The next agent must
 obtain the owner's provider/model inputs before any bounded Docker-only live
 run and must preserve the exact route/model/usage receipts.
+
+### L-383 | 2026-08-27T16:49:00Z | S2-execute/S3-review | gpt-5-codex | CF-SPEC-3 scorecard evidence refresh
+
+Re-ran the scorecard contract and deterministic acceptance matrix while mapping the
+newly clarified `CF-SPEC-3` tasks (`CF-38` through `CF-46`) to existing shipped
+behavior. `npm --prefix tests/real_user_benchmark run check` passed all `95/95`
+Node contract tests, including fail-closed separation of structural traceability,
+weak donor topology, served model identities, reliability/reconciliation, and
+long-horizon acceptance. The Python matrix passed `711 passed, 5 skipped` with
+`-W error::RuntimeWarning`, covering Pi production/benchmark paths, the Research
+Spine contract, production-path end-to-end persistence, and project-scope validation.
+No source, provider, model, container, or host state was changed by this receipt.
+
+Compass Forge remains native Rust (`python_fallback=false`). Its new `CF-SPEC-3`
+records live in the ignored local state database and do not alter Git branches;
+the repository checkout remains `/Users/user/Documents/Istara-main` on clean
+`testing`, exactly equal to `origin/testing` at `13d0f124`. The only other
+registered checkout is the preserved recovery worktree under
+`/Users/user/Documents/Codex/2026-08-10/list/work/istara-pi-linearized-2026-08-10`.
+Passive SSH verification still shows Docker client/server `29.7.2/29.7.2`, only
+unrelated healthy `plex`, zero model files, and no Istara stack; no host install,
+image pull, provider request, model load, or testing-data deletion occurred.
+
+Result: deterministic scorecard criteria are ready for task evidence/closure, but
+this is not live Research Spine acceptance. F-R9-114 remains open for owner-approved
+Docker-only provider/model identities, three served donor routes, Fleiss/Krippendorff
+receipts from real calls, genuine reconciliation, Done/report acceptance, two-call /
+long-horizon live receipts, and the real downstream transformation receipt. Legacy
+no-`coding_run_id` reportability still requires an explicit migration decision.
+Next: attach these exact commands as CF-SPEC-3 evidence and leave external gates open.
+
+### L-384 | 2026-08-27T17:04:00Z | S3-review | gpt-5-codex | Corrected Compass Forge history/count claim
+
+Corrected the earlier claim that Istara had only five Compass Forge specs beginning on
+2026-08-23. That number is limited to the active repo-local database at
+`/Users/user/Documents/Istara-main/.compass-forge/state.sqlite3`, which currently
+contains five rows (`CF-SPEC-1` through `CF-SPEC-5`) and has oldest `created_at`
+`2026-08-23T15:04:20.958685Z`. It is not a complete historical count.
+
+Read-only inventory of the retained shared workspace database at
+`/Users/user/Documents/compass-forge/.compass-forge/state.sqlite3` found 60 specs
+across projects. Its Istara-main project scope contains ten rows, oldest
+`CF-SPEC-41` at `2026-08-01T19:46:34+00:00`, followed by `CF-SPEC-47` and
+`CF-SPEC-51` through `CF-SPEC-59`; the database's oldest row overall is a
+Compass-Forge project spec from `2026-07-03`, not an Istara row. A retained pre-native
+backup has 50 rows but only through `2026-08-13`, confirming that these are snapshots
+of separate CF state stores, not one automatically merged history.
+
+Git supplies the earlier Istara process history: commit `741f3420` on
+`2026-04-03T15:39:09-03:00` records Compass documentation and release/onboarding
+integration; `1994ba33` on April 10 embeds the three-layer testing architecture into
+Compass; and `21ef99b1` the same day adds TESTING.md, a PR-required workflow, and
+Compass integration. This proves Compass/Build Stream was present in Istara in April,
+while the first durable Pi-specific `CF-SPEC-1`/`CF-SPEC-2` lifecycle is documented
+in the July 19 Build Stream ledger and later `CF-SPEC-10`/`11`/`12` acceptance is
+recorded around July 31–August 1. No April CF-SPEC database rows were found in the
+retained state stores, so an April process-origin claim must not be converted into a
+fabricated April spec-row count.
+
+Result: the historical answer is intentionally split by authority—April 3 is the
+verified Istara Compass origin; ten is the retained shared-DB Istara row count;
+five is the active repo-local row count. The current checkout remains clean on
+`testing` and equal to `origin/testing`; this audit changed only this append-only
+ledger and did not alter code, Docker, providers, models, or host state.
+
+Next: keep CF state provenance explicit in all reports and decide, under owner approval,
+whether a formal historical import/reconciliation is wanted. Do not merge or rewrite
+CF databases implicitly, and do not close live Research Spine gates from deterministic
+or historical bookkeeping evidence.
