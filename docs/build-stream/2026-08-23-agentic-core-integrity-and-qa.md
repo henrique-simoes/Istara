@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:36:29Z, ledger: L-373 }
+last: { agent: gpt-5-codex, at: 2026-08-27T15:40:00Z, ledger: L-374 }
 next_action: "Continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates; separately decide the migration/compatibility policy for legacy no-coding-run reportability. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
 ```
 
@@ -8829,11 +8829,12 @@ reconciliation, and Done/report acceptance.
 
 ### L-373 | 2026-08-27T15:36:29Z | S3-review | gpt-5-codex | reportability-debt transport parity
 
-The compatibility-debt finding and lifecycle receipt are now committed at
-`15b3d390868a4fa713d694cb652c8bcf3eccd66c`, pushed to `origin/testing`, and
-retaken cleanly on the detached Mac Studio checkout
+The compatibility-debt finding and preceding lifecycle receipt are committed
+at `15b3d390868a4fa713d694cb652c8bcf3eccd66c`; this transport receipt is
+committed at `c1cb6eb21a1147dae1e1081065fa4e78b1f5dbff`, pushed to
+`origin/testing`, and retaken cleanly on the detached Mac Studio checkout
 `~/istara-testing-retake-47bf`. Local `testing`, `origin/testing`, and the Mac
-retake match this exact SHA. Compass Forge task evidence `340` records the
+retake match `c1cb6eb21a1147dae1e1081065fa4e78b1f5dbff`. Compass Forge task evidence `341` records the
 transport and the unchanged Docker-only boundary: Docker client/server
 `29.7.2/29.7.2`, unrelated healthy `plex` only, zero model files, and no
 `.env.deploy`. No host package install, image pull, provider request, model
@@ -8842,3 +8843,12 @@ load, live benchmark, or testing-data deletion occurred. Feature-doc checks and
 three-model identity, Fleiss/Krippendorff evidence, genuine human
 reconciliation, and Done/report acceptance; legacy no-coding-run reportability
 requires a separate migration/compatibility decision.
+
+### L-374 | 2026-08-27T15:40:00Z | S3-review | gpt-5-codex | ledger provenance correction
+
+The `L-373` transport receipt was corrected to distinguish the preceding
+documentation checkpoint (`15b3d390868a4fa713d694cb652c8bcf3eccd66c`) from the
+transport receipt itself (`c1cb6eb21a1147dae1e1081065fa4e78b1f5dbff`). This
+keeps the Build Stream SHA chain truthful: the latter is the exact commit that
+local `testing`, `origin/testing`, and the detached Mac Studio retake must
+match. No code, runtime, provider, model, or Docker state changed.
