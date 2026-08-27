@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T20:27:28Z, ledger: L-416 }
+last: { agent: gpt-5-codex, at: 2026-08-27T20:29:50Z, ledger: L-417 }
 next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
@@ -26,7 +26,7 @@ timestamped ledger entry in this file.
 * `testing` tracks `origin/testing` and the checkout is kept clean. Re-run
   `git rev-parse HEAD` and `git rev-parse origin/testing` at the start of every
   continuation because each ledger-only commit necessarily advances both tips.
-  The last observed equal tips before this amendment were `177f4532`; there is
+  The last observed equal tips before this amendment were `a321645f`; there is
   no `local/testing` ref. Do not create a local ref merely to make the names
   symmetrical; record the absence instead.
 * The only other worktree is the clean recovery branch
@@ -10018,3 +10018,23 @@ checkout (or a fresh disposable Docker Compose checkout), explicit provider
 inputs for three served identities, and then the full Research Spine/Petals/
 two-call/long-horizon acceptance matrix; no scientific claim may be based on
 the absent stack.
+
+### L-417 | 2026-08-27T20:29:50Z | S3-review | gpt-5-codex | Full deterministic production slice rechecked
+
+The current local `testing` checkout completed the full `tests/pi_production`
+deterministic suite with `441 passed, 0 failed`; no live provider, model, or
+Mac Studio workload was contacted. Compass evidence `405` records this exact
+command and result. This is a current regression baseline for Pi authority,
+Petals, ensemble, Research Spine, accounting, and API tests, but it remains
+fixture-backed evidence and cannot answer whether three real served models
+produce meaningful Fleiss/Krippendorff reliability or whether a human promoted
+the result through Done/report gates.
+
+At the observation before this ledger amendment, local `testing` and
+`origin/testing` both resolved to `a321645f`; the amendment commit will advance
+both, so a continuation agent must re-run both `git rev-parse` commands. The
+Mac Studio Docker preflight remains `not_run` because its Istara checkout is
+dirty and 306 commits behind its fetched origin, and no Istara Compose project
+is running. The next safe action is owner-approved preservation/reconciliation
+or a disposable Docker checkout plus the provider/Petals inputs required by the
+live acceptance matrix.
