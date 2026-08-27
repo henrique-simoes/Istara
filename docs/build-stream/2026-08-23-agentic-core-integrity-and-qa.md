@@ -9,7 +9,7 @@ stage: S2-execute
 status: in-progress
 blocked_on: null
 last: { agent: gpt-5-codex, at: 2026-08-27T01:05:37Z, ledger: L-219 }
-next_action: "Keep the Docker-only Mac Studio acceptance gate open; obtain owner-authorized provider credit and three Compose-owned donor/model routes, then run the three-model Research Spine retake from a clean checkout at 1e93904d60a213a5d464168d9a4146e43819fd3a."
+next_action: "Keep the Docker-only Mac Studio acceptance gate open; obtain owner-authorized provider credit and three Compose-owned donor/model routes, then run the three-model Research Spine retake from a clean checkout at 0e21428d681e2f6ed163f51cdbb4ee5741896c37."
 ```
 
 ## Plan overview / roadmap
@@ -4778,7 +4778,7 @@ share one request-scoped `PiExecutionService`/`PiModelManager` pair. The determi
 feature-doc checks are green; Compass Forge still reports only inherited repository gate debt.
 
 Verified: local `testing` and `origin/testing` are exact and clean at
-`1e93904d60a213a5d464168d9a4146e43819fd3a`; the pinned native Compass Forge runtime is active
+`0e21428d681e2f6ed163f51cdbb4ee5741896c37`; the pinned native Compass Forge runtime is active
 with Python fallback disabled; passive Mac Studio inspection found Docker Desktop `29.7.2`, no
 Istara benchmark/model/provider containers, and only unrelated `plex` running. No host install,
 model load, provider retry, or Docker mutation occurred during this reconciliation.
