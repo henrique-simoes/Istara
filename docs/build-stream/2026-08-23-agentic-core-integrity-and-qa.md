@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T01:00:43Z, ledger: L-218 }
-next_action: "Keep the Docker-only Mac Studio acceptance gate open; obtain owner-authorized provider credit and three Compose-owned donor/model routes, then run the three-model Research Spine retake from a clean checkout at c0c60ef8."
+last: { agent: gpt-5-codex, at: 2026-08-27T01:05:37Z, ledger: L-219 }
+next_action: "Keep the Docker-only Mac Studio acceptance gate open; obtain owner-authorized provider credit and three Compose-owned donor/model routes, then run the three-model Research Spine retake from a clean checkout at 1e93904d60a213a5d464168d9a4146e43819fd3a."
 ```
 
 ## Plan overview / roadmap
@@ -4755,3 +4755,36 @@ checkout is not merged/ancestral and remains a retained safety asset.
 
 Acceptance state is unchanged: local deterministic behavior is verified, but Mac Studio Docker
 live acceptance remains open pending provider credit and three Compose-owned donor/model routes.
+
+### L-219 | 2026-08-27T01:05:37Z | S2-execute/S3-review | gpt-5-codex | failure-cause and final-tip reconciliation
+
+Did: Reconciled the user-visible failure question against the latest implementation and
+execution evidence. The live Mac Studio campaign did not fail because Fleiss' kappa,
+Krippendorff's alpha, reconciliation, or the Research Spine rejected model output: both the
+legacy and PI arms reached the configured provider boundary and received HTTP `402
+Insufficient Balance` before any model response, coder/rater label, or evidence-unit output
+existed. The live profile was also DeepSeek-only and had no three Compose-owned donor/model
+routes, so even an HTTP `200` from that profile could not prove three independent model
+identities or formal reliability.
+
+Cause of the earlier local failures was the Pi authority migration. The validation facade asks
+for `min_responses + 1` slots for the legacy spare-retry shape, but the Pi dispatcher originally
+dropped `minimum_n`; with exactly three identities it attempted four slots and failed before a
+model call. Separately, the full-ensemble facade could label a below-minimum partial result as
+`full_ensemble`, and Research Spine coding could select from one Pi manager while dispatching
+through another service/manager pair. Those are now fixed fail-closed: Pi honors the governed
+minimum, partial results downgrade to `dual_run`, and selection plus every structured coder call
+share one request-scoped `PiExecutionService`/`PiModelManager` pair. The deterministic suites and
+feature-doc checks are green; Compass Forge still reports only inherited repository gate debt.
+
+Verified: local `testing` and `origin/testing` are exact and clean at
+`1e93904d60a213a5d464168d9a4146e43819fd3a`; the pinned native Compass Forge runtime is active
+with Python fallback disabled; passive Mac Studio inspection found Docker Desktop `29.7.2`, no
+Istara benchmark/model/provider containers, and only unrelated `plex` running. No host install,
+model load, provider retry, or Docker mutation occurred during this reconciliation.
+
+Next: do not call the live result an ensemble or Research Spine failure. Resume only with
+owner-authorized provider credit and three distinct Compose-owned routes/models, then run the
+Docker-only profiles from a clean checkout at the exact SHA above and require raw-span sharing,
+three served identities, numeric Fleiss/alpha, grounding, reconciliation, Done/report gates,
+two-call/long-horizon artifacts, Petals interoperability, and teardown evidence.
