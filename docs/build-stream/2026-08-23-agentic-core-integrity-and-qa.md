@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T21:15:06Z, ledger: L-419 }
-next_action: "Use the corrected Docker build context on the Mac Studio disposable checkout, then obtain owner-approved provider inputs and run the live three-model Research Spine proof separately from Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
+last: { agent: gpt-5-codex, at: 2026-08-27T21:16:13Z, ledger: L-420 }
+next_action: "Preserve the dirty Mac Studio checkout and create a disposable Docker-only checkout at the pushed testing tip, then obtain owner-approved provider inputs and run the live three-model Research Spine proof separately from Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10079,3 +10079,24 @@ loaded and no Mac Studio host software or workload was changed.
 Next: use this pushed commit in a disposable Docker-only Mac Studio checkout;
 the live three-model provider/Petals/reconciliation/two-call/long-horizon
 acceptance remains unrun and cannot be inferred from this deterministic fix.
+
+### L-420 | 2026-08-27T21:16:13Z | S3-review | gpt-5-codex | Mac Studio preflight still not runnable; dirty checkout preserved
+
+Passive SSH inspection used the explicit Docker Desktop CLI path
+`/Applications/Docker.app/Contents/Resources/bin/docker` and confirmed Docker
+Server `29.7.2`. The remote `~/istara-testing` checkout remains on `testing`
+at `1b9b6d6098dc4a420aff2cf570b9aa5b982b3949`, while its fetched
+`origin/testing` is `172d311ace30a3fbc8cc475ee32793352430eba2`, and it has `340`
+short-status entries. `docker compose ls --all` and `docker ps` show only the
+unrelated `plex` project/container; no Istara test workload is running.
+
+Result: live acceptance remains `not_run`, not failed or passed. I did not pull,
+reset, clean, delete, install, load a model, or mutate the Mac Studio. The
+previously dirty checkout is preserved. The local `testing` and
+`origin/testing` refs both resolve to `49a24c96` after the pushed checkpoint.
+Compass evidence for the remote command must be attached before any live claim.
+
+Next: use an explicit disposable Docker-only checkout/volume on Mac Studio
+pointing at `origin/testing` `49a24c96`, without touching `~/istara-testing`;
+then run the provider/Petals and full Research Spine acceptance matrix only
+after the required owner-approved provider inputs are available.
