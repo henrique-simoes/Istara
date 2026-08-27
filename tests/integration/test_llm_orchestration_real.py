@@ -23,6 +23,10 @@ from tests.llm_test_config import (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("IstaraIntegrationBenchmark")
 
+# This historical one-profile benchmark measures orchestration ergonomics only.
+# It is intentionally not a PI Model Management or Research Spine acceptance test.
+EVIDENCE_ROLE = "companion"
+
 pytestmark = [
     pytest.mark.live_llm,
     pytest.mark.agentic_eval,
@@ -73,6 +77,12 @@ async def test_real_llm_orchestration_benchmark():
     - Tool Selection Quality (TSQ): Accuracy of skill/tool matching.
     - Long-Horizon Stability: Success in executing 3+ dependent steps.
     - Latency: P95/P99 response times for reasoning turns.
+
+    Evidence role:
+    - Companion baseline only. The strict PI/Research Spine acceptance paths are
+      ``tests/pi_benchmark/live_driver.py`` and the Docker-only real-user runner.
+      This test does not prove three served model identities, coding reliability,
+      source grounding, reconciliation, or human-approved report promotion.
     """
     logger.info("🚀 Starting REAL WORLD Agentic Orchestration Benchmark (Layer 5)")
     logger.info("=" * 60)
@@ -119,6 +129,7 @@ async def test_real_llm_orchestration_benchmark():
 
     # Benchmark State Tracking
     bench_results = {
+        "evidence_role": EVIDENCE_ROLE,
         "tsq_score": 0.0,  # Tool Selection Quality
         "dag_success": False,  # Did it decompose and execute steps?
         "reasoning_score": 0.0,  # Quality of final summary
@@ -226,6 +237,7 @@ async def test_real_llm_orchestration_benchmark():
             # Log final report
             print("\n" + "=" * 60)
             print(f"FINAL BENCHMARK SCORECARD: {bench_results['status']}")
+            print(f"- Evidence role: {bench_results['evidence_role']}")
             print(f"- TSQ (Tool Selection Quality): {bench_results['tsq_score']}%")
             print(
                 f"- DAG Decomposition: {'YES' if bench_results['dag_success'] else 'NO'}"

@@ -63,7 +63,9 @@
   "agentic_eval_focus": [
     {
       "area": "live chat and donated compute routing",
-      "baseline": "testing/TESTING_STRATEGY.md live LLM contract and tests/integration/test_llm_orchestration_real.py",
+      "baseline": "testing/TESTING_STRATEGY.md live LLM contract; the historical integration benchmark is companion-only",
+      "acceptance_authority": "tests/pi_benchmark/live_driver.py plus the Docker-only tests/real_user_benchmark/run.mjs profile",
+      "companion_baseline": "tests/integration/test_llm_orchestration_real.py",
       "benchmark_role": "Prove that realistic chat turns return non-empty live output and record whether project-scoped compute counters show donated/pooled compute usage under Istara's normal scheduler."
     },
     {
@@ -88,7 +90,8 @@
     },
     {
       "area": "ensemble and MoA health",
-      "baseline": "tests/agentic_eval_contract.json ensemble orchestration suite",
+      "baseline": "tests/agentic_eval_contract.json ensemble orchestration suite (companion vocabulary only)",
+      "acceptance_authority": "tests/pi_benchmark/live_driver.py and the Docker-only provider/combined real-user profiles",
       "benchmark_role": "Record compute-health and ensemble/MoA readiness evidence; multi-donor runs wait for the requested relay-node count and preserve natural scheduler route/counter evidence before scoring ensemble readiness."
     }
   ],

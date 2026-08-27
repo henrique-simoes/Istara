@@ -91,6 +91,16 @@
       "features": ["ensemble_model", "compute_registry", "live_llm_fallback"],
       "unit_tests": ["tests/test_compute.py", "tests/test_harness_config.py"],
       "integration_tests": ["tests/integration/test_llm_orchestration_real.py"],
+      "evidence_role": "companion",
+      "acceptance_tests": [
+        "tests/pi_benchmark/live_driver.py",
+        "tests/real_user_benchmark/run.mjs"
+      ],
+      "does_not_claim": [
+        "Pi Model Management route authority",
+        "three distinct provider-served model identities",
+        "Research Spine grounding, reliability, reconciliation, or promotion"
+      ],
       "simulation_scenarios": [
         "tests/simulation/scenarios/35-ensemble-validation.mjs",
         "tests/simulation/scenarios/36-llm-servers.mjs",
@@ -109,6 +119,16 @@
       "features": ["system_action_tools", "react_loop", "agentic_tool_calling"],
       "unit_tests": ["tests/benchmarks/test_orchestration.py", "tests/test_chat.py"],
       "integration_tests": ["tests/integration/test_llm_orchestration_real.py"],
+      "evidence_role": "companion",
+      "acceptance_tests": [
+        "tests/pi_benchmark/live_driver.py",
+        "tests/real_user_benchmark/run.mjs"
+      ],
+      "does_not_claim": [
+        "Pi Model Management route authority",
+        "three distinct provider-served model identities",
+        "Research Spine evidence-chain or human-approval gates"
+      ],
       "simulation_scenarios": [
         "tests/simulation/scenarios/31-task-documents-tools.mjs",
         "tests/simulation/scenarios/71-plan-and-execute.mjs",

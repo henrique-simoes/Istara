@@ -8,6 +8,13 @@ Every run loads the benchmark conductor system prompt from `tests/real_user_benc
 
 The benchmark is intentionally a longitudinal real-user layer, not a replacement for Istara's classical deterministic studies. It references `tests/simulation`, `tests/evals`, `tests/benchmarks`, and `scripts/security_benchmark.py` through `benchmark-registry.json`; it should not re-run or re-implement those suites inside the long-form user session.
 
+The historical opt-in test at `tests/integration/test_llm_orchestration_real.py`
+is a companion orchestration baseline. It configures one legacy
+`ComputeRegistry` profile and may measure DAG/ReAct ergonomics, but it is not
+acceptance evidence for Pi Model Management, three served model identities, or
+the Research Spine. Use `tests/pi_benchmark/live_driver.py` and the Docker-only
+`provider`/`combined` profiles below for those claims.
+
 ## Quick Start
 
 Run a static plan plus corpus generation without touching a live app:

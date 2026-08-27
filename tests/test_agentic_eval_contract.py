@@ -82,3 +82,20 @@ def test_agentic_eval_metrics_are_quantifiable():
         )
         assert all(metric == metric.lower() for metric in metrics)
         assert all(" " not in metric for metric in metrics)
+
+
+@pytest.mark.contract
+@pytest.mark.agentic_eval
+def test_live_orchestration_baselines_are_companion_only():
+    """The historical live benchmark must not masquerade as PI acceptance evidence."""
+    manifest = load_manifest()
+    contracts = {
+        contract["id"]: contract for contract in manifest["contracts"]
+    }
+    for contract_id in ("ensemble_llm_orchestration", "tool_calling_react"):
+        contract = contracts[contract_id]
+        assert contract["evidence_role"] == "companion"
+        acceptance_tests = contract["acceptance_tests"]
+        assert "tests/pi_benchmark/live_driver.py" in acceptance_tests
+        assert "tests/real_user_benchmark/run.mjs" in acceptance_tests
+        assert contract["does_not_claim"]
