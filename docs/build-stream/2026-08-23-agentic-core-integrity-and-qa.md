@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T11:20:01Z, ledger: L-328 }
+last: { agent: gpt-5-codex, at: 2026-08-27T11:22:34Z, ledger: L-329 }
 next_action: "Resume the owner-approved Docker-only live matrix only when current env/config, served model identities, donor inputs, and redacted artifact paths exist; keep every live gate fail-closed."
 ```
 
@@ -7715,3 +7715,31 @@ installation, or Mac Studio workload occurred. The ledger append changes the
 tip; final SHA and remote parity must be read from the post-commit evidence.
 The strict Docker-only live matrix remains blocked on owner-approved current
 env/config, three served model identities, donor inputs, and redacted artifacts.
+
+### L-329 | 2026-08-27T11:22:34Z | S5-ship&learn | gpt-5-codex | deterministic verification and transport checkpoint
+
+The new substantive payload oracle was verified end to end in the local
+checkout. The focused Research Spine suite passes `28` tests, the full
+real-user benchmark package passes `88`, the targeted contract/runner suite
+passes `77`, and the broader PI/Research Spine matrix passes `245`. Feature
+documentation regenerated cleanly (`224` generated artifacts; `86/86`
+checked), and `git diff --check` is clean. Compass command evidence `228`-`233`
+records those results. The earlier Ruff invocation against JavaScript was
+discarded as a tool/type mismatch; Node syntax and package checks are the
+applicable evidence and pass.
+
+The intended six-file change (oracle, regression test, feature contract/site,
+generated manifest, and this ledger) was committed and pushed as the current
+`testing` tip. Compass evidence `234` records local `testing`/`origin/testing`
+equality and a clean worktree. Evidence `235` records the passive Mac Studio
+retarget through the existing SSH alias: detached retake and remote ref match,
+clean worktree, Docker Server `29.7.2`, only unrelated `plex` running, zero
+model files under `~/Istara-Projects/models`, and no `.env.deploy`. No host
+package operation, provider request, model load, or benchmark workload ran.
+
+The current synchronized SHA must be read from post-commit parity evidence,
+not embedded in this file. The strict live provider/Petals/combined matrix,
+three served model identities, semantic Fleiss/Krippendorff evidence,
+same-session two-call/long-horizon receipts, reconciliation, human Done/report
+promotion, and teardown remain blocked on owner-approved Docker-only current
+env/config, donor/model inputs, and redacted artifacts.
