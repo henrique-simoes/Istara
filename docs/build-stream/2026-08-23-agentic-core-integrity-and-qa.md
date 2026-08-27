@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T05:45:31Z, ledger: L-273 }
+last: { agent: gpt-5-codex, at: 2026-08-27T05:46:15Z, ledger: L-274 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -6266,3 +6266,30 @@ provider/Petals/combined topology, three distinct provider-served identities ove
 common raw spans, grounded non-duplicate coding, numeric Fleiss/Krippendorff
 reliability, reconciliation, human-Done/report promotion, both loop modes through
 shared Pi Model Management, two-call/long-horizon traces, redaction, and teardown.
+
+### L-274 | 2026-08-27T05:46:15Z | S5-ship&learn | gpt-5-codex | post-gate transport receipt
+
+Verified after transport: native Compass Forge after-gate record `173` reports
+`comparison.new_issues=[]`, with no new forbidden dependencies, Python import cycles,
+missing required paths, or actionable warnings introduced by the documentation patch.
+The global gate remains `fail` only for inherited repository debt (secret-flow,
+route/type, complexity, and large-file findings); the Build Stream ledger's scoped
+large-file suppression remains the only expected delta. Commit `29c41984` is now
+pushed to `origin/testing`; the final parity check confirms `HEAD`, local `testing`,
+and `origin/testing` are identical and the worktree is clean.
+
+The transported change corrects `TESTING.md` and the compute/pool feature source plus
+its generated site/manifest so the supported three-model benchmark is explicitly
+Docker-owned and host-managed execution is refused. F-R9-77 is present in
+`/Users/user/Desktop/testing.md`. Verification remains deterministic/documentary:
+feature docs `224` artifacts/`86` checks, topology contract `10/10`, and real-user
+benchmark check `78/78`; no Mac Studio service, model, package, or remote repository
+was started or mutated.
+
+Boundary/next: G0/G1 and live G2-G22 remain open. The next meaningful action is an
+owner-authorized fresh detached exact-SHA checkout on Mac Studio, archive verification
+inside Docker, then provider/Petals/combined retakes with three distinct
+provider-served identities over common raw spans and complete reliability, grounding,
+reconciliation, Done/report, both-loop, two-call/long-horizon, Petals, redaction, and
+teardown evidence. Do not promote this deterministic/documentation receipt to live
+Research Spine acceptance.
