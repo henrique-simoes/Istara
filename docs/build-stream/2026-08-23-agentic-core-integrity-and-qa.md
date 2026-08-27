@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T05:02:21Z, ledger: L-267 }
+last: { agent: gpt-5-codex, at: 2026-08-27T05:17:34Z, ledger: L-268 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -6048,3 +6048,49 @@ non-duplicate rating per model/unit, numeric Fleiss/Krippendorff reliability,
 reconciliation, human-Done/report promotion, both loop modes through shared PI
 Model Management, two-call/long-horizon behavior, Petals interoperability,
 redacted artifacts, and teardown.
+
+### L-268 | 2026-08-27T05:17:34Z | S2-execute/S3-review/S5-ship&learn | gpt-5-codex | provider-served ensemble oracle repair and transport receipt
+
+Did: Audited the response-level ensemble adapter after the prior streamed
+provider-receipt work. `_dispatch_ensemble()` was still reading the
+configured/request `sample.model` field when constructing `models_used` and
+route evidence. In the Pi contract that field is not proof of the checkpoint
+that answered: provider-reported identity is carried separately as
+`sample.served_model`. Distinct endpoint aliases or gateways could therefore
+be counted as independent models even when all responses came from one
+checkpoint, overstating MoA diversity and weakening the Research Spine
+independence oracle.
+
+Changed: the adapter now consumes `served_model` only and leaves missing
+receipts unproven. Added a regression with three different configured labels
+and one shared served identity; the resulting `models_used` and route
+evidence correctly collapse to the shared provider identity. Updated the
+Ensemble Health architecture contract and regenerated the feature-site
+artifacts. Appended F-R9-74 to `/Users/user/Desktop/testing.md`; that findings
+register remains intentionally external to Git.
+
+Verified: the broad deterministic Python matrix passed `687` tests with `5`
+skipped under `-W error::RuntimeWarning`; the focused validation/MoA slice
+passed `57/57`; Pi runtime passed `46/46`; the complete real-user benchmark
+check passed `78/78`; topology contracts passed `10/10`; touched Ruff and
+`git diff --check` passed; feature documentation regenerated `224` artifacts
+and passed `86/86`. Compass Forge after-gate record `163` reports
+`new_issue_count=0`, `new_failures=0`, no actionable failures, no cycles, and
+no new warnings; the global `fail` status remains inherited repository debt
+(`31` failures/`209` warnings, including known secret-flow, complexity,
+route/type drift, and large-file findings). Commit `fc0a756f` is pushed and
+`HEAD`, local `testing`, and `origin/testing` are exact; the repository
+worktree is clean after this receipt is transported.
+
+Boundary/next: this closes the deterministic response-level identity oracle
+gap but does not prove formal Fleiss/Krippendorff coding or live scientific
+validity. Keep G0/G1 and live G2-G22 open. The next authorized live window
+must use a fresh detached `origin/testing` checkout, verify its canonical
+archive digest inside Docker, and run provider/Petals/combined profiles with
+three actual provider-served identities over common raw source spans, one
+grounded non-duplicate rating per model/unit, numeric reliability,
+reconciliation, human-Done/report promotion, both Istara and Pi loop modes
+through shared Pi Model Management, two-call/long-horizon artifacts, Petals
+interoperability, redacted artifacts, and teardown. The Mac Studio currently
+has no model artifacts or reachable provider routes, so no model load or
+three-model claim is permitted.
