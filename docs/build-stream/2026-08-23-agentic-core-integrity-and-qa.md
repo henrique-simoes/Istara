@@ -8413,3 +8413,20 @@ governed synthetic/live reconciliation.
 
 No provider request, model load, host installation, Docker image pull, or live
 benchmark workload was started. Mac Studio remains Docker-only and passive.
+
+### L-356 | 2026-08-27T14:22:00Z | S5-ship&learn | gpt-5-codex | catalog-fix transport and Mac Studio parity
+
+The project-scoped catalog fix and its docs/tests are committed as
+`5790e2dcb0fc2222ddf7b5affb77bf192f19c644` and pushed to `origin/testing`.
+Local `testing`, `origin/testing`, and detached Mac Studio retake
+`~/istara-testing-retake-47bf` resolve to that exact SHA and are clean.
+
+Passive SSH inspection used the configured `macstudio` alias and only the
+existing `/usr/local/bin/docker` fallback: Docker Server/Client `29.7.2`,
+unrelated `plex` only, zero files under `~/Istara-Projects/models`, and no
+retake `.env.deploy`. No image pull, model load, provider request, host package
+installation, data deletion, or benchmark workload was started. F-R9-117 is
+fixed in the deterministic catalog boundary; F-R9-114 remains open for
+governed synthetic/live reconciliation and human Done/report proof.
+Compass Forge task evidence `313` records the exact commit, remote, detached
+checkout, Docker, and no-workload parity values.
