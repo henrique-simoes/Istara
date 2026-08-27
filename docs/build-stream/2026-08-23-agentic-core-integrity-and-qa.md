@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T14:53:17Z, ledger: L-360 }
-next_action: "Transport L-360's guarded synthetic reconciliation diagnostic to origin/testing and the detached Mac Studio checkout, then continue F-R9-114 with idempotency and deeper Done/report traceability assertions; keep synthetic receipts non-reportable and the live three-model Docker gate pending owner-approved inputs."
+last: { agent: gpt-5-codex, at: 2026-08-27T14:54:57Z, ledger: L-361 }
+next_action: "Continue F-R9-114 with idempotent/retry-safe synthetic receipts and deeper Done/report traceability assertions; then obtain owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
 ```
 
 ## Plan overview / roadmap
@@ -8567,3 +8567,29 @@ work includes idempotent/retry-safe receipt semantics, deeper Done/report
 traceability assertions, a genuine human reconciliation acceptance exercise,
 and the owner-approved Docker-only three-model Mac Studio run with exact
 provider-served identities and model inputs.
+
+### L-361 | 2026-08-27T14:54:57Z | S5-ship&learn | gpt-5-codex | guarded diagnostic transport and Mac Studio Docker parity
+
+The guarded synthetic reconciliation implementation and its feature-contract
+updates are committed as `8af702d3f9d2a06af22be3c17abe7566e0c3ade0`
+(`test: add guarded synthetic reconciliation diagnostic`) and pushed to
+`origin/testing`. Local `testing`, `origin/testing`, and the detached Mac
+Studio retake `~/istara-testing-retake-47bf` all resolve to that exact SHA and
+are clean. Compass Forge task evidence `326` records the API/deterministic/
+feature-doc/compile/diff verification; evidence `327` records transport and
+parity.
+
+Passive SSH inspection remained Docker-only. The Mac Studio Docker client and
+server are both `29.7.2`; only the unrelated healthy `plex` container is
+running; `~/Istara-Projects/models` contains zero files; and the retake has no
+`.env.deploy`. No host package installation, Docker image pull, provider
+request, model load, benchmark workload, or test-data deletion was performed.
+
+The repository gate after this slice is Compass Forge record `295` with zero
+new issues relative to the baseline. Existing inherited secret-flow,
+complexity, route/type, and large-file conditions remain tracked separately;
+the lifecycle document's path-scoped large-file suppression remains active.
+The cross-suite Python teardown hang remains an inherited fixture-lifecycle
+debt signal rather than a passing acceptance claim. F-R9-114 remains open for
+idempotency, genuine human reconciliation/Done/report proof, and the
+owner-approved live three-model Docker run.
