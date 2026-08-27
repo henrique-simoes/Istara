@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T22:52:00Z, ledger: L-436 }
-next_action: "Use the clean a0a56c7 testing checkout for the owner-approved Docker-only Mac Studio matrix; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until receipts exist."
+last: { agent: gpt-5-codex, at: 2026-08-27T22:56:00Z, ledger: L-437 }
+next_action: "Use the clean testing tip recorded by terminal evidence 458 for the owner-approved Docker-only Mac Studio matrix; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until receipts exist."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10433,6 +10433,17 @@ deterministic evidence alone. The next agent must preserve the dirty remote
 checkout, provision an isolated Docker-only workload from this exact tip, and
 capture the open Research Spine, Petals, provider identity, two-call, and
 long-horizon receipts before attempting task completion.
+
+### L-437 | 2026-08-27T22:56:00Z | S3-review | gpt-5-codex | Terminal pointer made hash-stable
+
+The final documentation checkpoint advanced the branch to
+`0b77688694cc858e6a2ffc87a6d6b5522c39fe24`; local `testing` and
+`origin/testing` are equal and the worktree is clean. Because any subsequent
+ledger append necessarily creates a new commit, the YAML `next_action` now
+points to terminal CF evidence `458` rather than embedding a hash that would
+immediately become stale. The terminal after-gate for that tree reports zero
+new issues and zero actionable failures; inherited repository debt remains
+unchanged. The live Mac Studio gate is still `not_run` under L-433/F-R9-162.
 
 ### L-436 | 2026-08-27T22:52:00Z | S3-review | gpt-5-codex | Final branch and gate handoff
 
