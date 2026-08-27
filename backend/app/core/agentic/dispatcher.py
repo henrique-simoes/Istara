@@ -105,6 +105,16 @@ class AgenticDispatcher:
         """
         return self._pi.model_manager()
 
+    def pi_execution_service(self) -> PiExecutionService:
+        """Return the Pi facade paired with :meth:`model_manager`.
+
+        Research Spine orchestration may select coder identities before it
+        dispatches structured calls. Returning the paired facade lets that
+        request carry one manager/service authority through both phases while
+        this dispatcher still owns usage-ledger accounting.
+        """
+        return self._pi
+
     # ── engine resolution ────────────────────────────────────────────────
     def resolve_engine(
         self,
@@ -344,12 +354,13 @@ class AgenticDispatcher:
         repair: bool = True,
         task_id: str | None = None,
         spine_phase: str | None = None,
+        pi_service: PiExecutionService | None = None,
     ) -> StructuredResult:
         started = time.perf_counter()
         selected = await self._resolve(project_id=project_id, engine=engine, request=request)
         try:
             if selected == "pi":
-                outcome = await self._pi.run_structured(
+                outcome = await (pi_service or self._pi).run_structured(
                     purpose=purpose,
                     project_id=project_id,
                     agent_id=agent_id,

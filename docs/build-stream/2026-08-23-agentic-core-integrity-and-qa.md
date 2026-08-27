@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T00:50:34Z, ledger: L-216 }
-next_action: "Keep the Docker-only Mac Studio acceptance gate open; obtain owner-authorized provider credit and three Compose-owned donor/model routes, then run the three-model Research Spine retake from 57c7cae7."
+last: { agent: gpt-5-codex, at: 2026-08-27T00:59:48Z, ledger: L-217 }
+next_action: "Commit and push the request-scoped Pi service pairing seam and corrected Research Spine docs; keep the Docker-only Mac Studio acceptance gate open until owner-authorized provider credit and three Compose-owned donor/model routes are available."
 ```
 
 ## Plan overview / roadmap
@@ -4705,3 +4705,41 @@ worktree remain preserved. Next live action is therefore conditional and Docker-
 the approved three-model topology in the new checkout, run the provider, Petals, and combined
 profiles, and retain raw route/model identity, Fleiss/alpha, reconciliation, and accepted-Done
 evidence before any Research Spine success claim.
+
+### L-217 | 2026-08-27T00:59:48Z | S2-execute/S3-review | gpt-5-codex | request-scoped Pi authority pairing
+
+Did: Closed the remaining F-R9-38 seam in governed Research Spine coding. The dispatcher now
+exposes its engine-owned `PiExecutionService` alongside `model_manager()`. The coding-run
+orchestrator obtains that single service/manager pair, selects distinct model identities from
+the paired manager snapshot, and forwards the same service into every
+`structured(purpose="validity.coder")` call. Dispatcher usage-ledger accounting remains the
+single accounting boundary. The selector now fails closed when a supplied service has no
+manager or is paired with a different manager, preventing catalog selection and provider
+dispatch from silently diverging. Endpoint identity and provider-reported endpoint drift
+checks remain enforced.
+
+Did: Corrected the living Research Spine documentation. The architecture contract now records
+request-scoped service/manager pairing and fail-closed mismatch behavior. The Findings Codebook
+architecture and researcher docs now state that model identity—not endpoint identity—is the
+independence unit; same-model endpoint replicas are not independent raters, while endpoint
+identity remains route provenance. Generated feature-site artifacts were regenerated.
+
+Evidence: TDD red/green pairing regression (the unpaired-service test first failed because no
+`ValueError` was raised, then passed after the guard); Compass Forge command evidence 53 covers
+the first focused suite/docs run, 54 covers `tests/pi_benchmark`, and 56 records the final
+red/green and verification summary. Final local verification: focused production/Research
+Spine suite `92 passed`; full `tests/pi_benchmark` suite `231 passed, 5 skipped`; feature docs
+check passed for 86 features with 224 generated site artifacts; `git diff --check` passed.
+Compass Forge gate evidence 57/58 (after record 104) remains `status=fail` from inherited
+repository debt (`31` failures, `209` warnings, `3` security findings), with
+`new_failures=0`, `actionable_failures=[]`, and contract/generated/GraphQL drift all zero;
+five touched-file complexity warnings are non-blocking. No provider request, model load, host
+package operation, or Mac Studio mutation occurred.
+
+Open gate: this is deterministic proof of authority pairing and contract behavior only. The
+Mac Studio live acceptance still cannot claim three independent served models, Fleiss'
+Kappa/Krippendorff's Alpha, grounding/reconciliation/Done/report promotion, two-call or
+long-horizon behavior, or Petals interoperability. The provider previously returned HTTP 402,
+the current live profile is DeepSeek-only, and no three Compose-owned donor/model routes are
+registered. The isolated clean Mac Studio checkout at `57c7cae7` remains the safe retake base;
+the stale checkout and recovery worktree remain preserved.

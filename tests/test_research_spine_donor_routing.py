@@ -368,6 +368,41 @@ async def test_pi_coder_runner_dispatches_structured_with_coding_schema(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_pi_coder_runner_forwards_request_scoped_pi_service(monkeypatch):
+    """Selection and structured dispatch must carry one explicit Pi service."""
+    captured: dict[str, object] = {}
+
+    class _StubAgentic:
+        async def structured(self, **kwargs):  # noqa: ANN001
+            captured.update(kwargs)
+            return SimpleNamespace(value={"applications": []}, endpoint_id="endpoint-a")
+
+    scoped_service = object()
+    monkeypatch.setattr("app.core.agentic.agentic", _StubAgentic())
+    coder = research_validity_service.CoderSpec(
+        node=SimpleNamespace(
+            node_id="donor-a",
+            name="donor-a",
+            source="pi",
+            provider_type="ollama",
+            endpoint_id="endpoint-a",
+        ),
+        coder_id="model-coder:model-a",
+        model_name="model-a",
+        pi_service=scoped_service,
+    )
+
+    await research_validity_service._pi_coder_runner(
+        coder,
+        [{"role": "user", "content": "code these evidence units"}],
+        "model-a",
+        "project-a",
+    )
+
+    assert captured["pi_service"] is scoped_service
+
+
+@pytest.mark.asyncio
 async def test_pi_coder_runner_rejects_mismatched_served_endpoint(monkeypatch):
     """A provider cannot rewrite the endpoint identity used for spine evidence."""
     from types import SimpleNamespace

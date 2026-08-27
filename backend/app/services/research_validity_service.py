@@ -102,6 +102,10 @@ class CoderSpec:
     # Production Pi selections retain the manager and exact resolved identity
     # so a catalog mutation can be rejected before dispatch.
     pi_manager: Any | None = None
+    # Keep the request-scoped execution facade selected alongside the manager.
+    # Dispatch can therefore preserve the same authority and usage accounting
+    # instead of silently falling back to a process-wide Pi service.
+    pi_service: Any | None = None
     pi_endpoint_identity: tuple[str, ...] | None = None
 
 
@@ -570,7 +574,11 @@ async def _use_pi_coding_plane(db: AsyncSession, project_id: str) -> bool:
 
 
 async def _select_pi_coders(
-    max_coders: int, *, project_id: str | None = None, manager: Any | None = None
+    max_coders: int,
+    *,
+    project_id: str | None = None,
+    manager: Any | None = None,
+    pi_service: Any | None = None,
 ) -> list[CoderSpec]:
     """Select independent coders backed by distinct Pi-managed models.
 
@@ -580,6 +588,15 @@ async def _select_pi_coders(
     """
     from types import SimpleNamespace
 
+    if pi_service is not None:
+        service_manager_accessor = getattr(pi_service, "model_manager", None)
+        if not callable(service_manager_accessor):
+            raise ValueError("Pi execution service has no paired model manager")
+        service_manager = service_manager_accessor()
+        if manager is None:
+            manager = service_manager
+        elif service_manager is not manager:
+            raise ValueError("Pi execution service is not paired with selected model manager")
     if manager is None:
         from app.core.pi_runtime.model_manager import PiModelManager
 
@@ -601,6 +618,7 @@ async def _select_pi_coders(
             coder_id=f"model-coder:{endpoint.endpoint_id}",
             model_name=endpoint.model,
             pi_manager=manager,
+            pi_service=pi_service,
             pi_endpoint_identity=_pi_endpoint_identity(endpoint),
         )
         for endpoint in endpoints
@@ -659,6 +677,7 @@ async def _pi_coder_runner(
         ),
         engine="pi",
         spine_phase="execution",
+        **({"pi_service": coder.pi_service} if coder.pi_service is not None else {}),
     )
     served_endpoint_id = str(getattr(outcome, "endpoint_id", "") or "").strip()
     if selected_endpoint_id and served_endpoint_id and served_endpoint_id != selected_endpoint_id:
@@ -1278,8 +1297,18 @@ async def run_independent_coding_run(
             # this accessor; retain the direct selector seam for those tests.
             from app.core.agentic import agentic
 
+            service_accessor = getattr(agentic, "pi_execution_service", None)
             manager_accessor = getattr(agentic, "model_manager", None)
-            if callable(manager_accessor):
+            if callable(service_accessor):
+                pi_service = service_accessor()
+                manager = pi_service.model_manager()
+                coders = await _select_pi_coders(
+                    max_coders=max_coders,
+                    project_id=project_id,
+                    manager=manager,
+                    pi_service=pi_service,
+                )
+            elif callable(manager_accessor):
                 coders = await _select_pi_coders(
                     max_coders=max_coders,
                     project_id=project_id,

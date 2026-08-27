@@ -87,7 +87,9 @@ def test_dispatcher_exposes_its_engine_owned_pi_model_manager():
     manager = _isolated(PiModelManager(endpoints=[]))
     service = PiExecutionService(model_manager=manager)
 
-    assert AgenticDispatcher(pi_service=service).model_manager() is manager
+    dispatcher = AgenticDispatcher(pi_service=service)
+    assert dispatcher.model_manager() is manager
+    assert dispatcher.pi_execution_service() is service
 
 
 @pytest.mark.parametrize("alias", sorted(PI_ENGINE_VALUES))
@@ -357,6 +359,48 @@ async def test_chat_turn_pi_streams_and_records_one_row(monkeypatch):
     assert result.endpoint_id == endpoint.endpoint_id
     assert any(event["type"] == "content" for event in streamed)
     assert len(recorded) == 1 and recorded[0]["engine"] == "pi" and recorded[0]["purpose"] == "chat_turn"
+
+
+@pytest.mark.asyncio
+async def test_structured_uses_explicit_request_scoped_pi_service(monkeypatch):
+    """The Research Spine can pin its selected service without losing dispatch accounting."""
+
+    class _StructuredService:
+        def __init__(self):
+            self.calls = []
+
+        async def run_structured(self, **kwargs):  # noqa: ANN001
+            self.calls.append(kwargs)
+            return {
+                "text": "",
+                "value": {"ok": True},
+                "status": "success",
+                "usage": {},
+                "stop_reason": "stop",
+                "endpoint_id": "scoped-endpoint",
+                "model": "scoped-model",
+            }
+
+    async def no_op(**kwargs):  # noqa: ANN001
+        return None
+
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", no_op)
+    default_service = _StructuredService()
+    scoped_service = _StructuredService()
+    result = await AgenticDispatcher(pi_service=default_service).structured(
+        purpose="w1.scoped-structured",
+        project_id="p1",
+        system="system",
+        messages=[{"role": "user", "content": "code"}],
+        schema={"type": "object", "properties": {"ok": {"type": "boolean"}}},
+        params=TurnParams(endpoint_id="scoped-endpoint", model="scoped-model"),
+        engine="pi",
+        pi_service=scoped_service,
+    )
+
+    assert result.endpoint_id == "scoped-endpoint"
+    assert len(scoped_service.calls) == 1
+    assert default_service.calls == []
 
 
 @pytest.mark.asyncio

@@ -18,6 +18,7 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
     import uuid
 
     from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
+    from app.core.pi_runtime.engine import PiExecutionService
     from app.core.pi_runtime.model_manager import PiModelManager
     from app.models.database import async_session, init_db
     from app.models.research_validity import EvidenceUnit
@@ -51,6 +52,7 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
     # The test exercises the real read-only manager projection without a DB
     # catalog; no production endpoint state is written.
     manager._db_projected = True
+    service = PiExecutionService(model_manager=manager)
     monkeypatch.setattr(
         "app.core.pi_runtime.model_manager.PiModelManager", lambda: manager
     )
@@ -61,6 +63,9 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
 
         def model_manager(self):
             return manager
+
+        def pi_execution_service(self):
+            return service
 
         async def structured(self, **kwargs):
             self.calls.append(kwargs)
@@ -144,6 +149,7 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
         "model-b",
         "model-c",
     ]
+    assert all(kwargs["pi_service"] is service for kwargs in dispatcher.calls)
     assert {route["endpoint_id"] for route in result["route_evidence"]} == {
         "ep-a",
         "ep-b",

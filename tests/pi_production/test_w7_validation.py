@@ -726,6 +726,26 @@ async def test_select_pi_coders_fails_closed_on_insufficient_distinct(monkeypatc
         await _select_pi_coders(max_coders=3)
 
 
+async def test_select_pi_coders_rejects_unpaired_pi_service():
+    """A service from another manager cannot silently alter the selected catalog."""
+    from app.services.research_validity_service import _select_pi_coders
+
+    selected_manager = _StubPiModelManager(
+        endpoints=[_fake_endpoint("ep-a", "model-a")]
+    )
+
+    class _OtherService:
+        def model_manager(self):
+            return _StubPiModelManager()
+
+    with pytest.raises(ValueError, match="paired"):
+        await _select_pi_coders(
+            max_coders=1,
+            manager=selected_manager,
+            pi_service=_OtherService(),
+        )
+
+
 async def test_pi_coder_runner_dispatches_structured_pinned_to_endpoint(monkeypatch):
     value = {
         "applications": [
@@ -894,7 +914,7 @@ async def _run_pi_coding_run(
 
     if selection_error is not None:
 
-        async def _select(max_coders, *, project_id=None, manager=None):
+        async def _select(max_coders, *, project_id=None, manager=None, pi_service=None):
             selection_managers.append(manager)
             raise selection_error
 
@@ -917,7 +937,7 @@ async def _run_pi_coding_run(
             for name in ("a", "b", "c")
         ]
 
-        async def _select(max_coders, *, project_id=None, manager=None):
+        async def _select(max_coders, *, project_id=None, manager=None, pi_service=None):
             selection_managers.append(manager)
             return coders
 

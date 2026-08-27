@@ -274,9 +274,9 @@
 </ul>
 <h2 id="independent-coding-and-reliability">Independent Coding And Reliability</h2>
 <ul>
-<li>In the Pi-enabled path, Istara asks the dispatcher for independent structured coding passes through <code>validity.coder</code>. Each pass is pinned to a concrete endpoint identity from the authorized project catalog.</li>
-<li>Endpoint identity is the independence unit. Two endpoints serving the same model can be separate coders when their endpoint identities are different; the system does not count repeated calls to one endpoint as independent agreement.</li>
-<li>If enough distinct endpoints are not available, the coding run is blocked and records a failed route-evidence reason. It does not silently switch engines or accept provisional codes as reliable.</li>
+<li>In the Pi-enabled path, Istara asks the dispatcher for independent structured coding passes through <code>validity.coder</code>. Selection and dispatch use one request-scoped <code>PiExecutionService</code> paired with its <code>PiModelManager</code> snapshot, and each pass is pinned to a concrete endpoint identity from the authorized project catalog.</li>
+<li>Model identity is the independence unit. Two endpoints serving the same model are replicas, not separate coders; repeated calls to one model do not count as independent agreement. Endpoint identity remains required for route provenance and provider-identity drift checks.</li>
+<li>If enough distinct model identities are not available, the coding run is blocked and records a failed route-evidence reason. It does not silently switch engines or accept provisional codes as reliable.</li>
 <li>Codes remain provisional until source-grounded reliability, reconciliation, and human review gates are complete. Only then may findings proceed toward accepted research evidence and reports.</li>
 </ul>
 <h2 id="rollback-and-migration-boundary">Rollback And Migration Boundary</h2>

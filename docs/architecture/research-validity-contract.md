@@ -174,12 +174,17 @@ Sources
 ## Coding-Run Orchestration
 
 `run_independent_coding_run` is the product path for model coding over
-evidence units. It selects distinct healthy project-authorized model identities
-through Compute Manager, injects the protected protocol/codebook/evidence-unit
+evidence units. It obtains one request-scoped `PiExecutionService` and its
+paired `PiModelManager`, selects distinct healthy project-authorized model
+identities from that same manager snapshot, and carries the service through
+structured dispatch. It injects the protected protocol/codebook/evidence-unit
 blocks, asks each coder to return structured qualitative code applications,
 admits only applications whose returned quote exactly occurs in the referenced
-raw evidence unit, persists coder route evidence, computes the reliability gate, and marks code
-applications as accepted, needs reconciliation, needs human review, or blocked.
+raw evidence unit, persists coder route evidence, and leaves dispatcher usage
+accounting attached to the same request. It then computes the reliability gate
+and marks code applications as accepted, needs reconciliation, needs human
+review, or blocked. A manager/service mismatch or provider identity drift must
+fail closed rather than silently falling back to a process-wide Pi service.
 Researchers may start project-scoped runs through
 `POST /api/research-validity/{project_id}/coding-runs`; the route requires
 researcher project access and carries no admin-only dependency.
