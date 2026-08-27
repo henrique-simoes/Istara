@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T14:31:00Z, ledger: L-358 }
-next_action: "Attach Compass Forge after-gate/task evidence for the ensemble-coding diagnostic split, transport the clean testing parity update, then continue the open F-R9-114 governed reconciliation and Docker-only live acceptance work."
+last: { agent: gpt-5-codex, at: 2026-08-27T14:36:00Z, ledger: L-359 }
+next_action: "Continue F-R9-114: design and implement the explicitly opt-in, provenance-labeled synthetic reconciliation test phase and deeper Done/report traceability assertions; keep real human approval separate and preserve the Docker-only live gate."
 ```
 
 ## Plan overview / roadmap
@@ -8494,3 +8494,25 @@ reconciliation phase for test-only evidence, plus a separate genuine-human
 approval path and deeper Done/report traceability. No provider request, model
 load, host installation, Docker image pull, or live benchmark workload was
 started.
+
+### L-359 | 2026-08-27T14:36:00Z | S5-ship&learn | gpt-5-codex | ensemble diagnostic transport and Docker parity
+
+The diagnostic split payload is committed as
+`1e6722299ceb0cdc9aaac244a38059b1baae9ad7`
+(`test: separate ensemble coding evidence from acceptance`) and pushed to
+`origin/testing`. This lifecycle receipt is transported in the follow-up
+documentation commit; local `testing`, `origin/testing`, and the detached Mac
+Studio checkout `~/istara-testing-retake-47bf` are refreshed to that resulting
+tip and verified clean. Compass Forge task evidence `317` records the focused/full deterministic tests,
+feature-doc check, diff check, and before/after gate receipts (`287`/`288`).
+
+Passive SSH inspection used the explicit existing Docker binary
+`/usr/local/bin/docker` because the non-login SSH PATH did not contain `docker`;
+no host installation was attempted. Docker Server/Client are `29.7.2`, the only
+running container is unrelated healthy `plex`, the Mac Studio model directory
+contains zero files, and the retake has no `.env.deploy`. No image pull, model
+load, provider request, benchmark workload, or data deletion occurred.
+
+This transport receipt does not claim live ensemble quality or accepted Research
+Spine validity. F-R9-114 remains open for the governed synthetic reconciliation
+test phase, genuine human approval separation, and exact Done/report traceability.
