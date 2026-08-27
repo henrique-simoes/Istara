@@ -414,6 +414,7 @@ async function validateCodingRun({
     : true;
   let coverageOk = true;
   let coverageEvidence = null;
+  let applicationEvidenceAvailable = false;
   let reconciliationOk = true;
   let reconciliationEvidence = null;
   if (fullMultiModelOk && donorRouteOk) {
@@ -425,6 +426,7 @@ async function validateCodingRun({
       ]);
       const rows = Array.isArray(applications) ? applications : [];
       const decisionRows = Array.isArray(decisions) ? decisions : [];
+      applicationEvidenceAvailable = true;
       const expectedCount = Math.max(0, applicationCount);
       coverageEvidence = assessApplicationCoverage(
         rows,
@@ -493,6 +495,33 @@ async function validateCodingRun({
       });
     }
   }
+  // Keep the diagnostic signal separate from accepted Research Spine validity.
+  // It answers whether the three independent coders, exact reliability method,
+  // source-grounded application coverage, and served donor routes were proven;
+  // reconciliation remains a distinct human-governed gate below.
+  const ensembleCodingOk = fullMultiModelOk
+    && donorRouteOk
+    && coverageOk
+    && applicationEvidenceAvailable;
+  featureResults.ensembleCodingValidation = ensembleCodingOk;
+  codingRun.ensemble_coding_evidence = {
+    verified: ensembleCodingOk,
+    pre_reconciliation: true,
+    accepted_reportable: false,
+    full_multi_model_evidence: fullMultiModelOk,
+    donor_route_evidence: donorRouteOk,
+    application_coverage_evidence: coverageOk && applicationEvidenceAvailable,
+    reconciliation_verified: reconciliationOk,
+  };
+  logger.action("research_spine.ensemble_coding", {
+    ok: ensembleCodingOk,
+    pre_reconciliation: true,
+    accepted_reportable: false,
+    full_multi_model_evidence: fullMultiModelOk,
+    donor_route_evidence: donorRouteOk,
+    application_coverage_evidence: coverageOk && applicationEvidenceAvailable,
+    reconciliation_verified: reconciliationOk,
+  });
   featureResults.multiModelResearchSpineValidation = fullMultiModelOk
     && donorRouteOk
     && coverageOk
@@ -826,6 +855,9 @@ export async function exerciseResearchSpineValidation({
     : Number(evidence.summary?.coding_run_count || 0);
   featureResults.multiModelResearchSpineValidation = Boolean(
     evidence.contract_loaded && featureResults.multiModelResearchSpineValidation,
+  );
+  featureResults.ensembleCodingValidation = Boolean(
+    evidence.contract_loaded && evidence.coding_run && featureResults.ensembleCodingValidation,
   );
   featureResults.codingValidation = Boolean(evidence.contract_loaded && evidence.coding_run)
     && featureResults.multiModelResearchSpineValidation;

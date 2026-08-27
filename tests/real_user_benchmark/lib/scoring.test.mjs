@@ -129,12 +129,14 @@ test("scorecard exposes Research Spine coding and traceability evidence", () => 
     mode: "probe",
     featureResults: {
       codingValidation: true,
+      ensembleCodingValidation: true,
       researchSpineTraceability: true,
       multiModelResearchSpineValidation: true,
     },
   });
 
   assert.equal(scorecard.coding_validation_verified, true);
+  assert.equal(scorecard.ensemble_coding_verified, true);
   assert.equal(scorecard.research_spine_traceability_verified, true);
   assert.equal(scorecard.research_spine_structure_present, true);
   assert.equal(scorecard.research_spine_validation_verified, true);

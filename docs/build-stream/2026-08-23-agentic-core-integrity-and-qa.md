@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T14:23:19Z, ledger: L-357 }
-next_action: "Audit and, if warranted, separate ensemble coding evidence from governed reconciliation/reportability evidence; then run focused tests, update the findings register, and attach Compass Forge evidence before transport."
+last: { agent: gpt-5-codex, at: 2026-08-27T14:31:00Z, ledger: L-358 }
+next_action: "Attach Compass Forge after-gate/task evidence for the ensemble-coding diagnostic split, transport the clean testing parity update, then continue the open F-R9-114 governed reconciliation and Docker-only live acceptance work."
 ```
 
 ## Plan overview / roadmap
@@ -8459,3 +8459,38 @@ inspection of `tests/real_user_benchmark/run.mjs`,
 Next: Choose and implement the smallest truthful diagnostic/reconciliation
 improvement, with tests and feature-doc/ledger evidence; preserve the Docker-only
 live gate until provider-served identities and model inputs exist.
+
+### L-358 | 2026-08-27T14:31:00Z | S2-execute/S3-review | gpt-5-codex | separate ensemble evidence from accepted reportability
+
+The benchmark previously exposed only `codingValidation` and
+`multiModelResearchSpineValidation`. Because the latter also required governed
+per-application reconciliation, a live run that genuinely proved three served
+model identities, source-grounded coder coverage, Fleiss kappa, and the
+Krippendorff alpha companion could not distinguish that useful diagnostic result
+from a failure to complete the later human gate. The result was safe for
+reportability, but incomplete for auditing whether the ensemble engine itself
+worked.
+
+The runner now exposes `ensembleCodingValidation` / `ensemble_coding_verified`
+as a diagnostic-only signal. It is set only when the current coding run proves
+the completed three-model contract, required served donor routes, and current-run
+application coverage. The emitted coding-run receipt and report explicitly mark
+this as pre-reconciliation and non-reportable. The existing
+`multiModelResearchSpineValidation`, `codingValidation`, provider acceptance
+gate, and reportability semantics remain unchanged and still require governed
+reconciliation, current-run traceability, and Done-task/report gates. Application
+and decision evidence availability is required before the diagnostic signal can
+pass, so transport failures do not become ensemble evidence.
+
+Verification: focused Research Spine/scoring tests pass `54/54`; the complete
+deterministic benchmark suite passes `91/91`; feature-doc generation/check passes
+(`224` generated artifacts; `86/86` features); and `git diff --check` passes.
+Compass Forge before-gate record `287` and after-gate record `288` were captured for this slice.
+Task evidence, commit transport, and Mac Studio parity remain pending.
+
+This closes the diagnostic conflation sub-gap only. F-R9-114 remains open: the
+live Docker harness still needs an explicitly governed, opt-in synthetic
+reconciliation phase for test-only evidence, plus a separate genuine-human
+approval path and deeper Done/report traceability. No provider request, model
+load, host installation, Docker image pull, or live benchmark workload was
+started.

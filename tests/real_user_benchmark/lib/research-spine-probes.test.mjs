@@ -289,6 +289,7 @@ test("accepted coding cannot pass when the Research Spine contract is unavailabl
   });
 
   assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.ensembleCodingValidation, false);
   assert.equal(featureResults.multiModelResearchSpineValidation, false);
   assert.equal(blockers.length, 1);
   assert.match(blockers[0], /contract/i);
@@ -1067,6 +1068,7 @@ test("accepted reliability is still blocked when code applications lack reconcil
   });
 
   assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.ensembleCodingValidation, true);
   assert.equal(featureResults.multiModelResearchSpineValidation, false);
   assert.equal(blockers.length, 1);
   assert.match(blockers[0], /reconciliation decisions/i);
