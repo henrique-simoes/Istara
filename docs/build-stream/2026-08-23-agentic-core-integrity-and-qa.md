@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T01:51:24Z, ledger: L-226 }
+last: { agent: gpt-5-codex, at: 2026-08-27T01:54:40Z, ledger: L-229 }
 next_action: "When live prerequisites are authorized, resolve origin/testing at launch time on Mac Studio, materialize a clean detached checkout, then run the Docker-only provider/Petals retake with three provisioned model routes and preserve artifacts."
 ```
 
@@ -5036,3 +5036,33 @@ at `476091ae923f51e1d5fbdb62f8e63578a4d81f61`.
 Next: wait for G0 live authorization and prerequisites; then execute G1–G22 in order and append
 one ledger entry per gate. Do not close CF-15 or claim Research Spine acceptance from the current
 deterministic evidence alone.
+
+### L-228 | 2026-08-27T01:59:45Z | S5-ship&learn | gpt-5-codex | verifier | Phase 9
+
+Did: Re-ran the focused deterministic verification at the current testing tip after the ledger
+and gate-remediation commits. No live provider, Docker workload, model load, or Mac Studio
+mutation was performed.
+
+Result: the Research Spine/Pi authority suite passed `84` tests; topology contracts passed `10`
+tests; the complete real-user benchmark check passed `72` tests with zero failures, skips, or
+cancellations. These results confirm the local mechanics and fail-closed test oracles remain
+green after the documentation update, but they do not change the open G0–G22 live acceptance
+status.
+
+Verified: `python -m pytest -q -W error::RuntimeWarning tests/pi_production/test_w1_dispatcher_authority.py tests/pi_production/test_w7_validation.py tests/pi_production/test_w7_pi_manager_integration.py tests/pi_production/test_research_spine_donor_routing.py tests/pi_production/test_w3_research_spine.py tests/test_research_spine_end_to_end.py` → `84 passed in 5.18s`; `node --test tests/real_user_benchmark/lib/topology-contract.test.mjs` → `10 passed`; `npm --prefix tests/real_user_benchmark run check` → `72 passed`.
+
+Next: preserve this deterministic baseline and do not reinterpret it as live ensemble proof;
+resume at G0/G1 when owner authorization, provider credit, and three Docker-served model routes
+are available.
+
+### L-229 | 2026-08-27T01:54:40Z | S5-ship&learn | gpt-5-codex | auditor | Phase 9
+
+Correction: L-228's content and command outputs are valid, but its timestamp was entered ahead
+of the actual verification clock. This append-only correction establishes the truthful ledger
+time (`2026-08-27T01:54:40Z`) and is the current Status Block anchor; no test result or scope
+claim changed.
+
+Verified: `date -u` at append time; the exact 84/10/72 deterministic results remain those
+recorded in L-228.
+
+Next: resume at G0/G1 only when the owner-authorized live prerequisites exist.
