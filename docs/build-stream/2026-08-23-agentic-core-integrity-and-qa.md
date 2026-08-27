@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T03:59:06Z, ledger: L-253 }
-next_action: "Run the remaining deterministic/security/documentation gates, attach fresh Compass Forge evidence, transport the served-model receipt hardening to testing, verify exact parity, and leave G0/G1 plus live G2–G22 explicitly open until the authorized Docker-only Mac Studio retake."
+last: { agent: gpt-5-codex, at: 2026-08-27T04:01:51Z, ledger: L-254 }
+next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
 ## Plan overview / roadmap
@@ -5719,3 +5719,38 @@ fresh-detached-checkout retake proves three distinct served models over common r
 non-duplicate grounded rating per model/unit, numeric Fleiss/Krippendorff reliability,
 reconciliation, human-Done/report promotion, both loop modes through Pi Model Management, two-call
 and long-horizon behavior, Petals cooperation, artifact redaction, and teardown.
+
+### L-254 | 2026-08-27T04:01:51Z | S5-ship&learn | gpt-5-codex | served-model receipt transport and Docker readiness receipt
+
+Did: Committed the provider-served model receipt implementation, protocol/Research Spine
+contract updates, runtime and Python propagation, strict coder gate, integration fixtures,
+regressions, generated feature documentation, finding F-R9-68, and L-253 as
+`0657c2f3b1f3b9af98a49739223b3459e6eefc9d`; pushed it to `origin/testing`.
+
+Verified: `HEAD`, local `testing`, and `origin/testing` resolve to the exact same SHA; the
+worktree is clean; `git diff origin/testing --check`, `git diff --check`, and the runner shell
+syntax check pass. The current deterministic evidence is Pi runtime `46/46`, the broad
+Research Spine/Pi provider ladder `176` passed, the real-user benchmark `78/78`, remote-runner
+contract `17/17`, security benchmark `28/28` at `100%`, touched-file Ruff clean, and feature
+documentation `86` features / `224` artifacts. Compass Forge task evidence `112` records the
+commands and results; after-gate record `140` reports no new dependency, import-cycle, or
+missing-required-path issues. It reports only expected complexity warnings for the enlarged
+W7 and Research Validity contract test files plus the existing path-scoped lifecycle-ledger
+large-file warning; inherited repository debt remains.
+
+Did: Repeated passive SSH inspection of `users-Mac-Studio.local` with an explicit Docker CLI
+path. Docker Server `29.7.2` is reachable; no Istara benchmark Compose project, testing
+container, network, volume, provider, relay, donor, or model is running. Only the unrelated
+healthy `plex` Compose workload is present. No image pull, model load, service start, host
+package installation, testing-data deletion, or remote checkout mutation occurred. The stale
+dirty `/Users/user/istara-testing` checkout remains untouched.
+
+Boundary/next: deterministic provider authority, duplicate-rating handling, route/model oracle,
+and provider-response provenance are now transported and parity-verified. This does not prove
+the live scientific result. G0/G1 and live G2–G22 remain `not_run`/open until owner-authorized
+Docker-only execution from a fresh detached checkout at the launch SHA verifies the canonical
+archive digest, rendered Compose, three distinct provider-served model identities over common
+raw spans, exactly one grounded rating per model/unit, numeric Fleiss/Krippendorff reliability,
+reconciliation, human-Done/report promotion, both Istara and Pi loop semantics through the
+shared Pi Model Management authority, two-call/long-horizon behavior, Petals cooperation,
+redacted artifacts, and teardown.
