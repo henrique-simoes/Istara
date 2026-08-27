@@ -7,9 +7,9 @@ cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
 stage: S2-execute/S3-review
 status: in-progress
-blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; passive inventory found zero GGUF files"
-last: { agent: gpt-5-codex, at: 2026-08-27T23:45:05Z, ledger: L-441 }
-next_action: "Rerun the provider-only Docker profile after the Bash nounset Compose-array fix, then provision or explicitly supply the required provider-served three-model inputs inside Docker only; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until terminal receipts exist."
+blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
+last: { agent: gpt-5-codex, at: 2026-08-27T23:56:28Z, ledger: L-442 }
+next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10557,3 +10557,50 @@ Next: preserve this provenance distinction in the final handoff, then resume
 the Docker-only provider/Petals acceptance from the clean pushed `testing` tip;
 do not claim three-model Fleiss/alpha, reconciliation, Done, or report gates
 until provider-served identities and terminal receipts exist.
+
+### L-442 | 2026-08-27T23:56:28Z | S2-execute/S3-review | gpt-5-codex | Provider-only Docker acceptance reached the scientific oracle and correctly blocked
+
+The corrected runner completed both selected comparison arms from the clean
+remote checkout at `5a891cc50a3f2d6f56b1055e80095c636384c641`, rather than
+crashing in Bash before Compose. The legacy and PI probes each started their
+own fresh Docker database stack; the runner reported `blocker-bearing arms=2`
+and exited with the expected non-zero comparison result. The final PI artifact
+is run `2026-08-27T23-56-19-573Z` with score `25.8/100`, three blockers, zero
+chat turns, zero completed tasks, and six uploaded documents. This profile
+intentionally selected provider/corpus/coding only: Petals and long-horizon
+were not selected, so their gates remain open rather than passing by omission.
+
+The live Research Spine oracle behaved fail-closed: project identity matched,
+raw evidence units were created, and telemetry was recorded, but the coding
+run was `blocked`, with `distinct_model_count=0`, `served_model_count=0`,
+`rater_count=0`, zero code applications, `kappa=null`, `alpha=null`, and
+`promotion_status=blocked`. The route evidence records
+`insufficient_distinct_pi_models`; no independent provider-served model
+identity was proven. Traceability also correctly reported no coding runs,
+applications, or reconciliation decisions bound to the current run, while
+the report gate stayed
+`accepted_reconciled_evidence_from_approved_done_tasks_only`. Therefore this
+run proves the harness reaches and enforces the scientific oracle, but it does
+not prove the ensemble engine, Fleiss' kappa, Krippendorff alpha, reconciliation,
+human-approved Done/report, Petals donation interoperability, two-call
+causality, or long-horizon behavior.
+
+The runtime remained Docker-only: remote `testing` was clean/equal to
+`origin/testing` at the recorded SHA, the explicit Docker CLI was used, and no
+host package/model installation or model load occurred. Artifact receipts were
+captured before teardown: `run-summary.json` SHA-256
+`2a6e1e014090b522f733e6d81f362fe8de3940d9802c412edb1e5decbbf2f042`,
+`research-spine-evidence.json`
+`56d8e7bb573f013c273e411d0eab2892ced5cacce95a520951f395b1ce63d4c2`,
+`run-metadata.json`
+`e02ce1c40ef87367df48a78401493e76486402109bbc412c7b239f131be585d3`, and
+`scorecard.json`
+`b26e0c637f3745835972c76247a59e95b0c82a27b5ea12fe555931e690e4046c`.
+
+Remaining acceptance work is concrete: provide three independently served PI
+model identities and valid route receipts inside Docker; rerun provider,
+Petals, and combined profiles with two-call and long-horizon enabled; require
+non-empty raw-source code applications, valid bounded Fleiss/alpha metrics,
+reconciliation, accepted promotion, human-approved Done/report, Petals/model
+donation lifecycle evidence, and task/route causality. Do not convert the
+current blocked result into a model-quality claim or close CF-SPEC-2.
