@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:32:59Z, ledger: L-372 }
-next_action: "Transport the legacy reportability-debt documentation, then continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
+last: { agent: gpt-5-codex, at: 2026-08-27T15:36:29Z, ledger: L-373 }
+next_action: "Continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates; separately decide the migration/compatibility policy for legacy no-coding-run reportability. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
 ```
 
 ## Plan overview / roadmap
@@ -8826,3 +8826,19 @@ ready for transport. No provider request, model load, Docker image pull, host
 installation, live benchmark, or testing-data deletion occurred. F-R9-114
 remains open for live three-model provider identity, genuine human
 reconciliation, and Done/report acceptance.
+
+### L-373 | 2026-08-27T15:36:29Z | S3-review | gpt-5-codex | reportability-debt transport parity
+
+The compatibility-debt finding and lifecycle receipt are now committed at
+`15b3d390868a4fa713d694cb652c8bcf3eccd66c`, pushed to `origin/testing`, and
+retaken cleanly on the detached Mac Studio checkout
+`~/istara-testing-retake-47bf`. Local `testing`, `origin/testing`, and the Mac
+retake match this exact SHA. Compass Forge task evidence `340` records the
+transport and the unchanged Docker-only boundary: Docker client/server
+`29.7.2/29.7.2`, unrelated healthy `plex` only, zero model files, and no
+`.env.deploy`. No host package install, image pull, provider request, model
+load, live benchmark, or testing-data deletion occurred. Feature-doc checks and
+`git diff --check` remain green. F-R9-114 is still open for live provider-served
+three-model identity, Fleiss/Krippendorff evidence, genuine human
+reconciliation, and Done/report acceptance; legacy no-coding-run reportability
+requires a separate migration/compatibility decision.
