@@ -72,6 +72,23 @@ function sourceKey(unit) {
   return location ? location.split("#", 1)[0].trim() : "";
 }
 
+function isServedRoute(route) {
+  const outcome = String(route?.outcome || "").toLowerCase();
+  const servedRequestCount = Number(route?.served_request_count);
+  return outcome === "served"
+    || (Number.isFinite(servedRequestCount) && servedRequestCount > 0);
+}
+
+function routeIdentityReceipt(route) {
+  const routeModel = String(route?.model || "").trim();
+  const servedModel = String(route?.served_model || "").trim();
+  return {
+    routeModel,
+    servedModel,
+    ok: Boolean(routeModel && servedModel && routeModel === servedModel),
+  };
+}
+
 function assessApplicationCoverage(
   rows,
   expectedUnits,
@@ -116,7 +133,8 @@ function assessApplicationCoverage(
     const route = row?.route_evidence && typeof row.route_evidence === "object"
       ? row.route_evidence
       : null;
-    const servedModel = String(route?.model || route?.served_model || "").trim();
+    const routeIdentity = routeIdentityReceipt(route);
+    const servedModel = routeIdentity.servedModel;
     const rowModel = String(row?.model_name || "").trim();
     const normalizedRowModel = rowModel.toLocaleLowerCase();
     const expectedUnit = expectedUnitsById.get(unitId);
@@ -155,7 +173,7 @@ function assessApplicationCoverage(
     const sourceLocationMatches = Boolean(
       expectedSourceLocation && sourceLocation && sourceLocation === expectedSourceLocation,
     );
-    const routeServed = String(route?.outcome || "").toLowerCase() === "served";
+    const routeServed = isServedRoute(route);
     if (!codeId || !reasoning) {
       missingCodePayloads.push({
         id: applicationId,
@@ -189,7 +207,7 @@ function assessApplicationCoverage(
       || !reasoning || !confidenceValid
       || !sourceSpanGrounded || !sourceLocationMatches
       || !sourceOffsetsMatch
-      || !routeServed || !servedModel || !rowModel || rowModel !== servedModel
+      || !routeServed || !routeIdentity.ok || !rowModel || rowModel !== servedModel
       || (expectedModels.size > 0 && !expectedModels.has(normalizedRowModel))) {
       invalidRows.push({
         id: String(row?.id || "").trim(),
@@ -209,7 +227,9 @@ function assessApplicationCoverage(
         source_location_matches: sourceLocationMatches,
         source_offsets_match: sourceOffsetsMatch,
         route_served: routeServed,
+        route_model: routeIdentity.routeModel,
         served_model: servedModel,
+        served_model_receipt_ok: routeIdentity.ok,
         row_model: rowModel,
       });
     }
@@ -398,8 +418,22 @@ async function validateCodingRun({
   const routeEvidence = Array.isArray(codingRun?.route_evidence)
     ? codingRun.route_evidence
     : [];
+  const codingRunProjectId = String(codingRun?.project_id || "").trim();
+  // The API is project-scoped, so a response carrying a different project
+  // identity cannot certify this benchmark even if all run-level metrics look
+  // healthy. Older deterministic fixtures omit the field and remain valid.
+  const projectIdentityOk = !codingRunProjectId || codingRunProjectId === projectId;
+  const servedRoutes = routeEvidence.filter(isServedRoute);
+  const servedModelReceiptGaps = servedRoutes
+    .map((route) => ({ route, identity: routeIdentityReceipt(route) }))
+    .filter(({ identity }) => !identity.ok)
+    .map(({ route, identity }) => ({
+      node_id: String(route?.node_id || "").trim(),
+      route_model: identity.routeModel,
+      served_model: identity.servedModel,
+    }));
   const servedDonorRouteCount = new Set(routeEvidence
-    .filter((route) => String(route?.outcome || "").toLowerCase() === "served" || route?.served_request_count > 0)
+    .filter(isServedRoute)
     .map((route) => String(route?.node_id || "").trim())
     .filter(Boolean)).size;
   // The backend's distinct_model_count is derived from persisted coding rows,
@@ -407,8 +441,8 @@ async function validateCodingRun({
   // A count alone could be fabricated by a malformed adapter response; the
   // served route evidence must itself contain the required distinct identities.
   const servedModelIdentities = new Set(routeEvidence
-    .filter((route) => String(route?.outcome || "").toLowerCase() === "served" || route?.served_request_count > 0)
-    .map((route) => String(route?.model || "").trim().toLocaleLowerCase())
+    .filter(isServedRoute)
+    .map((route) => String(route?.served_model || "").trim().toLocaleLowerCase())
     .filter(Boolean));
   const servedModelCount = servedModelIdentities.size;
   const modelReliabilityOk = requiredCoders >= 3
@@ -416,15 +450,17 @@ async function validateCodingRun({
       && servedModelCount >= requiredCoders
       && servedModelCount === distinctModelCount
       && raterCount >= 3
+      && servedModelReceiptGaps.length === 0
       && !lowerAssurance
     : requiredCoders >= 2
       ? distinctModelCount >= 2
         && servedModelCount >= requiredCoders
         && servedModelCount === distinctModelCount
         && raterCount >= 2
+        && servedModelReceiptGaps.length === 0
         && !lowerAssurance
       : distinctModelCount >= 1 && servedModelCount >= 1 && raterCount >= 1;
-  const fullMultiModelOk = currentRunOk && modelReliabilityOk && algorithmOk;
+  const fullMultiModelOk = currentRunOk && modelReliabilityOk && algorithmOk && projectIdentityOk;
   const donorRouteOk = requiredDonorRoutes >= 2
     ? servedDonorRouteCount >= requiredDonorRoutes
     : true;
@@ -612,8 +648,12 @@ async function validateCodingRun({
       ? status === "blocked" || promotionStatus === "blocked"
         ? `Research Spine validation observed a blocked current coding run (${status || "unknown"}/${promotionStatus || "unknown"}, ${applicationCount < 0 ? "unknown" : applicationCount} code applications).`
         : `Research Spine coding completed as ${promotionStatus || "unknown"}, not accepted; human reconciliation and accepted code applications remain required (${status || "unknown"}, ${applicationCount < 0 ? "unknown" : applicationCount} code applications).`
+      : !projectIdentityOk
+        ? `Research Spine validation received a coding run project identity of ${codingRunProjectId || "missing"}, expected ${projectId}.`
       : !modelReliabilityOk
-        ? `Research Spine coding proved ${distinctModelCount}/${requiredCoders} backend-reported model coders but only ${servedModelCount}/${requiredCoders} distinct served model identities in route evidence.`
+        ? servedModelReceiptGaps.length > 0
+          ? `Research Spine coding route evidence did not prove provider-served model identities for ${servedModelReceiptGaps.length} served routes.`
+          : `Research Spine coding proved ${distinctModelCount}/${requiredCoders} backend-reported model coders but only ${servedModelCount}/${requiredCoders} distinct served model identities in route evidence.`
       : !algorithmOk
         ? reliabilityMetricOutOfRange
           ? `Research Spine validation rejected out-of-range reliability metrics (kappa=${kappa ?? "missing"} must be within [-1, 1]; alpha=${alpha ?? "missing"} must be <= 1).`
@@ -629,9 +669,13 @@ async function validateCodingRun({
       detail,
       evidence: {
         expected_distinct_coders: requiredCoders,
+        expected_project_id: projectId,
+        coding_run_project_id: codingRunProjectId,
+        project_identity_ok: projectIdentityOk,
         distinct_model_count: distinctModelCount,
         served_model_count: servedModelCount,
         served_model_identities: [...servedModelIdentities].sort(),
+        served_model_receipt_gaps: servedModelReceiptGaps,
         rater_count: raterCount,
         reliability_method: reliabilityMethod,
         kappa,

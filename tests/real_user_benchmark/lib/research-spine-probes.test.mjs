@@ -58,6 +58,7 @@ function makeReconciledApplications(runId, count = 12, expectedUnits = makeSubst
     route_evidence: {
       node_id: `donor-${String.fromCharCode(97 + Math.floor(index / 4))}`,
       model: `model-${String.fromCharCode(97 + Math.floor(index / 4))}`,
+      served_model: `model-${String.fromCharCode(97 + Math.floor(index / 4))}`,
       endpoint_id: `endpoint-${String.fromCharCode(97 + Math.floor(index / 4))}`,
       outcome: "served",
     },
@@ -78,9 +79,9 @@ function makeReconciliationDecisions(runId, count = 12) {
 
 function makeServedModelRoutes() {
   return [
-    { node_id: "donor-a", model: "model-a", outcome: "served" },
-    { node_id: "donor-b", model: "model-b", outcome: "served" },
-    { node_id: "donor-c", model: "model-c", outcome: "served" },
+    { node_id: "donor-a", model: "model-a", served_model: "model-a", outcome: "served" },
+    { node_id: "donor-b", model: "model-b", served_model: "model-b", outcome: "served" },
+    { node_id: "donor-c", model: "model-c", served_model: "model-c", outcome: "served" },
   ];
 }
 
@@ -1109,8 +1110,8 @@ test("three-model coding cannot trust a backend count without three served route
         kappa: 0.81,
         alpha: 0.79,
         route_evidence: [
-          { node_id: "donor-a", model: "model-a", outcome: "served" },
-          { node_id: "donor-b", model: "model-b", outcome: "served" },
+          { node_id: "donor-a", model: "model-a", served_model: "model-a", outcome: "served" },
+          { node_id: "donor-b", model: "model-b", served_model: "model-b", outcome: "served" },
         ],
       };
     },
@@ -1132,6 +1133,184 @@ test("three-model coding cannot trust a backend count without three served route
   assert.equal(blockers.length, 1);
   assert.match(blockers[0], /only 2\/3 distinct served model identities/);
   assert.deepEqual(logger.issues[0].evidence.served_model_identities, ["model-a", "model-b"]);
+});
+
+test("three-model coding accepts a positive served-request receipt when outcome is omitted", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const rows = makeReconciledApplications("run-count-only").map((row) => ({
+    ...row,
+    route_evidence: {
+      ...row.route_evidence,
+      outcome: "",
+      served_request_count: 1,
+    },
+  }));
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return rows;
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-count-only");
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-count-only" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-count-only",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes().map((route) => ({
+          ...route,
+          outcome: "",
+          served_request_count: 1,
+        })),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-count-only",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+    expectedDistinctDonorRoutes: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, true);
+  assert.equal(featureResults.multiModelResearchSpineValidation, true);
+  assert.deepEqual(blockers, []);
+});
+
+test("three-model coding rejects a route whose configured and provider-served identities disagree", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const rows = makeReconciledApplications("run-served-model-mismatch").map((row) => ({
+    ...row,
+    route_evidence: {
+      ...row.route_evidence,
+      served_model: `provider-${row.model_name}`,
+    },
+  }));
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return rows;
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-served-model-mismatch");
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-served-model-mismatch" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-served-model-mismatch",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-served-model-mismatch",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /complete coder-by-evidence-unit coverage/i);
+  assert.equal(logger.issues[0].evidence.application_coverage.invalid_rows.length, 12);
+  assert.equal(logger.issues[0].evidence.application_coverage.invalid_rows[0].served_model, "provider-model-a");
+  assert.equal(logger.issues[0].evidence.application_coverage.invalid_rows[0].route_model, "model-a");
+});
+
+test("three-model coding rejects a completed run returned for another project", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-project-mismatch" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-project-mismatch");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-project-mismatch");
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-project-mismatch",
+        project_id: "different-project",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-expected",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /project identity/i);
+  assert.equal(logger.issues[0].evidence.coding_run_project_id, "different-project");
+  assert.equal(logger.issues[0].evidence.expected_project_id, "project-expected");
 });
 
 test("accepted reliability is still blocked when code applications lack reconciliation decisions", async () => {
@@ -1464,9 +1643,9 @@ test("three-donor benchmark requires three served donor routes, not only three m
         kappa: 0.81,
         alpha: 0.79,
         route_evidence: [
-          { node_id: "host-donor", model: "model-a", outcome: "served" },
-          { node_id: "colima-donor-a", model: "model-b", outcome: "served" },
-          { node_id: "host-donor", model: "model-c", outcome: "served" },
+          { node_id: "host-donor", model: "model-a", served_model: "model-a", outcome: "served" },
+          { node_id: "colima-donor-a", model: "model-b", served_model: "model-b", outcome: "served" },
+          { node_id: "host-donor", model: "model-c", served_model: "model-c", outcome: "served" },
         ],
       };
     },
@@ -1521,9 +1700,9 @@ test("three-donor benchmark accepts model coders only when all donor routes serv
         kappa: 0.81,
         alpha: 0.79,
         route_evidence: [
-          { node_id: "host-donor", model: "model-a", outcome: "served" },
-          { node_id: "colima-donor-a", model: "model-b", outcome: "served" },
-          { node_id: "colima-donor-b", model: "model-c", outcome: "served" },
+          { node_id: "host-donor", model: "model-a", served_model: "model-a", outcome: "served" },
+          { node_id: "colima-donor-a", model: "model-b", served_model: "model-b", outcome: "served" },
+          { node_id: "colima-donor-b", model: "model-c", served_model: "model-c", outcome: "served" },
         ],
       };
     },
@@ -1658,9 +1837,9 @@ test("long coding request transport failure can recover completed server-side ru
     kappa: 0.81,
     alpha: 0.79,
     route_evidence: [
-      { node_id: "host-donor", model: "model-a", outcome: "served" },
-      { node_id: "colima-donor-a", model: "model-b", outcome: "served" },
-      { node_id: "colima-donor-b", model: "model-c", outcome: "served" },
+      { node_id: "host-donor", model: "model-a", served_model: "model-a", outcome: "served" },
+      { node_id: "colima-donor-a", model: "model-b", served_model: "model-b", outcome: "served" },
+      { node_id: "colima-donor-b", model: "model-c", served_model: "model-c", outcome: "served" },
     ],
   };
   const api = {

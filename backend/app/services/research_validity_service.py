@@ -707,10 +707,27 @@ async def _pi_coder_runner(
         )
         raise ValueError(f"Pi coder model mismatch: {reason}")
     route = dict(getattr(outcome, "route_evidence", {}) or {})
+    route_model = str(route.get("model") or "").strip()
+    route_served_model = str(route.get("served_model") or "").strip()
+    if route_model and route_model != served_model:
+        raise ValueError(
+            "Pi coder route model mismatch: route "
+            f"{route_model!r}, served {served_model!r}"
+        )
+    if route_served_model and route_served_model != served_model:
+        raise ValueError(
+            "Pi coder route served-model mismatch: route "
+            f"{route_served_model!r}, served {served_model!r}"
+        )
     route.setdefault("node_id", getattr(coder.node, "node_id", ""))
     route.setdefault("node_source", getattr(coder.node, "source", ""))
     route.setdefault("provider_type", getattr(coder.node, "provider_type", ""))
-    route.setdefault("model", served_model)
+    route["model"] = served_model
+    # Preserve the provider-reported identity alongside the normalized route
+    # model.  The latter is persisted for compatibility, while the explicit
+    # receipt is the Research Spine's independence boundary and must survive
+    # into coding-run evidence for downstream validation.
+    route["served_model"] = served_model
     route.setdefault("endpoint_id", served_endpoint_id or selected_endpoint_id)
     route.setdefault("route_kind", "coding_run")
     route.setdefault("outcome", "served")

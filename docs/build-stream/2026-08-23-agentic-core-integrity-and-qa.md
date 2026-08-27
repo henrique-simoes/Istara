@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T18:58:00Z, ledger: L-400 }
+last: { agent: gpt-5-codex, at: 2026-08-27T19:04:26Z, ledger: L-401 }
 next_action: "Audit the remaining live/provider identity, legacy no-coding-run migration, Petals cooperation, two-call/long-horizon, and genuine human-review gates; provision only owner-approved Docker inputs and keep deterministic/live acceptance separate."
 ```
 
@@ -9487,3 +9487,30 @@ backend run with approved tasks and valid Research Spine evidence; three indepen
 provider-served identities, Fleiss/Krippendorff acceptance, human reconciliation,
 Done/report promotion, Petals cooperation, two-call/long-horizon parity, legacy
 no-coding-run migration, and current Docker-only provider configuration remain open.
+
+### L-401 | 2026-08-27T19:04:26Z | S2-execute/S3-review | gpt-5-codex | Strict provider receipt and project binding for ensemble validation
+
+The Research Spine oracle had three remaining deterministic blind spots. A served route
+with only a positive `served_request_count` was rejected even though the adapter had a
+valid receipt; a configured route alias could be mistaken for the provider-served model;
+and a completed coding run for another project could be accepted because its project
+identity was ignored. The benchmark now accepts count-only served receipts, requires a
+non-empty matching `route_evidence.model`/`served_model` pair for every served route,
+derives model diversity from the provider receipt, and rejects a mismatched optional
+`coding_run.project_id`. The Pi coder runner rejects contradictory route/provider
+identities before persistence and explicitly preserves `served_model` as the provider
+receipt while normalizing the compatibility `model` field.
+
+Red/green evidence: the three new JavaScript regressions failed before the oracle change
+and pass afterward; the full deterministic benchmark is `100` Node tests passed, the
+Pi validation file is `33` passed, the focused Pi manager/identity slice is `37` passed,
+the Research Spine contract/end-to-end slice is `34` passed, feature-doc generation and
+checks report `224` artifacts and `86/86` checks, and `git diff --check` passes. These
+are deterministic contract results only. The historical Mac run remains scientifically
+blocked (`kappa=-0.125`, `alpha=0.491`, zero accepted/reconciled applications), and
+live provider identities, Petals, human reconciliation, Done/report promotion,
+two-call/long-horizon receipts, and Docker-only current-provider acceptance remain open.
+
+Next: record the gate/evidence rows, commit and push this slice to `origin/testing`,
+then rerun the exact pushed SHA in the clean Mac Studio Node 20 Docker retake without
+touching the dirty checkout or installing anything on the host.

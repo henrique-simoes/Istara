@@ -860,6 +860,44 @@ async def test_pi_coder_runner_rejects_missing_served_model_identity(monkeypatch
         await _pi_coder_runner(coder, [], "model-a", "p1")
 
 
+async def test_pi_coder_runner_rejects_contradictory_route_model_receipt(monkeypatch):
+    """A route must not overwrite the provider receipt with a configured alias."""
+    dispatcher_stub = _StubAgentic(structured_endpoint_id="ep-a", structured_model="model-a")
+
+    async def _structured(**kwargs):
+        dispatcher_stub.calls.append(("structured", kwargs))
+        return SimpleNamespace(
+            text="",
+            value={"applications": []},
+            status="success",
+            usage={},
+            stop_reason="stop",
+            endpoint_id="ep-a",
+            model="configured-alias",
+            served_model="model-a",
+            route_evidence={
+                "model": "configured-alias",
+                "served_model": "model-a",
+                "outcome": "served",
+            },
+            tool_calls=[],
+        )
+
+    dispatcher_stub.structured = _structured
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+
+    from app.services.research_validity_service import CoderSpec, _pi_coder_runner
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    with pytest.raises(ValueError, match="route model mismatch"):
+        await _pi_coder_runner(coder, [], "model-a", "p1")
+
+
 async def test_pi_coder_runner_fails_closed_on_catalog_identity_drift(monkeypatch):
     """A selected endpoint mutation cannot reach the structured provider call."""
     dispatcher = _StubAgentic(value={})
