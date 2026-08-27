@@ -1242,7 +1242,7 @@ async def get_chat_model_catalog(
     try:
         manager = PiModelManager()
         await manager.ensure_db_projection()
-        configured = [asdict(info) for info in manager.catalog()]
+        configured = [asdict(info) for info in manager.catalog(project_id=project_id)]
     except Exception:
         _chat_log.debug("chat model catalog configured projection unavailable", exc_info=True)
     legacy_models: list[str] = []

@@ -8384,3 +8384,32 @@ Mac Studio: Server `29.7.2`, unrelated `plex` only, zero files under
 load, provider request, host package installation, data deletion, or benchmark
 workload was started. F-R9-114 remains open for governed synthetic/live
 reconciliation; F-R9-116 is fixed in the deterministic acceptance harness.
+
+### L-355 | 2026-08-27T14:18:00Z | S2-execute/S3-review | gpt-5-codex | project-scoped chat catalog admission
+
+The PI/Petals audit found that runtime resolution already applied the donor
+allowlist when a project id was supplied, but `GET /api/chat/model-catalog`
+called the global `PiModelManager.catalog()` view. The chat picker could
+therefore mark another project's projected Petals identity as configured and
+selectable, only for the subsequent turn to fail at resolver/bridge admission.
+This was a management-plane/UI mismatch, not a provider-quality result.
+
+`PiModelManager.catalog(project_id=...)` now reuses the same fail-closed
+admission predicate as `resolve`/`resolve_distinct`; settings and benchmark
+callers retain the unscoped catalog, while the chat route passes its authorized
+project id. A regression covers two project allowlists and confirms that
+settings secrets remain unmaterialized. The chat architecture and legacy
+compatibility feature pages now document the scoped/global distinction.
+
+Verification: manager health `4/4`, Petals bridge `34/34`, the existing chat
+catalog/usage route check `1/1`, W1 authority/contract slice `55/55`, and the
+combined PI/Petals/chat/ensemble/research-spine slice `67 passed` (one
+pre-existing aiosqlite event-loop teardown warning in the full mixed run).
+The deterministic benchmark remains `91/91`; feature-doc regeneration/check
+passes (`224` generated artifacts; `86/86` features); `git diff --check` passes;
+Compass Forge after-gate record `286` reports no new forbidden dependencies,
+import cycles, or missing paths. F-R9-117 is fixed. F-R9-114 remains open for
+governed synthetic/live reconciliation.
+
+No provider request, model load, host installation, Docker image pull, or live
+benchmark workload was started. Mac Studio remains Docker-only and passive.

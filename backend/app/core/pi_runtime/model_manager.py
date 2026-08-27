@@ -692,8 +692,14 @@ class PiModelManager:
             return self._materialize(candidates[0])
         raise PiEndpointResolutionError("no_matching_pi_embed_endpoint")
 
-    def catalog(self) -> list[PiEndpointInfo]:
-        """Identity/capability view for the settings UI and benchmarks."""
+    def catalog(self, *, project_id: str | None = None) -> list[PiEndpointInfo]:
+        """Identity/capability view with optional project-scoped admission.
+
+        Settings and benchmark callers intentionally omit ``project_id`` and
+        receive the global identity catalog. Project-readable surfaces pass
+        their project so an unadmitted Petals identity is not advertised as
+        selectable before the resolver rejects it.
+        """
         return [
             PiEndpointInfo(
                 entry.endpoint_id,
@@ -708,8 +714,12 @@ class PiModelManager:
                 kind=entry.kind,
             )
             for entry in self._entries.values()
-            if not (
-                is_reserved_petals_endpoint_id(entry.endpoint_id) and not _is_petals_entry(entry)
+            if self._matches(
+                entry,
+                model=None,
+                require_vision=False,
+                min_context=0,
+                project_id=project_id,
             )
         ]
 

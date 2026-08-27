@@ -303,7 +303,9 @@
 </ul>
 <p><code>resolve_distinct(n, ...)</code> fails closed when fewer than <code>n</code> distinct</p>
 <p>identities exist rather than silently reusing one endpoint as two.</p>
-<p><code>catalog()</code> feeds the settings model UI and benchmark comparison surfaces.</p>
+<p><code>catalog()</code> feeds the settings model UI and benchmark comparison surfaces;</p>
+<p>project-readable chat callers pass a project id so Petals entries are</p>
+<p>filtered by the same admission predicate used by endpoint resolution.</p>
 <h3 id="live-catalog-refresh-and-merged-model-view">Live Catalog Refresh And Merged Model View</h3>
 <ul>
 <li>Model-management mutations refresh every live manager so both loop modes see</li>

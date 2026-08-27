@@ -133,3 +133,47 @@ def test_available_model_identities_is_project_scoped_without_materializing_secr
         "petals-b",
     )
     assert settings_entry.resolved is None
+
+
+def test_catalog_is_project_scoped_for_chat_without_materializing_secrets():
+    """Chat must not advertise a Petals donor outside its project allowlist."""
+    settings_entry = _CatalogEntry(
+        endpoint_id="pi-settings-a",
+        provider_kind="openai_compat",
+        base_url="https://example.invalid/v1",
+        model="settings-model",
+        source="settings",
+    )
+    authorized_petals = _CatalogEntry(
+        endpoint_id="pi-petals-a",
+        provider_kind="openai_compat",
+        base_url="http://127.0.0.1:8000/v1",
+        model="petals-a",
+        source="petals",
+        kind="petals",
+        allowed_project_ids=("project-a",),
+    )
+    unauthorized_petals = _CatalogEntry(
+        endpoint_id="pi-petals-b",
+        provider_kind="openai_compat",
+        base_url="http://127.0.0.1:8000/v1",
+        model="petals-b",
+        source="petals",
+        kind="petals",
+        allowed_project_ids=("project-b",),
+    )
+    manager = PiModelManager(endpoints=[], include_local=False)
+    manager._entries = {
+        entry.endpoint_id: entry
+        for entry in (settings_entry, authorized_petals, unauthorized_petals)
+    }
+
+    assert {entry.endpoint_id for entry in manager.catalog(project_id="project-a")} == {
+        "pi-settings-a",
+        "pi-petals-a",
+    }
+    assert {entry.endpoint_id for entry in manager.catalog(project_id="project-b")} == {
+        "pi-settings-a",
+        "pi-petals-b",
+    }
+    assert settings_entry.resolved is None

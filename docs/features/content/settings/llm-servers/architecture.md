@@ -69,7 +69,9 @@ public `/api/settings/status` is redacted and passive.
 - `resolve(...)` raises a typed `PiEndpointResolutionError` on any miss, and
   `resolve_distinct(n, ...)` fails closed when fewer than `n` distinct
   identities exist rather than silently reusing one endpoint as two.
-  `catalog()` feeds the settings model UI and benchmark comparison surfaces.
+  `catalog()` feeds the settings model UI and benchmark comparison surfaces;
+  project-readable chat callers pass a project id so Petals entries are
+  filtered by the same admission predicate used by endpoint resolution.
 
 ### Live Catalog Refresh And Merged Model View
 
