@@ -823,6 +823,14 @@ class PiExecutionService:
         endpoint. Samples run sequentially, each as its own governed turn, so
         per-sample usage stays exact.
         """
+        if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+            raise PiEndpointResolutionError("ensemble_width_must_be_positive")
+        if minimum_n is not None and (
+            not isinstance(minimum_n, int)
+            or isinstance(minimum_n, bool)
+            or minimum_n < 1
+        ):
+            raise PiEndpointResolutionError("ensemble_minimum_width_must_be_positive")
         manager = self._manager()
         await manager.ensure_db_projection()
         model = getattr(params, "model", None)

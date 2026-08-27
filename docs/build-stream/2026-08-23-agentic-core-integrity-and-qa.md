@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T21:23:28Z, ledger: L-421 }
-next_action: "Preserve the dirty Mac Studio checkout and create a disposable Docker-only checkout at the pushed testing tip, then obtain owner-approved provider inputs and run the live three-model Research Spine proof separately from Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
+last: { agent: gpt-5-codex, at: 2026-08-27T21:31:27Z, ledger: L-422 }
+next_action: "Add and verify fail-closed validation for non-positive Pi ensemble widths, then audit served-model identity and Research Spine metric gates before the Docker-only live acceptance remains the next external blocker."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10127,3 +10127,24 @@ service start occurred.
 Next: commit and push this wrapper/docs/test change, re-check local and
 `origin/testing` SHA equality, then continue the deterministic Pi/Petals and
 Research Spine audit while the Mac Studio provider-input gate remains open.
+
+### L-422 | 2026-08-27T21:31:27Z | S2-execute/S3-review | gpt-5-codex | Deeper ensemble audit found a non-positive-width fail-open edge
+
+Compass Forge impact/why were run for `backend/app/core/pi_runtime/engine.py`
+and `tests/pi_production/test_runtime_hardening.py` before editing, followed by
+the CF-15 before gate. The code review found that `run_ensemble(n=0,
+distinct=False)` constructs an empty endpoint/sample list and returns
+`status=success` with zero usage because `all([])` is true. Zero or negative
+widths also pass through the distinct branch's minimum-width coercion instead
+of being rejected. That can make a malformed or bypassed validation request
+look successful while producing no independent judgments, violating the
+Research Spine's fail-closed ensemble contract.
+
+This is a concrete implementation/test gap, not a live-model finding. The next
+bounded change will reject non-positive `n` and `minimum_n` with the existing
+typed Pi endpoint-resolution error before manager/worker work, add regression
+tests that assert no binds/turns and preserve the existing three-model and
+accounting tests, regenerate the Ensemble Health feature docs, and attach the
+before/after gate evidence. No model was loaded and no Mac Studio state was
+changed. The remote live acceptance blocker remains owner-approved Docker-only
+provider/Petals inputs and a disposable checkout.

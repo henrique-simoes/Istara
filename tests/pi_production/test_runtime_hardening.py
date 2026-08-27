@@ -392,6 +392,35 @@ async def test_pi_ensemble_uses_minimum_width_when_optional_spare_is_requested(m
     assert len(supervisor.binds) == 3
 
 
+@pytest.mark.asyncio
+async def test_pi_ensemble_rejects_zero_width_before_manager_or_worker_work():
+    """A zero-width request must never become a successful empty ensemble."""
+
+    class UnusedManager:
+        async def ensure_db_projection(self):
+            raise AssertionError("invalid width must be rejected before projection")
+
+    class UnusedSupervisor:
+        async def ensure_started(self):
+            raise AssertionError("invalid width must be rejected before worker start")
+
+    service = PiExecutionService(
+        supervisor=UnusedSupervisor(),
+        model_manager=UnusedManager(),
+    )
+
+    with pytest.raises(PiEndpointResolutionError, match="ensemble_width_must_be_positive"):
+        await service.run_ensemble(
+            purpose="research_spine.invalid_width",
+            project_id="project-spine",
+            agent_id="agent-a",
+            system="independent coder",
+            messages=[{"role": "user", "content": "extract atomic evidence"}],
+            n=0,
+            distinct=False,
+        )
+
+
 def _faux_bind_payload(responses, *, faux_cost_usd: float | None = None) -> dict:
     """Serialize a faux endpoint into the ``provider.bind`` payload the worker
     consumes (mirrors ``test_frame_limits``; adds the test-only cost seam)."""
