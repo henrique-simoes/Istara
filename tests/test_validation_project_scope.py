@@ -50,6 +50,7 @@ class _StubAgenticDispatcher:
                 usage={},
                 stop_reason="stop",
                 endpoint_id=f"ep-{index}",
+                model=f"model-{index}",
                 tool_calls=[],
             )
             for index in range(n)
@@ -93,6 +94,12 @@ async def test_validation_helpers_forward_project_id_to_llm_and_embeddings(monke
     assert debate.metadata["route_evidence"][0]["route_kind"] == "agentic_completion"
     assert dual.metadata["endpoint_ids"] == ["ep-0", "ep-1"]
     assert ensemble.metadata["n_responses"] == 3
+    assert ensemble.metadata["models_used"] == ["model-0", "model-1", "model-2"]
+    assert [route["model"] for route in ensemble.metadata["route_evidence"]] == [
+        "model-0",
+        "model-1",
+        "model-2",
+    ]
     for result in (self_moa, dual, ensemble):
         assert result.metadata["validation_scope"] == "response_level_quality_signal"
         assert result.metadata["formal_reliability"] is False

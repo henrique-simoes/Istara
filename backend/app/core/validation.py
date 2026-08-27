@@ -129,9 +129,16 @@ async def _dispatch_ensemble(
             )
             continue
         responses.append(sample.text)
-        route_evidence.append(
-            {"endpoint_id": endpoint_id, "route_kind": "agentic_ensemble"}
-        )
+        route = {"endpoint_id": endpoint_id, "route_kind": "agentic_ensemble"}
+        # The dispatcher/PI engine resolves the served model identity per
+        # sample. Preserve it here so downstream quality scorecards can prove
+        # that a full ensemble used distinct models instead of only distinct
+        # endpoint labels. Missing identity remains visible as unproven; it is
+        # never fabricated from the requested model or endpoint id.
+        served_model = getattr(sample, "model", None)
+        if served_model:
+            route["model"] = str(served_model)
+        route_evidence.append(route)
     return responses, route_evidence, list(outcome.endpoint_ids)
 
 

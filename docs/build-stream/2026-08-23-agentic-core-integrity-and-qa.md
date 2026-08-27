@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T01:55:51Z, ledger: L-231 }
+last: { agent: gpt-5-codex, at: 2026-08-27T02:02:16Z, ledger: L-232 }
 next_action: "When live prerequisites are authorized, resolve origin/testing at launch time on Mac Studio, materialize a clean detached checkout, then run the Docker-only provider/Petals retake with three provisioned model routes and preserve artifacts."
 ```
 
@@ -5096,3 +5096,35 @@ Verified: `git fetch origin testing`, exact SHA equality, `git diff --check`, an
 
 Next: continue the active goal at G0/G1 when the owner-authorized live prerequisites become
 available; do not claim terminal acceptance from this deterministic-only checkpoint.
+
+### L-232 | 2026-08-27T02:02:16Z | S5-ship&learn | gpt-5-codex | remediator | Phase 9
+
+Did: Audited the validation-to-MoA evidence boundary against the Research Spine completion
+matrix. The PI engine and dispatcher already return the effective served model on each
+successful `TurnResult`, but `validation._dispatch_ensemble` discarded that field while
+constructing response-level `route_evidence`. Because the live MoA assessor counts served
+model identities only from successful route evidence, a genuine three-model response could be
+misclassified as `model_identity_collapse` even when the routes were independent.
+
+Changed: Added a red-to-green regression in `tests/test_validation_project_scope.py`, preserved
+the non-secret sample `model` identity in `backend/app/core/validation.py`, and documented the
+contract in `docs/features/content/ensemble/health/architecture.md` plus generated site output.
+Missing model identity remains absent and fail-closed; it is never inferred from an endpoint or
+requested model. Appended the corresponding open-live finding as F-R9-57 to
+`/Users/user/Desktop/testing.md`.
+
+Verified: the regression failed before the patch (`models_used=[]`) and passed after it;
+focused Research Spine/Pi validation tests passed `87`; MoA unit tests passed `21`; topology
+contracts passed `10`; the full real-user benchmark check passed `72`; feature docs generation
+and check passed for `86` features; shell/Node syntax checks and `git diff --check` passed. No
+provider call, model load, Docker workload, or Mac Studio host mutation occurred.
+
+Interpretation: this closes a local observability/oracle defect only. Response-level validation
+is still not formal Fleiss/Krippendorff reliability; Research Spine acceptance still requires
+the live G0–G22 Docker-only matrix (three served identities, common raw spans, coding,
+reliability, grounding, reconciliation, human Done/report, two-call/long-horizon, Petals
+interoperability, artifacts, teardown, and parity).
+
+Next: commit and push this bounded remediation to `testing`, verify exact remote parity, run the
+Compass Forge after-gate, then re-check Mac Studio's Docker-only prerequisites at the exact SHA.
+If G0 remains unavailable, record `not_run` and leave CF-15 open.
