@@ -127,10 +127,14 @@ The selected Chat model menu is a generation control only. It never changes the 
   regardless of engine or outcome: success, error, abort, endpoint-resolution
   failure, and a raising legacy executor each record their one row, with
   pre-dispatch failures zeroed and stamped `error_type`. Pi rows carry exact
-  pi-ai usage including `cost.total`; legacy rows carry provider-reported usage
-  where present and otherwise estimate input/output with the existing
+  pi-ai usage including `cost.total` when every sample has a provider receipt;
+  mixed/absent real-provider ensemble usage is estimated as one complete
+  dispatch from preserved sample text. The public ensemble result and durable
+  row share this all-or-nothing boundary. Legacy rows carry provider-reported
+  usage where present and otherwise estimate input/output with the existing
   `count_tokens` counter and mark `estimate=true` — estimated and exact numbers
-  are never mixed silently. A separate short identity-only trace span
+  are never mixed silently.
+  A separate short identity-only trace span
   (`event_kind="agentic_usage"`,
   `route_id="agentic:<engine>:<endpoint|node|unresolved>"`) is recorded for
   trace continuity; the accounting row never lives inside that 120-char
@@ -158,6 +162,7 @@ Each chat turn resolves its engine in one order: operator flag `pi_replacement_e
 - `tests/pi_production/test_w1_agentic_contract.py`
 - `tests/pi_production/test_w1_dispatcher_authority.py` — shared Pi Model Management authority for both engine choices, including legacy/Istara multi-turn tool-loop execution, cumulative usage, and provider-served identity preservation.
 - `tests/pi_production/test_legacy_long_horizon.py` — seven-step legacy/Istara tool-loop horizon parity through the same shared manager, with cumulative usage and served-identity assertions.
+- `tests/pi_production/test_pi_ensemble_accounting.py` — Pi ensemble usage exactness is all-or-nothing across samples; mixed provider receipts produce an explicit estimate rather than a partial exact ledger row.
 - `tests/pi_production/test_chat_pi_asgi.py` — real-ASGI two-call transcript rehydration after worker restart for both the native Pi loop and the legacy Istara loop over the shared Pi Model Management service.
 
 ## Related Features

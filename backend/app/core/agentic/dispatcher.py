@@ -38,7 +38,7 @@ from .types import (
     TurnParams,
     TurnResult,
 )
-from .usage_ledger import record_agentic_usage
+from .usage_ledger import authoritative_usage, record_agentic_usage
 
 logger = logging.getLogger(__name__)
 
@@ -600,7 +600,7 @@ class AgenticDispatcher:
         return EnsembleResult(
             samples=samples,
             endpoint_ids=list(outcome.get("endpoint_ids") or []),
-            usage=outcome.get("usage") or {},
+            usage=authoritative_usage(selected, outcome),
             status=outcome.get("status", "success"),
         )
 

@@ -5,9 +5,11 @@ abort, endpoint-resolution failure, or legacy-executor failure — persists
 exactly one durable, queryable row in ``agentic_usage_rows`` carrying the full
 accounting payload. Exactness rules:
 
-* Pi rows are exact: numbers come from pi-ai ``Usage`` (incl. ``cost.total``).
+* Pi rows are exact when every sample carries provider-reported numbers from
+  pi-ai ``Usage`` (incl. ``cost.total``); a mixed/absent Pi ensemble carries an
+  explicit whole-dispatch estimate instead of a partial exact total.
 * Legacy rows with provider-reported usage are exact.
-* Only absent provider usage is estimated with the existing ``count_tokens``
+* Absent provider usage is estimated with the existing ``count_tokens``
   estimator and flagged ``estimate=True`` — estimated and exact numbers are
   never mixed silently. Pre-dispatch failures (endpoint resolution, unbound or
   raising legacy executor) consumed nothing and persist zeroed exact rows with
@@ -40,6 +42,67 @@ def _provider_usage(outcome: dict[str, Any]) -> dict[str, Any] | None:
     if not isinstance(usage, dict) or not usage:
         return None
     return usage
+
+
+def _reported_sample_usage(sample: Any) -> dict[str, Any] | None:
+    """Return one provider receipt only when it is present and non-estimated."""
+    if not isinstance(sample, dict):
+        return None
+    usage = sample.get("usage")
+    if (
+        not isinstance(usage, dict)
+        or not usage
+        or bool(usage.get("estimate", False))
+        or usage.get("usage_reported") is False
+    ):
+        return None
+    if usage.get("usage_reported") is not True:
+        numbers = _usage_numbers(usage)
+        measured = (
+            numbers["input_tokens"]
+            or numbers["output_tokens"]
+            or numbers["cache_read"]
+            or numbers["cache_write"]
+            or numbers["cost_usd"]
+        )
+        if not measured:
+            return None
+    return usage
+
+
+def _pi_ensemble_usage(outcome: dict[str, Any]) -> dict[str, Any] | None:
+    """Aggregate Pi samples only when every sample has a provider receipt.
+
+    Pi's execution seam retains a compatibility aggregate for callers, but the
+    ledger and public dispatcher result must not expose a partial exact total.
+    A missing or estimated receipt therefore returns ``None`` and lets the
+    ledger estimate the whole dispatch from the preserved sample texts.
+    """
+    samples = outcome.get("samples")
+    if not isinstance(samples, list):
+        return _provider_usage(outcome)
+    if not samples:
+        return None
+    receipts = [_reported_sample_usage(sample) for sample in samples]
+    if any(receipt is None for receipt in receipts):
+        return None
+    totals = [_usage_numbers(receipt) for receipt in receipts if receipt is not None]
+    return {
+        "input_tokens": sum(item["input_tokens"] for item in totals),
+        "output_tokens": sum(item["output_tokens"] for item in totals),
+        "cache_read": sum(item["cache_read"] for item in totals),
+        "cache_write": sum(item["cache_write"] for item in totals),
+        "total_tokens": sum(item["total_tokens"] for item in totals),
+        "cost_usd": sum(item["cost_usd"] for item in totals),
+        "turns": sum(item["turns"] for item in totals),
+        "estimate": False,
+    }
+
+
+def authoritative_usage(engine: str, outcome: dict[str, Any]) -> dict[str, Any]:
+    """Return the usage shape safe to expose to a dispatcher caller."""
+    usage = _pi_ensemble_usage(outcome) if engine == "pi" else _provider_usage(outcome)
+    return usage or {}
 
 
 def _usage_numbers(usage: dict[str, Any]) -> dict[str, Any]:
@@ -94,6 +157,24 @@ def _estimated_numbers(
                     "cost_usd": 0.0,
                     "turns": turns,
                 }
+    samples = outcome.get("samples")
+    if isinstance(samples, list) and samples:
+        responses = [
+            sample.get("text")
+            for sample in samples
+            if isinstance(sample, dict) and isinstance(sample.get("text"), str)
+        ]
+        input_tokens = count_tokens(request_text) * len(samples)
+        output_tokens = sum(count_tokens(text) for text in responses)
+        return {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cache_read": 0,
+            "cache_write": 0,
+            "total_tokens": input_tokens + output_tokens,
+            "cost_usd": 0.0,
+            "turns": len(samples),
+        }
     input_tokens = count_tokens(request_text)
     output_tokens = count_tokens(response_text or "")
     return {
@@ -107,37 +188,43 @@ def _estimated_numbers(
     }
 
 
+def _accounting_numbers(
+    *, engine: str, outcome: dict[str, Any], request_text: str | None,
+    response_text: str | None,
+) -> tuple[dict[str, Any], bool]:
+    """Select exact provider numbers, a complete estimate, or zero usage."""
+    usage = _pi_ensemble_usage(outcome) if engine == "pi" else _provider_usage(outcome)
+    if usage is not None:
+        return _usage_numbers(usage), bool(usage.get("estimate", False))
+    can_estimate = request_text is not None and (
+        engine == "legacy"
+        or (engine == "pi" and isinstance(outcome.get("samples"), list))
+        or isinstance(outcome.get("usage_estimation"), dict)
+    )
+    if can_estimate:
+        return _estimated_numbers(
+            outcome, request_text=request_text or "", response_text=response_text
+        ), True
+    return {
+        "input_tokens": 0, "output_tokens": 0, "cache_read": 0, "cache_write": 0,
+        "total_tokens": 0, "cost_usd": 0.0, "turns": 0,
+    }, False
+
+
 def build_usage_row(
     *, engine: str, purpose: str, project_id: str, agent_id: str,
     outcome: dict[str, Any], model: str | None = None, started_at: float | None = None,
-    session_id: str | None = None, task_id: str | None = None, spine_phase: str | None = None, node_id: str | None = None,
+    session_id: str | None = None, task_id: str | None = None,
+    spine_phase: str | None = None, node_id: str | None = None,
     request_text: str | None = None, response_text: str | None = None,
     error_type: str | None = None,
 ) -> AgenticUsageRow:
     """Build the ledger row for one dispatch, applying exact/estimate rules."""
     latency_ms = (time.perf_counter() - started_at) * 1000 if started_at else 0.0
-    usage = _provider_usage(outcome)
-    estimate = False
-    if usage is not None:
-        # Provider-reported usage (Pi from pi-ai, or legacy from the provider
-        # response) is exact unless the provider itself flags an estimate.
-        numbers = _usage_numbers(usage)
-        estimate = bool(usage.get("estimate", False))
-    elif engine == "legacy" and request_text is not None:
-        # Only absent legacy provider usage is estimated with the existing
-        # token counter; the row is flagged so benchmarks never mix it with
-        # exact numbers silently.
-        numbers = _estimated_numbers(
-            outcome, request_text=request_text, response_text=response_text
-        )
-        estimate = True
-    else:
-        # Pre-dispatch failure (endpoint resolution, unbound/failed legacy
-        # executor): nothing was consumed — a zeroed exact row with error_type.
-        numbers = {
-            "input_tokens": 0, "output_tokens": 0, "cache_read": 0, "cache_write": 0,
-            "total_tokens": 0, "cost_usd": 0.0, "turns": 0,
-        }
+    numbers, estimate = _accounting_numbers(
+        engine=engine, outcome=outcome, request_text=request_text,
+        response_text=response_text,
+    )
     status = str(outcome.get("status", "success"))
     return AgenticUsageRow(
         id=uuid.uuid4().hex[:36],
@@ -170,7 +257,8 @@ def build_usage_row(
 async def record_agentic_usage(
     *, engine: str, purpose: str, project_id: str, agent_id: str,
     outcome: dict[str, Any], model: str | None = None, started_at: float | None = None,
-    session_id: str | None = None, task_id: str | None = None, spine_phase: str | None = None, node_id: str | None = None,
+    session_id: str | None = None, task_id: str | None = None,
+    spine_phase: str | None = None, node_id: str | None = None,
     request_text: str | None = None, response_text: str | None = None,
     error_type: str | None = None,
 ) -> None:

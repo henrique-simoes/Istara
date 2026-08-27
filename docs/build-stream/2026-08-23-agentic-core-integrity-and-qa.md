@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T07:08:00Z, ledger: L-287 }
+last: { agent: gpt-5-codex, at: 2026-08-27T07:43:07Z, ledger: L-290 }
 next_action: "Continue the deterministic Research Spine/authority audit from the exact transported testing tip; await an owner-authorized Docker-only Mac Studio window before any live provider, Petals, or three-rater acceptance claim."
 ```
 
@@ -6635,3 +6635,72 @@ level MoA result formal Research Spine evidence and does not prove live model
 independence, common raw spans, Fleiss/Krippendorff reliability, grounding,
 reconciliation, human-Done/report promotion, Petals cooperation, or teardown.
 The Docker-only Mac Studio G0/G1 and live G2-G22 gates remain open.
+
+### L-288 | 2026-08-27T07:29:25Z | S2-execute/S3-review | gpt-5-codex | Pi ensemble usage exactness boundary
+
+The deterministic accounting audit found a second ensemble-oracle gap after
+served-identity parity: `PiExecutionService.run_ensemble` summed whichever
+token fields were present and returned a non-empty usage object even when a
+real provider supplied no usage receipt for one sample. The dispatcher then
+persisted that partial aggregate as exact, unlike the legacy loop's existing
+all-or-nothing rule. pi-ai can materialize an all-zero `Usage` placeholder for
+an adapter that omitted usage, so checking only whether a dictionary exists is
+not a trustworthy receipt test.
+
+The shared usage-ledger boundary now inspects each preserved Pi sample receipt
+before trusting the execution seam's compatibility aggregate. Fully reported
+Pi samples aggregate input/output/cache-read/cache-write/total/cost/turn values
+with `estimate=False`; any absent, explicitly estimated, or mixed sample makes
+the public ensemble usage empty and causes the ledger to estimate the complete
+dispatch from the repeated request plus every preserved sample text, marking
+`estimate=1`. This preserves the Research Spine rule that estimated and exact
+numbers never mix silently and prevents a partial exact total from being used
+as evidence without changing the hot Pi engine file.
+
+Added isolated `tests/pi_production/test_pi_ensemble_accounting.py` using the
+real `AgenticDispatcher`, `PiExecutionService`, `PiModelManager`, and durable
+usage ledger with a deterministic provider-result seam. It proves both the
+mixed-provider estimate and fully reported cache/cost/turn aggregation at both
+the public result and durable row. The focused authority/continuity/accounting
+slice passes `43` tests with runtime warnings promoted to errors; Ruff,
+`git diff --check`, and feature-doc generation remain the next gates. This is
+deterministic accounting evidence,
+not live provider quality or three-model Research Spine proof; live G0/G1 and
+G2-G22 remain open for the authorized Docker-only Mac Studio run.
+
+### L-290 | 2026-08-27T07:43:07Z | S2-execute/S3-review | gpt-5-codex | zero-placeholder oracle
+
+The accounting oracle now covers the adapter failure mode in which pi-ai
+returns a non-empty all-zero usage placeholder. A sample is accepted as an
+exact receipt only when it has a positive token/cache/cost measurement or an
+explicit `usage_reported=true` marker; an explicit estimate, `usage_reported=false`,
+empty receipt, malformed sample, or all-zero placeholder makes the whole Pi
+ensemble estimated. The new regression test runs through the real dispatcher,
+Pi execution service, model manager, and durable ledger seam. The final
+authority/continuity/accounting run is `57 passed`; Compass Forge remains at
+`new_issue_count=0`, with no new failures or warnings. Live provider quality,
+three-model independence, Fleiss/Krippendorff reliability, and Docker-only
+Mac Studio G0-G22 evidence remain unclaimed.
+
+### L-289 | 2026-08-27T07:42:07Z | S2-execute/S3-review | gpt-5-codex | gate-clean ledger boundary
+
+The first implementation moved aggregation into `PiExecutionService`, but
+Compass Forge counted the edited hot engine file's inherited complexity as new
+warnings even after the added block was extracted. That path was rejected for
+transport. The engine is restored to the exact testing tip; the correction now
+lives in the shared usage-ledger module and the dispatcher result boundary.
+`authoritative_usage("pi", outcome)` checks every preserved sample receipt,
+aggregates all reported samples including cache/cost/total/turn fields, and
+returns `{}` for mixed/absent/explicitly estimated samples. The ledger uses the
+same decision and estimates the repeated request plus each preserved sample
+text as one complete dispatch, so public and durable accounting cannot diverge.
+
+Verification after remediation: focused Pi accounting/identity/realpath tests
+`10 passed`; W1 dispatcher/contract/donor-routing tests `63 passed`; benchmark
+suite `233 passed, 5 skipped`; non-hanging Research Spine/validation slice
+`36 passed, 1 deselected`; Ruff, `git diff --check`, and feature-doc generation
+(`224` artifacts, `86/86` checks) passed. Compass Forge before-gate reports
+`new_issue_count=0`, `new_failures=0`, and no new warnings against the inherited
+`31` findings/`209` warnings baseline. The known survey-ingestion fixture still
+hangs before test execution and remains inherited harness debt; it is not
+claimed green. No live Mac Studio provider/model/container state was touched.
