@@ -7003,3 +7003,22 @@ next executable step is owner-approved Docker-only provisioning, followed by
 source/image digest capture, provider-only, Petals-only, and combined profiles,
 then two-call/long-horizon, three-served-model reliability, reconciliation,
 human-Done/report, redaction, and teardown verification.
+
+### L-304 | 2026-08-27T10:00:00Z | S2-execute/S3-review | gpt-5-codex | final status handoff
+
+CF-15 evidence is attached through command/gate records `162`–`176`. Final
+committed-tree Compass Forge baseline/after records are `222`/`224`: the after
+comparison has empty new-issue, forbidden-dependency, import-cycle,
+missing-path, and unexpected-large-file sets; the overall gate remains `fail`
+only because inherited repository findings still exist. Local testing is clean
+and `testing` equals `origin/testing` at `33f68ed7c25d58126bec826d9efe6c86f23ce500`.
+
+CF-15, CF-13, CF-20, and CF-21 remain open rather than being marked complete.
+The unclosed gates are operational/scientific, not hidden test failures:
+Docker-only provisioning of current env/model or provider routes; provider-served
+identity; both engine paths through shared Pi Model Management; same-session
+two-call/long-horizon behavior; three independent served models over common raw
+evidence units; Fleiss/Krippendorff reliability with grounding; Petals scope,
+consent, and route receipts; reconciliation; human-approved Done/report
+promotion; redacted artifacts; and teardown. No live claim is made until those
+artifacts exist.
