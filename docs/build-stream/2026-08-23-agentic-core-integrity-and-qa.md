@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T11:52:03Z, ledger: L-333 }
+last: { agent: gpt-5-codex, at: 2026-08-27T11:53:16Z, ledger: L-334 }
 next_action: "Run the remaining deterministic PI/Research Spine matrix and review the live-gate inputs; start Docker-only Mac Studio execution only after current owner-approved env/config, served identities, donor inputs, and redacted artifact paths exist."
 ```
 
@@ -7841,3 +7841,22 @@ human Done/report promotion, and Docker-only Mac Studio execution remain
 blocked on current owner-approved env/config, served identities, donor/model
 inputs, and redacted receipts. The next step is transport, push, and final
 detached-checkout/Docker parity evidence for this checkpoint.
+
+### L-334 | 2026-08-27T11:53:16Z | S5-ship&learn | gpt-5-codex | transport and Docker-only parity checkpoint
+
+The scoped preflight fix is now transported as commit `e9933a34` on
+`origin/testing`. Compass evidence `257` records local `testing`,
+`origin/testing`, and the detached Mac Studio retake all at that SHA with clean
+worktrees. The retake was refreshed only with Git fetch/reset inside the
+disposable testing checkout; Docker remains the sole runtime path (`29.7.2`),
+only unrelated Plex is running, the model artifact count is zero, and
+`.env.deploy` is absent. No host package installation, Python/Node benchmark,
+provider request, model load, Istara/Petals container, or workload was started.
+
+The remaining acceptance work is therefore not hidden by a stale checkout:
+the deterministic engine/provider/Petals contracts are green, while live
+provider-served three-model quality, Fleiss/Krippendorff values,
+source-grounded coding, reconciliation, human Done/report promotion, both
+engine HTTP execution with live providers, two-call/long-horizon receipts,
+Petals consent/health/revocation, redaction, and teardown still require the
+owner-approved Docker-only Mac Studio inputs and run window.
