@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:47:00Z, ledger: L-375 }
+last: { agent: gpt-5-codex, at: 2026-08-27T15:49:00Z, ledger: L-376 }
 next_action: "Continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates; separately decide the migration/compatibility policy for legacy no-coding-run reportability. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
 ```
 
@@ -8875,3 +8875,18 @@ repository's pre-existing warning/fail inventory remains). No provider request,
 model load, image pull, host installation, live benchmark, or testing-data
 deletion occurred. The code commit is not yet transported to `origin/testing`
 or the Mac Studio retake; transport is the next checkpoint.
+
+### L-376 | 2026-08-27T15:49:00Z | S5-ship&learn | gpt-5-codex | guardrail transport parity
+
+The Docker runtime provenance hardening from `L-375` is now fully transported
+in the clean commit `b5ed5bf7e2f2773cecb7db6b4b437a70ccda1d19`. Local `testing`,
+`origin/testing`, and the detached Mac Studio retake
+`~/istara-testing-retake-47bf` all resolve to this SHA. Compass Forge task
+evidence `343` records the focused/full deterministic suites, feature-doc
+check, and passive Mac Docker-only state: client/server `29.7.2/29.7.2`,
+unrelated healthy `plex` only, zero model files, and no `.env.deploy`. No
+provider request, model load, image pull, host installation, live benchmark,
+or testing-data deletion occurred. F-R9-114 remains open for the owner-approved
+live three-model provider identity, Fleiss/Krippendorff evidence, genuine
+human reconciliation, and Done/report acceptance; legacy no-coding-run
+reportability still needs a migration/compatibility decision.
