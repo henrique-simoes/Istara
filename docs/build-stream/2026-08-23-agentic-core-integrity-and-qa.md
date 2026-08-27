@@ -6136,8 +6136,11 @@ baseline, and after-gate record `169` reports `new_issue_count=0`,
 `new_failures=0`, no actionable failures, no cycles, and no new warnings.
 The global gate remains `fail` only for inherited repository debt (31
 failures/209 warnings and known route/type drift, complexity, secret-flow,
-and large-file findings). The final transport tip is `cfc804853c78044b527750a6cabc9d7f1019aa17` on `HEAD`, local `testing`, and
-`origin/testing`; the worktree, `git diff --check`, and
+and large-file findings). At gate time, the reviewed code/docs transport tip
+was `cfc804853c78044b527750a6cabc9d7f1019aa17`; this receipt is transported
+immediately afterward and the final parity is verified by the commit carrying
+this entry on `HEAD`, local `testing`, and `origin/testing`; the worktree,
+`git diff --check`, and
 `git diff origin/testing --check` are clean.
 
 The final passive SSH snapshot is still Docker-only on
