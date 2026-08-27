@@ -51,6 +51,7 @@ class _StubAgenticDispatcher:
                 stop_reason="stop",
                 endpoint_id=f"ep-{index}",
                 model=f"model-{index}",
+                served_model=f"model-{index}",
                 tool_calls=[],
             )
             for index in range(n)
@@ -111,6 +112,54 @@ async def test_validation_helpers_forward_project_id_to_llm_and_embeddings(monke
     assert adversarial.metadata["formal_reliability"] is False
     assert debate.metadata["validation_scope"] == "response_level_quality_signal"
     assert debate.metadata["formal_reliability"] is False
+
+
+@pytest.mark.asyncio
+async def test_ensemble_route_evidence_uses_provider_served_model_identity(monkeypatch):
+    """Configured endpoint labels must not stand in for provider identity."""
+    from app.core import validation
+
+    class _ProviderIdentityStub(_StubAgenticDispatcher):
+        async def ensemble(self, **kwargs):  # noqa: ANN001
+            self.project_calls.append(kwargs.get("project_id") or "")
+            n = kwargs.get("n") or 1
+            samples = [
+                SimpleNamespace(
+                    text=f"ensemble response {index}",
+                    status="success",
+                    usage={},
+                    stop_reason="stop",
+                    endpoint_id=f"ep-{index}",
+                    model=f"configured-model-{index}",
+                    served_model="provider-model-shared",
+                    tool_calls=[],
+                )
+                for index in range(n)
+            ]
+            return SimpleNamespace(
+                samples=samples,
+                endpoint_ids=[f"ep-{index}" for index in range(n)],
+                usage={},
+                status="success",
+            )
+
+    stub = _ProviderIdentityStub()
+    monkeypatch.setattr("app.core.agentic.agentic", stub)
+
+    result = await validation.full_ensemble(
+        "Check provider identity", min_responses=2, project_id="project-a"
+    )
+
+    assert result.metadata["models_used"] == [
+        "provider-model-shared",
+        "provider-model-shared",
+        "provider-model-shared",
+    ]
+    assert [route["model"] for route in result.metadata["route_evidence"]] == [
+        "provider-model-shared",
+        "provider-model-shared",
+        "provider-model-shared",
+    ]
 
 
 @pytest.mark.asyncio

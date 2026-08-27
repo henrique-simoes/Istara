@@ -135,7 +135,7 @@ async def _dispatch_ensemble(
         # that a full ensemble used distinct models instead of only distinct
         # endpoint labels. Missing identity remains visible as unproven; it is
         # never fabricated from the requested model or endpoint id.
-        served_model = getattr(sample, "model", None)
+        served_model = getattr(sample, "served_model", None)
         if served_model:
             route["model"] = str(served_model)
         route_evidence.append(route)
