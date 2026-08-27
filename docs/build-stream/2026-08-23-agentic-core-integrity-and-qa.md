@@ -7,9 +7,9 @@ cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
 stage: S2-execute/S3-review
 status: in-progress
-blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T22:56:00Z, ledger: L-437 }
-next_action: "Use the clean testing tip recorded by terminal evidence 458 for the owner-approved Docker-only Mac Studio matrix; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until receipts exist."
+blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; passive inventory found zero GGUF files"
+last: { agent: gpt-5-codex, at: 2026-08-27T22:53:00Z, ledger: L-438 }
+next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only; terminal preflight evidence 461 found zero GGUF files under the configured Mac Studio model root, so keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10461,3 +10461,17 @@ agent can resume from this exact clean tip and must run the live Docker-only
 three-model/Petals Research Spine matrix, including raw evidence-unit coding,
 formal Fleiss' kappa plus Krippendorff alpha, reconciliation, accepted
 promotion, human-approved Done/report, and two-call/long-horizon receipts.
+
+### L-438 | 2026-08-27T22:53:00Z | S3-review | gpt-5-codex | Docker-only model inventory confirms setup blocker
+
+The owner-authorized passive SSH preflight used Docker Desktop's explicit
+`/usr/local/bin/docker` CLI and found Docker Server `29.7.2`, the deploy env
+file, and the configured `$HOME/Istara-Projects/models` directory, but zero
+GGUF files under that model root or the bounded home-directory search. The
+unrelated `plex` workload remains the only Compose workload; the dirty
+`~/istara-testing` checkout was not touched. No host package/model install,
+model load, pull/reset, cleanup, or live request was performed. Compass Forge
+task evidence `461` is the sanitized receipt. The three-model wrapper must
+remain `not_run` until all provider-served model inputs are supplied inside the
+Docker-only process; no placeholder or deterministic fixture can satisfy this
+live acceptance gate.
