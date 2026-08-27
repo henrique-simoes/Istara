@@ -211,6 +211,13 @@ endpoint identity through the Pi-managed catalog. Local servers and donated
 compute remain transport/lifecycle infrastructure; they do not create a
 second model catalog or global provider selector.
 
+The Settings selector therefore presents two canonical execution modes: `Pi`
+and `Istara` (the legacy-compatible in-process loop). The Istara description
+must name the shared Pi Model Management catalog as its provider/model
+authority; references to a standalone “ComputeRegistry/Ollama plane” or
+“legacy plane” are transport-compatibility terminology, not a second
+management endpoint or an independent model-selection path.
+
 The former `POST /api/settings/model` and `POST /api/settings/provider` routes
 remain only as authenticated deprecated adapters for older clients. They
 always return `410 pi_model_management_required` with a successor link to

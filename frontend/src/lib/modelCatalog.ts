@@ -69,12 +69,12 @@ export const ENGINE_COMPARATIVE_SUMMARIES: EngineComparativeSummary[] = [
     engine: "legacy",
     title: "Istara",
     summary:
-      "In-process legacy executor over the ComputeRegistry/Ollama plane used across Istara. In the accepted benchmark bundle no judged axis reaches significance at 95% CI: tool calling 0.83 vs 0.81, output quality 6.64 vs 6.75, research-spine 0.81 vs 1.00, skills/A2A tied at 1.00.",
+      "In-process Istara executor over the shared Pi Model Management catalog; it preserves local and donated-compute loop semantics while provider/model selection and route identity stay governed in one plane. In the accepted benchmark bundle no judged axis reaches significance at 95% CI: tool calling 0.83 vs 0.81, output quality 6.64 vs 6.75, research-spine 0.81 vs 1.00, skills/A2A tied at 1.00.",
     provenance: [ENGINE_BENCHMARK_BUNDLE, "docs/features/content/chat/model-controls/architecture.md"],
     asOf: "2026-08-01",
     provisional: true,
-    shortDescription: "Istara's in-process executor over the existing ComputeRegistry and local/server model plane.",
-    bestFor: "Local models, donated compute, and workflows already attached to the legacy plane.",
+    shortDescription: "Istara's in-process executor with local and donated compute routed through the shared Pi Model Management catalog.",
+    bestFor: "Local models, donated compute, and workflows already attached to the governed catalog.",
     benchmarkRows: [
       { label: "Tool calling", value: "0.83" },
       { label: "Output quality", value: "6.64 / 10" },

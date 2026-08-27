@@ -35,6 +35,17 @@ describe("engine comparative summaries (W3 selector slice)", () => {
     }
   });
 
+  it("describes Istara as a loop mode over shared Pi Model Management authority", () => {
+    const istara = ENGINE_COMPARATIVE_SUMMARIES.find((entry) => entry.engine === "legacy");
+
+    expect(istara).toBeDefined();
+    expect(istara?.summary).toMatch(/shared Pi Model Management catalog/);
+    expect(istara?.shortDescription).toMatch(/shared Pi Model Management catalog/);
+    expect(istara?.bestFor).toMatch(/governed catalog/);
+    expect(istara?.summary).not.toMatch(/ComputeRegistry\/Ollama plane|legacy plane/i);
+    expect(istara?.shortDescription).not.toMatch(/ComputeRegistry|legacy plane/i);
+  });
+
   it("exposes one shared embedding identity that engine switching cannot change", () => {
     expect(SHARED_EMBEDDING_IDENTITY_LABEL).toMatch(/never changes the embedding space/);
   });
