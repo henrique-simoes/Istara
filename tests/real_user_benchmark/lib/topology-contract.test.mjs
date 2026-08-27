@@ -9,6 +9,7 @@ const packageJson = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8
 const runSource = readFileSync(join(rootDir, "run.mjs"), "utf8");
 const wrapperSource = readFileSync(join(rootDir, "../../scripts/runner/docker-run.sh"), "utf8");
 const insideSource = readFileSync(join(rootDir, "../../scripts/runner/inside.sh"), "utf8");
+const composeSource = readFileSync(join(rootDir, "../../docker-compose.vps.yml"), "utf8");
 
 test("three-model deep probe does not permit host-managed Istara execution", () => {
   const command = packageJson.scripts["probe:deep:three-model"];
@@ -24,6 +25,9 @@ test("three-model deep probe does not permit host-managed Istara execution", () 
   assert.doesNotMatch(command, /ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS=1/);
   assert.match(runSource, /function failClosedForHostManagedThreeModelRun\(\)/);
   assert.match(runSource, /if \(failClosedForHostManagedThreeModelRun\(\)\) return;/);
+  assert.match(runSource, /const dockerRunnerMode = boolEnv\("ISTARA_BENCHMARK_DOCKER_RUNNER", false\);/);
+  assert.match(runSource, /const hostManagedThreeModelRun = workload\.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes && !dockerRunnerMode;/);
+  assert.match(wrapperSource, /-e ISTARA_BENCHMARK_DOCKER_RUNNER=1/);
 });
 
 test("three-model deep probe records and cleans up Docker benchmark resources", () => {
@@ -31,7 +35,8 @@ test("three-model deep probe records and cleans up Docker benchmark resources", 
 
   assert.match(command, /ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN=1/);
   assert.match(command, /ISTARA_BENCHMARK_COLIMA_MEMORY=12/);
-  assert.match(runSource, /const hostManagedThreeModelRun = workload\.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes;/);
+  assert.match(runSource, /const hostManagedThreeModelRun = workload\.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes && !dockerRunnerMode;/);
+  assert.match(runSource, /const dockerOwnedThreeModelRun = workload\.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes && dockerRunnerMode;/);
   assert.match(runSource, /Docker-only benchmark policy forbids the host-managed three-model topology/);
   assert.doesNotMatch(runSource, /cleanupHostManagedServerSandboxConflict\("pre-health"\)/);
   assert.match(runSource, /function stopColimaIfRequested\(label\)/);
@@ -41,7 +46,10 @@ test("three-model deep probe records and cleans up Docker benchmark resources", 
 
 test("three-model deep probe counts every required donor as an observable relay and gates relay start on preflight", () => {
   assert.match(runSource, /if \(hostManagedThreeModelRun\) {\s*return enabled\.filter\(\(profile\) => profile\.required\)\.length;/s);
-  assert.match(runSource, /const preflight = preflightRelayLlmFromContainer\(donor\);/);
+  assert.match(runSource, /async function preflightRelayLlmFromContainer\(donorProfile = donorProfiles\[0\]\)/);
+  assert.match(runSource, /const preflight = await preflightRelayLlmFromContainer\(donor\);/);
+  assert.match(runSource, /const preflightDeadline = Date\.now\(\) \+ 180 \* 1000;/);
+  assert.match(runSource, /timeoutMs: 60 \* 1000/);
   assert.match(runSource, /preflightOk/);
   assert.match(runSource, /sandbox\.relay\.blocked_by_preflight/);
   assert.match(runSource, /technical_probe_results/);
@@ -56,6 +64,8 @@ test("three-model Research Spine proof waits for healthy donor relays and requir
   assert.match(runSource, /expectedDistinctSources: 0/);
   assert.match(runSource, /acceptanceProfile: mode === "plan-only" \? null : acceptanceProfile/);
   assert.match(runSource, /requireComputeDonation,/);
+  assert.match(runSource, /ISTARA_BENCHMARK_BACKEND_NETWORK/);
+  assert.match(wrapperSource, /ISTARA_BENCHMARK_BACKEND_NETWORK=\$BACKEND_NET/);
 });
 
 test("LM Studio donor preflight resolves served aliases without logging raw model identifiers", () => {
@@ -92,4 +102,19 @@ test("runner records profile scope and revokes generated connection credentials"
   assert.match(runSource, /function revokeGeneratedConnectionStrings\(/);
   assert.match(runSource, /connection-revocation-results\.json/);
   assert.match(runSource, /api\.delete\(`\/api\/connections\//);
+});
+
+test("Docker wrapper can select the containerized three-model probe and Compose donor", () => {
+  assert.match(wrapperSource, /ISTARA_BENCHMARK_PROBE_SCRIPT/);
+  assert.match(insideSource, /ISTARA_BENCHMARK_PROBE_SCRIPT/);
+  assert.match(wrapperSource, /--profile three-model/);
+  assert.match(composeSource, /donor-gemma:/);
+  assert.match(runSource, /provider: "llamacpp"/);
+  assert.match(runSource, /host: "http:\/\/donor-gemma:8080"/);
+});
+
+test("Docker-owned three-model runs leave explicit provenance in history and reports", () => {
+  assert.match(runSource, /docker_runner_mode: Boolean\(dockerRunnerMode\)/);
+  assert.match(runSource, /docker_owned_three_model_run: Boolean\(dockerOwnedThreeModelRun\)/);
+  assert.match(runSource, /Docker-owned three-model topology:/);
 });

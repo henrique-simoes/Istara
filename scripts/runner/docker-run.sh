@@ -64,6 +64,11 @@ SOURCE_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)" || {
 }
 COMPOSE_FILE="${ISTARA_BENCHMARK_COMPOSE_FILE:-$REPO_ROOT/docker-compose.vps.yml}"
 COMPOSE_ENV_FILE="${ISTARA_BENCHMARK_COMPOSE_ENV_FILE:-$REPO_ROOT/.env.deploy}"
+MODEL_ROOT_HOST="${ISTARA_BENCHMARK_MODEL_ROOT:-$HOME/Istara-Projects/models}"
+case "$MODEL_ROOT_HOST" in
+  /*) ;;
+  *) echo "ISTARA_BENCHMARK_MODEL_ROOT must be an absolute Docker-host path: $MODEL_ROOT_HOST" >&2; exit 2 ;;
+esac
 RESET_STACK="${ISTARA_BENCHMARK_RESET_STACK:-1}"
 RUN_ORDER="$(IFS=,; echo "${ENGINES[*]}")"
 # Non-plan benchmark runs must require donated compute unless the operator explicitly
@@ -94,6 +99,42 @@ if [[ -z "${ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION:-}" ]]; then
 fi
 ISTARA_BENCHMARK_START_CLIENT_SANDBOXES="${ISTARA_BENCHMARK_START_CLIENT_SANDBOXES:-$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION}"
 ISTARA_BENCHMARK_DOCKER_SOCKET="${ISTARA_BENCHMARK_DOCKER_SOCKET:-/var/run/docker.sock}"
+if [[ -n "${ISTARA_BENCHMARK_PROBE_SCRIPT:-}" ]]; then
+  PROBE_SCRIPT="$ISTARA_BENCHMARK_PROBE_SCRIPT"
+elif [[ -n "${ISTARA_BENCHMARK_DONOR_TOPOLOGY:-}" ]]; then
+  PROBE_SCRIPT="probe:deep:three-model"
+else
+  PROBE_SCRIPT="probe:${ISTARA_BENCHMARK_ENGINE}"
+fi
+case "$PROBE_SCRIPT" in
+  probe|probe:deep|probe:deep:three-model|probe:legacy|probe:pi) ;;
+  *) echo "ISTARA_BENCHMARK_PROBE_SCRIPT must be probe, probe:deep, probe:deep:three-model, probe:legacy, or probe:pi" >&2; exit 2 ;;
+esac
+THREE_MODEL_RUN=0
+case "$PROBE_SCRIPT" in
+  probe:deep:three-model) THREE_MODEL_RUN=1 ;;
+esac
+case "${ISTARA_BENCHMARK_DONOR_TOPOLOGY:-}" in
+  3-model|3model|three-model|macstudio-colima|macstudio-colima-qwen-gemma|macstudio+colima|local-three-model) THREE_MODEL_RUN=1 ;;
+esac
+COMPOSE_PROFILE_ARGS=()
+COMPOSE_DONOR_SERVICES=()
+if [ "$THREE_MODEL_RUN" -eq 1 ]; then
+  : "${ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_FILE:?set ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_FILE for the Compose-managed Gemma donor}"
+  case "$ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_FILE" in
+    "$MODEL_ROOT_HOST"/*) ;;
+    *) echo "ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_FILE must be under ISTARA_BENCHMARK_MODEL_ROOT" >&2; exit 2 ;;
+  esac
+  [ -f "$ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_FILE" ] || {
+    echo "Compose-managed Gemma model file is missing: $ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_FILE" >&2
+    exit 2
+  }
+  ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_RELATIVE="${ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_FILE#"$MODEL_ROOT_HOST/"}"
+  export ISTARA_BENCHMARK_MODEL_ROOT="$MODEL_ROOT_HOST"
+  export ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_RELATIVE
+  COMPOSE_PROFILE_ARGS+=(--profile three-model)
+  COMPOSE_DONOR_SERVICES+=(donor-gemma)
+fi
 
 case "$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION" in
   0|1|true|false|yes|no) ;;
@@ -191,10 +232,11 @@ reset_stack_for_engine() {
   [ -f "$COMPOSE_ENV_FILE" ] || { echo "compose env file missing: $COMPOSE_ENV_FILE" >&2; exit 1; }
   echo "[runner] recreating fresh database stack for engine=$engine"
   docker compose --project-name "$PROJECT" \
+    "${COMPOSE_PROFILE_ARGS[@]}" \
     --env-file "$COMPOSE_ENV_FILE" \
     -f "$COMPOSE_FILE" \
     up -d --force-recreate --wait \
-    postgres provider-stub backend frontend caddy
+    postgres provider-stub backend frontend caddy "${COMPOSE_DONOR_SERVICES[@]}"
 }
 
 docker volume create istara-pw-browsers >/dev/null 2>&1 || true
@@ -230,7 +272,11 @@ for engine in "${ENGINES[@]}"; do
     -e "ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE"
     -e "ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=$ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION"
     -e "ISTARA_BENCHMARK_START_CLIENT_SANDBOXES=$ISTARA_BENCHMARK_START_CLIENT_SANDBOXES"
+    -e "ISTARA_BENCHMARK_PROBE_SCRIPT=$PROBE_SCRIPT"
     -e "ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=$ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT"
+    -e ISTARA_BENCHMARK_DOCKER_RUNNER=1
+    -e "ISTARA_BENCHMARK_MODEL_ROOT=$MODEL_ROOT_HOST"
+    -e "ISTARA_BENCHMARK_BACKEND_NETWORK=$BACKEND_NET"
     -e ISTARA_BENCHMARK_START_SANDBOX=0
     -e ISTARA_BENCHMARK_SKIP_SANDBOX=1
     -e ISTARA_BENCHMARK_TEAM_MODE=true
@@ -254,6 +300,9 @@ for engine in "${ENGINES[@]}"; do
     --env-file "$RUNNER_ENV_FILE"
     -e HOME=/tmp
   )
+  if [ -d "$MODEL_ROOT_HOST" ]; then
+    runner_docker_args+=( --mount "type=bind,src=$MODEL_ROOT_HOST,dst=$MODEL_ROOT_HOST,readonly" )
+  fi
   if [[ ${#NESTED_DOCKER_MOUNTS[@]} -gt 0 ]]; then
     runner_docker_args+=( "${NESTED_DOCKER_MOUNTS[@]}" )
   fi

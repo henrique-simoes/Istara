@@ -50,7 +50,9 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "../..");
-const benchmarkModelRoot = resolve(homedir(), "Istara-Projects", "models");
+const benchmarkModelRoot = resolve(
+  process.env.ISTARA_BENCHMARK_MODEL_ROOT || join(homedir(), "Istara-Projects", "models"),
+);
 const systemPromptPath = join(__dirname, "system-prompt.md");
 const benchmarkRegistryPath = join(__dirname, "benchmark-registry.json");
 const systemPromptContent = readFileSync(systemPromptPath, "utf8");
@@ -538,6 +540,7 @@ const benchmarkEngines = resolveBenchmarkEngines(
 const benchmarkAgentEngine = benchmarkEngines.length === 1 ? benchmarkEngines[0] : "";
 const donorTopology = String(arg("donor-topology", process.env.ISTARA_BENCHMARK_DONOR_TOPOLOGY || "") || "").trim().toLowerCase();
 const useLocalThreeModelDonorTopology = THREE_MODEL_DONOR_TOPOLOGY_ALIASES.has(donorTopology);
+const dockerRunnerMode = boolEnv("ISTARA_BENCHMARK_DOCKER_RUNNER", false);
 const resultsRoot = resolve(arg("results-dir", process.env.ISTARA_BENCHMARK_RESULTS_DIR || join(__dirname, ".results")));
 const externalConnectionStringMode = boolEnv("ISTARA_BENCHMARK_EXTERNAL_CONNECTION_STRINGS", false)
   || boolEnv("ISTARA_BENCHMARK_INTERACTIVE_CONNECTION_STRINGS", false)
@@ -645,6 +648,14 @@ function profileValue(profile, keys) {
 function localThreeModelDonorPreset(index) {
   if (!useLocalThreeModelDonorTopology) return null;
   if (index === 1) {
+    if (dockerRunnerMode) {
+      return {
+        id: "donor-1-gemma4",
+        provider: "llamacpp",
+        host: "http://donor-gemma:8080",
+        model: process.env.ISTARA_BENCHMARK_DONOR_GEMMA_MODEL || PRIMARY_TEST_MODEL,
+      };
+    }
     return {
       id: "donor-1-gemma4",
       provider: "lmstudio",
@@ -900,7 +911,8 @@ const keepClientContainers = ["1", "true", "yes"].includes(
 const keepDonorModelContainers = ["1", "true", "yes"].includes(
   String(process.env.ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS || "").toLowerCase(),
 );
-const hostManagedThreeModelRun = workload.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes;
+const hostManagedThreeModelRun = workload.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes && !dockerRunnerMode;
+const dockerOwnedThreeModelRun = workload.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes && dockerRunnerMode;
 const stopColimaAfterRun = boolEnv("ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN", hostManagedThreeModelRun);
 let colimaAutostartAttempted = false;
 let colimaStartedByBenchmark = false;
@@ -990,6 +1002,8 @@ logger.action("llm.config.sources", {
   relay_api_key_source: relayLlmApiKeySource,
   start_client_sandboxes: startClientSandboxes,
   host_managed_three_model_run: hostManagedThreeModelRun,
+  docker_runner_mode: dockerRunnerMode,
+  docker_owned_three_model_run: dockerOwnedThreeModelRun,
   stop_colima_after_run: stopColimaAfterRun,
   external_connection_string_mode: externalConnectionStringMode,
   researcher_count: runtimeResearcherCount,
@@ -1401,6 +1415,11 @@ function captureColimaStorageSnapshot(label, { recordIssue = false } = {}) {
 
 function dockerHostAccessArgs() {
   return process.platform === "linux" ? ["--add-host", "host.docker.internal:host-gateway"] : [];
+}
+
+function dockerBenchmarkNetworkArgs() {
+  const network = String(process.env.ISTARA_BENCHMARK_BACKEND_NETWORK || "").trim();
+  return network ? ["--network", network] : [];
 }
 
 function containerReachableUrl(url) {
@@ -2019,6 +2038,7 @@ function startRelayClientSandbox(connectionString, donorProfile = donorProfiles[
   }
   if (!ensureRelayClientImage()) return;
   const containerName = `istara-rub-relay-${runId}-${donor.id}`.replace(/[^a-z0-9_.-]+/gi, "-").slice(0, 120);
+  const relayNetwork = String(process.env.ISTARA_BENCHMARK_BACKEND_NETWORK || "").trim();
   rememberConnectionStringSensitiveValues(connectionString);
   const relayConnection = rewriteRelayConnectionStringForContainer(connectionString);
   rememberConnectionStringSensitiveValues(relayConnection.connectionString);
@@ -2035,6 +2055,7 @@ function startRelayClientSandbox(connectionString, donorProfile = donorProfiles[
     connection_string_has_embedded_jwt: Boolean(embeddedJwt),
     connection_string_rewritten_for_container: Boolean(relayConnection.rewritten),
     connection_string_needs_container_reachable_url: Boolean(relayConnection.needsContainerReachableUrl),
+    docker_network: relayNetwork || null,
     rewrite_evidence: relayConnection.rewritten
       ? {
           before: relayConnection.before,
@@ -2064,6 +2085,7 @@ function startRelayClientSandbox(connectionString, donorProfile = donorProfiles[
     "--name",
     containerName,
     ...dockerHostAccessArgs(),
+    ...dockerBenchmarkNetworkArgs(),
     "-e",
     "ISTARA_CONNECTION_STRING",
     "-e",
@@ -2206,6 +2228,7 @@ main().catch((error) => {
     "run",
     "--rm",
     ...dockerHostAccessArgs(),
+    ...dockerBenchmarkNetworkArgs(),
     "-e",
     "ISTARA_CONNECTION_STRING",
     "-e",
@@ -2337,7 +2360,7 @@ function stopColimaIfRequested(label) {
   captureColimaStorageSnapshot(`after-colima-stop-${label}`, { recordIssue: false });
 }
 
-function preflightRelayLlmFromContainer(donorProfile = donorProfiles[0]) {
+async function preflightRelayLlmFromContainer(donorProfile = donorProfiles[0]) {
   const donor = donorProfile || donorProfiles[0];
   if (!requireComputeDonation || !startClientSandboxes || mode === "plan-only") {
     logger.action("compute.preflight.skip", {
@@ -2567,10 +2590,11 @@ main().catch((error) => {
   process.exit(1);
 });
 `;
-  const result = runCommand(`docker-run-relay-llm-preflight-${donor.id}`, "docker", [
+  const preflightArgs = [
     "run",
     "--rm",
     ...dockerHostAccessArgs(),
+    ...dockerBenchmarkNetworkArgs(),
     "-e",
     "ISTARA_RELAY_LLM_PROVIDER",
     "-e",
@@ -2583,17 +2607,29 @@ main().catch((error) => {
     "node",
     "-e",
     script,
-  ], {
-    env: {
-      ISTARA_RELAY_LLM_PROVIDER: donor.provider,
-      ISTARA_RELAY_LLM_HOST: donor.host,
-      ISTARA_RELAY_LLM_API_KEY: donor.apiKey,
-      ISTARA_RELAY_LLM_MODEL: donor.model,
-    },
-    redactStdout: true,
-    redactStderr: true,
-    timeoutMs: 2 * 60 * 1000,
-  });
+  ];
+  const preflightEnv = {
+    ISTARA_RELAY_LLM_PROVIDER: donor.provider,
+    ISTARA_RELAY_LLM_HOST: donor.host,
+    ISTARA_RELAY_LLM_API_KEY: donor.apiKey,
+    ISTARA_RELAY_LLM_MODEL: donor.model,
+  };
+  // A Compose-owned llama.cpp donor can answer /v1/models before its first
+  // generation is ready. Give a cold model a bounded readiness window, but
+  // never convert a persistent route/model failure into a pass.
+  const preflightDeadline = Date.now() + 180 * 1000;
+  let result;
+  do {
+    result = runCommand(`docker-run-relay-llm-preflight-${donor.id}`, "docker", preflightArgs, {
+      env: preflightEnv,
+      redactStdout: true,
+      redactStderr: true,
+      timeoutMs: 60 * 1000,
+    });
+    if (result.status === 0) break;
+    if (Date.now() >= preflightDeadline) break;
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 3000));
+  } while (Date.now() < preflightDeadline);
   let parsed = null;
   const lines = `${result.stdout || ""}\n${result.stderr || ""}`.trim().split(/\r?\n/).filter(Boolean);
   for (const line of lines.slice().reverse()) {
@@ -4684,7 +4720,7 @@ async function main() {
     for (let index = 0; workload.petals && index < requiredDonors.length; index += 1) {
       const donor = requiredDonors[index];
       const donation = connectionStrings.computeDonations.find((item) => item.donor_id === donor.id) || connectionStrings.computeDonations[index];
-      const preflight = preflightRelayLlmFromContainer(donor);
+      const preflight = await preflightRelayLlmFromContainer(donor);
       const preflightOk = preflight?.ok === true || (preflight?.skipped === true && !requireComputeDonation);
       if (donation?.connection_string && donor.enabled && preflightOk) {
         activeDonorProfiles.push(donor);
@@ -4795,7 +4831,7 @@ async function main() {
     }
 
     if (workload.provider) {
-      const expectedResearchSpineDonorRoutes = hostManagedThreeModelRun
+      const expectedResearchSpineDonorRoutes = (hostManagedThreeModelRun || dockerOwnedThreeModelRun)
         ? Math.min(3, donorProfiles.filter((profile) => profile.required && profile.enabled).length)
         : 0;
       if (codingValidationEnabled && expectedResearchSpineDonorRoutes >= 2) {
@@ -4973,6 +5009,8 @@ async function main() {
     rag_traceability_evidence_verified: Boolean(featureResults.ragTraceabilityEvidence),
     autoresearch_experiment_started: Boolean(startAutoresearchExperiment),
     host_managed_three_model_run: Boolean(hostManagedThreeModelRun),
+    docker_runner_mode: Boolean(dockerRunnerMode),
+    docker_owned_three_model_run: Boolean(dockerOwnedThreeModelRun),
     stop_colima_after_run: Boolean(stopColimaAfterRun),
     colima_autostart_attempted: Boolean(colimaAutostartAttempted),
     colima_started_by_benchmark: Boolean(colimaStartedByBenchmark),
@@ -5016,6 +5054,8 @@ async function main() {
   logger.appendReport(`Human-approved completed tasks: ${completedTasks}\n\n`);
   logger.appendReport(`Compute donation verified: ${featureResults.computeDonation ? "yes" : "no"}\n\n`);
   logger.appendReport(`Host-managed three-model topology: ${hostManagedThreeModelRun ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Docker runner mode: ${dockerRunnerMode ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Docker-owned three-model topology: ${dockerOwnedThreeModelRun ? "yes" : "no"}\n\n`);
   logger.appendReport(`Stop Colima after benchmark resources are cleaned up: ${stopColimaAfterRun ? "yes" : "no"}\n\n`);
   logger.appendReport(`Compute donor containers: ${sandbox.relayStartedCount}/${donorProfiles.filter((profile) => profile.required).length} started\n\n`);
   logger.appendReport(`Donor model server containers: ${sandbox.modelServerStartedCount}/${sandbox.modelServerExpectedCount} started\n\n`);

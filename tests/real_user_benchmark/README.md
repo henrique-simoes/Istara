@@ -99,7 +99,7 @@ Researcher approval is intentionally strict. A task output that says it is block
 
 Test data cleanup is explicit, not automatic. The benchmark creates a new `[RU-BENCH] ... <run-id>` project for each run. Use `scripts/reset_test_environment.py` before a clean video or comparison run when you want zero existing projects, seeded `admin` / `istara123`, and on-demand `researcher_N` accounts. Normal probe/full runs do not delete old projects.
 
-Server and client sandboxes are separate inside the Docker workflow. `--start-sandbox` starts Istara in a container; donor/researcher containers are controlled by `ISTARA_BENCHMARK_START_CLIENT_SANDBOXES` and default on whenever donated compute or external connection strings are required. Do not run the orchestrator on the Mac Studio host or point it at a host-managed Istara instance. The legacy `probe:deep:three-model` command intentionally exits with a Docker-only policy blocker; use `scripts/runner/docker-run.sh` for the supported containerized engine comparison, and treat three-donor Research Spine acceptance as open until a containerized donor topology is provisioned.
+Server and client sandboxes are separate inside the Docker workflow. `--start-sandbox` starts Istara in a container; donor/researcher containers are controlled by `ISTARA_BENCHMARK_START_CLIENT_SANDBOXES` and default on whenever donated compute or external connection strings are required. Do not run the orchestrator on the Mac Studio host or point it at a host-managed Istara instance. The direct `probe:deep:three-model` command intentionally exits with a Docker-only policy blocker; the supported Docker wrapper can run that probe when explicitly selected, owns the Compose-managed Gemma donor, mounts the read-only model root, and starts the two disposable llama.cpp donor servers through the nested Docker socket.
 
 The supported wrapper builds a disposable `scripts/runner/Dockerfile` image (Node 20 plus the
 Linux Docker CLI) and mounts the Docker API socket only into that short-lived runner when
@@ -182,13 +182,26 @@ ISTARA_BENCHMARK_DONOR_2_LLM_MODEL=qwen3.5-4b-q4_k_m \
 npm --prefix tests/real_user_benchmark run probe
 ```
 
-The former host-managed example is intentionally unavailable. The supported target is a fully containerized topology: Docker Compose runs Istara and the admin flow, while disposable Docker containers run each simulated researcher and each Qwen3.5 4B Q4 or Gemma 4 E2B Q4 llama.cpp endpoint. Until that topology is wired into the remote runner, the command below is expected to fail closed with a Docker-only policy blocker rather than touch the Mac Studio host:
+The former host-managed example is intentionally unavailable. The supported target is a fully containerized topology: Docker Compose runs Istara, the admin flow, and donor 1; disposable Docker containers run each simulated researcher plus donor 2 (Qwen3.5 4B Q4) and donor 3 (Gemma 4 E2B Q4) through llama.cpp. The wrapper requires the Gemma model file to already exist under the configured read-only model root; it never downloads weights or installs anything on the Mac Studio host.
 
 ```bash
 npm --prefix tests/real_user_benchmark run probe:deep:three-model
 ```
 
-The `probe:deep:three-model` script still describes the donor identities for fixture compatibility, but it is a refusal/diagnostic path until the Docker-only runner owns all services. A future containerized implementation must provide:
+The command above remains a direct-host refusal/diagnostic path. Run the actual three-model probe only through the Docker wrapper:
+
+```bash
+ISTARA_BENCHMARK_PROBE_SCRIPT=probe:deep:three-model \
+ISTARA_BENCHMARK_DONOR_TOPOLOGY=macstudio-colima-qwen-gemma \
+ISTARA_BENCHMARK_MODEL_ROOT=$HOME/Istara-Projects/models \
+ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_FILE=$HOME/Istara-Projects/models/<pre-provisioned-gemma-e4b-q4-file>.gguf \
+ISTARA_BENCHMARK_QWEN_GGUF=$HOME/Istara-Projects/models/qwen3.5-4b-q4_k_m/Qwen3.5-4B-Q4_K_M.gguf \
+ISTARA_BENCHMARK_GEMMA_E2B_GGUF=$HOME/Istara-Projects/models/gemma-4-e2b-it-q4_k_m/Gemma-4-E2B-it-Q4_K_M.gguf \
+ISTARA_ADMIN_PASSWORD="$ISTARA_ADMIN_PASSWORD" \
+scripts/runner/docker-run.sh
+```
+
+The wrapper enables the `three-model` Compose profile, passes `ISTARA_BENCHMARK_DOCKER_RUNNER=1` into the disposable runner, attaches preflight/relay clients to the project backend network, retries container-side donor preflight during a bounded cold model load, and counts all three served donor routes before Research Spine coding. The exact Gemma filename is installation-specific; a missing or out-of-root file is a setup blocker. The Docker-only implementation provides:
 
 - donor 1: a Compose-managed OpenAI-compatible Gemma donor
 - donor 2: `istara-donor-qwen35-4b` via llama.cpp on port `18112`, context length `12288`

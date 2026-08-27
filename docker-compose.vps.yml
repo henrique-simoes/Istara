@@ -154,6 +154,34 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Enabled only by the Docker-only three-model Research Spine probe. The
+  # runner validates that the configured GGUF exists under the read-only model
+  # root before enabling this profile; no model download is performed here.
+  donor-gemma:
+    profiles: ["three-model"]
+    image: ${ISTARA_BENCHMARK_DONOR_GEMMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server}
+    command:
+      - "-m"
+      - "/models/${ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_RELATIVE:-gemma-4-E2B-it-Q4_K_M.gguf}"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8080"
+      - "--alias"
+      - "${ISTARA_BENCHMARK_DONOR_GEMMA_MODEL:-google/gemma-4-e4b}"
+      - "-c"
+      - "12288"
+      - "--reasoning"
+      - "off"
+    expose: ["8080"]
+    networks: [backend-net]
+    volumes:
+      - ${ISTARA_BENCHMARK_MODEL_ROOT:-/tmp/istara-benchmark-models}:/models:ro
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: ["/tmp:noexec,nosuid,size=256M"]
+    restart: "no"
+
   provider-stub:
     build:
       context: .

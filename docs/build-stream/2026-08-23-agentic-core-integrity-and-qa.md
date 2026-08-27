@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T01:13:20Z, ledger: L-220 }
-next_action: "Keep the Docker-only Mac Studio acceptance gate open; obtain owner-authorized provider credit and three Compose-owned donor/model routes, then verify the latest pushed testing SHA and run the three-model Research Spine retake from a clean checkout at that exact SHA."
+last: { agent: gpt-5-codex, at: 2026-08-27T01:41:20Z, ledger: L-223 }
+next_action: "Commit the ten intended Docker-only three-model harness files, push testing, verify exact local/origin parity and clean status, then leave live Mac Studio retake as an owner-gated acceptance step."
 ```
 
 ## Plan overview / roadmap
@@ -4818,3 +4818,62 @@ accordingly so a later documentation checkpoint cannot make the handoff stale ag
 Evidence: the parent checkpoint was `ca0127c030fe3906c38af2ed9906930a545daaa2`; local and
 `origin/testing` were equal and clean before this documentation-only edit; no provider request,
 model load, host package operation, or Mac Studio mutation occurred.
+
+### L-222 | 2026-08-27T01:39:38Z | S2-execute/S3-review/S4-remediate | gpt-5-codex | Docker-owned three-model harness closure checkpoint
+
+Did: Repaired the Docker-only three-model path so the direct host refusal remains fail-closed
+while `scripts/runner/docker-run.sh` explicitly marks a nested Docker-owned runner, selects
+`probe:deep:three-model`, enables the Compose `three-model` profile, and passes the read-only
+model root and project backend network into the runner. Compose now owns donor 1 at
+`donor-gemma:8080`; donors 2 and 3 remain disposable llama.cpp containers started through the
+nested Docker socket. Relay, preflight, and invite containers join the backend network, and
+history/report artifacts persist Docker topology provenance. The container-side donor preflight
+now retries within a bounded three-minute cold-load window so model initialization is not a
+one-shot false negative, while persistent route/model failures still block acceptance. Updated
+the living Ensemble Health and benchmark documentation and regenerated feature-site artifacts.
+
+Result: The prior local topology tests first went red for the missing Docker marker, missing
+backend-network wiring, missing probe/profile/Compose donor selection, and missing history/report
+provenance; they now pass (`10/10`). The focused Research Spine/Pi authority suite passes
+`84/84`; the full real-user benchmark `check` passes `72/72`; syntax and both base and
+`three-model` Compose renders pass; plan-only execution returns `PLAN_RC=0`; and an explicit
+missing Gemma-file invocation exits `RC=2` before workload startup. External F-R9-55 records the
+topology defect and F-R9-56 records the cold-load readiness defect. No provider request, model
+load, host package operation, or Mac Studio mutation occurred.
+
+Verified: `git diff --check` passes. Compass Forge `gate before --task CF-15 --summary` reports
+`new_failures=0`, `new_issue_count=0`, `actionable_failures=[]`, and the same inherited gate
+status (`31` failures, `209` warnings, `3` security findings); no new drift is attributable
+to this checkpoint. The live acceptance gate remains open: the last Mac Studio run stopped at
+provider HTTP `402 Insufficient Balance`, and no fresh three Compose-owned routes or authorized
+provider credit are available for the required live retake.
+
+Next: run the final focused verification and Compass Forge after-gate, attach command/gate
+evidence, commit only the ten intended repository files, push `testing`, verify local/remote
+tree parity and clean status, then leave the Mac Studio retake as a fresh-checkout operator gate
+requiring exact SHA resolution, three real served model identities, Fleiss/Krippendorff numbers,
+grounding, reconciliation, Done/report promotion, two-call/long-horizon, Petals interoperation,
+and teardown evidence.
+
+### L-223 | 2026-08-27T01:41:20Z | S2-execute/S3-review/S4-remediate | gpt-5-codex | after-gate and evidence attachment
+
+Did: Completed the final focused verification after the bounded preflight retry and living-doc
+update. Compass Forge command evidence `62` records the 84-test Research Spine/Pi authority
+suite, 72-test real-user benchmark check, 10 topology contracts, syntax checks, Compose renders,
+feature-doc generation/check, plan-only execution, and missing-Gemma-file fail-closed control.
+Compass Forge gate evidence `63` records the after-gate result.
+
+Result: `gate after --task CF-15 --summary` remains `status=fail` only because of inherited
+repository debt (`31` failures, `209` warnings, `3` security findings); it reports
+`new_failures=0`, `new_issue_count=0`, `actionable_failures=[]`, and no new contract,
+generated, GraphQL, or architecture drift. The branch changes are ready for transport; live
+provider/ensemble acceptance remains intentionally open.
+
+Verified: no provider request, model load, host package operation, or Mac Studio mutation was
+performed. The Docker-only wrapper exits `RC=2` before workload startup when the Compose Gemma
+GGUF is missing, and plan-only mode exits `PLAN_RC=0` without contacting services.
+
+Next: commit only the ten intended repository files, push `testing`, fetch and verify exact
+`testing`/`origin/testing` tree parity with a clean worktree, then retain the recovery worktree
+and leave the fresh-checkout Mac Studio retake gated on owner-authorized provider credit and
+three provisioned Compose-owned model routes.

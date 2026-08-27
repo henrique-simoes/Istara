@@ -50,7 +50,8 @@ npx playwright install --with-deps chromium
 cd /work
 
 echo "[runner] PROBE $ISTARA_BENCHMARK_ENGINE start $(date -u +%H:%M:%S)"
-npm --prefix tests/real_user_benchmark run "probe:${ISTARA_BENCHMARK_ENGINE}" -- \
+PROBE_SCRIPT="${ISTARA_BENCHMARK_PROBE_SCRIPT:-probe:${ISTARA_BENCHMARK_ENGINE}}"
+npm --prefix tests/real_user_benchmark run "$PROBE_SCRIPT" -- \
   --coding-limit "$ISTARA_BENCHMARK_CODING_LIMIT" \
   --max-uploads "$ISTARA_BENCHMARK_MAX_UPLOADS"
 echo "[runner] ALL DONE $(date -u +%H:%M:%S)"
