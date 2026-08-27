@@ -503,20 +503,53 @@ async function validateCodingRun({
   }
 }
 
-async function recoverLatestCodingRun({ api, projectId, logger, timeoutMs = 180000 }) {
+const RECOVERY_CLOCK_SKEW_MS = 60_000;
+
+async function recoverLatestCodingRun({
+  api,
+  projectId,
+  logger,
+  notBefore = null,
+  timeoutMs = 180000,
+}) {
+  const notBeforeMs = notBefore ? Date.parse(notBefore) : null;
+  if (notBefore && !Number.isFinite(notBeforeMs)) {
+    logger.action("research_spine.coding_run_recovery.invalid_correlation", {
+      ok: false,
+      not_before: notBefore,
+    });
+    return null;
+  }
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
       const runs = await api.get(`/api/research-validity/${projectId}/coding-runs?limit=5`, { timeoutMs: 60000 });
       const rows = Array.isArray(runs) ? runs : [];
-      const completed = rows.find((run) => String(run?.status || "").toLowerCase() === "completed");
-      const candidate = completed || rows[0] || null;
+      const completed = rows.filter((run) => String(run?.status || "").toLowerCase() === "completed");
+      const candidate = completed.find((run) => {
+        if (!Number.isFinite(notBeforeMs)) return true;
+        const runTimestamp = Date.parse(run?.started_at || run?.created_at || "");
+        return Number.isFinite(runTimestamp)
+          && runTimestamp >= notBeforeMs - RECOVERY_CLOCK_SKEW_MS;
+      }) || null;
       logger.action("research_spine.coding_run_recovery.poll", {
         ok: Boolean(candidate),
         status: candidate?.status || "",
         run_id: candidate?.id || "",
       });
-      if (completed) return completed;
+      if (candidate) return candidate;
+      if (notBefore && completed.length > 0 && !rows.some((run) => (
+        ["draft", "queued", "running", "in_progress", "pending"].includes(
+          String(run?.status || "").toLowerCase(),
+        )
+      ))) {
+        logger.action("research_spine.coding_run_recovery.stale", {
+          ok: false,
+          not_before: notBefore,
+          completed_run_ids: completed.map((run) => run?.id || "").filter(Boolean),
+        });
+        return null;
+      }
     } catch (error) {
       logger.action("research_spine.coding_run_recovery.poll_error", { error: error.message });
     }
@@ -574,6 +607,7 @@ export async function exerciseResearchSpineValidation({
 
   if (codingValidationEnabled && codingValidationLimit > 0) {
     const approvedTask = taskWorkflow?.approvedTasks?.[0] || null;
+    const codingRequestStartedAt = new Date().toISOString();
     let selectedEvidenceUnits = [];
     try {
       if (!evidence.contract_loaded) {
@@ -683,7 +717,12 @@ export async function exerciseResearchSpineValidation({
       evidence.errors.push({ step: "coding_run", error: error.message });
       const canRecoverLongRequest = /fetch failed|headers? timeout|terminated/i.test(error.message);
       const recoveredRun = canRecoverLongRequest
-        ? await recoverLatestCodingRun({ api, projectId, logger })
+        ? await recoverLatestCodingRun({
+          api,
+          projectId,
+          logger,
+          notBefore: codingRequestStartedAt,
+        })
         : null;
       if (recoveredRun) {
         evidence.coding_run = recoveredRun;

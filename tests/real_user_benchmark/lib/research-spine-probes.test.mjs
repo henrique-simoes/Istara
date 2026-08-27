@@ -1351,6 +1351,7 @@ test("long coding request transport failure can recover completed server-side ru
   const completedRun = {
     id: "run-1",
     status: "completed",
+    started_at: new Date().toISOString(),
     promotion_status: "accepted",
     code_application_count: 12,
     reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
@@ -1400,6 +1401,60 @@ test("long coding request transport failure can recover completed server-side ru
   assert.deepEqual(blockers, []);
   assert.equal(logger.payload.coding_run.id, "run-1");
   assert.ok(logger.actions.find((entry) => entry.step === "research_spine.coding_run_recovered"));
+});
+
+test("timed-out coding validation rejects a stale completed run", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const staleRun = {
+    id: "run-stale",
+    status: "completed",
+    started_at: new Date(Date.now() - 3600000).toISOString(),
+    promotion_status: "accepted",
+    code_application_count: 12,
+    reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+    distinct_model_count: 3,
+    rater_count: 3,
+    kappa: 0.81,
+    alpha: 0.79,
+    route_evidence: makeServedModelRoutes(),
+  };
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [staleRun];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      throw new Error("fetch failed");
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+    expectedDistinctDonorRoutes: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /did not complete/i);
+  assert.ok(logger.actions.find((entry) => entry.step === "research_spine.coding_run_recovery.stale"));
+  assert.equal(logger.actions.some((entry) => entry.step === "research_spine.coding_run_recovered"), false);
 });
 
 test("a blocked current coding run never counts as Research Spine validation", async () => {

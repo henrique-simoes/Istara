@@ -8317,3 +8317,28 @@ needs a separately governed, opt-in synthetic reconciliation phase and stronger
 traceability assertions before it can demonstrate the complete accepted path.
 No provider request, model load, host installation, image pull, or benchmark
 workload was started.
+
+### L-352 | 2026-08-27T13:50:00Z | S2-execute/S3-review | gpt-5-codex | stale coding-run recovery fail-closed fix
+
+The static audit found that a timed-out coding POST could recover the first
+completed project run returned by the API, even when that run predated the
+current request. A prior accepted run could therefore be mistaken for the
+current three-model Research Spine proof. The recovery path now records the
+coding request start time, accepts only a completed run whose server
+`started_at`/`created_at` is within a one-minute clock-skew window, and rejects
+stale completed rows when no active candidate exists. Invalid correlation
+timestamps also fail closed. A regression proves a stale accepted run cannot
+be recovered; the existing server-side completion recovery remains covered.
+
+Verification: the focused Research Spine probe suite passes (`30` tests), the
+full deterministic benchmark suite passes (`90` tests), feature-doc generation
+and checks pass (`224` artifacts; `86/86` features), and `git diff --check`
+passes. Compass Forge impact/why was run for both probe files; the before gate
+is record `281`. The after gate and task evidence remain to be attached before
+transport.
+
+This closes a deterministic stale-run false-positive risk only. The separate
+F-R9-114/L-350 reconciliation gap remains open: the live harness still cannot
+reach accepted coding without an explicitly governed per-application review
+phase. No provider request, model load, host installation, Docker image pull,
+or benchmark workload was started.
