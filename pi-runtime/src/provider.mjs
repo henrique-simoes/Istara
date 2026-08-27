@@ -166,12 +166,27 @@ function reportedModel(payload) {
 }
 
 /** Wrap a provider Response body while preserving every byte for pi-ai. */
-function captureProviderFetch(fetchImpl, observation) {
+export function captureProviderFetch(fetchImpl, observation) {
   return async (input, init) => {
     const response = await fetchImpl(input, init);
     if (!response?.body || typeof response.body.pipeThrough !== "function") return response;
     const decoder = new TextDecoder();
     let pending = "";
+    let jsonPending = "";
+    const contentType = String(response.headers?.get?.("content-type") || "").toLowerCase();
+    const isJsonBody = contentType.includes("application/json") || contentType.includes("+json");
+    const parseJsonBody = (raw) => {
+      try {
+        const payload = JSON.parse(raw);
+        if (Array.isArray(payload)) {
+          for (const item of payload) observation.add(reportedModel(item));
+        } else {
+          observation.add(reportedModel(payload));
+        }
+      } catch {
+        // The adapter/parser remains authoritative; observation is best effort.
+      }
+    };
     const parseLine = (line) => {
       const trimmed = line.trim();
       if (!trimmed.startsWith("data:")) return;
@@ -186,7 +201,16 @@ function captureProviderFetch(fetchImpl, observation) {
     };
     const body = response.body.pipeThrough(new TransformStream({
       transform(chunk, controller) {
-        pending += decoder.decode(chunk, { stream: true });
+        const decoded = decoder.decode(chunk, { stream: true });
+        if (isJsonBody) {
+          // Non-SSE adapters may split or pretty-print one JSON document across
+          // arbitrary chunks/newlines. Buffer only the observer copy while
+          // forwarding each original byte chunk unchanged to pi-ai.
+          jsonPending += decoded;
+          controller.enqueue(chunk);
+          return;
+        }
+        pending += decoded;
         let newline;
         while ((newline = pending.indexOf("\n")) !== -1) {
           parseLine(pending.slice(0, newline));
@@ -195,8 +219,14 @@ function captureProviderFetch(fetchImpl, observation) {
         controller.enqueue(chunk);
       },
       flush(controller) {
-        pending += decoder.decode();
-        if (pending) parseLine(pending);
+        const tail = decoder.decode();
+        if (isJsonBody) {
+          jsonPending += tail;
+          if (jsonPending.trim()) parseJsonBody(jsonPending);
+        } else {
+          pending += tail;
+          if (pending) parseLine(pending);
+        }
         controller.terminate();
       },
     }));

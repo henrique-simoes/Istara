@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  captureProviderFetch,
   filterParamsForApi,
   modelCapabilities,
   modelLimits,
@@ -57,4 +58,24 @@ test("codex identity retains its responses reasoning contract", () => {
       compat: undefined,
     },
   );
+});
+
+test("provider identity observer captures a split non-SSE JSON response", async () => {
+  const observed = [];
+  const payload = JSON.stringify({ response: { model: "served-json-model" } });
+  const encoded = new TextEncoder().encode(payload);
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoded.slice(0, 11));
+      controller.enqueue(encoded.slice(11));
+      controller.close();
+    },
+  });
+  const wrapped = captureProviderFetch(
+    async () => new Response(body, { headers: { "content-type": "application/json" } }),
+    { add: (model) => { if (model) observed.push(model); } },
+  );
+  const response = await wrapped("http://provider.test/v1/chat/completions");
+  assert.equal(await response.text(), payload);
+  assert.deepEqual(observed, ["served-json-model"]);
 });
