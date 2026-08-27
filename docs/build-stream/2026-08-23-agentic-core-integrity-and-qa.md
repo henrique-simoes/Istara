@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:12:30Z, ledger: L-366 }
-next_action: "Commit and transport the exact current-run traceability oracle hardening, then continue F-R9-114 with deeper Done/report assertions and obtain owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
+last: { agent: gpt-5-codex, at: 2026-08-27T15:14:20Z, ledger: L-367 }
+next_action: "Continue F-R9-114 with deeper Done/report traceability assertions, a genuine human reconciliation acceptance exercise, and owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
 ```
 
 ## Plan overview / roadmap
@@ -8700,4 +8700,22 @@ working-tree changes pending commit, push, and Mac Studio retake. No server,
 provider request, model load, Docker image pull, host installation, live
 benchmark, or data deletion occurred. F-R9-114 remains open for a genuine
 human reconciliation/Done/report exercise and the owner-approved Docker-only
+three-model run with exact served identities.
+
+### L-367 | 2026-08-27T15:14:20Z | S5-ship&learn | gpt-5-codex | traceability hardening transport and Mac Studio parity
+
+The exact current-run traceability oracle hardening is committed as
+`dc9fdb7ddadcd388c17d45a07d606f15cb61eee6`
+(`test: harden current-run traceability evidence`) and pushed to
+`origin/testing`. Local `testing`, `origin/testing`, and the detached Mac
+Studio retake `~/istara-testing-retake-47bf` all resolve to this commit and
+are clean. Compass Forge task evidence `334` records the deterministic suite,
+feature-doc check, syntax/diff checks, gate `298`, and transport parity.
+
+Passive SSH verification again used only the pre-existing
+`/usr/local/bin/docker`: client/server `29.7.2`, unrelated healthy `plex` only,
+zero files under `~/Istara-Projects/models`, and no retake `.env.deploy`. No
+host installation, image pull, provider request, model load, live benchmark,
+or testing-data deletion occurred. F-R9-114 remains open for the genuine
+human reconciliation/Done/report exercise and an owner-approved Docker-only
 three-model run with exact served identities.
