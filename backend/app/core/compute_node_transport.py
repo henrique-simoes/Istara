@@ -288,6 +288,8 @@ class ComputeNodeTransportMixin:
         if tool_calls:
             result["message"]["tool_calls"] = tool_calls
             result["finish_reason"] = "tool_calls"
+        if isinstance(data.get("usage"), dict) and data["usage"]:
+            result["usage"] = dict(data["usage"])
         return result
 
     async def close(self) -> None:

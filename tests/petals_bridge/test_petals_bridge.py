@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import asyncio
 
+import httpx
 import pytest
 
 from app.config import settings
 from app.core import petals_bridge
+from app.core.compute_node import ComputeNode
 from app.core.petals_bridge import PetalsUnavailable
 
 
@@ -185,6 +187,51 @@ def test_usage_passthrough_when_donor_reports(donor, registry_with):
     assert result["_istara_route"]["usage_estimate"] is False
 
 
+@pytest.mark.asyncio
+async def test_openai_compute_node_preserves_provider_usage(monkeypatch):
+    """The node seam must expose usage before the Petals adapter can relay it."""
+
+    class UsageClient:
+        async def post(self, path, *, json):
+            return httpx.Response(
+                200,
+                request=httpx.Request("POST", f"http://provider/{path}"),
+                json={
+                    "choices": [
+                        {
+                            "message": {"role": "assistant", "content": "provider text"},
+                            "finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {
+                        "prompt_tokens": 17,
+                        "completion_tokens": 5,
+                        "total_tokens": 22,
+                    },
+                },
+            )
+
+    node = ComputeNode(
+        node_id="provider-node",
+        name="Provider Node",
+        host="http://provider/v1",
+        source="network",
+        provider_type="openai_compat",
+        is_healthy=True,
+        loaded_models=["provider-model"],
+    )
+    async def get_client():
+        return UsageClient()
+
+    monkeypatch.setattr(node, "_get_client", get_client)
+    result = await node.chat([{"role": "user", "content": "hello"}])
+    assert result["usage"] == {
+        "prompt_tokens": 17,
+        "completion_tokens": 5,
+        "total_tokens": 22,
+    }
+
+
 def test_catalog_entries_disabled_by_default(donor, registry_with):
     assert settings.petals_bridge_enabled is False
     assert petals_bridge.catalog_entries() == []
@@ -280,6 +327,42 @@ def test_stream_yields_chunks_and_final_route(donor, registry_with):
     assert final["choices"][0]["finish_reason"] == "stop"
     assert final["_istara_route"]["route_kind"] == "petals_bridge"
     assert final["_istara_route"]["node_id"] == "donor-1"
+    assert final["_istara_route"]["usage_estimate"] is True
+    assert final["usage"]["total_tokens"] > 0
+
+
+def test_stream_preserves_provider_usage_from_donor_chat(donor, registry_with):
+    """The stream shim must not turn an exact donor receipt into an estimate."""
+    async def chat_with_usage(messages, **kwargs):
+        return {
+            "message": {"role": "assistant", "content": "exact donor"},
+            "usage": {
+                "prompt_tokens": 11,
+                "completion_tokens": 4,
+                "total_tokens": 15,
+            },
+        }
+
+    async def stream_must_not_run(*_args, **_kwargs):
+        raise AssertionError("Petals stream should use the receipt-preserving chat seam")
+        yield "unreachable"
+
+    donor.chat = chat_with_usage
+    donor.chat_stream = stream_must_not_run
+    chunks = _collect_stream(
+        {
+            "model": "pi-petals-donor-1",
+            "messages": [{"role": "user", "content": "hi"}],
+            "stream": True,
+        }
+    )
+    final = chunks[-1]
+    assert final["usage"] == {
+        "prompt_tokens": 11,
+        "completion_tokens": 4,
+        "total_tokens": 15,
+    }
+    assert final["_istara_route"]["usage_estimate"] is False
 
 
 def test_stream_fails_closed_before_any_chunk(donor, registry_with):

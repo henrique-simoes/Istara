@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T07:43:58Z, ledger: L-291 }
+last: { agent: gpt-5-codex, at: 2026-08-27T07:59:53Z, ledger: L-292 }
 next_action: "Continue the deterministic Research Spine/authority audit from the exact transported testing tip; await an owner-authorized Docker-only Mac Studio window before any live provider, Petals, or three-rater acceptance claim."
 ```
 
@@ -6718,3 +6718,30 @@ Istara/Petals containers, only the unrelated healthy Plex container, and the
 retained `pi-agent-home` volume. No host package, model, service, or repository
 mutation occurred. Live G0/G1 and G2-G22 remain open and require an explicitly
 authorized Docker-only Mac Studio execution window.
+
+### L-292 | 2026-08-27T07:59:53Z | S2-execute/S3-review | gpt-5-codex | Petals receipt-preserving stream seam
+
+The Petals bridge audit found that `chat_completions_stream` called the generic
+`ComputeNode.chat_stream` path and then unconditionally estimated usage. That
+path emits text/tool-call pieces but does not carry a provider terminal receipt;
+the OpenAI-compatible `ComputeNode.chat` path also discarded `data["usage"]`,
+so a real donor could be charged as an estimate even when it reported exact
+tokens. The existing bridge tests used a fake node and therefore did not expose
+this loss of accounting provenance.
+
+The bridge now calls the donor's receipt-preserving `chat` seam once (donors are
+already fail-closed to relay/browser resources), emits the same valid content
+and terminal OpenAI chunks, preserves provider usage when present, and marks the
+terminal route with `usage_estimate=false`. Missing receipts still produce one
+complete text estimate with `usage_estimate=true`; the durable bridge row and
+terminal public chunk use the same values. OpenAI-compatible and Anthropic
+`ComputeNode.chat` normalization now retain non-empty provider usage objects so
+the bridge can observe them. A regression fails if `chat_stream` is called and
+asserts exact donor usage survives the stream.
+
+Verification: Petals bridge plus targeted compute tests pass (`40 passed,
+20 deselected`), Ruff and `git diff --check` pass. This closes a deterministic
+accounting transport gap only. It does not prove a live donor/provider receipt,
+three independent served model identities, common raw evidence spans,
+Fleiss/Krippendorff reliability, reconciliation, human-Done/report promotion,
+or Docker-only Mac Studio execution; live G0/G1 and G2-G22 remain open.

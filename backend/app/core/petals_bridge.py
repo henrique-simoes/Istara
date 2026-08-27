@@ -242,18 +242,21 @@ async def chat_completions_stream(
     requested = str(payload.get("model") or "")
     node, node_id, messages, served_model = _admit(payload, pinned_node_id=pinned_node_id)
     chunk_id = f"chatcmpl-petals-{uuid.uuid4().hex[:24]}"
-    total_chars = 0
-    async for piece in node.chat_stream(
+    # Donor nodes are relay/browser resources.  Use the node's non-streaming
+    # contract for this compatibility shim: it preserves provider usage and
+    # route evidence, while this function still emits a valid two-chunk SSE
+    # sequence to the Pi OpenAI client.  Calling ``chat_stream`` here would
+    # discard the provider's terminal usage receipt at the generic node seam.
+    data = await node.chat(
         messages,
         model=served_model,
         temperature=float(payload.get("temperature", 0.7)),
         max_tokens=payload.get("max_tokens"),
         project_id=project_id if project_id is not None else payload.get("project_id"),
-    ):
-        text = piece if isinstance(piece, str) else str((piece or {}).get("content", ""))
-        if not text:
-            continue
-        total_chars += len(text)
+    )
+    message = (data.get("message") or {}) if isinstance(data, dict) else {}
+    text = str(message.get("content", "") or "")
+    if text:
         yield {
             "id": chunk_id,
             "object": "chat.completion.chunk",
@@ -261,13 +264,17 @@ async def chat_completions_stream(
             "model": requested or endpoint_id_for(node_id),
             "choices": [{"index": 0, "delta": {"content": text}, "finish_reason": None}],
         }
-    usage = {
-        "prompt_tokens": max(1, sum(len(str(m.get("content", ""))) for m in messages) // 4),
-        "completion_tokens": max(1, total_chars // 4),
-        "total_tokens": 0,
-        "estimate": True,
-    }
-    usage["total_tokens"] = usage["prompt_tokens"] + usage["completion_tokens"]
+    usage = data.get("usage") if isinstance(data, dict) else None
+    if not isinstance(usage, dict) or not usage:
+        usage = {
+            "prompt_tokens": max(1, sum(len(str(m.get("content", ""))) for m in messages) // 4),
+            "completion_tokens": max(1, len(text) // 4),
+            "estimate": True,
+        }
+        usage["total_tokens"] = usage["prompt_tokens"] + usage["completion_tokens"]
+    else:
+        usage = dict(usage)
+        usage.setdefault("estimate", False)
     await _record_usage_row(
         ({**payload, "project_id": project_id} if project_id is not None else payload),
         node_id=node_id,
@@ -287,7 +294,13 @@ async def chat_completions_stream(
             "route_kind": PETALS_ROUTE_KIND,
             "model": served_model,
             "latency_ms": round((time.perf_counter() - started) * 1000, 1),
-            "streamed_chars": total_chars,
+            "streamed_chars": len(text),
+            "usage_estimate": bool(usage.get("estimate")),
+        },
+        "usage": {
+            "prompt_tokens": usage.get("prompt_tokens", usage.get("input_tokens", 0)),
+            "completion_tokens": usage.get("completion_tokens", usage.get("output_tokens", 0)),
+            "total_tokens": usage.get("total_tokens", 0),
         },
     }
 
