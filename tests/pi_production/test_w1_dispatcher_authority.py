@@ -444,6 +444,51 @@ async def test_legacy_and_pi_chat_choices_share_real_pi_manager(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_legacy_and_pi_structured_choices_share_real_pi_manager(monkeypatch):
+    """Research Spine structured calls use the same manager in both loops."""
+
+    supervisor = PiRuntimeSupervisor()
+    endpoint = replace(
+        faux_endpoint([tool_call("emit_structured_output", {"accepted": True})], endpoint_id="pi-shared-structured"),
+        model="shared-structured-model",
+    )
+    manager = _isolated(PiModelManager(endpoints=[endpoint], include_local=False))
+    service = PiExecutionService(supervisor=supervisor, model_manager=manager)
+    schema = {
+        "type": "object",
+        "properties": {"accepted": {"type": "boolean"}},
+        "required": ["accepted"],
+        "additionalProperties": False,
+    }
+
+    async def no_op(**kwargs):  # noqa: ANN001
+        return None
+
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", no_op)
+    try:
+        results = {}
+        for engine in ("legacy", "pi"):
+            results[engine] = await AgenticDispatcher(pi_service=service).structured(
+                purpose=f"w1.shared-structured.{engine}",
+                project_id="p1",
+                agent_id="istara-main",
+                system="sys",
+                messages=[{"role": "user", "content": "grade"}],
+                schema=schema,
+                params=TurnParams(endpoint_id=endpoint.endpoint_id),
+                engine=engine,
+            )
+    finally:
+        await supervisor.shutdown()
+
+    for result in results.values():
+        assert result.status == "success"
+        assert result.value == {"accepted": True}
+        assert result.endpoint_id == endpoint.endpoint_id
+        assert result.model == endpoint.model
+
+
+@pytest.mark.asyncio
 async def test_structured_uses_explicit_request_scoped_pi_service(monkeypatch):
     """The Research Spine can pin its selected service without losing dispatch accounting."""
 

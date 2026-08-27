@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T04:23:30Z, ledger: L-260 }
+last: { agent: gpt-5-codex, at: 2026-08-27T04:28:30Z, ledger: L-261 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -5881,3 +5881,21 @@ authorized window must supply three real model artifacts or explicit provider
 routes, use a fresh detached `origin/testing` checkout, verify its archive
 digest inside Docker, and execute the provider/Petals/combined retakes before
 any claim of live ensemble or Research Spine validity.
+
+### L-261 | 2026-08-27T04:28:30Z | S2-execute/S3-review | gpt-5-codex | cross-engine structured authority coverage
+
+Did: Closed a deterministic coverage gap at the Research Spine structured-call
+boundary. Existing checks exercised Pi structured output and legacy/Pi
+ensemble/chat authority sharing, but no test drove both structured engine
+choices through one real `PiExecutionService`/`PiModelManager`. Added a
+forced `emit_structured_output` regression for `engine="legacy"` and
+`engine="pi"` using one manager-owned endpoint, original-schema revalidation,
+and identical accepted output/endpoint/model assertions. The complete
+dispatcher suite now passes 30/30; F-R9-71 records the former gap and its
+closure in `/Users/user/Desktop/testing.md`.
+
+Boundary/next: this remains deterministic contract evidence, not live model or
+scientific validity. G0/G1 and live G2–G22 stay open pending the Docker-only
+Mac Studio prerequisite (three real model artifacts or explicit provider
+routes), fresh detached source checkout/archive verification, provider/Petals/
+combined retakes, and final teardown/parity evidence.
