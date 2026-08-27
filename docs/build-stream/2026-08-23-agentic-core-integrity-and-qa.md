@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T00:40:43Z, ledger: L-214 }
-next_action: "Run the complete local benchmark and feature-doc gates, then commit and push the fail-closed model-identity oracle; create a new clean detached Mac Studio checkout at that pushed tip. Keep live acceptance open until owner-authorized provider credit and three Compose-owned donor/model routes are available."
+last: { agent: gpt-5-codex, at: 2026-08-27T00:47:02Z, ledger: L-215 }
+next_action: "Materialize a fresh detached Mac Studio checkout at 80f973e6 for Docker-only passive verification; keep live acceptance open until owner-authorized provider credit and three Compose-owned donor/model routes are available."
 ```
 
 ## Plan overview / roadmap
@@ -4662,3 +4662,26 @@ Next: run focused and full benchmark tests plus feature-doc generation/check, at
 Forge gate evidence, commit/push the benchmark/oracle/ledger files plus the generated feature-site
 manifest, verify exact `testing`/`origin/testing` parity, and materialize a new clean detached Mac
 Studio checkout at the pushed implementation tip without touching the stale recovery checkout.
+
+### L-215 | 2026-08-27T00:47:02Z | S2-execute | gpt-5-codex | local oracle checkpoint pushed
+
+Did: Attached Compass Forge command evidence 49 for the focused/full `tests/pi_benchmark` suites,
+feature-doc generation/check, and whitespace validation. Attached gate evidence 50 (before) and
+51 (after): both remain `status=fail` solely because the repository's inherited gate debt reports
+31 failures/208 warnings, while `new_failures=0`, `new_issue_count=0`, and
+`actionable_failures=[]`; contract/generated/GraphQL drift stayed zero. Committed the fail-closed
+model-identity oracle, its endpoint-replica and missing-identity regressions, the explicit
+consensus-versus-formal-reliability README boundary, this ledger, and the generated feature-site
+manifest as `80f973e6` (`test: fail closed on collapsed ensemble model identity`).
+
+Pushed `testing` to `origin/testing` and verified exact commit/tree parity; the local worktree is
+clean. No provider request, model load, host package install, or Mac Studio mutation occurred.
+The stale isolated Mac Studio checkout at `7f82389c...` and the unrelated recovery worktree remain
+untouched. The live gate is still open: provider HTTP 402 and absent Compose-owned donor routes
+prevent any claim that three independent models, Fleiss/alpha, Petals interoperation, or accepted
+Research Spine artifacts have run.
+
+Next: create a new clean detached Mac Studio checkout at `80f973e6`, inspect only Docker/Compose
+status and passive configuration, and do not start models or services. Keep the provider/Petals/
+combined acceptance retake pending until owner-authorized credit and three approved donor/model
+routes are supplied.
