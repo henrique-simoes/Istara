@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T22:37:00Z, ledger: L-431 }
-next_action: "Attach the latest deterministic receipts, run the final after-gate, then commit/push the clean testing branch; execute the owner-approved Docker-only Mac Studio matrix only after its inputs and checkout are ready."
+last: { agent: gpt-5-codex, at: 2026-08-27T22:39:00Z, ledger: L-432 }
+next_action: "Use the clean 085ae0b testing checkout for the owner-approved Docker-only Mac Studio matrix; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until receipts exist."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10372,3 +10372,23 @@ provider identity, Fleiss' kappa/Krippendorff alpha over raw evidence units,
 Petals donation, reconciliation, accepted promotion, human-approved Done/report,
 and two-call/long-horizon gates remain unclaimed until their runtime receipts
 exist.
+
+### L-432 | 2026-08-27T22:39:00Z | S3-review | gpt-5-codex | Testing branch reconciled and ready for live gate
+
+The eleven-file deterministic hardening slice is committed as
+`085ae0b255f758ac47b8ff3cd9ba34bcd55bf50a` and pushed to `origin/testing`.
+Local `testing` and `origin/testing` resolve to the same SHA and the source
+worktree is clean; Compass Forge task evidence `448` records the exact status,
+push, and equality checks. This commit includes the task-bound long-horizon
+oracle, project-scoped chat task validation, Pi/native/text task propagation,
+the Docker runner dirty-check, contract tests, feature-doc regeneration, and
+the durable Build Stream record.
+
+The code and deterministic fixtures now prove causal identity and route receipt
+shape, not scientific validity. The live acceptance matrix is still pending:
+it must run from this clean checkout inside Docker on the Mac Studio, with
+three provider-served distinct model identities and Petals configuration, and
+must capture raw evidence-unit ratings, formal Fleiss' kappa plus companion
+Krippendorff alpha, reconciliation and accepted promotion, human-approved
+Done/report gates, and the two-call/long-horizon receipts. No host install,
+host model load, or live request was performed here.
