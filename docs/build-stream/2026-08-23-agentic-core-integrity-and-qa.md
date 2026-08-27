@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T09:18:00Z, ledger: L-300 }
-next_action: "Run the post-change gate, record evidence, commit/push the Petals Research Spine seam, then execute the authorized Docker-only Mac Studio live matrix."
+last: { agent: gpt-5-codex, at: 2026-08-27T09:25:19Z, ledger: L-306 }
+next_action: "Obtain owner-approved Docker-only env/model/provider inputs, then execute the staged provider, Petals, combined, engine-parity, ensemble, and Research Spine acceptance matrix below; keep every missing prerequisite fail-closed."
 ```
 
 ## Plan overview / roadmap
@@ -7026,3 +7026,243 @@ artifacts exist.
 ### L-305 | 2026-08-27T10:05:00Z | S2-execute/S3-review | gpt-5-codex | ref synchronization
 
 The final ledger checkpoint is transported on the testing branch; at each resumption, verify the exact equality of local `testing`, `origin/testing`, and `~/istara-testing-retake-47bf` before running anything. The isolated retake is clean. A passive final check found no runner, long-horizon, or benchmark process and only the unrelated healthy Plex container. This is the last pre-provisioning checkpoint; no active model/provider workload has been started.
+
+## L-306 — Detailed completion matrix for the remaining live gates
+
+This section is the resumption contract for the remaining work. It is deliberately
+operational and evidence-oriented: a future agent must be able to start at the
+first unchecked row, run only inside Docker on the Mac Studio, and leave a redacted
+artifact plus a Compass Forge command or gate record for every claim. The deterministic
+tests already prove local wiring and fail-closed scorecard behavior; they do not prove
+that live model responses are independent, source-grounded, reliable, or acceptable.
+
+### 1. Non-negotiable boundaries and resume procedure
+
+1. Work from `/Users/user/Documents/Istara-main` on local branch `testing`, and
+   verify `git status --short --branch` is clean before changing or transferring
+   anything. The local tip, `origin/testing`, and the Mac Studio detached retake
+   `~/istara-testing-retake-47bf` must resolve to the same commit. Do not use the
+   owner-dirty `~/istara-testing` checkout as a benchmark source or modify it.
+2. On the Mac Studio use SSH only for orchestration and passive Docker/Git commands.
+   Use the explicit Docker Desktop CLI path when required (`/usr/local/bin/docker`
+   or `/Applications/Docker.app/Contents/Resources/bin/docker`). Do not run host
+   Python, Node, npm, Playwright, model servers, package managers, or chat probes.
+3. Do not install packages on macOS. Build or pull disposable images and install
+   dependencies only in those images. Keep the Docker socket mounted only into the
+   benchmark runner when the selected profile requires nested donor/client containers;
+   never mount it into the application services.
+4. Before each resumed stage, record a new ledger checkpoint with: UTC time, exact
+   source SHA, source archive SHA-256, Compose file and env-file paths (names only),
+   image digests, profile, engine, model identities, and the next unchecked gate.
+   Never record secret values, raw prompts, raw responses, private URLs, or connection
+   strings. If a prerequisite is absent, stop that stage and record the blocker; do
+   not substitute a stub, a same-model endpoint, or a stale checkout.
+5. Preserve the unrelated healthy Plex container and the `pi-agent-home` volume unless
+   a later owner-authorized inspection proves a specific testing resource is disposable.
+   Teardown may remove only resources created by the run, by exact project/name, after
+   result export and redaction.
+
+### 2. Provisioning gate: make the live run reproducible before starting it
+
+This gate is currently open and is the first required owner action. It is satisfied
+only when all rows below are true and the evidence is captured in the Docker-only
+retake.
+
+| Check | Required action | Pass evidence | Fail handling |
+| --- | --- | --- | --- |
+| Source | Transfer or fetch the exact `testing` tip into `~/istara-testing-retake-47bf`; keep it detached and clean. | `git rev-parse HEAD`, `git status --porcelain`, and remote ref all match; `git archive --format=tar HEAD \| shasum -a 256` is recorded. | Stop before image build/start; repair the retake, never benchmark a dirty checkout. |
+| Compose inputs | Owner supplies a current, mode-600 env/config path for the retake without exposing values. | `docker compose --env-file <path> -f docker-compose.vps.yml config` succeeds; a redacted variable-name inventory is attached. | Do not point at the old dirty checkout's env file as “current” evidence. |
+| Provider routes | Supply exactly the configured provider endpoint/model identities for the provider arm, with health checks that do not load multiple heavy models at once. | Redacted provider health/metadata shows requested model, served model, endpoint handle, and source image digest. | Fail closed on missing/ambiguous identity; do not infer model identity from a request label. |
+| Three model inputs | Supply three distinct model identities or three explicitly distinct provider-served models, all available to Docker services. The existing `three-model` profile also requires `ISTARA_BENCHMARK_DONOR_GEMMA_MODEL_FILE` under the absolute `ISTARA_BENCHMARK_MODEL_ROOT`. | `docker compose ... --profile three-model config` succeeds; each identity and file/image digest is recorded; model-root file listing contains no secrets. | Stop before startup if the model directory is empty or the required Gemma input is absent. |
+| Runner image | Build or pull `istara-benchmark-runner:node20-docker-cli` inside Docker and record its immutable digest. | `docker image inspect --format '{{.Id}}'` and package/runtime versions from inside the runner. | Rebuild the disposable image; never install the Python/httpx or Playwright dependencies on the host. |
+| Isolation | Confirm the stack project name, networks, mounts, and result directories are unique to this run. | Redacted `docker compose config`, `docker ps`, and mount inspection. | Teardown conflicting testing resources by exact name only, preserving Plex and unrelated data. |
+
+The provisioning gate must be attached to CF-15 as command evidence before any
+provider/Petals result is described as live. A source or image digest by itself is
+not a quality result; it only establishes reproducibility.
+
+### 3. Staged live profile matrix
+
+Run profiles in this order. Each profile uses a fresh run group and disposable stack,
+and exports its scorecard, logs, route receipts, and redacted metadata before teardown.
+Do not combine stages to hide which gate failed.
+
+#### 3.1 Provider-only transport and authority profile
+
+Use `ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=provider`, with the provider route(s) and
+`ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0`. This profile may skip the marathon and
+long-horizon workload; it must not report Research Spine acceptance.
+
+Required checks:
+
+1. Compose starts only the intended application/provider services. Capture health,
+   image digests, service logs, and the Pi catalog response with the requested model,
+   canonical model identity, endpoint identity, and health state.
+2. Exercise both selectable paths that are supposed to share Pi Model Management:
+   the Istara/legacy loop and the Agentic Loop/PI Agentic Loop path as exposed by the
+   current UI/API. For each path, record the engine selection, the model-manager
+   selection, dispatch route receipt, usage row, and session handle. A request header
+   or UI label is not proof of runtime routing.
+3. Issue exactly two bounded calls in one session per engine arm. The second call must
+   reference the first call's durable session/task handle and must not silently fall
+   back to a new session or a different model. Compare route identity, response status,
+   tool-call accounting, and usage attribution across both calls.
+4. Verify no removed classical Alembic endpoint is still used by the production path,
+   while migration/schema behavior remains reachable through the intended PI Model
+   Management ownership. Record HTTP route/status evidence, not just source inspection.
+
+Pass requires provider-served identity and shared Pi authority for both engines, clean
+two-call/session attribution, and a scorecard with no provider blockers. It does not
+pass the three-rater or Petals gates.
+
+#### 3.2 Petals-only donation and governance profile
+
+Use `ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=petals`, require compute donation, and run
+only the donor/bridge/client-sandbox scope. This profile must not claim chat, long
+horizon, or Research Spine quality.
+
+Required checks:
+
+1. Start three consented donor identities through the Docker-managed topology. Each
+   donor must have a distinct model identity, node/source handle, health result, and
+   project allowlist. Same model behind three endpoints is a transport topology, not
+   independent coding evidence.
+2. Submit project-tagged research-purpose traffic through the real Pi Model Manager
+   projection and the real Petals bridge. Verify the bridge re-checks
+   `allowed_project_ids` immediately before both streaming and non-stream dispatch.
+   Include negative cases for missing project, unauthorized project, revoked donor,
+   unhealthy donor, and stale catalog/metadata.
+3. Verify every accepted route receipt is content-free and contains only the fields
+   needed for audit: route kind, endpoint/source handle, requested and served model,
+   donor node/source, outcome, and timestamp/usage handle. It must survive engine,
+   dispatcher, stream/ReAct, ensemble sample, and Research Spine coder persistence.
+4. Revoke one donor during the run and prove new research dispatch fails closed while
+   previously persisted receipts remain immutable. Confirm no prompt/response or secret
+   is written to the receipt or exported artifact.
+
+Pass requires project authorization, consent/revocation, distinct donor/model
+identity, and receipt persistence. It is not evidence that model outputs are useful or
+that three raters agree.
+
+#### 3.3 Combined Research Spine acceptance profile
+
+Use `ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=combined`, require live chat, long horizon,
+and compute donation. Run the full wrapper from inside the disposable runner. The
+wrapper must invoke the engine-specific marathon, `tests/benchmarks/long_horizon_runner.py`,
+and the deep three-model probe; the resulting `ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED=1`
+receipt must appear in the scorecard before the combined row can be `verified`.
+
+### 4. Research Spine proof requirements (the scientific gate)
+
+The combined profile is accepted only if it demonstrates the complete governed path:
+
+`raw source -> evidence units -> three independent atomic coders/open coding ->
+source grounding -> reliability -> reconciliation -> accepted atoms/nuggets ->
+facts -> insights -> recommendations -> In Review -> human-approved Done -> report`.
+
+The live probe must make each transition observable. A final answer, a green HTTP
+status, or a high agreement number is insufficient.
+
+1. **Common raw evidence.** Ingest the same raw source snapshot for all three coders.
+   Store immutable source hash, source span/unit IDs, offsets or exact quoted spans,
+   and ingestion provenance. Do not use synthesized nugget prose as the evidence unit.
+2. **Independent model identities.** The three raters must be three distinct served
+   model identities, not three aliases, endpoints, temperatures, or retries of one
+   model. Record requested and served identity separately and fail closed if the
+   provider cannot attest to the served model.
+3. **Atomic extraction/open coding.** Each rater must produce independently persisted
+   atom/code rows keyed to the same evidence-unit IDs, with prompt/codebook version,
+   model identity, route receipt, and raw output hash. Do not run a consensus prompt
+   before individual rows are persisted.
+4. **Grounding.** Every accepted atom must link to one or more source spans and retain
+   the original evidence-unit handle. A missing, synthetic, or out-of-range span is a
+   blocker even if the raters agree.
+5. **Reliability.** Compute Fleiss' kappa over the full three-rater categorical matrix
+   with a stable category/codebook mapping and explicit missing-value policy. Compute
+   Krippendorff's alpha (nominal/ordinal interval as dictated by the codebook) over
+   the same independent ratings. Persist the number of units, raters, categories,
+   observed agreement, expected agreement, kappa, alpha, and threshold decision.
+   Do not treat duplicate rows, retries, or same-model replicas as independent ratings.
+6. **Reconciliation.** Persist disagreements and the reconciliation decision with the
+   participating atom IDs, reason, adjudicator/algorithm version, and source spans.
+   Reconciliation may create a candidate revision, but it must not overwrite the
+   independent raw ratings or silently raise reliability.
+7. **Promotion gates.** Prove that only reliability-passing, grounded, reconciled
+   atoms can promote to accepted nuggets/facts/insights/recommendations. Prove that
+   In Review and human-approved Done are required before a report/export is marked
+   reportable. A scorecard must contain explicit counts for candidate, accepted,
+   review, Done, and reportable artifacts.
+8. **Negative controls.** Include at least one deliberately ungrounded atom, one
+   disagreement below the configured reliability threshold, one duplicate/same-model
+   identity attempt, and one missing-human-approval attempt. Each must fail closed and
+   leave a machine-readable blocker, without polluting accepted/reportable data.
+
+The scientific gate is red if any one of these items is absent, even when all focused
+tests pass. The scorecard must distinguish `not_run`, `blocked`, `failed`, and
+`verified`; an omitted probe is never a pass.
+
+### 5. Engine, tool-call, and long-horizon parity matrix
+
+For both the Istara/legacy path and the Agentic Loop/PI Agentic Loop path, execute the
+same bounded scenario pack against the same source and model roster:
+
+| Scenario | Required observation | Acceptance oracle |
+| --- | --- | --- |
+| First chat call | Engine selection, Pi manager catalog identity, route receipt, session/task handle, response and usage row. | Selected engine and served model agree; no classical/Alembic bypass; no generic provenance. |
+| Second same-session call | Prior session/task handle reused, same project scope, same or explicitly recorded model identity. | No cross-session row; no silent new session; second call has its own route/usage receipt. |
+| Tool call | Tool request/result IDs, authorization, idempotency, route receipt, and final answer linkage. | Tool loop remains within selected engine and Pi authority; unauthorized/replayed tool fails closed. |
+| Long horizon | Multiple turns/tasks, checkpoint/resume, bounded context, intermediate usage rows, and final task state. | `long_horizon_verified=1`, every row has the expected session handle, no truncated/cross-engine task, and nonzero blocker on any mismatch. |
+| Research coding | Three independent coders and shared raw evidence units. | All Research Spine gates in section 4 pass; plain chat success cannot substitute. |
+
+Compare outputs for parity of control flow and provenance, not byte-for-byte model
+text. Semantic quality requires a separately reviewed rubric and retained samples; do
+not promote deterministic wrapper success into a model-quality claim.
+
+### 6. Artifact, redaction, and teardown checklist
+
+Before removing the run stack, export a manifest containing run group, exact source
+and image digests, Compose profile, engine, model identities, route/usage receipt
+counts, gate states, test command/exit status, and timestamps. Redact prompts,
+responses, tokens, passwords, private URLs, connection strings, and raw model payloads;
+retain hashes and opaque handles where provenance needs continuity. Verify exported
+JSON/Markdown parses and that no secret-pattern scan finds a credential. Then:
+
+1. stop/remove only the exact Compose project and donor/client containers created by
+   this run;
+2. remove only its networks and anonymous runner volumes;
+3. preserve source artifacts and scorecards in the approved testing-results location;
+4. re-run passive `docker ps -a`, volume, and process checks to prove no workload or
+   host process remains;
+5. record teardown exit status and the final clean detached-worktree SHA.
+
+### 7. Compass Forge closure sequence
+
+After each profile, attach the command output and redacted artifact path to CF-15
+(`compass-forge task evidence 15 ...`). Keep CF-13, CF-20, and CF-21 open until their
+specific acceptance/proof conditions are demonstrably satisfied. Then run:
+
+1. `compass-forge gate before --task CF-15` and preserve the record ID;
+2. the focused deterministic suite plus the Docker live command(s), each with exit
+   status and artifact paths;
+3. `compass-forge gate after --task CF-15`, recording inherited baseline failures
+   separately from new failures;
+4. `compass-forge spec coverage CF-SPEC-2` and `compass-forge spec accept CF-SPEC-2`
+   only if every linked task has evidence and no required gate remains open;
+5. `compass-forge finish-task` only after acceptance is truthful and the ledger status
+   changes to a terminal state.
+
+If live inputs remain unavailable, leave the goal and these tasks open, append a new
+checkpoint naming the exact missing prerequisite, and stop. Do not mark the spec or
+Build Stream complete on deterministic evidence alone.
+
+### 8. Current checkpoint and next executable action
+
+At this checkpoint, local `testing` and `origin/testing` are clean and equal at
+`2a32a220944d696c8949a5e7f499414eab69a635`; the isolated Mac Studio retake must be
+rechecked before use. Docker is available remotely, but the clean retake still lacks
+the current env/config and the Docker-host model directory is empty. Therefore the
+next executable action is not a model run: obtain the owner-approved Docker-only
+provisioning inputs in section 2, verify their digests and Compose rendering, and only
+then begin the provider-only profile. Until that happens, all live provider,
+Petals, combined, same-session, three-rater, reliability, reconciliation, human-Done,
+and report gates remain `not_run`/open.
