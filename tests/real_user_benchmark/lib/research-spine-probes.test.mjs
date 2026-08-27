@@ -53,6 +53,14 @@ function makeReconciliationDecisions(runId, count = 12) {
   }));
 }
 
+function makeServedModelRoutes() {
+  return [
+    { node_id: "donor-a", model: "model-a", outcome: "served" },
+    { node_id: "donor-b", model: "model-b", outcome: "served" },
+    { node_id: "donor-c", model: "model-c", outcome: "served" },
+  ];
+}
+
 test("coding proof samples distributed substantive spans instead of document headers", () => {
   const units = [
     { id: "title", source_text: "# CareNav Renewal interview source 03" },
@@ -169,6 +177,7 @@ test("coding proof does not invent a three-document gate for one source with mul
         rater_count: 3,
         kappa: 0.81,
         alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
       };
     },
   };
@@ -217,6 +226,7 @@ test("accepted coding cannot pass when the Research Spine contract is unavailabl
         rater_count: 3,
         kappa: 0.81,
         alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
       };
     },
   };
@@ -320,7 +330,7 @@ test("three-donor benchmark blocks when coding falls back to single-coder assura
   assert.equal(featureResults.codingValidation, false);
   assert.equal(featureResults.multiModelResearchSpineValidation, false);
   assert.equal(blockers.length, 1);
-  assert.match(blockers[0], /1\/3 distinct model coders/);
+  assert.match(blockers[0], /1\/3 backend-reported model coders/);
   assert.equal(logger.issues[0].severity, "high");
 });
 
@@ -353,6 +363,7 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
         rater_count: 3,
         kappa: 0.81,
         alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
       };
     },
   };
@@ -371,6 +382,61 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
   assert.equal(featureResults.codingValidation, true);
   assert.equal(featureResults.multiModelResearchSpineValidation, true);
   assert.deepEqual(blockers, []);
+});
+
+test("three-model coding cannot trust a backend count without three served route identities", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-route-model-gap");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-route-model-gap");
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-route-model-gap" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-route-model-gap",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: [
+          { node_id: "donor-a", model: "model-a", outcome: "served" },
+          { node_id: "donor-b", model: "model-b", outcome: "served" },
+        ],
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-route-model-gap",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /only 2\/3 distinct served model identities/);
+  assert.deepEqual(logger.issues[0].evidence.served_model_identities, ["model-a", "model-b"]);
 });
 
 test("accepted reliability is still blocked when code applications lack reconciliation decisions", async () => {
@@ -408,6 +474,7 @@ test("accepted reliability is still blocked when code applications lack reconcil
         rater_count: 3,
         kappa: 0.81,
         alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
       };
     },
   };
@@ -459,6 +526,7 @@ test("three-donor benchmark rejects a named reliability method without numeric k
         rater_count: 3,
         kappa: 0.81,
         alpha: null,
+        route_evidence: makeServedModelRoutes(),
       };
     },
   };
@@ -510,6 +578,7 @@ test("three-donor benchmark rejects accepted status when kappa is below its thre
         threshold: 0.6,
         kappa: 0.4,
         alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
       };
     },
   };
@@ -562,9 +631,9 @@ test("three-donor benchmark requires three served donor routes, not only three m
         kappa: 0.81,
         alpha: 0.79,
         route_evidence: [
-          { node_id: "host-donor", outcome: "served" },
-          { node_id: "colima-donor-a", outcome: "served" },
-          { node_id: "host-donor", outcome: "served", model: "host-second-alias" },
+          { node_id: "host-donor", model: "model-a", outcome: "served" },
+          { node_id: "colima-donor-a", model: "model-b", outcome: "served" },
+          { node_id: "host-donor", model: "model-c", outcome: "served" },
         ],
       };
     },
@@ -619,9 +688,9 @@ test("three-donor benchmark accepts model coders only when all donor routes serv
         kappa: 0.81,
         alpha: 0.79,
         route_evidence: [
-          { node_id: "host-donor", outcome: "served" },
-          { node_id: "colima-donor-a", outcome: "served" },
-          { node_id: "colima-donor-b", outcome: "served" },
+          { node_id: "host-donor", model: "model-a", outcome: "served" },
+          { node_id: "colima-donor-a", model: "model-b", outcome: "served" },
+          { node_id: "colima-donor-b", model: "model-c", outcome: "served" },
         ],
       };
     },
@@ -675,6 +744,7 @@ test("coding proof uses project source units while preserving approved task cont
         rater_count: 3,
         kappa: 0.81,
         alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
       };
     },
   };
@@ -754,9 +824,9 @@ test("long coding request transport failure can recover completed server-side ru
     kappa: 0.81,
     alpha: 0.79,
     route_evidence: [
-      { node_id: "host-donor", outcome: "served" },
-      { node_id: "colima-donor-a", outcome: "served" },
-      { node_id: "colima-donor-b", outcome: "served" },
+      { node_id: "host-donor", model: "model-a", outcome: "served" },
+      { node_id: "colima-donor-a", model: "model-b", outcome: "served" },
+      { node_id: "colima-donor-b", model: "model-c", outcome: "served" },
     ],
   };
   const api = {
@@ -876,6 +946,7 @@ test("low-agreement coding remains blocked until human reconciliation accepts it
         kappa: 0.2,
         alpha: 0.4,
         code_application_count: 12,
+        route_evidence: makeServedModelRoutes(),
       };
     },
   };
@@ -920,6 +991,7 @@ test("three model calls do not pass without the Fleiss and Krippendorff method",
         distinct_model_count: 3,
         rater_count: 3,
         code_application_count: 12,
+        route_evidence: makeServedModelRoutes(),
       };
     },
   };

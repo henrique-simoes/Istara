@@ -103,11 +103,28 @@ async function validateCodingRun({
     .filter((route) => String(route?.outcome || "").toLowerCase() === "served" || route?.served_request_count > 0)
     .map((route) => String(route?.node_id || "").trim())
     .filter(Boolean)).size;
+  // The backend's distinct_model_count is derived from persisted coding rows,
+  // but the acceptance probe must independently cross-check the route receipt.
+  // A count alone could be fabricated by a malformed adapter response; the
+  // served route evidence must itself contain the required distinct identities.
+  const servedModelIdentities = new Set(routeEvidence
+    .filter((route) => String(route?.outcome || "").toLowerCase() === "served" || route?.served_request_count > 0)
+    .map((route) => String(route?.model || "").trim().toLocaleLowerCase())
+    .filter(Boolean));
+  const servedModelCount = servedModelIdentities.size;
   const modelReliabilityOk = requiredCoders >= 3
-    ? distinctModelCount >= 3 && raterCount >= 3 && !lowerAssurance
+    ? distinctModelCount >= 3
+      && servedModelCount >= requiredCoders
+      && servedModelCount === distinctModelCount
+      && raterCount >= 3
+      && !lowerAssurance
     : requiredCoders >= 2
-      ? distinctModelCount >= 2 && raterCount >= 2 && !lowerAssurance
-      : distinctModelCount >= 1 && raterCount >= 1;
+      ? distinctModelCount >= 2
+        && servedModelCount >= requiredCoders
+        && servedModelCount === distinctModelCount
+        && raterCount >= 2
+        && !lowerAssurance
+      : distinctModelCount >= 1 && servedModelCount >= 1 && raterCount >= 1;
   const fullMultiModelOk = currentRunOk && modelReliabilityOk && algorithmOk;
   const donorRouteOk = requiredDonorRoutes >= 2
     ? servedDonorRouteCount >= requiredDonorRoutes
@@ -177,7 +194,7 @@ async function validateCodingRun({
         ? `Research Spine validation observed a blocked current coding run (${status || "unknown"}/${promotionStatus || "unknown"}, ${applicationCount < 0 ? "unknown" : applicationCount} code applications).`
         : `Research Spine coding completed as ${promotionStatus || "unknown"}, not accepted; human reconciliation and accepted code applications remain required (${status || "unknown"}, ${applicationCount < 0 ? "unknown" : applicationCount} code applications).`
       : !modelReliabilityOk
-        ? `Research Spine coding fell back to ${reliabilityMethod || "unknown"} with ${distinctModelCount}/${requiredCoders} distinct model coders.`
+        ? `Research Spine coding proved ${distinctModelCount}/${requiredCoders} backend-reported model coders but only ${servedModelCount}/${requiredCoders} distinct served model identities in route evidence.`
       : !algorithmOk
         ? `Research Spine validation did not prove the required reliability algorithm with numeric Fleiss kappa and Krippendorff alpha (observed ${reliabilityMethod || "unknown"}, kappa=${kappa ?? "missing"}, alpha=${alpha ?? "missing"}).`
       : `Research Spine coding used ${servedDonorRouteCount}/${requiredDonorRoutes} required distinct served donor routes.`;
@@ -190,6 +207,8 @@ async function validateCodingRun({
       evidence: {
         expected_distinct_coders: requiredCoders,
         distinct_model_count: distinctModelCount,
+        served_model_count: servedModelCount,
+        served_model_identities: [...servedModelIdentities].sort(),
         rater_count: raterCount,
         reliability_method: reliabilityMethod,
         kappa,

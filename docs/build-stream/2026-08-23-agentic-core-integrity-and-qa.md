@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T03:19:46Z, ledger: L-250 }
+last: { agent: gpt-5-codex, at: 2026-08-27T03:27:19Z, ledger: L-251 }
 next_action: "At the next authorized live window execute the Docker-only provider/Petals/combined G0–G22 retake from a fresh detached checkout; until then leave G0/G1 not_run, preserve exact testing parity, and resolve the Agentic Loop terminology decision."
 ```
 
@@ -5624,3 +5624,34 @@ served identities over common raw spans, one grounded rating per model/unit, num
 Fleiss/Krippendorff reliability, grounding, reconciliation, human-Done/report promotion, both
 loop-mode semantics, two-call/long-horizon artifacts, Petals interoperability, redacted
 artifacts, and teardown, all through Docker without installing or mutating the Mac Studio host.
+
+### L-251 | 2026-08-27T03:27:19Z | S4-remediate | gpt-5-codex | independent served-model benchmark oracle
+
+Did: Audited the real-user Research Spine probe after the PI served-model transport fix. The
+probe already required the backend's `distinct_model_count` and counted served donor node IDs,
+but it did not independently inspect the model identities in `route_evidence`. That left a
+false-positive seam where a malformed adapter could claim three model coders while the route
+receipt carried fewer than three actual served identities. This is recorded as finding F-R9-67
+in `/Users/user/Desktop/testing.md`.
+
+Changed: `validateCodingRun()` now case-folds and counts non-empty model identities from served
+route evidence, requires the recomputed count to meet the requested coder width, and requires it
+to equal the backend-reported `distinct_model_count` before reconciliation is attempted. The
+blocker payload records the recomputed identity list. Added a regression for a claimed three-model
+run with only two served identities; updated accepted and negative fixtures with explicit served
+model receipts; updated the Ensemble Health architecture and real-user benchmark contract text.
+
+Verified: the focused research-spine probe passes `21/21`; the complete deterministic real-user
+benchmark check passes `78/78`; feature docs generation/check passes (`86` features, `224`
+artifacts); `git diff --check` passes. This checkpoint is not transported yet. After the next
+gate/evidence receipt, commit and push the oracle and docs, verify exact `testing`/`origin/testing`
+parity, and repeat passive Docker inventory. Existing Compass Forge baseline warnings remain
+unchanged (including the enlarged W7 test-file complexity warning and inherited repository debt).
+
+Boundary/next: deterministic route/model receipt proof is now stronger, but live G0/G1 and G2–G22
+remain `not_run`/open. The next authorized live window still requires a fresh detached checkout
+at the launch SHA, canonical archive digest verification inside the Docker wrapper, rendered
+Compose, provider/Petals/combined profiles in order, three actual provider-served identities over
+common raw spans, one grounded rating per model/unit, numeric Fleiss/Krippendorff reliability,
+grounding, reconciliation, human-Done/report promotion, both loop-mode semantics,
+two-call/long-horizon artifacts, Petals interoperability, redacted artifacts, and teardown.
