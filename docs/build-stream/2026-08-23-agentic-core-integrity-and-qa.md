@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T10:38:02Z, ledger: L-323 }
+last: { agent: gpt-5-codex, at: 2026-08-27T11:04:42Z, ledger: L-325 }
 next_action: "Resume the owner-approved Docker-only live matrix only when current env/config, served model identities, donor inputs, and redacted artifact paths exist; keep every live gate fail-closed."
 ```
 
@@ -7606,3 +7606,44 @@ Resume only at the provisioning gate in L-306, keeping provider/Petals/combined,
 same-session two-call and long-horizon, Fleiss/Krippendorff semantic quality,
 reconciliation, human-Done/report promotion, and teardown evidence unproven
 until their Docker-only receipts exist.
+
+### L-324 | 2026-08-27T11:03:12Z | S3-review/S5-ship&learn | gpt-5-codex | companion benchmark authority boundary
+
+The audit found that the opt-in historical live test
+`tests/integration/test_llm_orchestration_real.py` was still discoverable in the
+release-facing agentic contract as integration evidence for ensemble and ReAct.
+Its one-profile legacy `ComputeRegistry` setup and permissive PASS oracle measure
+orchestration ergonomics only; they do not prove Pi Model Management authority,
+three provider-served model identities, Research Spine source grounding, Fleiss or
+Krippendorff reliability, reconciliation, or human-approved report promotion.
+
+The manifest now marks that test `evidence_role=companion`, names the strict
+acceptance paths (`tests/pi_benchmark/live_driver.py` and the Docker-only
+real-user runner), and records explicit non-claims. The benchmark prints the role;
+the registry/README and Ensemble Health feature page repeat the boundary; and a
+contract regression prevents the companion classification from being removed.
+Verification passed: JSON validation, `22` contract/harness tests, Ruff, feature
+documentation generation/check (`224` artifacts, `86/86`), and `git diff --check`.
+No live request, model load, host installation, or Mac Studio workload occurred.
+The next action remains owner-approved Docker-only provisioning and execution of
+the strict provider, Petals, combined, two-call/long-horizon, reliability,
+reconciliation, human-Done/report, and teardown gates; the companion PASS must not
+be used as a substitute.
+
+### L-325 | 2026-08-27T11:04:42Z | S5-ship&learn | gpt-5-codex | contract evidence and transport checkpoint
+
+Compass command evidence `222` records the companion-boundary verification: both
+JSON manifests parse, the contract/harness tests pass (`22`), the full real-user
+benchmark package remains green (`87`), test-harness governance passes, feature
+documentation regenerates and checks (`224` artifacts, `86/86`), Ruff passes, and
+the diff is clean. Evidence `223` records the `testing` push and passive Docker-only
+Mac Studio retake at the same exact commit, with zero Istara/provider/Petals/
+benchmark/donor containers, zero model files, no `.env.deploy`, Docker Server
+`29.7.2`, and the unrelated healthy Plex container preserved. No live provider
+request, model load, host installation, or workload occurred.
+
+The repository tip changed after this append and must be re-read from post-commit
+parity commands; this checkpoint deliberately does not embed a self-referential
+SHA. The strict live acceptance matrix remains open and blocked on owner-approved
+current env/config, provider-served model identities, three model/donor inputs, and
+redacted artifacts.
