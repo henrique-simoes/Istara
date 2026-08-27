@@ -25,7 +25,10 @@ test("three-model deep probe does not permit host-managed Istara execution", () 
   assert.doesNotMatch(command, /ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS=1/);
   assert.match(runSource, /function failClosedForHostManagedThreeModelRun\(\)/);
   assert.match(runSource, /if \(failClosedForHostManagedThreeModelRun\(\)\) return;/);
-  assert.match(runSource, /const dockerRunnerMode = boolEnv\("ISTARA_BENCHMARK_DOCKER_RUNNER", false\);/);
+  assert.match(runSource, /const dockerRunnerMarker = boolEnv\("ISTARA_BENCHMARK_DOCKER_RUNNER", false\);/);
+  assert.match(runSource, /function runningInsideContainer\(\)/);
+  assert.match(runSource, /const dockerContainerRuntime = runningInsideContainer\(\);/);
+  assert.match(runSource, /const dockerRunnerMode = dockerRunnerMarker && dockerContainerRuntime;/);
   assert.match(runSource, /const hostManagedThreeModelRun = workload\.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes && !dockerRunnerMode;/);
   assert.match(wrapperSource, /-e ISTARA_BENCHMARK_DOCKER_RUNNER=1/);
 });
@@ -105,7 +108,7 @@ test("runner records profile scope and revokes generated connection credentials"
   assert.match(runSource, /api\.delete\(`\/api\/connections\//);
   assert.match(runSource, /const requireLongHorizon = boolEnv\(\s*"ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON"/s);
   assert.match(runSource, /const longHorizonVerified = dockerRunnerMode\s*&&\s*boolEnv\("ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED"/);
-  assert.match(runSource, /const dockerRunnerMode = boolEnv\("ISTARA_BENCHMARK_DOCKER_RUNNER", false\);[\s\S]*const longHorizonVerified/);
+  assert.match(runSource, /const dockerRunnerMarker = boolEnv\("ISTARA_BENCHMARK_DOCKER_RUNNER", false\);[\s\S]*const longHorizonVerified/);
   assert.match(runSource, /long_horizon_required: requireLongHorizon/);
   assert.match(runSource, /long_horizon_verified: longHorizonVerified/);
 });
@@ -123,4 +126,11 @@ test("Docker-owned three-model runs leave explicit provenance in history and rep
   assert.match(runSource, /docker_runner_mode: Boolean\(dockerRunnerMode\)/);
   assert.match(runSource, /docker_owned_three_model_run: Boolean\(dockerOwnedThreeModelRun\)/);
   assert.match(runSource, /Docker-owned three-model topology:/);
+});
+
+test("Docker-only provenance records the marker and runtime separately", () => {
+  assert.match(runSource, /docker_runner_marker: Boolean\(dockerRunnerMarker\)/);
+  assert.match(runSource, /docker_container_runtime: Boolean\(dockerContainerRuntime\)/);
+  assert.match(runSource, /Docker runner marker\/runtime:/);
+  assert.match(runSource, /a direct host\n\/\/ invocation could otherwise spoof it/);
 });

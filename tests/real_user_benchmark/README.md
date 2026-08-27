@@ -208,7 +208,7 @@ ISTARA_ADMIN_PASSWORD="$ISTARA_ADMIN_PASSWORD" \
 scripts/runner/docker-run.sh
 ```
 
-The wrapper enables the `three-model` Compose profile, passes `ISTARA_BENCHMARK_DOCKER_RUNNER=1` into the disposable runner, attaches preflight/relay clients to the project backend network, retries container-side donor preflight during a bounded cold model load, and counts all three served donor routes before Research Spine coding. The exact Gemma filename is installation-specific; a missing or out-of-root file is a setup blocker. The Docker-only implementation provides:
+The wrapper enables the `three-model` Compose profile, passes `ISTARA_BENCHMARK_DOCKER_RUNNER=1` into the disposable runner, and the runner verifies actual container-runtime evidence before treating that marker as authoritative. A host process that merely exports the marker is still refused. The wrapper attaches preflight/relay clients to the project backend network, retries container-side donor preflight during a bounded cold model load, and counts all three served donor routes before Research Spine coding. The exact Gemma filename is installation-specific; a missing or out-of-root file is a setup blocker. The Docker-only implementation provides:
 
 - donor 1: a Compose-managed OpenAI-compatible Gemma donor
 - donor 2: `istara-donor-qwen35-4b` via llama.cpp on port `18112`, context length `12288`

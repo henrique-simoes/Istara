@@ -136,6 +136,20 @@ function boolEnv(name, fallback = false) {
   return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
 }
 
+// The wrapper sets ISTARA_BENCHMARK_DOCKER_RUNNER=1 for the disposable Linux
+// runner. Do not trust that caller-controlled marker by itself: a direct host
+// invocation could otherwise spoof it and bypass the three-model Docker-only
+// refusal. Docker exposes /.dockerenv in the supported runner image; the
+// cgroup fallback keeps the check useful for runtimes that omit that marker.
+function runningInsideContainer() {
+  if (existsSync("/.dockerenv")) return true;
+  try {
+    return /(?:docker|containerd|kubepods)/i.test(readFileSync("/proc/1/cgroup", "utf8"));
+  } catch {
+    return false;
+  }
+}
+
 function parseEnvAssignment(rawLine, allowedKeys = null) {
   let line = rawLine.trim();
   if (!line || line.startsWith("#") || !line.includes("=")) return null;
@@ -521,7 +535,9 @@ const requireLongHorizon = boolEnv(
   "ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON",
   Boolean(workload.longHorizon) && mode !== "plan-only",
 );
-const dockerRunnerMode = boolEnv("ISTARA_BENCHMARK_DOCKER_RUNNER", false);
+const dockerRunnerMarker = boolEnv("ISTARA_BENCHMARK_DOCKER_RUNNER", false);
+const dockerContainerRuntime = runningInsideContainer();
+const dockerRunnerMode = dockerRunnerMarker && dockerContainerRuntime;
 // Only the containerized runner may turn its post-run marker into acceptance
 // evidence. A direct caller-supplied marker must not make a skipped horizon
 // workload appear verified.
@@ -1011,6 +1027,8 @@ logger.action("llm.config.sources", {
   relay_api_key_source: relayLlmApiKeySource,
   start_client_sandboxes: startClientSandboxes,
   host_managed_three_model_run: hostManagedThreeModelRun,
+  docker_runner_marker: dockerRunnerMarker,
+  docker_container_runtime: dockerContainerRuntime,
   docker_runner_mode: dockerRunnerMode,
   docker_owned_three_model_run: dockerOwnedThreeModelRun,
   stop_colima_after_run: stopColimaAfterRun,
@@ -5034,6 +5052,8 @@ async function main() {
     rag_traceability_evidence_verified: Boolean(featureResults.ragTraceabilityEvidence),
     autoresearch_experiment_started: Boolean(startAutoresearchExperiment),
     host_managed_three_model_run: Boolean(hostManagedThreeModelRun),
+    docker_runner_marker: Boolean(dockerRunnerMarker),
+    docker_container_runtime: Boolean(dockerContainerRuntime),
     docker_runner_mode: Boolean(dockerRunnerMode),
     docker_owned_three_model_run: Boolean(dockerOwnedThreeModelRun),
     stop_colima_after_run: Boolean(stopColimaAfterRun),
@@ -5080,6 +5100,7 @@ async function main() {
   logger.appendReport(`Human-approved completed tasks: ${completedTasks}\n\n`);
   logger.appendReport(`Compute donation verified: ${featureResults.computeDonation ? "yes" : "no"}\n\n`);
   logger.appendReport(`Host-managed three-model topology: ${hostManagedThreeModelRun ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Docker runner marker/runtime: ${dockerRunnerMarker ? "set" : "unset"}/${dockerContainerRuntime ? "container" : "host-or-unknown"}\n\n`);
   logger.appendReport(`Docker runner mode: ${dockerRunnerMode ? "yes" : "no"}\n\n`);
   logger.appendReport(`Docker-owned three-model topology: ${dockerOwnedThreeModelRun ? "yes" : "no"}\n\n`);
   logger.appendReport(`Stop Colima after benchmark resources are cleaned up: ${stopColimaAfterRun ? "yes" : "no"}\n\n`);
