@@ -8,8 +8,8 @@ related_features: ["quality.dashboard", "compute.pool"]
 related_glossary: ["fleiss-kappa"]
 code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/core/agent_execution.py", "backend/app/core/compute_route_evidence.py", "backend/app/services/research_validity_service.py", "backend/app/core/research_validity.py", "backend/app/models/research_validity.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/metrics.py", "backend/app/api/routes/research_validity.py"]
-test_references: ["tests/test_validation_project_scope.py", "tests/test_evaluation_skill.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_legacy_long_horizon.py", "tests/pi_production/test_w7_validation.py", "tests/petals_bridge/test_petals_bridge.py", "tests/pi_production/test_research_spine_donor_routing.py", "tests/pi_benchmark/live_driver.py", "tests/pi_benchmark/test_live_driver.py"]
-last_verified: 2026-08-26
+test_references: ["tests/test_validation_project_scope.py", "tests/test_evaluation_skill.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_legacy_long_horizon.py", "tests/pi_production/test_ensemble_identity_parity.py", "tests/pi_production/test_w7_validation.py", "tests/petals_bridge/test_petals_bridge.py", "tests/pi_production/test_research_spine_donor_routing.py", "tests/pi_benchmark/live_driver.py", "tests/pi_benchmark/test_live_driver.py"]
+last_verified: 2026-08-27
 compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170; CF-SPEC-122; CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590
 ---
 
@@ -90,6 +90,7 @@ Ensemble Health surfaces health and consensus signals for Istara's multi-model o
 - `tests/pi_production/test_w7_validation.py` — dispatcher purpose/verb mapping, legacy parity, endpoint-pinned distinctness, actual Pi Model Management-backed coding selection, fail-closed degradation, and judge unavailability. W8 embedding dispatch and gateway behavior are covered by `tests/pi_production/test_w8_embeddings_gateway.py`.
 - `tests/pi_production/test_w1_dispatcher_authority.py` — legacy/Istara multi-turn and seven-step long-horizon tool-loop parity over a real `PiModelManager`; verifies per-round manager resolution, accumulated tool-result history, cumulative usage, governed horizon behavior, and provider-served identity.
 - `tests/pi_production/test_legacy_long_horizon.py` — isolated seven-step legacy horizon oracle, kept separate from the complexity-heavy authority module while preserving the same real `PiModelManager` seam.
+- `tests/pi_production/test_ensemble_identity_parity.py` — both `legacy` and `pi` ensemble choices use one real `PiExecutionService`/`PiModelManager` authority and preserve three distinct provider-served identities separately from configured request labels; this is provenance/authority coverage, not live model-quality or Fleiss/Krippendorff evidence.
 
 ## Related Features
 

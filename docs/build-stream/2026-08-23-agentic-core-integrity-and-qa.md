@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T08:12:00Z, ledger: L-286 }
+last: { agent: gpt-5-codex, at: 2026-08-27T07:08:00Z, ledger: L-287 }
 next_action: "Continue the deterministic Research Spine/authority audit from the exact transported testing tip; await an owner-authorized Docker-only Mac Studio window before any live provider, Petals, or three-rater acceptance claim."
 ```
 
@@ -6612,3 +6612,26 @@ Mac Studio evidence for real served identities, common raw spans, independent
 coding, Fleiss/Krippendorff reliability, grounding, reconciliation,
 human-Done/report promotion, HTTP long-horizon recovery/timeout behavior,
 Petals cooperation/scope/revocation, redaction, and teardown.
+
+### L-287 | 2026-08-27T07:08:00Z | S2-execute/S3-review | gpt-5-codex | cross-engine ensemble served-identity parity
+
+The ensemble audit found that the existing cross-engine authority test asserted
+only configured endpoint model labels. That was enough to show that `legacy` and
+`pi` selected the same manager-owned endpoints, but not enough to prove that a
+provider-reported response identity survives the ensemble boundary or that three
+independent served identities are observable. A proxy could return one shared
+checkpoint while configured labels still appeared distinct in the test.
+
+Added `tests/pi_production/test_ensemble_identity_parity.py`, an isolated
+deterministic oracle using the real `AgenticDispatcher`, `PiExecutionService`,
+and `PiModelManager` with a non-networking supervisor seam. It runs both engine
+choices against three distinct manager-selected endpoints, emits explicit
+provider-served identities different from configured labels, and asserts endpoint
+identity, configured/request identity, and served identity remain separate and
+complete for all three samples. The test passed (`1 passed`); Ruff passed.
+
+This closes an authority/provenance test gap only. It does not make a response-
+level MoA result formal Research Spine evidence and does not prove live model
+independence, common raw spans, Fleiss/Krippendorff reliability, grounding,
+reconciliation, human-Done/report promotion, Petals cooperation, or teardown.
+The Docker-only Mac Studio G0/G1 and live G2-G22 gates remain open.
