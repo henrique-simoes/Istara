@@ -8299,3 +8299,21 @@ reconciliation gap remains open and is now the next implementation target. No
 provider request, model load, host installation, or Docker workload was
 started; Mac Studio execution remains blocked on owner-approved Docker-only
 model/provider inputs, a valid `.env.deploy`, and redacted receipts.
+
+### L-351 | 2026-08-27T13:44:00Z | S5-ship&learn | gpt-5-codex | deterministic entrypoint transport and Mac Studio parity
+
+The benchmark package alias and the generated feature-manifest timestamp were
+transported as commits `d62bc3f1` and `d69eedda` on `origin/testing`. The local
+`testing` checkout and detached Mac Studio retake `~/istara-testing-retake-47bf`
+were refreshed to `d69eedda` and are clean. Passive Docker inspection used only
+the existing `/usr/local/bin/docker`: Server `29.7.2`, unrelated `plex` only,
+zero files under `~/Istara-Projects/models`, and no retake `.env.deploy`.
+
+`npm --prefix tests/real_user_benchmark test` is now the conventional
+deterministic entrypoint and passed all 89 tests. This parity receipt proves
+transport and Docker-only boundary compliance, not live model quality or
+Research Spine acceptance. F-R9-114/L-350 remains open: the live harness still
+needs a separately governed, opt-in synthetic reconciliation phase and stronger
+traceability assertions before it can demonstrate the complete accepted path.
+No provider request, model load, host installation, image pull, or benchmark
+workload was started.
