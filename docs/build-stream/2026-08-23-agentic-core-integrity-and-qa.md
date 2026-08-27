@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T07:02:00Z, ledger: L-278 }
-next_action: "Run the post-change gate for the real-dispatcher Research Spine coverage correction, then commit/push the exact testing SHA and keep live G0/G1/G2–G22 open until an authorized Docker-only Mac Studio retake supplies provider/Petals routes and complete evidence."
+last: { agent: gpt-5-codex, at: 2026-08-27T07:08:00Z, ledger: L-279 }
+next_action: "Keep deterministic coverage and transport closed at 8937d50d; await an owner-authorized Docker-only Mac Studio window, verify the archive in-container, then run provider/Petals/combined Research Spine retakes and attach complete evidence before closing G0/G1/live G2–G22."
 ```
 
 ## Plan overview / roadmap
@@ -6397,3 +6397,30 @@ three actual provider-served identities over common raw spans, grounded independ
 coding, numeric Fleiss/Krippendorff reliability, reconciliation, human-Done/report
 promotion, both loop choices through shared Pi Model Management, two-call and
 long-horizon behavior, Petals cooperation/scope/revocation, redaction, and teardown.
+
+### L-279 | 2026-08-27T07:08:00Z | S3-gate/S5-ship&learn | gpt-5-codex | real-dispatcher coverage transport parity
+
+Verified: native Compass Forge `gate after --summary` completed with
+`actionable_failures=[]`, `new_failures=0`, `comparison.new_issue_count=0`, and
+`new_warnings=[]`. The global gate remains `fail` with `31` inherited findings
+across secret-flow, route/type, complexity, and large-file checks; this correction
+introduced no new issue. Ruff and `git diff --check` are clean.
+
+Commit `8937d50d` is pushed to `origin/testing`. It contains the real
+`AgenticDispatcher` W7 coding-run coverage correction, the codebook feature-doc
+test reference and generated site/manifest, and this Build Stream receipt. The
+external F-R9-79 finding is appended to `/Users/user/Desktop/testing.md`.
+The exact parity check confirms `HEAD`, local `testing`, and `origin/testing` all
+resolve to `8937d50d`, with no diff and no dirty worktree. No branches or
+worktrees were deleted; the divergent recovery checkout remains intentionally
+preserved.
+
+Boundary/next: deterministic implementation and audit work for this coverage slice
+is complete. Live acceptance is deliberately not claimed. G0/G1 and live G2-G22
+remain open until an owner-authorized Docker-only Mac Studio window starts only
+disposable Compose/nested-Docker services from this exact SHA, verifies the archive
+digest in-container, and captures three actual provider-served identities over
+common raw spans, grounded independent coding, numeric Fleiss/Krippendorff
+reliability, reconciliation, human-Done/report promotion, both Istara and Pi
+Agentic Loop choices through shared Pi Model Management, two-call/long-horizon
+traces, Petals cooperation/scope/revocation, redaction, and teardown.
