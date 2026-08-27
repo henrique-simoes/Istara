@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T05:23:26Z, ledger: L-269 }
+last: { agent: gpt-5-codex, at: 2026-08-27T05:24:39Z, ledger: L-270 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -6127,3 +6127,33 @@ both loop modes through shared Pi Model Management, two-call/long-horizon
 artifacts, Petals interoperability, redaction, and teardown. The Mac Studio
 currently has no model artifacts or reachable provider routes, so live claims
 remain prohibited.
+
+### L-270 | 2026-08-27T05:24:39Z | S3-gate/S5-ship&learn | gpt-5-codex | terminal parity and final gate receipt
+
+Verified after the shared governed-width documentation transport: native
+Compass Forge before-gate record `168` established the reviewed-tree
+baseline, and after-gate record `169` reports `new_issue_count=0`,
+`new_failures=0`, no actionable failures, no cycles, and no new warnings.
+The global gate remains `fail` only for inherited repository debt (31
+failures/209 warnings and known route/type drift, complexity, secret-flow,
+and large-file findings). The final transport tip is `cfc804853c78044b527750a6cabc9d7f1019aa17` on `HEAD`, local `testing`, and
+`origin/testing`; the worktree, `git diff --check`, and
+`git diff origin/testing --check` are clean.
+
+The final passive SSH snapshot is still Docker-only on
+`users-Mac-Studio.local` with Docker Server `29.7.2`: only unrelated healthy
+Plex is running; there are no Istara/Petals/benchmark containers or networks,
+and only the retained named `pi-agent-home` volume. No host installation,
+model load, image pull, service start, or repository mutation occurred.
+
+Boundary/next: all locally provable deterministic oracle, authority,
+provenance, health-admission, documentation, transport, and gate work in this
+window is complete. G0/G1 and live G2-G22 remain explicitly open. Resume only
+when an authorized Docker-only window supplies three model artifacts or
+reachable provider routes; then use a fresh detached `origin/testing` checkout,
+verify its archive digest inside Docker, run provider/Petals/combined profiles,
+and retain raw source-span, three-served-identity, grounded rating, numeric
+Fleiss/Krippendorff, reconciliation, human-Done/report, both-loop-mode,
+two-call/long-horizon, Petals, redaction, and teardown evidence. Until those
+prerequisites exist, a deterministic green suite cannot be reported as live
+three-model Research Spine acceptance.
