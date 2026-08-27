@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T12:22:05Z, ledger: L-338 }
-next_action: "Commit and push the AdaptiveSelector authority remediation, verify exact detached Mac Studio Docker-only parity, then resume the remaining live-gate and Research Spine acceptance audit."
+last: { agent: gpt-5-codex, at: 2026-08-27T12:40:00Z, ledger: L-339 }
+next_action: "Continue the static validation-executor, public-engine, and Research Spine acceptance audit; keep live semantic acceptance blocked until owner-approved Docker-only model inputs exist."
 ```
 
 ## Plan overview / roadmap
@@ -7965,3 +7965,23 @@ values, source-grounded coding, reconciliation, human Done/report promotion,
 two-call/long-horizon receipts, redaction, and teardown remain blocked on
 owner-approved Docker-only inputs. Commit/push and exact detached parity must
 follow this ledger append.
+
+### L-339 | 2026-08-27T12:40:00Z | S5-ship&learn | gpt-5-codex | post-transport Mac Studio parity
+
+The AdaptiveSelector authority remediation and its ledger checkpoint were
+transported as commit `59621145f5aa49879ad39a115d1e29e2bea1d8f1` on
+`origin/testing`. Before this append, the local `testing` branch, remote
+`origin/testing`, and the detached Mac Studio retake all resolved to that SHA;
+the remote checkout was clean. The only observed container was unrelated
+`plex`; Docker Server was `29.7.2`; the model-file count under the testing model
+directory was `0`; `.env.deploy` was absent; and no container, image pull,
+provider request, package installation, or model load was started. This is
+transport/parity evidence, not live semantic or Research Spine acceptance.
+
+Appending this record changes the branch tip, so the detached parity check must
+be repeated after the documentation checkpoint is committed. Continue the
+static audit from the updated tip and preserve the explicit live gate: no
+three-served-model Fleiss/Krippendorff, source-span grounding, reconciliation,
+human Done/report promotion, two-call/long-horizon, Petals cooperation,
+redaction, or teardown claim is valid without owner-approved Docker-only
+runtime inputs and receipts.
