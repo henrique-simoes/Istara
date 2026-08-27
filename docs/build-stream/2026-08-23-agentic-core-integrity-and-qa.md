@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T06:08:53Z, ledger: L-275 }
-next_action: "Run the post-change gate, record the benchmark-authority correction, push exact testing/origin parity, and keep live G0/G1/G2–G22 open until an authorized Docker-only Mac Studio retake supplies three served identities and full Research Spine evidence."
+last: { agent: gpt-5-codex, at: 2026-08-27T06:12:25Z, ledger: L-277 }
+next_action: "Await an owner-authorized Docker-only Mac Studio window; start from exact origin/testing SHA 67bb9361, verify the archive in-container, then run provider/Petals/combined Research Spine retakes and attach complete evidence before closing G0/G1/live G2–G22."
 ```
 
 ## Plan overview / roadmap
@@ -6339,3 +6339,22 @@ fixture clarification, generated manifest, and this ledger receipt; then verify
 `HEAD == testing == origin/testing` and a clean worktree. Live G0/G1/G2-G22 remain
 open pending the authorized Docker-only Mac Studio retake and complete Research
 Spine evidence.
+
+### L-277 | 2026-08-27T06:12:25Z | S5-ship&learn | gpt-5-codex | exact testing transport parity
+
+Verified: commit `67bb93616f31d5ea692eb8a66eafbe4efd52cf1d` containing the benchmark
+authority correction, compatibility-fixture clarification, generated manifest, and
+Build Stream/F-R9-78 receipts is pushed to `origin/testing`. Local `testing`, `HEAD`,
+and `origin/testing` resolve to the same SHA; `git diff origin/testing...HEAD --stat`
+is empty and the worktree is clean. No branches or worktrees were deleted: the
+recovery checkout is intentionally divergent and remains preserved.
+
+Boundary/next: deterministic implementation and audit work for this slice is
+complete. Live acceptance is deliberately not claimed. The next agent must obtain
+owner authorization for a Docker-only Mac Studio run, start only disposable Compose
+and nested-Docker services from this exact SHA, and retain the full G0/G1/G2-G22
+Research Spine evidence bundle: three provider-served identities over common raw
+spans, independent grounded coding, Fleiss/Krippendorff numbers, reconciliation,
+human-Done/report promotion, both Istara and Pi Agentic Loop choices through shared
+Pi Model Management, two-call/long-horizon traces, Petals scope, redaction, and
+teardown.
