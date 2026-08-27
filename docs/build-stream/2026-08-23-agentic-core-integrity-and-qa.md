@@ -9096,11 +9096,12 @@ Git supplies the earlier Istara process history: commit `741f3420` on
 integration; `1994ba33` on April 10 embeds the three-layer testing architecture into
 Compass; and `21ef99b1` the same day adds TESTING.md, a PR-required workflow, and
 Compass integration. This proves Compass/Build Stream was present in Istara in April,
-while the first durable Pi-specific `CF-SPEC-1`/`CF-SPEC-2` lifecycle is documented
-in the July 19 Build Stream ledger and later `CF-SPEC-10`/`11`/`12` acceptance is
-recorded around July 31–August 1. No April CF-SPEC database rows were found in the
-retained state stores, so an April process-origin claim must not be converted into a
-fabricated April spec-row count.
+while the first durable Pi-specific specs (`CF-SPEC-1`, `CF-SPEC-2`, and the
+`CF-SPEC-7`/`CF-SPEC-8` replacement lineage) are documented in the July 19–20
+Build Stream history; later `CF-SPEC-10`/`11`/`12` acceptance is recorded around
+July 31–August 1. No April CF-SPEC database rows were found in the retained state
+stores, so an April process-origin claim must not be converted into a fabricated
+April spec-row count.
 
 Result: the historical answer is intentionally split by authority—April 3 is the
 verified Istara Compass origin; ten is the retained shared-DB Istara row count;
