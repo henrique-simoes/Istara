@@ -52,6 +52,42 @@ def chat_response(model: str | None) -> dict[str, Any]:
     }
 
 
+def openai_chat_stream(model: str | None) -> list[dict[str, Any]]:
+    """Return a valid, deterministic OpenAI-compatible SSE chunk sequence.
+
+    This is a transport-contract fixture only.  The content is deliberately
+    canned and must never be interpreted as model or Research Spine evidence.
+    """
+    response = chat_response(model)
+    return [
+        {
+            "id": "qa-contract-chat",
+            "object": "chat.completion.chunk",
+            "model": response["model"],
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": response["message"],
+                    "finish_reason": None,
+                }
+            ],
+        },
+        {
+            "id": "qa-contract-chat",
+            "object": "chat.completion.chunk",
+            "model": response["model"],
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {},
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+        },
+    ]
+
+
 class ProviderStubHandler(BaseHTTPRequestHandler):
     """Small HTTP handler for the Ollama-compatible contract surface."""
 
@@ -132,6 +168,23 @@ class ProviderStubHandler(BaseHTTPRequestHandler):
                 return
             if self.path == "/v1/chat/completions":
                 response = chat_response(payload.get("model"))
+                if payload.get("stream"):
+                    body = b"".join(
+                        (
+                            "data: "
+                            + json.dumps(chunk, separators=(",", ":"))
+                            + "\n\n"
+                        ).encode("utf-8")
+                        for chunk in openai_chat_stream(payload.get("model"))
+                    ) + b"data: [DONE]\n\n"
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/event-stream")
+                    self.send_header("Cache-Control", "no-cache")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.send_header("Connection", "close")
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
                 self._send_json(
                     200,
                     {

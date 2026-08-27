@@ -979,6 +979,28 @@ def test_catalog_covers_local_serving_as_kind_local():
     assert resolved.base_url.endswith("/v1")
 
 
+def test_contract_stub_local_plane_is_not_chat_or_ensemble_candidate(monkeypatch):
+    """A deterministic QA plane cannot become a model or Research Spine rater."""
+    from app.config import settings
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    monkeypatch.setattr(settings, "llm_provider_contract_stub", True)
+    manager = PiModelManager(
+        endpoints=[
+            _resolved("pi-local", model="qa-contract", kind="local"),
+            _resolved("pi-remote", model="real-model"),
+        ],
+        include_local=False,
+    )
+
+    assert manager.available_model_identities() == ("real-model",)
+    assert [endpoint.endpoint_id for endpoint in manager.resolve_distinct(1)] == ["pi-remote"]
+    with pytest.raises(PiEndpointResolutionError, match="contract_stub"):
+        manager.resolve(endpoint_id="pi-local")
+    # Embedding probes intentionally retain access to the deterministic wire fixture.
+    assert manager.resolve_embed(model="qa-contract", endpoint_id="pi-local").endpoint_id == "pi-local"
+
+
 def test_capability_filters_and_exact_identity_are_fail_closed():
     """Selection is exact-identity or capability-filtered, never donor-style
     scoring; capability admission fails closed."""

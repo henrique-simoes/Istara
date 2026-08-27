@@ -55,6 +55,18 @@ def _is_petals_entry(entry: _CatalogEntry) -> bool:
     """Recognize both dynamic projections and explicit Petals test catalogs."""
     return entry.source == "petals" or entry.kind == "petals"
 
+
+def _is_contract_stub_chat_entry(entry: _CatalogEntry) -> bool:
+    """Return whether an entry is the deterministic QA plane, not a model.
+
+    The contract provider is intentionally useful for startup/embedding wire
+    checks, but it must never be admitted as a chat, ensemble, or Research
+    Spine rater.  Keeping the predicate on the catalog entry lets embedding
+    resolution continue to use the stub while every chat selection path shares
+    the same fail-closed boundary.
+    """
+    return bool(settings.llm_provider_contract_stub and entry.kind == "local")
+
 # Live managers, so LLMServer CRUD / network discovery can invalidate the
 # DB projection on every in-process manager (W8 UX parity) without changing
 # how managers are constructed or shared.
@@ -525,6 +537,8 @@ class PiModelManager:
                     context_window=endpoint.context_window,
                 )
                 return endpoint
+            if _is_contract_stub_chat_entry(entry):
+                raise PiEndpointResolutionError("contract_stub_pi_endpoint")
             if _is_petals_entry(entry):
                 allowed = set(entry.allowed_project_ids)
                 if project_id is None and "*" not in allowed:
@@ -547,7 +561,8 @@ class PiModelManager:
         candidates = [
             entry
             for entry in self._entries.values()
-            if self._matches(
+            if not _is_contract_stub_chat_entry(entry)
+            and self._matches(
                 entry,
                 model=model,
                 require_vision=require_vision,
@@ -591,12 +606,16 @@ class PiModelManager:
         matches: list[_CatalogEntry] = []
         seen_models: set[str] = set()
         for entry in self._entries.values():
-            if entry.endpoint_id in excluded or not self._matches(
-                entry,
-                model=model,
-                require_vision=require_vision,
-                min_context=min_context,
-                project_id=project_id,
+            if (
+                entry.endpoint_id in excluded
+                or _is_contract_stub_chat_entry(entry)
+                or not self._matches(
+                    entry,
+                    model=model,
+                    require_vision=require_vision,
+                    min_context=min_context,
+                    project_id=project_id,
+                )
             ):
                 continue
             model_identity = entry.model.strip().casefold()
@@ -756,6 +775,8 @@ class PiModelManager:
         identities: list[str] = []
         seen: set[str] = set()
         for entry in self._entries.values():
+            if _is_contract_stub_chat_entry(entry):
+                continue
             if not self._matches(
                 entry,
                 model=None,

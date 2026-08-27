@@ -19,6 +19,7 @@ from qa.scripts.provider_stub import (
     EMBEDDING_DIMENSION,
     embedding_for_text,
     embeddings_for_input,
+    openai_chat_stream,
 )
 
 
@@ -31,6 +32,18 @@ def test_contract_stub_vectors_are_deterministic_and_bounded():
     assert len(first) == EMBEDDING_DIMENSION
     assert all(-1.0 <= value <= 1.0 for value in first)
     assert embeddings_for_input(["source span", "other"]) == [first, embedding_for_text("other")]
+
+
+def test_contract_stub_openai_stream_has_terminal_finish_reason():
+    """The wire fixture must satisfy the Pi OpenAI streaming adapter."""
+    chunks = openai_chat_stream("qwen3:latest")
+    assert chunks[0]["choices"][0]["delta"]["content"] == "qa-contract-response"
+    assert chunks[-1]["choices"][0]["finish_reason"] == "stop"
+    assert chunks[-1]["usage"] == {
+        "prompt_tokens": 1,
+        "completion_tokens": 1,
+        "total_tokens": 2,
+    }
 
 
 def test_chat_identity_requires_exact_model():
