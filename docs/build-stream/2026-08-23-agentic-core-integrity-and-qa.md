@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T04:29:15Z, ledger: L-262 }
+last: { agent: gpt-5-codex, at: 2026-08-27T04:31:10Z, ledger: L-263 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -5921,3 +5921,23 @@ transport receipt only. It does not close G0/G1 or live G2–G22. Continue with 
 fresh detached `origin/testing` checkout and Docker-only Mac Studio execution
 once three real served model identities/routes are supplied; preserve the
 preflight blocker if the artifacts/routes remain absent.
+
+### L-263 | 2026-08-27T04:31:10Z | S3-gate/S5-ship&learn | gpt-5-codex | post-commit gate closure
+
+Verified: after the ledger transport commit `487d0ee27943754daa3abf8de2ab1954035d0e13`,
+the pinned-native Compass Forge `gate after --task CF-15 --summary` completed as
+record `150`. The comparison has `new_issue_count=0`, `new_failures=0`, zero
+actionable failures, zero cycles, and no new warnings. Existing failures remain
+the inherited `secret_flow` and `unexpected_large_files` checks; existing route
+and type drift and repository warning debt are unchanged.
+
+Transport remains exact across `HEAD`, local `testing`, and `origin/testing`,
+with a clean worktree and clean diff check. The external findings register was
+not staged because `/Users/user/Desktop/testing.md` is outside the repository;
+its F-R9-70 wording and F-R9-71 entry remain in place as the audit record.
+
+Boundary/next: deterministic authority and transport gates are closed for this
+checkpoint. Research Spine live validity is still unproven: G0/G1 and live
+G2–G22 remain open until three real served model identities/routes are mounted
+and the provider/Petals/combined Docker-only retakes produce raw, traceable,
+reconciled, human-reviewable evidence.
