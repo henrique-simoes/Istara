@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; passive inventory found zero GGUF files"
-last: { agent: gpt-5-codex, at: 2026-08-27T23:03:09Z, ledger: L-440 }
+last: { agent: gpt-5-codex, at: 2026-08-27T23:45:05Z, ledger: L-441 }
 next_action: "Rerun the provider-only Docker profile after the Bash nounset Compose-array fix, then provision or explicitly supply the required provider-served three-model inputs inside Docker only; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -47,10 +47,29 @@ timestamped ledger entry in this file.
   operations/harness finding: all remote commands must use an explicit Docker
   path or a PATH set in the command, and a missing live stack is `not_run`, not
   `passed`.
-* The first source-history Compass governance and ensemble commits are in March
-  and April; later literal `Compass Forge`/`CF-SPEC-*` persistence dates do not
-  replace that lineage. Do not re-open the provenance question unless a new
-  source contradicts the recorded April ancestry.
+* The Compass/CF timeline has two distinct axes and must not be collapsed into
+  the age of the current SQLite registry. Istara's retained Git history has
+  research/ensemble precursors in March (for example `3308350c` on 2026-03-14
+  added the Kappa thematic-analysis skill, `4ba41a4f` on 2026-03-17 added true
+  dual-coding plus codebook/evidence validation, and `9a218603` on 2026-03-24
+  added ensemble validation and compute-pool infrastructure). Those March
+  objects are present in retained refs but are not ancestors of the current
+  `testing` tip, so they are historical provenance rather than the current
+  branch baseline. The earliest reachable Compass doctrine in the active
+  Istara history is 2026-04-03 (`42e454b0`, `AGENT_ENTRYPOINT.md` defines
+  Compass as Istara's comprehensive agentic development system), followed by
+  doctrine hardening and the three-layer testing architecture on 2026-04-03
+  through 2026-04-10 (`ce19476e`, `16d18228`, `21ef99b1`, `c0ddf50c`). The
+  repository's first literal managed `compass-forge:start` block is 2026-05-02
+  (`0d0d9a24`); the first tracked literal `CF-SPEC-*` marker is 2026-05-04
+  (`7dca7368`). Separately, the standalone Compass Forge project's accepted
+  Build Stream roadmap begins 2026-07-02 and its shared state database's oldest
+  spec row is 2026-07-03. Therefore the previous statement that CF began in
+  July/August was wrong when it referred to Istara's Compass governance or
+  integration; July is only the start of the retained standalone CF roadmap/
+  registry persistence. No retained CF SQLite database contains an April
+  `CF-SPEC` row, and that absence must not be used to backdate or erase the
+  April Istara lineage.
 
 ### Workstream A — Compass Forge and Build Stream control plane
 
@@ -10502,3 +10521,39 @@ passed), the full real-user benchmark Node check (100 passed), and
 `git diff --check` all pass locally. No host package/model installation or model
 loading occurred; the provider Docker acceptance must be rerun from the new
 clean pushed tip before any runtime conclusion is made.
+
+### L-441 | 2026-08-27T23:45:05Z | S3-review | gpt-5-codex | Corrected Compass/Compass Forge provenance after deeper retained-history search
+
+The owner correction was valid. A deeper read-only search separated three
+milestones that the prior report had conflated: (1) Istara research/ensemble
+provenance, (2) Compass governance and its literal CF integration, and (3) the
+later standalone Compass Forge SQLite registry. Retained Istara Git objects
+show March research/ensemble precursors (`3308350c`, 2026-03-14 Kappa skill;
+`4ba41a4f`, 2026-03-17 dual-coding/codebook/evidence validation;
+`9a218603`, 2026-03-24 ensemble validation/compute pool). The earliest
+reachable Compass doctrine on the active Istara history is 2026-04-03
+(`42e454b0`, `AGENT_ENTRYPOINT.md`), followed by doctrine hardening and the
+three-layer testing architecture on 2026-04-03--04-10 (`ce19476e`, `16d18228`,
+`21ef99b1`, `c0ddf50c`). Literal managed `compass-forge:start` wiring first
+appears on 2026-05-02 (`0d0d9a24`), and the first tracked literal `CF-SPEC-*`
+marker on 2026-05-04 (`7dca7368`). The standalone Compass Forge Build Stream
+roadmap begins 2026-07-02; the shared CF database's oldest spec row is
+2026-07-03. Thus CF/Compass has been part of Istara's April-era development
+system (with literal CF wiring by May); July/August describes registry
+persistence only, not origin. March objects outside the current `testing`
+ancestry remain historical corroboration, not current-branch evidence. No
+retained CF SQLite database contains an April spec row. This correction changes
+documentation only; no code, Docker workload, host software, model, or test
+data was mutated, and the live three-model Research Spine gate remains open.
+
+Evidence: `git log --all`/`git show`/`git grep` over the cited hashes and paths,
+`git merge-base --is-ancestor` against `HEAD` to distinguish active-branch
+evidence from retained historical objects, and read-only SQL over every
+retained `.compass-forge/state.sqlite3` plus the standalone CF Build Stream
+roadmap. The corrected two-axis wording is now recorded in the Current truth
+section above so a future agent cannot infer system age from CF-SPEC row age.
+
+Next: preserve this provenance distinction in the final handoff, then resume
+the Docker-only provider/Petals acceptance from the clean pushed `testing` tip;
+do not claim three-model Fleiss/alpha, reconciliation, Done, or report gates
+until provider-served identities and terminal receipts exist.
