@@ -8094,3 +8094,23 @@ semantic quality, formal reliability, source grounding, reconciliation,
 human Done/report promotion, Petals cooperation, two-call/long-horizon, and
 teardown remain blocked on owner-approved Docker-only inputs and redacted
 receipts.
+
+### L-344 | 2026-08-27T13:02:00Z | S5-ship&learn | gpt-5-codex | validation provenance transport and Docker parity
+
+The cross-engine validation provenance fix and L-343 checkpoint are
+transported as commit `cae80e51` on `origin/testing`. Local `testing`,
+`origin/testing`, and the detached Mac Studio testing checkout resolve to this
+SHA; the remote checkout is clean. Passive Docker inspection reports Server
+`29.7.2`, only unrelated `plex` running, no model files under the protected
+artifact roots, and no `.env.deploy`. Git refresh only; no container, image,
+provider, model, or host installation was started.
+
+This parity proves transport and the Docker-only boundary, not live semantic
+quality. The remaining Research Spine gates—three independently served model
+identities in a real run, source-span grounding, independent coded evidence
+units, Fleiss/Cohen/Krippendorff reliability, reconciliation, human
+Done/report promotion, Petals cooperation/revocation, same-session two-call
+and long-horizon receipts, redaction, and teardown—remain unverified until
+owner-approved Docker-only inputs and redacted receipts exist. Continue the
+static audit from this tip; the append itself requires one final detached
+parity check after it is committed.
