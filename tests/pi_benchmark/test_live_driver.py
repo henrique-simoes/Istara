@@ -14,7 +14,6 @@ import types
 
 import pytest
 
-import tests.pi_benchmark.registry_seed as registry_seed
 from tests.pi_benchmark import live_driver, schema
 from tests.pi_benchmark.live_driver import LiveCapture
 from tests.pi_benchmark.runner import RunConfig
@@ -257,15 +256,9 @@ def test_dispatch_unit_full_ensemble_requests_exactly_moa_n_slots():
     assert capture.estimate is True and capture.usage is not None
 
 
-def test_dispatch_unit_legacy_dispatches_through_agentic_ensemble(monkeypatch):
-    """F-11 contract: the legacy arm MUST run through AgenticDispatcher.ensemble
-    onto the benchmark-seeded registry node — never a benchmark-only side path."""
+def test_dispatch_unit_legacy_dispatches_through_shared_pi_model_manager():
+    """The legacy/Istara arm preserves its loop label but uses Pi authority."""
     provider = FakeProvider()
-    seeded: list[str] = []
-    monkeypatch.setattr(
-        registry_seed, "ensure_benchmark_legacy_node",
-        lambda *, api_key: seeded.append(api_key) or registry_seed.BENCHMARK_NODE_ID,
-    )
 
     seen: dict = {}
 
@@ -276,15 +269,16 @@ def test_dispatch_unit_legacy_dispatches_through_agentic_ensemble(monkeypatch):
             samples=[types.SimpleNamespace(
                 text="legacy loop response",
                 usage={"input_tokens": 11, "output_tokens": 7, "total_tokens": 18},
-                endpoint_id="",
+                endpoint_id="pi-deepseek-default",
+                served_model="deepseek-v4-pro",
                 route_evidence={
-                    "node_id": registry_seed.BENCHMARK_NODE_ID,
-                    "provider_type": "openai_compat",
-                    "model": "deepseek-v4-pro",
+                    "endpoint_id": "pi-deepseek-default",
+                    "provider": "deepseek",
+                    "served_model": "deepseek-v4-pro",
                 },
                 status="success",
             )],
-            endpoint_ids=[], usage=None, status="success",
+            endpoint_ids=["pi-deepseek-default"], usage=None, status="success",
         )
 
     capture = asyncio.run(live_driver.dispatch_unit(
@@ -292,22 +286,17 @@ def test_dispatch_unit_legacy_dispatches_through_agentic_ensemble(monkeypatch):
         provider=provider, ensemble_fn=fake_ensemble,
     ))
 
-    assert seeded == ["test-key"]  # registry seeded with the runtime-resolved key
     assert seen["engine"] == "legacy"
-    assert seen["params"]["endpoint_id"] is None  # registry selection, not pi-pinned
+    assert seen["params"]["endpoint_id"] == "pi-deepseek-default"
     assert seen["params"]["model"] == "deepseek-v4-pro"
     assert capture.text == "legacy loop response"
-    assert capture.endpoint_ids == (registry_seed.BENCHMARK_NODE_ID,)
-    assert capture.route_evidence[0]["endpoint_id"] == registry_seed.BENCHMARK_NODE_ID
+    assert capture.endpoint_ids == ("pi-deepseek-default",)
+    assert capture.route_evidence[0]["endpoint_id"] == "pi-deepseek-default"
     assert len(provider.calls) == 0  # no benchmark-only provider side path
 
 
-def test_dispatch_unit_legacy_moa_routes_through_ensemble_with_seeded_node(monkeypatch):
+def test_dispatch_unit_legacy_moa_routes_through_shared_pi_model_manager():
     provider = FakeProvider()
-    monkeypatch.setattr(
-        registry_seed, "ensure_benchmark_legacy_node",
-        lambda *, api_key: registry_seed.BENCHMARK_NODE_ID,
-    )
 
     class FakeAgentic:
         def __init__(self):
@@ -319,9 +308,9 @@ def test_dispatch_unit_legacy_moa_routes_through_ensemble_with_seeded_node(monke
                 types.SimpleNamespace(
                     text=f"legacy sample {i}",
                     usage={"input_tokens": 5, "output_tokens": 3, "total_tokens": 8},
-                    endpoint_id="",
+                    endpoint_id="pi-deepseek-default",
                     served_model="deepseek-v4-pro",
-                    route_evidence={"node_id": registry_seed.BENCHMARK_NODE_ID, "model": "deepseek-v4-pro"},
+                    route_evidence={"endpoint_id": "pi-deepseek-default", "model": "deepseek-v4-pro"},
                     status="success",
                 )
                 for i in range(3)
@@ -338,30 +327,27 @@ def test_dispatch_unit_legacy_moa_routes_through_ensemble_with_seeded_node(monke
     ))
 
     assert agentic.kwargs["engine"] == "legacy"
+    assert agentic.kwargs["params"].endpoint_id == "pi-deepseek-default"
     assert agentic.kwargs["temperatures"] == [0.3, 0.7, 1.0]
     assert capture.raw_method == "self_moa"
-    assert capture.endpoint_ids == (registry_seed.BENCHMARK_NODE_ID,) * 3
+    assert capture.endpoint_ids == ("pi-deepseek-default",) * 3
     assert len(provider.calls) == 0
 
 
-def test_run_live_unit_default_dispatch_routes_legacy_through_agentic(tmp_path, monkeypatch):
+def test_run_live_unit_default_dispatch_routes_legacy_through_shared_pi_model_manager(tmp_path, monkeypatch):
     provider = FakeProvider()
-    monkeypatch.setattr(
-        registry_seed, "ensure_benchmark_legacy_node",
-        lambda *, api_key: registry_seed.BENCHMARK_NODE_ID,
-    )
 
     async def fake_ensemble(**kwargs):
         return types.SimpleNamespace(
             samples=[types.SimpleNamespace(
                 text="legacy loop response",
                 usage={"input_tokens": 11, "output_tokens": 7, "total_tokens": 18},
-                endpoint_id="",
+                endpoint_id="pi-deepseek-default",
                 served_model="deepseek-v4-pro",
-                route_evidence={"node_id": registry_seed.BENCHMARK_NODE_ID, "model": "deepseek-v4-pro"},
+                route_evidence={"endpoint_id": "pi-deepseek-default", "model": "deepseek-v4-pro"},
                 status="success",
             )],
-            endpoint_ids=[], usage=None, status="success",
+            endpoint_ids=["pi-deepseek-default"], usage=None, status="success",
         )
 
     fake_module = types.ModuleType("app.core.agentic")
@@ -375,7 +361,7 @@ def test_run_live_unit_default_dispatch_routes_legacy_through_agentic(tmp_path, 
 
     assert record["status"] == "ok"
     assert len(provider.calls) == 0
-    assert record["extensions"]["route_evidence"][0]["endpoint_id"] == registry_seed.BENCHMARK_NODE_ID
+    assert record["extensions"]["route_evidence"][0]["endpoint_id"] == "pi-deepseek-default"
     assert schema.is_valid(record)
 
 

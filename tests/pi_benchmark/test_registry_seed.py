@@ -1,4 +1,4 @@
-"""Contract tests for the benchmark registry seed (F-11 / CF-320).
+"""Contract tests for the isolated legacy-registry compatibility fixture (F-11 / CF-320).
 
 T0-safe: the module must not import any backend code at import time. Registry
 mutations use the real in-memory ComputeRegistry (process-local) and are cleaned

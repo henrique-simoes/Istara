@@ -5,11 +5,11 @@ item: agentic-core-integrity-and-qa
 branch: testing
 cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
-stage: S5-ship&learn
+stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T05:46:15Z, ledger: L-274 }
-next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
+last: { agent: gpt-5-codex, at: 2026-08-27T06:08:53Z, ledger: L-275 }
+next_action: "Run the post-change gate, record the benchmark-authority correction, push exact testing/origin parity, and keep live G0/G1/G2–G22 open until an authorized Docker-only Mac Studio retake supplies three served identities and full Research Spine evidence."
 ```
 
 ## Plan overview / roadmap
@@ -6293,3 +6293,49 @@ provider-served identities over common raw spans and complete reliability, groun
 reconciliation, Done/report, both-loop, two-call/long-horizon, Petals, redaction, and
 teardown evidence. Do not promote this deterministic/documentation receipt to live
 Research Spine acceptance.
+
+### L-275 | 2026-08-27T06:08:53Z | S2-execute/S3-review | gpt-5-codex | shared Pi authority benchmark seam correction
+
+Did: audited the live benchmark against the post-migration dispatcher graph and found
+that `tests/pi_benchmark/live_driver.py` still seeded and approved the retired
+`benchmark-deepseek-registry` for the legacy/Istara arm, while production
+`AgenticDispatcher._legacy_outcome` injects the same `PiExecutionService` used by the
+Pi arm. This would reject a real legacy result served from `pi-deepseek-default` and
+made existing fakes prove the wrong authority. The driver now pins
+`pi-deepseek-default` for both engine labels, admits the same approved Pi/Petals route
+policy for both, removes live registry seeding, and leaves `engine="legacy"` as
+loop-semantics selection only. Legacy/raw-capture fixtures now carry explicit
+endpoint/provider/served-model receipts. The registry helper is documented as
+compatibility-only isolated test support.
+
+Verified: the red regression before implementation failed with
+`RouteAdmissionError: benchmark route not approved: 'pi-deepseek-default'`; targeted
+benchmark/registry/raw-capture tests passed `41`; the full benchmark package passed
+`233 passed, 5 skipped`; Pi production passed `419`; Research Spine contract passed
+`32`; end-to-end passed `1`; validation scope passed `4`; feature docs regenerated
+`224` site artifacts and passed `86/86`; Ruff and `git diff --check` were clean.
+Native Compass Forge before-gate reports `actionable_failures=[]` and
+`new_failures=0`; two nonblocking complexity warnings are recorded for the large
+benchmark driver/test files.
+
+Boundary/next: run the after-gate, append F-R9-78 and its remediation evidence to
+`/Users/user/Desktop/testing.md`, commit and push exact testing/origin parity, and
+keep live G0/G1/G2-G22 open until an authorized Docker-only Mac Studio retake proves
+three distinct provider-served identities, common raw spans, grounding,
+Fleiss/Krippendorff reliability, reconciliation, human-Done/report promotion, both
+loop modes, two-call/long-horizon behavior, Petals scope, redaction, and teardown.
+
+### L-276 | 2026-08-27T06:12:00Z | S3-gate/S5-ship&learn | gpt-5-codex | benchmark authority after-gate
+
+Verified: native Compass Forge `gate after --summary` completed with
+`actionable_failures=[]`, `new_failures=0`, `comparison.new_issue_count=0`, and
+`new_warnings=[]`. The global gate remains `fail` with `31` inherited findings in
+the repository-wide secret-flow, route/type, complexity, and large-file checks;
+the current correction introduced no new issue. The benchmark-authority finding
+F-R9-78 is recorded in `/Users/user/Desktop/testing.md`.
+
+Boundary/next: commit and push the intended benchmark driver/tests, compatibility
+fixture clarification, generated manifest, and this ledger receipt; then verify
+`HEAD == testing == origin/testing` and a clean worktree. Live G0/G1/G2-G22 remain
+open pending the authorized Docker-only Mac Studio retake and complete Research
+Spine evidence.

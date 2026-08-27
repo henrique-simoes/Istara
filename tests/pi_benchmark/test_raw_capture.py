@@ -14,7 +14,6 @@ import types
 import pytest
 
 import tests.pi_benchmark.raw_capture as raw_capture
-import tests.pi_benchmark.registry_seed as registry_seed
 from tests.pi_benchmark.raw_capture import RawCaptureWriter, read_records
 
 # importlib (not an import statement) keeps the gate's AST import graph acyclic for
@@ -134,23 +133,18 @@ def test_dispatch_unit_writes_prompt_and_output_records(tmp_path):
     assert outputs[0]["latency_s"] is not None
 
 
-def test_dispatch_unit_legacy_capture_uses_baseline_path_and_redacts_key(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        registry_seed, "ensure_benchmark_legacy_node",
-        lambda *, api_key: registry_seed.BENCHMARK_NODE_ID,
-    )
-
+def test_dispatch_unit_legacy_capture_uses_baseline_path_and_shared_pi_authority(tmp_path):
     async def fake_ensemble(params, **kwargs):
         return types.SimpleNamespace(
             samples=[types.SimpleNamespace(
                 text="legacy response",
                 usage={"input_tokens": 3, "output_tokens": 2, "total_tokens": 5},
-                endpoint_id="",
+                endpoint_id="pi-deepseek-default",
                 served_model="deepseek-v4-pro",
-                route_evidence={"node_id": registry_seed.BENCHMARK_NODE_ID},
+                route_evidence={"endpoint_id": "pi-deepseek-default", "provider": "deepseek"},
                 stop_reason="stop", tool_calls=[], status="success",
             )],
-            endpoint_ids=[], usage=None, status="success",
+            endpoint_ids=["pi-deepseek-default"], usage=None, status="success",
         )
 
     writer = RawCaptureWriter(tmp_path / "raw")
@@ -161,7 +155,7 @@ def test_dispatch_unit_legacy_capture_uses_baseline_path_and_redacts_key(tmp_pat
     (prompt,) = read_records(tmp_path / "raw" / "prompts.jsonl.gz")
     assert prompt["engine_path"] == "baseline_istara"
     assert prompt["call_id"] == "u-cap:legacy:1"
-    # The FakeProvider key is passed as secret_values and must never appear.
+    # Provider credentials are not needed for route admission and must never appear.
     assert "sk-testsecretvalue1234567890" not in str(prompt)
 
 

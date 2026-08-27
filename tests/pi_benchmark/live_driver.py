@@ -3,21 +3,18 @@
 This driver replaces the old synthetic T2/T3 path: every live unit is dispatched for
 real through the approved DeepSeek ``deepseek-v4-pro`` route as the ONLY provider
 (DEC-5: local routes are disabled — there is no local-model path), under a shared
-crash-safe budget ledger (Lane A's :class:`BudgetLedger`). F-11 (CF-320): BOTH engines
-dispatch through ``AgenticDispatcher.ensemble`` — the pi arm pinned to the
-``pi-deepseek-default`` PiModelManager endpoint, the legacy arm through the production
-ComputeRegistry path onto the benchmark-seeded node
-(:mod:`tests.pi_benchmark.registry_seed`), so the legacy DUT is the real production
-legacy loop (registry selection → openai-compat transport → ``attach_route_evidence``),
-not a benchmark-only side path.
+crash-safe budget ledger (Lane A's :class:`BudgetLedger`). Both engine labels dispatch
+through ``AgenticDispatcher.ensemble`` and the shared PiModelManager endpoint
+``pi-deepseek-default``. ``engine="legacy"`` selects the production Istara/Python
+ReAct loop semantics; ``engine="pi"`` selects the pi-agent-core semantics. The
+benchmark therefore compares the two loop implementations without reviving the
+retired ComputeRegistry model-management path.
 
 Routing per unit:
 
 * ``moa_mode is None`` — one ``agentic.ensemble`` sample (``n=1, distinct=False``); the
-  engine (``pi`` | ``legacy``) comes from the unit. Pi units pin
-  ``pi-deepseek-default`` via ``TurnParams.endpoint_id``; legacy units leave it unset so
-  production registry selection routes to the seeded ``benchmark-deepseek-registry``
-  node (registered before the first legacy dispatch via the provider's runtime key).
+  engine (``pi`` | ``legacy``) comes from the unit and both labels pin
+  ``pi-deepseek-default`` via ``TurnParams.endpoint_id``.
 * ``moa_mode in {"self_moa", "full_ensemble"}`` — the benchmark-safe
   ``agentic.ensemble`` path with the unit's ``engine``, DeepSeek model, and approved
   endpoint pinned. All slots use the approved endpoint (``distinct=False``); a requested
@@ -207,10 +204,10 @@ async def _init_db_best_effort() -> None:
 def _sample_route_node_id(sample: Any) -> str:
     """Endpoint identity for one sample, tolerating both arm shapes.
 
-    Pi samples carry ``endpoint_id`` directly (PiModelManager identity). Legacy
-    samples carry the registry's ``route_evidence`` dict (``node_id``) propagated
-    by ``agentic/legacy.py::_normalize_chat`` — that IS the legacy endpoint
-    identity (F-11/AC-7 route truth for the legacy arm).
+    Samples carry ``endpoint_id`` directly as the PiModelManager identity. The
+    ``route_evidence.node_id`` fallback is retained only for compatibility with
+    older captured outcomes; live benchmark dispatch must return the direct Pi
+    endpoint identity for both engine labels.
     """
     direct = str(getattr(sample, "endpoint_id", "") or "")
     if direct:
@@ -285,18 +282,13 @@ def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapt
 
 
 def _is_approved_route(engine: str, endpoint_id: str) -> bool:
-    """Approved route identity per arm (AC-7 route truth).
+    """Approved PiModelManager route identity for either loop implementation.
 
-    Pi units must serve from the pinned PiModelManager endpoint or — in the petals
-    era (CF-338) — from bridge-projected ``pi-petals-*`` endpoints (projection
-    itself enforces donor consent + health; the prefix is identity, not a bypass).
-    Legacy units must serve from the benchmark-seeded registry node (F-11).
-    Anything else is a rejected route, never a silently accepted one.
+    ``engine`` changes loop semantics, not model-management authority. The pinned
+    DeepSeek endpoint and consent/health-gated ``pi-petals-*`` projections are the
+    only accepted benchmark routes for both ``pi`` and ``legacy``. Anything else is
+    rejected rather than silently accepted.
     """
-    import tests.pi_benchmark.registry_seed as registry_seed
-
-    if engine == "legacy":
-        return endpoint_id == registry_seed.BENCHMARK_NODE_ID
     return endpoint_id in APPROVED_DEEPSEEK_ENDPOINT_IDS or endpoint_id.startswith("pi-petals-")
 
 
@@ -444,11 +436,10 @@ async def dispatch_unit(
     same kwargs as ``agentic.ensemble`` except ``params`` is a plain dict
     (``{"endpoint_id", "model", "max_tokens"}``) so tests never import backend types.
 
-    F-11 (CF-320): BOTH engines dispatch through ``AgenticDispatcher.ensemble`` — the
-    pi arm onto the pinned ``pi-deepseek-default`` endpoint, the legacy arm through the
-    production registry path onto the benchmark-seeded node
-    (:mod:`tests.pi_benchmark.registry_seed`). The seeded node is registered before the
-    first legacy dispatch using the provider's runtime-resolved key.
+    F-11 (CF-320): BOTH engines dispatch through ``AgenticDispatcher.ensemble`` onto
+    the pinned ``pi-deepseek-default`` PiModelManager endpoint. The ``engine`` value
+    remains visible to the dispatcher so the benchmark compares production Pi and
+    Istara loop semantics while sharing model-management authority.
 
     CF-321: when ``capture`` (a :class:`tests.pi_benchmark.raw_capture.RawCaptureWriter`)
     is provided, every prompt and output is retained as gzipped JSONL per the owner
@@ -458,22 +449,8 @@ async def dispatch_unit(
     engine = getattr(unit, "engine", None)
     if engine not in {"pi", "legacy"}:
         raise PreDispatchError(f"unsupported benchmark engine: {engine!r}")
-    api_key: str | None = None
-    if engine == "legacy":
-        if provider is None:
-            raise PreDispatchError("approved DeepSeek provider is required to seed the legacy registry node")
-        try:
-            api_key = provider.load_api_key()
-        except Exception as exc:
-            raise PreDispatchError(f"legacy registry seed failed: {exc}") from exc
-        import tests.pi_benchmark.registry_seed as registry_seed
-
-        try:
-            registry_seed.ensure_benchmark_legacy_node(api_key=api_key)
-        except Exception as exc:
-            raise PreDispatchError(f"legacy registry seed failed: {exc}") from exc
     moa_mode = getattr(unit, "moa_mode", None)
-    secret_values = (api_key,) if api_key else ()
+    secret_values: tuple[str, ...] = ()
     capture_errors: list[str] = []
 
     def _record_prompts(slots: int, temperatures: list[float]) -> None:
@@ -555,7 +532,7 @@ async def dispatch_unit(
         slots = moa.requested_slots(moa_mode, moa_n)
         temperatures = list(moa.self_moa_temperatures(moa_n)) if moa_mode == "self_moa" else []
         params = TurnParams(
-            endpoint_id=DEEPSEEK_ENDPOINT_ID if engine == "pi" else None,
+            endpoint_id=DEEPSEEK_ENDPOINT_ID,
             model=DEEPSEEK_MODEL, max_tokens=max_tokens,
         )
         _record_prompts(slots, temperatures)
@@ -581,20 +558,18 @@ async def dispatch_unit(
             spine_phase="review",
         )
         elapsed = time.perf_counter() - started
-        # ``distinct=False`` is intentional: it forces every slot onto the one approved
-        # DeepSeek endpoint. A full ensemble is then explicitly degraded by MoA evidence
-        # instead of discovering local/other configured endpoints.
+        # ``distinct=False`` is intentional for self-MoA: every slot uses the one
+        # approved endpoint. Full ensembles request true distinct resolution above.
         cap = _benchmark_moa_capture(
             outcome, prompt=prompt, system=system, engine=unit.engine, served_method=moa_mode,
         )
         _record_outputs(cap, elapsed)
         return dc_replace(cap, capture_errors=tuple(capture_errors))
 
-    # The pi arm pins the approved PiModelManager endpoint; the legacy arm leaves
-    # endpoint_id unset so the production registry selection routes to the seeded
-    # benchmark node (F-11: registry routing IS the legacy DUT behavior).
+    # Both loop implementations pin the approved PiModelManager endpoint. The engine
+    # label is passed separately so the dispatcher retains their distinct semantics.
     params_payload = {
-        "endpoint_id": DEEPSEEK_ENDPOINT_ID if engine == "pi" else None,
+        "endpoint_id": DEEPSEEK_ENDPOINT_ID,
         "model": DEEPSEEK_MODEL,
         "max_tokens": max_tokens,
     }
@@ -765,14 +740,11 @@ def _stamp_live_provenance(
     """
     route_evidence = tuple(capture.route_evidence) if capture is not None else ()
     if route_evidence:
-        import tests.pi_benchmark.registry_seed as registry_seed
-
-        approved_all = APPROVED_DEEPSEEK_ENDPOINT_IDS | {registry_seed.BENCHMARK_NODE_ID}
         normalized_routes = []
         for route in route_evidence:
             normalized = dict(route)
             endpoint_id = str(normalized.get("endpoint_id") or "")
-            if endpoint_id in approved_all:
+            if endpoint_id in APPROVED_DEEPSEEK_ENDPOINT_IDS:
                 normalized.setdefault("provider", DEEPSEEK_PROVIDER)
                 normalized.setdefault("model", DEEPSEEK_MODEL)
             elif endpoint_id.startswith("pi-petals-"):

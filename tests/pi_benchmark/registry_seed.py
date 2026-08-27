@@ -1,17 +1,11 @@
-"""Benchmark-scoped ComputeRegistry seed for the legacy DUT arm (F-11 / CF-320).
+"""Compatibility-only ComputeRegistry fixture for legacy routing unit tests.
 
-Plan C and DEC-7 require BOTH benchmark arms to dispatch through
-``AgenticDispatcher.ensemble``. The legacy arm routes through the ComputeRegistry
-(``agentic/legacy.py`` -> ``ollama.chat`` -> registry selection), which is empty on
-benchmark machines: no local Ollama/LM Studio, no donors — the original F-10
-symptom ("No compute nodes available for chat"). The F-10 remediation bypassed the
-legacy DUT entirely (raw provider call); F-11 (Blocker, L-66) rejected that.
-
-This module restores DUT identity: it idempotently registers ONE ``source="network"``
-``openai_compat`` ComputeNode pointing at the approved DeepSeek endpoint, so the
-production legacy path — registry candidate selection, model resolution, the
-openai-compat raw-HTTP transport branch, ``attach_route_evidence`` — executes for
-real during benchmark units.
+The live benchmark no longer imports this module: both ``pi`` and ``legacy``
+benchmark arms use the shared PiModelManager endpoint, and ``engine="legacy"``
+changes only loop semantics. These helpers remain narrowly scoped to tests that
+exercise the retired ComputeRegistry adapter in isolation, so historical
+compatibility behavior is explicit without making it a benchmark or production
+model-management authority.
 
 Isolation contract (do not weaken):
 
@@ -33,8 +27,8 @@ from typing import Any
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-v4-pro"
 
-# Identity of the seeded node. Route admission in live_driver accepts exactly this
-# endpoint id for legacy-arm records (AC-7 route truth).
+# Historical identity of the isolated compatibility fixture. Live benchmark route
+# admission intentionally does not accept this endpoint.
 BENCHMARK_NODE_ID = "benchmark-deepseek-registry"
 BENCHMARK_NODE_NAME = "Benchmark DeepSeek (registry-seeded)"
 
