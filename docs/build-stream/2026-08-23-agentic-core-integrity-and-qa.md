@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T22:48:00Z, ledger: L-435 }
+last: { agent: gpt-5-codex, at: 2026-08-27T22:52:00Z, ledger: L-436 }
 next_action: "Use the clean a0a56c7 testing checkout for the owner-approved Docker-only Mac Studio matrix; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until receipts exist."
 ```
 
@@ -10433,3 +10433,20 @@ deterministic evidence alone. The next agent must preserve the dirty remote
 checkout, provision an isolated Docker-only workload from this exact tip, and
 capture the open Research Spine, Petals, provider identity, two-call, and
 long-horizon receipts before attempting task completion.
+
+### L-436 | 2026-08-27T22:52:00Z | S3-review | gpt-5-codex | Final branch and gate handoff
+
+After-gate receipt `358` is attached as CF-21 evidence `456`; it reports zero
+new issues, zero new failures, and no actionable failures against the final
+tip `f1b31a23da2e1b3ce317e78b3f286b48bb84de7a`. The only remaining gate output
+is inherited repository debt (`31` failures / `212` warnings). The branch is
+clean and equal to `origin/testing`; CF evidence `454`/`451`/`449` record the
+preceding equality checkpoints. This final ledger update is documentation-only
+and does not change application behavior.
+
+The active goal is intentionally not complete: the Mac Studio has no Istara
+Compose workload and its checkout is dirty/outdated (L-433, F-R9-162). A future
+agent can resume from this exact clean tip and must run the live Docker-only
+three-model/Petals Research Spine matrix, including raw evidence-unit coding,
+formal Fleiss' kappa plus Krippendorff alpha, reconciliation, accepted
+promotion, human-approved Done/report, and two-call/long-horizon receipts.
