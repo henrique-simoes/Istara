@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T09:36:23Z, ledger: L-310 }
+last: { agent: gpt-5-codex, at: 2026-08-27T09:38:12Z, ledger: L-311 }
 next_action: "Obtain owner-approved Docker-only env/model/provider inputs, then execute the staged provider, Petals, combined, engine-parity, ensemble, and Research Spine acceptance matrix below; keep every missing prerequisite fail-closed."
 ```
 
@@ -7283,6 +7283,21 @@ No code or runtime state changed in this inventory. The exact testing tip remain
 `3198c3478f23a5bc6e22cfd699080947e5070740`, with the Mac Studio retake clean and
 Docker idle. The next action is still Docker-only provisioning, not destructive
 cleanup.
+
+### L-311 | 2026-08-27T09:38:12Z | S3-review | gpt-5-codex | Compose preflight clarification
+
+The clean Mac Studio retake successfully renders both the base and three-model
+Compose configurations when given `.env.example`; this is syntax/interpolation
+evidence only, recorded in Compass Forge command evidence `203`. It does not provide
+live credentials, provider-served model identity, or the actual model files required
+by the benchmark wrapper. The Docker-host model directory still contains zero files,
+and no service or model workload was started.
+
+The external findings register now contains F-R9-98, correcting the narrower
+F-R9-96 wording while preserving the operational conclusion: `compose_config=ok`
+must not be confused with runtime readiness or Research Spine acceptance. The next
+gate remains owner-approved Docker-only provisioning followed by provider-only,
+Petals-only, and combined runs.
 
 ### L-307 | 2026-08-27T09:30:18Z | S5-ship&learn | gpt-5-codex | detailed matrix transport and live-gate checkpoint
 
