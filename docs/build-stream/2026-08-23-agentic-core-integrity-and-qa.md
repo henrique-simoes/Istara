@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T01:05:37Z, ledger: L-219 }
+last: { agent: gpt-5-codex, at: 2026-08-27T01:13:20Z, ledger: L-220 }
 next_action: "Keep the Docker-only Mac Studio acceptance gate open; obtain owner-authorized provider credit and three Compose-owned donor/model routes, then run the three-model Research Spine retake from a clean checkout at 0e21428d681e2f6ed163f51cdbb4ee5741896c37."
 ```
 
@@ -4788,3 +4788,22 @@ owner-authorized provider credit and three distinct Compose-owned routes/models,
 Docker-only profiles from a clean checkout at the exact SHA above and require raw-span sharing,
 three served identities, numeric Fleiss/alpha, grounding, reconciliation, Done/report gates,
 two-call/long-horizon artifacts, Petals interoperability, and teardown evidence.
+
+### L-220 | 2026-08-27T01:13:20Z | S2-execute | gpt-5-codex | exact-tip handoff correction
+
+Did: Corrected the durable Build Stream header and the live-failure handoff paragraph to point
+at the actual pushed `testing`/`origin/testing` tip `a903cc049da88cd28cb2be13e65e851c4548044f`
+instead of the superseded `1e93904d...` commit. Applied the same factual correction to the
+external `/Users/user/Desktop/testing.md` finding F-R9-54. This prevents a future Docker retake
+from silently using a stale implementation while preserving the historical failure narrative.
+
+Evidence: local `testing` and `origin/testing` resolve to the same clean commit; Compass Forge
+gate-after record 106 reports zero new issues, zero new forbidden dependencies, zero new missing
+paths, zero new import cycles, and zero generated/contract drift. The repository gate remains
+red only from inherited debt. No provider request, model load, host package operation, or
+Mac Studio mutation occurred.
+
+Open gate is unchanged: the live profile still has provider HTTP 402 history and no three
+Compose-owned donor/model routes, so it cannot yet prove independent model identities, formal
+Fleiss/Krippendorff reliability, reconciliation, accepted Done/report promotion, or Petals
+interoperation.
