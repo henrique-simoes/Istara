@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T13:27:30Z, ledger: L-348 }
-next_action: "Run the Compass after-gate, attach evidence, commit/push the Pi CRUD authority guard, refresh detached Mac Studio parity, then continue the static Research Spine and live-test configuration audit; keep live semantic acceptance blocked until owner-approved Docker-only model inputs exist."
+last: { agent: gpt-5-codex, at: 2026-08-27T13:31:20Z, ledger: L-349 }
+next_action: "Continue the static Research Spine and live-test configuration audit from the Pi CRUD authority checkpoint; map the real three-model Docker harness and provider-served identity receipts before any owner-approved live run, keeping semantic acceptance blocked until Docker-only inputs exist."
 ```
 
 ## Plan overview / roadmap
@@ -8219,3 +8219,27 @@ Next: run the native after-gate, attach command evidence, commit/push the
 guard and documentation, refresh the detached Mac Studio checkout to the
 resulting SHA, and append the parity receipt before continuing the static
 ensemble/test-configuration audit.
+
+### L-349 | 2026-08-27T13:31:20Z | S5-ship&learn | gpt-5-codex | Pi CRUD transport and Mac Studio Docker-only parity
+
+The Pi endpoint authority guard, regression, living feature documentation,
+and this ledger checkpoint are transported as commit `8b4d8fe0` on
+`origin/testing`. Local `testing`, `origin/testing`, and the detached Mac
+Studio checkout `~/istara-testing-retake-47bf` resolve to the exact same SHA;
+the remote checkout is clean.
+
+The passive Mac Studio check used only the existing absolute Docker binary
+`/usr/local/bin/docker` because the non-interactive SSH PATH omits it. Docker
+Server is `29.7.2`; only unrelated `plex` is running; `MODEL_FILES=0` under
+the protected artifact roots; and `.env.deploy` is absent. No container,
+image pull, provider request, model load, host installation, or destructive
+cleanup was performed.
+
+This proves Git transport and the Docker-only boundary, not live semantic
+quality. Three independently served model identities, source-grounded coding,
+Fleiss/Cohen/Krippendorff reliability, reconciliation, human Done/report
+promotion, Petals cooperation/revocation, same-session two-call and
+long-horizon receipts, redaction, and teardown remain unverified. Next is a
+static audit of the actual ensemble/test harness and its provider-served
+identity assertions; a live run still requires owner-approved Docker-only
+model/provider inputs.
