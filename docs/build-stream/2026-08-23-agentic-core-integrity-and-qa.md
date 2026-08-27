@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:50:00Z, ledger: L-377 }
+last: { agent: gpt-5-codex, at: 2026-08-27T16:05:00Z, ledger: L-378 }
 next_action: "Continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates; separately decide the migration/compatibility policy for legacy no-coding-run reportability. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
 ```
 
@@ -8904,3 +8904,25 @@ remains open for owner-approved live three-model provider identity,
 Fleiss/Krippendorff evidence, genuine human reconciliation, and Done/report
 acceptance; legacy no-coding-run reportability still needs a migration/
 compatibility decision.
+
+### L-378 | 2026-08-27T15:59:30Z | S4-remediate | gpt-5-codex | restricted Petals scope closure
+
+The Pi Model Management resolver had a project-scope gap: a projected Petals
+donor restricted to one or more project ids could still be explicitly resolved
+or selected by a projectless call. The resolver now fails closed with
+`petals_project_id_required` for restricted donor identities, preserves
+`petals_project_not_authorized` for an explicit but disallowed project, and
+keeps wildcard donors available to the documented global catalog inventory.
+Project-scoped catalogs and ensemble selection continue to filter donors before
+consuming a slot; the loopback Petals bridge remains the second admission
+check. Added regressions cover restricted explicit resolution, restricted
+distinct selection, authorized resolution, and wildcard compatibility.
+
+Implementation commit: `b108b831` (`fix: fail closed restricted petals pi
+resolution`). Verification: focused Petals/Research Spine/Pi manager suite
+`53 passed`; feature-doc generation/check `224` artifacts and `86/86`
+features; `git diff --check`; Compass Forge gate-before record `305` exited
+successfully with only the repository's inherited warning/fail inventory.
+The commit is ready for transport to `origin/testing` and the detached Mac
+Studio Docker checkout; no provider request, model load, image pull, host
+installation, or live benchmark was started.
