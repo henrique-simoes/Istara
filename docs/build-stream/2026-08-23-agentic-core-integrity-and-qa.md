@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:28:23Z, ledger: L-370 }
-next_action: "Transport the report-gate regression and this receipt to origin/testing and the detached Mac Studio retake, then continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
+last: { agent: gpt-5-codex, at: 2026-08-27T15:30:06Z, ledger: L-371 }
+next_action: "Continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
 ```
 
 ## Plan overview / roadmap
@@ -8783,3 +8783,22 @@ load, Docker image pull, host installation, live benchmark, or test-data
 deletion occurred. F-R9-114 remains open for live provider-served
 three-model identity, genuine human reconciliation, and Done/report
 acceptance.
+
+### L-371 | 2026-08-27T15:30:06Z | S5-ship&learn | gpt-5-codex | synthetic report-gate regression transport
+
+The report-gate regression and its feature documentation are transported in
+`8e346b9cfbdae200996c961b7633a74fb88417dc` (`docs: record synthetic
+report-gate regression`) and pushed to `origin/testing`. Local `testing`,
+`origin/testing`, and the detached Mac Studio retake
+`~/istara-testing-retake-47bf` all resolve to this exact clean SHA.
+
+Compass Forge task evidence `338` records gate-before `300`, gate-after `301`,
+the `12/12` API test, `94/94` deterministic benchmark, `224` generated /
+`86/86` checked feature docs, and the assertion that
+`assess_task_research_validity` remains `report_allowed=false` after synthetic
+receipt creation. Passive SSH verification used only the existing
+`/usr/local/bin/docker`: client/server `29.7.2/29.7.2`, unrelated healthy
+`plex` only, zero model files, and no retake `.env.deploy`. No host install,
+image pull, provider request, model load, live benchmark, or testing-data
+deletion occurred. F-R9-114 remains open for live three-model provider-served
+identity, genuine human reconciliation, and Done/report acceptance.
