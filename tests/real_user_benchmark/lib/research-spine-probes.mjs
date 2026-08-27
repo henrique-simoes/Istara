@@ -310,8 +310,16 @@ async function validateCodingRun({
   const threshold = Number(codingRun?.threshold ?? 0.6);
   const hasNumericKappa = kappa !== null && kappa !== "" && Number.isFinite(Number(kappa));
   const hasNumericAlpha = alpha !== null && alpha !== "" && Number.isFinite(Number(alpha));
+  // Fleiss/Cohen kappa is an agreement coefficient bounded to [-1, 1].
+  // Krippendorff alpha is also bounded above by 1 (negative values are valid
+  // disagreement signals and must remain visible to the threshold gate).
+  const kappaInRange = hasNumericKappa && Number(kappa) >= -1 && Number(kappa) <= 1;
+  const alphaInRange = hasNumericAlpha && Number(alpha) <= 1;
+  const reliabilityMetricBoundsOk = kappaInRange && alphaInRange;
+  const reliabilityMetricOutOfRange = (hasNumericKappa && !kappaInRange)
+    || (hasNumericAlpha && !alphaInRange);
   const kappaMeetsThreshold = Number.isFinite(threshold)
-    && hasNumericKappa
+    && kappaInRange
     && Number(kappa) >= threshold;
   const fallbackReason = String(codingRun?.fallback_reason || "");
   const status = String(codingRun?.status || "").toLowerCase();
@@ -323,13 +331,11 @@ async function validateCodingRun({
     && applicationCount !== 0;
   const algorithmOk = requiredCoders >= 3
     ? reliabilityMethod === "fleiss_kappa_with_krippendorff_alpha_companion"
-      && hasNumericKappa
-      && hasNumericAlpha
+      && reliabilityMetricBoundsOk
       && (!acceptedPromotion || kappaMeetsThreshold)
     : requiredCoders >= 2
       ? reliabilityMethod === "cohen_kappa_with_krippendorff_alpha_companion"
-        && hasNumericKappa
-        && hasNumericAlpha
+        && reliabilityMetricBoundsOk
         && (!acceptedPromotion || kappaMeetsThreshold)
       : true;
   const lowerAssurance = /single_coder|lower_assurance/i.test(`${reliabilityMethod} ${fallbackReason}`);
@@ -461,7 +467,9 @@ async function validateCodingRun({
       : !modelReliabilityOk
         ? `Research Spine coding proved ${distinctModelCount}/${requiredCoders} backend-reported model coders but only ${servedModelCount}/${requiredCoders} distinct served model identities in route evidence.`
       : !algorithmOk
-        ? `Research Spine validation did not prove the required reliability algorithm with numeric Fleiss kappa and Krippendorff alpha (observed ${reliabilityMethod || "unknown"}, kappa=${kappa ?? "missing"}, alpha=${alpha ?? "missing"}).`
+        ? reliabilityMetricOutOfRange
+          ? `Research Spine validation rejected out-of-range reliability metrics (kappa=${kappa ?? "missing"} must be within [-1, 1]; alpha=${alpha ?? "missing"} must be <= 1).`
+          : `Research Spine validation did not prove the required reliability algorithm with numeric Fleiss kappa and Krippendorff alpha (observed ${reliabilityMethod || "unknown"}, kappa=${kappa ?? "missing"}, alpha=${alpha ?? "missing"}).`
       : !coverageOk
           ? `Research Spine code applications did not prove complete coder-by-evidence-unit coverage, substantive open-code payload, and source/served-model provenance (${coverageEvidence?.observed_coder_count || 0} coders, ${coverageEvidence?.missing_pairs?.length || 0} missing pairs, ${coverageEvidence?.invalid_rows?.length || 0} invalid rows).`
       : `Research Spine coding used ${servedDonorRouteCount}/${requiredDonorRoutes} required distinct served donor routes.`;
@@ -481,6 +489,10 @@ async function validateCodingRun({
         kappa,
         alpha,
         threshold,
+        kappa_in_range: kappaInRange,
+        alpha_in_range: alphaInRange,
+        reliability_metric_bounds_ok: reliabilityMetricBoundsOk,
+        reliability_metric_out_of_range: reliabilityMetricOutOfRange,
         kappa_meets_threshold: kappaMeetsThreshold,
         fallback_reason: fallbackReason,
         expected_distinct_donor_routes: requiredDonorRoutes,

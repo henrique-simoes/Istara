@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T11:22:34Z, ledger: L-329 }
+last: { agent: gpt-5-codex, at: 2026-08-27T11:32:59Z, ledger: L-330 }
 next_action: "Resume the owner-approved Docker-only live matrix only when current env/config, served model identities, donor inputs, and redacted artifact paths exist; keep every live gate fail-closed."
 ```
 
@@ -7743,3 +7743,30 @@ three served model identities, semantic Fleiss/Krippendorff evidence,
 same-session two-call/long-horizon receipts, reconciliation, human Done/report
 promotion, and teardown remain blocked on owner-approved Docker-only current
 env/config, donor/model inputs, and redacted artifacts.
+
+### L-330 | 2026-08-27T11:32:59Z | S2-execute/S3-review | gpt-5-codex | reliability metric-domain oracle hardening
+
+The acceptance oracle previously required only finite numeric reliability values
+before applying the kappa threshold. It now validates the statistical domains
+first: Fleiss/Cohen kappa must be finite and within `[-1, 1]`; Krippendorff
+alpha must be finite and no greater than `1`, while negative alpha remains a
+valid disagreement signal. A malformed response containing values such as
+kappa `9` or alpha `2` therefore fails closed instead of entering the
+reconciliation/promotion branch. Blocker evidence records each bound check and
+whether any finite value was out of range.
+
+Regression coverage adds an otherwise complete three-donor run with kappa `9`
+and alpha `2`; both Research Spine acceptance flags remain false and the
+diagnostic evidence identifies the invalid domains. Existing missing-metric and
+below-threshold behavior remains unchanged. The Ensemble Health feature
+contract and generated site/manifest document the bounded-metric rule, and the
+external testing findings ledger records F-R9-105.
+
+Verification passed: focused Research Spine oracle (`29` tests), complete
+real-user benchmark package (`89` tests), feature documentation generation and
+check (`224` generated artifacts; `86/86` checked), and `git diff --check`.
+No live provider request, model load, host installation, or Mac Studio workload
+occurred. The ledger append changes the tip; final SHA and remote/Mac Studio
+parity must be recorded after the commit. The strict Docker-only live matrix
+remains blocked on owner-approved current env/config, served model identities,
+donor/model inputs, and redacted receipts.

@@ -1079,6 +1079,63 @@ test("three-donor benchmark rejects accepted status when kappa is below its thre
   assert.equal(logger.issues[0].evidence.kappa_meets_threshold, false);
 });
 
+test("three-donor benchmark rejects impossible out-of-range reliability metrics", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-invalid-metrics");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-invalid-metrics");
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-invalid-metrics" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-invalid-metrics",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        threshold: 0.6,
+        // These values must never certify an accepted run, even if a malformed
+        // adapter or fixture reports them as finite numeric values.
+        kappa: 9,
+        alpha: 2,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /out-of-range reliability metrics/i);
+  assert.equal(logger.issues[0].evidence.kappa_in_range, false);
+  assert.equal(logger.issues[0].evidence.alpha_in_range, false);
+  assert.equal(logger.issues[0].evidence.reliability_metric_bounds_ok, false);
+});
+
 test("three-donor benchmark requires three served donor routes, not only three model aliases", async () => {
   const logger = makeLogger();
   const blockers = [];
