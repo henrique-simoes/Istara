@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T08:02:00Z, ledger: L-285 }
-next_action: "Transport the isolated legacy horizon oracle and feature-doc receipt with exact testing parity, then continue the deterministic Research Spine/authority audit; await an owner-authorized Docker-only Mac Studio window before any live provider, Petals, or three-rater acceptance claim."
+last: { agent: gpt-5-codex, at: 2026-08-27T08:12:00Z, ledger: L-286 }
+next_action: "Continue the deterministic Research Spine/authority audit from the exact transported testing tip; await an owner-authorized Docker-only Mac Studio window before any live provider, Petals, or three-rater acceptance claim."
 ```
 
 ## Plan overview / roadmap
@@ -6585,3 +6585,30 @@ reliability, reconciliation, human-Done/report promotion, HTTP long-horizon
 recovery/timeout semantics, Petals cooperation/scope/revocation, redaction, or
 teardown. G0/G1 and live G2-G22 remain open pending the owner-authorized
 Docker-only Mac Studio window.
+
+### L-286 | 2026-08-27T08:12:00Z | S3-gate/S5-ship&learn | gpt-5-codex | legacy horizon transport parity
+
+Commit `e3a31c91` (`test: cover legacy long-horizon parity`) is pushed to
+`origin/testing`. It contains the isolated legacy horizon oracle, the three
+living feature-doc references/architecture notes, regenerated site/manifest
+artifacts, and this Build Stream receipt. The external F-R9-82 finding is
+appended to `/Users/user/Desktop/testing.md`.
+
+Transport verification is exact and clean: `HEAD`, local `testing`, and
+`origin/testing` all resolve to `e3a31c91693666d8c10dec0d3861fb2d42dc8331`;
+`git diff --check` is clean and there are no uncommitted files. The final native
+Compass Forge after-gate reports `actionable_failures=[]`, `new_failures=0`,
+`comparison.new_issue_count=0`, and `new_warnings=[]`. The repository-wide gate
+status remains `fail` only because the inherited baseline still contains `31`
+findings and `209` warnings; this transport introduced no new issue. Feature
+docs remain green at `224` generated artifacts and `86/86` checks.
+
+Deterministic coverage is now `40 passed` for W1/legacy horizon/Pi worker/ASGI
+continuity and `81 passed` for the adjacent provider, scenario, worker,
+validation, and Research Spine slice with runtime warnings promoted to errors.
+No Mac Studio service, model, host package, or repository state was touched.
+The proof remains bounded: live G0/G1 and G2-G22 still require Docker-only
+Mac Studio evidence for real served identities, common raw spans, independent
+coding, Fleiss/Krippendorff reliability, grounding, reconciliation,
+human-Done/report promotion, HTTP long-horizon recovery/timeout behavior,
+Petals cooperation/scope/revocation, redaction, and teardown.
