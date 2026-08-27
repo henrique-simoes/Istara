@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:39:30Z, ledger: L-244 }
-next_action: "Resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine; then, at the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
+last: { agent: gpt-5-codex, at: 2026-08-27T02:50:00Z, ledger: L-245 }
+next_action: "Push the source-snapshot provenance and remote-runner contract checkpoint, then resolve whether ‘Agentic Loop’ is shorthand for legacy/Istara or a required third engine; at the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
 ```
 
 ## Plan overview / roadmap
@@ -5434,3 +5434,33 @@ metrics, grounding, reconciliation, human-Done/report promotion, two-call/long-h
 interoperability, and teardown. The Mac Studio named checkout remains stale/dirty and untouched;
 re-resolve the launch SHA and use a fresh detached checkout when the host and model assets are
 available.
+
+### L-245 | 2026-08-27T02:50:00Z | S4-remediate/S5-ship&learn | gpt-5-codex | provenance and runner-contract audit
+
+Did: Audited the Docker-only benchmark's source-snapshot evidence boundary and found that
+`scripts/runner/docker-run.sh` accepted any 64-character `ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256`
+value without comparing it to the checkout mounted into the runner. Added a fail-closed,
+pre-workload recomputation of the canonical `git archive --format=tar HEAD` SHA-256 using the
+existing host `shasum` or `sha256sum` utility; a mismatch now exits before image pull, Compose
+startup, model load, or benchmark requests. This keeps all application/model work in Docker and
+does not install tooling on the Mac Studio. Added the missing static contract assertion and
+updated the stale probe-selector assertion so the explicit Docker-owned
+`ISTARA_BENCHMARK_PROBE_SCRIPT` override remains covered.
+
+Verified: the focused remote-runner contract suite passes `17/17`; the complete real-user
+benchmark check passes `77/77`; feature docs regenerate/check for `86` features and `224` site
+artifacts; `bash -n scripts/runner/docker-run.sh` and `git diff --check` pass. The local
+canonical archive digest was computed successfully for the current checkout. Compass Forge
+command evidence `101` records the deterministic checks and after-gate record `128` reports no
+new dependency, missing-path, or cycle issues; its only comparison delta is the already
+suppressed path-scoped large-file entry for this growing lifecycle ledger, while the repository
+remains red for inherited gate debt. Findings F-R9-63 (unverified snapshot digest) and F-R9-64 (stale runner
+contract assertion) were appended to `/Users/user/Desktop/testing.md`.
+
+Boundary/next: this closes another deterministic provenance false-positive path but does not
+prove a live provider response, three distinct served model identities, common raw-span coding,
+numeric Fleiss/Krippendorff reliability, grounding, reconciliation, human-Done/report promotion,
+two-call/long-horizon behavior, Petals interoperability, or teardown. Commit and push this
+checkpoint, verify local/remote parity, then keep G0/G1 `not_run` until the owner-authorized
+Mac Studio Docker prerequisites exist. At launch recompute and pass the exact archive digest,
+use a fresh detached checkout, and execute provider/Petals/combined G0–G22 in order.

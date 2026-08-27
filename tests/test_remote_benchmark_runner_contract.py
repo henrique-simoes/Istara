@@ -12,7 +12,8 @@ def test_remote_runner_uses_one_disposable_container_per_engine():
 
     assert 'for engine in "${ENGINES[@]}"' in outer
     assert '-e "ISTARA_BENCHMARK_ENGINE=$engine"' in outer
-    assert '"probe:${ISTARA_BENCHMARK_ENGINE}"' in inner
+    assert 'PROBE_SCRIPT="${ISTARA_BENCHMARK_PROBE_SCRIPT:-probe:${ISTARA_BENCHMARK_ENGINE}}"' in inner
+    assert 'npm --prefix tests/real_user_benchmark run "$PROBE_SCRIPT"' in inner
     assert "probe:legacy" not in inner
     assert "probe:pi" not in inner
 
@@ -48,6 +49,15 @@ def test_remote_runner_records_images_source_and_truthful_isolation():
     assert "ISTARA_BENCHMARK_RUN_ORDER" in outer
     assert "ISTARA_BENCHMARK_ARM_INDEX" in outer
     assert "ISTARA_BENCHMARK_FRESH_SANDBOX=0" not in outer
+
+
+def test_remote_runner_verifies_snapshot_hash_against_the_checked_out_source():
+    outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
+
+    assert 'git -C "$REPO_ROOT" archive --format=tar HEAD' in outer
+    assert "shasum -a 256" in outer
+    assert "sha256sum" in outer
+    assert "source snapshot sha256 does not match" in outer
 
 
 def test_remote_runner_bootstraps_ignored_result_mounts_from_pristine_checkout():

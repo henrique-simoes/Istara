@@ -62,6 +62,35 @@ SOURCE_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)" || {
   echo "unable to resolve the exact source commit for benchmark provenance" >&2
   exit 1
 }
+# The caller supplies the digest from the detached source transfer, but a shape check
+# alone cannot prove that the mounted source is the same snapshot. Recompute the
+# canonical Git archive locally and fail before any image pull, stack startup, or model
+# operation when the declared digest is stale or belongs to a different checkout. macOS
+# provides `shasum`; Linux hosts commonly provide `sha256sum`, so support both without
+# installing host tooling.
+compute_source_snapshot_sha256() {
+  if command -v shasum >/dev/null 2>&1; then
+    git -C "$REPO_ROOT" archive --format=tar HEAD | shasum -a 256 | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    git -C "$REPO_ROOT" archive --format=tar HEAD | sha256sum | awk '{print $1}'
+  else
+    echo "a SHA-256 utility (shasum or sha256sum) is required for source provenance" >&2
+    return 1
+  fi
+}
+SOURCE_ARCHIVE_SHA256="$(compute_source_snapshot_sha256)" || {
+  echo "unable to compute the checked-out source snapshot sha256" >&2
+  exit 2
+}
+if ! [[ "$SOURCE_ARCHIVE_SHA256" =~ ^[[:xdigit:]]{64}$ ]]; then
+  echo "computed source snapshot sha256 is invalid" >&2
+  exit 2
+fi
+DECLARED_SOURCE_SNAPSHOT_SHA256="$(printf '%s' "$ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256" | tr '[:upper:]' '[:lower:]')"
+if [[ "$DECLARED_SOURCE_SNAPSHOT_SHA256" != "$SOURCE_ARCHIVE_SHA256" ]]; then
+  echo "source snapshot sha256 does not match the checked-out source" >&2
+  exit 2
+fi
 COMPOSE_FILE="${ISTARA_BENCHMARK_COMPOSE_FILE:-$REPO_ROOT/docker-compose.vps.yml}"
 COMPOSE_ENV_FILE="${ISTARA_BENCHMARK_COMPOSE_ENV_FILE:-$REPO_ROOT/.env.deploy}"
 MODEL_ROOT_HOST="${ISTARA_BENCHMARK_MODEL_ROOT:-$HOME/Istara-Projects/models}"
