@@ -16,11 +16,15 @@ Routing per unit:
   engine (``pi`` | ``legacy``) comes from the unit and both labels pin
   ``pi-deepseek-default`` via ``TurnParams.endpoint_id``.
 * ``moa_mode in {"self_moa", "full_ensemble"}`` — the benchmark-safe
-  ``agentic.ensemble`` path with the unit's ``engine``, DeepSeek model, and approved
-  endpoint pinned. All slots use the approved endpoint (``distinct=False``); a requested
-  full ensemble therefore records route collapse as degraded rather than discovering
-  local/other configured endpoints. :mod:`tests.pi_benchmark.moa` turns that into evidence
-  and a downgraded ensemble is recorded ``not_runnable``, never ``ok``.
+  ``agentic.ensemble`` path with the unit's ``engine`` and the approved DeepSeek
+  route identity. Self-MoA intentionally repeats the approved endpoint
+  (``distinct=False``). A full ensemble requests ``distinct=True`` with a
+  ``minimum_n`` equal to the requested slot count, so PiModelManager must resolve
+  genuinely distinct admitted endpoints (for example, consented ``pi-petals-*``
+  donors). If that resolution cannot be satisfied, the unit is recorded as degraded
+  or ``not_runnable``; it is never reported as a successful three-model ensemble.
+  :mod:`tests.pi_benchmark.moa` turns route collapse and partial service into explicit
+  evidence rather than silently treating repeated responses as diversity.
 
 Spend discipline (fail closed everywhere):
 

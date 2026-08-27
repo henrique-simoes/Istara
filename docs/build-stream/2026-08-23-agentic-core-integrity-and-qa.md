@@ -8,9 +8,211 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T19:23:20Z, ledger: L-405 }
+last: { agent: gpt-5-codex, at: 2026-08-27T20:00:10Z, ledger: L-407 }
 next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
+
+## Continuation blueprint — remaining work and acceptance contract
+
+This section is the resumable work order for the next agent. It supersedes the
+original Phase 1 diagnosis where a later ledger entry says that a defect has
+already been fixed. It does not turn deterministic fakes into live scientific
+evidence, and it does not authorize model loading or host installation. Every
+step below must leave a command, gate, or review row in Compass Forge and a
+timestamped ledger entry in this file.
+
+### Current truth and non-claims
+
+* `testing` and `origin/testing` are both at `31f738b420d47cdeaaf391e4110c044c1e4ca30b`.
+  The checkout is clean. There is no `local/testing` ref. Do not create a local
+  ref merely to make the names symmetrical; record the absence instead.
+* The only other worktree is the clean recovery branch
+  `recovery/pi-retake-linearized-2026-08-10`. It is not merged into `testing`
+  (`testing...recovery/...` is `863 113`) and must not be deleted or rebased as
+  cleanup. Delete branches/worktrees only after an explicit ancestry, owner, and
+  artifact check proves they are unused and merged.
+* The deterministic contract slices currently pass (latest targeted slice:
+  `425 passed, 0 failed, 5 skipped`; the benchmark contract is `100 passed`).
+  These results establish routing, rejection, accounting, and harness behavior
+  with fakes/fixtures. They do **not** prove that three independent live models
+  served the same research source, that Fleiss' kappa was meaningful, or that a
+  human promoted a reconciled result.
+* Passive SSH inspection found Docker Desktop on the Mac Studio, but no Istara
+  testing stack running (only an unrelated `plex` container and the
+  `pi-agent-home` volume). The non-interactive SSH PATH did not expose `docker`
+  until the absolute Docker Desktop CLI path was used. Treat this as an
+  operations/harness finding: all remote commands must use an explicit Docker
+  path or a PATH set in the command, and a missing live stack is `not_run`, not
+  `passed`.
+* The first source-history Compass governance and ensemble commits are in March
+  and April; later literal `Compass Forge`/`CF-SPEC-*` persistence dates do not
+  replace that lineage. Do not re-open the provenance question unless a new
+  source contradicts the recorded April ancestry.
+
+### Workstream A — Compass Forge and Build Stream control plane
+
+1. Start with `compass-forge status`, `next`, and one compact `agent-brief`.
+   Refresh/index only if staleness is reported. The active recipe is
+   `istara-main`; do not silently use the legacy `istararustgraphtrial` label
+   from older `AGENTS.md` text.
+2. Keep CF-SPEC-2 and CF-15 as the active contract unless Compass Forge shows a
+   newer accepted replacement. Inspect CF-13, CF-15, CF-20, and CF-21 before
+   claiming completion. Do not create duplicate specs for the same request.
+3. For every implementation or test file, run both
+   `intelligence impact --path <path> --request ...` and
+   `intelligence why <path>` before editing. Use `context --pack-type standard`
+   before broad raw reads and record any `incomplete_evidence` warning.
+4. Before and after meaningful changes run the CF gates. Attach exact command
+   output, review result, feature-doc check, and (when applicable) security
+   benchmark output to the task. An inherited gate failure must remain labelled
+   inherited; it is not a reason to claim a new change passed.
+5. Every two minutes or at each material state transition, append a ledger row
+   with: timestamp, agent, phase, commit/working-tree SHA, exact command, result,
+   evidence location, blocker, and next action. Update the YAML `last` pointer in
+   the same edit when a new row becomes the resumable frontier.
+
+### Workstream B — authoritative Pi routing and engine parity
+
+The acceptance target is that Pi Model Management is the only model/endpoint
+authority for all first-class engines, while the engine label still selects the
+loop semantics. Verify this as a matrix, not with one happy-path request:
+
+| Surface | Engine labels | Required authority/evidence | Required negative proof |
+| --- | --- | --- | --- |
+| `/chat` and completion dispatch | `pi`, `legacy`/Istara | `AgenticDispatcher` receives the label; `PiModelManager` resolves the endpoint; route and provider-served model identities are persisted | no `ComputeRegistry` lookup, no QA stub, no silent fallback |
+| Agentic Loop and Pi Agentic Loop | both public labels used by the UI/API | same manager/dispatcher path, with distinct loop telemetry and turn budgets | selecting one label cannot execute the other loop |
+| structured/coder calls | research-validity phases | exact endpoint, provider, served model, project, purpose, source/evidence handles | missing/contradictory served identity blocks promotion |
+| ensemble/full ensemble | self-MoA and three-model mode | `distinct=True`, `minimum_n >= 3`, one route-evidence item per served sample, usage per sample | repeated endpoint IDs or partial responses are degraded/not-runnable |
+| embeddings and auxiliary model calls | configured Pi endpoint | manager-owned endpoint and project scope | retired classical endpoint or global unscoped row cannot leak in |
+| settings CRUD/catalog | Pi endpoint UI/API | canonical `/api/settings/pi-endpoints` and live catalog invalidation | retired `/settings/model`/`provider` endpoints remain 410 and cannot mutate state |
+
+Use existing W7/W8, engine HTTP, ensemble identity, dispatcher, chat, and
+settings tests as the deterministic baseline. Add a regression only where the
+matrix is missing: the test must assert the observable route evidence and the
+negative condition, not merely that a mock was called.
+
+### Workstream C — provider-plane Research Spine proof
+
+This is the primary scientific gate and remains unverified. It must run in a
+fresh, isolated Docker project/database with owner-approved provider inputs.
+
+1. Admit at least three independent provider routes through PiModelManager. Each
+   route needs a distinct endpoint identity and a provider-served model identity;
+   configured labels alone are insufficient. Capture immutable endpoint/model
+   fingerprints without exposing secrets.
+2. Feed every coder the same raw source and the same evidence-unit boundaries.
+   Evidence units must point to source spans; synthesized nugget prose cannot be
+   the input unless exact spans are retained and the artifact remains provisional.
+3. Require a complete coder-by-atom matrix. Missing, duplicate, failed, or
+   contradictory rows block reliability and cannot be padded with a default code.
+4. Compute Fleiss' kappa for three or more raters and retain the companion
+   Krippendorff alpha/grounding metrics. A threshold pass is necessary but not
+   sufficient: undefined/all-same or low-signal results remain
+   `needs_reconciliation`.
+5. Persist reconciliation decisions with actor, timestamp, source/evidence
+   handles, reason, and before/after labels. Verify that accepted atoms/nuggets
+   alone can promote to facts/insights/recommendations; raw model output cannot.
+6. Exercise the human gate: an accepted coding run must still leave a task or
+   report in review until an authorized human marks Done. Verify that reports,
+   recommendations, and design decisions are blocked before that transition and
+   carry route/evidence/reliability provenance after it.
+7. Repeat with a deliberately bad case (duplicate model IDs, missing served
+   identity, partial coder, low kappa, and missing reconciliation) and assert a
+   fail-closed outcome for each. These are scientific validity tests, not just
+   HTTP error tests.
+
+The final provider evidence packet must contain: run ID and clean image digests,
+source hash, evidence-unit manifest, three route receipts, per-coder outputs,
+Fleiss/alpha calculation, reconciliation record, human approval record, accepted
+artifact IDs, and the exact CF command/evidence rows. Until all are present,
+state `live_scientific_acceptance: unverified`.
+
+### Workstream D — Petals donation and simultaneous operation
+
+Petals is a governed donor route, not a substitute for the provider-plane
+Research Spine proof. Verify both in one isolated run and keep claims separate:
+
+1. Exercise donation/slash-string management through the canonical Pi endpoint
+   management path. Consent must be explicit, project-scoped, revocable, and
+   reflected in the manager projection; no donation data may enter a global
+   catalog without that scope.
+2. Project at least three healthy `pi-petals-*` donor routes with distinct route
+   identities. Send served requests through the pinned project endpoint and
+   capture donor, model, project, purpose, usage, and consent evidence.
+3. Run a full ensemble with `distinct=True` and `minimum_n >= 3`. Confirm that
+   the three samples are actually served by distinct admitted routes. Repeated
+   route IDs, missing provider/donor receipts, or a downgrade must be recorded as
+   `not_runnable`, never as a valid ensemble.
+4. Revoke consent and invalidate manager projections. The revoked route must
+   disappear from resolution and a subsequent request must fail closed. Verify
+   that an already-persisted receipt remains auditable but cannot authorize a new
+   call.
+5. Run provider and Petals routes concurrently only after each isolated path
+   passes alone. Confirm manager cache invalidation prevents stale provider or
+   donor endpoints from crossing projects. Report provider-plane reliability and
+   Petals transport health as two different claims.
+
+### Workstream E — tool calls, two-call tasks, and long horizons
+
+The benchmark must prove execution semantics, not only text generation:
+
+* A tool-call scenario must show a requested tool, an authorized invocation, a
+  tool result, a subsequent model turn, and a terminal outcome. A plain response
+  or a mocked tool result is not success.
+* A two-call scenario must persist two distinct dispatch receipts linked to one
+  task, with independent route/usage metadata and a causal second prompt. One
+  call with a long answer does not satisfy it.
+* A long-horizon scenario must show multiple bounded turns, persisted state or
+  checkpoints, recovery/resume behavior, and a terminal user-visible result.
+  Timeout, truncation, or an unobserved background process is incomplete.
+* Exercise both `pi` and `legacy`/Istara loop labels through the shared manager.
+  Compare semantics and receipts, not raw wording; model-quality claims require
+  a separately designed, powered evaluation.
+* Preserve crash-safe records and fail-closed budget reservations. Unknown usage,
+  missing text, timeouts after dispatch, and ambiguous provider receipts must not
+  be converted into zero-cost success.
+
+### Workstream F — benchmark and Docker-only harness hardening
+
+1. Run the deterministic suites in a clean container and locally only when they
+   do not load models. Keep the exact Python/Node lockfiles, image digests,
+   command, exit code, and test counts.
+2. For Mac Studio, SSH is control plane only. Use Docker Desktop's absolute CLI
+   path (or an explicit PATH) and run the runner, services, clients, relay, and
+   model servers in containers. Never install Python, Node, model runtimes,
+   packages, or model files on the host.
+3. Use a disposable project/volume/network per run. Start from a clean checkout
+   at the pushed SHA, mount only the required source/config, and use an explicit
+   teardown. Do not reuse `pi-agent-home`, unrelated containers, or old databases.
+4. The benchmark wrapper must return non-zero for setup errors, missing model
+   identities, failed gates, or incomplete evidence. `100 passed` means only the
+   deterministic package passed; the live profile must emit a separate terminal
+   status such as `accepted`, `needs_reconciliation`, `not_runnable`, or `not_run`.
+5. Run provider-only, Petals-only, and combined profiles. The combined profile
+   is accepted only when both route governance and Research Spine promotion gates
+   pass in the same run. Keep warm/cold order and repeated-run variance visible.
+6. If no approved endpoint/model inputs are available, stop after passive checks,
+   record `blocked_on` with the missing inputs, and do not fabricate a live pass.
+
+### Workstream G — verification and shipping checklist
+
+Before terminal acceptance, the next agent must attach:
+
+* targeted Pi/dispatcher/manager/ensemble/Petals/Research Spine tests;
+* `python scripts/feature_docs.py --seed-missing --generate-site --check` for
+  behavior or route changes;
+* `python scripts/security_benchmark.py --fail-on-threshold` for auth, provider,
+  session, webhook, model, or endpoint-management changes;
+* Docker-only Mac Studio logs and teardown evidence, with host install audit;
+* `compass-forge gate before` and `gate after`, task evidence, and review result;
+* `git diff --check`, clean status, commit SHA, and equality of `testing` and
+  `origin/testing`; and
+* a final ledger row that distinguishes `accepted`, `needs_reconciliation`,
+  `not_runnable`, `blocked`, and `not_run` for every profile and every gate.
+
+Do not push, merge, delete a worktree, or call the goal complete while any
+required evidence is absent. A clean deterministic suite and a green harness do
+not close the live scientific gate.
 
 ## Plan overview / roadmap
 
@@ -9633,3 +9835,29 @@ with ensemble code in March; later Compass Forge and CF-SPEC markers do not inva
 that lineage.** This audit changed no code, models, providers, Docker workload, or host
 state. Live scientific acceptance remains open (`kappa=-0.125`, `alpha=0.491`, zero
 accepted/reconciled applications, `needs_reconciliation`).
+
+### L-407 | 2026-08-27T20:00:10Z | S2-execute/S3-review | gpt-5-codex | Completion blueprint and truthful benchmark documentation alignment
+
+The continuation contract was expanded into a detailed, resumable blueprint covering
+Compass Forge control-plane discipline; PiModelManager authority and engine parity;
+provider-plane three-model Research Spine acceptance; Petals donation, consent,
+projection, revocation, and simultaneous-operation checks; tool calls, two-call and
+long-horizon receipts; Docker-only Mac Studio execution; deterministic/live status
+semantics; and terminal verification/shipping requirements. It explicitly preserves the
+April Compass/research lineage and distinguishes `accepted`, `needs_reconciliation`,
+`not_runnable`, `blocked`, and `not_run` outcomes.
+
+The stale module docstring in `tests/pi_benchmark/live_driver.py` was corrected: self-MoA
+still repeats the approved endpoint, while `full_ensemble` requests `distinct=True` and
+`minimum_n` so PiModelManager must resolve genuinely distinct admitted routes (including
+consented `pi-petals-*` donors) or fail closed. No runtime behavior changed. Focused
+live-driver/MoA contracts pass (`49 passed`); the broader Pi/Research Spine/Petals slice
+passes (`425 passed, 0 failed, 5 skipped`); `git diff --check` passes.
+
+`compass-forge gate after` recorded row `328`. Its status remains fail because of
+pre-existing complexity, route-drift, type-drift, secret-flow, and large-ledger findings;
+the new doc/test changes introduce no architecture/import/security regression. The live
+three-model provider proof, Petals served receipts, human reconciliation/Done/report,
+two-call, long-horizon, and owner-approved Docker model inputs remain open. Working tree
+is intentionally dirty only with these two documentation changes; commit and push occur
+after the final review/evidence pass.
