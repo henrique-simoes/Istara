@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T07:43:07Z, ledger: L-290 }
+last: { agent: gpt-5-codex, at: 2026-08-27T07:43:58Z, ledger: L-291 }
 next_action: "Continue the deterministic Research Spine/authority audit from the exact transported testing tip; await an owner-authorized Docker-only Mac Studio window before any live provider, Petals, or three-rater acceptance claim."
 ```
 
@@ -6668,20 +6668,6 @@ deterministic accounting evidence,
 not live provider quality or three-model Research Spine proof; live G0/G1 and
 G2-G22 remain open for the authorized Docker-only Mac Studio run.
 
-### L-290 | 2026-08-27T07:43:07Z | S2-execute/S3-review | gpt-5-codex | zero-placeholder oracle
-
-The accounting oracle now covers the adapter failure mode in which pi-ai
-returns a non-empty all-zero usage placeholder. A sample is accepted as an
-exact receipt only when it has a positive token/cache/cost measurement or an
-explicit `usage_reported=true` marker; an explicit estimate, `usage_reported=false`,
-empty receipt, malformed sample, or all-zero placeholder makes the whole Pi
-ensemble estimated. The new regression test runs through the real dispatcher,
-Pi execution service, model manager, and durable ledger seam. The final
-authority/continuity/accounting run is `57 passed`; Compass Forge remains at
-`new_issue_count=0`, with no new failures or warnings. Live provider quality,
-three-model independence, Fleiss/Krippendorff reliability, and Docker-only
-Mac Studio G0-G22 evidence remain unclaimed.
-
 ### L-289 | 2026-08-27T07:42:07Z | S2-execute/S3-review | gpt-5-codex | gate-clean ledger boundary
 
 The first implementation moved aggregation into `PiExecutionService`, but
@@ -6704,3 +6690,31 @@ suite `233 passed, 5 skipped`; non-hanging Research Spine/validation slice
 `31` findings/`209` warnings baseline. The known survey-ingestion fixture still
 hangs before test execution and remains inherited harness debt; it is not
 claimed green. No live Mac Studio provider/model/container state was touched.
+
+### L-290 | 2026-08-27T07:43:07Z | S2-execute/S3-review | gpt-5-codex | zero-placeholder oracle
+
+The accounting oracle now covers the adapter failure mode in which pi-ai
+returns a non-empty all-zero usage placeholder. A sample is accepted as an
+exact receipt only when it has a positive token/cache/cost measurement or an
+explicit `usage_reported=true` marker; an explicit estimate, `usage_reported=false`,
+empty receipt, malformed sample, or all-zero placeholder makes the whole Pi
+ensemble estimated. The new regression test runs through the real dispatcher,
+Pi execution service, model manager, and durable ledger seam. The final
+authority/continuity/accounting run is `57 passed`; Compass Forge remains at
+`new_issue_count=0`, with no new failures or warnings. Live provider quality,
+three-model independence, Fleiss/Krippendorff reliability, and Docker-only
+Mac Studio G0-G22 evidence remain unclaimed.
+
+### L-291 | 2026-08-27T07:43:58Z | S3-review | gpt-5-codex | clean transport checkpoint
+
+The all-or-nothing Pi ensemble accounting correction is transported as commit
+`82aa8657b1c5b84a25e29046e05672a550d2bd28` on both local `testing` and
+`origin/testing`; the worktree is clean. Compass Forge after-gate reports
+`actionable_failures=[]`, `new_failures=0`, `comparison.new_issue_count=0`, and
+no new warnings against the inherited `31` findings/`209` warnings baseline.
+The final deterministic verification is recorded in L-290. A passive,
+Docker-binary-only SSH check on Mac Studio reports Docker server `29.7.2`, no
+Istara/Petals containers, only the unrelated healthy Plex container, and the
+retained `pi-agent-home` volume. No host package, model, service, or repository
+mutation occurred. Live G0/G1 and G2-G22 remain open and require an explicitly
+authorized Docker-only Mac Studio execution window.
