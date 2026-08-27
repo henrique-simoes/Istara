@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:30:06Z, ledger: L-371 }
-next_action: "Continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
+last: { agent: gpt-5-codex, at: 2026-08-27T15:32:59Z, ledger: L-372 }
+next_action: "Transport the legacy reportability-debt documentation, then continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
 ```
 
 ## Plan overview / roadmap
@@ -8802,3 +8802,27 @@ receipt creation. Passive SSH verification used only the existing
 image pull, provider request, model load, live benchmark, or testing-data
 deletion occurred. F-R9-114 remains open for live three-model provider-served
 identity, genuine human reconciliation, and Done/report acceptance.
+
+### L-372 | 2026-08-27T15:32:59Z | S3-review | gpt-5-codex | legacy reportability compatibility debt
+
+Static call-graph and fixture audit confirmed one remaining Research Spine
+architecture debt. `assess_task_research_validity` counts accepted/reconciled
+row flags and only applies a run-level promotion check when a latest
+`CodingRun` exists. A task-bound `CodeApplication` with
+`promotion_status=accepted` and `reconciliation_status=accepted` but no
+`coding_run_id` can therefore be reportable after human Done approval. Existing
+legacy compatibility fixtures intentionally rely on this shape (for example,
+`tests/test_findings.py` and `tests/test_research_integrity_reports.py`), so a
+global fail-closed change would require a migration/compatibility policy rather
+than a blind patch.
+
+The architecture note now classifies this as explicit debt: all new Research
+Spine production paths must persist a governed coding run, while tightening
+legacy reportability remains an open decision. Compass Forge impact/why queries
+identified the service/report-manager call graph and affected fixture suite;
+feature-doc generation/check passes (`224` generated artifacts; `86/86`
+features) and `git diff --check` passes. Documentation commit `1ae10760` is
+ready for transport. No provider request, model load, Docker image pull, host
+installation, live benchmark, or testing-data deletion occurred. F-R9-114
+remains open for live three-model provider identity, genuine human
+reconciliation, and Done/report acceptance.
