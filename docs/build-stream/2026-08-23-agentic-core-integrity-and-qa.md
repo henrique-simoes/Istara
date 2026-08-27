@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T03:32:51Z, ledger: L-252 }
-next_action: "At the next authorized live window execute the Docker-only provider/Petals/combined G0–G22 retake from a fresh detached checkout; until then leave G0/G1 not_run, preserve exact testing parity, and resolve the Agentic Loop terminology decision."
+last: { agent: gpt-5-codex, at: 2026-08-27T03:59:06Z, ledger: L-253 }
+next_action: "Run the remaining deterministic/security/documentation gates, attach fresh Compass Forge evidence, transport the served-model receipt hardening to testing, verify exact parity, and leave G0/G1 plus live G2–G22 explicitly open until the authorized Docker-only Mac Studio retake."
 ```
 
 ## Plan overview / roadmap
@@ -5682,3 +5682,40 @@ acceptance until an owner-authorized Docker-only retake proves provider-served i
 source spans, grounded atomic coding, Fleiss/Krippendorff reliability, reconciliation, human-Done
 and report gates, both engine-mode semantics, two-call/long-horizon behavior, Petals cooperation,
 redaction, and teardown from a fresh detached checkout at the exact launch SHA.
+
+### L-253 | 2026-08-27T03:59:06Z | S4-remediate | gpt-5-codex | provider-served receipt hardening and deterministic retest
+
+Did: Continued the audit beyond the dispatcher boundary and traced provider identity through the
+Pi runtime protocol. The endpoint's configured `model` is only a request label; a proxy, gateway,
+or relay can serve a different checkpoint. Pi adapter `responseModel` is optional and provider-
+dependent, so the runtime now observes streamed provider response frames at the fetch boundary,
+preserves the original bytes, and attaches a provider-reported identity to the terminal assistant
+message. `run.completed` carries this as optional `served_model`; the Python Pi engine,
+dispatcher, route evidence, usage ledger, and formal Research Spine coder keep requested and
+served identities separate. Formal coders fail closed when the served receipt is missing or does
+not equal the Pi-selected model; ordinary turns remain compatible for providers that do not
+expose response identity.
+
+Changed: Added the protocol and architecture contract language, loopback OpenAI-compatible and
+Anthropic served-identity assertions, provider-receipt usage-ledger coverage, strict coder fixtures,
+and a stale Pi-manager integration fixture update. Appended finding F-R9-68 to
+`/Users/user/Desktop/testing.md`. The first broad retest correctly exposed one old test stub that
+claimed a configured model without a served receipt; after making the fixture explicit, the full
+focused ladder passed `176` tests.
+
+Verified: `npm --prefix pi-runtime test` passed `46/46`; the focused Python provider/structured/
+Research Spine/Pi ladder passed `77` tests before the broad run and `176` tests after the stale
+fixture correction. Remaining deterministic benchmark, remote-runner, Ruff, feature-doc, diff,
+and Compass Forge evidence gates are still to be rerun for this uncommitted checkpoint. No live
+provider/model was loaded, no image was pulled, and no host package or Mac Studio repository was
+mutated. The Mac Studio remains a passive Docker-only readiness check with no Istara stack.
+
+Boundary/next: this closes the local provider-response provenance gap but does not prove the live
+three-model ensemble or the complete Research Spine. Run the remaining deterministic/security/
+documentation checks, record fresh Compass Forge command and after-gate evidence, commit and push
+the code/tests/contracts/docs plus this checkpoint, verify clean exact `testing`/`origin/testing`
+parity, and repeat passive Docker inventory. Keep G0/G1 and live G2–G22 open until an authorized
+fresh-detached-checkout retake proves three distinct served models over common raw spans, one
+non-duplicate grounded rating per model/unit, numeric Fleiss/Krippendorff reliability,
+reconciliation, human-Done/report promotion, both loop modes through Pi Model Management, two-call
+and long-horizon behavior, Petals cooperation, artifact redaction, and teardown.

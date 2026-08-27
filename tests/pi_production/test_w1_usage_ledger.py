@@ -67,6 +67,8 @@ async def test_pi_provider_usage_persists_one_exact_row():
         "status": "success",
         "stop_reason": "stop",
         "endpoint_id": "pi-faux",
+        "model": "requested-model",
+        "served_model": "served-model",
         "usage": {"input": 120, "output": 34, "cacheRead": 8, "cacheWrite": 2,
                   "cost": {"total": 0.0042}, "turn_count": 3},
         "tool_calls": [{"tool": "search_documents", "params": {}}],
@@ -86,7 +88,7 @@ async def test_pi_provider_usage_persists_one_exact_row():
     assert row.cache_read == 8 and row.cache_write == 2
     assert row.total_tokens == 164 and row.cost_usd == pytest.approx(0.0042)
     assert row.turns == 3 and row.tool_calls == 1
-    assert row.endpoint_id == "pi-faux" and row.model == "deepseek-v4-pro"
+    assert row.endpoint_id == "pi-faux" and row.model == "served-model"
     assert row.task_id == "task-1" and row.spine_phase == "execution"
     assert row.outcome == "success" and row.stop_reason == "stop"
     assert row.latency_ms >= 0 and row.error_type == ""

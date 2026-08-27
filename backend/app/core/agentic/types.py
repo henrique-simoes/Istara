@@ -56,6 +56,10 @@ class TurnResult:
     status: str = "success"
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     model: str | None = None
+    # Provider-reported response identity. This is distinct from `model`,
+    # which is the configured/request identity and may not prove what a proxy
+    # actually served.
+    served_model: str | None = None
 
 
 @dataclass(frozen=True)

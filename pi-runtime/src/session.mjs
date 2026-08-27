@@ -423,6 +423,11 @@ export class PiSession {
         turns: 1,
       },
       stop_reason: terminalMessage.stopReason || "stop",
+      // `model` on pi-ai's assistant message is the configured request model;
+      // `responseModel` is the provider-reported identity captured by the
+      // binding's fetch observer. Keep the two meanings separate so Research
+      // Spine ensemble coding never treats a request label as proof of service.
+      ...(terminalMessage.responseModel ? { served_model: terminalMessage.responseModel } : {}),
       provider_message: terminalMessage,
     });
   }
@@ -539,6 +544,7 @@ export class PiSession {
         run_id: runId,
         usage: this._completedUsage(runUsage, costUsd),
         stop_reason: (assistant && assistant.stopReason) || "stop",
+        ...(assistant?.responseModel ? { served_model: assistant.responseModel } : {}),
         structured: this._run.structuredValue,
       });
       return;
@@ -547,6 +553,7 @@ export class PiSession {
       run_id: runId,
       usage: this._completedUsage(runUsage, costUsd),
       stop_reason: (assistant && assistant.stopReason) || "stop",
+      ...(assistant?.responseModel ? { served_model: assistant.responseModel } : {}),
     });
   }
 

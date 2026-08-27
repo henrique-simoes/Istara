@@ -691,7 +691,10 @@ async def _pi_coder_runner(
             f"{selected_endpoint_id!r}, served {served_endpoint_id!r}"
         )
     selected_model = str(model_name or getattr(coder, "model_name", "") or "").strip()
-    served_model = str(getattr(outcome, "model", "") or "").strip()
+    # Research validity requires provider-reported response identity. The
+    # dispatcher keeps `model` as the configured/request identity, so using it
+    # here would allow a proxy or relay to masquerade as an independent coder.
+    served_model = str(getattr(outcome, "served_model", "") or "").strip()
     if selected_model and served_model != selected_model:
         # Model identity is the scientific independence boundary.  The
         # request parameter is not proof of what a provider actually served;

@@ -95,6 +95,8 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
                 usage={},
                 stop_reason="stop",
                 endpoint_id=kwargs["params"].endpoint_id,
+                model=kwargs["params"].model,
+                served_model=kwargs["params"].model,
                 tool_calls=[],
             )
 

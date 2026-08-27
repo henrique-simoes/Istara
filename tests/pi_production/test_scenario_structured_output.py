@@ -53,9 +53,9 @@ class _OpenAIStructuredHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.end_headers()
-        chunk = {"choices": [{"index": 0, "delta": {"content": self.body}}]}
+        chunk = {"model": "stub-model", "choices": [{"index": 0, "delta": {"content": self.body}}]}
         self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
-        done = {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
+        done = {"model": "stub-model", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
         self.wfile.write(f"data: {json.dumps(done)}\n\n".encode())
         self.wfile.write(b"data: [DONE]\n\n")
         self.wfile.flush()
@@ -152,6 +152,7 @@ async def test_scenario4_openai_compat_structured_output_valid_and_invalid():
         _OpenAIStructuredHandler, "openai_compat", "pi-openai-structured"
     )
     assert done and done[0]["endpoint_id"] == "pi-openai-structured"
+    assert done[0]["served_model"] == "stub-model"
     payload = _validate_structured_output(text)
     assert payload == {"verdict": "pass", "confidence": 0.91}
     assert sup.is_running is False
@@ -175,6 +176,7 @@ async def test_scenario4_anthropic_compat_structured_output_valid():
     )
     assert done and done[0]["endpoint_id"] == "pi-anthropic-structured"
     assert done[0]["stop_reason"] == "stop"
+    assert done[0]["served_model"] == "stub-model"
     payload = _validate_structured_output(text)
     assert payload == {"verdict": "pass", "confidence": 0.88}
     assert sup.is_running is False

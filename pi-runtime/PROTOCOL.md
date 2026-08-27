@@ -140,6 +140,13 @@ through a worker-internal `emit_structured_output` tool:
    (the TypeBox translation is a model-side aid; Python revalidation is the
    contract), allows exactly one bounded repair turn, and raises a typed
    failure after a second invalid result.
+- `run.completed` — terminal success. `model` remains the configured/request
+  identity in the normalized backend result; when the provider response
+  reports an identity, the worker also emits `served_model`. The latter is a
+  provider-response receipt, not a copy of the request parameter, and is the
+  only model identity accepted for independent Research Spine coder evidence.
+  Providers or gateways that do not report a model therefore remain usable for
+  ordinary turns but cannot satisfy the independent-coder gate.
 - `turn.follow_up` — `{v, type, seq, session_key, run_id, text}` — queue a
   follow-up user message after the active run completes. Handler rejections
   are contained (logged to stderr); they never crash the worker.

@@ -90,6 +90,10 @@ Sources
   Management. A missing or different served identity is a transport/provenance
   failure and blocks the coder before any application can enter the reliability
   matrix; the requested model parameter is not evidence of the model that ran.
+  The Pi worker must carry the provider-response receipt as `served_model` from
+  its streamed response through `run.completed`, the Python engine, and the
+  dispatcher; a configured/request `model` field is retained separately for
+  routing and must never be promoted into this proof field.
 - One- or two-model Self-MoA, dual-run, debate, and adversarial checks remain
   useful response-level operational signals, but they are lower-assurance
   validation, not formal Research Spine coding reliability, and cannot promote

@@ -183,6 +183,11 @@ class _StubAgentic:
                 if self._structured_model is not None
                 else getattr(kwargs.get("params"), "model", None)
             ),
+            served_model=(
+                self._structured_model
+                if self._structured_model is not None
+                else getattr(kwargs.get("params"), "model", None)
+            ),
             tool_calls=[],
         )
 
@@ -1030,6 +1035,7 @@ async def _run_pi_coding_run(
                 stop_reason="stop",
                 endpoint_id=kwargs["params"].endpoint_id,
                 model=kwargs["params"].model,
+                served_model=kwargs["params"].model,
                 tool_calls=[],
             )
 

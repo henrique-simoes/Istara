@@ -338,6 +338,7 @@ async def test_pi_coder_runner_dispatches_structured_with_coding_schema(monkeypa
                 stop_reason="stop",
                 endpoint_id="endpoint-a",
                 model="model-a",
+                served_model="model-a",
                 tool_calls=[],
             )
 
@@ -380,6 +381,7 @@ async def test_pi_coder_runner_forwards_request_scoped_pi_service(monkeypatch):
                 value={"applications": []},
                 endpoint_id="endpoint-a",
                 model="model-a",
+                served_model="model-a",
             )
 
     scoped_service = object()

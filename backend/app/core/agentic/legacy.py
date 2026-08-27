@@ -361,7 +361,9 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
                 str(provider_outcome.get("error") or "pi_provider_turn_failed")
             )
         served_endpoint_id = str(provider_outcome.get("endpoint_id") or "") or None
-        served_model = str(provider_outcome.get("model") or "") or None
+        served_model = str(
+            provider_outcome.get("served_model") or provider_outcome.get("model") or ""
+        ) or None
         turn_usages.append(provider_outcome.get("usage") or {})
         message = {
             "role": "assistant",

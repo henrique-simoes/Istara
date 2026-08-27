@@ -266,6 +266,7 @@ class AgenticDispatcher:
             status=outcome.get("status", "success"),
             tool_calls=outcome.get("tool_calls") or [],
             model=outcome.get("model"),
+            served_model=outcome.get("served_model"),
         )
 
     async def completion(
@@ -337,6 +338,7 @@ class AgenticDispatcher:
             status=outcome.get("status", "success"),
             tool_calls=outcome.get("tool_calls") or [],
             model=outcome.get("model"),
+            served_model=outcome.get("served_model"),
         )
 
     async def structured(
@@ -415,6 +417,7 @@ class AgenticDispatcher:
             endpoint_id=outcome.get("endpoint_id"),
             status=outcome.get("status", "success"),
             model=outcome.get("model"),
+            served_model=outcome.get("served_model"),
         )
 
     async def react(
@@ -503,6 +506,7 @@ class AgenticDispatcher:
             status=outcome.get("status", "success"),
             tool_calls=outcome.get("tool_calls") or [],
             model=outcome.get("model"),
+            served_model=outcome.get("served_model"),
         )
 
     async def ensemble(
@@ -589,6 +593,7 @@ class AgenticDispatcher:
                 status=sample.get("status", "success"),
                 tool_calls=sample.get("tool_calls") or [],
                 model=sample.get("model"),
+                served_model=sample.get("served_model"),
             )
             for sample in outcome.get("samples") or []
         ]
@@ -690,9 +695,12 @@ class AgenticDispatcher:
             project_id=project_id,
             agent_id=agent_id,
             outcome=outcome,
-            # Phase 6 provenance: the serving model wins when the
-            # bridge resolved it (params may carry no selection).
-            model=outcome.get("model") or params.model,
+            # Keep the provider receipt authoritative when one exists. The
+            # ordinary `model` field is the configured/request identity and may
+            # be all that is available for adapters that do not report a
+            # response model; formal Research Spine coders reject that case
+            # before they persist applications.
+            model=outcome.get("served_model") or outcome.get("model") or params.model,
             started_at=started,
             session_id=session_id,
             task_id=task_id,

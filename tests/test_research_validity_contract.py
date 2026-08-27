@@ -940,6 +940,7 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
                 stop_reason="stop",
                 endpoint_id="ep-stub",
                 model=kwargs["params"].model,
+                served_model=kwargs["params"].model,
                 tool_calls=[],
             )
 
@@ -1096,6 +1097,7 @@ async def test_independent_coding_run_repairs_empty_model_application_response(
                 stop_reason="stop",
                 endpoint_id="ep-stub",
                 model=kwargs["params"].model,
+                served_model=kwargs["params"].model,
                 tool_calls=[],
             )
 

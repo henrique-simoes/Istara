@@ -465,6 +465,10 @@ class PiExecutionService:
             "stop_reason": (terminal or {}).get("stop_reason"),
             "endpoint_id": (terminal or {}).get("endpoint_id"),
             "model": (terminal or {}).get("model"),
+            # `model` is the configured/request identity. `served_model` is
+            # optional provider-response evidence; Research Spine coders must
+            # require it rather than inheriting the request label.
+            "served_model": (terminal or {}).get("served_model"),
             "structured": (terminal or {}).get("structured"),
             "error": (terminal or {}).get("error")
             if status not in ("success", "aborted")
@@ -647,6 +651,7 @@ class PiExecutionService:
                 "stop_reason": None,
                 "endpoint_id": endpoint.endpoint_id,
                 "model": endpoint.model,
+                "served_model": None,
                 "error": (terminal_frame or {}).get("error", "pi_runtime_error"),
             }
         message = terminal_frame.get("provider_message") or {}
@@ -659,10 +664,13 @@ class PiExecutionService:
             "stop_reason": terminal_frame.get("stop_reason"),
             "endpoint_id": endpoint.endpoint_id,
             "model": endpoint.model,
+            "served_model": terminal_frame.get("served_model"),
             "route_evidence": {
                 "plane": "pi-managed",
                 "endpoint_id": endpoint.endpoint_id,
-                "model": endpoint.model,
+                "model": terminal_frame.get("served_model"),
+                "requested_model": endpoint.model,
+                "served_model": terminal_frame.get("served_model"),
                 "bridge": "provider-only",
             },
         }
@@ -1120,6 +1128,7 @@ def _map_frame(frame: dict[str, Any], endpoint: ResolvedPiEndpoint) -> dict[str,
             "stop_reason": frame.get("stop_reason"),
             "endpoint_id": endpoint.endpoint_id,
             "model": endpoint.model,
+            "served_model": frame.get("served_model"),
             # Present only on forced structured-output runs (protocol v2): the
             # worker-captured emit_structured_output arguments. Never parsed
             # from free-form text.

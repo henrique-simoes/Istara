@@ -35,9 +35,12 @@ class _OpenAIStubHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/event-stream")
         self.end_headers()
         for piece in ["Hello from ", "the Istara Pi endpoint."]:
-            chunk = {"choices": [{"index": 0, "delta": {"content": piece}}]}
+            # The model identity must come from the provider response, not the
+            # endpoint request label.  This loopback receipt exercises the
+            # worker's SSE observer and the Python engine propagation path.
+            chunk = {"model": "stub-model", "choices": [{"index": 0, "delta": {"content": piece}}]}
             self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
-        done = {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
+        done = {"model": "stub-model", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
         self.wfile.write(f"data: {json.dumps(done)}\n\n".encode())
         self.wfile.write(b"data: [DONE]\n\n")
         self.wfile.flush()
@@ -99,6 +102,7 @@ async def test_engine_drives_real_openai_compat_http_stack_and_records_endpoint_
     done = [e for e in events if e["type"] == "done"]
     assert done and done[0]["endpoint_id"] == "pi-loopback"
     assert done[0]["stop_reason"] == "stop"
+    assert done[0]["served_model"] == "stub-model"
     assert supervisor.is_running is False
 
     # Telemetry is keyed by endpoint identity only — never base URL/key/host.

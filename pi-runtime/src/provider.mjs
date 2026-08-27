@@ -132,6 +132,120 @@ export function mapProviderPricing(pricing) {
 const VISIBLE_EVENT_TYPES = new Set(["text_delta", "thinking_delta", "toolcall_start", "toolcall_delta", "toolcall_end"]);
 
 /**
+ * Capture the model identity reported in a provider's streamed response.
+ *
+ * The configured endpoint model is a request label, not proof of what an
+ * OpenAI-compatible proxy, Anthropic gateway, or Codex relay actually served.
+ * pi-ai exposes `responseModel` only for some adapters (and only when it
+ * differs from the request model), so observe the provider response body at
+ * the fetch boundary and attach the identity to the terminal assistant
+ * message. This keeps the normal configured model intact while giving the
+ * Research Spine a fail-closed, provider-reported identity receipt.
+ */
+function providerModelObservation() {
+  const models = new Set();
+  return {
+    add(model) {
+      if (typeof model !== "string" || model.trim().length === 0) return;
+      models.add(model.trim());
+    },
+    value() {
+      return models.size === 1 ? [...models][0] : null;
+    },
+  };
+}
+
+function reportedModel(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  const candidates = [
+    payload.model,
+    payload.response?.model,
+    payload.message?.model,
+  ];
+  return candidates.find((candidate) => typeof candidate === "string" && candidate.trim().length > 0) || null;
+}
+
+/** Wrap a provider Response body while preserving every byte for pi-ai. */
+function captureProviderFetch(fetchImpl, observation) {
+  return async (input, init) => {
+    const response = await fetchImpl(input, init);
+    if (!response?.body || typeof response.body.pipeThrough !== "function") return response;
+    const decoder = new TextDecoder();
+    let pending = "";
+    const parseLine = (line) => {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data:")) return;
+      const raw = trimmed.slice(5).trim();
+      if (!raw || raw === "[DONE]") return;
+      try {
+        observation.add(reportedModel(JSON.parse(raw)));
+      } catch {
+        // The provider parser remains authoritative; this observer must never
+        // alter or reject a response merely because a data line is non-JSON.
+      }
+    };
+    const body = response.body.pipeThrough(new TransformStream({
+      transform(chunk, controller) {
+        pending += decoder.decode(chunk, { stream: true });
+        let newline;
+        while ((newline = pending.indexOf("\n")) !== -1) {
+          parseLine(pending.slice(0, newline));
+          pending = pending.slice(newline + 1);
+        }
+        controller.enqueue(chunk);
+      },
+      flush(controller) {
+        pending += decoder.decode();
+        if (pending) parseLine(pending);
+        controller.terminate();
+      },
+    }));
+    return new Response(body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+  };
+}
+
+function attachProviderModel(stream, observation) {
+  // Keep the AssistantMessageEventStream contract intact. Agent-core calls
+  // `.result()` on every stream; returning a bare async generator here would
+  // silently turn every real-provider completion into `response.result is not
+  // a function` (and hide the actual budget/served-identity outcome).
+  const out = createAssistantMessageEventStream();
+  (async () => {
+    try {
+      for await (const event of stream) {
+        if (event.type === "done" && event.message) {
+          const model = observation.value();
+          if (model) {
+            const enriched = { ...event, message: { ...event.message, responseModel: model } };
+            out.push(enriched);
+            out.end(enriched.message);
+            continue;
+          }
+        }
+        out.push(event);
+        if (event.type === "error") {
+          out.end(event.error);
+        } else if (event.type === "done") {
+          out.end(event.message);
+        }
+      }
+      // A guarded stream can end without a terminal event on a transport
+      // anomaly. Preserve that completion rather than leaving agent-core's
+      // `.result()` promise pending forever.
+      out.end();
+    } catch (error) {
+      out.push({ type: "error", reason: "error", error });
+      out.end(error);
+    }
+  })();
+  return out;
+}
+
+/**
  * Stream an assistant turn with a bounded worker-side retry budget. A retry
  * is allowed only while no visible output has been emitted for the current
  * attempt AND pi-ai's isRetryableAssistantError classifies the failure as
@@ -332,11 +446,22 @@ export function buildRealProvider(endpoint) {
     // closed rather than reporting an untrusted under-count (see session.mjs).
     isReal: true,
     pricing: cost,
-    stream: (streamModel, context, options) =>
+    stream: (streamModel, context, options) => {
       // Endpoint params are operator policy and win over agent defaults; the
       // agent-supplied abort signal is always preserved. wireParams excludes
-      // API-unsupported controls (see above).
-      streamWithGuardedRetry(models, streamModel, context, { ...options, ...wireParams }, maxRetries),
+      // API-unsupported controls (see above). The wrapped fetch captures the
+      // provider-reported response model without changing the response bytes.
+      const observation = providerModelObservation();
+      const fetchImpl = options?.fetch || globalThis.fetch;
+      const stream = streamWithGuardedRetry(
+        models,
+        streamModel,
+        context,
+        { ...options, fetch: captureProviderFetch(fetchImpl, observation), ...wireParams },
+        maxRetries,
+      );
+      return attachProviderModel(stream, observation);
+    },
     dispose: () => {
       delete process.env[envVar];
     },
