@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T20:11:40Z, ledger: L-410 }
+last: { agent: gpt-5-codex, at: 2026-08-27T20:17:05Z, ledger: L-411 }
 next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
@@ -9907,3 +9907,22 @@ warning. The working tree contains only the new focused test pending commit.
 No live provider or Petals model was loaded, and no Mac Studio host state was
 changed. Next: record command/gate evidence, commit/push this test and ledger
 checkpoint, then continue with owner-approved Docker-only live acceptance.
+
+### L-411 | 2026-08-27T20:17:05Z | S3-review | gpt-5-codex | Mixed-source regression pushed and gate reconciled
+
+The focused mixed-source regression and this ledger update were committed as
+`90387c36` and pushed to `origin/testing`; `testing` and `origin/testing` now
+match at that SHA. Compass command evidence rows `396` (focused + broad tests)
+and `397` (feature docs) are attached to CF task `CF-15`. `compass-forge gate
+after --task CF-15 --summary` reported `new_issue_count: 0`, `new_failures: 0`,
+and no actionable failures; its overall `fail` status remains inherited
+route/type/secret-flow/large-ledger debt. The working tree is dirty only with
+this post-push ledger pointer, which must be committed and pushed next.
+
+The deterministic baseline is now `776 passed, 0 failed, 5 skipped` across the
+Pi/Petals/Research Spine production slice, plus the separate `100`-test Node
+benchmark. The new boundary proves provider and Petals can coexist in one
+manager-backed accepted three-rater run under fakes. Live provider-served
+identities, live Petals transport, human reconciliation/Done/report, two-call,
+long-horizon, and owner-approved Docker model inputs remain open; no live model
+or Mac Studio host process was started.
