@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T10:21:03Z, ledger: L-318 }
+last: { agent: gpt-5-codex, at: 2026-08-27T10:22:25Z, ledger: L-319 }
 next_action: "Resume the owner-approved Docker-only live matrix only when its env, served model identities, donor inputs, and redacted artifact paths exist; keep all unproven gates open."
 ```
 
@@ -7509,3 +7509,15 @@ long-horizon receipts, real three-model served identities, Fleiss' kappa and
 Krippendorff's alpha semantic evidence, reconciliation, human-Done/report
 promotion, redaction, and teardown remain open pending owner-approved Docker-only
 inputs. The Build Stream stays `in-progress` and fail-closed.
+
+### L-319 | 2026-08-27T10:22:25Z | S5-ship&learn | gpt-5-codex | final transport evidence attachment
+
+Compass Forge task evidence `216` now records the final parity and passive-host
+check: local `testing`, `origin/testing`, and the Mac Studio detached retake all
+resolve to `335fd844d3e4362a366a9dac4b1cae8e25d04895`; local and remote worktrees
+are clean; Docker was queried only through `/usr/local/bin/docker` (Server
+`29.7.2`); and the host has zero Istara/provider/Petals/benchmark/donor containers
+and zero model files. No live workload or host installation occurred. This
+checkpoint closes the local deterministic transport work while keeping every live
+Research Spine and ensemble gate open until the owner-approved Docker-only input
+set exists.
