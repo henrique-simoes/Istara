@@ -161,7 +161,7 @@ class TestValidationExecutor:
         assert result.confidence == 0.7
 
     async def test_unknown_method_returns_default(self, executor):
-        """Unknown validation method returns passed=True with confidence=0.5."""
+        """Unknown validation methods fail closed instead of passing."""
         output = MagicMock()
         input_data = MagicMock()
 
@@ -169,9 +169,14 @@ class TestValidationExecutor:
             "nonexistent_method", output, input_data, "test-skill"
         )
         assert isinstance(result, ValidationResult)
-        assert result.passed is True
+        assert result.passed is False
         assert result.method == "nonexistent_method"
-        assert result.confidence == 0.5
+        assert result.confidence == 0.0
+        assert result.details == {
+            "status": "invalid_method",
+            "reason": "unknown_validation_method",
+            "skill_name": "test-skill",
+        }
 
     async def test_debate_rounds_with_insights(self, executor):
         """debate_rounds with 2+ insights -> passes."""

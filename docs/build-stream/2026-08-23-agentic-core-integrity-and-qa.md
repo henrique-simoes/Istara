@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T12:40:00Z, ledger: L-339 }
-next_action: "Continue the static validation-executor, public-engine, and Research Spine acceptance audit; keep live semantic acceptance blocked until owner-approved Docker-only model inputs exist."
+last: { agent: gpt-5-codex, at: 2026-08-27T12:30:00Z, ledger: L-340 }
+next_action: "Run the after-gate for the invalid-method fix, transport the checkpoint, then continue the static public-engine and Research Spine acceptance audit; keep live semantic acceptance blocked until owner-approved Docker-only model inputs exist."
 ```
 
 ## Plan overview / roadmap
@@ -7985,3 +7985,26 @@ three-served-model Fleiss/Krippendorff, source-span grounding, reconciliation,
 human Done/report promotion, two-call/long-horizon, Petals cooperation,
 redaction, or teardown claim is valid without owner-approved Docker-only
 runtime inputs and receipts.
+
+### L-340 | 2026-08-27T12:30:00Z | S2-execute/S3-review | gpt-5-codex | invalid validation-method fail-closed remediation
+
+The static validation audit found that the legacy `ValidationExecutor` returned
+`passed=True` and `confidence=0.5` for an unknown method name. A stale caller or
+configuration typo could therefore create a validation-looking result without
+running any validator. The unknown branch now returns `passed=False`,
+`confidence=0.0`, and explicit `status=invalid_method`,
+`reason=unknown_validation_method`, and `skill_name` details. The integrity
+regression now asserts the complete fail-closed result, and the Ensemble Health
+contract documents the boundary. This is a defensive compatibility fix; W9's
+current product ensemble path remains the shared dispatcher-backed
+`backend/app/core/validation.py` surface.
+
+Verification after the code/doc change: the affected Research Spine/integrity
+suite passed (`75` tests), the changed executor passed Ruff, feature docs
+regenerated `224` artifacts and passed `86/86` checks, and `git diff --check`
+passed. The external findings register records this as F-R9-109. No provider
+request, model load, host installation, or Docker workload was started. Live
+three-model semantic quality, served-identity receipts, formal reliability,
+source grounding, reconciliation, human Done/report promotion, Petals
+cooperation, two-call/long-horizon execution, and teardown remain blocked on
+owner-approved Docker-only inputs.

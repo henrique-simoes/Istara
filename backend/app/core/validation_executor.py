@@ -53,7 +53,24 @@ class ValidationExecutor:
             case "debate_rounds":
                 return await self._debate_rounds(output)
             case _:
-                return ValidationResult(passed=True, method=method, confidence=0.5)
+                # An unknown method is not a successful validation. Treating a
+                # caller/configuration typo as a pass would let an unvalidated
+                # artifact cross the Research Spine boundary.
+                logger.warning(
+                    "Unknown validation method %r for skill %s; failing closed",
+                    method,
+                    skill_name,
+                )
+                return ValidationResult(
+                    passed=False,
+                    method=method,
+                    confidence=0.0,
+                    details={
+                        "status": "invalid_method",
+                        "reason": "unknown_validation_method",
+                        "skill_name": skill_name,
+                    },
+                )
 
     async def _adversarial_review(self, output, input_data) -> ValidationResult:
         """LLM-as-judge reviews output quality (Zheng et al., 2023)."""
@@ -70,7 +87,8 @@ class ValidationExecutor:
             "5. DEPTH: semantic + interpretive, not just surface?\n\n"
             f"Nuggets: {json.dumps(nugget_texts)}\n"
             f"Facts: {json.dumps(fact_texts)}\n\n"
-            'Respond ONLY with JSON: {"code_quality":N,"evidence":N,"chain":N,"hallucination_free":N,"depth":N,"overall":N}'
+            "Respond ONLY with JSON: "
+            '{"code_quality":N,"evidence":N,"chain":N,"hallucination_free":N,"depth":N,"overall":N}'
         )
 
         project_id = getattr(input_data, "project_id", None)
