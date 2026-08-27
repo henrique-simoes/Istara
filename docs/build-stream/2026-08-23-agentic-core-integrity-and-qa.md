@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T13:31:20Z, ledger: L-349 }
-next_action: "Continue the static Research Spine and live-test configuration audit from the Pi CRUD authority checkpoint; map the real three-model Docker harness and provider-served identity receipts before any owner-approved live run, keeping semantic acceptance blocked until Docker-only inputs exist."
+last: { agent: gpt-5-codex, at: 2026-08-27T14:23:19Z, ledger: L-357 }
+next_action: "Audit and, if warranted, separate ensemble coding evidence from governed reconciliation/reportability evidence; then run focused tests, update the findings register, and attach Compass Forge evidence before transport."
 ```
 
 ## Plan overview / roadmap
@@ -8430,3 +8430,32 @@ fixed in the deterministic catalog boundary; F-R9-114 remains open for
 governed synthetic/live reconciliation and human Done/report proof.
 Compass Forge task evidence `313` records the exact commit, remote, detached
 checkout, Docker, and no-workload parity values.
+
+### L-357 | 2026-08-27T14:23:19Z | S3-review | gpt-5-codex | Phase 9
+
+Did: Re-oriented through the native Compass Forge `status`, `next`, and compact
+`agent-brief`; reconciled the Build Stream status block against ledger entries
+L-355/L-356; confirmed local `testing`, `origin/testing`, and the detached Mac
+Studio retake remain aligned at `633ff5c0` and clean. Continued the static audit
+of `exerciseResearchSpineValidation` and `validateCodingRun`.
+
+Result: The remaining acceptance gap is confirmed rather than cleared: the
+benchmark can inspect three-model coding, served model identities, donor routes,
+Fleiss/alpha metrics, raw evidence-unit coverage, and current-run traceability,
+but it has no governed per-application reconciliation action in the live flow.
+The backend correctly keeps code applications pending/unreconciled and rejects
+bulk approval, so the benchmark must not synthesize human approval silently.
+Next review decision is whether to add an explicitly opt-in, provenance-labeled
+diagnostic reconciliation path or keep reportability blocked while exposing a
+separate ensemble-coding diagnostic signal.
+
+Verified: `compass-forge status`; `compass-forge next`; `compass-forge agent-brief
+--compact`; `git status --short --branch`; `git log -4 --oneline`; targeted static
+inspection of `tests/real_user_benchmark/run.mjs`,
+`tests/real_user_benchmark/lib/research-spine-probes.mjs`,
+`backend/app/api/routes/code_applications.py`, and
+`backend/app/services/research_validity_service.py`.
+
+Next: Choose and implement the smallest truthful diagnostic/reconciliation
+improvement, with tests and feature-doc/ledger evidence; preserve the Docker-only
+live gate until provider-served identities and model inputs exist.
