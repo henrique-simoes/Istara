@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:06:04Z, ledger: L-235 }
+last: { agent: gpt-5-codex, at: 2026-08-27T02:06:47Z, ledger: L-236 }
 next_action: "When live prerequisites are authorized, resolve origin/testing at launch time on Mac Studio, materialize a clean detached checkout, then run the Docker-only provider/Petals retake with three provisioned model routes and preserve artifacts."
 ```
 
@@ -5199,3 +5199,18 @@ Docker-owned assets/routes, create a fresh detached checkout of the launch-time
 `origin/testing` SHA, render Compose before startup, then execute provider, Petals, and combined
 profiles with all G0–G22 artifacts. Never overwrite the dirty named checkout or count stale
 images as live proof.
+
+### L-236 | 2026-08-27T02:06:47Z | S5-ship&learn | gpt-5-codex | verifier | Phase 9
+
+Did: Re-ran the Compass Forge after-gate after the passive prerequisite inventory and attached
+gate evidence `83`.
+
+Result: record `118` is `fail` only for inherited `secret_flow` findings and the explicit
+path-scoped suppression on this historical single-file ledger. There are zero new issues,
+forbidden dependencies, Python import cycles, or missing required paths. The final transported
+branch remains clean and must be re-resolved at launch time after any future remote change.
+
+Next: no additional local code or infrastructure mutation is justified while G0 is unavailable.
+Resume with the launch-time `origin/testing` SHA, fresh detached Docker checkout, and the
+G0–G22 live matrix; leave CF-15 open until the real provider/Petals/Research Spine evidence is
+complete and independently reviewable.
