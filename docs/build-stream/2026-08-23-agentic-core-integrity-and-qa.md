@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T00:59:48Z, ledger: L-217 }
-next_action: "Commit and push the request-scoped Pi service pairing seam and corrected Research Spine docs; keep the Docker-only Mac Studio acceptance gate open until owner-authorized provider credit and three Compose-owned donor/model routes are available."
+last: { agent: gpt-5-codex, at: 2026-08-27T01:00:43Z, ledger: L-218 }
+next_action: "Keep the Docker-only Mac Studio acceptance gate open; obtain owner-authorized provider credit and three Compose-owned donor/model routes, then run the three-model Research Spine retake from a clean checkout at c0c60ef8."
 ```
 
 ## Plan overview / roadmap
@@ -4743,3 +4743,15 @@ long-horizon behavior, or Petals interoperability. The provider previously retur
 the current live profile is DeepSeek-only, and no three Compose-owned donor/model routes are
 registered. The isolated clean Mac Studio checkout at `57c7cae7` remains the safe retake base;
 the stale checkout and recovery worktree remain preserved.
+
+### L-218 | 2026-08-27T01:00:43Z | S2-execute/S3-review | gpt-5-codex | clean push and parity checkpoint
+
+Did: Committed the request-scoped Pi authority pairing, fail-closed mismatch guard, Research
+Spine contract corrections, focused regression coverage, generated feature artifacts, and this
+ledger as `c0c60ef8` (`fix: pair research spine coding with pi service authority`). Pushed
+`testing` to `origin/testing`; Compass Forge command evidence 59 records exact commit/ref/tree
+parity and a clean local worktree. No old worktree or branch was deleted: the only recovery
+checkout is not merged/ancestral and remains a retained safety asset.
+
+Acceptance state is unchanged: local deterministic behavior is verified, but Mac Studio Docker
+live acceptance remains open pending provider credit and three Compose-owned donor/model routes.
