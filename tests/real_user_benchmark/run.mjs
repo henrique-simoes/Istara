@@ -517,6 +517,11 @@ if (acceptanceProfileRaw !== acceptanceProfile) {
 const providerAcceptanceSelected = acceptanceProfile !== "petals";
 const petalsAcceptanceSelected = acceptanceProfile !== "provider";
 const workload = benchmarkWorkloadForProfile(acceptanceProfile);
+const requireLongHorizon = boolEnv(
+  "ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON",
+  Boolean(workload.longHorizon) && mode !== "plan-only",
+);
+const longHorizonVerified = boolEnv("ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED", false);
 
 // ── Benchmark engine plumbing (benchmark task B0-2) ────────────────────────
 // `--engine pi|legacy|both` selects the AgenticDispatcher engine per request via
@@ -1116,6 +1121,8 @@ function buildScorecard(input) {
     acceptanceProfile: mode === "plan-only" ? null : acceptanceProfile,
     codingValidationEnabled,
     requireComputeDonation,
+    requireLongHorizon,
+    longHorizonVerified,
     workloadScope: workload,
     unrelatedWorkflowFailures,
     connectionRevocation: input.connectionRevocation || null,
@@ -4907,6 +4914,8 @@ async function main() {
     acceptanceProfile,
     codingValidationEnabled,
     requireComputeDonation,
+    requireLongHorizon,
+    longHorizonVerified,
     featureResults,
   }));
   if (mode === "full" && workload.chat && chatTurnCount < 100) blockers.push(`Full run completed only ${chatTurnCount}/100 required chat turns.`);
@@ -4964,6 +4973,8 @@ async function main() {
     mode,
     acceptance_profile: acceptanceProfile,
     workload_scope: workload,
+    long_horizon_required: requireLongHorizon,
+    long_horizon_verified: longHorizonVerified,
     requested_limits: {
       chat_turns: requestedMaxChatTurns,
       tasks: requestedMaxTasks,
@@ -5051,6 +5062,7 @@ async function main() {
   logger.appendReport(`Corpus documents generated: ${corpus.document_count}\n\n`);
   logger.appendReport(`Documents uploaded: ${uploaded.length}\n\n`);
   logger.appendReport(`Chat turns completed: ${chatTurnCount}\n\n`);
+  logger.appendReport(`Long-horizon two-call workload: ${longHorizonVerified ? "verified" : requireLongHorizon ? "blocked" : "not selected"}\n\n`);
   logger.appendReport(`Human-approved completed tasks: ${completedTasks}\n\n`);
   logger.appendReport(`Compute donation verified: ${featureResults.computeDonation ? "yes" : "no"}\n\n`);
   logger.appendReport(`Host-managed three-model topology: ${hostManagedThreeModelRun ? "yes" : "no"}\n\n`);

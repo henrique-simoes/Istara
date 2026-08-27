@@ -37,6 +37,7 @@ const ACCEPTANCE_WORKLOADS = Object.freeze({
     integrations: false,
     findings: false,
     marathon: false,
+    longHorizon: false,
   }),
   petals: Object.freeze({
     provider: false,
@@ -51,6 +52,7 @@ const ACCEPTANCE_WORKLOADS = Object.freeze({
     integrations: false,
     findings: false,
     marathon: false,
+    longHorizon: false,
   }),
   combined: Object.freeze({
     provider: true,
@@ -65,6 +67,7 @@ const ACCEPTANCE_WORKLOADS = Object.freeze({
     integrations: true,
     findings: true,
     marathon: true,
+    longHorizon: true,
   }),
 });
 
@@ -151,6 +154,8 @@ export function liveAcceptanceBlockers({
   codingValidationEnabled = false,
   acceptanceProfile = null,
   requireComputeDonation = false,
+  requireLongHorizon = false,
+  longHorizonVerified = false,
   featureResults = {},
 }) {
   const blockers = [];
@@ -201,10 +206,13 @@ export function liveAcceptanceBlockers({
       blockers.push("Requested Research Spine traceability validation did not complete.");
     }
   }
+  if (requireLongHorizon && !longHorizonVerified) {
+    blockers.push("Requested two-call long-horizon workload did not complete in the Docker runner.");
+  }
   return blockers;
 }
 
-export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [], completedTasks = 0, chatTurns = 0, uploadedDocuments = 0, sandbox = {}, featureResults = {}, acceptanceProfile = "combined", codingValidationEnabled = false, requireComputeDonation = false, workloadScope = null, unrelatedWorkflowFailures = [], connectionRevocation = null }) {
+export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [], completedTasks = 0, chatTurns = 0, uploadedDocuments = 0, sandbox = {}, featureResults = {}, acceptanceProfile = "combined", codingValidationEnabled = false, requireComputeDonation = false, requireLongHorizon = false, longHorizonVerified = false, workloadScope = null, unrelatedWorkflowFailures = [], connectionRevocation = null }) {
   const requiredIntegrations = integrationMatrix.filter((item) => item.required_success !== false);
   const integrationScores = requiredIntegrations.map((item) => {
     switch (item.classification) {
@@ -310,6 +318,8 @@ export function scoreRun({ mode, metrics, integrationMatrix = [], blockers = [],
     research_spine_traceability_verified: researchSpineStructurePresent,
     acceptance_profile: acceptanceGates.profile,
     workload_scope: workloadScope || benchmarkWorkloadForProfile(acceptanceGates.profile),
+    long_horizon_required: Boolean(requireLongHorizon),
+    long_horizon_verified: Boolean(longHorizonVerified),
     unrelated_workflow_failures: [...unrelatedWorkflowFailures],
     connection_revocation: connectionRevocation,
     acceptance_gates: acceptanceGates,
@@ -344,6 +354,8 @@ export function writeScorecardMarkdown(scorecard) {
     `Acceptance profile: ${scorecard.acceptance_profile}`,
     "",
     `Workload scope: ${Object.entries(scorecard.workload_scope || {}).filter(([, selected]) => selected === true).map(([key]) => key).join(", ") || "none"}`,
+    "",
+    `Long-horizon two-call workload: ${scorecard.long_horizon_verified ? "verified" : scorecard.long_horizon_required ? "blocked" : "not selected"}`,
     "",
     "| Acceptance gate | Selected | Status | Verified |",
     "| --- | ---: | --- | ---: |",

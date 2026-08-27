@@ -27,7 +27,7 @@ test("workload matrix returns an independent immutable-shaped snapshot", () => {
   assert.equal(benchmarkWorkloadForProfile("provider").coding, true);
   assert.deepEqual(Object.keys(benchmarkWorkloadForProfile("petals")).sort(), [
     "chat", "coding", "commonWorkflow", "corpus", "findings", "integrations",
-    "marathon", "petals", "provider", "selfImprovement", "tasks", "ui",
+    "longHorizon", "marathon", "petals", "provider", "selfImprovement", "tasks", "ui",
   ].sort());
 });
 
@@ -318,4 +318,38 @@ test("combined profile fails closed when either selected gate is disabled", () =
     "Selected provider Research Spine gate was disabled; acceptance cannot pass.",
     "Selected Petals donation interoperability gate was disabled; acceptance cannot pass.",
   ]);
+});
+
+test("combined acceptance fails closed when the Docker long-horizon workload is requested but unverified", () => {
+  assert.deepEqual(liveAcceptanceBlockers({
+    acceptanceProfile: "combined",
+    codingValidationEnabled: true,
+    requireComputeDonation: true,
+    requireLongHorizon: true,
+    longHorizonVerified: false,
+    featureResults: {
+      codingValidation: true,
+      multiModelResearchSpineValidation: true,
+      researchSpineTraceability: true,
+      computeDonation: true,
+    },
+  }), [
+    "Requested two-call long-horizon workload did not complete in the Docker runner.",
+  ]);
+});
+
+test("verified Docker long-horizon workload does not add an acceptance blocker", () => {
+  assert.deepEqual(liveAcceptanceBlockers({
+    acceptanceProfile: "combined",
+    codingValidationEnabled: true,
+    requireComputeDonation: true,
+    requireLongHorizon: true,
+    longHorizonVerified: true,
+    featureResults: {
+      codingValidation: true,
+      multiModelResearchSpineValidation: true,
+      researchSpineTraceability: true,
+      computeDonation: true,
+    },
+  }), []);
 });

@@ -93,6 +93,7 @@ test("acceptance profile wrapper defaults keep provider and Petals runs focused"
   assert.match(wrapperSource, /-e "ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=\$ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT"/);
   assert.match(insideSource, /acceptance profile/);
   assert.match(insideSource, /provider\|petals\) ISTARA_RUNNER_SKIP_MARATHON=1/);
+  assert.match(insideSource, /export ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED=1/);
 });
 
 test("runner records profile scope and revokes generated connection credentials", () => {
@@ -102,6 +103,10 @@ test("runner records profile scope and revokes generated connection credentials"
   assert.match(runSource, /function revokeGeneratedConnectionStrings\(/);
   assert.match(runSource, /connection-revocation-results\.json/);
   assert.match(runSource, /api\.delete\(`\/api\/connections\//);
+  assert.match(runSource, /const requireLongHorizon = boolEnv\(\s*"ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON"/s);
+  assert.match(runSource, /const longHorizonVerified = boolEnv\("ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED"/);
+  assert.match(runSource, /long_horizon_required: requireLongHorizon/);
+  assert.match(runSource, /long_horizon_verified: longHorizonVerified/);
 });
 
 test("Docker wrapper can select the containerized three-model probe and Compose donor", () => {

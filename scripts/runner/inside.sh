@@ -59,6 +59,7 @@ if [[ "$RUN_LONG_HORIZON" -eq 1 ]]; then
   echo "[runner] LONG_HORIZON engine=$ISTARA_LONG_HORIZON_ENGINE start $(date -u +%H:%M:%S)"
   /opt/runner-venv/bin/python tests/benchmarks/long_horizon_runner.py \
     2>&1 | tee "$LONG_HORIZON_RESULTS/${ISTARA_LONG_HORIZON_ENGINE}.log"
+  export ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED=1
   echo "[runner] LONG_HORIZON engine=$ISTARA_LONG_HORIZON_ENGINE done $(date -u +%H:%M:%S)"
 else
   echo "[runner] LONG_HORIZON skipped for acceptance profile=$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE"
