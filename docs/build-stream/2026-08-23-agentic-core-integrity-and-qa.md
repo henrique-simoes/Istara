@@ -7,7 +7,7 @@ cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
 stage: S2-execute/S3-review
 status: in-progress
-blocked_on: null
+blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
 last: { agent: gpt-5-codex, at: 2026-08-27T09:30:18Z, ledger: L-307 }
 next_action: "Obtain owner-approved Docker-only env/model/provider inputs, then execute the staged provider, Petals, combined, engine-parity, ensemble, and Research Spine acceptance matrix below; keep every missing prerequisite fail-closed."
 ```
@@ -7284,3 +7284,14 @@ unchecked item is the owner-approved Docker-only provisioning gate in L-306 sect
 2; until its env/config, model/provider identities, source/image digests, and
 three-model Compose inputs exist, all live scientific and operational gates remain
 open and no completion claim is permitted.
+
+### L-308 | 2026-08-27T09:32:00Z | S5-ship&learn | gpt-5-codex | explicit external provisioning hold
+
+The status block now names the only active hold: owner-approved Docker-only Mac
+Studio provisioning of the current env/config, provider-served identities, and
+three-model inputs. This is an in-progress external prerequisite, not a terminal
+goal status and not permission to run host software. The latest transported tip is
+`7f57afd2fea7206af4440ceee3051e799174b41c`; the retake is clean and passive Docker
+inventory remains empty of Istara/benchmark/provider/Petals workloads. Resume at
+L-306 section 2, attach provisioning evidence to CF-15, and do not claim live
+Research Spine or ensemble acceptance until the full matrix is executed.
