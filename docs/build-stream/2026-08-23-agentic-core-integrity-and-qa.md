@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T07:08:00Z, ledger: L-279 }
-next_action: "Keep deterministic coverage and transport closed at 8937d50d; await an owner-authorized Docker-only Mac Studio window, verify the archive in-container, then run provider/Petals/combined Research Spine retakes and attach complete evidence before closing G0/G1/live G2–G22."
+last: { agent: gpt-5-codex, at: 2026-08-27T07:12:00Z, ledger: L-280 }
+next_action: "Keep deterministic coverage and transport closed at d8550aba; await an owner-authorized Docker-only Mac Studio window, verify the archive in-container, then run provider/Petals/combined Research Spine retakes and attach complete evidence before closing G0/G1/live G2–G22."
 ```
 
 ## Plan overview / roadmap
@@ -6424,3 +6424,19 @@ common raw spans, grounded independent coding, numeric Fleiss/Krippendorff
 reliability, reconciliation, human-Done/report promotion, both Istara and Pi
 Agentic Loop choices through shared Pi Model Management, two-call/long-horizon
 traces, Petals cooperation/scope/revocation, redaction, and teardown.
+
+### L-280 | 2026-08-27T07:12:00Z | S5-ship&learn | gpt-5-codex | passive Mac Studio Docker boundary recheck
+
+Verified: the remote SSH inspection remained strictly passive and Docker-only.
+`users-Mac-Studio.local` reports Docker Server `29.7.2`; the only running
+container is unrelated healthy `plex` (`plexinc/pms-docker:latest`, up four days),
+and the only named volume is the retained `pi-agent-home`. There are still no
+Istara, Petals, benchmark, donor, or test containers/networks, and no host
+processes or model artifacts available for the requested live retake. No package,
+model, image, service, or repository mutation was performed on the Mac Studio.
+
+The local parity check remains clean at `d8550aba`: `HEAD`, `testing`, and
+`origin/testing` are identical and the worktree has no changes. Deterministic
+Research Spine/authority work is therefore safely handed off; live G0/G1 and
+G2-G22 remain pending the owner-authorized Docker-only prerequisites documented
+above.
