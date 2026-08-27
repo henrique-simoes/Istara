@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T04:01:51Z, ledger: L-254 }
+last: { agent: gpt-5-codex, at: 2026-08-27T04:03:00Z, ledger: L-255 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -5754,3 +5754,17 @@ raw spans, exactly one grounded rating per model/unit, numeric Fleiss/Krippendor
 reconciliation, human-Done/report promotion, both Istara and Pi loop semantics through the
 shared Pi Model Management authority, two-call/long-horizon behavior, Petals cooperation,
 redacted artifacts, and teardown.
+
+### L-255 | 2026-08-27T04:03:00Z | S5-ship&learn | gpt-5-codex | final gate and handoff receipt
+
+Verified after transport: Compass Forge after-gate record `141` and task evidence `113` are
+attached. The gate comparison has no new dependency, import-cycle, or missing-required-path
+issues; only the expected enlarged-test complexity warnings and the path-scoped lifecycle-ledger
+large-file warning remain alongside inherited repository debt. The branch is clean and exact
+parity is preserved at `632940c571c0a3630ba89d2af337c4292e7614bf`.
+
+The Mac Studio remains passive Docker-only (`users-Mac-Studio.local`, Docker Server `29.7.2`):
+only unrelated `plex` is running; no Istara Compose project, containers, networks, volumes,
+providers, relays, donors, or models are present. No host installation, model load, image pull,
+service start, data deletion, or remote checkout mutation occurred. G0/G1 and live G2–G22 stay
+explicitly open for the next authorized retake.
