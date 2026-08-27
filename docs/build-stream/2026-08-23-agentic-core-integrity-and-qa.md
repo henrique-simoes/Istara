@@ -8008,3 +8008,34 @@ three-model semantic quality, served-identity receipts, formal reliability,
 source grounding, reconciliation, human Done/report promotion, Petals
 cooperation, two-call/long-horizon execution, and teardown remain blocked on
 owner-approved Docker-only inputs.
+
+### L-341 | 2026-08-27T12:50:00Z | S2-execute/S3-review | gpt-5-codex | report-level consensus wording boundary
+
+The report audit found that `ReportManager._compose_section(source="ensemble_scores")`
+described stored response-level consensus scores as “Fleiss' Kappa + cosine
+similarity across multiple model runs.” That text overclaimed the Research Spine:
+these values are operational heuristics and do not represent an independent
+coded evidence-unit matrix. Formal Fleiss/Cohen/Krippendorff reliability is
+valid only in a governed coding run with evidence-unit, codebook, route, and
+promotion handles.
+
+The section now calls the metric an “average response-level consensus score,”
+labels it as a heuristic signal from Self-MoA, Dual Run, or Adversarial Review,
+and explicitly says it is not Fleiss' Kappa and cannot establish formal Research
+Spine reliability. A W5 regression checks the disclosure and rejects the old
+sentence. The Ensemble Health living contract and generated feature site were
+regenerated.
+
+Verification: the W5 report-manager suite, report integrity suite, and validation
+integrity suite passed (`44` tests total); the non-hanging validity-contract
+subset passed (`31 passed, 1 deselected`). The full validity-contract module
+still idles at the existing survey-ingestion test and was interrupted after
+isolation; this is not counted as a pass or as a regression from this wording
+change. Feature docs report `224` generated artifacts and `86/86` checks;
+`git diff --check` passes. Ruff is clean for the new W5 test, while the legacy
+report-manager file retains its pre-existing 31 violations. Compass after-gate,
+transport, and detached Mac Studio parity remain to be recorded for this
+checkpoint. No live provider request, model load, host installation, or Docker
+workload was started; all semantic, reliability, source-grounding, reconciliation,
+human Done/report, Petals, two-call/long-horizon, and teardown claims remain
+blocked on owner-approved Docker-only inputs.

@@ -1039,11 +1039,14 @@ class ReportManager:
                 return "No ensemble validation data available."
             avg = content.get("avg_consensus", 0)
             return (
-                f"**Average consensus score**: {avg:.2f}\n"
+                f"**Average response-level consensus score**: {avg:.2f}\n"
                 f"**Validation runs**: {len(scores)}\n"
                 f"**Score range**: {min(scores):.2f} – {max(scores):.2f}\n\n"
-                "Consensus is computed using Fleiss' Kappa + cosine similarity across "
-                "multiple model runs (Self-MoA, Dual Run, Adversarial Review)."
+                "These scores are heuristic response-level quality signals from "
+                "Self-MoA, Dual Run, or Adversarial Review; they are not Fleiss' "
+                "Kappa and cannot establish formal Research Spine reliability. "
+                "Formal Fleiss/Cohen/Krippendorff metrics are computed only from "
+                "independent coded evidence-unit matrices in a governed coding run."
             )
 
         if source == "gaps":

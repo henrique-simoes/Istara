@@ -271,6 +271,31 @@ async def test_mece_flag_on_failed_outcome_writes_nothing(monkeypatch, _agentic_
     assert db.commits == 0
 
 
+async def test_compose_section_ensemble_scores_discloses_response_level_heuristic():
+    """Report metrics must not mislabel response consensus as Fleiss reliability."""
+    template = {
+        "section": "Validation & Consensus Metrics",
+        "source": "ensemble_scores",
+        "format": "metrics",
+    }
+    report = SimpleNamespace(
+        content_json=json.dumps({"consensus_scores": [0.4, 0.8], "avg_consensus": 0.6})
+    )
+
+    result = await _manager()._compose_section(
+        template,
+        {"insights": [], "recommendations": [], "nuggets": [], "facts": []},
+        report,
+        [],
+    )
+
+    assert "response-level consensus" in result
+    assert "heuristic" in result
+    assert "not Fleiss' Kappa" in result
+    assert "coded evidence-unit matrices" in result
+    assert "computed using Fleiss' Kappa + cosine similarity" not in result
+
+
 # ── behavior: _compose_full_report scoring loop (report.weakest_section) ─
 
 
