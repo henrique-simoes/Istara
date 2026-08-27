@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:49:00Z, ledger: L-376 }
+last: { agent: gpt-5-codex, at: 2026-08-27T15:50:00Z, ledger: L-377 }
 next_action: "Continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates; separately decide the migration/compatibility policy for legacy no-coding-run reportability. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
 ```
 
@@ -8890,3 +8890,17 @@ or testing-data deletion occurred. F-R9-114 remains open for the owner-approved
 live three-model provider identity, Fleiss/Krippendorff evidence, genuine
 human reconciliation, and Done/report acceptance; legacy no-coding-run
 reportability still needs a migration/compatibility decision.
+
+### L-377 | 2026-08-27T15:50:00Z | S5-ship&learn | gpt-5-codex | final receipt parity
+
+The transport receipt itself advanced the branch once more: the exact clean
+tip is now `bbe8e6b4e16163b38b952487acfda5c8f251612b`, and local `testing`,
+`origin/testing`, and the detached Mac Studio retake all match it. Compass
+Forge evidence `344` records that parity and the unchanged passive Docker-only
+state (client/server `29.7.2/29.7.2`, unrelated healthy `plex` only, zero model
+files, no `.env.deploy`). No provider request, model load, image pull, host
+installation, live benchmark, or testing-data deletion occurred. F-R9-114
+remains open for owner-approved live three-model provider identity,
+Fleiss/Krippendorff evidence, genuine human reconciliation, and Done/report
+acceptance; legacy no-coding-run reportability still needs a migration/
+compatibility decision.
