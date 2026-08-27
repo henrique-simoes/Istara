@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T07:31:00Z, ledger: L-282 }
+last: { agent: gpt-5-codex, at: 2026-08-27T07:36:00Z, ledger: L-283 }
 next_action: "Keep deterministic coverage and transport closed; await an owner-authorized Docker-only Mac Studio window, verify the archive in-container, then run provider/Petals/combined Research Spine retakes and attach complete evidence before closing G0/G1/live G2–G22."
 ```
 
@@ -6487,3 +6487,35 @@ semantics, Petals/PI combined operation, or end-to-end Research Spine
 grounding/reconciliation/Fleiss/Krippendorff/Done-report evidence. The Mac Studio
 must remain Docker-only and passive until an owner-authorized retake window with
 exact source/model/provider prerequisites.
+
+### L-283 | 2026-08-27T07:36:00Z | S5-ship&learn | gpt-5-codex | legacy identity receipt transport checkpoint
+
+The native Compass Forge after-gate for the L-282 implementation completed with
+`actionable_failures=[]`, `new_failures=0`, `comparison.new_issue_count=0`, and
+`new_warnings=[]`. The global gate remains `fail` only because the repository still
+has `31` inherited findings (including secret-flow, route/type, complexity, and
+large-file debt); this change introduced no actionable or new failure.
+
+Commit `3ccc498f` (`fix: preserve legacy provider identity receipts`) is pushed to
+`origin/testing`. It contains the legacy outcome/route-receipt correction, the
+cross-engine multi-turn W1 regression, living feature-doc updates, generated site
+artifacts, and L-282. The external finding F-R9-80 is present in
+`/Users/user/Desktop/testing.md`. The pre-ledger transport check confirmed
+`HEAD == testing == origin/testing` at `3ccc498f`, with an empty diff and clean
+worktree after the push; this ledger-only receipt will be transported in the next
+small commit and parity will be rechecked afterward.
+
+Deterministic evidence remains bounded: the W1/W7/Pi-manager/Research-Spine slice is
+`90 passed`, the legacy real-path/ASGI/worker subset is `14 passed`, feature docs are
+`224` generated artifacts with `86/86` checks, and Ruff plus `git diff --check` are
+clean. No server, model, provider, or Mac Studio host process was started.
+
+Open acceptance is unchanged. G0/G1 and live G2-G22 remain open until an
+owner-authorized Docker-only Mac Studio run from the exact pushed SHA proves actual
+three-model provider-served identity over common raw spans, independent grounded
+coding, numeric Fleiss/Krippendorff reliability, reconciliation, Done/report gates,
+both Istara and Pi Agentic Loop HTTP choices through shared Pi Model Management,
+two-call continuity, long-horizon/recovery semantics, Petals cooperation/scope/
+revocation, redaction, and teardown. The deterministic full-chain test still uses a
+controlled coder dispatcher, so it is an oracle/contract test rather than live model
+quality evidence.
