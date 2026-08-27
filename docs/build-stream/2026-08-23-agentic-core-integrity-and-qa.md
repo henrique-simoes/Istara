@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T05:17:34Z, ledger: L-268 }
+last: { agent: gpt-5-codex, at: 2026-08-27T05:23:26Z, ledger: L-269 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -6094,3 +6094,36 @@ through shared Pi Model Management, two-call/long-horizon artifacts, Petals
 interoperability, redacted artifacts, and teardown. The Mac Studio currently
 has no model artifacts or reachable provider routes, so no model load or
 three-model claim is permitted.
+
+### L-269 | 2026-08-27T05:23:26Z | S2-execute/S3-review/S5-ship&learn | gpt-5-codex | shared governed-width documentation receipt
+
+Did: Audited the living Ensemble Health contract against the implementation
+and deterministic tests. The document still described an obsolete legacy-only
+optional-spare retry, although the migration intentionally routes both Istara
+(legacy) and Pi engine choices through Pi Model Management. The shared manager
+resolves exactly the governed minimum; it has no spare-retry loop. Updated the
+feature contract and generated site artifact to state that `n=min+1` is only a
+compatibility request, that both engines use the governed minimum, and that
+partial valid responses downgrade instead of claiming `full_ensemble`.
+Appended F-R9-75 to `/Users/user/Desktop/testing.md`; the findings register
+remains append-only and external to Git.
+
+Verified: feature documentation regenerated `224` artifacts and passed
+`86/86`; the preceding deterministic receipt remains `687 passed, 5 skipped`
+under `-W error::RuntimeWarning`, with Pi runtime `46/46`, benchmark `78/78`,
+topology `10/10`, Ruff, and diff checks clean. Compass Forge after-gate
+record `167` reports `new_issue_count=0`, `new_failures=0`, no actionable
+failures, no cycles, and no new warnings. Commit `d69c4887` is pushed and
+`HEAD`, local `testing`, and `origin/testing` are exact; the worktree is
+clean. The global gate remains `fail` only for inherited repository debt.
+
+Boundary/next: this corrects documentation/test-contract drift only. G0/G1
+and live G2-G22 remain open. The next authorized live window still requires a
+fresh detached `origin/testing` checkout, in-container archive verification,
+provider/Petals/combined profiles, three distinct provider-served identities
+over common raw spans, grounded non-duplicate coding, numeric
+Fleiss/Krippendorff reliability, reconciliation, human-Done/report promotion,
+both loop modes through shared Pi Model Management, two-call/long-horizon
+artifacts, Petals interoperability, redaction, and teardown. The Mac Studio
+currently has no model artifacts or reachable provider routes, so live claims
+remain prohibited.
