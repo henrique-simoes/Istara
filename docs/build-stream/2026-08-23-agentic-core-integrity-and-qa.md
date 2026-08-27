@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T07:16:00Z, ledger: L-281 }
+last: { agent: gpt-5-codex, at: 2026-08-27T07:31:00Z, ledger: L-282 }
 next_action: "Keep deterministic coverage and transport closed; await an owner-authorized Docker-only Mac Studio window, verify the archive in-container, then run provider/Petals/combined Research Spine retakes and attach complete evidence before closing G0/G1/live G2–G22."
 ```
 
@@ -6450,3 +6450,40 @@ next agent should read L-278 through L-280, inspect the exact pushed tip with
 `git rev-parse HEAD testing origin/testing`, and treat live G0/G1/G2-G22 as open
 until the owner authorizes the Docker-only Mac Studio retake. No further code or
 remote-host action was taken in this checkpoint.
+
+### L-282 | 2026-08-27T07:31:00Z | S2-execute/S3-review | gpt-5-codex | legacy served-identity seam audit
+
+Did: audited the remaining cross-engine multi-turn boundary after L-281. The
+existing W1 parity test covered only one plain turn for each engine, while the
+legacy Istara ReAct loop had no regression proving that multiple provider rounds,
+tool-result history, cumulative usage, and provider identity all survive the
+shared Pi Model Management authority. Added a deterministic W1 test using a real
+`PiModelManager` and a stateful provider seam: two `create_task` tool rounds,
+then a final response, with one manager resolution per round and explicit
+`served_model` receipts.
+
+The first red run exposed a production bug rather than a test-fixture issue:
+`legacy.py` retained the provider identity only in route evidence and the
+dispatcher therefore returned `TurnResult.served_model=None`. The remediation
+now transports an explicit `served_model` through the legacy outcome and route
+receipt while preserving the configured/request `model` separately. A provider
+that reports only its configured label remains unverified; the existing plain
+faux-provider parity test is retained as that negative control. Added the
+behavior to the Ensemble Health and Chat Model Controls living feature docs and
+regenerated the generated site/manifest.
+
+Verified locally: focused W1/W7/Pi-manager/Research-Spine slice passed `90
+passed` with `RuntimeWarning` promoted to errors; Ruff and `git diff --check`
+passed; feature docs reported `224` generated artifacts and `86/86` checks.
+No server, model, provider, or Mac Studio host process was started. The finding
+is recorded as F-R9-80 in `/Users/user/Desktop/testing.md`.
+
+Boundary/next: run the native Compass Forge before/after gates for this code and
+docs change, then commit and push exact `testing == origin/testing` parity. Keep
+G0/G1 and live G2-G22 open: deterministic coverage still cannot prove live
+three-checkpoint independence, per-turn route receipts through a real gateway,
+two-call continuity for both HTTP engine choices, long-horizon recovery/timeout
+semantics, Petals/PI combined operation, or end-to-end Research Spine
+grounding/reconciliation/Fleiss/Krippendorff/Done-report evidence. The Mac Studio
+must remain Docker-only and passive until an owner-authorized retake window with
+exact source/model/provider prerequisites.

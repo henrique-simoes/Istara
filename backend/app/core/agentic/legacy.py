@@ -302,6 +302,7 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
     tool_calls_seen: list[dict[str, Any]] = []
     provider_service = _provider_service(kwargs)
     served_endpoint_id: str | None = None
+    configured_model: str | None = None
     served_model: str | None = None
     # Accumulate every turn's usage so a fully-reported multi-turn tool loop
     # reports cumulative input/output/total tokens and its real turn count, not
@@ -330,11 +331,24 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
             outcome.update(extra)
         if served_endpoint_id:
             outcome["endpoint_id"] = served_endpoint_id
-            outcome["model"] = served_model
+            # ``model`` remains the configured/request identity for ordinary
+            # callers.  Only the explicit provider receipt may populate
+            # ``served_model``; treating the configured label as a receipt
+            # would let a proxy masquerade as an independent Research Spine
+            # rater.
+            outcome["model"] = configured_model
+            # Keep the provider receipt distinct from the configured model.
+            # ``AgenticDispatcher`` and Research Spine evidence consumers use
+            # this field to decide whether the serving identity was actually
+            # proven; putting it only in ``route_evidence`` silently downgrades
+            # a valid legacy-loop receipt to an unverified route.
+            outcome["served_model"] = served_model
             outcome["route_evidence"] = {
                 "plane": "pi-managed",
                 "endpoint_id": served_endpoint_id,
                 "model": served_model,
+                "requested_model": configured_model,
+                "served_model": served_model,
                 "bridge": "provider-only",
                 "loop": "istara",
             }
@@ -361,9 +375,8 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
                 str(provider_outcome.get("error") or "pi_provider_turn_failed")
             )
         served_endpoint_id = str(provider_outcome.get("endpoint_id") or "") or None
-        served_model = str(
-            provider_outcome.get("served_model") or provider_outcome.get("model") or ""
-        ) or None
+        configured_model = str(provider_outcome.get("model") or params.model or "") or None
+        served_model = str(provider_outcome.get("served_model") or "") or None
         turn_usages.append(provider_outcome.get("usage") or {})
         message = {
             "role": "assistant",

@@ -435,12 +435,138 @@ async def test_legacy_and_pi_chat_choices_share_real_pi_manager(monkeypatch):
         assert result.status == "success"
         assert result.endpoint_id == endpoint.endpoint_id
         assert result.model == endpoint.model
-        # The deterministic faux provider does not emit provider-response
-        # identity; this test proves shared Pi admission/authority only. The
-        # separate streamed-receipt test above covers propagation when a
-        # provider supplies the explicit identity.
+        # This faux response intentionally omits a provider-response identity;
+        # ordinary chat remains usable, but the receipt stays unproven. The
+        # streamed-receipt test above and the multi-turn regression below cover
+        # explicit provider identities.
         assert result.served_model is None
         assert result.text == "shared reply"
+
+
+@pytest.mark.asyncio
+async def test_legacy_chat_tool_loop_uses_pi_manager_and_accumulates_usage(monkeypatch):
+    """Istara's legacy loop keeps its semantics over the shared Pi authority.
+
+    The legacy executor is deliberately exercised with a stateful provider
+    seam: two tool rounds followed by a final answer.  The real
+    ``PiModelManager`` resolves every round, while the dispatcher/legacy loop
+    must preserve the tool-result history and report one cumulative, three-turn
+    usage receipt.  This closes the engine-parity gap that a single-turn test
+    could leave hidden without loading a live model.
+    """
+
+    endpoint = replace(
+        faux_endpoint([final_text("unused")], endpoint_id="pi-legacy-loop"),
+        model="legacy-loop-model",
+    )
+    manager = _isolated(PiModelManager(endpoints=[endpoint], include_local=False))
+
+    def _provider_message(call_id: str, title: str) -> dict:
+        return {
+            "text": "",
+            "tool_calls": [{
+                "id": call_id,
+                "type": "function",
+                "function": {
+                    "name": "create_task",
+                    "arguments": '{"title": "' + title + '"}',
+                },
+            }],
+            "status": "success",
+            "usage": {"input_tokens": 2, "output_tokens": 1, "total_tokens": 3},
+            "stop_reason": "tool_calls",
+        }
+
+    scripted = [
+        _provider_message("legacy-call-1", "legacy loop step 1"),
+        _provider_message("legacy-call-2", "legacy loop step 2"),
+        {
+            "text": "Legacy loop completed after both authority results.",
+            "tool_calls": [],
+            "status": "success",
+            "usage": {"input_tokens": 2, "output_tokens": 1, "total_tokens": 3},
+            "stop_reason": "stop",
+        },
+    ]
+
+    class _ManagedProviderService:
+        def __init__(self):
+            self.calls: list[dict] = []
+
+        def model_manager(self):
+            return manager
+
+        async def run_provider_turn(self, **kwargs):
+            resolved = manager.resolve(
+                endpoint_id=kwargs["params"].endpoint_id,
+                project_id=kwargs["project_id"],
+            )
+            self.calls.append({
+                "messages": list(kwargs["messages"]),
+                "endpoint_id": resolved.endpoint_id,
+                "model": resolved.model,
+            })
+            result = scripted[len(self.calls) - 1]
+            return {
+                **result,
+                "endpoint_id": resolved.endpoint_id,
+                "model": resolved.model,
+                "served_model": resolved.model,
+                "route_evidence": {
+                    "plane": "pi-managed",
+                    "endpoint_id": resolved.endpoint_id,
+                    "model": resolved.model,
+                    "served_model": resolved.model,
+                },
+            }
+
+    service = _ManagedProviderService()
+    recorded: list[dict] = []
+
+    async def capture(**kwargs):
+        recorded.append(kwargs)
+
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", capture)
+
+    async def tool_executor(name, params, project_id, agent_id):
+        assert (name, project_id, agent_id) == ("create_task", "p1", "istara-main")
+        return {"success": True, "result": f"created {params['title']}"}
+
+    result = await AgenticDispatcher(pi_service=service).chat_turn(
+        project_id="p1",
+        agent_id="istara-main",
+        session_key="p1:legacy-loop",
+        system_prompt="Istara owns the loop; Pi owns provider authority.",
+        messages=[],
+        user_text="Complete the two-step task.",
+        tool_executor=tool_executor,
+        tool_names=["create_task"],
+        params=TurnParams(endpoint_id=endpoint.endpoint_id, max_turns=3),
+        engine="legacy",
+        session_id="session-legacy-loop",
+    )
+
+    assert result.status == "success"
+    assert result.text == "Legacy loop completed after both authority results."
+    assert result.endpoint_id == endpoint.endpoint_id
+    assert result.model == endpoint.model
+    assert result.served_model == endpoint.model
+    assert [call["endpoint_id"] for call in service.calls] == [endpoint.endpoint_id] * 3
+    assert len(service.calls) == 3
+    assert service.calls[1]["messages"][-1]["role"] == "tool"
+    assert service.calls[2]["messages"][-1]["role"] == "tool"
+    assert [call["tool"] for call in result.tool_calls] == ["create_task", "create_task"]
+    assert len(recorded) == 1
+    assert recorded[0]["engine"] == "legacy"
+    assert recorded[0]["model"] == endpoint.model
+    assert recorded[0]["session_id"] == "session-legacy-loop"
+    assert recorded[0]["outcome"]["usage"] == {
+        "input_tokens": 6,
+        "output_tokens": 3,
+        "total_tokens": 9,
+        "turns": 3,
+        "estimate": False,
+    }
 
 
 @pytest.mark.asyncio
