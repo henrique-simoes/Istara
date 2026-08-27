@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T18:54:00Z, ledger: L-399 }
-next_action: "Commit and push the reportability-oracle correction, update the clean Mac Studio retake, rerun the Node 20 Docker suite, then audit remaining live/provider identity, legacy no-coding-run migration, Petals cooperation, two-call/long-horizon, and genuine human-review gates."
+last: { agent: gpt-5-codex, at: 2026-08-27T18:58:00Z, ledger: L-400 }
+next_action: "Audit the remaining live/provider identity, legacy no-coding-run migration, Petals cooperation, two-call/long-horizon, and genuine human-review gates; provision only owner-approved Docker inputs and keep deterministic/live acceptance separate."
 ```
 
 ## Plan overview / roadmap
@@ -9464,3 +9464,26 @@ markers arrive in May, and the shared database's July start is only persistence
 scope. No surviving April database row is being invented or used to date the
 process. No provider request, model load, Docker workload, Mac host installation,
 or deletion of testing data occurred in this checkpoint.
+
+### L-400 | 2026-08-27T18:58:00Z | S2-execute/S3-review | gpt-5-codex | Clean Mac Studio Node 20 Docker retake green
+
+Commit `4c2a20c` is pushed to `origin/testing` and the clean detached retake at
+`$HOME/istara-testing-retake-47bf` is exactly that SHA with no working-tree changes.
+The deterministic real-user benchmark ran in a disposable `node:20-bookworm`
+container with the checkout mounted read-only and a temporary work volume. The
+shell-expanded test pattern now executes correctly under Node 20: `97` tests passed,
+`0` failed, exit `0`; the cleanup trap removed the temporary volume. Compass Forge
+command evidence row `380` records this result.
+
+The first retake attempt exposed only SSH PATH drift (`docker` was not in the
+non-interactive PATH), not a missing Docker installation. `/usr/local/bin/docker`
+resolved to the existing Docker Desktop binary and reported server `29.7.2`; no
+host package, Node runtime, or model artifact was installed. The dirty remote
+checkout remains untouched.
+
+This closes deterministic Node portability and reportability-oracle verification,
+but not live product acceptance. The task-backed report endpoint still needs a
+backend run with approved tasks and valid Research Spine evidence; three independent
+provider-served identities, Fleiss/Krippendorff acceptance, human reconciliation,
+Done/report promotion, Petals cooperation, two-call/long-horizon parity, legacy
+no-coding-run migration, and current Docker-only provider configuration remain open.
