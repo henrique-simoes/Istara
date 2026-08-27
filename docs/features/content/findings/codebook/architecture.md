@@ -8,7 +8,7 @@ related_features: ["findings.evidence", "findings.review"]
 related_glossary: ["atomic-research"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodebookViewer.tsx", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"]
-test_references: ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py", "tests/test_research_validity_contract.py", "tests/pi_production/test_w7_validation.py"]
+test_references: ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py", "tests/test_research_validity_contract.py", "tests/pi_production/test_w7_validation.py", "tests/pi_production/test_w7_pi_manager_integration.py"]
 last_verified: 2026-08-25
 compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-78 / CF-1005; CF-SPEC-124 / CF-1590
 ---
@@ -61,6 +61,7 @@ The Codebook tab surfaces qualitative coding structures and codebook versions as
 - `tests/test_project_scope_contracts.py`
 - `tests/test_research_validity_contract.py` — exact source-span grounding, protected prompt blocks, persistence, reliability, reconciliation, and reportability contracts.
 - `tests/pi_production/test_w7_validation.py` — three-model minimum, exact endpoint pinning, same-model replica rejection, complete grounded-unit coverage, schema constraints, and fail-closed blocked coding runs.
+- `tests/pi_production/test_w7_pi_manager_integration.py` — the positive coding-run path uses the real `AgenticDispatcher` with its paired Pi Model Manager; a deterministic provider seam verifies that all three selected endpoint/model identities reach `validity.coder` structured dispatch before Spine acceptance.
 
 ## Related Features
 

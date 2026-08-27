@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T06:12:25Z, ledger: L-277 }
-next_action: "Await an owner-authorized Docker-only Mac Studio window; start from exact origin/testing SHA 67bb9361, verify the archive in-container, then run provider/Petals/combined Research Spine retakes and attach complete evidence before closing G0/G1/live G2–G22."
+last: { agent: gpt-5-codex, at: 2026-08-27T07:02:00Z, ledger: L-278 }
+next_action: "Run the post-change gate for the real-dispatcher Research Spine coverage correction, then commit/push the exact testing SHA and keep live G0/G1/G2–G22 open until an authorized Docker-only Mac Studio retake supplies provider/Petals routes and complete evidence."
 ```
 
 ## Plan overview / roadmap
@@ -6358,3 +6358,42 @@ spans, independent grounded coding, Fleiss/Krippendorff numbers, reconciliation,
 human-Done/report promotion, both Istara and Pi Agentic Loop choices through shared
 Pi Model Management, two-call/long-horizon traces, Petals scope, redaction, and
 teardown.
+
+### L-278 | 2026-08-27T07:02:00Z | S2-execute/S3-review | gpt-5-codex | real-dispatcher Research Spine coverage closure
+
+Did: Re-audited the positive W7 Research Spine coding fixture against the actual
+runtime graph. The prior test constructed a real ``PiModelManager`` but replaced
+the process-wide ``AgenticDispatcher`` with a hand-written recording double. That
+proved selection, persistence, Fleiss/Krippendorff promotion, and route assertions,
+but it did not prove that the real dispatcher receives the paired Pi service,
+normalizes the explicit ``engine="pi"`` choice, invokes the structured verb, or
+keeps its usage-accounting boundary around the coding call. Existing W1 tests cover
+the real supervised Node worker and forced structured protocol, but not this full
+service-to-dispatcher-to-coding-run seam.
+
+Changed: ``tests/pi_production/test_w7_pi_manager_integration.py`` now instantiates
+the production ``AgenticDispatcher``. Its Pi service remains a deterministic,
+non-networked provider seam that exposes the same manager and returns a schema-valid
+object plus an explicit provider-served model receipt. The test therefore verifies
+that all three manager-selected endpoint/model identities reach
+``purpose="validity.coder"`` through the real dispatcher before the Research Spine
+accepts the run. ``docs/features/content/findings/codebook/architecture.md`` and
+the generated feature manifest/site now name this coverage explicitly.
+
+Verified: the focused new test passed; W1/W7/research-validity slice passed
+``63 passed in 70.32s``; feature documentation regenerated ``224`` artifacts and
+passed ``86/86`` checks; Ruff and ``git diff --check`` are clean. Native Compass
+Forge before-gate record ``176`` reports no new issues, cycles, forbidden
+dependencies, or missing paths; the repository-wide failure remains inherited
+secret-flow, route/type, complexity, and large-file debt, with the ledger's known
+large-file suppression. The deterministic provider receipt is intentionally not a
+live model claim.
+
+Boundary/next: run the native after-gate, append the matching F-R9-79 finding to
+``/Users/user/Desktop/testing.md``, commit and push the test/docs/ledger receipt,
+verify exact ``HEAD == testing == origin/testing`` parity, and keep G0/G1 and live
+G2-G22 open. A future authorized Docker-only Mac Studio window must still prove
+three actual provider-served identities over common raw spans, grounded independent
+coding, numeric Fleiss/Krippendorff reliability, reconciliation, human-Done/report
+promotion, both loop choices through shared Pi Model Management, two-call and
+long-horizon behavior, Petals cooperation/scope/revocation, redaction, and teardown.

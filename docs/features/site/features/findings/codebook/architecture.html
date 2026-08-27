@@ -287,6 +287,7 @@
 <li><code>tests/test_project_scope_contracts.py</code></li>
 <li><code>tests/test_research_validity_contract.py</code> — exact source-span grounding, protected prompt blocks, persistence, reliability, reconciliation, and reportability contracts.</li>
 <li><code>tests/pi_production/test_w7_validation.py</code> — three-model minimum, exact endpoint pinning, same-model replica rejection, complete grounded-unit coverage, schema constraints, and fail-closed blocked coding runs.</li>
+<li><code>tests/pi_production/test_w7_pi_manager_integration.py</code> — the positive coding-run path uses the real <code>AgenticDispatcher</code> with its paired Pi Model Manager; a deterministic provider seam verifies that all three selected endpoint/model identities reach <code>validity.coder</code> structured dispatch before Spine acceptance.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

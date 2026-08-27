@@ -1,7 +1,5 @@
 """Integration characterization for W7's real Pi Model Management catalog."""
 
-from types import SimpleNamespace
-
 import app.core.agentic  # noqa: F401  # initialize the dispatcher import plane
 import pytest
 
@@ -18,7 +16,7 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
     import uuid
 
     from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
-    from app.core.pi_runtime.engine import PiExecutionService
+    from app.core.agentic.dispatcher import AgenticDispatcher
     from app.core.pi_runtime.model_manager import PiModelManager
     from app.models.database import async_session, init_db
     from app.models.research_validity import EvidenceUnit
@@ -52,22 +50,22 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
     # The test exercises the real read-only manager projection without a DB
     # catalog; no production endpoint state is written.
     manager._db_projected = True
-    service = PiExecutionService(model_manager=manager)
-    monkeypatch.setattr(
-        "app.core.pi_runtime.model_manager.PiModelManager", lambda: manager
-    )
+    class _ManagedStructuredService:
+        """Deterministic provider seam behind the real dispatcher.
 
-    class _RecordingDispatcher:
+        W1 already proves the real supervised Node worker and forced structured
+        protocol. This fixture keeps W7 focused on the higher-level invariant:
+        the real ``AgenticDispatcher`` and its paired manager must carry the
+        exact selected endpoint/model into every Research Spine coder call.
+        """
+
         def __init__(self):
             self.calls = []
 
         def model_manager(self):
             return manager
 
-        def pi_execution_service(self):
-            return service
-
-        async def structured(self, **kwargs):
+        async def run_structured(self, **kwargs):
             self.calls.append(kwargs)
             applications = [
                 {
@@ -88,19 +86,26 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
                 }
                 for unit_id in unit_ids
             ]
-            return SimpleNamespace(
-                text="",
-                value={"applications": applications},
-                status="success",
-                usage={},
-                stop_reason="stop",
-                endpoint_id=kwargs["params"].endpoint_id,
-                model=kwargs["params"].model,
-                served_model=kwargs["params"].model,
-                tool_calls=[],
-            )
+            return {
+                "text": "",
+                "value": {"applications": applications},
+                "status": "success",
+                "usage": {},
+                "stop_reason": "stop",
+                "endpoint_id": kwargs["params"].endpoint_id,
+                "model": kwargs["params"].model,
+                # This is the provider receipt used by the strict coder
+                # adapter; a configured/request model is not sufficient.
+                "served_model": kwargs["params"].model,
+                "tool_calls": [],
+            }
 
-    dispatcher = _RecordingDispatcher()
+    service = _ManagedStructuredService()
+    dispatcher = AgenticDispatcher(pi_service=service)
+    async def no_op_usage(**kwargs):
+        return None
+
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", no_op_usage)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
     monkeypatch.setattr(
         research_validity_service,
@@ -141,17 +146,17 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
     assert result["reliability_method"] == "fleiss_kappa_with_krippendorff_alpha_companion"
     assert result["distinct_model_count"] == 3
     assert result["rater_count"] == 3
-    assert [kwargs["params"].endpoint_id for kwargs in dispatcher.calls] == [
+    assert [kwargs["params"].endpoint_id for kwargs in service.calls] == [
         "ep-a",
         "ep-b",
         "ep-c",
     ]
-    assert [kwargs["params"].model for kwargs in dispatcher.calls] == [
+    assert [kwargs["params"].model for kwargs in service.calls] == [
         "model-a",
         "model-b",
         "model-c",
     ]
-    assert all(kwargs["pi_service"] is service for kwargs in dispatcher.calls)
+    assert all(kwargs["purpose"] == "validity.coder" for kwargs in service.calls)
     assert {route["endpoint_id"] for route in result["route_evidence"]} == {
         "ep-a",
         "ep-b",
