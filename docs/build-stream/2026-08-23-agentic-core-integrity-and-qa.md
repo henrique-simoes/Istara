@@ -5,11 +5,11 @@ item: agentic-core-integrity-and-qa
 branch: testing
 cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
-stage: S5-ship&learn
+stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:06:47Z, ledger: L-236 }
-next_action: "When live prerequisites are authorized, resolve origin/testing at launch time on Mac Studio, materialize a clean detached checkout, then run the Docker-only provider/Petals retake with three provisioned model routes and preserve artifacts."
+last: { agent: gpt-5-codex, at: 2026-08-27T02:18:05Z, ledger: L-237 }
+next_action: "Commit and push the fail-closed benchmark-oracle remediation, then remain at G0/G1 until the owner supplies provider credit and three Compose-served model routes for the Docker-only Mac Studio retake."
 ```
 
 ## Plan overview / roadmap
@@ -5214,3 +5214,33 @@ Next: no additional local code or infrastructure mutation is justified while G0 
 Resume with the launch-time `origin/testing` SHA, fresh detached Docker checkout, and the
 G0–G22 live matrix; leave CF-15 open until the real provider/Petals/Research Spine evidence is
 complete and independently reviewable.
+
+### L-237 | 2026-08-27T02:18:05Z | S4-remediate | gpt-5-codex | implementer/verifier | Phase 9
+
+Did: Audited the real-user benchmark's Research Spine oracle after the prior ensemble-route
+identity fix. The oracle accepted truthy-but-empty contract, traceability, RAG, and telemetry
+objects, and it could leave an accepted coding response marked valid even when the governing
+contract request returned `{}`. This was a concrete false-positive path in the test itself, not
+evidence of a live model-quality regression.
+
+Changed: `tests/real_user_benchmark/lib/research-spine-probes.mjs` now requires the typed
+contract keys before coding or multi-model validation can pass, requires summary report-gate and
+count fields, requires the synthesis-and-traceability contract plus promotion rule, and requires
+telemetry `status=ok` with content-policy/protected-field metadata. Added regressions for missing
+contract and empty evidence payloads. Updated the Ensemble Health living feature contract and
+regenerated the site/manifest. Appended audit finding F-R9-58 to `/Users/user/Desktop/testing.md`.
+
+Verified: red/green targeted proof, then `npm --prefix tests/real_user_benchmark run check` (74
+subtests), 87 focused Python Research Spine/Pi tests, 21 MoA tests, 10 topology tests,
+`python scripts/feature_docs.py --seed-missing --generate-site --check` (86 features), and
+`git diff --check` all passed. Compass Forge after-gate record reports zero new issues,
+forbidden dependencies, import cycles, or missing paths; evidence row 85 records the commands.
+
+Boundary: this closes a benchmark false-positive and makes deterministic acceptance evidence
+more truthful. It does not prove three live distinct model identities, common raw-span coding,
+Fleiss/Krippendorff reliability, grounding, reconciliation, human-Done/report promotion,
+two-call/long-horizon behavior, Petals interoperability, or teardown. Those remain G0/G1
+`not_run` until the owner-authorized Docker-only Mac Studio prerequisites exist.
+
+Next: commit and push this remediation with the generated feature docs, verify local/remote SHA
+parity, then preserve the live campaign as blocked rather than starting host or provider work.

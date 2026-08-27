@@ -190,6 +190,90 @@ test("coding proof does not invent a three-document gate for one source with mul
   assert.deepEqual(blockers, []);
 });
 
+test("accepted coding cannot pass when the Research Spine contract is unavailable", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") return {};
+      if (path.includes("/code-applications/")) return makeReconciledApplications("run-no-contract", 12);
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-no-contract", 12);
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-no-contract" }];
+      if (path.includes("/traceability")) return { contract: {}, summary: {} };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-no-contract",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-no-contract",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /contract/i);
+});
+
+test("empty traceability and telemetry payloads do not count as Research Spine evidence", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/summary")) return {};
+      if (path.includes("/evidence-units")) return [];
+      if (path.includes("/coding-runs")) return [];
+      if (path.includes("/traceability")) return {};
+      if (path.includes("/telemetry-audit")) return {};
+      return {};
+    },
+    async post() {
+      throw new Error("coding should not run");
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-empty-evidence",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: false,
+    codingValidationLimit: 0,
+  });
+
+  assert.equal(featureResults.researchSpineTraceability, false);
+  assert.equal(featureResults.ragTraceabilityEvidence, false);
+  assert.equal(featureResults.telemetryEvidence, false);
+});
+
 test("three-donor benchmark blocks when coding falls back to single-coder assurance", async () => {
   const logger = makeLogger();
   const blockers = [];

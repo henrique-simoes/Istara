@@ -261,7 +261,12 @@ export async function exerciseResearchSpineValidation({
 
   try {
     const contract = await api.get("/api/research-validity/contract", { timeoutMs: 15000 });
-    evidence.contract_loaded = Boolean(contract?.contract && contract?.qualitative_coding_protocol);
+    evidence.contract_loaded = Boolean(
+      contract
+      && typeof contract === "object"
+      && Object.prototype.hasOwnProperty.call(contract, "contract")
+      && Object.prototype.hasOwnProperty.call(contract, "qualitative_coding_protocol"),
+    );
     logger.action("research_spine.contract", { ok: evidence.contract_loaded });
   } catch (error) {
     evidence.errors.push({ step: "contract", error: error.message });
@@ -271,6 +276,17 @@ export async function exerciseResearchSpineValidation({
   if (codingValidationEnabled && codingValidationLimit > 0) {
     const approvedTask = taskWorkflow?.approvedTasks?.[0] || null;
     try {
+      if (!evidence.contract_loaded) {
+        const detail = "Research Spine contract was unavailable; coding validation is unproven.";
+        blockers.push(detail);
+        logger.issue({
+          area: "research-spine",
+          severity: "high",
+          title: "Research Spine contract was not loaded",
+          detail,
+        });
+        throw new Error("research_validity_contract_unavailable");
+      }
       const pageSize = 500;
       const maxPages = 10;
       const availableUnits = [];
@@ -385,10 +401,14 @@ export async function exerciseResearchSpineValidation({
           logger,
         });
       } else {
-        if (requiredCoders >= 2 && error.message !== "source_diversity_not_proven") {
+        if (requiredCoders >= 2
+          && !["source_diversity_not_proven", "research_validity_contract_unavailable"].includes(error.message)) {
           blockers.push(`Research Spine coding validation did not complete: ${error.message}`);
         }
-        if (error.message !== "source_diversity_not_proven") {
+        if (![
+          "source_diversity_not_proven",
+          "research_validity_contract_unavailable",
+        ].includes(error.message)) {
           logger.issue({
             area: "research-spine",
             severity: "medium",
@@ -422,11 +442,33 @@ export async function exerciseResearchSpineValidation({
   const codingRunCount = Array.isArray(evidence.coding_runs)
     ? evidence.coding_runs.length
     : Number(evidence.summary?.coding_run_count || 0);
-  featureResults.codingValidation = Boolean(evidence.coding_run)
-    && Boolean(featureResults.multiModelResearchSpineValidation);
-  featureResults.researchSpineTraceability = Boolean(evidence.summary || evidence.traceability);
-  featureResults.ragTraceabilityEvidence = Boolean(evidence.traceability);
-  featureResults.telemetryEvidence = Boolean(evidence.telemetry_audit || evidence.summary);
+  featureResults.multiModelResearchSpineValidation = Boolean(
+    evidence.contract_loaded && featureResults.multiModelResearchSpineValidation,
+  );
+  featureResults.codingValidation = Boolean(evidence.contract_loaded && evidence.coding_run)
+    && featureResults.multiModelResearchSpineValidation;
+  featureResults.researchSpineTraceability = Boolean(
+    evidence.summary
+    && typeof evidence.summary === "object"
+    && Object.prototype.hasOwnProperty.call(evidence.summary, "report_gate")
+    && Object.prototype.hasOwnProperty.call(evidence.summary, "evidence_unit_count")
+    && Object.prototype.hasOwnProperty.call(evidence.summary, "coding_run_count"),
+  );
+  featureResults.ragTraceabilityEvidence = Boolean(
+    evidence.traceability
+    && typeof evidence.traceability === "object"
+    && evidence.traceability.contract
+    && typeof evidence.traceability.contract === "object"
+    && evidence.traceability.contract.graph_role === "synthesis_and_traceability"
+    && evidence.traceability.contract.promotion_rule,
+  );
+  featureResults.telemetryEvidence = Boolean(
+    evidence.telemetry_audit
+    && typeof evidence.telemetry_audit === "object"
+    && evidence.telemetry_audit.status === "ok"
+    && evidence.telemetry_audit.content_policy
+    && evidence.telemetry_audit.protected_fields,
+  );
   logger.writeJson("research-spine-evidence.json", {
     ...evidence,
     evidence_unit_count_observed: evidenceUnitCount,
