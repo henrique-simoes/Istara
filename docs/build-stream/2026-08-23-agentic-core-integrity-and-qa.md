@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T19:10:30Z, ledger: L-403 }
-next_action: "Audit the remaining live/provider identity, legacy no-coding-run migration, Petals cooperation, two-call/long-horizon, and genuine human-review gates; provision only owner-approved Docker inputs and keep deterministic/live acceptance separate."
+last: { agent: gpt-5-codex, at: 2026-08-27T19:23:20Z, ledger: L-405 }
+next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
 ## Plan overview / roadmap
@@ -9585,3 +9585,22 @@ contract/end-to-end slice reports `34` passed; the deterministic benchmark repor
 `git diff --check` passes. Live provider identities, Fleiss/Krippendorff acceptance,
 human reconciliation, Petals donation, two-call/long-horizon receipts, and current
 Docker model configuration remain unverified.
+
+### L-405 | 2026-08-27T19:23:20Z | S2-execute/S3-review | gpt-5-codex | Valid Docker-only Mac Studio deterministic retake
+
+The clean detached checkout `$HOME/istara-testing-retake-47bf` on the Mac Studio was
+verified at pushed SHA `172d311ace30a3fbc8cc475ee32793352430eba2`. A disposable Docker
+volume was populated from a read-only bind mount and the complete benchmark package was
+run under the existing Docker Desktop CLI with `--network none` and `node:20-bookworm`.
+The first two retake attempts failed before test execution because the mount omitted the
+benchmark's repository-root dependencies (`package.json`/`document_corpus`, then
+`scripts/runner/docker-run.sh`); those are harness setup errors, not product failures.
+The corrected repository-root retake reached the full suite and passed `100` tests with
+`0` failures and exit `0`. The disposable volume was removed afterward; no containers,
+models, runtimes, packages, or other dependencies were installed on the Mac host, and
+the dirty original `$HOME/istara-testing` checkout was not touched.
+
+Verified: `ssh macstudio 'docker run --rm --network none -v istara-benchmark-retake-172d311:/work -w /work node:20-bookworm npm test --prefix tests/real_user_benchmark'` — `100 passed`, exit `0`; `docker volume rm istara-benchmark-retake-172d311`; detached checkout clean.
+Compass evidence: command row `395` on CF task `CF-15`.
+Next: stage exit remains blocked on live scientific acceptance and owner-approved provider
+inputs; deterministic harness coverage is now independently reproduced in Docker.
