@@ -6967,3 +6967,22 @@ authorized Docker-only Mac Studio live matrix. Live provider identity,
 same-session two-call parity, three independent served models, reliability
 quality, reconciliation/human-Done/report promotion, and Petals cooperation are
 not yet proven.
+
+### L-302 | 2026-08-27T09:45:00Z | S2-execute/S3-review | gpt-5-codex | remote Docker preflight checkpoint
+
+Transport is clean: local `testing`, `origin/testing`, and the isolated Mac Studio
+retake worktree all resolve to `10e2241226b1fd1fbe1db18f9b71f2135acd7bc4`; the
+retake has zero Git modifications. Passive SSH/Docker inspection found Docker
+Server `29.7.2`, only the unrelated healthy `plex` container, and no Istara,
+provider, Petals, benchmark, or donor containers. No host package installation,
+model load, chat probe, or service start was performed.
+
+The live matrix is currently blocked before workload startup: the clean retake has
+no `.env.deploy`, the Docker-host model directory is empty, and the three-model
+Compose profile cannot render without the required Compose-managed Gemma model
+input. Base Compose renders only when pointed at the old checkout's secret-bearing
+env file; that dirty checkout remains untouched and is not accepted as current
+runtime evidence. A future live run needs an owner-provided, Docker-only env/model
+provisioning decision and bounded provider/Petals authorization. Until then the
+deterministic seam remains the strongest evidence and all live quality gates stay
+open.
