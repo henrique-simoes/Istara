@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T10:00:44Z, ledger: L-313 }
-next_action: "Commit and push the deterministic hardening to testing, verify origin/testing and the clean Mac Studio retake, then resume the owner-approved Docker-only live acceptance matrix when its inputs exist."
+last: { agent: gpt-5-codex, at: 2026-08-27T10:01:45Z, ledger: L-314 }
+next_action: "Resume the owner-approved Docker-only live acceptance matrix when its env, served model identities, donor inputs, and redacted artifact paths exist; keep all unproven gates open."
 ```
 
 ## Plan overview / roadmap
@@ -7392,3 +7392,27 @@ local and `origin/testing` are identical, then passively retarget
 `~/istara-testing-retake-47bf` on the Mac Studio to that SHA with status clean. Do
 not start Docker workloads or load models until the owner-approved env, served model
 identities, donor inputs, and redacted artifact paths are present.
+
+### L-314 | 2026-08-27T10:01:45Z | S5-ship&learn | gpt-5-codex | clean transport and passive Mac Studio retarget
+
+The intended nine-file change set was committed as `d6b6438bcf84c05278522aa14a3ec807a247e12e`
+(`test: harden Petals namespace and reliability gates`) and pushed to `origin/testing`.
+Local `testing` and `origin/testing` resolve to the same SHA, `git diff
+origin/testing --` is empty, and the local checkout has zero unstaged/untracked
+paths. The only retained additional local worktree is the deliberate recovery
+checkout `recovery/pi-retake-linearized-2026-08-10`; it is not an ancestor of the
+active branch and was therefore not deleted.
+
+On Mac Studio, the clean detached retake `~/istara-testing-retake-47bf` was
+passively retargeted to the same SHA and reports zero worktree changes. Docker was
+queried through its explicit binary `/usr/local/bin/docker` (server `29.7.2`), with
+zero Istara/provider/Petals/benchmark/donor containers; only the unrelated Plex
+container is running. The first PATH-only probe reported `docker` missing, which is
+expected on this host; the explicit Docker path verified the engine without any host
+installation or workload start.
+
+This transport checkpoint closes only source synchronization. It does not close the
+live provider, Petals donation, combined routing, engine-parity, same-session
+two-call, long-horizon, three-rater Fleiss/Krippendorff, reconciliation, human-Done,
+or report-promotion gates. Resume at L-306 section 2 only after the owner-approved
+Docker-only inputs exist.
