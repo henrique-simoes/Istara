@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T03:18:19Z, ledger: L-249 }
-next_action: "Commit and push the served-model identity hardening, verify exact local/origin/testing parity, then at the next authorized live window execute the Docker-only provider/Petals/combined G0–G22 retake from a fresh detached checkout; until then leave G0/G1 not_run and resolve the Agentic Loop terminology decision."
+last: { agent: gpt-5-codex, at: 2026-08-27T03:19:46Z, ledger: L-250 }
+next_action: "At the next authorized live window execute the Docker-only provider/Petals/combined G0–G22 retake from a fresh detached checkout; until then leave G0/G1 not_run, preserve exact testing parity, and resolve the Agentic Loop terminology decision."
 ```
 
 ## Plan overview / roadmap
@@ -5592,3 +5592,35 @@ distinct provider-served model identities over common raw evidence units, one gr
 model/unit, numeric Fleiss/Krippendorff metrics, grounding, reconciliation, human-Done/report
 promotion, both loop-mode semantics, two-call/long-horizon artifacts, Petals interoperability,
 redacted artifacts, and teardown without installing or mutating the Mac Studio host.
+
+### L-250 | 2026-08-27T03:19:46Z | S5-ship&learn | gpt-5-codex | served-model hardening transport and Docker readiness receipt
+
+Did: Committed the served-model provenance hardening, regressions, Research Spine contract,
+Ensemble Health feature documentation, generated site/manifest, and L-249 checkpoint as
+`20906e522d487c3a7a60a3884ee68bb2bc1327f4`; pushed `testing` to `origin/testing`. Verified
+`HEAD`, local `testing`, and `origin/testing` resolve to that exact SHA; the worktree and both
+diff checks are clean. No obsolete registered worktree or safely deletable merged branch was
+identified, and the protected `LLMs/`/`Model_Finetuning/` artifact folders were untouched.
+
+Did: Repeated passive SSH/Docker inspection of the Mac Studio using the explicit Docker CLI
+path. Host `users-Mac-Studio.local` and Docker Server `29.7.2` are reachable. No Istara
+benchmark Compose project, testing network, testing volume, provider, relay, donor, or model
+container is running; only the unrelated healthy `plex` Compose workload is present. The stale
+dirty `/Users/user/istara-testing` checkout remains untouched. No image pull, model load,
+service start, host package installation, data deletion, or remote repository mutation occurred.
+
+Verified: the pre-transport focused ladder remains `144` tests; W7/W1 `57`; benchmark `77/77`;
+remote runner `17/17`; Ruff, feature docs (`86` features/`224` artifacts), and diff checks pass.
+Compass Forge after-gate record `136` and task evidence `110` cover the code/docs/tests; no new
+dependency, missing-path, or import-cycle issue was introduced. F-R9-66 is appended to
+`/Users/user/Desktop/testing.md`.
+
+Boundary/next: deterministic authority, duplicate-rating, oracle, and served-model provenance
+contracts are green, but live G0/G1 and G2–G22 remain `not_run`/open. The next operator needs
+owner-authorized provider credit and three project-scoped routes, then must resolve the launch
+SHA, create a fresh detached checkout, recompute/pass its archive digest, render Compose, and
+run provider/Petals/combined profiles in order. Acceptance requires three distinct provider-
+served identities over common raw spans, one grounded rating per model/unit, numeric
+Fleiss/Krippendorff reliability, grounding, reconciliation, human-Done/report promotion, both
+loop-mode semantics, two-call/long-horizon artifacts, Petals interoperability, redacted
+artifacts, and teardown, all through Docker without installing or mutating the Mac Studio host.
