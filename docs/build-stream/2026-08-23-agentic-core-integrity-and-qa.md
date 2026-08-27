@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T10:02:54Z, ledger: L-315 }
-next_action: "Resume the owner-approved Docker-only live acceptance matrix when its env, served model identities, donor inputs, and redacted artifact paths exist; keep all unproven gates open."
+last: { agent: gpt-5-codex, at: 2026-08-27T10:19:26Z, ledger: L-317 }
+next_action: "Transport the intended files cleanly and verify local/remote parity; resume the owner-approved Docker-only live matrix only when its env, served model identities, donor inputs, and redacted artifact paths exist."
 ```
 
 ## Plan overview / roadmap
@@ -7432,3 +7432,53 @@ All source synchronization work in this phase is complete. The Build Stream rema
 present. No host installation, model load, provider request, or benchmark workload
 was performed. Resume at L-306 section 2 when those inputs are supplied, preserving
 the fail-closed requirement for every live Research Spine and ensemble gate.
+
+### L-316 | 2026-08-27T10:16:48Z | S3-review | gpt-5-codex | Research Spine acceptance-oracle identity hardening
+
+The deeper benchmark audit found three acceptance-oracle gaps. Code applications and
+reconciliation decisions were requested for a coding run but their returned rows were
+not checked for that same `coding_run_id`; duplicate application IDs could therefore
+inflate aggregate coverage; and row-level model names were not bound to the exact
+served route identities or to one stable model per coder. The positive fixture also
+used `model-1/2/3` and `donor-1/2/3` while its served-route receipt declared
+`model-a/b/c` and `donor-a/b/c`, so the missing identity binding was not observable.
+
+`tests/real_user_benchmark/lib/research-spine-probes.mjs` now fails closed for
+cross-run applications or decisions, duplicate application IDs, coder/model
+switching, missing served model identities, and unexpected model identities. The
+fixture in `tests/real_user_benchmark/lib/research-spine-probes.test.mjs` is aligned
+with its route receipts, with regressions for foreign application rows, foreign
+decisions, duplicates, and a missing served model. Compass Forge command evidence
+`212` records `npm --prefix tests/real_user_benchmark run check`: all `86` tests
+passed, deterministic-only with no provider request or model load. Feature-document
+regeneration/check passed (`224` generated artifacts, `86/86` checks). The new
+external finding is F-R9-101.
+
+The live scientific and operational gates remain open. Deterministic identity and
+coverage checks cannot prove provider-served model independence, semantic quality,
+meaningful Fleiss' kappa/Krippendorff's alpha, reconciliation, human-Done/report
+promotion, same-session two-call or long-horizon behavior, Petals interoperation, or
+Docker Mac Studio execution. Next: attach the after-gate, commit/push only intended
+repository files, verify local/remote parity, and passively retarget the clean Mac
+Studio detached retake without starting a workload.
+
+### L-317 | 2026-08-27T10:19:26Z | S3-review/S5-ship&learn | gpt-5-codex | clean before/after gate for oracle hardening
+
+After the deterministic oracle retest and feature-document check, Compass Forge
+recorded a clean comparison pair: before record `249`, after record `250`, and task
+gate evidence `215`. The after-gate status remains `fail` only for the repository's
+inherited secret-flow and unexpected-large-file debt; the comparison reports zero new
+issues, forbidden dependencies, missing required paths, Python import cycles, or
+unexpected-large-file delta (`file_count_delta=0`, `large_file_count_delta=0`).
+Current gate inventory is two failures and 378 warnings, which are not introduced by
+this benchmark change. The earlier mixed baseline records are retained for history;
+this pair is the transport gate for the current tree.
+
+The intended repository change set is now ready to stage: the benchmark oracle and
+regression tests, the generated feature manifest, and this Build Stream checkpoint.
+External F-R9-101 is documented separately in `/Users/user/Desktop/testing.md` and
+is intentionally outside Git. Next: stage only those repository paths, commit and
+push `testing` to `origin/testing`, verify exact SHA/tree parity and clean status,
+then passively retarget `~/istara-testing-retake-47bf` on the Mac Studio. No live
+provider request, model load, host install, or Docker workload is authorized by the
+current input inventory.

@@ -17,13 +17,32 @@ function sourceKey(unit) {
   return location ? location.split("#", 1)[0].trim() : "";
 }
 
-function assessApplicationCoverage(rows, expectedUnits, requiredCoders) {
+function assessApplicationCoverage(
+  rows,
+  expectedUnits,
+  requiredCoders,
+  expectedCodingRunId,
+  expectedServedModelIdentities,
+) {
   const expectedUnitIds = new Set((Array.isArray(expectedUnits) ? expectedUnits : [])
     .map((unit) => String(unit?.id || "").trim())
     .filter(Boolean));
+  const normalizedExpectedRunId = String(expectedCodingRunId || "").trim();
+  const expectedModels = new Set(
+    (expectedServedModelIdentities instanceof Set
+      ? [...expectedServedModelIdentities]
+      : Array.isArray(expectedServedModelIdentities) ? expectedServedModelIdentities : [])
+      .map((model) => String(model || "").trim().toLocaleLowerCase())
+      .filter(Boolean),
+  );
   const byCoder = new Map();
+  const coderModels = new Map();
+  const observedModels = new Set();
   const invalidRows = [];
+  const applicationIdCounts = new Map();
   for (const row of Array.isArray(rows) ? rows : []) {
+    const applicationId = String(row?.id || "").trim();
+    const codingRunId = String(row?.coding_run_id || "").trim();
     const coderId = String(row?.coder_id || "").trim();
     const unitId = String(row?.evidence_unit_id || "").trim();
     const sourceText = String(row?.source_text || "").trim();
@@ -33,11 +52,19 @@ function assessApplicationCoverage(rows, expectedUnits, requiredCoders) {
       : null;
     const servedModel = String(route?.model || route?.served_model || "").trim();
     const rowModel = String(row?.model_name || "").trim();
+    const normalizedRowModel = rowModel.toLocaleLowerCase();
     const routeServed = String(route?.outcome || "").toLowerCase() === "served";
-    if (!coderId || !expectedUnitIds.has(unitId) || !sourceText || !sourceLocation
-      || !routeServed || !servedModel || !rowModel || rowModel !== servedModel) {
+    if (applicationId) {
+      applicationIdCounts.set(applicationId, (applicationIdCounts.get(applicationId) || 0) + 1);
+    }
+    if (!applicationId || !normalizedExpectedRunId || codingRunId !== normalizedExpectedRunId
+      || !coderId || !expectedUnitIds.has(unitId) || !sourceText || !sourceLocation
+      || !routeServed || !servedModel || !rowModel || rowModel !== servedModel
+      || (expectedModels.size > 0 && !expectedModels.has(normalizedRowModel))) {
       invalidRows.push({
         id: String(row?.id || "").trim(),
+        coding_run_id: codingRunId,
+        expected_coding_run_id: normalizedExpectedRunId,
         coder_id: coderId,
         evidence_unit_id: unitId,
         has_source_text: Boolean(sourceText),
@@ -47,10 +74,53 @@ function assessApplicationCoverage(rows, expectedUnits, requiredCoders) {
         row_model: rowModel,
       });
     }
+    if (normalizedRowModel) {
+      observedModels.add(normalizedRowModel);
+      if (coderId) {
+        const modelsForCoder = coderModels.get(coderId) || new Set();
+        modelsForCoder.add(normalizedRowModel);
+        coderModels.set(coderId, modelsForCoder);
+      }
+    }
     if (coderId && expectedUnitIds.has(unitId)) {
       if (!byCoder.has(coderId)) byCoder.set(coderId, new Set());
       byCoder.get(coderId).add(unitId);
     }
+  }
+  const duplicateApplicationIds = [...applicationIdCounts.entries()]
+    .filter(([_id, count]) => count > 1)
+    .map(([id]) => id)
+    .sort();
+  for (const id of duplicateApplicationIds) {
+    invalidRows.push({
+      id,
+      duplicate_application_id: true,
+      duplicate_count: applicationIdCounts.get(id),
+    });
+  }
+  const coderModelConflicts = [...coderModels.entries()]
+    .filter(([_coderId, models]) => models.size > 1)
+    .map(([coderId, models]) => ({ coder_id: coderId, model_identities: [...models].sort() }))
+    .sort((left, right) => left.coder_id.localeCompare(right.coder_id));
+  for (const conflict of coderModelConflicts) {
+    invalidRows.push({
+      coder_id: conflict.coder_id,
+      coder_model_conflict: true,
+      model_identities: conflict.model_identities,
+    });
+  }
+  const missingServedModelIdentities = [...expectedModels]
+    .filter((model) => !observedModels.has(model))
+    .sort();
+  const unexpectedServedModelIdentities = [...observedModels]
+    .filter((model) => expectedModels.size > 0 && !expectedModels.has(model))
+    .sort();
+  if (missingServedModelIdentities.length > 0 || unexpectedServedModelIdentities.length > 0) {
+    invalidRows.push({
+      model_coverage_gap: true,
+      missing_served_model_identities: missingServedModelIdentities,
+      unexpected_served_model_identities: unexpectedServedModelIdentities,
+    });
   }
   const coderIds = [...byCoder.keys()].sort();
   const missingPairs = [];
@@ -68,6 +138,12 @@ function assessApplicationCoverage(rows, expectedUnits, requiredCoders) {
     observed_coder_count: coderIds.length,
     coder_ids: coderIds,
     missing_pairs: missingPairs,
+    duplicate_application_ids: duplicateApplicationIds,
+    coder_model_conflicts: coderModelConflicts,
+    observed_model_identities: [...observedModels].sort(),
+    expected_served_model_identities: [...expectedModels].sort(),
+    missing_served_model_identities: missingServedModelIdentities,
+    unexpected_served_model_identities: unexpectedServedModelIdentities,
     invalid_rows: invalidRows,
   };
 }
@@ -203,6 +279,8 @@ async function validateCodingRun({
         rows,
         expectedEvidenceUnits,
         requiredCoders,
+        runId,
+        servedModelIdentities,
       );
       coverageOk = coverageEvidence.ok;
       if (!coverageOk) {
@@ -212,8 +290,11 @@ async function validateCodingRun({
         ["accepted", "accepted_after_reconciliation"].includes(String(row?.promotion_status || "").toLowerCase())
         && ["accepted", "reconciled"].includes(String(row?.reconciliation_status || "").toLowerCase())
         && String(row?.review_status || "").toLowerCase() === "approved");
+      const invalidDecisionRows = decisionRows.filter((decision) =>
+        !runId || String(decision?.coding_run_id || "").trim() !== runId);
       const decisionIds = new Set(decisionRows
-        .filter((decision) => ["accepted", "revised"].includes(String(decision?.decision_type || "").toLowerCase()))
+        .filter((decision) => !invalidDecisionRows.includes(decision)
+          && ["accepted", "revised"].includes(String(decision?.decision_type || "").toLowerCase()))
         .map((decision) => String(decision?.code_application_id || "").trim())
         .filter(Boolean));
       const allApplicationsHaveDecisions = rows.every((row) => decisionIds.has(String(row?.id || "").trim()));
@@ -221,19 +302,23 @@ async function validateCodingRun({
         && expectedCount > 0
         && rows.length === expectedCount
         && acceptedRows.length === expectedCount
+        && invalidDecisionRows.length === 0
         && allApplicationsHaveDecisions;
       reconciliationEvidence = {
         expected_application_count: expectedCount,
         observed_application_count: rows.length,
         reconciled_application_count: acceptedRows.length,
         accepted_decision_count: decisionIds.size,
+        invalid_decision_count: invalidDecisionRows.length,
         all_applications_have_decisions: allApplicationsHaveDecisions,
       };
       if (coverageEvidence) {
         reconciliationEvidence.application_coverage = coverageEvidence;
       }
       if (coverageOk && !reconciliationOk) {
-        const detail = `Research Spine reliability passed, but ${acceptedRows.length}/${expectedCount} code applications have accepted reconciliation decisions (${decisionIds.size} linked decisions for ${rows.length} applications).`;
+        const detail = invalidDecisionRows.length > 0
+          ? `Research Spine reliability passed, but ${invalidDecisionRows.length}/${decisionRows.length} reconciliation decisions belong to another coding run.`
+          : `Research Spine reliability passed, but ${acceptedRows.length}/${expectedCount} code applications have accepted reconciliation decisions (${decisionIds.size} linked decisions for ${rows.length} applications).`;
         blockers.push(detail);
         logger.issue({
           area: "research-spine",

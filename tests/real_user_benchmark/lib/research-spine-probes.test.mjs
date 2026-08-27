@@ -42,11 +42,11 @@ function makeReconciledApplications(runId, count = 12) {
     evidence_unit_id: `eu-${(index % 4) + 1}`,
     source_text: `Exact raw source span for evidence unit ${(index % 4) + 1}.`,
     source_location: `interview-${(index % 2) + 1}.md#${(index % 4) + 1}`,
-    model_name: `model-${Math.floor(index / 4) + 1}`,
+    model_name: `model-${String.fromCharCode(97 + Math.floor(index / 4))}`,
     route_evidence: {
-      node_id: `donor-${Math.floor(index / 4) + 1}`,
-      model: `model-${Math.floor(index / 4) + 1}`,
-      endpoint_id: `endpoint-${Math.floor(index / 4) + 1}`,
+      node_id: `donor-${String.fromCharCode(97 + Math.floor(index / 4))}`,
+      model: `model-${String.fromCharCode(97 + Math.floor(index / 4))}`,
+      endpoint_id: `endpoint-${String.fromCharCode(97 + Math.floor(index / 4))}`,
       outcome: "served",
     },
     promotion_status: "accepted",
@@ -393,6 +393,242 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
   assert.equal(featureResults.codingValidation, true);
   assert.equal(featureResults.multiModelResearchSpineValidation, true);
   assert.deepEqual(blockers, []);
+});
+
+test("three-donor benchmark rejects code applications returned from another coding run", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      // The endpoint is queried with the requested run id, but this fixture
+      // simulates an adapter that ignores that filter and returns a complete,
+      // otherwise-valid response for a different run.
+      if (path.includes("/code-applications/")) return makeReconciledApplications("foreign-run");
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("foreign-run");
+      if (path.includes("/summary")) return { coding_run_count: 2, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-cross-run" }, { id: "foreign-run" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-cross-run",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-cross-run",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /complete coder-by-evidence-unit coverage/i);
+  assert.equal(logger.issues[0].evidence.application_coverage.invalid_rows.length, 12);
+  assert.equal(logger.issues[0].evidence.application_coverage.invalid_rows[0].coding_run_id, "foreign-run");
+  assert.equal(logger.issues[0].evidence.application_coverage.invalid_rows[0].expected_coding_run_id, "run-cross-run");
+});
+
+test("three-donor benchmark rejects reconciliation decisions returned from another coding run", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const rows = makeReconciledApplications("run-decision-cross");
+  const foreignDecisions = makeReconciliationDecisions("foreign-run").map((decision, index) => ({
+    ...decision,
+    code_application_id: rows[index].id,
+  }));
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return rows;
+      // IDs intentionally point at the requested rows while the run identity
+      // is foreign; linking by application ID alone must not pass.
+      if (path.includes("/reconciliation-decisions")) return foreignDecisions;
+      if (path.includes("/summary")) return { coding_run_count: 2, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-decision-cross" }, { id: "foreign-run" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-decision-cross",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-decision-cross",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /reconciliation decisions belong to another coding run/i);
+  assert.equal(logger.issues[0].evidence.invalid_decision_count, 12);
+  assert.equal(logger.issues[0].evidence.all_applications_have_decisions, false);
+});
+
+test("three-donor benchmark rejects duplicate code-application identities", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const rows = makeReconciledApplications("run-duplicate-app");
+  rows[11] = { ...rows[11], id: rows[0].id };
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return rows;
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-duplicate-app");
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-duplicate-app" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-duplicate-app",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-duplicate-app",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /complete coder-by-evidence-unit coverage/i);
+  assert.deepEqual(logger.issues[0].evidence.application_coverage.duplicate_application_ids, [
+    "run-duplicate-app-application-1",
+  ]);
+  assert.equal(logger.issues[0].evidence.application_coverage.invalid_rows.at(-1).duplicate_count, 2);
+});
+
+test("three-donor benchmark rejects coder rows that omit a served model identity", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const rows = makeReconciledApplications("run-model-coverage").map((row, index) => (
+    index >= 8
+      ? {
+          ...row,
+          model_name: "model-a",
+          route_evidence: { ...row.route_evidence, model: "model-a" },
+        }
+      : row
+  ));
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return rows;
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-model-coverage");
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-model-coverage" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-model-coverage",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-model-coverage",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /complete coder-by-evidence-unit coverage/i);
+  assert.deepEqual(logger.issues[0].evidence.application_coverage.missing_served_model_identities, ["model-c"]);
+  assert.deepEqual(logger.issues[0].evidence.application_coverage.observed_model_identities, ["model-a", "model-b"]);
 });
 
 test("three-model coding blocks when an application omits a coder-unit span or provenance", async () => {
