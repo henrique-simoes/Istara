@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T16:36:00Z, ledger: L-381 }
-next_action: "Transport commit 92a6b193 to origin/testing and the detached Mac Studio checkout after gate-after; preserve the passive Docker-only boundary. Then continue F-R9-114 only with owner-approved provider/model identities, while keeping the legacy no-coding-run migration decision and live human reconciliation/report acceptance open."
+last: { agent: gpt-5-codex, at: 2026-08-27T16:38:00Z, ledger: L-382 }
+next_action: "Continue F-R9-114 only with owner-approved Docker-only provider/model identities and a bounded live three-model run; preserve the passive Mac Studio boundary until those inputs are supplied. Keep the legacy no-coding-run migration decision, genuine human reconciliation/report acceptance, and live downstream transformation receipt open."
 ```
 
 ## Plan overview / roadmap
@@ -9013,3 +9013,33 @@ owner-approved Docker-only three-model provider execution, provider-served
 identity receipts, genuine human reconciliation, Done/report acceptance, and
 the two-call/long-horizon live receipt; legacy no-coding-run reportability and
 the live downstream transformation chain remain separate follow-ups.
+
+### L-382 | 2026-08-27T16:38:00Z | S5-ship&learn | gpt-5-codex | transport parity and handoff receipt
+
+The production-path spine coverage, explicit Petals fixture semantics, and
+SQLite transaction-safe telemetry fix from `92a6b1939fe5939d4fd6cff43f355a73044cb196`
+were recorded in the durable ledger and transported in clean commit
+`b800581867f3cbe0d4eef9b65334192cbe1cde24`. Local branch `testing`,
+`origin/testing`, and detached Mac Studio checkout
+`~/istara-testing-retake-47bf` all resolve to this exact SHA. Compass Forge
+task evidence `351` records the `711 passed, 5 skipped` broad deterministic
+matrix and `185 passed` focused matrix; evidence `352` records feature-doc
+generation (`224` artifacts, `86/86` features), Ruff, push, and passive Mac
+verification; evidence `353` records gate-before `307` and gate-after `308`,
+with no new architecture, dependency, or security issues attributable to this
+change. The gate's current repository status remains fail because of inherited
+complexity, secret-flow, route-drift, type-drift, and scoped large-ledger
+inventory; those are not silently reclassified as fixed.
+
+The Mac Studio boundary remains honored: Docker client/server `29.7.2/29.7.2`,
+only unrelated healthy `plex`, zero files under `~/Istara-Projects/models`, and
+no `.env.deploy`. No container was started, no image was pulled, no provider
+request or model load was made, no host package was installed, and no testing
+data was deleted. The live Research Spine gate F-R9-114 is therefore still
+open: deterministic seams prove routing, three-coder Fleiss/Krippendorff
+contracts, reconciliation blockers, provenance, Docker refusal, and long-
+horizon rules, but they do not prove live model quality, provider-served
+identities, two concurrent calls, genuine human reconciliation, Done/report
+acceptance, or the real downstream transformation chain. The next agent must
+obtain the owner's provider/model inputs before any bounded Docker-only live
+run and must preserve the exact route/model/usage receipts.
