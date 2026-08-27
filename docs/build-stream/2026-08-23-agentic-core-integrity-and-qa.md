@@ -7022,3 +7022,7 @@ evidence units; Fleiss/Krippendorff reliability with grounding; Petals scope,
 consent, and route receipts; reconciliation; human-approved Done/report
 promotion; redacted artifacts; and teardown. No live claim is made until those
 artifacts exist.
+
+### L-305 | 2026-08-27T10:05:00Z | S2-execute/S3-review | gpt-5-codex | ref synchronization
+
+The final ledger checkpoint itself is transported at `a5fafeddd9cd2685e50ccc036a5b867e03bbbbd3`; local `testing`, `origin/testing`, and `~/istara-testing-retake-47bf` now resolve to that SHA, with the retake clean. A passive final check found no runner, long-horizon, or benchmark process and only the unrelated healthy Plex container. This is the last pre-provisioning checkpoint; no active model/provider workload has been started.
