@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T20:00:10Z, ledger: L-407 }
+last: { agent: gpt-5-codex, at: 2026-08-27T20:02:04Z, ledger: L-408 }
 next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
@@ -9861,3 +9861,17 @@ three-model provider proof, Petals served receipts, human reconciliation/Done/re
 two-call, long-horizon, and owner-approved Docker model inputs remain open. Working tree
 is intentionally dirty only with these two documentation changes; commit and push occur
 after the final review/evidence pass.
+
+### L-408 | 2026-08-27T20:02:04Z | S2-execute/S3-review | gpt-5-codex | Scoped documentation/test correction pushed to testing
+
+Commit `62434b80ca88615517944fad97063e415c01a24c` contains the detailed completion
+blueprint and the corrected `live_driver.py` full-ensemble contract. It was pushed to
+`origin/testing`; `testing` and `origin/testing` now resolve to the same SHA and the
+checkout is clean. The external audit register `/Users/user/Desktop/testing.md` also
+contains findings F-R9-153 through F-R9-155; that desktop register is intentionally not
+part of the repository commit.
+
+No worktree or branch was removed: the only recovery worktree is unmerged and therefore
+not safe cleanup. The next executable step is owner-approved Docker-only provisioning of
+three provider-served model identities, followed by the provider/Petals/Research Spine
+and long-horizon acceptance matrix in the blueprint.
