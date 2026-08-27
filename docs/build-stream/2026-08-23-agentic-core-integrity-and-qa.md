@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T15:20:30Z, ledger: L-369 }
-next_action: "Continue F-R9-114 with deeper Done/report traceability assertions, a genuine human reconciliation acceptance exercise, and owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
+last: { agent: gpt-5-codex, at: 2026-08-27T15:28:23Z, ledger: L-370 }
+next_action: "Transport the report-gate regression and this receipt to origin/testing and the detached Mac Studio retake, then continue F-R9-114 with the remaining live three-model provider identity, genuine human reconciliation, and Done/report acceptance gates. Keep synthetic receipts non-reportable and do not start live workloads without owner-approved provider/model inputs."
 ```
 
 ## Plan overview / roadmap
@@ -8761,3 +8761,25 @@ running, model files are `0`, and `.env.deploy` is absent. No host install,
 image pull, provider request, model load, live benchmark, or test-data deletion
 occurred. F-R9-114 remains open for live three-model provider-served identity,
 human reconciliation, and Done/report acceptance.
+
+### L-370 | 2026-08-27T15:28:23Z | S3-review/S5-ship&learn | gpt-5-codex | synthetic receipt report-gate regression
+
+The synthetic reconciliation API regression now exercises the same
+`assess_task_research_validity` service used by report promotion after a
+benchmark receipt is created. The fixture is task-bound and models a completed
+coding run with an otherwise accepted run-level promotion, then asserts that
+the synthetic receipt leaves the code application unresolved and the report
+gate denied. This closes the test gap where row state was checked but an
+accidental synthetic-to-reportable bypass in the production validity service
+would have gone unnoticed.
+
+Verification passed: `pytest -q tests/test_code_applications.py` (`12/12`),
+`npm --prefix tests/real_user_benchmark test` (`94/94`), feature-doc
+generation/check (`224` generated artifacts; `86/86` features),
+`compass-forge gate before` record `300`, `compass-forge gate after` record
+`301` (zero new issues), and `git diff --check`. The implementation/test/docs
+commit is `c2cd7dff` and is ready for transport. No provider request, model
+load, Docker image pull, host installation, live benchmark, or test-data
+deletion occurred. F-R9-114 remains open for live provider-served
+three-model identity, genuine human reconciliation, and Done/report
+acceptance.
