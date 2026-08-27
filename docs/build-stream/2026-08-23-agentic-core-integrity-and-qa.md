@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T05:31:52Z, ledger: L-271 }
+last: { agent: gpt-5-codex, at: 2026-08-27T05:38:13Z, ledger: L-272 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -6197,3 +6197,39 @@ spans, formal Fleiss/Krippendorff reliability, grounding, reconciliation,
 human-Done/report promotion, both loop modes through shared Pi Model Management,
 two-call/long-horizon behavior, Petals interoperation, redacted artifacts, and clean
 teardown.
+
+### L-272 | 2026-08-27T05:38:13Z | S5-ship&learn | gpt-5-codex | post-gate receipt and continuation boundary
+
+Did: completed the post-change Compass Forge gate and recorded the final transport
+boundary. Native after-gate record `171` reports `comparison.new_issues=[]`, with no
+new forbidden dependencies, Python import cycles, missing required paths, or
+unexpected large files beyond the already-suppressed ledger artifact. The repository-
+wide gate remains globally `fail` only because of inherited secret-flow, route/type,
+complexity, and large-file debt; none was introduced by this patch. The code, tests,
+and generated feature documentation covered by the gate are at `f56aaf6c` (`test
+benchmark served-model route admission`). The ledger-only receipt is intentionally
+appended after that gate; final parity is verified after its commit.
+
+Evidence: deterministic Python matrix `689 passed, 5 skipped` using
+`python -m pytest -q -W error::RuntimeWarning tests/pi_production tests/pi_benchmark
+tests/test_research_validity_contract.py tests/test_research_spine_end_to_end.py
+tests/test_validation_project_scope.py`; Pi runtime `46/46`; real-user benchmark
+checks `78/78`; topology contract `10/10`; Ruff clean on the touched benchmark files;
+`git diff --check` clean. Feature documentation regenerated `224` site artifacts and
+passed `86/86` checks. F-R9-76 is present in `/Users/user/Desktop/testing.md`.
+
+Operational boundary: the Mac Studio inspection remained Docker-only. It still has no
+Istara, Petals, or benchmark containers/networks, no owner-supplied model artifacts,
+and no reachable provider routes; only unrelated healthy Plex and retained
+`pi-agent-home` remain. No host installation, model load, image pull, service start,
+or remote repository mutation occurred. Therefore deterministic acceptance is not
+live three-model Research Spine acceptance: G0/G1 and live G2-G22 stay open.
+
+Next owner/agent action: start only in an authorized Docker-only window from a fresh
+detached `origin/testing` checkout; verify the archive digest inside Docker; then run
+provider, Petals, and combined profiles with three distinct provider-served identities
+over identical raw source spans. Preserve raw-span receipts, grounded ratings,
+numeric Fleiss and Krippendorff reliability, reconciliation and accepted-atom gates,
+human-Done/report promotion, both Istara and Pi Agentic Loop modes through shared Pi
+Model Management, two-call and long-horizon traces, Petals donation/use/revoke scope,
+redaction, and teardown evidence before closing the Research Spine claim.
