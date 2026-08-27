@@ -341,6 +341,7 @@ async function validateCodingRun({
   featureResults,
   blockers,
   logger,
+  syntheticReconciliationEnabled = false,
 }) {
   const distinctModelCount = Number(codingRun?.distinct_model_count || 0);
   const raterCount = Number(codingRun?.rater_count || 0);
@@ -417,6 +418,13 @@ async function validateCodingRun({
   let applicationEvidenceAvailable = false;
   let reconciliationOk = true;
   let reconciliationEvidence = null;
+  const syntheticReconciliationEvidence = {
+    requested: Boolean(syntheticReconciliationEnabled),
+    verified: false,
+    source: "benchmark_synthetic",
+    accepted_reportable: false,
+    human_review_required: true,
+  };
   if (fullMultiModelOk && donorRouteOk) {
     try {
       const runId = String(codingRun?.id || "").trim();
@@ -468,6 +476,59 @@ async function validateCodingRun({
       if (coverageEvidence) {
         reconciliationEvidence.application_coverage = coverageEvidence;
       }
+      if (syntheticReconciliationEnabled && coverageOk && applicationEvidenceAvailable) {
+        try {
+          const syntheticRunId = String(codingRun?.id || "").trim();
+          const syntheticResponse = await api.post(
+            `/api/code-applications/${projectId}/synthetic-reconciliation`,
+            {
+              coding_run_id: syntheticRunId,
+              diagnostic_id: `benchmark-${syntheticRunId}`,
+              decisions: rows.map((row) => ({
+                code_application_id: String(row?.id || "").trim(),
+                decision_type: "accepted",
+                rationale: "Synthetic benchmark coverage receipt; human review remains required.",
+              })),
+            },
+            {
+              timeoutMs: 60000,
+              headers: { "x-istara-synthetic-reconciliation": "benchmark-v1" },
+            },
+          );
+          const syntheticDecisions = Array.isArray(syntheticResponse?.decisions)
+            ? syntheticResponse.decisions
+            : [];
+          const syntheticDecisionIds = new Set(syntheticDecisions
+            .map((decision) => String(decision?.code_application_id || "").trim())
+            .filter(Boolean));
+          const expectedIds = new Set(rows.map((row) => String(row?.id || "").trim()).filter(Boolean));
+          syntheticReconciliationEvidence.verified = Boolean(
+            syntheticResponse?.source === "benchmark_synthetic"
+              && syntheticResponse?.accepted_reportable === false
+              && syntheticResponse?.human_review_required === true
+              && syntheticDecisions.length === rows.length
+              && syntheticDecisionIds.size === expectedIds.size
+              && [...expectedIds].every((id) => syntheticDecisionIds.has(id))
+              && syntheticDecisions.every((decision) => decision?.source === "benchmark_synthetic"),
+          );
+          syntheticReconciliationEvidence.coding_run_id = syntheticRunId;
+          syntheticReconciliationEvidence.expected_application_count = rows.length;
+          syntheticReconciliationEvidence.receipt_count = syntheticDecisions.length;
+          if (!syntheticReconciliationEvidence.verified) {
+            throw new Error("synthetic reconciliation response was not provenance-safe");
+          }
+        } catch (error) {
+          const detail = `Synthetic reconciliation diagnostic failed closed: ${error.message}`;
+          blockers.push(detail);
+          logger.issue({
+            area: "research-spine",
+            severity: "high",
+            title: "Synthetic reconciliation diagnostic was not proven",
+            detail,
+            evidence: syntheticReconciliationEvidence,
+          });
+        }
+      }
       if (coverageOk && !reconciliationOk) {
         const detail = invalidDecisionRows.length > 0
           ? `Research Spine reliability passed, but ${invalidDecisionRows.length}/${decisionRows.length} reconciliation decisions belong to another coding run.`
@@ -504,6 +565,7 @@ async function validateCodingRun({
     && coverageOk
     && applicationEvidenceAvailable;
   featureResults.ensembleCodingValidation = ensembleCodingOk;
+  featureResults.syntheticReconciliationValidation = syntheticReconciliationEvidence.verified;
   codingRun.ensemble_coding_evidence = {
     verified: ensembleCodingOk,
     pre_reconciliation: true,
@@ -512,6 +574,7 @@ async function validateCodingRun({
     donor_route_evidence: donorRouteOk,
     application_coverage_evidence: coverageOk && applicationEvidenceAvailable,
     reconciliation_verified: reconciliationOk,
+    synthetic_reconciliation: syntheticReconciliationEvidence,
   };
   logger.action("research_spine.ensemble_coding", {
     ok: ensembleCodingOk,
@@ -521,6 +584,7 @@ async function validateCodingRun({
     donor_route_evidence: donorRouteOk,
     application_coverage_evidence: coverageOk && applicationEvidenceAvailable,
     reconciliation_verified: reconciliationOk,
+    synthetic_reconciliation: syntheticReconciliationEvidence,
   });
   featureResults.multiModelResearchSpineValidation = fullMultiModelOk
     && donorRouteOk
@@ -639,6 +703,7 @@ export async function exerciseResearchSpineValidation({
   expectedDistinctCoders = 3,
   expectedDistinctDonorRoutes = 0,
   expectedDistinctSources = 0,
+  syntheticReconciliationEnabled = false,
 }) {
   const requiredCoders = Number(expectedDistinctCoders || 0);
   const requiredDonorRoutes = Number(expectedDistinctDonorRoutes || 0);
@@ -781,6 +846,7 @@ export async function exerciseResearchSpineValidation({
         featureResults,
         blockers,
         logger,
+        syntheticReconciliationEnabled,
       });
     } catch (error) {
       evidence.errors.push({ step: "coding_run", error: error.message });
@@ -810,6 +876,7 @@ export async function exerciseResearchSpineValidation({
           featureResults,
           blockers,
           logger,
+          syntheticReconciliationEnabled,
         });
       } else {
         if (requiredCoders >= 2

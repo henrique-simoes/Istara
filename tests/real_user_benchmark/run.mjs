@@ -1091,6 +1091,9 @@ const featureResults = {
   // reliability, grounding, and served donor identity before reconciliation.
   // This must never be used as accepted/reportable Research Spine evidence.
   ensembleCodingValidation: false,
+  // Optional isolated diagnostic: synthetic receipts prove API traceability
+  // only and never satisfy the human reconciliation/reportability gate.
+  syntheticReconciliationValidation: false,
   researchSpineTraceability: false,
   telemetryEvidence: false,
   reasoningBankEvidence: false,
@@ -4890,6 +4893,7 @@ async function main() {
         // independent spans.  Keep source count observable in the selection
         // artifact without turning it into a false acceptance blocker.
         expectedDistinctSources: 0,
+        syntheticReconciliationEnabled: boolEnv("ISTARA_BENCHMARK_SYNTHETIC_RECONCILIATION", false),
       });
     } else {
       logger.action("research-spine.validation.skip", { reason: "acceptance-profile-does-not-select-provider" });
@@ -5015,6 +5019,7 @@ async function main() {
     interview_process_verified: Boolean(featureResults.interviewProcess),
     coding_validation_verified: Boolean(featureResults.codingValidation),
     ensemble_coding_verified: Boolean(featureResults.ensembleCodingValidation),
+    synthetic_reconciliation_verified: Boolean(featureResults.syntheticReconciliationValidation),
     donor_endpoint_contract_verified: Boolean(featureResults.distinctDonorEndpoints),
     research_spine_structure_present: Boolean(featureResults.researchSpineTraceability),
     research_spine_validation_verified: scorecard.research_spine_validation_verified,
@@ -5090,6 +5095,7 @@ async function main() {
   logger.appendReport(`Approved-task-backed Findings/reporting verified: ${featureResults.approvedTaskFindings ? "yes" : "no"}\n\n`);
   logger.appendReport(`Research Spine coding validation observed: ${featureResults.codingValidation ? "yes" : "no"}\n\n`);
   logger.appendReport(`Research Spine ensemble coding evidence (pre-reconciliation): ${featureResults.ensembleCodingValidation ? "verified" : "not verified"}; this is not reportable evidence until governed reconciliation and Done-task gates pass.\n\n`);
+  logger.appendReport(`Synthetic reconciliation diagnostic (opt-in, non-reportable): ${featureResults.syntheticReconciliationValidation ? "verified" : "not requested or not verified"}; synthetic receipts never replace human review.\n\n`);
   logger.appendReport(`Research Spine structural traceability present: ${scorecard.research_spine_structure_present ? "yes" : "no"}\n\n`);
   logger.appendReport(`Research Spine accepted multi-model validation verified: ${scorecard.research_spine_validation_verified ? "yes" : "no"}\n\n`);
   logger.appendReport(`Telemetry evidence observed: ${featureResults.telemetryEvidence ? "yes" : "no"}\n\n`);

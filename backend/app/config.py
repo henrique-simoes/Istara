@@ -362,6 +362,11 @@ class Settings(BaseSettings):
     petals_bridge_enabled: bool = False
     petals_bridge_base_path: str = "/api/petals/v1"
 
+    # Synthetic reconciliation is a benchmark-only diagnostic. It is disabled
+    # by default and must be enabled explicitly in the isolated test container;
+    # synthetic receipts never satisfy the human/reportability gate.
+    research_validity_synthetic_reconciliation_enabled: bool = False
+
     # Audio is a separate, explicit catalog. Empty provider fails closed;
     # credentials are referenced by opaque keychain/encrypted-store handles.
     audio_model_provider: str = ""

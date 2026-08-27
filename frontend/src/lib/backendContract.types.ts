@@ -74,6 +74,8 @@ export const BACKEND_PYTHON_CONTRACT_NAMES = [
   "RejectProposalRequest",
   "RejectRequest",
   "ReviewAction",
+  "SyntheticReconciliationAction",
+  "SyntheticReconciliationRequest",
   "ReviewApproveRequest",
   "ReviewRevisionRequest",
   "ScheduleCreate",

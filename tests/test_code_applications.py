@@ -4,9 +4,11 @@ import uuid
 
 import pytest
 from httpx import AsyncClient, ASGITransport
+from sqlalchemy import select
 from app.main import app
 from app.config import settings
 from app.models.code_application import CodeApplication
+from app.models.research_validity import CodingRun, ReconciliationDecision
 from app.models.project import Project
 from app.models.database import async_session, init_db
 from app.core.auth import create_token
@@ -16,9 +18,11 @@ from app.core.auth import create_token
 def reset_settings():
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
+    original_synthetic_reconciliation = settings.research_validity_synthetic_reconciliation_enabled
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
+    settings.research_validity_synthetic_reconciliation_enabled = original_synthetic_reconciliation
 
 
 @pytest.fixture
@@ -297,3 +301,181 @@ async def test_code_apps_review_rejects_stale_application_ids_from_other_project
     assert active_response.status_code == 200
     assert active_response.json()["project_id"] == project_id
     assert active_response.json()["review_status"] == "rejected"
+
+
+@pytest.mark.asyncio
+async def test_synthetic_reconciliation_is_disabled_by_default(auth_headers):
+    await init_db()
+    project_id = f"synthetic-off-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Synthetic off"))
+        await db.commit()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            f"/api/code-applications/{project_id}/synthetic-reconciliation",
+            json={"coding_run_id": "missing", "diagnostic_id": "diag", "decisions": []},
+            headers={**auth_headers, "x-istara-synthetic-reconciliation": "benchmark-v1"},
+        )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Synthetic reconciliation is disabled."
+
+
+@pytest.mark.asyncio
+async def test_synthetic_reconciliation_records_provenance_without_human_promotion(auth_headers):
+    await init_db()
+    settings.team_mode = True
+    settings.research_validity_synthetic_reconciliation_enabled = True
+    project_id = f"synthetic-on-{uuid.uuid4().hex[:8]}"
+    run_id = f"synthetic-run-{uuid.uuid4().hex[:8]}"
+    app_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Synthetic on"))
+        db.add(CodingRun(id=run_id, project_id=project_id, status="completed"))
+        db.add(
+            CodeApplication(
+                id=app_id,
+                project_id=project_id,
+                coding_run_id=run_id,
+                evidence_unit_id=str(uuid.uuid4()),
+                code_id="checkout-friction",
+                source_text="The checkout flow is confusing.",
+                source_location="interview-1:12",
+                coder_id="coder-1",
+                model_name="model-a",
+                route_id="route-a",
+                route_evidence_json='{"served_model":"model-a","endpoint_id":"ep-a","outcome":"served"}',
+            )
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            f"/api/code-applications/{project_id}/synthetic-reconciliation",
+            json={
+                "coding_run_id": run_id,
+                "diagnostic_id": "diag-1",
+                "decisions": [
+                    {
+                        "code_application_id": app_id,
+                        "decision_type": "accepted",
+                        "rationale": "benchmark coverage receipt",
+                    }
+                ],
+            },
+            headers={**auth_headers, "x-istara-synthetic-reconciliation": "benchmark-v1"},
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "benchmark_synthetic"
+    assert body["accepted_reportable"] is False
+    assert body["human_review_required"] is True
+    assert body["decisions"][0]["decided_by"] == "benchmark-synthetic:diag-1"
+    assert body["decisions"][0]["source"] == "benchmark_synthetic"
+
+    async with async_session() as db:
+        row = await db.get(CodeApplication, app_id)
+        receipt = await db.scalar(
+            select(ReconciliationDecision).where(
+                ReconciliationDecision.code_application_id == app_id
+            )
+        )
+    assert row.review_status == "pending"
+    assert row.reconciliation_status == "unreconciled"
+    assert row.promotion_status == "blocked"
+    assert receipt.source == "benchmark_synthetic"
+
+
+@pytest.mark.asyncio
+async def test_synthetic_reconciliation_requires_explicit_header(auth_headers):
+    await init_db()
+    settings.research_validity_synthetic_reconciliation_enabled = True
+    project_id = f"synthetic-header-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Synthetic header"))
+        await db.commit()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            f"/api/code-applications/{project_id}/synthetic-reconciliation",
+            json={"coding_run_id": "missing", "diagnostic_id": "diag", "decisions": []},
+            headers=auth_headers,
+        )
+    assert response.status_code == 403
+    assert "opt-in header" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_synthetic_reconciliation_requires_complete_run_and_provenance(auth_headers):
+    await init_db()
+    settings.research_validity_synthetic_reconciliation_enabled = True
+    project_id = f"synthetic-scope-{uuid.uuid4().hex[:8]}"
+    run_id = f"synthetic-run-{uuid.uuid4().hex[:8]}"
+    app_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Synthetic scope"))
+        db.add(CodingRun(id=run_id, project_id=project_id, status="completed"))
+        db.add_all(
+            [
+                CodeApplication(
+                    id=app_ids[0],
+                    project_id=project_id,
+                    coding_run_id=run_id,
+                    evidence_unit_id=str(uuid.uuid4()),
+                    code_id="code-a",
+                    source_text="Evidence A.",
+                    source_location="source-a:1",
+                    coder_id="coder-a",
+                    model_name="model-a",
+                    route_id="route-a",
+                    route_evidence_json='{"served_model":"model-a","served_request_count":"1"}',
+                ),
+                CodeApplication(
+                    id=app_ids[1],
+                    project_id=project_id,
+                    coding_run_id=run_id,
+                    evidence_unit_id=str(uuid.uuid4()),
+                    code_id="code-b",
+                    source_text="Evidence B.",
+                    source_location="source-b:1",
+                    coder_id="coder-b",
+                    model_name="model-b",
+                    route_id="route-b",
+                    route_evidence_json="{}",
+                ),
+            ]
+        )
+        await db.commit()
+    transport = ASGITransport(app=app)
+    headers = {**auth_headers, "x-istara-synthetic-reconciliation": "benchmark-v1"}
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        incomplete = await ac.post(
+            f"/api/code-applications/{project_id}/synthetic-reconciliation",
+            json={
+                "coding_run_id": run_id,
+                "diagnostic_id": "diag-scope",
+                "decisions": [
+                    {"code_application_id": app_ids[0], "decision_type": "accepted"}
+                ],
+            },
+            headers=headers,
+        )
+    assert incomplete.status_code == 422
+    assert "exactly every application" in incomplete.json()["detail"]
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        missing_provenance = await ac.post(
+            f"/api/code-applications/{project_id}/synthetic-reconciliation",
+            json={
+                "coding_run_id": run_id,
+                "diagnostic_id": "diag-scope",
+                "decisions": [
+                    {"code_application_id": app_ids[0], "decision_type": "accepted"},
+                    {"code_application_id": app_ids[1], "decision_type": "accepted"},
+                ],
+            },
+            headers=headers,
+        )
+    assert missing_provenance.status_code == 422
+    assert "route evidence provenance" in missing_provenance.json()["detail"]

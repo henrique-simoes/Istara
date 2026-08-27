@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T14:36:00Z, ledger: L-359 }
-next_action: "Continue F-R9-114: design and implement the explicitly opt-in, provenance-labeled synthetic reconciliation test phase and deeper Done/report traceability assertions; keep real human approval separate and preserve the Docker-only live gate."
+last: { agent: gpt-5-codex, at: 2026-08-27T14:53:17Z, ledger: L-360 }
+next_action: "Transport L-360's guarded synthetic reconciliation diagnostic to origin/testing and the detached Mac Studio checkout, then continue F-R9-114 with idempotency and deeper Done/report traceability assertions; keep synthetic receipts non-reportable and the live three-model Docker gate pending owner-approved inputs."
 ```
 
 ## Plan overview / roadmap
@@ -8516,3 +8516,54 @@ load, provider request, benchmark workload, or data deletion occurred.
 This transport receipt does not claim live ensemble quality or accepted Research
 Spine validity. F-R9-114 remains open for the governed synthetic reconciliation
 test phase, genuine human approval separation, and exact Done/report traceability.
+
+### L-360 | 2026-08-27T14:53:17Z | S2-execute/S3-review | gpt-5-codex | guarded synthetic reconciliation diagnostic and contract hardening
+
+F-R9-114's next bounded slice is implemented as an explicitly opt-in,
+benchmark-only diagnostic path. `POST /api/code-applications/{project_id}/synthetic-reconciliation`
+requires the isolated-container setting
+`research_validity_synthetic_reconciliation_enabled=true` and the exact
+`x-istara-synthetic-reconciliation: benchmark-v1` header. It is separate from
+the human `PATCH /api/code-applications/{application_id}/review` route. The
+service requires a project-scoped completed coding run, exact coverage of every
+application in that run, source/evidence-unit/coder/model/route provenance, and
+route evidence whose served model matches the application model and proves a
+served outcome (including numeric-string request counters). Unsupported or
+incomplete input returns a controlled 4xx response.
+
+Every receipt is stored as `source=benchmark_synthetic`, carries the diagnostic
+identifier and coding-run handle, and is explicitly marked
+`accepted_reportable=false` and `human_review_required=true`. The code
+application rows remain `pending`/`unreconciled`/`blocked`; no human-review,
+promotion, Done-task, or report gate is mutated. The benchmark runner only
+invokes this path when `ISTARA_BENCHMARK_SYNTHETIC_RECONCILIATION=true`, records
+the receipt separately from `ensemble_coding_verified`, and continues to keep
+the strict `multiModelResearchSpineValidation` acceptance signal dependent on
+governed reconciliation and current-run traceability.
+
+The implementation was extracted to
+`backend/app/services/synthetic_reconciliation_service.py` so the existing
+research-validity orchestrator does not gain additional complexity debt. The
+benchmark-only request types and route literal are named in the canonical
+frontend API/type contract for Compass Forge discoverability, while no
+user-facing client operation was added. The ensemble feature architecture
+document now describes the diagnostic endpoint and its non-reportable boundary.
+
+Verification: `pytest -q tests/test_code_applications.py` passes `12/12`;
+`npm --prefix tests/real_user_benchmark test` passes the full deterministic
+suite `92/92`; Python compilation and `git diff --check` pass; feature-doc
+generation/check passes (`224` generated artifacts; `86/86` features). The
+focused cross-suite attempt passed `24` tests before hanging in the existing
+teardown/event-loop drain, and the contract-only attempt passed `12` before
+the same teardown hang; these are recorded as fixture-lifecycle debt, not a
+clean cross-suite claim. Compass Forge before-gate record `289` and after-gate
+record `294` were captured; after-gate comparison reports zero new issues (the
+repository still has inherited warnings/failures and the lifecycle-file
+large-file suppression). No server, provider request, model load, image pull,
+or live benchmark workload was started.
+
+This closes the guarded synthetic-diagnostic slice only. Remaining F-R9-114
+work includes idempotent/retry-safe receipt semantics, deeper Done/report
+traceability assertions, a genuine human reconciliation acceptance exercise,
+and the owner-approved Docker-only three-model Mac Studio run with exact
+provider-served identities and model inputs.

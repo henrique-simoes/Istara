@@ -6,9 +6,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import get_subject, require_project_access
+from app.config import settings
 from app.models.code_application import CodeApplication
 from app.models.database import get_db
-from app.services.research_validity_service import create_reconciliation_decision
+from app.services.research_validity_service import (
+    create_reconciliation_decision,
+)
+from app.services.synthetic_reconciliation_service import (
+    SYNTHETIC_RECONCILIATION_SOURCE,
+    create_synthetic_reconciliation_decisions,
+)
 
 router = APIRouter(prefix="/code-applications")
 
@@ -18,6 +25,19 @@ class ReviewAction(BaseModel):
     reviewed_by: str | None = None
     rationale: str | None = None
     accepted_code_id: str | None = None
+
+
+class SyntheticReconciliationAction(BaseModel):
+    code_application_id: str
+    decision_type: str
+    rationale: str | None = None
+    accepted_code_id: str | None = None
+
+
+class SyntheticReconciliationRequest(BaseModel):
+    coding_run_id: str
+    diagnostic_id: str
+    decisions: list[SyntheticReconciliationAction]
 
 
 def _require_project_id(project_id: str | None) -> str:
@@ -116,6 +136,41 @@ async def review_code_application(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return decision["code_application"]
+
+
+@router.post("/{project_id}/synthetic-reconciliation")
+async def synthetic_reconciliation(
+    project_id: str,
+    payload: SyntheticReconciliationRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Record isolated benchmark receipts without satisfying human gates."""
+    await require_project_access(db, request, project_id, min_role="researcher")
+    if not settings.research_validity_synthetic_reconciliation_enabled:
+        raise HTTPException(status_code=404, detail="Synthetic reconciliation is disabled.")
+    if request.headers.get("x-istara-synthetic-reconciliation") != "benchmark-v1":
+        raise HTTPException(status_code=403, detail="Synthetic benchmark opt-in header is required.")
+    try:
+        decisions = await create_synthetic_reconciliation_decisions(
+            db,
+            project_id=project_id,
+            coding_run_id=payload.coding_run_id,
+            diagnostic_id=payload.diagnostic_id,
+            decisions=[item.model_dump() for item in payload.decisions],
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {
+        "source": SYNTHETIC_RECONCILIATION_SOURCE,
+        "coding_run_id": payload.coding_run_id,
+        "diagnostic_id": payload.diagnostic_id,
+        "accepted_reportable": False,
+        "human_review_required": True,
+        "decisions": decisions,
+    }
 
 
 @router.post("/{project_id}/bulk-approve")

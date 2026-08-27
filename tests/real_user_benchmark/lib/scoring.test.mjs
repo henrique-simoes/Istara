@@ -137,6 +137,7 @@ test("scorecard exposes Research Spine coding and traceability evidence", () => 
 
   assert.equal(scorecard.coding_validation_verified, true);
   assert.equal(scorecard.ensemble_coding_verified, true);
+  assert.equal(scorecard.synthetic_reconciliation_verified, false);
   assert.equal(scorecard.research_spine_traceability_verified, true);
   assert.equal(scorecard.research_spine_structure_present, true);
   assert.equal(scorecard.research_spine_validation_verified, true);

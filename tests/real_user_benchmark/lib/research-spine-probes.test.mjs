@@ -1075,6 +1075,86 @@ test("accepted reliability is still blocked when code applications lack reconcil
   assert.equal(logger.issues[0].title, "Research Spine reconciliation was not proven");
 });
 
+test("opt-in synthetic reconciliation proves receipts without changing the human gate", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  let syntheticPayload = null;
+  let syntheticOptions = null;
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) {
+        return makeReconciledApplications("run-synthetic").map((row) => ({
+          ...row,
+          reconciliation_status: "unreconciled",
+          review_status: "pending",
+          promotion_status: "blocked",
+        }));
+      }
+      if (path.includes("/reconciliation-decisions")) return [];
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post(path, payload, options) {
+      if (path.includes("/synthetic-reconciliation")) {
+        syntheticPayload = payload;
+        syntheticOptions = options;
+        return {
+          source: "benchmark_synthetic",
+          accepted_reportable: false,
+          human_review_required: true,
+          decisions: payload.decisions.map((decision) => ({
+            ...decision,
+            source: "benchmark_synthetic",
+          })),
+        };
+      }
+      return {
+        id: "run-synthetic",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+    syntheticReconciliationEnabled: true,
+  });
+
+  assert.equal(featureResults.syntheticReconciliationValidation, true);
+  assert.equal(featureResults.ensembleCodingValidation, true);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(syntheticPayload.coding_run_id, "run-synthetic");
+  assert.equal(syntheticPayload.decisions.length, 12);
+  assert.equal(syntheticOptions.headers["x-istara-synthetic-reconciliation"], "benchmark-v1");
+  assert.ok(logger.actions.find((entry) => entry.step === "research_spine.ensemble_coding"));
+  assert.deepEqual(blockers, [
+    "Research Spine reliability passed, but 0/12 code applications have accepted reconciliation decisions (0 linked decisions for 12 applications).",
+  ]);
+});
+
 test("three-donor benchmark rejects a named reliability method without numeric kappa and alpha", async () => {
   const logger = makeLogger();
   const blockers = [];
