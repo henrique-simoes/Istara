@@ -282,12 +282,23 @@ reset_stack_for_engine() {
   [ -f "$COMPOSE_FILE" ] || { echo "compose file missing: $COMPOSE_FILE" >&2; exit 1; }
   [ -f "$COMPOSE_ENV_FILE" ] || { echo "compose env file missing: $COMPOSE_ENV_FILE" >&2; exit 1; }
   echo "[runner] recreating fresh database stack for engine=$engine"
-  docker compose --project-name "$PROJECT" \
-    "${COMPOSE_PROFILE_ARGS[@]}" \
-    --env-file "$COMPOSE_ENV_FILE" \
-    -f "$COMPOSE_FILE" \
-    up -d --force-recreate --wait \
-    postgres provider-stub backend frontend caddy "${COMPOSE_DONOR_SERVICES[@]}"
+  # Both arrays are intentionally empty for the provider-only profile.  Build the
+  # command conditionally so Bash `set -u` does not treat an empty array expansion
+  # as an unset variable before Compose can start.
+  local compose_args=(docker compose --project-name "$PROJECT")
+  if ((${#COMPOSE_PROFILE_ARGS[@]})); then
+    compose_args+=("${COMPOSE_PROFILE_ARGS[@]}")
+  fi
+  compose_args+=(
+    --env-file "$COMPOSE_ENV_FILE"
+    -f "$COMPOSE_FILE"
+    up -d --force-recreate --wait
+    postgres provider-stub backend frontend caddy
+  )
+  if ((${#COMPOSE_DONOR_SERVICES[@]})); then
+    compose_args+=("${COMPOSE_DONOR_SERVICES[@]}")
+  fi
+  "${compose_args[@]}"
 }
 
 docker volume create istara-pw-browsers >/dev/null 2>&1 || true

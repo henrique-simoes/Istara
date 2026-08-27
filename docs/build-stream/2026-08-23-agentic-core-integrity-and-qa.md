@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; passive inventory found zero GGUF files"
-last: { agent: gpt-5-codex, at: 2026-08-27T22:55:00Z, ledger: L-439 }
-next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only; terminal preflight evidence 461 and after-gate evidence 466 found no runnable model inputs, so keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open."
+last: { agent: gpt-5-codex, at: 2026-08-27T23:03:09Z, ledger: L-440 }
+next_action: "Rerun the provider-only Docker profile after the Bash nounset Compose-array fix, then provision or explicitly supply the required provider-served three-model inputs inside Docker only; keep live three-model, Fleiss/alpha, Petals, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -10486,3 +10486,19 @@ clean/equal. The live three-model/Petals Research Spine gate remains `not_run`
 because evidence `461` found zero GGUF inputs on the Mac Studio. The next agent
 must keep the dirty remote checkout untouched and resume only after supplying
 provider-served model inputs through the Docker-only wrapper.
+
+### L-440 | 2026-08-27T23:03:09Z | S2-execute/S3-review | gpt-5-codex | Provider profile exposed and fixed a Bash nounset runner defect
+
+The first real provider-only invocation from the immutable remote checkout at
+`56e37b6` did not reach Compose: `reset_stack_for_engine` expanded the optional
+`COMPOSE_PROFILE_ARGS` and `COMPOSE_DONOR_SERVICES` arrays directly while the
+wrapper runs with `set -u`, producing `line 285: COMPOSE_PROFILE_ARGS[@]: unbound
+variable`. This is a benchmark-harness defect, not an application or model
+result. The wrapper now builds a `compose_args` command array and appends each
+optional array only when it is non-empty, preserving provider, Petals, and
+combined profile argument order. A static regression contract covers both
+empty-array paths; `bash -n`, the remote-runner Python contract suite (22
+passed), the full real-user benchmark Node check (100 passed), and
+`git diff --check` all pass locally. No host package/model installation or model
+loading occurred; the provider Docker acceptance must be rerun from the new
+clean pushed tip before any runtime conclusion is made.

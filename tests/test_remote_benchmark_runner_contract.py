@@ -190,6 +190,19 @@ def test_remote_runner_handles_optional_nested_mounts_under_bash_nounset():
     assert '    "${NESTED_DOCKER_MOUNTS[@]}" \\\n' not in outer
 
 
+def test_remote_runner_handles_optional_compose_arrays_under_bash_nounset():
+    outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
+
+    assert 'local compose_args=(docker compose --project-name "$PROJECT")' in outer
+    assert 'if ((${#COMPOSE_PROFILE_ARGS[@]})); then' in outer
+    assert 'compose_args+=("${COMPOSE_PROFILE_ARGS[@]}")' in outer
+    assert 'if ((${#COMPOSE_DONOR_SERVICES[@]})); then' in outer
+    assert 'compose_args+=("${COMPOSE_DONOR_SERVICES[@]}")' in outer
+    assert '"${compose_args[@]}"' in outer
+    assert '    "${COMPOSE_PROFILE_ARGS[@]}" \\\n' not in outer
+    assert '    postgres provider-stub backend frontend caddy "${COMPOSE_DONOR_SERVICES[@]}"' not in outer
+
+
 def test_manual_marathon_wrapper_fails_closed_outside_docker():
     wrapper = (ROOT / "scripts/marathon/start-marathon.sh").read_text(encoding="utf-8")
     inner = (ROOT / "scripts/runner/inside.sh").read_text(encoding="utf-8")
