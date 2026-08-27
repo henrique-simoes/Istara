@@ -34,14 +34,21 @@ function makeSubstantiveUnits(count = 4) {
   }));
 }
 
-function makeReconciledApplications(runId, count = 12) {
+function makeReconciledApplications(runId, count = 12, expectedUnits = makeSubstantiveUnits()) {
   return Array.from({ length: count }, (_unused, index) => ({
+    // Mirror the production API: each persisted application carries a quote
+    // from, and the exact location of, its selected raw evidence unit.
+    ...(() => {
+      const unit = expectedUnits[index % expectedUnits.length];
+      return {
+        source_text: unit.source_text,
+        source_location: unit.source_location,
+      };
+    })(),
     id: `${runId}-application-${index + 1}`,
     coding_run_id: runId,
     coder_id: `coder-${Math.floor(index / 4) + 1}`,
     evidence_unit_id: `eu-${(index % 4) + 1}`,
-    source_text: `Exact raw source span for evidence unit ${(index % 4) + 1}.`,
-    source_location: `interview-${(index % 2) + 1}.md#${(index % 4) + 1}`,
     model_name: `model-${String.fromCharCode(97 + Math.floor(index / 4))}`,
     route_evidence: {
       node_id: `donor-${String.fromCharCode(97 + Math.floor(index / 4))}`,
@@ -168,7 +175,9 @@ test("coding proof does not invent a three-document gate for one source with mul
         return { contract: {}, qualitative_coding_protocol: {} };
       }
       if (path.includes("/evidence-units")) return units;
-      if (path.includes("/code-applications/")) return makeReconciledApplications("run-one-source", 12);
+      if (path.includes("/code-applications/")) {
+        return makeReconciledApplications("run-one-source", 12, units);
+      }
       if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-one-source", 12);
       if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
       if (path.includes("/coding-runs")) return [{ id: "run-one-source" }];
@@ -629,6 +638,71 @@ test("three-donor benchmark rejects coder rows that omit a served model identity
   assert.match(blockers[0], /complete coder-by-evidence-unit coverage/i);
   assert.deepEqual(logger.issues[0].evidence.application_coverage.missing_served_model_identities, ["model-c"]);
   assert.deepEqual(logger.issues[0].evidence.application_coverage.observed_model_identities, ["model-a", "model-b"]);
+});
+
+test("three-donor benchmark rejects fabricated or re-located source spans", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const rows = makeReconciledApplications("run-source-binding");
+  rows[0] = {
+    ...rows[0],
+    source_text: "A paraphrase that never appears in the selected raw evidence unit.",
+    source_location: "wrong-document.md:999",
+  };
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return rows;
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-source-binding");
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [{ id: "run-source-binding" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-source-binding",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-source-binding",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /complete coder-by-evidence-unit coverage/i);
+  assert.deepEqual(
+    logger.issues[0].evidence.application_coverage.source_span_mismatches.map((item) => item.evidence_unit_id),
+    ["eu-1"],
+  );
+  assert.deepEqual(
+    logger.issues[0].evidence.application_coverage.source_location_mismatches.map((item) => item.evidence_unit_id),
+    ["eu-1"],
+  );
 });
 
 test("three-model coding blocks when an application omits a coder-unit span or provenance", async () => {

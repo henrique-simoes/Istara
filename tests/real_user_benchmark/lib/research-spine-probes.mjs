@@ -27,6 +27,9 @@ function assessApplicationCoverage(
   const expectedUnitIds = new Set((Array.isArray(expectedUnits) ? expectedUnits : [])
     .map((unit) => String(unit?.id || "").trim())
     .filter(Boolean));
+  const expectedUnitsById = new Map((Array.isArray(expectedUnits) ? expectedUnits : [])
+    .map((unit) => [String(unit?.id || "").trim(), unit])
+    .filter(([unitId]) => Boolean(unitId)));
   const normalizedExpectedRunId = String(expectedCodingRunId || "").trim();
   const expectedModels = new Set(
     (expectedServedModelIdentities instanceof Set
@@ -39,6 +42,8 @@ function assessApplicationCoverage(
   const coderModels = new Map();
   const observedModels = new Set();
   const invalidRows = [];
+  const sourceSpanMismatches = [];
+  const sourceLocationMismatches = [];
   const applicationIdCounts = new Map();
   for (const row of Array.isArray(rows) ? rows : []) {
     const applicationId = String(row?.id || "").trim();
@@ -53,12 +58,26 @@ function assessApplicationCoverage(
     const servedModel = String(route?.model || route?.served_model || "").trim();
     const rowModel = String(row?.model_name || "").trim();
     const normalizedRowModel = rowModel.toLocaleLowerCase();
+    const expectedUnit = expectedUnitsById.get(unitId);
+    const expectedSourceText = String(expectedUnit?.source_text || "").trim();
+    const expectedSourceLocation = String(expectedUnit?.source_location || "").trim();
+    // The API persists the coder's quote, not a synthetic summary. Require
+    // that quote to be a contiguous substring of the exact selected raw unit
+    // and that the persisted location remains bound to that unit. Non-empty
+    // fields alone would let fabricated/paraphrased evidence pass the oracle.
+    const sourceSpanGrounded = Boolean(
+      expectedSourceText && sourceText && expectedSourceText.includes(sourceText),
+    );
+    const sourceLocationMatches = Boolean(
+      expectedSourceLocation && sourceLocation && sourceLocation === expectedSourceLocation,
+    );
     const routeServed = String(route?.outcome || "").toLowerCase() === "served";
     if (applicationId) {
       applicationIdCounts.set(applicationId, (applicationIdCounts.get(applicationId) || 0) + 1);
     }
     if (!applicationId || !normalizedExpectedRunId || codingRunId !== normalizedExpectedRunId
       || !coderId || !expectedUnitIds.has(unitId) || !sourceText || !sourceLocation
+      || !sourceSpanGrounded || !sourceLocationMatches
       || !routeServed || !servedModel || !rowModel || rowModel !== servedModel
       || (expectedModels.size > 0 && !expectedModels.has(normalizedRowModel))) {
       invalidRows.push({
@@ -69,9 +88,28 @@ function assessApplicationCoverage(
         evidence_unit_id: unitId,
         has_source_text: Boolean(sourceText),
         has_source_location: Boolean(sourceLocation),
+        expected_source_location: expectedSourceLocation,
+        source_span_grounded: sourceSpanGrounded,
+        source_location_matches: sourceLocationMatches,
         route_served: routeServed,
         served_model: servedModel,
         row_model: rowModel,
+      });
+    }
+    if (!sourceSpanGrounded) {
+      sourceSpanMismatches.push({
+        id: applicationId,
+        evidence_unit_id: unitId,
+        expected_source_text_chars: expectedSourceText.length,
+        observed_source_text_chars: sourceText.length,
+      });
+    }
+    if (!sourceLocationMatches) {
+      sourceLocationMismatches.push({
+        id: applicationId,
+        evidence_unit_id: unitId,
+        expected_source_location: expectedSourceLocation,
+        observed_source_location: sourceLocation,
       });
     }
     if (normalizedRowModel) {
@@ -144,6 +182,8 @@ function assessApplicationCoverage(
     expected_served_model_identities: [...expectedModels].sort(),
     missing_served_model_identities: missingServedModelIdentities,
     unexpected_served_model_identities: unexpectedServedModelIdentities,
+    source_span_mismatches: sourceSpanMismatches,
+    source_location_mismatches: sourceLocationMismatches,
     invalid_rows: invalidRows,
   };
 }

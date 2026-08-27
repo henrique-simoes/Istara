@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T10:23:48Z, ledger: L-321 }
-next_action: "Resume the owner-approved Docker-only live matrix only when its env, served model identities, donor inputs, and redacted artifact paths exist; keep all unproven gates open."
+last: { agent: gpt-5-codex, at: 2026-08-27T10:35:58Z, ledger: L-322 }
+next_action: "Commit and push the source-span grounding oracle and public Pi-alias parity test; then passively retarget the clean Mac Studio checkout while keeping live gates open."
 ```
 
 ## Plan overview / roadmap
@@ -7543,3 +7543,41 @@ This prevents a future agent from inheriting a false final SHA after a routine
 ledger checkpoint. The only remaining work is owner-approved Docker-only live
 acceptance; all deterministic changes and their external finding are already
 transported, and the Build Stream remains `in-progress`/fail-closed.
+
+### L-322 | 2026-08-27T10:35:58Z | S3-review/S5-ship&learn | gpt-5-codex | source grounding and public Pi selector parity
+
+The deterministic benchmark audit found one remaining Research Spine oracle
+weakness: application rows were required to have non-empty source text and
+location, but the probe did not prove those fields matched the selected raw
+evidence unit. A fabricated paraphrase or relocated document reference could
+therefore pass coverage, route identity, reconciliation, and numeric reliability
+checks. `tests/real_user_benchmark/lib/research-spine-probes.mjs` now requires a
+contiguous quote from the exact expected unit and an exact source-location match,
+records both mismatch classes, and fails coding/multi-model validation closed.
+The regression suite covers fabricated and relocated spans, and positive fixtures
+derive their source fields from the same expected units.
+
+The public engine boundary exposes `pi`, `pi-candidate`, `pi-replacement`, and
+`deepseek-pi` aliases. `tests/pi_production/test_ensemble_identity_parity.py`
+now exercises `legacy` plus every alias against one real
+`PiExecutionService`/`PiModelManager` pair and requires three distinct
+provider-served identities for every selector. The Ensemble Health feature
+documentation and generated site manifest were updated accordingly. External
+finding F-R9-102 records the former grounding-oracle gap in
+`/Users/user/Desktop/testing.md`.
+
+Verification completed: the real-user benchmark package passes `87/87`; focused
+Research Spine, ensemble identity, and PI-manager Python tests pass `4/4`; Ruff,
+Python compilation, and `git diff --check` pass; feature docs regenerate and
+validate with `224` artifacts and `86/86` feature checks; Compass Forge after-gate
+reports `new_issue_count=0` and no actionable failures. Compass task evidence
+`219` records the deterministic command bundle. The gate still reports only
+inherited repository debt (secret-flow and unexpected-large-file checks).
+
+No live provider request, model load, host installation, or Mac Studio workload
+was performed. The next transport step is to stage only the intended repository
+files, commit/push `testing`, verify local/remote parity, and passively retarget
+`~/istara-testing-retake-47bf`; live three-model, Petals, two-call/long-horizon,
+reconciliation, human-Done/report, and Docker acceptance gates remain open
+pending owner-approved env/config, served identities, donor inputs, and redacted
+artifacts.

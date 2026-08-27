@@ -9,6 +9,7 @@ import pytest
 
 from app.core.agentic.dispatcher import AgenticDispatcher
 from app.core.agentic.types import TurnParams
+from app.core.pi_replacement import PI_ENGINE_VALUES
 from app.core.pi_runtime.engine import PiExecutionService
 from app.core.pi_runtime.model_manager import PiModelManager
 
@@ -53,8 +54,8 @@ class _ServedIdentitySupervisor:
 
 
 @pytest.mark.asyncio
-async def test_legacy_and_pi_ensemble_preserve_distinct_served_identities(monkeypatch):
-    """Both loop choices retain three provider-served rater identities.
+async def test_all_loop_selectors_preserve_distinct_served_identities(monkeypatch):
+    """Every public loop selector retains three provider-served rater identities.
 
     This is an authority/provenance oracle only: it exercises the real
     ``AgenticDispatcher`` and ``PiExecutionService`` with a deterministic
@@ -78,7 +79,10 @@ async def test_legacy_and_pi_ensemble_preserve_distinct_served_identities(monkey
     )
 
     results = {}
-    for engine in ("legacy", "pi"):
+    # The API exposes aliases for the Pi path.  They must all normalize to the
+    # same PiExecutionService/PiModelManager authority, or a selector could
+    # silently bypass the three-rater Research Spine ensemble.
+    for engine in ("legacy", *sorted(PI_ENGINE_VALUES)):
         results[engine] = await AgenticDispatcher(pi_service=service).ensemble(
             purpose=f"identity-parity.{engine}",
             project_id="project-spine",
@@ -101,4 +105,3 @@ async def test_legacy_and_pi_ensemble_preserve_distinct_served_identities(monkey
         }
         assert {sample.served_model for sample in result.samples} == expected_served
         assert all(sample.served_model != sample.model for sample in result.samples)
-
