@@ -713,6 +713,33 @@ class PiModelManager:
             )
         ]
 
+    def available_model_identities(self, *, project_id: str | None = None) -> tuple[str, ...]:
+        """Return distinct, project-admitted model identities without resolving secrets.
+
+        Adaptive validation needs to decide whether a multi-model method is
+        appropriate before dispatch.  It must inspect the same Pi catalog as
+        the dispatcher, but that decision must not materialize settings
+        credentials or make a provider request.  Petals authorization and
+        reserved-namespace checks therefore run through the same admission
+        predicate used by ``resolve_distinct``.
+        """
+        identities: list[str] = []
+        seen: set[str] = set()
+        for entry in self._entries.values():
+            if not self._matches(
+                entry,
+                model=None,
+                require_vision=False,
+                min_context=0,
+                project_id=project_id,
+            ):
+                continue
+            identity = entry.model.strip().casefold()
+            if identity and identity not in seen:
+                seen.add(identity)
+                identities.append(identity)
+        return tuple(identities)
+
 
 def reset_live_db_projections() -> None:
     """Invalidate the LLMServer projection on every live manager (W8).

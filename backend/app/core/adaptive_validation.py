@@ -5,11 +5,11 @@ weighted scoring with exponential decay (recency bias, half-life 30 days)
 to recommend the most effective validation strategy.
 """
 
+import inspect
 import logging
 import math
-import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.models.database import async_session
 
@@ -20,55 +20,42 @@ DEFAULT_METHOD = "self_moa"
 HALF_LIFE_DAYS = 30
 
 
-def _server_model_names(server) -> set[str]:
-    """Best-effort model inventory for a routed server/node."""
-    names: set[str] = set()
-    for attr in ("loaded_models", "models", "model_names"):
-        raw = getattr(server, attr, None)
-        if isinstance(raw, (list, tuple, set)):
-            names.update(str(item).strip() for item in raw if str(item).strip())
-    capabilities = getattr(server, "model_capabilities", None)
-    if isinstance(capabilities, dict):
-        names.update(str(name).strip() for name in capabilities if str(name).strip())
-    default_model = getattr(server, "default_model", None) or getattr(server, "model", None)
-    if default_model:
-        names.add(str(default_model).strip())
-    return names
+async def _pi_model_identities(project_id: str | None) -> set[str]:
+    """Read the project-scoped Pi catalog without resolving provider secrets."""
+    try:
+        from app.core.agentic import agentic
+
+        manager = agentic.model_manager()
+        ensure_projection = getattr(manager, "ensure_db_projection", None)
+        if callable(ensure_projection):
+            result = ensure_projection()
+            if inspect.isawaitable(result):
+                await result
+        identities = manager.available_model_identities(project_id=project_id)
+        return {
+            str(identity).strip().casefold()
+            for identity in identities
+            if str(identity).strip()
+        }
+    except Exception as exc:
+        logger.debug("Adaptive validation Pi catalog lookup failed: %s", exc)
+        return set()
 
 
-def _compute_aware_default_method(project_id: str | None) -> str:
+async def _compute_aware_default_method(project_id: str | None) -> str:
     """Choose the natural validation method from currently available compute.
 
     Istara's architecture treats Self-MoA as the constrained fallback. When the
-    project has multiple healthy model endpoints, validation should use the
-    multi-model path without a benchmark or caller forcing a specific node.
+    project has multiple project-admitted Pi model identities, validation should
+    use the multi-model path without a benchmark or caller forcing a specific
+    node.  The catalog is identity-only here; provider secrets are materialized
+    later by the dispatcher during the governed call.
     """
-    try:
-        from app.core.llm_router import llm_router
-
-        servers = [
-            server
-            for server in llm_router._sorted_servers(project_id=project_id)
-            if getattr(server, "is_healthy", False)
-        ]
-    except Exception as exc:
-        logger.debug("Adaptive validation compute inventory failed: %s", exc)
-        return DEFAULT_METHOD
-
-    if not servers:
-        return DEFAULT_METHOD
-
-    distinct_models: set[str] = set()
-    for server in servers:
-        distinct_models.update(_server_model_names(server))
+    distinct_models = await _pi_model_identities(project_id)
 
     if len(distinct_models) >= 3:
         return "full_ensemble"
     if len(distinct_models) >= 2:
-        return "dual_run"
-    if len(servers) >= 3:
-        return "full_ensemble"
-    if len(servers) >= 2:
         return "dual_run"
     return DEFAULT_METHOD
 
@@ -76,7 +63,7 @@ def _compute_aware_default_method(project_id: str | None) -> str:
 def _recency_weight(last_used: datetime) -> float:
     """Exponential decay weight based on recency (half-life = 30 days)."""
     from app.core.datetime_utils import ensure_utc
-    days_ago = (datetime.now(timezone.utc) - ensure_utc(last_used)).total_seconds() / 86400
+    days_ago = (datetime.now(UTC) - ensure_utc(last_used)).total_seconds() / 86400
     return math.exp(-0.693 * days_ago / HALF_LIFE_DAYS)
 
 
@@ -94,18 +81,19 @@ class AdaptiveSelector:
         self, project_id: str, skill_name: str = "", agent_id: str = ""
     ) -> str:
         """Select the best validation method for the given context."""
-        compute_default = _compute_aware_default_method(project_id)
+        compute_default = await _compute_aware_default_method(project_id)
         if compute_default != DEFAULT_METHOD:
             logger.debug(
-                "Adaptive: selected '%s' from live project compute inventory for project=%s",
+                "Adaptive: selected '%s' from the project-scoped Pi catalog for project=%s",
                 compute_default,
                 project_id,
             )
             return compute_default
 
         try:
-            from app.models.method_metric import MethodMetric
             from sqlalchemy import select
+
+            from app.models.method_metric import MethodMetric
 
             async with async_session() as db:
                 # Query metrics for this context (project + skill + agent)
@@ -177,8 +165,9 @@ class AdaptiveSelector:
     ) -> None:
         """Record the outcome of a validation run for future learning."""
         try:
-            from app.models.method_metric import MethodMetric
             from sqlalchemy import select
+
+            from app.models.method_metric import MethodMetric
 
             async with async_session() as db:
                 result = await db.execute(
@@ -203,7 +192,7 @@ class AdaptiveSelector:
                         (metric.avg_consensus_score * (metric.total_runs - 1) + consensus_score)
                         / metric.total_runs
                     )
-                    metric.last_used = datetime.now(timezone.utc)
+                    metric.last_used = datetime.now(UTC)
                 else:
                     # Create new
                     metric = MethodMetric(
@@ -252,8 +241,9 @@ class AdaptiveSelector:
     async def get_stats(self, project_id: str) -> list[dict]:
         """Get adaptive learning stats for a project."""
         try:
-            from app.models.method_metric import MethodMetric
             from sqlalchemy import select
+
+            from app.models.method_metric import MethodMetric
 
             async with async_session() as db:
                 result = await db.execute(
@@ -271,7 +261,9 @@ class AdaptiveSelector:
                         "avg_consensus_score": round(m.avg_consensus_score, 4),
                         "last_used": m.last_used.isoformat(),
                         "recency_weight": round(_recency_weight(m.last_used), 4),
-                        "sample_confidence_weight": round(_sample_confidence_weight(m.total_runs), 4),
+                        "sample_confidence_weight": round(
+                            _sample_confidence_weight(m.total_runs), 4
+                        ),
                     }
                     for m in metrics
                 ]

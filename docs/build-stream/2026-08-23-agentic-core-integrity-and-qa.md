@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T12:07:05Z, ledger: L-336 }
-next_action: "Continue the static engine/ensemble acceptance audit, prioritizing untested public combinations and any remaining paths that can bypass project-scoped Pi Model Management, without starting live workloads."
+last: { agent: gpt-5-codex, at: 2026-08-27T12:22:05Z, ledger: L-338 }
+next_action: "Commit and push the AdaptiveSelector authority remediation, verify exact detached Mac Studio Docker-only parity, then resume the remaining live-gate and Research Spine acceptance audit."
 ```
 
 ## Plan overview / roadmap
@@ -7903,3 +7903,65 @@ public engine/ensemble combination and any remaining bypass of project-scoped
 Pi Model Management; live three-model semantic quality, reliability values,
 reconciliation, human Done/report promotion, Petals cooperation, redaction,
 teardown, and two-call/long-horizon receipts remain unverified.
+
+### L-337 | 2026-08-27T12:30:00Z | S2-execute/S3-review | gpt-5-codex | AdaptiveSelector Pi-authority remediation
+
+The static engine audit found a real authority split: `AdaptiveSelector` chose
+`dual_run`/`full_ensemble` from the retired global `llm_router`/ComputeRegistry
+inventory, while the actual `AgenticDispatcher` ensemble call resolved through
+the project-scoped Pi Model Management catalog. That could count a donor the
+Pi manager would reject, miss an admitted Pi endpoint, and make the selected
+validation method disagree with the subsequent governed dispatch.
+
+`PiModelManager.available_model_identities(project_id=...)` now exposes a
+non-secret, distinct-model identity view using the same admission predicate as
+`resolve_distinct`; it applies Petals project allowlists and reserved namespace
+checks without materializing settings credentials. `AdaptiveSelector` now awaits
+the engine-owned dispatcher's manager, ensures the read-only DB/Petals projection,
+and uses that identity view. If the catalog cannot be inspected it fails closed
+to the existing historical/default path; it no longer consults the retired
+router inventory. Tests cover three-model selection, constrained Self-MoA,
+cross-project donor exclusion, project-id forwarding, and no-secret
+materialization. The Ensemble Health living contract now documents this shared
+authority and the generated feature site/manifest were regenerated.
+
+Focused verification passed: `pytest -q tests/test_adaptive_validation.py
+tests/pi_production/test_w1_agentic_contract.py
+tests/pi_production/test_w1_dispatcher_authority.py
+tests/pi_production/test_w7_validation.py
+tests/pi_production/test_w7_pi_manager_integration.py
+tests/pi_production/test_ensemble_identity_parity.py
+tests/pi_production/test_legacy_long_horizon.py
+tests/petals_bridge/test_petals_bridge.py` (`130 passed`), Ruff on all changed
+Python files, `git diff --check`, and feature docs (`224` generated artifacts;
+`86/86` checked). This is deterministic authority/provenance coverage only;
+it does not prove live model quality, Fleiss/Krippendorff values, reconciliation,
+human Done/report promotion, Petals serving, or Docker-only Mac Studio execution.
+The after-gate, transport, and final detached parity must be recorded after the
+next broader matrix.
+
+### L-338 | 2026-08-27T12:22:05Z | S3-review/S5-ship&learn | gpt-5-codex | broad deterministic and after-gate checkpoint
+
+The strict broader deterministic matrix completed with `706 passed, 5 skipped`
+under `python -m pytest -q -W error::RuntimeWarning tests/pi_production
+tests/pi_benchmark tests/test_research_validity_contract.py
+tests/test_research_spine_end_to_end.py tests/test_validation_project_scope.py`.
+The focused authority/ensemble/Petals matrix remains `130 passed`; changed-file
+Ruff and `git diff --check` are clean; feature documentation regenerated `224`
+site artifacts and passed `86/86` checks. Compass evidence `269` records the
+broad matrix, `270` records the focused/lint/docs checks, `271` records native
+after-gate `267` with `new_issue_count=0` and no new forbidden dependencies,
+cycles, or required-path gaps, and `272` records the Build Stream/external
+finding artifacts. The repository-wide gate remains `fail` only for inherited
+complexity, route/type drift, secret-flow, and suppressed large-ledger debt.
+
+The new manager regression was deliberately moved out of the hotspot-heavy W1
+module after the first after-gate exposed a newly introduced file-complexity
+warning; the final after-gate has no new issues. No live provider request, model
+load, host install, or Mac Studio workload occurred. This checkpoint proves
+deterministic authority alignment and regression safety only. Live provider,
+Petals, combined, three-served-model semantic quality, Fleiss/Krippendorff
+values, source-grounded coding, reconciliation, human Done/report promotion,
+two-call/long-horizon receipts, redaction, and teardown remain blocked on
+owner-approved Docker-only inputs. Commit/push and exact detached parity must
+follow this ledger append.

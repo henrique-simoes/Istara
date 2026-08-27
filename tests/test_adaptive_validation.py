@@ -1,4 +1,4 @@
-"""Adaptive validation scoring guardrails."""
+"""Adaptive validation scoring and Pi-catalog authority guardrails."""
 
 import pytest
 
@@ -12,47 +12,71 @@ def test_sample_confidence_weight_penalizes_tiny_samples():
     assert _sample_confidence_weight(100) == 1
 
 
-class _Server:
-    def __init__(self, name, models):
-        self.name = name
-        self.is_healthy = True
-        self.loaded_models = models
-        self.model_capabilities = {model: {"supports_tools": True} for model in models}
+class _PiManager:
+    def __init__(self, identities_by_project):
+        self.identities_by_project = identities_by_project
+        self.project_ids = []
+
+    async def ensure_db_projection(self):
+        return None
+
+    def available_model_identities(self, *, project_id=None):
+        self.project_ids.append(project_id)
+        return self.identities_by_project.get(project_id, ())
 
 
-class _Router:
-    def __init__(self, servers):
-        self.servers = servers
+class _Dispatcher:
+    def __init__(self, manager):
+        self.manager = manager
 
-    def _sorted_servers(self, **_kwargs):
-        return self.servers
+    def model_manager(self):
+        return self.manager
 
 
 @pytest.mark.asyncio
 async def test_adaptive_selector_prefers_full_ensemble_when_three_models_are_healthy(monkeypatch):
-    from app.core import llm_router as llm_router_module
+    from app.core import agentic as agentic_module
 
+    manager = _PiManager({"project-a": ("model-a", "model-b", "model-c")})
     monkeypatch.setattr(
-        llm_router_module,
-        "llm_router",
-        _Router([
-            _Server("mac-studio", ["google/gemma-4-e4b"]),
-            _Server("colima-qwen", ["qwen3.5:4b-q4"]),
-            _Server("colima-gemma", ["gemma4:e2b-q4"]),
-        ]),
+        agentic_module,
+        "agentic",
+        _Dispatcher(manager),
     )
 
     assert await AdaptiveSelector().select_method("project-a", "user-interviews", "agent-a") == "full_ensemble"
+    assert manager.project_ids == ["project-a"]
 
 
 @pytest.mark.asyncio
 async def test_adaptive_selector_uses_self_moa_only_when_compute_constrained(monkeypatch):
-    from app.core import llm_router as llm_router_module
+    from app.core import agentic as agentic_module
 
+    manager = _PiManager({"project-a": ("model-a",)})
     monkeypatch.setattr(
-        llm_router_module,
-        "llm_router",
-        _Router([_Server("mac-studio", ["google/gemma-4-e4b"])]),
+        agentic_module,
+        "agentic",
+        _Dispatcher(manager),
     )
 
     assert await AdaptiveSelector().select_method("project-a", "user-interviews", "agent-a") == "self_moa"
+
+
+@pytest.mark.asyncio
+async def test_adaptive_selector_uses_project_scoped_catalog_and_excludes_other_project_models(
+    monkeypatch,
+):
+    from app.core import agentic as agentic_module
+
+    manager = _PiManager(
+        {
+            "project-a": ("model-a", "model-b"),
+            "project-b": ("model-a", "model-b", "donor-only-for-b"),
+        }
+    )
+    monkeypatch.setattr(agentic_module, "agentic", _Dispatcher(manager))
+
+    # A globally visible third donor must not turn project-a's two-model
+    # admission into a three-model full ensemble.
+    assert await AdaptiveSelector().select_method("project-a", "", "") == "dual_run"
+    assert manager.project_ids == ["project-a"]

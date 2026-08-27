@@ -9,7 +9,7 @@ import pytest
 
 from app.core.agentic.dispatcher import AgenticDispatcher
 from app.core.pi_runtime.endpoints import PiEndpointResolutionError, PiEndpointResolver
-from app.core.pi_runtime.model_manager import PiModelManager
+from app.core.pi_runtime.model_manager import PiModelManager, _CatalogEntry
 from app.models.database import async_session, init_db
 from app.models.llm_server import LLMServer
 
@@ -89,3 +89,47 @@ async def test_llm_server_projection_admits_only_healthy_non_donors():
                 if row is not None:
                     await session.delete(row)
             await session.commit()
+
+
+def test_available_model_identities_is_project_scoped_without_materializing_secrets():
+    """Adaptive method selection must share Pi admission without resolving keys."""
+    settings_entry = _CatalogEntry(
+        endpoint_id="pi-settings-a",
+        provider_kind="openai_compat",
+        base_url="https://example.invalid/v1",
+        model="settings-model",
+        source="settings",
+    )
+    authorized_petals = _CatalogEntry(
+        endpoint_id="pi-petals-a",
+        provider_kind="openai_compat",
+        base_url="http://127.0.0.1:8000/v1",
+        model="petals-a",
+        source="petals",
+        kind="petals",
+        allowed_project_ids=("project-a",),
+    )
+    unauthorized_petals = _CatalogEntry(
+        endpoint_id="pi-petals-b",
+        provider_kind="openai_compat",
+        base_url="http://127.0.0.1:8000/v1",
+        model="petals-b",
+        source="petals",
+        kind="petals",
+        allowed_project_ids=("project-b",),
+    )
+    manager = PiModelManager(endpoints=[], include_local=False)
+    manager._entries = {
+        entry.endpoint_id: entry
+        for entry in (settings_entry, authorized_petals, unauthorized_petals)
+    }
+
+    assert manager.available_model_identities(project_id="project-a") == (
+        "settings-model",
+        "petals-a",
+    )
+    assert manager.available_model_identities(project_id="project-b") == (
+        "settings-model",
+        "petals-b",
+    )
+    assert settings_entry.resolved is None
