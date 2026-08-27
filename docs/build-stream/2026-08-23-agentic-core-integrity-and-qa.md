@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T04:28:30Z, ledger: L-261 }
+last: { agent: gpt-5-codex, at: 2026-08-27T04:29:15Z, ledger: L-262 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -5899,3 +5899,25 @@ scientific validity. G0/G1 and live G2–G22 stay open pending the Docker-only
 Mac Studio prerequisite (three real model artifacts or explicit provider
 routes), fresh detached source checkout/archive verification, provider/Petals/
 combined retakes, and final teardown/parity evidence.
+
+### L-262 | 2026-08-27T04:29:15Z | S5-ship&learn | gpt-5-codex | structured-authority transport and gate receipt
+
+Verified: the structured cross-engine coverage checkpoint is transported as
+`4124106c060e5508e614bd6f331bcc68fa4d4e19` on `HEAD`, local `testing`, and
+`origin/testing`; `git status --short --branch` is clean and `git diff --check`
+passes. The first staging attempt correctly rejected
+`/Users/user/Desktop/testing.md` because it is outside the repository; that
+append-only findings file remains intentionally external and was not forced
+into Git. Repository files were staged and committed without it.
+
+Compass Forge `gate after --task CF-15 --summary` is record `148`: zero new
+failures, zero actionable failures, zero cycles, and no new route/type drift.
+The only new warning is the expected complexity threshold on the already-large
+dispatcher test file; inherited secret-flow/large-file and repository warning
+debt remains unchanged.
+
+Boundary/next: this closes deterministic structured-authority coverage and its
+transport receipt only. It does not close G0/G1 or live G2–G22. Continue with a
+fresh detached `origin/testing` checkout and Docker-only Mac Studio execution
+once three real served model identities/routes are supplied; preserve the
+preflight blocker if the artifacts/routes remain absent.
