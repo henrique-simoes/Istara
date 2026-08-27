@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T10:19:26Z, ledger: L-317 }
-next_action: "Transport the intended files cleanly and verify local/remote parity; resume the owner-approved Docker-only live matrix only when its env, served model identities, donor inputs, and redacted artifact paths exist."
+last: { agent: gpt-5-codex, at: 2026-08-27T10:21:03Z, ledger: L-318 }
+next_action: "Resume the owner-approved Docker-only live matrix only when its env, served model identities, donor inputs, and redacted artifact paths exist; keep all unproven gates open."
 ```
 
 ## Plan overview / roadmap
@@ -7482,3 +7482,30 @@ push `testing` to `origin/testing`, verify exact SHA/tree parity and clean statu
 then passively retarget `~/istara-testing-retake-47bf` on the Mac Studio. No live
 provider request, model load, host install, or Docker workload is authorized by the
 current input inventory.
+
+### L-318 | 2026-08-27T10:21:03Z | S5-ship&learn | gpt-5-codex | clean testing transport and passive Mac Studio retarget
+
+The four-file repository change set was committed as
+`cb9ffc8d9e93fcdcb41f97b8334d3097346f1a3e` (`test: bind Research Spine acceptance
+to served identities`) and pushed to `origin/testing`. Local `testing` and
+`origin/testing` resolve to the same SHA, `git diff origin/testing --` is empty,
+`git status --porcelain` is empty, and the staged tree passed `git diff --cached
+--check` before commit. The external findings register now includes F-R9-101 and
+remains deliberately outside Git.
+
+The Mac Studio host `users-Mac-Studio.local` was accessed only through SSH control
+using the existing `macstudio` alias. Its detached retake
+`~/istara-testing-retake-47bf` fetched `origin/testing`, was retargeted to the exact
+SHA above, and reports zero worktree changes and exact remote-ref parity. Passive
+Docker inspection used `/usr/local/bin/docker` and reports Server `29.7.2`, zero
+Istara/provider/Petals/benchmark/donor containers, and zero files under
+`~/Istara-Projects/models`. No host package operation, service startup, provider
+request, model load, or benchmark workload occurred.
+
+This closes only the deterministic oracle hardening and source synchronization
+checkpoint. The live provider/Petals/combined runtime matrix, shared PI Model
+Management routing for Istara and PI-agentic modes, same-session two-call and
+long-horizon receipts, real three-model served identities, Fleiss' kappa and
+Krippendorff's alpha semantic evidence, reconciliation, human-Done/report
+promotion, redaction, and teardown remain open pending owner-approved Docker-only
+inputs. The Build Stream stays `in-progress` and fail-closed.
