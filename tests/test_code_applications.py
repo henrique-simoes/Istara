@@ -328,14 +328,24 @@ async def test_synthetic_reconciliation_records_provenance_without_human_promoti
     settings.research_validity_synthetic_reconciliation_enabled = True
     project_id = f"synthetic-on-{uuid.uuid4().hex[:8]}"
     run_id = f"synthetic-run-{uuid.uuid4().hex[:8]}"
+    task_id = f"synthetic-task-{uuid.uuid4().hex[:8]}"
     app_id = str(uuid.uuid4())
     async with async_session() as db:
         db.add(Project(id=project_id, name="Synthetic on"))
-        db.add(CodingRun(id=run_id, project_id=project_id, status="completed"))
+        db.add(
+            CodingRun(
+                id=run_id,
+                project_id=project_id,
+                task_id=task_id,
+                status="completed",
+                promotion_status="accepted",
+            )
+        )
         db.add(
             CodeApplication(
                 id=app_id,
                 project_id=project_id,
+                task_id=task_id,
                 coding_run_id=run_id,
                 evidence_unit_id=str(uuid.uuid4()),
                 code_id="checkout-friction",
@@ -410,6 +420,22 @@ async def test_synthetic_reconciliation_records_provenance_without_human_promoti
     assert row.promotion_status == "blocked"
     assert receipt.source == "benchmark_synthetic"
     assert len(receipts) == 1
+
+    # A benchmark receipt must not unlock the production Research Spine gate.
+    # Ask the same validity service used by report promotion instead of only
+    # checking the stored row fields, so this test catches an accidental
+    # synthetic-to-reportable bypass.
+    from app.services.research_validity_service import assess_task_research_validity
+
+    async with async_session() as db:
+        validity = await assess_task_research_validity(
+            db,
+            project_id=project_id,
+            task_id=task_id,
+        )
+    assert validity["report_allowed"] is False
+    assert validity["unresolved_code_application_count"] == 1
+    assert "unreconciled" in validity["reason"]
 
 
 @pytest.mark.asyncio
