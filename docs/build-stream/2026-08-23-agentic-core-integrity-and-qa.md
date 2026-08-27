@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T04:03:00Z, ledger: L-255 }
+last: { agent: gpt-5-codex, at: 2026-08-27T04:08:13Z, ledger: L-256 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -5768,3 +5768,26 @@ only unrelated `plex` is running; no Istara Compose project, containers, network
 providers, relays, donors, or models are present. No host installation, model load, image pull,
 service start, data deletion, or remote checkout mutation occurred. G0/G1 and live G2–G22 stay
 explicitly open for the next authorized retake.
+
+### L-256 | 2026-08-27T04:08:13Z | S5-ship&learn | gpt-5-codex | orphaned Docker test-volume cleanup receipt
+
+Did: Re-inspected the Mac Studio Docker state over SSH using the explicit Docker CLI path and
+confirmed that the two anonymous hash-named volumes left by the earlier testing run had no
+container references and no Compose ownership. Both contained only PostgreSQL data directories:
+`9148cf1b80adc539e6ad9e8d5985b33428d4717bffacf13bf5fcc05c7e323509` (2.9G, created
+2026-08-23T18:26:30Z) and `23732a6aa8da4810b7c3853fb4324d825b584687a7f967dab3bd1f54688d289f`
+(49.3M, created 2026-08-23T17:29:11Z). The user authorized discarding old testing data, so only
+these two demonstrably orphaned anonymous test volumes were removed with `docker volume rm`.
+
+Verified: Docker now reports only the named `pi-agent-home` volume; it was not touched. The only
+running container remains the unrelated healthy `plex` service. No image, model, service, host
+package, repository checkout, or protected artifact was changed. The removed volume data is not
+recoverable from Docker; it was stale test PostgreSQL state and the next live run must initialize
+fresh isolated data inside its own Compose project.
+
+Boundary/next: cleanup improves Docker readiness but does not advance scientific proof. G0/G1 and
+live G2–G22 remain open. The next live window must use a fresh detached `origin/testing` checkout,
+verify the canonical archive digest inside Docker, render Compose, then run provider/Petals/combined
+profiles with three actual served identities, common raw evidence spans, grounded non-duplicate
+ratings, Fleiss/Krippendorff reliability, reconciliation, human-Done/report promotion, both loop
+modes through shared Pi Model Management, two-call/long-horizon artifacts, redaction, and teardown.
