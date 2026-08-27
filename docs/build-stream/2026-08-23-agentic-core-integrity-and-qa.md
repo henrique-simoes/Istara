@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T10:23:06Z, ledger: L-320 }
+last: { agent: gpt-5-codex, at: 2026-08-27T10:23:48Z, ledger: L-321 }
 next_action: "Resume the owner-approved Docker-only live matrix only when its env, served model identities, donor inputs, and redacted artifact paths exist; keep all unproven gates open."
 ```
 
@@ -7525,10 +7525,21 @@ set exists.
 
 ### L-320 | 2026-08-27T10:23:06Z | S5-ship&learn | gpt-5-codex | final ledger-tip parity correction
 
-Appending L-319 created the expected final docs-only transport commit
-`4aa1caad6c9405a4d0c8a812b11e76112e65c137`. It is now pushed to `origin/testing`,
-and the local branch, remote ref, and Mac Studio detached retake all resolve to
-that exact SHA with zero worktree changes. L-319 remains a valid record of the
-pre-append evidence row `216`; this checkpoint corrects the embedded tip so a
-future agent cannot mistake the preceding `335fd844` commit for the final state.
-No workload, provider request, model load, or host installation occurred.
+Appending L-319 created the expected docs-only transport commit
+`4aa1caad6c9405a4d0c8a812b11e76112e65c137`, which was pushed and retargeted before
+this follow-up. L-319 remains a valid record of the pre-append evidence row `216`.
+The final tip is intentionally verified after this ledger update rather than
+embedded here, because any append to this file necessarily creates a new commit;
+use `git rev-parse HEAD`, `git rev-parse origin/testing`, and the detached-retake
+check below as the authoritative current values. No workload, provider request,
+model load, or host installation occurred.
+
+### L-321 | 2026-08-27T10:23:48Z | S5-ship&learn | gpt-5-codex | non-self-referential final-tip handoff
+
+The ledger now records the SHA-self-reference rule explicitly: historical commit
+identities are preserved, while the current synchronized tip must be read from
+the post-commit parity commands, not copied into the file that changes the tip.
+This prevents a future agent from inheriting a false final SHA after a routine
+ledger checkpoint. The only remaining work is owner-approved Docker-only live
+acceptance; all deterministic changes and their external finding are already
+transported, and the Build Stream remains `in-progress`/fail-closed.
