@@ -183,6 +183,13 @@ class PiModelManager:
             supports_tools=endpoint.supports_tools,
             supports_vision=endpoint.supports_vision,
             kind=endpoint.kind,
+            # ``ResolvedPiEndpoint`` is the already-admitted boundary used by
+            # explicit test/faux catalogs and does not carry a donor allowlist.
+            # Dynamic Petals projections below populate the real allowlist;
+            # an explicit Petals endpoint is therefore treated as an
+            # intentionally wildcard-admitted fixture rather than as a
+            # restricted donor with an accidentally empty scope.
+            allowed_project_ids=("*",) if endpoint.kind == "petals" else (),
             resolved=endpoint,
         )
 

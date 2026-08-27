@@ -1,6 +1,7 @@
 """One causal positive proof of Istara's complete Research Spine."""
 
 import json
+import re
 import uuid
 from types import SimpleNamespace
 
@@ -12,6 +13,7 @@ from sqlalchemy import select
 async def test_source_to_three_model_reliability_human_done_and_report(monkeypatch):
     """No stage may be replaced by a manually pre-accepted downstream fixture."""
     from app.api.routes.tasks import _approve_task
+    from app.core.agent import AgentOrchestrator
     from app.core.report_manager import ReportManager
     from app.models.code_application import CodeApplication
     from app.models.database import async_session, init_db
@@ -22,11 +24,13 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
     from app.models.research_validity import (
         CodingRunCoder,
         EvidenceUnit,
+        CodingRun,
         ReconciliationDecision,
         ResearchEvidenceEdge,
     )
     from app.models.task import Task, TaskStatus
     from app.services import research_validity_service
+    from app.skills.base import SkillOutput
 
     suffix = uuid.uuid4().hex[:8]
     project_id = f"proj-spine-e2e-{suffix}"
@@ -60,20 +64,34 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
             self.calls: list[str] = []
 
         async def structured(self, **kwargs):  # noqa: ANN001
+            purpose = kwargs.get("purpose")
+            if purpose == "report.mece":
+                return SimpleNamespace(status="success", value={"categories": []})
             model = kwargs["params"].model
             self.calls.append(model)
+            evidence_units_match = re.search(
+                r"<evidence_units>\s*(\[.*?\])\s*</evidence_units>",
+                kwargs["messages"][-1]["content"],
+                re.DOTALL,
+            )
+            assert evidence_units_match, "protected coding prompt must carry source evidence units"
+            prompt_units = json.loads(evidence_units_match.group(1))
             applications = [
                 {
-                    "evidence_unit_id": unit_id,
-                    "codes": ["invite_discovery" if unit_id == unit_ids[0] else "permission_clarity"],
+                    "evidence_unit_id": item["id"],
+                    "stable_id": item["stable_id"],
+                    "unit_index": item["unit_index"],
+                    "codes": [
+                        "invite_discovery" if item_index == 0 else "permission_clarity"
+                    ],
                     "primary_code": (
-                        "invite_discovery" if unit_id == unit_ids[0] else "permission_clarity"
+                        "invite_discovery" if item_index == 0 else "permission_clarity"
                     ),
-                    "quote": quotes[unit_id],
+                    "quote": item["source_text"],
                     "confidence": 0.95,
                     "rationale": "The code is grounded in the exact participant span.",
                 }
-                for unit_id in unit_ids
+                for item_index, item in enumerate(prompt_units)
             ]
             return SimpleNamespace(
                 value={"applications": applications},
@@ -85,6 +103,11 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
                 # provider-served identity required by the live coder
                 # path; the configured request label is not proof.
                 served_model=model,
+            )
+
+        async def completion(self, **kwargs):  # noqa: ANN001
+            return SimpleNamespace(
+                text="SITUATION: participant friction.\nCOMPLICATION: controls are unclear.\nRESOLUTION: clarify them."
             )
 
     dispatcher = DeterministicThreeCoderDispatcher()
@@ -129,34 +152,32 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
             for index, (document_id, unit_id) in enumerate(zip(document_ids, unit_ids), start=1)
         ]
         db.add_all([project, task, *documents])
-        for index, unit_id in enumerate(unit_ids):
-            db.add(
-                EvidenceUnit(
-                    id=unit_id,
-                    project_id=project_id,
-                    task_id=task_id,
-                    source_document_id=document_ids[index],
-                    source_id=f"document:{document_ids[index]}:v1",
-                    stable_id=f"document:{document_ids[index]}:v1:{index}",
-                    unit_index=index,
-                    unit_type="source_span",
-                    source_type="user_upload",
-                    source_text=quotes[unit_id],
-                    metadata_json=json.dumps(
-                        {"document_id": document_ids[index], "document_version": 1}
+        output = SkillOutput(
+            success=True,
+            summary="Source-grounded participant evidence",
+            nuggets=[
+                {
+                    "text": quotes[unit_id],
+                    "source": "interview",
+                    "source_document_id": document_ids[index],
+                    "source_location": (
+                        f"document:{document_ids[index]}:chars:0-{len(quotes[unit_id])}"
                     ),
-                )
-            )
-        await db.commit()
-
-        coding_run = await research_validity_service.run_independent_coding_run(
-            db,
-            project_id=project_id,
-            task_id=task_id,
-            evidence_unit_ids=unit_ids,
-            max_coders=3,
-            created_by="researcher-a",
+                    "source_text": quotes[unit_id],
+                }
+                for index, unit_id in enumerate(unit_ids)
+            ],
+            facts=[{"text": "Participants cannot discover collaboration controls."}],
+            insights=[{"text": "Collaboration onboarding lacks clear affordances."}],
+            recommendations=[{"text": "Clarify invitation and permission controls."}],
         )
+        orchestrator = AgentOrchestrator()
+        await orchestrator._store_findings(db, project_id, output, task)
+        await db.refresh(task)
+        coding_run_id = json.loads(task.validation_result)["research_validity"]["coding_run_id"]
+        coding_run_row = await db.get(CodingRun, coding_run_id)
+        assert coding_run_row is not None
+        coding_run = coding_run_row.to_dict()
         assert coding_run["promotion_status"] == "accepted"
         assert coding_run["reliability_method"] == (
             "fleiss_kappa_with_krippendorff_alpha_companion"
@@ -190,8 +211,99 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
         )
         assert len(applications) == 9
         assert len(coders) == 3
-        assert {row.evidence_unit_id for row in applications} == set(unit_ids)
+        generated_units = (
+            (
+                await db.execute(
+                    select(EvidenceUnit).where(
+                        EvidenceUnit.project_id == project_id,
+                        EvidenceUnit.task_id == task_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(generated_units) == 3
+        assert all(unit.unit_type == "source_span" for unit in generated_units)
+        assert {unit.source_document_id for unit in generated_units} == set(document_ids)
+        assert {unit.source_text for unit in generated_units} == set(quotes.values())
+        generated_unit_ids = {unit.id for unit in generated_units}
+        assert {row.evidence_unit_id for row in applications} == generated_unit_ids
         assert {row.model_name for row in coders} == {"model-1", "model-2", "model-3"}
+
+        nuggets = (
+            (
+                await db.execute(
+                    select(Nugget).where(
+                        Nugget.project_id == project_id,
+                        Nugget.task_id == task_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        facts = (
+            (
+                await db.execute(
+                    select(Fact).where(
+                        Fact.project_id == project_id,
+                        Fact.task_id == task_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        insights = (
+            (
+                await db.execute(
+                    select(Insight).where(
+                        Insight.project_id == project_id,
+                        Insight.task_id == task_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        recommendations = (
+            (
+                await db.execute(
+                    select(Recommendation).where(
+                        Recommendation.project_id == project_id,
+                        Recommendation.task_id == task_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(nuggets) == 3
+        assert len(facts) == len(insights) == len(recommendations) == 1
+        nugget_by_text = {nugget.text: nugget for nugget in nuggets}
+        ordered_nugget_ids = [nugget_by_text[quotes[unit_id]].id for unit_id in unit_ids]
+        fact_id = facts[0].id
+        insight_id = insights[0].id
+        recommendation_id = recommendations[0].id
+        assert json.loads(facts[0].nugget_ids) == ordered_nugget_ids
+        assert json.loads(insights[0].fact_ids) == [fact_id]
+        assert json.loads(recommendations[0].insight_ids) == [insight_id]
+        evidence_edges = (
+            (
+                await db.execute(
+                    select(ResearchEvidenceEdge).where(
+                        ResearchEvidenceEdge.project_id == project_id,
+                        ResearchEvidenceEdge.task_id == task_id,
+                        ResearchEvidenceEdge.source_type == "nugget",
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(evidence_edges) == 3
+        assert {edge.target_id for edge in evidence_edges} == generated_unit_ids
 
         human_acceptance = await research_validity_service.create_reconciliation_decision(
             db,
@@ -225,57 +337,6 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
                 source="human_review",
             )
             assert decision["source"] == "human_review"
-
-        nugget_id = f"nugget-spine-e2e-{suffix}"
-        fact_id = f"fact-spine-e2e-{suffix}"
-        insight_id = f"insight-spine-e2e-{suffix}"
-        recommendation_id = f"recommendation-spine-e2e-{suffix}"
-        db.add_all(
-            [
-                Nugget(
-                    id=nugget_id,
-                    project_id=project_id,
-                    task_id=task_id,
-                    text=quotes[unit_ids[0]],
-                    source="interview",
-                ),
-                Fact(
-                    id=fact_id,
-                    project_id=project_id,
-                    task_id=task_id,
-                    text="Participants cannot discover collaboration controls.",
-                    nugget_ids=json.dumps([nugget_id]),
-                ),
-                Insight(
-                    id=insight_id,
-                    project_id=project_id,
-                    task_id=task_id,
-                    text="Collaboration onboarding lacks clear affordances.",
-                    fact_ids=json.dumps([fact_id]),
-                ),
-                Recommendation(
-                    id=recommendation_id,
-                    project_id=project_id,
-                    task_id=task_id,
-                    text="Clarify invitation and permission controls.",
-                    insight_ids=json.dumps([insight_id]),
-                ),
-                ResearchEvidenceEdge(
-                    id=f"edge-spine-e2e-{suffix}",
-                    project_id=project_id,
-                    source_type="nugget",
-                    source_id=nugget_id,
-                    relation="grounded_in",
-                    target_type="evidence_unit",
-                    target_id=unit_ids[0],
-                    evidence_unit_id=unit_ids[0],
-                    coding_run_id=coding_run["id"],
-                    task_id=task_id,
-                    reliability_status="accepted",
-                ),
-            ]
-        )
-        await db.commit()
 
         manager = ReportManager()
         blocked_before_human_done = await manager.route_approved_task_findings(
@@ -312,18 +373,19 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
             task.skill_name,
             db,
         )
-        assert routed == 4
+        assert routed == 6
         report = (
             await db.execute(
                 select(ProjectReport).where(ProjectReport.project_id == project_id)
             )
         ).scalar_one()
-        assert json.loads(report.finding_ids_json) == [
-            nugget_id,
+        report_finding_ids = set(json.loads(report.finding_ids_json))
+        assert report_finding_ids == {
+            *ordered_nugget_ids,
             fact_id,
             insight_id,
             recommendation_id,
-        ]
+        }
 
         trace = await research_validity_service.build_evidence_graph_traceability(
             db,

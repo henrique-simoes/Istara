@@ -11,6 +11,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.research_validity import (
     research_validity_telemetry_contract,
@@ -71,41 +72,49 @@ class TelemetryRecorder:
         tool_success: bool | None = None,
         tool_duration_ms: float | None = None,
         source: str = "production",
+        session: AsyncSession | None = None,
     ) -> None:
         """Write a telemetry span to the database."""
+        span = TelemetrySpan(
+            id=uuid.uuid4().hex[:36],
+            trace_id=trace_id,
+            parent_id=parent_id,
+            operation=operation,
+            skill_name=skill_name,
+            model_name=model_name,
+            agent_id=agent_id,
+            started_at=datetime.now(UTC),
+            duration_ms=duration_ms,
+            status=status,
+            quality_score=quality_score,
+            consensus_score=consensus_score,
+            reliability_score=reliability_score,
+            error_type=error_type,
+            error_message=(error_message or "")[:500] if error_message else None,
+            project_id=project_id,
+            task_id=task_id,
+            event_kind=event_kind,
+            route_id=route_id,
+            donor_id=donor_id,
+            retrieval_mode=retrieval_mode,
+            coding_run_id=coding_run_id,
+            evidence_unit_id=evidence_unit_id,
+            codebook_version_id=codebook_version_id,
+            temperature=temperature,
+            tool_name=tool_name,
+            tool_success=int(tool_success) if tool_success is not None else None,
+            tool_duration_ms=tool_duration_ms,
+            source=source,
+        )
+        if session is not None:
+            # Keep telemetry in the caller's transaction.  A separate SQLite
+            # writer here can deadlock when the caller has already flushed a
+            # source/evidence row, and atomic lifecycle evidence is preferable
+            # to an eventually-consistent side write.
+            session.add(span)
+            return
         try:
             async with async_session() as session:
-                span = TelemetrySpan(
-                    id=uuid.uuid4().hex[:36],
-                    trace_id=trace_id,
-                    parent_id=parent_id,
-                    operation=operation,
-                    skill_name=skill_name,
-                    model_name=model_name,
-                    agent_id=agent_id,
-                    started_at=datetime.now(UTC),
-                    duration_ms=duration_ms,
-                    status=status,
-                    quality_score=quality_score,
-                    consensus_score=consensus_score,
-                    reliability_score=reliability_score,
-                    error_type=error_type,
-                    error_message=(error_message or "")[:500] if error_message else None,
-                    project_id=project_id,
-                    task_id=task_id,
-                    event_kind=event_kind,
-                    route_id=route_id,
-                    donor_id=donor_id,
-                    retrieval_mode=retrieval_mode,
-                    coding_run_id=coding_run_id,
-                    evidence_unit_id=evidence_unit_id,
-                    codebook_version_id=codebook_version_id,
-                    temperature=temperature,
-                    tool_name=tool_name,
-                    tool_success=int(tool_success) if tool_success is not None else None,
-                    tool_duration_ms=tool_duration_ms,
-                    source=source,
-                )
                 session.add(span)
                 await session.commit()
         except Exception as e:
@@ -139,6 +148,7 @@ class TelemetryRecorder:
         error_type: str | None = None,
         error_message: str | None = None,
         source: str = "production",
+        session: AsyncSession | None = None,
     ) -> None:
         """Record a content-free research-validity lifecycle event.
 
@@ -169,6 +179,7 @@ class TelemetryRecorder:
             evidence_unit_id=evidence_unit_id,
             codebook_version_id=codebook_version_id,
             source=source,
+            session=session,
         )
 
     async def record_json_parse(

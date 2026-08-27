@@ -962,6 +962,7 @@ async def persist_task_nugget_evidence_units(
             evidence_unit_id=unit.id,
             retrieval_mode="hybrid",
             status="success",
+            session=db,
         )
     return persisted
 
