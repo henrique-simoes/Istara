@@ -11,6 +11,7 @@ from app.api.routes.chat import ChatRequest
 from app.config import settings
 from app.core.rag import RAGContext
 from app.models.agent import Agent
+from app.models.agentic_usage import AgenticUsageRow
 from app.models.database import async_session, init_db
 from app.models.project import Project
 from app.models.session import ChatSession
@@ -251,6 +252,66 @@ async def test_chat_model_catalog_and_usage_are_project_scoped(monkeypatch):
     assert operator_catalog.json()["engine"] == "pi"
     assert usage.status_code == 200
     assert usage.json()["total_tokens"] == 0
+
+
+@pytest.mark.asyncio
+async def test_chat_usage_exposes_content_free_per_dispatch_identity_rows():
+    """Usage clients can verify every chat dispatch, not only the latest row."""
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    token = create_token("usage-auditor", "usage-auditor", "admin")
+    project_id = str(uuid.uuid4())
+    session_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Usage identity project"))
+        db.add_all(
+            [
+                AgenticUsageRow(
+                    id="usage-row-pi-1",
+                    engine="pi",
+                    purpose="chat_turn",
+                    project_id=project_id,
+                    session_id=session_id,
+                    model="served-pi-1",
+                    endpoint_id="pi-endpoint-1",
+                    turns=1,
+                    total_tokens=100,
+                ),
+                AgenticUsageRow(
+                    id="usage-row-pi-2",
+                    engine="pi",
+                    purpose="chat_turn",
+                    project_id=project_id,
+                    session_id=session_id,
+                    model="served-pi-2",
+                    endpoint_id="pi-endpoint-2",
+                    turns=1,
+                    total_tokens=120,
+                ),
+            ]
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/chat/usage/{project_id}",
+            params={"session_id": session_id},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["row_count"] == 2
+    assert [row["purpose"] for row in payload["rows"]] == ["chat_turn", "chat_turn"]
+    assert [row["engine"] for row in payload["rows"]] == ["pi", "pi"]
+    assert [row["endpoint_id"] for row in payload["rows"]] == [
+        "pi-endpoint-1",
+        "pi-endpoint-2",
+    ]
+    assert payload["latest"]["engine"] == "pi"
 
 
 @pytest.mark.asyncio

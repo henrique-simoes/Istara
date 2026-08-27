@@ -1306,6 +1306,25 @@ async def get_chat_usage(
         "row_count": len(rows),
         "exact": not any(bool(row.estimate) for row in rows),
         "estimated": any(bool(row.estimate) for row in rows),
+        # Content-free per-dispatch identities let bounded benchmark clients
+        # prove that every chat turn in a session used the requested engine;
+        # `latest` alone cannot detect a mixed-engine session.
+        "rows": [
+            {
+                "id": row.id,
+                "purpose": row.purpose,
+                "engine": row.engine,
+                "model": row.model,
+                "endpoint_id": row.endpoint_id,
+                "node_id": row.node_id,
+                "turns": row.turns,
+                "total_tokens": row.total_tokens,
+                "outcome": row.outcome,
+                "estimate": bool(row.estimate),
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            }
+            for row in rows
+        ],
         "latest": {
             "model": latest.model,
             "endpoint_id": latest.endpoint_id,

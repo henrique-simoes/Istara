@@ -40,7 +40,7 @@ Chat exposes a workbench-style model and effort menu so users can choose the pro
 
 `ChatModelControls` is visible in Chat for project viewers with a selected session. It has one browseable, searchable model menu (chevron opens the list; typing filters it), an exact effort select populated from Pi `thinkingLevels`, and a usage popover. Pi catalog entries that are not configured are visible but disabled with an explanation; legacy engine mode exposes the safe local/server model inventory instead. Choosing a configured Pi entry persists both `model_override` and `endpoint_override`, so two providers exposing the same model id cannot silently collide.
 
-`GET /api/chat/model-catalog` is project-scoped and secret-free. `GET /api/chat/usage/{project_id}` is project/session-scoped and returns content-free ledger aggregates. `POST /api/chat` emits an additive `usage` SSE event after each governed turn. Existing transcript/session payloads remain backward compatible.
+`GET /api/chat/model-catalog` is project-scoped and secret-free. `GET /api/chat/usage/{project_id}` is project/session-scoped and returns content-free ledger aggregates plus per-dispatch identity rows (`purpose`, engine, model, endpoint/node handles, outcome, and accounting flags), so a bounded client can prove that every chat turn in a session used the requested engine rather than trusting only the latest row. `POST /api/chat` emits an additive `usage` SSE event after each governed turn. Existing transcript/session payloads remain backward compatible.
 
 ### Agentic Dispatcher And Engine Selection (Pi Replacement W1)
 

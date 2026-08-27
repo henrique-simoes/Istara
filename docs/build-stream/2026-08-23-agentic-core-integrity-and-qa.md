@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T08:16:08Z, ledger: L-294 }
-next_action: "Continue the deterministic Research Spine/authority audit from the exact transported testing tip; await an owner-authorized Docker-only Mac Studio window before any live provider, Petals, or three-rater acceptance claim."
+last: { agent: gpt-5-codex, at: 2026-08-27T08:23:12Z, ledger: L-295 }
+next_action: "Run the focused long-horizon/API checks, transport the explicit engine-and-per-dispatch oracle, then audit same-session parity and retain live Mac Studio gates as unverified until an authorized Docker-only window exists."
 ```
 
 ## Plan overview / roadmap
@@ -6787,3 +6787,31 @@ pass, and feature docs regenerate/check cleanly (`224` artifacts, `86/86`
 checks). This is a deterministic acceptance-oracle correction only; live
 three-checkpoint independence, scientific reliability quality, reconciliation,
 human-Done/report promotion, and Docker-only Mac Studio execution remain open.
+
+### L-295 | 2026-08-27T08:23:12Z | S2-execute/S3-review | gpt-5-codex | explicit long-horizon engine and per-dispatch parity oracle
+
+The long-horizon runner previously allowed `ISTARA_LONG_HORIZON_ENGINE` to be
+unset, omitted the request header, and accepted a usage response whose latest
+row named any engine. A dispatcher default or operator flag could therefore
+make a two-turn result impossible to attribute, while a mixed Pi/legacy session
+could appear valid if its last row matched the requested label. The usage API
+also exposed only aggregates plus `latest`, so the runner had no way to inspect
+each dispatch without reaching into the database.
+
+The runner now fails before authentication/project creation unless the engine is
+explicitly `legacy` or `pi`, sends that choice on both turns, requires the API's
+content-free per-dispatch rows, requires at least two `chat_turn` rows, and
+rejects any row whose engine differs from the requested engine. The usage route
+adds additive identity-only rows (purpose, engine, model, endpoint/node handles,
+outcome, accounting flags, and timestamps); prompts, responses, URLs, and keys
+remain excluded. Regression tests cover unset/unsupported engine configuration,
+mixed chat engines, and the route response contract. README and living feature
+docs now state the explicit attribution boundary.
+
+Verification: focused benchmark/API tests pass (`31 passed`; one pre-existing
+async teardown warning), feature docs regenerate/check cleanly (`224` artifacts,
+`86/86` checks), and the existing broad Ruff invocation reports only inherited
+`chat.py` lint debt. This closes deterministic two-turn attribution coverage;
+it does not prove same-session engine parity against live providers, model-served
+identity, three-rater Research Spine quality, Petals cooperation, or Docker-only
+Mac Studio execution. Those G9/G16-G22 gates remain open.

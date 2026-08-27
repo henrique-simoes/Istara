@@ -94,6 +94,10 @@ Ensemble Health surfaces health and consensus signals for Istara's multi-model o
 - `tests/pi_production/test_legacy_long_horizon.py` — isolated seven-step legacy horizon oracle, kept separate from the complexity-heavy authority module while preserving the same real `PiModelManager` seam.
 - `tests/pi_production/test_ensemble_identity_parity.py` — both `legacy` and `pi` ensemble choices use one real `PiExecutionService`/`PiModelManager` authority and preserve three distinct provider-served identities separately from configured request labels; this is provenance/authority coverage, not live model-quality or Fleiss/Krippendorff evidence.
 - `tests/pi_production/test_pi_ensemble_accounting.py` — real dispatcher/manager/ledger seam proves mixed Pi usage is estimated as one complete dispatch and fully reported Pi samples retain cache, cost, total, and turn accounting.
+- `tests/benchmarks/long_horizon_runner.py` — the two-turn long-horizon workload must name
+  `legacy` or `pi` explicitly and validates every content-free `chat_turn` identity row
+  returned for the session, so a latest-row-only or mixed-engine result cannot be reported
+  as engine parity.
 
 ## Related Features
 

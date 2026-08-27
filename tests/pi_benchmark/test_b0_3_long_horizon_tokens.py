@@ -91,6 +91,10 @@ def test_usage_oracle_requires_two_recorded_turns_and_engine():
         "turns": 2,
         "total_tokens": 200,
         "estimated": False,
+        "rows": [
+            {"id": "row-1", "purpose": "chat_turn", "engine": "pi"},
+            {"id": "row-2", "purpose": "chat_turn", "engine": "pi"},
+        ],
         "latest": {"engine": "pi", "total_tokens": 100},
     }
     usage = long_horizon_runner._require_usage_ledger(payload, expected_engine="pi")
@@ -102,6 +106,30 @@ def test_usage_oracle_rejects_missing_rows():
         long_horizon_runner._require_usage_ledger(
             {"row_count": 1, "turns": 1, "latest": {"engine": "pi"}}, expected_engine="pi"
         )
+
+
+def test_usage_oracle_rejects_mixed_chat_engines():
+    payload = {
+        "row_count": 2,
+        "turns": 2,
+        "total_tokens": 200,
+        "rows": [
+            {"id": "row-1", "purpose": "chat_turn", "engine": "pi"},
+            {"id": "row-2", "purpose": "chat_turn", "engine": "legacy"},
+        ],
+        "latest": {"engine": "legacy"},
+    }
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="do not all match"):
+        long_horizon_runner._require_usage_ledger(payload, expected_engine="pi")
+
+
+def test_engine_oracle_rejects_unset_or_unsupported(monkeypatch):
+    monkeypatch.setattr(long_horizon_runner, "ENGINE", None)
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="requires ISTARA_LONG_HORIZON_ENGINE"):
+        long_horizon_runner._require_explicit_engine()
+    monkeypatch.setattr(long_horizon_runner, "ENGINE", "unknown")
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="legacy or pi"):
+        long_horizon_runner._require_explicit_engine()
 
 
 def test_history_oracle_requires_two_complete_turns():

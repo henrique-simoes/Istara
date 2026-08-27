@@ -8,9 +8,11 @@ from pathlib import Path
 from typing import Any
 
 API_BASE = os.environ.get("ISTARA_API_URL", "http://localhost:8000")
-# Agentic core under test (CF-SPEC-1 Phase 5): "legacy", "pi", or unset for
-# the dispatcher default. Applied as x-istara-agent-engine on every chat turn.
+# Agentic core under test (CF-SPEC-1 Phase 5). A live benchmark must name the
+# engine explicitly; accepting the dispatcher default makes its result
+# impossible to attribute when settings or operator flags change.
 ENGINE = os.environ.get("ISTARA_LONG_HORIZON_ENGINE", "").strip().lower() or None
+SUPPORTED_ENGINES = frozenset({"legacy", "pi"})
 ROOT = Path(__file__).resolve().parents[2]
 ADMIN_PASSWORD_ENV_FILES = (
     ROOT / ".env.local",
@@ -20,6 +22,21 @@ ADMIN_PASSWORD_ENV_FILES = (
 
 class BenchmarkFailure(RuntimeError):
     """A transport or semantic failure that must make the benchmark non-zero."""
+
+
+def _require_explicit_engine() -> str:
+    """Require a supported engine before creating any benchmark side effects."""
+    if ENGINE == "legacy":
+        return "legacy"
+    if ENGINE == "pi":
+        return "pi"
+    if ENGINE not in SUPPORTED_ENGINES:
+        configured = "<unset>" if ENGINE is None else "<unsupported>"
+        raise BenchmarkFailure(
+            "long-horizon benchmark requires ISTARA_LONG_HORIZON_ENGINE=legacy "
+            f"or pi; got {configured!r}"
+        )
+    raise AssertionError("unreachable engine validation branch")
 
 
 def _require_status(response: httpx.Response, operation: str, *expected: int) -> None:
@@ -102,9 +119,15 @@ def _require_persisted_tasks(payload: Any, project_id: str) -> list[dict]:
 def _require_usage_ledger(
     payload: Any, *, expected_engine: str | None = None, min_rows: int = 2, min_turns: int = 2
 ) -> dict:
-    """Require usage rows proving the requested number of persisted chat turns."""
+    """Require per-dispatch rows proving both turns used the requested engine."""
     if not isinstance(payload, dict):
         raise BenchmarkFailure("chat usage endpoint returned a non-object payload")
+    if expected_engine not in SUPPORTED_ENGINES:
+        configured = expected_engine or "<unset>"
+        raise BenchmarkFailure(
+            "chat usage validation requires an explicit expected engine "
+            f"(legacy or pi); got {configured!r}"
+        )
     try:
         row_count = int(payload.get("row_count") or 0)
         turns = int(payload.get("turns") or 0)
@@ -121,14 +144,44 @@ def _require_usage_ledger(
         )
     if total_tokens <= 0:
         raise BenchmarkFailure("chat usage ledger contains no positive token total")
+    _require_chat_dispatch_rows(payload, row_count, expected_engine, min_rows)
     latest = payload.get("latest")
     if not isinstance(latest, dict) or not isinstance(latest.get("engine"), str) or not latest["engine"].strip():
         raise BenchmarkFailure("chat usage ledger has no effective engine provenance")
-    if expected_engine and latest["engine"].strip().lower() != expected_engine:
+    if latest["engine"].strip().lower() != expected_engine:
         raise BenchmarkFailure(
             f"chat usage ledger engine {latest['engine']!r} does not match requested {expected_engine!r}"
         )
     return payload
+
+
+def _require_chat_dispatch_rows(
+    payload: dict, row_count: int, expected_engine: str, min_rows: int
+) -> None:
+    """Require complete content-free identity rows for the chat turns."""
+    rows = payload.get("rows")
+    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+        raise BenchmarkFailure("chat usage ledger has no per-dispatch identity rows")
+    if len(rows) != row_count:
+        raise BenchmarkFailure(
+            f"chat usage ledger row_count {row_count} disagrees with identity rows {len(rows)}"
+        )
+    chat_rows = [row for row in rows if row.get("purpose") == "chat_turn"]
+    if len(chat_rows) < min_rows:
+        raise BenchmarkFailure(
+            f"chat usage ledger contains fewer than {min_rows} chat-turn row(s): {len(chat_rows)}"
+        )
+    mismatched = [
+        row.get("engine")
+        for row in chat_rows
+        if not isinstance(row.get("engine"), str)
+        or row["engine"].strip().lower() != expected_engine
+    ]
+    if mismatched:
+        raise BenchmarkFailure(
+            f"chat usage ledger chat-turn engine(s) {mismatched!r} do not all match "
+            f"requested {expected_engine!r}"
+        )
 
 
 def _require_session_id(payload: Any) -> str:
@@ -322,6 +375,7 @@ def _print_tool_events(events: list[dict]) -> None:
 
 async def _run_benchmark() -> None:
     print("🚀 Starting Long-Horizon Orchestration Benchmark...")
+    engine = _require_explicit_engine()
 
     # 1. Get Admin Token
     admin_pass = os.getenv("ADMIN_PASSWORD", "").strip()
@@ -362,8 +416,7 @@ async def _run_benchmark() -> None:
         }
 
         chat_headers = dict(headers)
-        if ENGINE:
-            chat_headers["x-istara-agent-engine"] = ENGINE
+        chat_headers["x-istara-agent-engine"] = engine
 
         print("⏳ Waiting for SSE stream (this will log all agent actions & tool calls)...")
         print("-" * 50)
@@ -470,7 +523,7 @@ async def _run_benchmark() -> None:
         _require_status(usage_res, "chat usage ledger inspection")
         usage_payload = _require_usage_ledger(
             _json_payload(usage_res, "chat usage ledger inspection"),
-            expected_engine=ENGINE,
+            expected_engine=engine,
         )
         print(
             "✅ Usage ledger proves both turns: "
