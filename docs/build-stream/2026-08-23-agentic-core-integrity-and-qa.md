@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T14:54:57Z, ledger: L-361 }
+last: { agent: gpt-5-codex, at: 2026-08-27T14:55:53Z, ledger: L-362 }
 next_action: "Continue F-R9-114 with idempotent/retry-safe synthetic receipts and deeper Done/report traceability assertions; then obtain owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
 ```
 
@@ -8585,7 +8585,7 @@ running; `~/Istara-Projects/models` contains zero files; and the retake has no
 `.env.deploy`. No host package installation, Docker image pull, provider
 request, model load, benchmark workload, or test-data deletion was performed.
 
-The repository gate after this slice is Compass Forge record `295` with zero
+The repository gate after this slice is Compass Forge record `296` with zero
 new issues relative to the baseline. Existing inherited secret-flow,
 complexity, route/type, and large-file conditions remain tracked separately;
 the lifecycle document's path-scoped large-file suppression remains active.
@@ -8593,3 +8593,21 @@ The cross-suite Python teardown hang remains an inherited fixture-lifecycle
 debt signal rather than a passing acceptance claim. F-R9-114 remains open for
 idempotency, genuine human reconciliation/Done/report proof, and the
 owner-approved live three-model Docker run.
+
+### L-362 | 2026-08-27T14:55:53Z | S5-ship&learn | gpt-5-codex | final lifecycle-tip parity receipt
+
+The lifecycle receipt from L-361 is itself committed and pushed as
+`9209ae2600824b2be3cad948f5d446d0aac14f2f`
+(`docs: record synthetic reconciliation parity receipt`). The local `testing`
+branch, `origin/testing`, and detached Mac Studio retake
+`~/istara-testing-retake-47bf` now all resolve to that exact final tip and are
+clean. The implementation commit remains `8af702d3...`; the final branch tip
+includes its ledger receipt and is the SHA that must be used for any retake.
+
+The Mac Studio parity check again used only the pre-existing
+`/usr/local/bin/docker`: client/server `29.7.2`, unrelated healthy `plex` only,
+zero files under `~/Istara-Projects/models`, and no retake `.env.deploy`. No
+host install, image pull, provider request, model load, live benchmark, or
+testing-data deletion occurred. This closes transport for the current slice;
+F-R9-114 remains open for idempotency, human Done/report proof, and the
+owner-approved live three-model Docker acceptance run.
