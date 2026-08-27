@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T07:12:00Z, ledger: L-280 }
-next_action: "Keep deterministic coverage and transport closed at d8550aba; await an owner-authorized Docker-only Mac Studio window, verify the archive in-container, then run provider/Petals/combined Research Spine retakes and attach complete evidence before closing G0/G1/live G2–G22."
+last: { agent: gpt-5-codex, at: 2026-08-27T07:16:00Z, ledger: L-281 }
+next_action: "Keep deterministic coverage and transport closed; await an owner-authorized Docker-only Mac Studio window, verify the archive in-container, then run provider/Petals/combined Research Spine retakes and attach complete evidence before closing G0/G1/live G2–G22."
 ```
 
 ## Plan overview / roadmap
@@ -6440,3 +6440,13 @@ The local parity check remains clean at `d8550aba`: `HEAD`, `testing`, and
 Research Spine/authority work is therefore safely handed off; live G0/G1 and
 G2-G22 remain pending the owner-authorized Docker-only prerequisites documented
 above.
+
+### L-281 | 2026-08-27T07:16:00Z | S5-ship&learn | gpt-5-codex | final resumability checkpoint
+
+The top Build Stream status now avoids pinning the handoff to an older
+implementation SHA: the latest commits include ledger-only receipts, while the
+tested code correction is already transported and the branch remains clean. The
+next agent should read L-278 through L-280, inspect the exact pushed tip with
+`git rev-parse HEAD testing origin/testing`, and treat live G0/G1/G2-G22 as open
+until the owner authorizes the Docker-only Mac Studio retake. No further code or
+remote-host action was taken in this checkpoint.
