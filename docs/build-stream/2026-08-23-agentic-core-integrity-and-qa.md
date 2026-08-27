@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:02:16Z, ledger: L-232 }
+last: { agent: gpt-5-codex, at: 2026-08-27T02:04:21Z, ledger: L-233 }
 next_action: "When live prerequisites are authorized, resolve origin/testing at launch time on Mac Studio, materialize a clean detached checkout, then run the Docker-only provider/Petals retake with three provisioned model routes and preserve artifacts."
 ```
 
@@ -5128,3 +5128,29 @@ interoperability, artifacts, teardown, and parity).
 Next: commit and push this bounded remediation to `testing`, verify exact remote parity, run the
 Compass Forge after-gate, then re-check Mac Studio's Docker-only prerequisites at the exact SHA.
 If G0 remains unavailable, record `not_run` and leave CF-15 open.
+
+### L-233 | 2026-08-27T02:04:21Z | S5-ship&learn | gpt-5-codex | verifier | Phase 9
+
+Did: Transported the bounded ensemble-evidence remediation to `origin/testing` and attached
+Compass Forge evidence records `74`–`78` for deterministic checks, generated feature docs,
+after-gate, exact parity, and the passive remote preflight. Re-checked the Mac Studio at the
+new exact SHA without starting any service or model activity.
+
+Result: local `testing` and `origin/testing` are equal at
+`aec8d98d9f1c9b5911d31a90e98950b1b046b8fd`; the local worktree is clean. Compass Forge
+after-gate record `115` remains `fail` only for inherited `secret_flow` and the explicitly
+suppressed path-scoped large historical ledger; the comparison has no new issues, forbidden
+dependencies, import cycles, or actionable failures. Mac Studio reports `users-Mac-Studio.local`,
+macOS `26.5`, Docker server `29.7.2`, and only the unrelated healthy `plex` project/container.
+No Istara/benchmark containers are running, so no live campaign is available to follow.
+
+Verified: `87` focused Research Spine/Pi tests, `21` MoA tests, `10` topology tests, `72`
+real-user benchmark checks, feature docs check for `86` features, syntax checks, `git diff
+--check`, exact Git parity, and the passive SSH/Docker command. No host installation, model
+load, provider call, volume deletion, or unrelated workload mutation occurred.
+
+Next: remain at G0/G1 with status `not_run` until owner-authorized provider credit and three
+Compose-served model routes exist. At launch time materialize a fresh detached checkout of this
+SHA, run only the Docker-owned provider/Petals/combined profiles, and preserve every G0–G22
+artifact. CF-15 remains open; deterministic evidence cannot substitute for live Research Spine
+reliability, reconciliation, Done/report, two-call, long-horizon, Petals, and teardown proof.
