@@ -8243,3 +8243,59 @@ long-horizon receipts, redaction, and teardown remain unverified. Next is a
 static audit of the actual ensemble/test harness and its provider-served
 identity assertions; a live run still requires owner-approved Docker-only
 model/provider inputs.
+
+### L-350 | 2026-08-27T13:39:00Z | S2-execute/S3-review | gpt-5-codex | deterministic entrypoint and Research Spine acceptance-path audit
+
+The real-user benchmark's authoritative deterministic command is
+`npm run check`, and it passed all 89 Node tests plus syntax checks. Before this
+checkpoint, `npm --prefix tests/real_user_benchmark test` failed because the
+package exposed no `test` script. The package now defines `test` as an alias for
+`check`, so agents and CI have one conventional, non-live entrypoint. Re-running
+`npm --prefix tests/real_user_benchmark test` passed all 89 tests. This change
+does not start Docker, load a model, contact a provider, or alter live workload
+selection.
+
+The substantive audit found a more important open harness gap. A successful
+three-model coding run persists code applications as `review_status=pending`
+and `reconciliation_status=unreconciled`. `validateCodingRun()` correctly
+requires every application to be accepted/reconciled/approved and requires a
+same-run accepted/revised reconciliation decision, but `run.mjs` only approves
+Task rows. It never calls the per-application review/reconciliation endpoint.
+Therefore a live benchmark can prove distinct served model identities,
+source-grounded open-code payloads, and Fleiss/Krippendorff metrics, yet still
+cannot reach the accepted Research Spine state. This is a fail-closed
+limitation (not a false positive), but it makes the current “accepted coding”
+acceptance profile incomplete unless a separately governed reviewer action is
+performed.
+
+Required remediation before claiming end-to-end Research Spine acceptance:
+
+1. Add an explicit, opt-in benchmark reconciliation phase (default off) that
+   fetches only applications from the current coding run, verifies exact run,
+   project, evidence-unit, source-span, coder, and served-model provenance, and
+   submits one per-application review decision through the public API. Never
+   use bulk approval or silently mark model output human-approved.
+2. Give that phase a distinct synthetic-test reviewer identity and receipt field
+   (for example `benchmark_synthetic_reconciliation=true`) so reports cannot be
+   mistaken for real human research acceptance. The default provider/combined
+   profiles must remain blocked when the opt-in is absent.
+3. Add deterministic tests for: disabled-by-default behavior; exact run scoping;
+   rejection of foreign application IDs; rejected/modified decisions remaining
+   blocked; accepted/revised decisions becoming eligible only after all rows are
+   reconciled; and preservation of source-span/model provenance in the receipt.
+4. Add a Docker-only live acceptance profile that runs the phase against three
+   independently served donor routes, then checks the full chain
+   `Evidence Units -> three coders -> Fleiss + Krippendorff companion ->
+   reconciliation -> approved Done task -> report gate`, with redacted receipts.
+   Keep real human approval as a separate non-automated gate; synthetic
+   reconciliation is test evidence, not publishable research evidence.
+5. Strengthen live traceability assertions beyond non-empty summary keys:
+   verify graph edges, exact coding-run/application/decision counts, report-gate
+   status, task Done approval, and protected provenance fields. Record any
+   missing edge as a blocker rather than allowing a structural “present” flag.
+
+The package alias closes only the deterministic invocation defect. The
+reconciliation gap remains open and is now the next implementation target. No
+provider request, model load, host installation, or Docker workload was
+started; Mac Studio execution remains blocked on owner-approved Docker-only
+model/provider inputs, a valid `.env.deploy`, and redacted receipts.
