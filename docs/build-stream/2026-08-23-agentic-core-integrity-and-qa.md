@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T14:55:53Z, ledger: L-362 }
+last: { agent: gpt-5-codex, at: 2026-08-27T14:56:40Z, ledger: L-363 }
 next_action: "Continue F-R9-114 with idempotent/retry-safe synthetic receipts and deeper Done/report traceability assertions; then obtain owner-approved provider/model inputs for the Docker-only three-model Mac Studio run. Keep synthetic receipts non-reportable and do not start live workloads without those inputs."
 ```
 
@@ -8611,3 +8611,20 @@ host install, image pull, provider request, model load, live benchmark, or
 testing-data deletion occurred. This closes transport for the current slice;
 F-R9-114 remains open for idempotency, human Done/report proof, and the
 owner-approved live three-model Docker acceptance run.
+
+### L-363 | 2026-08-27T14:56:40Z | S5-ship&learn | gpt-5-codex | final branch-tip transport receipt
+
+After L-362, the final ledger edit was committed and pushed as
+`20a1ae96a8cd6cb32a3a3650fd7a42384a390584`. Local `testing`,
+`origin/testing`, and detached Mac Studio retake
+`~/istara-testing-retake-47bf` all resolve to this exact clean tip. This is
+the authoritative checkout SHA for the next agent; the implementation and
+prior receipts are in its ancestry.
+
+The final passive SSH check used only the existing `/usr/local/bin/docker`:
+Docker client/server `29.7.2`, unrelated healthy `plex` only, zero model files,
+and no retake `.env.deploy`. No host installation, image pull, provider
+request, model load, live workload, or test-data deletion occurred. F-R9-114
+remains open for idempotent synthetic receipts, human reconciliation and
+Done/report traceability proof, and the owner-approved three-model Docker
+acceptance run.
