@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T05:01:20Z, ledger: L-266 }
+last: { agent: gpt-5-codex, at: 2026-08-27T05:02:21Z, ledger: L-267 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -6021,3 +6021,30 @@ permitted until an authorized fresh detached checkout supplies those prerequisit
 and produces raw source-span, three-served-identity, grounded rating, numeric
 Fleiss/Krippendorff, reconciliation, human-Done/report, both-loop-mode,
 two-call/long-horizon, Petals, redaction, and teardown evidence.
+
+### L-267 | 2026-08-27T05:02:21Z | S3-gate/S5-ship&learn | gpt-5-codex | transported gate receipt
+
+Verified after transport of commit `12d8d251be0976f17b92ec08e338fd2238de73b8`:
+the pinned-native Compass Forge `gate after --task CF-15 --summary` is evidence
+`125`, with `new_issue_count=0`, `new_failures=0`, no actionable failures, no
+cycles, and no new warnings. The global status remains `fail` only because the
+repository's inherited inventory is still `31` failures and `209` warnings,
+including the established secret-flow, historical complexity, route, and type
+drift findings; none is newly attributable to this checkpoint.
+
+Transport is exact across `HEAD`, local `testing`, and `origin/testing`; the
+worktree and `git diff --check` are clean. The external findings register at
+`/Users/user/Desktop/testing.md` remains append-only and intentionally outside
+the repository. The Mac Studio was not started or mutated: passive Docker
+inspection still shows only the unrelated healthy Plex container, no Istara or
+Petals workload, and no provider/model routes or artifacts.
+
+Boundary/next: deterministic contracts and their transport are complete for this
+checkpoint, but the live scientific gate is not. Keep G0/G1 and live G2-G22 open
+until a future authorized Docker-only run from a fresh detached `origin/testing`
+checkout verifies archive provenance, Compose isolation, three distinct
+provider-served model identities over common raw source spans, one grounded
+non-duplicate rating per model/unit, numeric Fleiss/Krippendorff reliability,
+reconciliation, human-Done/report promotion, both loop modes through shared PI
+Model Management, two-call/long-horizon behavior, Petals interoperability,
+redacted artifacts, and teardown.
