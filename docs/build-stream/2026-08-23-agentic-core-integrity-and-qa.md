@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T20:02:04Z, ledger: L-408 }
+last: { agent: gpt-5-codex, at: 2026-08-27T20:02:35Z, ledger: L-409 }
 next_action: "Obtain owner-approved Docker provider inputs, then run the live three-model Research Spine proof and separately verify Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
@@ -9875,3 +9875,12 @@ No worktree or branch was removed: the only recovery worktree is unmerged and th
 not safe cleanup. The next executable step is owner-approved Docker-only provisioning of
 three provider-served model identities, followed by the provider/Petals/Research Spine
 and long-horizon acceptance matrix in the blueprint.
+
+### L-409 | 2026-08-27T20:02:35Z | S3-review | gpt-5-codex | Push reconciliation checkpoint
+
+The blueprint/documentation commit was followed by a ledger-only checkpoint and
+push (`68bf9bfb8cfac52f0e5bcc8a989b2757c0fa71fa`). `testing` and `origin/testing`
+remain equal and clean. No live provider or Petals workload was started because
+the required owner-approved Docker inputs are still absent; the next agent should
+resume at Workstream C, not reinterpret the deterministic `425`/`100` suites as
+scientific acceptance.
