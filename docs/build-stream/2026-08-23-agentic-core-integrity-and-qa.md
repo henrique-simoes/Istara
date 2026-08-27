@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T11:34:50Z, ledger: L-331 }
-next_action: "Resume the owner-approved Docker-only live matrix only when current env/config, served model identities, donor inputs, and redacted artifact paths exist; keep every live gate fail-closed."
+last: { agent: gpt-5-codex, at: 2026-08-27T11:52:03Z, ledger: L-333 }
+next_action: "Run the remaining deterministic PI/Research Spine matrix and review the live-gate inputs; start Docker-only Mac Studio execution only after current owner-approved env/config, served identities, donor inputs, and redacted artifact paths exist."
 ```
 
 ## Plan overview / roadmap
@@ -7795,3 +7795,49 @@ teardown remain blocked on current owner-approved Docker-only env/config,
 served identities, donor/model inputs, and redacted artifacts. The next audit
 pass must preserve this fail-closed boundary while checking any remaining
 engine-selector and Research Spine acceptance gaps.
+
+### L-332 | 2026-08-27T11:47:44Z | S2-execute/S3-review | gpt-5-codex | project-scoped Petals preflight hardening
+
+The deeper provider/Petals audit found that legacy/Istara chat's stub-plane
+preflight called `has_non_stub_source()` without the request project id. The
+Pi resolver also stopped at the first catalog entry, so an unauthorized
+project-scoped Petals projection could create a false admission or hide a later
+authorized donor. The resolver now carries `project_id` through
+`has_non_stub_source()` and `resolve_model_source()`, passes it to
+`PiModelManager.resolve()`, and continues over candidates that are not admitted;
+the `/chat` route supplies the project scope before any side effect. The living
+model-controls contract documents this shared governed path, and external
+finding F-R9-106 records the original gap and its residual live-proof boundary.
+
+Verification passed: `pytest -q tests/test_model_source.py
+tests/test_chat.py` (`25` tests), the scoped route/source subset (`12` tests),
+Ruff on the changed resolver/test files, feature documentation generation and
+check (`224` generated artifacts; `86/86` checked), and `git diff --check`.
+The full `chat.py` Ruff file check remains an inherited baseline failure with
+unrelated pre-existing import/order/line-length issues; no such cleanup was
+introduced in this slice. The strict live provider/Petals/combined matrix,
+semantic three-model outputs, Fleiss/Krippendorff quality, reconciliation,
+human Done/report promotion, and Docker-only Mac Studio execution remain
+blocked on current owner-approved env/config, served identities, donor/model
+inputs, and redacted receipts.
+
+### L-333 | 2026-08-27T11:52:03Z | S3-review/S5-ship&learn | gpt-5-codex | broad deterministic regression and evidence checkpoint
+
+The project-scoped preflight remediation was exercised against the full
+deterministic surface, not only its new unit cases. Compass evidence `251`
+records the focused source/chat contract tests (`25` passed), `252` records the
+real-user benchmark package (`89` passed), and `253` records the broader PI,
+Pi-benchmark, Research Spine validity, and end-to-end matrix (`701` passed,
+`5` skipped with runtime warnings treated as errors). Evidence `254` records
+changed-file Ruff plus `git diff --check`, and `255` records feature-doc
+generation/check (`224` generated; `86/86` checked). Evidence `256` records
+the native Rust after-gate: `new_issue_count=0`, `new_failures=0`, with the
+repository's inherited gate status still `fail` and no new warnings.
+
+No live provider request, model load, host installation, or Mac Studio
+workload occurred. The strict provider/Petals/combined live matrix, semantic
+three-model output quality, Fleiss/Krippendorff evidence, reconciliation,
+human Done/report promotion, and Docker-only Mac Studio execution remain
+blocked on current owner-approved env/config, served identities, donor/model
+inputs, and redacted receipts. The next step is transport, push, and final
+detached-checkout/Docker parity evidence for this checkpoint.

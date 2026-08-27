@@ -676,7 +676,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
     if getattr(settings, "llm_provider_contract_stub", False):
         from app.core.agentic.model_source import has_non_stub_source
 
-        if resolved_engine != "pi" and not await has_non_stub_source():
+        if resolved_engine != "pi" and not await has_non_stub_source(request.project_id):
             _chat_log.warning(
                 "Chat rejected: stub provider plane and no non-stub source (project=%s, engine=%s)",
                 request.project_id,

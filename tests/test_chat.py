@@ -342,6 +342,14 @@ async def test_chat_blocked_when_provider_is_contract_stub(monkeypatch):
     from app.core.agentic import model_source as _ms
 
     monkeypatch.setattr(_ms, "_pi_manager", lambda: _FakeManager([]))
+    scoped_preflight: dict[str, str | None] = {}
+    original_has_non_stub_source = _ms.has_non_stub_source
+
+    async def _scoped_has_non_stub_source(project_id: str | None = None) -> bool:
+        scoped_preflight["project_id"] = project_id
+        return await original_has_non_stub_source(project_id)
+
+    monkeypatch.setattr(_ms, "has_non_stub_source", _scoped_has_non_stub_source)
 
     await init_db()
     if not settings.jwt_secret:
@@ -369,6 +377,7 @@ async def test_chat_blocked_when_provider_is_contract_stub(monkeypatch):
     assert response.status_code == 200
     assert "provider_stub_chat_blocked" in response.text
     assert "qa-contract-response" not in response.text
+    assert scoped_preflight["project_id"] == project_id
 
     # Fail-closed means fail BEFORE side effects: no session or message rows.
     from app.models.message import Message as _Message

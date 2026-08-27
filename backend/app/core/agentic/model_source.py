@@ -53,7 +53,7 @@ def _pi_manager():
     return PiModelManager()
 
 
-async def _configured_pi_endpoint(model: str | None):
+async def _configured_pi_endpoint(model: str | None, project_id: str | None = None):
     """Return one admitted pi-managed endpoint matching *model*, else None.
 
     Endpoints whose provider_kind is ``openai_codex`` are excluded here: that
@@ -69,18 +69,24 @@ async def _configured_pi_endpoint(model: str | None):
             for info in manager.catalog()
             if getattr(info, "provider_kind", "") != "openai_codex"
         ]
-        if not candidates:
-            return None
         if model:
-            matches = [info for info in candidates if str(getattr(info, "model", "")) == model]
-            if not matches:
-                return None
-            target = matches[0]
-        else:
-            target = candidates[0]
-        return manager.resolve(
-            endpoint_id=getattr(target, "endpoint_id", None), model=model or None
-        )
+            candidates = [
+                info for info in candidates if str(getattr(info, "model", "")) == model
+            ]
+        for target in candidates:
+            try:
+                return manager.resolve(
+                    endpoint_id=getattr(target, "endpoint_id", None),
+                    model=model or None,
+                    project_id=project_id,
+                )
+            except Exception:  # noqa: BLE001 — skip an inadmissible candidate
+                # A project-scoped Petals projection may be visible in the
+                # catalog but not authorized for this request. Continue to a
+                # later admitted endpoint instead of letting catalog order
+                # decide availability or leaking cross-project capacity.
+                continue
+        return None
     except Exception:  # noqa: BLE001 — resolution is best-effort; registry path remains
         logger.debug("model_source: pi-managed resolution unavailable", exc_info=True)
         return None
@@ -102,7 +108,9 @@ def _local_direct_model() -> str | None:
     return None
 
 
-async def resolve_model_source(model: str | None = None) -> ModelSource | None:
+async def resolve_model_source(
+    model: str | None = None, project_id: str | None = None
+) -> ModelSource | None:
     """Resolve one turn's model source by the approved precedence.
 
     Returns ``None`` when no non-stub source can serve the request; callers
@@ -110,7 +118,7 @@ async def resolve_model_source(model: str | None = None) -> ModelSource | None:
     """
     # 1/2/3 — an explicit model selection resolves across planes by name.
     if model:
-        endpoint = await _configured_pi_endpoint(model)
+        endpoint = await _configured_pi_endpoint(model, project_id)
         if endpoint is not None:
             return ModelSource(
                 plane=PLANE_PI_MANAGED,
@@ -148,7 +156,7 @@ async def resolve_model_source(model: str | None = None) -> ModelSource | None:
             api_key="",
             model=local_model,
         )
-    endpoint = await _configured_pi_endpoint(None)
+    endpoint = await _configured_pi_endpoint(None, project_id)
     if endpoint is not None:
         return ModelSource(
             plane=PLANE_PI_MANAGED,
@@ -160,6 +168,6 @@ async def resolve_model_source(model: str | None = None) -> ModelSource | None:
     return None
 
 
-async def has_non_stub_source() -> bool:
+async def has_non_stub_source(project_id: str | None = None) -> bool:
     """Whether ANY non-stub source could serve a legacy-plane turn right now."""
-    return await resolve_model_source(None) is not None
+    return await resolve_model_source(None, project_id=project_id) is not None

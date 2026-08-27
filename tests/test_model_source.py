@@ -275,3 +275,65 @@ async def test_codex_family_excluded_from_istara_bridge(monkeypatch):
     settings.llm_provider_contract_stub = True  # hide the local plane so the pi fallback is exercised
     source = await ms.resolve_model_source(None)
     assert source is not None and source.endpoint_id == "ep-deepseek"
+
+
+@pytest.mark.asyncio
+async def test_pi_source_resolution_skips_unauthorized_petals_and_passes_project_scope(monkeypatch):
+    """Legacy preflight must use the requested project's governed donor view.
+
+    Petals projections are intentionally visible in the manager catalog, but
+    only the project's allow-list may make one executable. The resolver must
+    skip an earlier donor from another project and continue to a later
+    authorized endpoint instead of making catalog order a cross-project
+    availability oracle.
+    """
+    from app.core.agentic import model_source as ms
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    class _ProjectScopedManager(_FakeManager):
+        def __init__(self):
+            super().__init__([
+                ("pi-petals-other", "shared-model"),
+                ("pi-petals-project-a", "shared-model"),
+            ])
+            self.project_ids: list[str | None] = []
+
+        def resolve(self, *, endpoint_id=None, model=None, project_id=None, **kwargs):
+            self.project_ids.append(project_id)
+            if endpoint_id == "pi-petals-other" and project_id == "project-a":
+                raise PiEndpointResolutionError("petals_project_not_authorized")
+            # Resolve by exact endpoint in the fake; the real manager also
+            # preserves endpoint identity when a model name is duplicated.
+            return super().resolve(endpoint_id=endpoint_id, model=None, **kwargs)
+
+    manager = _ProjectScopedManager()
+    monkeypatch.setattr(ms, "_pi_manager", lambda: manager)
+    settings.llm_provider_contract_stub = True
+
+    source = await ms.resolve_model_source("shared-model", project_id="project-a")
+
+    assert source is not None
+    assert source.endpoint_id == "pi-petals-project-a"
+    assert manager.project_ids == ["project-a", "project-a"]
+
+
+@pytest.mark.asyncio
+async def test_has_non_stub_source_is_false_for_cross_project_petals(monkeypatch):
+    """A stub-marked legacy chat cannot be admitted by another project's donor."""
+    from app.core.agentic import model_source as ms
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    class _OtherProjectManager(_FakeManager):
+        def resolve(self, *, endpoint_id=None, model=None, project_id=None, **kwargs):
+            if endpoint_id == "pi-petals-other":
+                raise PiEndpointResolutionError("petals_project_not_authorized")
+            return super().resolve(endpoint_id=endpoint_id, model=model, **kwargs)
+
+    monkeypatch.setattr(
+        ms,
+        "_pi_manager",
+        lambda: _OtherProjectManager([("pi-petals-other", "donated-model")]),
+    )
+    settings.llm_provider_contract_stub = True
+
+    assert await ms.has_non_stub_source("project-a") is False
