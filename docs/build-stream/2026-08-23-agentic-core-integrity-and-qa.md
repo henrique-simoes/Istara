@@ -8039,3 +8039,21 @@ checkpoint. No live provider request, model load, host installation, or Docker
 workload was started; all semantic, reliability, source-grounding, reconciliation,
 human Done/report, Petals, two-call/long-horizon, and teardown claims remain
 blocked on owner-approved Docker-only inputs.
+
+### L-342 | 2026-08-27T12:48:00Z | S5-ship&learn | gpt-5-codex | report wording transport and detached parity
+
+The report-consensus boundary fix and L-341 checkpoint are transported as
+commit `3112e188` on `origin/testing`. Local `testing`, `origin/testing`, and
+the detached Mac Studio retake all resolve to that SHA; both worktrees are
+clean. The retake reports Docker Server `29.7.2`, only unrelated `plex` is
+running, model-file count is `0`, and `.env.deploy` is absent. The checkout was
+refreshed through Git only; no Docker workload, image pull, host installation,
+provider request, or model load was started.
+
+This parity proves transport and the Docker-only boundary, not live semantic
+quality. The remaining Research Spine acceptance gates—three independently
+served model identities, source-span grounding, independent coded evidence-unit
+matrices, Fleiss/Cohen/Krippendorff reliability, reconciliation, human
+Done/report promotion, Petals cooperation/revocation, same-session two-call and
+long-horizon receipts, redaction, and teardown—remain unverified until
+owner-approved Docker-only runtime inputs and redacted receipts exist.
