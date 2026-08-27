@@ -152,6 +152,32 @@ def test_istara_qa_sh_seed_unset_input_propagates_generated_run_id():
     assert "istara-qa-local" not in seen
 
 
+def test_istara_qa_governance_and_collection_are_container_only():
+    """The Mac Studio wrapper must not run repository Python on the host."""
+    script = (ROOT / "scripts" / "istara-qa.sh").read_text(encoding="utf-8")
+    qa = script[script.index("cmd_qa()"):script.index("cmd_collect()")]
+    collect = script[script.index("cmd_collect()"):script.index("cmd_reset()")]
+
+    assert "run_qa_python scripts/check_feature_obligations.py" in qa
+    assert "run_qa_python scripts/check_qa_capabilities.py" in qa
+    assert "python \"$ROOT/scripts/" not in qa
+    assert "run_qa_python qa/scripts/audit_qa.py" in collect
+    assert "python \"$ROOT/qa/scripts/" not in collect
+    assert "--build" in script
+    assert "--no-deps" in script
+    assert '"$ROOT:/workspace:ro"' in script
+
+
+def test_istara_qa_reset_is_docker_only_and_requires_explicit_confirmation():
+    script = (ROOT / "scripts" / "istara-qa.sh").read_text(encoding="utf-8")
+    reset = script[script.index("cmd_reset()"):script.index("cmd_down()")]
+
+    assert "python" not in reset
+    assert '"${COMPOSE[@]}" -p "$PROJECT" down -v' in reset
+    assert 'QA_CONFIRM:-RESET-ISTARA-QA-RUN' not in reset
+    assert 'QA_CONFIRM=RESET-ISTARA-QA-RUN' in reset
+
+
 def test_qa_seeder_depends_on_healthy_backend():
     text = QA_COMPOSE.read_text(encoding="utf-8")
     assert "condition: service_healthy" in text

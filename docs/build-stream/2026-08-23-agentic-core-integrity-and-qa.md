@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T21:16:13Z, ledger: L-420 }
+last: { agent: gpt-5-codex, at: 2026-08-27T21:23:28Z, ledger: L-421 }
 next_action: "Preserve the dirty Mac Studio checkout and create a disposable Docker-only checkout at the pushed testing tip, then obtain owner-approved provider inputs and run the live three-model Research Spine proof separately from Petals, human reconciliation/Done/report, two-call, and long-horizon gates; keep deterministic evidence separate."
 ```
 
@@ -10100,3 +10100,30 @@ Next: use an explicit disposable Docker-only checkout/volume on Mac Studio
 pointing at `origin/testing` `49a24c96`, without touching `~/istara-testing`;
 then run the provider/Petals and full Research Spine acceptance matrix only
 after the required owner-approved provider inputs are available.
+
+### L-421 | 2026-08-27T21:23:28Z | S2-execute/S3-review | gpt-5-codex | QA wrapper now honors the Docker-only host boundary
+
+Audit found that `scripts/istara-qa.sh` still invoked repository Python on the
+Mac Studio host for `qa`, `collect`, and `reset`, even though DEC-11 requires
+the Mac Studio to remain a Docker host/control plane. The wrapper now runs the
+governance checks and QA auditor in the disposable `qa-backend` container with
+the checkout read-only and only ignored `artifacts/` and `qa/runs/` surfaces
+writable. Reset is direct Compose orchestration (still Docker-only), validates
+the run id and protected artifact names, and requires an explicit
+`QA_CONFIRM=RESET-ISTARA-QA-RUN`; no default confirmation silently authorizes
+teardown.
+
+Added regression coverage for container-only governance/collection and
+fail-closed reset confirmation. Verified: `bash -n scripts/istara-qa.sh`;
+`python -m pytest -q tests/test_qa_stack_contract.py tests/test_qa_reset_seed.py
+tests/test_feature_docs.py` = `41 passed`; feature docs regenerated (`224`
+site artifacts, `86/86` checks); `git diff --check` clean; Compass Forge
+after-gate reports `actionable_failures=[]`, `new_issue_count=0`, and
+`new_failures=0` while preserving inherited repository gate debt (`31`
+failures/`211` warnings). Compass evidence `413` records the commands and
+result. No model load, remote mutation, host package installation, or live
+service start occurred.
+
+Next: commit and push this wrapper/docs/test change, re-check local and
+`origin/testing` SHA equality, then continue the deterministic Pi/Petals and
+Research Spine audit while the Mac Studio provider-input gate remains open.

@@ -36,6 +36,25 @@ usage() {
   sed -n '2,20p' "${BASH_SOURCE[0]}"
 }
 
+# Run QA Python tooling in the disposable QA image. The Mac Studio shell may
+# orchestrate Docker and create bounded artifact directories, but it must not
+# execute repository Python/Node workloads on the host. The source checkout is
+# mounted read-only; only the ignored QA/artifact output surfaces are writable.
+run_qa_python() {
+  local script="$1"
+  shift
+  local -a mounts=( -v "$ROOT:/workspace:ro" )
+  if [ -d "$ROOT/artifacts" ]; then
+    mounts+=( -v "$ROOT/artifacts:/workspace/artifacts:rw" )
+  fi
+  if [ -d "$ROOT/qa/runs" ]; then
+    mounts+=( -v "$ROOT/qa/runs:/workspace/qa/runs:rw" )
+  fi
+  "${COMPOSE[@]}" -p "$PROJECT" run --rm -T --no-deps --build \
+    "${mounts[@]}" -w /workspace qa-backend \
+    python "/workspace/$script" "$@"
+}
+
 cmd_render() {
   docker compose -f "$ROOT/docker-compose.qa.yml" --profile "$PROFILE" config --quiet
   echo "QA compose contract renders (profile=$PROFILE)."
@@ -75,25 +94,47 @@ cmd_seed() {
 }
 
 cmd_qa() {
-  python "$ROOT/scripts/check_feature_obligations.py" --base "${QA_BASE:-origin/testing}" --head HEAD \
-    --json-out "$ROOT/artifacts/feature-obligations.json"
-  python "$ROOT/scripts/check_qa_capabilities.py"
+  mkdir -p "$ROOT/artifacts"
+  run_qa_python scripts/check_feature_obligations.py \
+    --base "${QA_BASE:-origin/testing}" --head HEAD \
+    --json-out artifacts/feature-obligations.json
+  run_qa_python scripts/check_qa_capabilities.py
   echo "Registry-selected QA obligations evaluated for run=$RUN_ID."
 }
 
 cmd_collect() {
   local out="$ROOT/qa/runs/$RUN_ID"
   mkdir -p "$out"
-  python "$ROOT/qa/scripts/audit_qa.py" --run-id "$RUN_ID" \
+  run_qa_python qa/scripts/audit_qa.py --run-id "$RUN_ID" \
     --source-sha "${QA_SOURCE_SHA:-$(git -C "$ROOT" rev-parse HEAD)}" \
     --image-digest "${QA_IMAGE_DIGEST:-}" \
-    --json-out "$out/audit-report.json"
+    --runs-dir /workspace/qa/runs \
+    --json-out "/workspace/qa/runs/$RUN_ID/audit-report.json"
   echo "Evidence collected under $out (sanitized)."
 }
 
 cmd_reset() {
-  python "$ROOT/qa/scripts/reset_qa.py" --run-id "$RUN_ID" \
-    --confirm "${QA_CONFIRM:-RESET-ISTARA-QA-RUN}" "${QA_DRY_RUN:+--dry-run}"
+  if ! [[ "$RUN_ID" =~ ^[a-z0-9][a-z0-9_-]{0,63}$ ]]; then
+    echo "unsafe QA run id: $RUN_ID" >&2
+    exit 2
+  fi
+  local normalized="${RUN_ID,,}"
+  case "$normalized" in
+    *llms*|*model_finetuning*)
+      echo "refusing reset: run id resolves toward a protected artifact folder" >&2
+      exit 2
+      ;;
+  esac
+  if [ "${QA_CONFIRM:-}" != "RESET-ISTARA-QA-RUN" ]; then
+    echo "QA reset requires QA_CONFIRM=RESET-ISTARA-QA-RUN" >&2
+    exit 2
+  fi
+  if [ -n "${QA_DRY_RUN:-}" ]; then
+    echo "QA reset (dry-run) completed for project=$PROJECT"
+    echo "command: docker compose -f $ROOT/docker-compose.qa.yml -p $PROJECT down -v"
+    return 0
+  fi
+  "${COMPOSE[@]}" -p "$PROJECT" down -v
   echo "Reset completed for project=$PROJECT (this run only)."
 }
 
