@@ -5,11 +5,11 @@ item: agentic-core-integrity-and-qa
 branch: testing
 cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
-stage: S4-remediate
+stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T02:18:05Z, ledger: L-237 }
-next_action: "Commit and push the fail-closed benchmark-oracle remediation, then remain at G0/G1 until the owner supplies provider credit and three Compose-served model routes for the Docker-only Mac Studio retake."
+last: { agent: gpt-5-codex, at: 2026-08-27T02:20:34Z, ledger: L-238 }
+next_action: "At the next authorized live window, resolve the launch-time origin/testing SHA, materialize a fresh detached checkout on Mac Studio, and execute the Docker-only provider/Petals/combined G0–G22 retake; until then leave G0/G1 not_run."
 ```
 
 ## Plan overview / roadmap
@@ -5214,6 +5214,32 @@ Next: no additional local code or infrastructure mutation is justified while G0 
 Resume with the launch-time `origin/testing` SHA, fresh detached Docker checkout, and the
 G0–G22 live matrix; leave CF-15 open until the real provider/Petals/Research Spine evidence is
 complete and independently reviewable.
+
+### L-238 | 2026-08-27T02:20:34Z | S5-ship&learn | gpt-5-codex | verifier | Phase 9
+
+Did: Committed the fail-closed Research Spine benchmark-oracle remediation and pushed it to
+`origin/testing` at `1b94f23dfc9b1552631ac6ef8772f1b6d6d20ffb`. Local `testing` and
+`origin/testing` are equal and the worktree is clean. The commit includes the probe/test
+regressions, the Ensemble Health feature-doc contract plus generated site/manifest, and this
+Build Stream checkpoint; the shared audit file records F-R9-58.
+
+Verified: Compass Forge command evidence `85` records 74 Node benchmark subtests, 87 focused
+Python Research Spine/Pi tests, 21 MoA tests, 10 topology tests, feature-doc generation/check,
+and `git diff --check`; passive Mac Studio prerequisite evidence `86` records host
+`users-Mac-Studio.local`, macOS `26.5`, Docker `29.7.2`, only unrelated healthy Plex, and no
+matching benchmark containers, networks, volumes, or model/Petals images. No host install,
+model load, provider call, service start, pull, or deletion occurred.
+
+Boundary: the deterministic oracle now fails closed on missing or vacuous contract, traceability,
+RAG, or telemetry payloads, but deterministic success still cannot prove live three-model bias
+reduction. G0/G1 remain `not_run`; CF-15 remains open pending owner-authorized provider credit,
+three Compose-served model identities, and the complete Docker-only G0–G22 artifact matrix.
+
+Next: when prerequisites exist, re-resolve `origin/testing` immediately, create a fresh detached
+checkout on Mac Studio, render Compose before startup, run the provider, Petals, and combined
+profiles, and preserve route/model identity, raw-span coding, Fleiss/Krippendorff, grounding,
+reconciliation, human-Done/report, two-call, long-horizon, interoperability, teardown, and
+Compass Forge evidence. Do not overwrite the stale owner-dirty named checkout.
 
 ### L-237 | 2026-08-27T02:18:05Z | S4-remediate | gpt-5-codex | implementer/verifier | Phase 9
 
