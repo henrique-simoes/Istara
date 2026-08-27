@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S5-ship&learn
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5-codex, at: 2026-08-27T04:08:13Z, ledger: L-256 }
+last: { agent: gpt-5-codex, at: 2026-08-27T04:11:20Z, ledger: L-257 }
 next_action: "Keep G0/G1 and live G2–G22 open; at the next authorized window use a fresh detached origin/testing checkout, verify its archive digest inside Docker, and execute provider/Petals/combined retakes with three served model identities before claiming Research Spine completion."
 ```
 
@@ -5791,3 +5791,29 @@ verify the canonical archive digest inside Docker, render Compose, then run prov
 profiles with three actual served identities, common raw evidence spans, grounded non-duplicate
 ratings, Fleiss/Krippendorff reliability, reconciliation, human-Done/report promotion, both loop
 modes through shared Pi Model Management, two-call/long-horizon artifacts, redaction, and teardown.
+
+### L-257 | 2026-08-27T04:11:20Z | S2-execute/S3-review | gpt-5-codex | live prerequisite audit and blocker receipt
+
+Did: Audited the supported Docker-only three-model runner contract against the Mac Studio state.
+The model root `/Users/user/Istara-Projects/models`, mounted read-only inside an Alpine container,
+contains no files; a read-only Docker search of `/Users/user` found no `.gguf`, `.safetensors`, or
+model-server `Modelfile` artifacts. The Docker image inventory has no llama.cpp/Ollama model image.
+The only running workload remains unrelated healthy Plex. A disposable container performed passive
+GET checks against the usual host provider/model ports 1234, 11434, 8000, 18112, and 18113; all
+returned `Network is unreachable`. No chat request, model load, image pull, service start, or host
+installation occurred.
+
+Finding: appended F-R9-69 to `/Users/user/Desktop/testing.md`. The supported wrapper will correctly
+fail before Compose/model work because the required Compose-managed Gemma file and both llama.cpp
+donor files are absent. The stale dirty `/Users/user/istara-testing` checkout and its old
+backend/frontend/provider-stub images are not live model evidence and remain untouched.
+
+Verified: the two orphaned anonymous PostgreSQL volumes were removed in L-256; only named
+`pi-agent-home` remains. The repository remains clean after the prior transport commit and no
+protected `LLMs/` or `Model_Finetuning/` artifact was touched.
+
+Boundary/next: G0/G1 and live G2–G22 remain open. Before any live claim, an owner-authorized window
+must provision three exact model files or three explicit provider routes inside Docker-only scope,
+create a fresh detached checkout at `origin/testing`, compute and verify its canonical archive digest,
+then run provider, Petals, and combined profiles in order. A deterministic green run cannot replace
+this missing runtime provenance.
