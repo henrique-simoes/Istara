@@ -43,6 +43,11 @@ function makeReconciledApplications(runId, count = 12, expectedUnits = makeSubst
       return {
         source_text: unit.source_text,
         source_location: unit.source_location,
+        start_offset: unit.start_offset ?? null,
+        end_offset: unit.end_offset ?? null,
+        code_id: "workflow-contradiction",
+        confidence: 0.9,
+        reasoning: "The source describes a concrete workflow contradiction that fits this code.",
       };
     })(),
     id: `${runId}-application-${index + 1}`,
@@ -703,6 +708,96 @@ test("three-donor benchmark rejects fabricated or re-located source spans", asyn
     logger.issues[0].evidence.application_coverage.source_location_mismatches.map((item) => item.evidence_unit_id),
     ["eu-1"],
   );
+});
+
+test("three-donor benchmark rejects applications without substantive open-code payload", async () => {
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const units = makeSubstantiveUnits().map((unit, index) => ({
+    ...unit,
+    start_offset: index * 100,
+    end_offset: index * 100 + unit.source_text.length,
+  }));
+  const rows = makeReconciledApplications("run-code-payload-gap", 12, units);
+  rows[0] = {
+    ...rows[0],
+    code_id: "",
+    reasoning: "",
+    confidence: null,
+  };
+  rows[1] = { ...rows[1], start_offset: 999 };
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/code-applications/")) return rows;
+      if (path.includes("/reconciliation-decisions")) return makeReconciliationDecisions("run-code-payload-gap");
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return units;
+      if (path.includes("/coding-runs")) return [{ id: "run-code-payload-gap" }];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return {
+        id: "run-code-payload-gap",
+        status: "completed",
+        promotion_status: "accepted",
+        code_application_count: 12,
+        reliability_method: "fleiss_kappa_with_krippendorff_alpha_companion",
+        distinct_model_count: 3,
+        rater_count: 3,
+        kappa: 0.81,
+        alpha: 0.79,
+        route_evidence: makeServedModelRoutes(),
+      };
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-code-payload-gap",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+    expectedDistinctCoders: 3,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(featureResults.multiModelResearchSpineValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /substantive open-code payload/i);
+  assert.deepEqual(logger.issues[0].evidence.application_coverage.missing_code_payloads, [
+    {
+      id: "run-code-payload-gap-application-1",
+      evidence_unit_id: "eu-1",
+      has_code_id: false,
+      has_reasoning: false,
+    },
+  ]);
+  assert.deepEqual(logger.issues[0].evidence.application_coverage.invalid_confidence_rows, [
+    {
+      id: "run-code-payload-gap-application-1",
+      evidence_unit_id: "eu-1",
+      confidence: null,
+    },
+  ]);
+  assert.deepEqual(logger.issues[0].evidence.application_coverage.source_offset_mismatches, [
+    {
+      id: "run-code-payload-gap-application-2",
+      evidence_unit_id: "eu-2",
+      expected_start_offset: 100,
+      observed_start_offset: 999,
+      expected_end_offset: 100 + units[1].source_text.length,
+      observed_end_offset: 100 + units[1].source_text.length,
+    },
+  ]);
+  assert.equal(logger.issues[0].evidence.application_coverage.invalid_rows[0].confidence_valid, false);
 });
 
 test("three-model coding blocks when an application omits a coder-unit span or provenance", async () => {

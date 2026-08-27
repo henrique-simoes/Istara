@@ -44,14 +44,20 @@ function assessApplicationCoverage(
   const invalidRows = [];
   const sourceSpanMismatches = [];
   const sourceLocationMismatches = [];
+  const sourceOffsetMismatches = [];
+  const missingCodePayloads = [];
+  const invalidConfidenceRows = [];
   const applicationIdCounts = new Map();
   for (const row of Array.isArray(rows) ? rows : []) {
     const applicationId = String(row?.id || "").trim();
     const codingRunId = String(row?.coding_run_id || "").trim();
     const coderId = String(row?.coder_id || "").trim();
     const unitId = String(row?.evidence_unit_id || "").trim();
+    const codeId = String(row?.code_id || "").trim();
     const sourceText = String(row?.source_text || "").trim();
     const sourceLocation = String(row?.source_location || "").trim();
+    const reasoning = String(row?.reasoning || "").trim();
+    const confidence = row?.confidence;
     const route = row?.route_evidence && typeof row.route_evidence === "object"
       ? row.route_evidence
       : null;
@@ -61,6 +67,29 @@ function assessApplicationCoverage(
     const expectedUnit = expectedUnitsById.get(unitId);
     const expectedSourceText = String(expectedUnit?.source_text || "").trim();
     const expectedSourceLocation = String(expectedUnit?.source_location || "").trim();
+    const expectedStartOffset = expectedUnit?.start_offset;
+    const expectedEndOffset = expectedUnit?.end_offset;
+    const startOffsetRequired = expectedStartOffset !== null
+      && expectedStartOffset !== undefined
+      && expectedStartOffset !== "";
+    const endOffsetRequired = expectedEndOffset !== null
+      && expectedEndOffset !== undefined
+      && expectedEndOffset !== "";
+    const observedStartOffset = row?.start_offset;
+    const observedEndOffset = row?.end_offset;
+    const startOffsetMatches = !startOffsetRequired
+      || (Number.isInteger(Number(observedStartOffset))
+        && Number(observedStartOffset) === Number(expectedStartOffset));
+    const endOffsetMatches = !endOffsetRequired
+      || (Number.isInteger(Number(observedEndOffset))
+        && Number(observedEndOffset) === Number(expectedEndOffset));
+    const sourceOffsetsMatch = startOffsetMatches && endOffsetMatches;
+    const confidenceValid = confidence !== null
+      && confidence !== undefined
+      && confidence !== ""
+      && Number.isFinite(Number(confidence))
+      && Number(confidence) >= 0
+      && Number(confidence) <= 1;
     // The API persists the coder's quote, not a synthetic summary. Require
     // that quote to be a contiguous substring of the exact selected raw unit
     // and that the persisted location remains bound to that unit. Non-empty
@@ -72,12 +101,39 @@ function assessApplicationCoverage(
       expectedSourceLocation && sourceLocation && sourceLocation === expectedSourceLocation,
     );
     const routeServed = String(route?.outcome || "").toLowerCase() === "served";
+    if (!codeId || !reasoning) {
+      missingCodePayloads.push({
+        id: applicationId,
+        evidence_unit_id: unitId,
+        has_code_id: Boolean(codeId),
+        has_reasoning: Boolean(reasoning),
+      });
+    }
+    if (!confidenceValid) {
+      invalidConfidenceRows.push({
+        id: applicationId,
+        evidence_unit_id: unitId,
+        confidence,
+      });
+    }
+    if (!sourceOffsetsMatch) {
+      sourceOffsetMismatches.push({
+        id: applicationId,
+        evidence_unit_id: unitId,
+        expected_start_offset: expectedStartOffset ?? null,
+        observed_start_offset: observedStartOffset ?? null,
+        expected_end_offset: expectedEndOffset ?? null,
+        observed_end_offset: observedEndOffset ?? null,
+      });
+    }
     if (applicationId) {
       applicationIdCounts.set(applicationId, (applicationIdCounts.get(applicationId) || 0) + 1);
     }
     if (!applicationId || !normalizedExpectedRunId || codingRunId !== normalizedExpectedRunId
-      || !coderId || !expectedUnitIds.has(unitId) || !sourceText || !sourceLocation
+      || !coderId || !expectedUnitIds.has(unitId) || !codeId || !sourceText || !sourceLocation
+      || !reasoning || !confidenceValid
       || !sourceSpanGrounded || !sourceLocationMatches
+      || !sourceOffsetsMatch
       || !routeServed || !servedModel || !rowModel || rowModel !== servedModel
       || (expectedModels.size > 0 && !expectedModels.has(normalizedRowModel))) {
       invalidRows.push({
@@ -86,11 +142,17 @@ function assessApplicationCoverage(
         expected_coding_run_id: normalizedExpectedRunId,
         coder_id: coderId,
         evidence_unit_id: unitId,
+        code_id: codeId,
+        has_code_id: Boolean(codeId),
+        has_reasoning: Boolean(reasoning),
+        confidence,
+        confidence_valid: confidenceValid,
         has_source_text: Boolean(sourceText),
         has_source_location: Boolean(sourceLocation),
         expected_source_location: expectedSourceLocation,
         source_span_grounded: sourceSpanGrounded,
         source_location_matches: sourceLocationMatches,
+        source_offsets_match: sourceOffsetsMatch,
         route_served: routeServed,
         served_model: servedModel,
         row_model: rowModel,
@@ -184,6 +246,9 @@ function assessApplicationCoverage(
     unexpected_served_model_identities: unexpectedServedModelIdentities,
     source_span_mismatches: sourceSpanMismatches,
     source_location_mismatches: sourceLocationMismatches,
+    source_offset_mismatches: sourceOffsetMismatches,
+    missing_code_payloads: missingCodePayloads,
+    invalid_confidence_rows: invalidConfidenceRows,
     invalid_rows: invalidRows,
   };
 }
@@ -397,8 +462,8 @@ async function validateCodingRun({
         ? `Research Spine coding proved ${distinctModelCount}/${requiredCoders} backend-reported model coders but only ${servedModelCount}/${requiredCoders} distinct served model identities in route evidence.`
       : !algorithmOk
         ? `Research Spine validation did not prove the required reliability algorithm with numeric Fleiss kappa and Krippendorff alpha (observed ${reliabilityMethod || "unknown"}, kappa=${kappa ?? "missing"}, alpha=${alpha ?? "missing"}).`
-        : !coverageOk
-          ? `Research Spine code applications did not prove complete coder-by-evidence-unit coverage and source/served-model provenance (${coverageEvidence?.observed_coder_count || 0} coders, ${coverageEvidence?.missing_pairs?.length || 0} missing pairs, ${coverageEvidence?.invalid_rows?.length || 0} invalid rows).`
+      : !coverageOk
+          ? `Research Spine code applications did not prove complete coder-by-evidence-unit coverage, substantive open-code payload, and source/served-model provenance (${coverageEvidence?.observed_coder_count || 0} coders, ${coverageEvidence?.missing_pairs?.length || 0} missing pairs, ${coverageEvidence?.invalid_rows?.length || 0} invalid rows).`
       : `Research Spine coding used ${servedDonorRouteCount}/${requiredDonorRoutes} required distinct served donor routes.`;
     blockers.push(detail);
     logger.issue({

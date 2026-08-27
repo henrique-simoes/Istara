@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T11:07:28Z, ledger: L-327 }
+last: { agent: gpt-5-codex, at: 2026-08-27T11:20:01Z, ledger: L-328 }
 next_action: "Resume the owner-approved Docker-only live matrix only when current env/config, served model identities, donor inputs, and redacted artifact paths exist; keep every live gate fail-closed."
 ```
 
@@ -7683,3 +7683,35 @@ Mac Studio workload occurred. This append changes the tip; read the final SHA fr
 post-commit parity evidence. The live provider/Petals/combined matrix remains
 blocked on owner-approved Docker-only env/config, three served model routes, donor
 inputs, and redacted artifacts.
+
+### L-328 | 2026-08-27T11:20:01Z | S2-execute/S3-review | gpt-5-codex | substantive coding payload oracle hardening
+
+The deterministic Research Spine acceptance oracle now verifies the persisted
+`CodeApplication` payload against the qualitative coding protocol instead of
+accepting a row solely because it has a quote and route receipt. Every row must
+carry a non-empty governed `code_id`, non-empty analytic `reasoning`, and a
+numeric confidence in `[0, 1]`; when the selected evidence unit exposes
+`start_offset`/`end_offset`, the persisted application must preserve both exact
+offsets. The oracle records dedicated evidence arrays for missing payload,
+invalid confidence, and offset mismatches, and includes those rows in the
+fail-closed coverage gate. This closes a false-positive path where ORM defaults
+or paraphrase-only applications could appear reconciled while violating the
+required open-coding output schema.
+
+Regression coverage now includes a three-donor fixture with missing code,
+rationale, confidence, and a mismatched source offset; it must block the
+multi-model Research Spine result and expose the exact invalid fields. The
+Ensemble Health feature contract and generated site/manifest now document this
+requirement and reference the regression suite.
+
+Verification passed: focused Research Spine oracle (`28` tests), full real-user
+benchmark harness (`88` tests), targeted Python contract/runner suite (`77`
+tests), broader PI/Research Spine matrix (`245` tests), feature documentation
+generation/check (`224` generated; `86/86` checked), and `git diff --check`.
+Ruff was not applicable to the JavaScript files (its parser rejected the file
+type); the package's `node --check` and test harness are the authoritative
+syntax checks and passed. No live provider request, model load, host
+installation, or Mac Studio workload occurred. The ledger append changes the
+tip; final SHA and remote parity must be read from the post-commit evidence.
+The strict Docker-only live matrix remains blocked on owner-approved current
+env/config, three served model identities, donor inputs, and redacted artifacts.
