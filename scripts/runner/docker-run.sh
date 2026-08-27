@@ -151,7 +151,10 @@ if [[ -n "${ISTARA_BENCHMARK_PROBE_SCRIPT:-}" ]]; then
 elif [[ -n "${ISTARA_BENCHMARK_DONOR_TOPOLOGY:-}" ]]; then
   PROBE_SCRIPT="probe:deep:three-model"
 else
-  PROBE_SCRIPT="probe:${ISTARA_BENCHMARK_ENGINE}"
+  # The engine is supplied per disposable runner below. Use the generic npm
+  # probe script here so a comparison run can select both engines without
+  # dereferencing an unset outer-shell ISTARA_BENCHMARK_ENGINE under `set -u`.
+  PROBE_SCRIPT="probe"
 fi
 case "$PROBE_SCRIPT" in
   probe|probe:deep|probe:deep:three-model|probe:legacy|probe:pi) ;;

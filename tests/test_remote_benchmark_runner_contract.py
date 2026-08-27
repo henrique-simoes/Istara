@@ -203,6 +203,13 @@ def test_remote_runner_handles_optional_compose_arrays_under_bash_nounset():
     assert '    postgres provider-stub backend frontend caddy "${COMPOSE_DONOR_SERVICES[@]}"' not in outer
 
 
+def test_remote_runner_uses_generic_probe_until_each_engine_is_bound():
+    outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
+
+    assert 'PROBE_SCRIPT="probe"' in outer
+    assert 'PROBE_SCRIPT="probe:${ISTARA_BENCHMARK_ENGINE}"' not in outer
+
+
 def test_manual_marathon_wrapper_fails_closed_outside_docker():
     wrapper = (ROOT / "scripts/marathon/start-marathon.sh").read_text(encoding="utf-8")
     inner = (ROOT / "scripts/runner/inside.sh").read_text(encoding="utf-8")
