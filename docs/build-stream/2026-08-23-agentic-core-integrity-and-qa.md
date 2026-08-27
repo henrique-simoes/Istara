@@ -5331,11 +5331,12 @@ model path.
 
 ### L-241 | 2026-08-27T02:28:00Z | S5-ship&learn | gpt-5-codex | verifier | Phase 9
 
-Did: Added the final transport receipt after the ledger checkpoint itself was committed. The
-current `testing` tip is `1ed2723ac68c207f2f4b75f3471aaae97c10c8f7`; `git rev-parse HEAD`,
-`git ls-remote origin refs/heads/testing`, and the worktree status all agree and are clean.
-Compass Forge evidence `90` carries the corrected SHA (superseding the earlier intermediate
-checkpoint receipt `89`).
+Did: Added the final transport receipt after the terminology-audit checkpoint was committed.
+The preceding transport tip was `1ed2723ac68c207f2f4b75f3471aaae97c10c8f7`; Compass Forge
+evidence `90` carries that corrected SHA (superseding the earlier intermediate receipt `89`).
+This ledger entry is itself a subsequent documentation checkpoint, so the launch procedure must
+always re-resolve `git rev-parse HEAD` and `git ls-remote origin refs/heads/testing` immediately
+before the live run; the worktree is clean at each pushed checkpoint.
 
 Verified: the after-gate still reports zero new issues, zero new failures, zero cycles, and no
 actionable failures. Its failing status is inherited repository `secret_flow`/large-file debt
