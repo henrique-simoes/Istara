@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs"
-last: { agent: gpt-5-codex, at: 2026-08-27T11:04:42Z, ledger: L-325 }
+last: { agent: gpt-5-codex, at: 2026-08-27T11:05:25Z, ledger: L-326 }
 next_action: "Resume the owner-approved Docker-only live matrix only when current env/config, served model identities, donor inputs, and redacted artifact paths exist; keep every live gate fail-closed."
 ```
 
@@ -7647,3 +7647,20 @@ parity commands; this checkpoint deliberately does not embed a self-referential
 SHA. The strict live acceptance matrix remains open and blocked on owner-approved
 current env/config, provider-served model identities, three model/donor inputs, and
 redacted artifacts.
+
+### L-326 | 2026-08-27T11:05:25Z | S5-ship&learn | gpt-5-codex | final transport handoff for this slice
+
+After the companion-boundary commit, the detached Mac Studio testing retake was
+passively fetched and checked out at `origin/testing`; its worktree is clean and
+its local/remote refs agree. The Docker daemon was queried only through the
+existing `/usr/local/bin/docker` binary and reports Server `29.7.2`. No Istara,
+provider, Petals, benchmark, donor, or model-serving container is present; the
+model directory is empty and the retake has no `.env.deploy`. The unrelated
+healthy Plex container remains untouched. No host package, model, provider
+request, or workload was started.
+
+This closes the current deterministic audit/documentation slice. The final SHA
+must be read from the post-append parity evidence rather than copied into this
+ledger file. Resume at the owner-input provisioning gate, then run the strict
+Docker-only provider, Petals, combined, two-call/long-horizon, three-rater
+Fleiss/Krippendorff, reconciliation, human-Done/report, and teardown matrix.
