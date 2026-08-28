@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "The saved Mac Studio stores contain Codex OAuth and the requested Qwen model bindings, but the referenced DASHSCOPE_API_KEY is absent from the deployment env, both runtime-secret volumes, local/remote process environments, and inspected Keychain handles; Research Spine remains fail-closed until that credential is available to the disposable Docker process and all live receipts pass"
-last: { agent: gpt-5-codex, at: 2026-08-28T11:29:41Z, ledger: L-484, commit: 1314c22 }
-next_action: "Continue every credential-independent CF and Docker preparation gate from a clean detached origin/testing checkout; once DASHSCOPE_API_KEY is resolved, inject it only through the transient mode-600 runner env file and execute the exact three-model acceptance without touching the dirty owner checkout."
+last: { agent: gpt-5-codex, at: 2026-08-28T11:39:52Z, ledger: L-485, commit: cd4eeb9 }
+next_action: "Run the two live Qwen identity/thinking smokes as soon as DASHSCOPE_API_KEY is present in the disposable mode-600 env file, then execute the identity-bound three-rater Research Spine/tool/restart campaign; Luna OAuth and the clean Docker stack are already live-proven."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -11795,3 +11795,38 @@ Codex OAuth availability is proven only as custody presence, not as a new live t
 continues on clean-checkout and credential-independent gates; the exact blocking input is
 the referenced regular-DashScope credential becoming available to the disposable Docker
 runner without entering Git, command arguments, logs, chat, or the stale owner checkout.
+
+### L-485 | 2026-08-28T11:39:52Z | S2-execute/S3-review | gpt-5-codex | Clean Docker stack and Luna 0.84.3 live receipt
+
+The custody checkpoint was committed as `cd4eeb9b` and pushed to
+`origin/testing`. A new single-branch Mac Studio checkout at
+`$HOME/istara-runs/r9-final-cd4eeb9b` resolves to the same full SHA,
+`cd4eeb9b546db9b3e7faa8bc486efd2a498756c3`, with no source changes. Its
+mode-600 deployment env renders `docker-compose.vps.yml` successfully. The first
+image build failed before any layer because the SSH PATH omitted Docker Desktop's
+credential helper; retrying with Docker Desktop's standard resource path built the
+backend, frontend, and provider-stub images successfully. The disposable
+`istara-r9-final` project then reached healthy Postgres, provider-stub, backend,
+and frontend states; backend `/api/health` returned 200. Caddy is running and has
+no configured Docker healthcheck. The unrelated Plex workload remained untouched.
+
+Startup also emitted inherited warnings that remain explicit evidence, not hidden
+success: the configured WebAuthn origins do not match the localhost RP ID, and the
+database compatibility migration attempts duplicate-column ALTERs against already
+present columns before startup completes. Neither warning prevented backend health,
+but neither is represented as remediated by this run.
+
+For the authorized live provider check, the existing OpenAI OAuth store was cloned
+into a disposable Pi home volume and Pi coding agent `0.84.3` was installed into a
+separate Docker volume. A networked container then invoked exactly one no-tools,
+no-session request with provider `openai-codex`, model `gpt-5.6-luna`, and
+`thinking=high`. It completed through `openai-codex-responses` with served model
+`gpt-5.6-luna`, exact output `ISTARA_LUNA_OK`, stop reason `stop`, 367 input /
+9 output / 376 total tokens, and non-zero priced usage. The original OAuth volume
+was not mounted or mutated by the live call.
+
+This closes only the Luna identity/OAuth smoke. It is not a tool-call,
+three-rater, reliability, reconciliation, human-Done/report, Petals, two-call, or
+restart-resume receipt. At this checkpoint `DASHSCOPE_API_KEY` is still absent
+from the disposable env file, so no Qwen request has been attempted and the
+provider ensemble remains fail-closed.
