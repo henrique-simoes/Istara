@@ -7,9 +7,9 @@ cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
 stage: S2-execute/S3-review
 status: in-progress
-blocked_on: "Owner-approved Docker-only Mac Studio provisioning: Codex Luna OAuth completion and exact provider/base URL for Qwen 3.7 Plus/Flash; live acceptance remains fail-closed until three identities are served"
-last: { agent: gpt-5-codex, at: 2026-08-28T02:25:00Z, ledger: L-466, commit: d2b58d69 }
-next_action: "Reconcile the disposable Mac Studio Docker checkout to d2b58d69, then obtain a valid Token Plan credential/provider contract (or explicit approval for regular Qwen Cloud substitution), complete Codex Luna OAuth, and run only the provider/Petals/combined profiles whose three served identities and Research Spine receipts can be proven."
+blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
+last: { agent: gpt-5-codex, at: 2026-08-28T02:51:35Z, ledger: L-467, commit: 05fce32d }
+next_action: "Inject the regular DashScope key into one disposable Mac Studio container process, run Pi 0.84.3 qwen3.7-plus and qwen3.7-flash through the custom models.json contract with thinking enabled, then run the combined three-rater Research Spine profile and prove source spans, Fleiss/Krippendorff agreement, reconciliation, Done/report gates, two-call, and long-horizon receipts."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -11160,3 +11160,44 @@ reconciliation, human-Done/report promotion, two-call causality, and
 long-horizon restart/resume remain open. All probes and package verification
 were run in Docker; no host package was installed and no protected model
 artifact was changed.
+
+### L-467 | 2026-08-28T02:51:35Z | S2-execute/S3-review | gpt-5-codex | Codex OAuth receipt and regular DashScope catalog alignment
+
+The disposable Mac Studio checkout was refreshed to `44e88431`, which forces
+Pi's Codex Responses binding onto its observable SSE transport for Research
+Spine identity capture. A deliberate Docker-only Pi 0.84.3 provider turn using
+the existing OAuth credential completed with `served_model=gpt-5.6-luna`,
+`stop=stop`, `input=18`, `output=5`, `total=23`, `turns=1`, and a non-zero
+priced cost. This closes the prior successful-but-unidentifiable WebSocket
+smoke. The run emitted no visible thinking delta despite the requested high
+thinking level; that is recorded as provider behavior, not treated as proof of
+hidden reasoning.
+
+The supplied Pi custom-provider instructions were exercised in a disposable
+Docker volume only. Pi CLI 0.84.3 accepted `~/.pi/agent/models.json` with the
+regular DashScope base URL, `$DASHSCOPE_API_KEY`, Qwen compatibility flags, and
+both `qwen3.7-plus`/`qwen3.7-flash`; with a probe env (no secret), `pi
+--list-models dashscope` listed both as reasoning/image-capable 1M-context,
+65.5K-output models. The host Mac Studio received no Pi install or config.
+
+Because PI Model Management previously had no `dashscope` provider, a catalog
+selection would have been rejected as `unknown pi provider` even though the
+custom Pi file was valid. TDD red tests reproduced this for both Qwen models;
+the minimal fix adds a separate regular-DashScope provider identity and exact
+catalog rows (including the OpenAI-compatible URL, reasoning/image metadata,
+and zero pricing from the supplied contract). Focused catalog tests now pass
+(`16 passed`), manager/ensemble/Research-Spine contracts pass (`54 passed`),
+Pi runtime tests pass (`50/50`), and feature-doc generation/check passes
+(`224` artifacts, `86` features). Commit: `05fce32d`.
+
+This is deliberately not a Token Plan claim. The owner-supplied credential was
+previously observed to authenticate regular DashScope and to return 401 at the
+Pi Token Plan endpoints; Token Plan also lacks `qwen3.7-flash` in its 0.84.3
+catalog. A live Qwen run therefore remains pending until the same credential is
+injected ephemerally as `DASHSCOPE_API_KEY` inside one disposable Docker
+container. No three-rater Research Spine result, Fleiss/Krippendorff score,
+source-grounded reconciliation, human Done/report promotion, two-call
+causality, or long-horizon restart/resume result is counted yet. Compass Forge
+before-gate record `402` found no new issues relative to the inherited baseline;
+its existing complexity/type-drift/oversized-ledger warnings remain separate
+debt and are not silently marked resolved.
