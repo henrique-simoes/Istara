@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: Codex Luna OAuth completion and exact provider/base URL for Qwen 3.7 Plus/Flash; live acceptance remains fail-closed until three identities are served"
-last: { agent: gpt-5-codex, at: 2026-08-28T02:12:00Z, ledger: L-465, commit: b3318504f832cf8bd47a36240eb5c5dc7577a1a4 }
-next_action: "Build the pinned Pi 0.84.3 runtime in a disposable Mac Studio Docker checkout, complete Codex Luna OAuth, then provision the owner-specified Qwen Plus/Flash provider inside Docker only; run provider, Petals, and combined profiles with two-call/long-horizon enabled and keep all Research Spine promotion gates open until immutable receipts exist."
+last: { agent: gpt-5-codex, at: 2026-08-28T02:25:00Z, ledger: L-466, commit: d2b58d69 }
+next_action: "Reconcile the disposable Mac Studio Docker checkout to d2b58d69, then obtain a valid Token Plan credential/provider contract (or explicit approval for regular Qwen Cloud substitution), complete Codex Luna OAuth, and run only the provider/Petals/combined profiles whose three served identities and Research Spine receipts can be proven."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
