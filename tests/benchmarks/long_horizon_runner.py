@@ -63,14 +63,20 @@ def _tool_call_count(events: list[dict]) -> int:
 
 
 def _require_done_tool_contract(
-    events: list[dict], operation: str, *, required_tools: tuple[str, ...] = ()
+    events: list[dict],
+    operation: str,
+    *,
+    required_tools: tuple[str, ...] = (),
+    require_tool_result: bool = False,
 ) -> dict:
     """Require the terminal SSE event to account for every executed tool call.
 
     A streamed answer can look successful even when the model only *mentions* a
     tool.  The chat route's terminal ``done.tools_used`` list is the route-level
     execution receipt, so the benchmark compares it with canonical ``tool_call``
-    events and optionally requires a specific tool for the scenario.
+    events and optionally requires a specific tool for the scenario.  Pi's
+    governed path can also prove the causal chain: call -> redacted authority
+    receipt -> later model content.  The receipt has no raw tool output.
     """
     done_events = [event for event in events if event.get("type") == "done"]
     if not done_events:
@@ -96,6 +102,38 @@ def _require_done_tool_contract(
         raise BenchmarkFailure(
             f"{operation} did not report required executed tool(s): {', '.join(missing_required)}"
         )
+    if require_tool_result and called_tools:
+        calls = [
+            (index, event)
+            for index, event in enumerate(events)
+            if event.get("type") == "tool_call" and isinstance(event.get("tool"), str)
+        ]
+        receipts = [
+            (index, event)
+            for index, event in enumerate(events)
+            if event.get("type") == "tool_result"
+        ]
+        receipt_indexes: list[int] = []
+        for call_index, call in calls:
+            call_id = call.get("tool_call_id")
+            matching = [
+                (receipt_index, receipt)
+                for receipt_index, receipt in receipts
+                if receipt_index > call_index
+                and receipt.get("tool") == call.get("tool")
+                and receipt.get("tool_call_id") == call_id
+            ]
+            if not isinstance(call_id, str) or not call_id or not matching:
+                raise BenchmarkFailure(
+                    f"{operation} tool call {call.get('tool')!r} has no matching tool-result receipt"
+                )
+            receipt_indexes.append(matching[0][0])
+        final_receipt = max(receipt_indexes)
+        if not any(
+            index > final_receipt and event.get("type") == "chunk" and event.get("content")
+            for index, event in enumerate(events)
+        ):
+            raise BenchmarkFailure(f"{operation} has no model response after tool-result receipt")
     return done
 
 
@@ -529,6 +567,7 @@ async def _run_benchmark() -> None:
             stream_events,
             "first long-horizon chat turn",
             required_tools=("create_task",),
+            require_tool_result=engine == "pi",
         )
         print(f"✅ First terminal receipt: tools_used={first_done['tools_used']}")
         # Token accounting comes from provider-reported usage (or the usage ledger),

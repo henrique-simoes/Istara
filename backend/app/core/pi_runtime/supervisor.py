@@ -450,6 +450,19 @@ class PiRuntimeSupervisor:
                             }
                         )
                         yield frame
+                        # The worker receives the full authority result above,
+                        # but callers need a safe execution receipt to prove a
+                        # tool round-trip.  Never reflect ``result`` or the
+                        # detailed error: either can contain project data or a
+                        # provider/tool secret.  This synthetic observation is
+                        # local to the Python stream, not a second worker frame.
+                        yield {
+                            "type": "tool.result",
+                            "run_id": run_id,
+                            "tool_call_id": frame.get("tool_call_id"),
+                            "name": frame.get("name"),
+                            "ok": bool(outcome.get("ok")),
+                        }
                         continue
                     yield frame
                     if ftype in TERMINAL_RUN_TYPES:

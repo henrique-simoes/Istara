@@ -282,7 +282,24 @@ async def _generate_pi_runtime(
                     yield "data: " + json.dumps({"type": "chunk", "content": text}) + "\n\n"
             elif etype == "tool_call":
                 yield "data: " + json.dumps(
-                    {"type": "tool_call", "tool": event.get("tool"), "params": event.get("params", {})}
+                    {
+                        "type": "tool_call",
+                        "tool": event.get("tool"),
+                        "params": event.get("params", {}),
+                        "tool_call_id": event.get("tool_call_id"),
+                    }
+                ) + "\n\n"
+            elif etype == "tool_result":
+                # Public SSE observes authority execution without exposing its
+                # raw result/error.  That lets the client and benchmark prove
+                # the causal tool round-trip while retaining project privacy.
+                yield "data: " + json.dumps(
+                    {
+                        "type": "tool_result",
+                        "tool": event.get("tool"),
+                        "tool_call_id": event.get("tool_call_id"),
+                        "ok": bool(event.get("ok")),
+                    }
                 ) + "\n\n"
             elif etype == "error":
                 status = "error"

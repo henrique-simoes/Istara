@@ -58,20 +58,52 @@ def test_tool_call_oracle_counts_canonical_events_only():
 
 def test_done_oracle_requires_executed_tools_to_be_reported():
     events = [
-        {"type": "tool_call", "tool": "create_task"},
+        {"type": "tool_call", "tool": "create_task", "tool_call_id": "call-1"},
+        {"type": "tool_result", "tool": "create_task", "tool_call_id": "call-1", "ok": True},
+        {"type": "chunk", "content": "The task was created."},
         {"type": "done", "message_id": "msg-1", "tools_used": ["create_task"]},
     ]
-    done = long_horizon_runner._require_done_tool_contract(events, "first turn")
+    done = long_horizon_runner._require_done_tool_contract(
+        events, "first turn", require_tool_result=True
+    )
     assert done["message_id"] == "msg-1"
 
 
 def test_done_oracle_rejects_tool_calls_missing_from_terminal_event():
     events = [
-        {"type": "tool_call", "tool": "create_task"},
+        {"type": "tool_call", "tool": "create_task", "tool_call_id": "call-1"},
+        {"type": "tool_result", "tool": "create_task", "tool_call_id": "call-1", "ok": True},
+        {"type": "chunk", "content": "The task was created."},
         {"type": "done", "message_id": "msg-1", "tools_used": []},
     ]
     with pytest.raises(long_horizon_runner.BenchmarkFailure, match="does not report executed tool"):
-        long_horizon_runner._require_done_tool_contract(events, "first turn")
+        long_horizon_runner._require_done_tool_contract(
+            events, "first turn", require_tool_result=True
+        )
+
+
+def test_done_oracle_rejects_missing_tool_execution_receipt():
+    events = [
+        {"type": "tool_call", "tool": "create_task", "tool_call_id": "call-1"},
+        {"type": "chunk", "content": "The task was created."},
+        {"type": "done", "message_id": "msg-1", "tools_used": ["create_task"]},
+    ]
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="no matching tool-result receipt"):
+        long_horizon_runner._require_done_tool_contract(
+            events, "first turn", require_tool_result=True
+        )
+
+
+def test_done_oracle_rejects_tool_receipt_without_a_later_model_response():
+    events = [
+        {"type": "tool_call", "tool": "create_task", "tool_call_id": "call-1"},
+        {"type": "tool_result", "tool": "create_task", "tool_call_id": "call-1", "ok": True},
+        {"type": "done", "message_id": "msg-1", "tools_used": ["create_task"]},
+    ]
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="no model response after tool-result"):
+        long_horizon_runner._require_done_tool_contract(
+            events, "first turn", require_tool_result=True
+        )
 
 
 def test_task_queue_oracle_requires_project_scoped_persisted_task():

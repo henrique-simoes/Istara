@@ -1130,6 +1130,17 @@ def _map_frame(frame: dict[str, Any], endpoint: ResolvedPiEndpoint) -> dict[str,
             "type": "tool_call",
             "tool": frame.get("name"),
             "params": frame.get("arguments") or {},
+            "tool_call_id": frame.get("tool_call_id"),
+        }
+    if ftype == "tool.result":
+        # A supervisor-generated execution receipt, deliberately redacted: raw
+        # tool results/errors can contain private project data.  The worker has
+        # already received the full authority response before this is emitted.
+        return {
+            "type": "tool_result",
+            "tool": frame.get("name"),
+            "tool_call_id": frame.get("tool_call_id"),
+            "ok": bool(frame.get("ok")),
         }
     if ftype == "run.completed":
         served_model = str(frame.get("served_model") or "").strip()

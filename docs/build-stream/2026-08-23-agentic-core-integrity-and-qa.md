@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T04:30:58Z, ledger: L-474, commit: ee30721 }
-next_action: "Push the current testing tip to origin/testing, then perform Docker-only live acceptance when owner credentials and a clean remote workload are available."
+last: { agent: gpt-5-codex, at: 2026-08-28T04:47:45Z, ledger: L-477, commit: c564ed9 }
+next_action: "Push the redacted Pi tool-result evidence-oracle repair to origin/testing; then perform Docker-only live acceptance when owner credentials and a clean remote workload are available."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -11541,3 +11541,100 @@ preserving raw source-span, model identity, thinking, usage, reliability,
 reconciliation, and restart/resume receipts before teardown. If credentials or
 a clean workload remain unavailable, keep the provider and scientific gates
 blocked and record that boundary instead of substituting deterministic fakes.
+
+### L-476 | 2026-08-28T04:44:56Z | S2-execute/S3-review | gpt-5-codex | Pi tool-result evidence-oracle repair
+
+**Scope and rationale.** A fresh audit of the Pi chat path found a material
+acceptance gap, not a live-provider result: `PiRuntimeSupervisor.run_turn`
+sent the full authority `tool.result` back to the worker and the worker waited
+for it before another model turn, but the public governed stream retained only
+the original `tool.call`. `/api/chat` therefore exposed `tool_call`, later
+content, and terminal `done.tools_used`, while the long-horizon benchmark could
+not prove that the authority call had actually returned a result before the
+model continued. This is especially important for the Research Spine's
+two-call/long-horizon evidence: a tool name in a final list is not sufficient
+proof of execution, causal observation, or non-leakage.
+
+**Compass Forge control.** The task `CF-15` was claimed by `gpt-5-codex` at
+`2026-08-28T04:42:05Z`. Targeted `intelligence impact` and `why` runs covered
+the supervisor, Pi engine, chat route, long-horizon benchmark, its regression
+test, and the real-ASGI route test. They flagged API/contract and
+security-sensitive-surface review. `gate before --task CF-15` created record
+**411**, with `comparison.new_issues=[]`; its existing complexity, route/type,
+and older secret-flow findings remain baseline debt, not resolved by this wave.
+
+**Implemented contract.** The supervisor now yields a synthetic *local*
+execution observation after it sends the full worker-bound authority result.
+It contains only `tool_call_id`, tool name, and boolean `ok`; raw result values
+and detailed errors never leave the authority boundary. The Pi engine maps it
+to `tool_result`, and `/api/chat` emits the matching redacted SSE event. The
+tool call now includes its opaque `tool_call_id` so the receipt cannot be
+matched merely by repeated tool names. The existing frontend safely ignores
+unknown additive SSE events; no UI presents raw tool output. The feature
+documentation records the wire contract and generated feature artifacts are
+updated.
+
+**Oracle change.** `tests/benchmarks/long_horizon_runner.py` now enables the
+stronger check for `ISTARA_LONG_HORIZON_ENGINE=pi`: every canonical tool call
+must have a later matching redacted receipt and there must be non-empty model
+content after the last receipt. The generic legacy mode retains its existing
+terminal `tools_used` contract until it gains the same event-level authority
+receipt; it must not be represented as having passed this stricter Pi-only
+causal oracle. The benchmark still requires a persisted project task, two
+session-scoped success/route/usage rows, and the second causal chat call.
+
+**Red/green evidence.** Before implementation the focused regression command
+failed exactly as intended: the real ASGI Pi test lacked `tool_call_id`, and
+the benchmark unit oracle accepted both a missing receipt and a receipt with
+no later model content (**22 passed, 3 failed**). After implementation,
+`tests/pi_production/test_chat_pi_asgi.py::test_chat_pi_turn_streams_sse_over_real_asgi`
+plus `tests/pi_benchmark/test_b0_3_long_horizon_tokens.py` passed
+(**25 passed**); the wider Pi tool/restart/idempotency slice passed
+(**12 passed**). `python scripts/feature_docs.py --seed-missing --generate-site
+--check` generated **224** artifacts and checked **86** feature documents.
+`git diff --check` is clean. A changed-file Ruff run is still blocked only by
+36 pre-existing errors in the long-standing `backend/app/api/routes/chat.py`
+import/layout surface; no newly added receipt lines were reported. Run the
+security benchmark and post-change gate before committing.
+
+**Live boundary remains unchanged.** No Qwen, Codex Luna, Petals, or other live
+provider call was sent; no Mac Studio host package, service, image, container,
+or test data was changed. The remote has no observable Istara Docker workload,
+its owner checkout is dirty/stale, and noninteractive provider credentials are
+absent. This repair makes the future Docker-only Pi run capable of proving one
+part of the required tool causality; it does not prove model quality, three
+served independent identities, thinking behavior, Fleiss' kappa/alpha,
+reconciliation, human Done/report gates, live two-call continuity, or
+restart/resume. Those remain blocked pending a clean disposable Docker checkout
+and owner-approved ephemeral credential injection.
+
+### L-477 | 2026-08-28T04:46:50Z | S3-review | gpt-5-codex | Verification and gate checkpoint
+
+The post-change focused suite passed **36 tests** across real-ASGI Pi chat,
+worker tool-loop, tool idempotency, and long-horizon benchmark-oracle coverage.
+The broader deterministic Research Spine/Pi path selection passed **66 tests**
+across the end-to-end spine, donor routing, legacy long horizon, B0-3 token and
+tool oracle, W3 Research Spine, scenario-spine, real-ASGI, worker tool-loop,
+and idempotency modules. Security benchmark result is **28/28, 100%**. Feature
+documentation generation/check remains **224 generated / 86 checked** and
+`git diff --check` remains clean. Command evidence is CF **505**.
+
+Compass Forge post-gate record **412** found no new forbidden dependency,
+import-cycle, missing-path, architecture-rule, or security issue. Its
+comparison reports five complexity warnings as new because the modified
+already-oversized `chat.py` and `pi_runtime/engine.py` change the exact
+line-count/line-number evidence relative to baseline. This narrow evidence
+contract wave does not claim to resolve those long-standing decomposition
+debts; they remain explicit follow-up work. The durable Build Stream ledger is
+also again reported as an unexpected large file, but retains its scoped active
+suppression. Gate evidence is CF **507** and the manual security/privacy review
+is CF **508**.
+
+The next safe transition is to commit the reviewed deterministic repair and
+push it to `origin/testing`. After that, live acceptance remains blocked on the
+same operational prerequisites: a clean disposable Docker checkout on Mac
+Studio, an owner-approved ephemeral secret path, and no host installation or
+reuse of the dirty remote checkout. Do not close CF-15 or the active goal: the
+three-model Research Spine, Qwen/Codex served-model/thinking, Petals,
+reconciliation/Done/report, Docker two-call, and restart/resume gates are
+still incomplete.

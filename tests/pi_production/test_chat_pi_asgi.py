@@ -24,7 +24,7 @@ Deliberate, documented substitution boundary (nothing else is faked):
   the protected research-spine contract block, message persistence, session
   handling, and the canonical tool authority round-trip all run for real.
 
-The SSE envelope (``chunk``/``tool_call``/``done``/``error``) asserted here is
+The SSE envelope (``chunk``/``tool_call``/``tool_result``/``done``/``error``) asserted here is
 the byte-compatible contract the W2 dispatcher migration must preserve
 (master plan §8 "SSE contract").
 """
@@ -140,9 +140,11 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
 
     events = _sse_events(response.text)
     assert events, "expected SSE events over the real ASGI stream"
-    # Pin the byte-compatible envelope: chunk / tool_call / done (master plan §8).
+    # Pin the governed envelope: a tool call is followed by a redacted authority
+    # receipt before the worker can emit the model's next response.  The receipt
+    # intentionally carries no raw tool output, which may include private data.
     for event in events:
-        assert event["type"] in {"chunk", "tool_call", "usage", "done", "error"}
+        assert event["type"] in {"chunk", "tool_call", "tool_result", "usage", "done", "error"}
         assert "type" in event
 
     chunks = [e for e in events if e["type"] == "chunk"]
@@ -151,6 +153,20 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
     tool_events = [e for e in events if e["type"] == "tool_call"]
     assert [e["tool"] for e in tool_events] == ["create_task"]
     assert tool_events[0]["params"] == {"title": "Pi ASGI task", "priority": "high"}
+    assert tool_events[0]["tool_call_id"]
+
+    tool_receipts = [e for e in events if e["type"] == "tool_result"]
+    assert tool_receipts == [
+        {
+            "type": "tool_result",
+            "tool": "create_task",
+            "tool_call_id": tool_events[0]["tool_call_id"],
+            "ok": True,
+        }
+    ]
+    receipt_index = events.index(tool_receipts[0])
+    assert receipt_index > events.index(tool_events[0])
+    assert any(event["type"] == "chunk" for event in events[receipt_index + 1 :])
 
     assert not [e for e in events if e["type"] == "error"]
     done = events[-1]
