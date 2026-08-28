@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T04:48:12Z, ledger: L-478, commit: 0c67231 }
+last: { agent: gpt-5-codex, at: 2026-08-28T04:49:21Z, ledger: L-479, commit: 6cf0a4a }
 next_action: "Perform Docker-only live acceptance when owner credentials and a clean remote workload are available; otherwise retain the live Qwen/Codex and scientific gates as blocked."
 ```
 
@@ -11656,3 +11656,16 @@ the dirty stale remote checkout, install packages on macOS, or turn the
 deterministic Qwen/Codex contracts into a live claim. Keep CF-15 and the
 active Build Stream goal open until those independent three-model, Research
 Spine, tool, two-call, and restart/resume receipts exist.
+
+### L-479 | 2026-08-28T04:49:21Z | S5-learn | gpt-5-codex | Passive Mac Studio recheck
+
+Following the server-operating safety guidance, a read-only SSH check made no
+host or Docker mutation. Mac Studio still reports Docker **29.7.2**, exactly
+one unrelated healthy `plex` container, zero running containers whose labels
+mention Istara, and absent noninteractive `DASHSCOPE_API_KEY` and Codex OAuth
+environment variables. No secret value was read or printed. Therefore no live
+Qwen/Codex tool-call or long-horizon test is active or runnable from the
+observed remote state. This is a current infrastructure observation, not a
+model-quality result. The Docker-only acceptance remains blocked pending a
+fresh disposable checkout/container and owner-controlled ephemeral credential
+injection.
