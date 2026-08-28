@@ -1094,6 +1094,32 @@ async def test_settings_pi_catalog_info_merges_identity_view(monkeypatch):
         }
 
 
+@pytest.mark.asyncio
+async def test_settings_pi_catalog_info_fails_closed_when_projection_is_unavailable(
+    monkeypatch,
+):
+    """The compatibility model inventory must not hide Pi authority failures."""
+    from fastapi import HTTPException
+    from app.api.routes import settings as settings_routes
+
+    class _BrokenManager:
+        async def ensure_db_projection(self):
+            raise RuntimeError("projection unavailable")
+
+    monkeypatch.setattr(
+        "app.core.pi_runtime.model_manager.PiModelManager", _BrokenManager
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await settings_routes._pi_catalog_info()
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail == {
+        "error": "pi_catalog_unavailable",
+        "message": "Pi model catalog is unavailable.",
+    }
+
+
 def test_projects_update_validates_agentic_engine():
     from pydantic import ValidationError
 

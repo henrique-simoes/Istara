@@ -268,6 +268,7 @@
 <li>Interview-heavy tests should use the canonical corpus <code>interview-heavy</code> slice through <code>tests/document_corpus/shared-corpus.mjs</code> when they evaluate product behavior. Tiny transcript strings are reserved for parser/unit tests only.</li>
 <li>Canonical interview sources must remain transcript-like raw material: coherent participant IDs, timestamped speaker turns, monotonic transcript positions, varied quotes, and language/content consistency. They must not ship as pre-digested candidate evidence blocks.</li>
 <li>Interview transcript text is a source substrate for coding, not accepted Atomic Research. Any interview-derived nuggets/facts/insights/recommendations remain provisional until accepted by the Research Spine gates.</li>
+<li>Audio metadata keeps the compatibility <code>icr_kappa</code>/<code>icr_confidence</code> fields for operational review, but also records <code>formal_reliability: false</code>, <code>research_spine_eligible: false</code>, and <code>validation_scope: transcription_quality_signal</code>; the heuristic Whisper agreement must never be interpreted as the formal three-coder reliability gate.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

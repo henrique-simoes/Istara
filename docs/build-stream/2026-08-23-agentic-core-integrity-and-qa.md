@@ -10827,3 +10827,43 @@ identities, Fleiss/alpha receipts, reconciliation, human Done/report,
 two-call, and long-horizon gates remain open. Next: continue the authority and
 Docker-only live-harness audit, preserving these gates as unproven until
 terminal receipts exist.
+
+### L-455 | 2026-08-28T01:34:00Z | S2-execute/S3-review | gpt-5-codex | Closed Pi settings and transcription Research Spine labeling gaps
+
+The authority audit found that `GET /api/settings/models` silently converted a
+Pi Model Management projection/catalog exception into an empty `pi_catalog`,
+which could be mistaken for a healthy legacy-only inventory. The route helper
+now fails closed with a typed `503` (`pi_catalog_unavailable`) while keeping
+the detailed `/settings/pi-catalog` diagnostic endpoint separate. Regression
+coverage was added in `tests/pi_production/test_w8_embeddings_gateway.py`.
+
+The Research Spine audit also found that the Whisper primary/optional alternate
+transcription pass was described as formal Fleiss' Kappa ICR even though it is
+a one-or-two-pass heuristic keyword-category agreement signal, not three
+independent coders rating the same evidence-unit matrix. Compatibility
+`icr_kappa`/`icr_confidence` fields remain, but transcription results, indexed
+audio chunks, file telemetry, docs, and the Istara skill now record and explain
+`formal_reliability=false`, `research_spine_eligible=false`,
+`validation_scope=transcription_quality_signal`, and
+`research_data_status=provisional_until_coding`.
+
+Verification: Pi/settings tests `77 passed`; transcription/files/channel/RBAC
+slice `61 passed`; authority/W7/mixed-source/identity/UX/worker/legacy horizon
+slice `78 passed`; real-user benchmark Node suite `100 passed`; focused
+transcription tests `16 passed`; feature docs `86/86`; `git diff --check`
+clean. CF command evidence `493`; before record `391`; after record `392`; gate
+evidence `495` reports no new failures/issues (inherited secret-flow and
+large-ledger findings remain). External findings F-R9-171 and F-R9-172 record
+the corrections in `/Users/user/Desktop/testing.md`.
+
+This checkpoint is code/test/docs-only: no provider, model, Docker workload,
+Mac Studio host installation, or host model load occurred. The original plan
+is not terminal. Still-open gates are owner-approved Docker-only Mac Studio
+provider/Petals/combined runs with three genuinely served model identities,
+formal Fleiss/alpha receipts, source-grounded coding/reconciliation, human
+Done/report approval, both engine two-call causality, long-horizon
+checkpoint/restart/resume and duplicate-side-effect proof, browser/UI
+acceptance, fresh crossover benchmark retake, legacy reportability decision,
+blind review, and CF-13/15/20/21 closure. Next action: commit/push this
+checkpoint, then inspect the Mac Studio Docker preflight/config and run only
+the selected acceptance profiles when required provider inputs are present.

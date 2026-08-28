@@ -338,7 +338,10 @@
 </ul>
 <p><code>&quot;pi_catalog&quot;</code> key alongside the legacy model list in both online and</p>
 <p>offline responses. It is an identity/capability view only — endpoint ids,</p>
-<p>model names, and kinds — and never exposes endpoint URLs or API keys.</p>
+<p>model names, and kinds — and never exposes endpoint URLs or API keys. If the</p>
+<p>canonical Pi projection cannot be read, the route returns a typed <code>503</code></p>
+<p>(<code>pi_catalog_unavailable</code>) rather than silently presenting a legacy-only</p>
+<p>inventory.</p>
 <ul>
 <li>The frontend does not render a legacy LLM Server section or expose its</li>
 </ul>

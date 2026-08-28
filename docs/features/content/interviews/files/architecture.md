@@ -42,6 +42,7 @@ Interview files enter the Research Spine as raw sources. Audio recordings do not
 - Interview-heavy tests should use the canonical corpus `interview-heavy` slice through `tests/document_corpus/shared-corpus.mjs` when they evaluate product behavior. Tiny transcript strings are reserved for parser/unit tests only.
 - Canonical interview sources must remain transcript-like raw material: coherent participant IDs, timestamped speaker turns, monotonic transcript positions, varied quotes, and language/content consistency. They must not ship as pre-digested candidate evidence blocks.
 - Interview transcript text is a source substrate for coding, not accepted Atomic Research. Any interview-derived nuggets/facts/insights/recommendations remain provisional until accepted by the Research Spine gates.
+- Audio metadata keeps the compatibility `icr_kappa`/`icr_confidence` fields for operational review, but also records `formal_reliability: false`, `research_spine_eligible: false`, and `validation_scope: transcription_quality_signal`; the heuristic Whisper agreement must never be interpreted as the formal three-coder reliability gate.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

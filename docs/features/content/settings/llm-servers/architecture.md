@@ -96,7 +96,10 @@ public `/api/settings/status` is redacted and passive.
 - `backend/app/api/routes/settings.py` `GET /settings/models` now includes a
   `"pi_catalog"` key alongside the legacy model list in both online and
   offline responses. It is an identity/capability view only — endpoint ids,
-  model names, and kinds — and never exposes endpoint URLs or API keys.
+  model names, and kinds — and never exposes endpoint URLs or API keys. If the
+  canonical Pi projection cannot be read, the route returns a typed `503`
+  (`pi_catalog_unavailable`) rather than silently presenting a legacy-only
+  inventory.
 - The frontend does not render a legacy LLM Server section or expose its
   manual provider/model form in normal Settings. `PiModelManagement` owns the
   complete browseable + autocomplete catalog, API-key/OAuth choices, and

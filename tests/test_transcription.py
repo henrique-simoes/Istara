@@ -113,6 +113,11 @@ def test_transcription_uses_detected_language_and_segment_confidence(monkeypatch
     assert result.language == "pt"
     assert result.confidence > 0.8
     assert result.metadata["detected_language"] == "pt"
+    assert result.metadata["formal_reliability"] is False
+    assert result.metadata["research_spine_eligible"] is False
+    assert result.metadata["validation_scope"] == "transcription_quality_signal"
+    assert result.metadata["research_data_status"] == "provisional_until_coding"
+    assert result.metadata["icr_details"]["formal_reliability"] is False
     assert result.needs_review is False
 
 

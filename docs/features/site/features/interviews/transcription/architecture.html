@@ -245,7 +245,7 @@
   <p class="concept-line"><strong>Concepts:</strong> atomic-research</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Interview audio processing uses backend transcription capabilities to turn recordings into usable research text. The real-user benchmark exercises the credential-free interview path through uploaded transcripts and <code>analyze-interview</code> task review; live participant-channel deployment remains optional unless explicit bounded test credentials are provided.</p>
+<p>Interview audio processing uses backend transcription capabilities to turn recordings into usable research text. The real-user benchmark exercises the credential-free interview path through uploaded transcripts and <code>analyze-interview</code> task review; live participant-channel deployment remains optional unless explicit bounded test credentials are provided. The Whisper primary/optional alternate pass exposes a provisional transcription-quality agreement signal for <code>needs_review</code>; its legacy <code>icr_*</code> fields are not formal Research Spine inter-coder reliability.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/interviews/InterviewView.tsx</code></li>
@@ -265,6 +265,8 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/interviews/InterviewView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Benchmark interview evidence should include uploaded transcript sources plus an approved interview-analysis task. Telegram/AURA live participant conversations are recorded as future improvement when no local simulator or channel credentials are available.</li>
+<li><code>backend/app/core/transcription.py</code> compares at most the primary Whisper result and an optional alternate pass using heuristic keyword-category consensus. The result is explicitly marked <code>formal_reliability: false</code>, <code>research_spine_eligible: false</code>, and <code>validation_scope: transcription_quality_signal</code>.</li>
+<li>Formal Fleiss&#x27; Kappa/alpha is computed only after the transcript becomes source evidence units and three independent Research Spine coders rate the same units; transcription agreement cannot promote a transcript, nugget, fact, insight, recommendation, or report.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

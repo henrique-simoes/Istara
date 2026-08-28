@@ -327,6 +327,10 @@ def process_audio(file_path: Path) -> ProcessedFile:
             "needs_review": result.needs_review,
             "tags": result.tags,
             "engine_metadata": result.metadata,
+            "formal_reliability": False,
+            "research_spine_eligible": False,
+            "validation_scope": "transcription_quality_signal",
+            "research_data_status": "provisional_until_coding",
         }
 
         if "transcription-error" in result.tags:
@@ -355,6 +359,9 @@ def process_audio(file_path: Path) -> ProcessedFile:
                     "icr_kappa": result.icr_kappa,
                     "icr_confidence": result.icr_confidence,
                     "language": result.language,
+                    "formal_reliability": False,
+                    "research_spine_eligible": False,
+                    "validation_scope": "transcription_quality_signal",
                 }
             )
 

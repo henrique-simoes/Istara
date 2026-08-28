@@ -107,7 +107,9 @@ async def _pi_catalog_info() -> list[dict]:
 
     Read-only identity/capability view (endpoint ids and model names only —
     never URLs or keys). A fresh manager per call keeps the LLMServer
-    projection current; any failure degrades to the legacy-only response.
+    projection current. Pi is the canonical model-management authority, so a
+    projection/catalog failure must be explicit rather than degraded into a
+    misleading legacy-only response.
     """
     try:
         from dataclasses import asdict
@@ -117,9 +119,15 @@ async def _pi_catalog_info() -> list[dict]:
         manager = PiModelManager()
         await manager.ensure_db_projection()
         return [asdict(info) for info in manager.catalog()]
-    except Exception:
-        logger.debug("pi catalog merge skipped", exc_info=True)
-        return []
+    except Exception as exc:
+        logger.warning("pi catalog unavailable for settings inventory", exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "pi_catalog_unavailable",
+                "message": "Pi model catalog is unavailable.",
+            },
+        ) from exc
 
 
 def _pi_model_management_required() -> JSONResponse:

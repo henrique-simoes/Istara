@@ -17,7 +17,7 @@
 ### Voice Transcription Pipeline
 - Transcribe audio from interviews, Telegram voice messages, WhatsApp audio, and chat mic input using local Whisper
 - Real-time voice input support for direct user inquiries in Chat and Design tools.
-- Every transcription passes through Inter-Coder Reliability (ICR) consensus: primary model vs alternative model, scored via Fleiss' Kappa + cosine similarity
+- Every transcription receives a provisional transcription-quality agreement signal (primary Whisper vs optional alternate pass, scored by the heuristic consensus engine). The legacy `icr_*` fields are not Research Spine inter-coder reliability: formal Fleiss' Kappa/alpha requires three independent coders rating the same source evidence units downstream.
 - Low-confidence transcriptions are flagged for human review (`needs_review: true`)
 - Auto-tag transcriptions with research-relevant categories (pain-point, feature-request, usability, accessibility, etc.)
 - Transcriptions feed into the Research Spine as transcript source units, then candidate atoms/codes, reliability or reconciliation, accepted atoms/nuggets, facts, and insights
