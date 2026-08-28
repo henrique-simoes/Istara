@@ -49,17 +49,18 @@ timestamped ledger entry in this file.
   `passed`.
 * The Compass/CF timeline has two distinct axes and must not be collapsed into
   the age of the current SQLite registry. Istara's retained Git history has
-  research/ensemble precursors in March (for example `3308350c` on 2026-03-14
-  added the Kappa thematic-analysis skill, `4ba41a4f` on 2026-03-17 added true
-  dual-coding plus codebook/evidence validation, and `9a218603` on 2026-03-24
-  added ensemble validation and compute-pool infrastructure). Those March
-  objects are present in retained refs but are not ancestors of the current
-  `testing` tip, so they are historical provenance rather than the current
-  branch baseline. The earliest reachable Compass doctrine in the active
-  Istara history is 2026-04-03 (`42e454b0`, `AGENT_ENTRYPOINT.md` defines
-  Compass as Istara's comprehensive agentic development system), followed by
-  doctrine hardening and the three-layer testing architecture on 2026-04-03
-  through 2026-04-10 (`ce19476e`, `16d18228`, `21ef99b1`, `c0ddf50c`). The
+  research/ensemble precursors in March: `3308350c` on 2026-03-14 added the
+  Kappa thematic-analysis skill, while equivalent current-line commits
+  `837ed4fc` (2026-03-17, true dual-coding/codebook/evidence validation) and
+  `a1594cf3` (2026-03-24, ensemble validation/compute-pool infrastructure) are
+  ancestors of both `refs/heads/testing` and `refs/remotes/origin/testing`.
+  The alternate hashes `4ba41a4f` and `9a218603` are retained parallel-history
+  copies of those March changes, not the hashes reachable from the current
+  testing line. The earliest reachable Compass doctrine in the active Istara
+  history is 2026-04-03 (`42e454b0`, `AGENT_ENTRYPOINT.md` defines Compass as
+  Istara's comprehensive agentic development system), followed by doctrine
+  hardening and the three-layer testing architecture on 2026-04-03 through
+  2026-04-10 (`ce19476e`, `16d18228`, `21ef99b1`, `c0ddf50c`). The
   repository's first literal managed `compass-forge:start` block is 2026-05-02
   (`0d0d9a24`); the first tracked literal `CF-SPEC-*` marker is 2026-05-04
   (`7dca7368`). Separately, the standalone Compass Forge project's accepted
@@ -10678,3 +10679,31 @@ two-call, long-horizon, reconciliation, Done, and report gates remain open.
 Next: verify CF task evidence attachment, then inspect the remaining Pi
 authority/engine matrix and ensemble route receipts before attempting any new
 live Docker run.
+
+### L-446 | 2026-08-28T00:17:35Z | S2-execute/S3-review | gpt-5-codex | Corrected March ancestry claim after deeper Compass audit
+
+The provenance wording in the Current truth section was audited against both
+the commit graph and the active remote-tracking ref. `git merge-base
+--is-ancestor` returns success for `3308350c`, `837ed4fc`, `a1594cf3`,
+`42e454b0`, `ce19476e`, `16d18228`, `21ef99b1`, `c0ddf50c`, `0d0d9a24`, and
+`7dca7368` against both `refs/heads/testing` and
+`refs/remotes/origin/testing`. The current line therefore includes the March
+research/ensemble foundations and the April Compass doctrine. The earlier
+hashes `4ba41a4f` and `9a218603` have identical patch IDs to the current-line
+dual-coding and ensemble commits but are parallel-history copies, so they are
+not themselves ancestors. This is the precise explanation for why a shallow
+search can report contradictory dates.
+
+The three dates remain separate: April 3 is the first reachable Istara
+Compass doctrine (`AGENT_ENTRYPOINT.md`); May 2 is the first literal managed
+`compass-forge:start` block; May 4 is the first tracked `CF-SPEC-*` marker;
+July 3 is the oldest row in the retained standalone CF SQLite registry. The
+registry date is not the origin date of Compass in Istara. CF before-gate
+record 380 captured the documentation edit; it reports only inherited/new
+warnings (including the path-scoped large Build Stream ledger suppression),
+with no missing required paths, forbidden dependencies, or import cycles.
+
+Next: add this correction to the external findings ledger, commit and push the
+documentation update, then continue the open live three-model/Petals/
+two-call/long-horizon Research Spine acceptance work. No live model load or
+host installation was performed.
