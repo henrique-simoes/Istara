@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T02:51:35Z, ledger: L-467, commit: 05fce32d }
+last: { agent: gpt-5-codex, at: 2026-08-28T03:08:00Z, ledger: L-468, commit: 694a4b2d }
 next_action: "Inject the regular DashScope key into one disposable Mac Studio container process, run Pi 0.84.3 qwen3.7-plus and qwen3.7-flash through the custom models.json contract with thinking enabled, then run the combined three-rater Research Spine profile and prove source spans, Fleiss/Krippendorff agreement, reconciliation, Done/report gates, two-call, and long-horizon receipts."
 ```
 
@@ -11201,3 +11201,39 @@ causality, or long-horizon restart/resume result is counted yet. Compass Forge
 before-gate record `402` found no new issues relative to the inherited baseline;
 its existing complexity/type-drift/oversized-ledger warnings remain separate
 debt and are not silently marked resolved.
+
+### L-468 | 2026-08-28T03:08:00Z | S2-execute/S3-review | gpt-5-codex | Docker API-key custody repair
+
+The endpoint-authority audit found a concrete Linux-container defect that would
+make the new regular DashScope catalog unusable through the Settings API: the
+POST/PUT custody seam called the macOS Keychain helper inside Docker. That helper
+returns a compatibility success without storing anything when
+`/usr/bin/security` is absent, so the endpoint could be reported as added while
+the Pi resolver later failed closed with `missing_keychain_secret`.
+
+TDD reproduced the defect, then the smallest platform-aware fix was applied:
+macOS continues to write raw API keys only to Keychain; non-macOS/Docker writes
+the endpoint-scoped `ISTARA_PI_SECRET_<ID>` value through `persist_env_value`
+to the configured writable `ISTARA_ENV_FILE`. The resolver already reads that
+same env-first contract. A regression test proves Linux never calls the
+Keychain seam and persists the expected scoped name/value. The architecture
+feature document and generated site/manifest were updated to make the custody
+boundary explicit.
+
+Verification: endpoint-secret and catalog/manager/ensemble contract slice
+`29 passed`; security benchmark `28/28`, `100%`, `--fail-on-threshold`; feature
+docs generation/check `224` artifacts and `86` features; `git diff --check`
+clean. Content commit `694a4b2d` is pushed to `origin/testing`. Compass Forge
+before-gate record `403` reports no new dependency, import-cycle, required-path,
+or architecture-rule failures attributable to this fix; its complexity,
+secret-flow, type-drift, route-drift, and intentionally suppressed ledger-size
+findings remain inherited debt and are not falsely marked closed.
+
+This closes the Docker endpoint-secret persistence defect only. It does not
+count a live Qwen turn, three served coder identities, source-span coding,
+meaningful Fleiss/Krippendorff agreement, reconciliation/promotion, two-call
+causality, long-horizon restart/resume, or final Research Spine acceptance.
+Next: refresh the disposable Mac Studio checkout to `694a4b2d`, inject the
+owner's regular DashScope key only into one Docker process, and collect the
+provider/model/route/usage receipts before attempting the combined three-rater
+profile.
