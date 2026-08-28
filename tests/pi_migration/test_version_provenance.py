@@ -9,7 +9,7 @@ the SAME exact upstream releases of `@earendil-works/pi-agent-core` and
 `@earendil-works/pi-ai`, and their lockfiles must agree with their
 `package.json` manifests so a fresh `npm ci` is reproducible:
 
-1. ``EXPECTED_PINS`` — the exact versions the wave pinned (0.84.2/0.84.2).
+1. ``EXPECTED_PINS`` — the exact versions the wave pinned (0.84.3/0.84.3).
 2. Each surface's ``package.json`` pins both packages with exact versions
    (no ``^``/``~`` ranges).
 3. Each surface's ``package-lock.json`` root dependencies equal the
@@ -30,8 +30,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 PI_PACKAGES = ("@earendil-works/pi-agent-core", "@earendil-works/pi-ai")
 
-# Exact pins approved for this wave (verified upstream 0.84.2/0.84.2).
-EXPECTED_PINS = {"@earendil-works/pi-agent-core": "0.84.2", "@earendil-works/pi-ai": "0.84.2"}
+# Exact pins approved for this wave (verified upstream 0.84.3/0.84.3).
+EXPECTED_PINS = {"@earendil-works/pi-agent-core": "0.84.3", "@earendil-works/pi-ai": "0.84.3"}
 
 # lockfileVersion 3 is what `npm install` produces for current npm; treat it
 # as the supported reproducibility format.
@@ -53,7 +53,7 @@ def _deps_for(manifest: dict) -> dict:
 
 
 def test_bundled_surfaces_pin_exact_approved_versions():
-    """Both pi-runtime and labs/pi-replacement pin 0.84.2 with exact specs."""
+    """Both pi-runtime and labs/pi-replacement pin 0.84.3 with exact specs."""
     for label, root in SURFACES:
         manifest = _load_json(root / "package.json")
         pins = _deps_for(manifest)
@@ -70,7 +70,7 @@ def test_bundled_surfaces_pin_exact_approved_versions():
 
 
 def test_lockfiles_match_manifests_and_resolve_pins():
-    """package-lock root deps == package.json deps and resolve to 0.84.2."""
+    """package-lock root deps == package.json deps and resolve to 0.84.3."""
     for label, root in SURFACES:
         manifest = _load_json(root / "package.json")
         lock = _load_json(root / "package-lock.json")

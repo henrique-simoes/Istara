@@ -14,8 +14,8 @@
     "role-rounds:deepseek": "node scenarios/deepseek-role-rounds.mjs"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "0.84.2",
-    "@earendil-works/pi-ai": "0.84.2"
+    "@earendil-works/pi-agent-core": "0.84.3",
+    "@earendil-works/pi-ai": "0.84.3"
   },
   "devDependencies": {}
 }

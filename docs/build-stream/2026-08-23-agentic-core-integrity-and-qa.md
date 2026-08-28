@@ -11086,3 +11086,46 @@ package changed.
 Next: retain this clean after-gate evidence, then proceed only with the
 owner-gated Docker-only live acceptance inputs. Do not close CF-13/15/20/21 or
 claim Research Spine/ensemble completion from this deterministic checkpoint.
+
+### L-464 | 2026-08-28T02:04:40Z | S3-review | gpt-5-codex | Passive Mac Studio Docker campaign poll
+
+A passive SSH poll of the authorized Mac Studio reports host
+`users-Mac-Studio.local` and Docker client/server `29.7.2/29.7.2`. The only
+running Compose workload is the unrelated healthy `plex` service from
+`/Users/user/docker/plex/docker-compose.yml`; no Istara testing Compose project,
+benchmark container, provider profile, Petals service, or model-serving
+workload is active. This poll issued no model/provider request, did not load a
+model, create/pull/stop/remove a container, install on the host, mutate the
+dirty `/Users/user/istara-testing` checkout, or delete testing data.
+
+The live acceptance block therefore remains unchanged: a clean disposable
+Docker checkout, exact test SHA, provider/Petals configuration, and three
+genuinely served model identities still must be supplied or provisioned under
+owner approval before the Research Spine ensemble and two-call/long-horizon
+receipts can be collected.
+
+### L-465 | 2026-08-28T02:12:00Z | S2-execute | gpt-5-codex | Pi runtime update to newest verified release
+
+The owner-authorized Docker-only preparation updated both tracked Pi dependency
+surfaces from `0.84.2` to the newest registry release verified inside an
+existing Mac Studio `node:24-slim` container: `@earendil-works/pi-agent-core`,
+`@earendil-works/pi-ai`, and their locked transitive
+`@earendil-works/pi-telemetry` entry are now `0.84.3`. The package manifests,
+both lockfiles (including registry integrity values), adapter provenance, and
+the version-provenance test contract agree on `0.84.3`. Node 24 was used for
+the verification because Pi 0.84.3 declares Node `>=22.19.0`; no host package
+install or model load occurred.
+
+Verification: `python -m pytest -q tests/pi_migration/test_version_provenance.py`
+passed (`3 passed`); `node --test pi-runtime/test/*.test.mjs` passed (`47/47`);
+`python scripts/feature_docs.py --seed-missing --generate-site --check`
+passed (`224` generated artifacts, `86` features). The live Mac Studio has not
+yet rebuilt or started the Istara stack from this SHA. The supplied provider
+API key remains unrecorded and unprinted.
+
+This update proves dependency provenance only. It does not prove the requested
+Codex Luna OAuth turn, Qwen 3.7 Plus/Flash provider turns, independent
+three-rater identity, Fleiss/alpha agreement, source-grounded reconciliation,
+human Done/report promotion, two-call causality, or long-horizon restart/resume.
+Those gates remain open until a clean disposable Docker campaign has exact
+provider/base-url configuration and emits immutable model/route/usage receipts.
