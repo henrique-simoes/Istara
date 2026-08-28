@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T04:30:58Z, ledger: L-474, commit: 5e5e70b }
+last: { agent: gpt-5-codex, at: 2026-08-28T04:30:58Z, ledger: L-474, commit: ee30721 }
 next_action: "Push 5e5e70b from testing to origin/testing, then perform Docker-only live acceptance when owner credentials and a clean remote workload are available."
 ```
 
