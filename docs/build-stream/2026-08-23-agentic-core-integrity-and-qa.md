@@ -7,9 +7,9 @@ cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
 stage: S2-execute/S3-review
 status: in-progress
-blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T05:35:00Z, ledger: L-483, commit: e371441 }
-next_action: "Prepare and execute the credentialed Docker-only live acceptance when owner credentials and a clean remote workload are available; otherwise retain the Qwen/Codex, three-rater Research Spine, and Petals gates as blocked."
+blocked_on: "The saved Mac Studio stores contain Codex OAuth and the requested Qwen model bindings, but the referenced DASHSCOPE_API_KEY is absent from the deployment env, both runtime-secret volumes, local/remote process environments, and inspected Keychain handles; Research Spine remains fail-closed until that credential is available to the disposable Docker process and all live receipts pass"
+last: { agent: gpt-5-codex, at: 2026-08-28T11:29:41Z, ledger: L-484, commit: 1314c22 }
+next_action: "Continue every credential-independent CF and Docker preparation gate from a clean detached origin/testing checkout; once DASHSCOPE_API_KEY is resolved, inject it only through the transient mode-600 runner env file and execute the exact three-model acceptance without touching the dirty owner checkout."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -11765,3 +11765,33 @@ open for the same live evidence gates: Codex-Luna OAuth plus two provider-served
 Qwen identities, tool/long-horizon receipts across the real restart, and the
 Research Spine coding, reliability, reconciliation, and human Done/report
 gates.
+
+### L-484 | 2026-08-28T11:29:41Z | S2-execute/S3-review | gpt-5-codex | Full-plan takeover and credential-custody audit
+
+The owner explicitly authorized continuation through the complete Compass Forge and
+Build Stream lifecycle, Mac Studio Docker management, the chosen three-model live
+campaign, exhaustive ledger updates, and synchronization to `origin/testing`. The
+active completion goal is bound to CF-SPEC-2/CF-15. Required Compass Forge orientation
+was repeated with the pinned native Rust binary: `status`, `next`, and compact
+`agent-brief` retain Full/security classification and the inherited aggregate gate
+debt; no inherited finding is represented as newly fixed. Local `testing` is clean and
+exactly equals `origin/testing` at `1314c22bbf6b11675f1ebbef682b756c49d0d9c5`.
+
+Passive remote checks found Docker 29.7.2 / Compose 5.4.0 healthy and only the unrelated
+healthy Plex workload running. The existing `$HOME/istara-testing` checkout is preserved
+untouched because it is heavily dirty and 306 commits behind `origin/testing`; it is not
+an acceptance source. Read-only, network-disabled disposable inspectors then audited
+secret custody without printing any value. `pi-agent-home` contains an OpenAI Codex OAuth
+credential. `istara-qwen-pi-home` contains the regular Singapore DashScope provider with
+exact `qwen3.7-plus` and `qwen3.7-flash` model bindings, but its API-key field is only an
+environment reference. The deployment env contains no DashScope/Qwen secret, and both
+prior Istara runtime-env volumes contain only `DATA_ENCRYPTION_KEY`. The checked local and
+remote process environments and named Keychain handles likewise contain no
+`DASHSCOPE_API_KEY` or endpoint-scoped DashScope secret.
+
+Therefore the live Qwen request was not attempted and no false provider, three-rater,
+reliability, reconciliation, Petals, tool, restart, or human-Done receipt is claimed.
+Codex OAuth availability is proven only as custody presence, not as a new live turn. Work
+continues on clean-checkout and credential-independent gates; the exact blocking input is
+the referenced regular-DashScope credential becoming available to the disposable Docker
+runner without entering Git, command arguments, logs, chat, or the stale owner checkout.
