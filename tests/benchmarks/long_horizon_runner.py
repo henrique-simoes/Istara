@@ -1,6 +1,7 @@
 import asyncio
 import httpx
 import os
+import subprocess
 import time
 import json
 from collections import Counter
@@ -22,6 +23,85 @@ ADMIN_PASSWORD_ENV_FILES = (
 
 class BenchmarkFailure(RuntimeError):
     """A transport or semantic failure that must make the benchmark non-zero."""
+
+
+def _restart_resume_required() -> bool:
+    """Return the explicitly requested Docker restart-resume gate state."""
+    raw = os.environ.get("ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME", "0").strip().lower()
+    if raw in {"0", "false", "no"}:
+        return False
+    if raw in {"1", "true", "yes"}:
+        return True
+    raise BenchmarkFailure(
+        "ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME must be 0/1/true/false/yes/no"
+    )
+
+
+def _backend_started_at(container_id: str) -> str:
+    """Read only the Docker start timestamp for the selected disposable backend."""
+    result = subprocess.run(
+        ["docker", "inspect", "--format", "{{.State.StartedAt}}", container_id],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    started_at = result.stdout.strip()
+    if result.returncode != 0 or not started_at:
+        raise BenchmarkFailure("unable to inspect the disposable backend restart state")
+    return started_at
+
+
+def _restart_disposable_backend() -> tuple[str, str] | None:
+    """Restart only the selected backend from the disposable Docker runner.
+
+    The outer wrapper resolves the backend's opaque container ID after creating
+    the isolated Compose stack. This function accepts no command string,
+    project name, or host path: it can issue exactly ``docker restart`` for
+    that selected container, and only from the disposable runner that has the
+    deliberately mounted Docker socket. A missing proof of the boundary fails
+    closed before the second chat turn can make a false continuity claim.
+    """
+    if not _restart_resume_required():
+        return None
+    container_id = os.environ.get("ISTARA_LONG_HORIZON_BACKEND_CONTAINER", "").strip()
+    if not container_id:
+        raise BenchmarkFailure("restart-resume requires the selected backend container id")
+    if not (12 <= len(container_id) <= 64 and all(char in "0123456789abcdef" for char in container_id)):
+        raise BenchmarkFailure("restart-resume requires an opaque Docker backend container id")
+    if os.environ.get("ISTARA_BENCHMARK_DOCKER_RUNNER") != "1" or not Path("/.dockerenv").is_file():
+        raise BenchmarkFailure("restart-resume refuses execution outside the disposable Docker runner")
+    if not Path("/var/run/docker.sock").is_socket():
+        raise BenchmarkFailure("restart-resume requires the disposable runner Docker socket")
+
+    before = _backend_started_at(container_id)
+    result = subprocess.run(
+        ["docker", "restart", "--time", "10", container_id],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if result.returncode != 0:
+        raise BenchmarkFailure("unable to restart the selected disposable backend")
+    after = _backend_started_at(container_id)
+    if after == before:
+        raise BenchmarkFailure("selected backend restart did not produce a new container start state")
+    return before, after
+
+
+async def _wait_for_backend_health(client: httpx.AsyncClient) -> None:
+    """Wait for a restarted disposable backend without masking an unhealthy one."""
+    deadline = time.monotonic() + 180
+    while time.monotonic() < deadline:
+        try:
+            response = await client.get(f"{API_BASE}/api/health")
+            if response.status_code == 200:
+                return
+        except httpx.HTTPError:
+            pass
+        await asyncio.sleep(2)
+    raise BenchmarkFailure("restarted disposable backend did not become healthy within 180 seconds")
 
 
 def _require_explicit_engine() -> str:
@@ -584,6 +664,11 @@ async def _run_benchmark() -> None:
             f"✅ First chat turn completed in {elapsed:.2f}s. Tool calls: "
             f"{first_tool_calls}. Provider tokens: {tokens_label}"
         )
+
+        restart_receipt = _restart_disposable_backend()
+        if restart_receipt is not None:
+            await _wait_for_backend_health(client)
+            print("✅ Disposable backend restart boundary completed and became healthy.")
 
         print("\n💬 Sending a second turn over the same persisted session...")
         second_message = (

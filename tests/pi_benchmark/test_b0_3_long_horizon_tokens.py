@@ -8,6 +8,8 @@ It FAILS against the old chunk-count implementation, as A3 requires.
 
 from __future__ import annotations
 
+import subprocess
+
 import pytest
 
 pytestmark = pytest.mark.benchmark
@@ -45,6 +47,56 @@ def test_camelcase_usage_is_read():
 
 def test_empty_stream_reports_no_tokens():
     assert extract_total_tokens([]) is None
+
+
+def test_restart_resume_oracle_refuses_host_execution(monkeypatch):
+    monkeypatch.setenv("ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME", "1")
+    monkeypatch.setenv("ISTARA_LONG_HORIZON_BACKEND_CONTAINER", "a" * 12)
+    monkeypatch.delenv("ISTARA_BENCHMARK_DOCKER_RUNNER", raising=False)
+
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="outside the disposable Docker runner"):
+        long_horizon_runner._restart_disposable_backend()
+
+
+def test_restart_resume_oracle_restarts_only_an_opaque_backend_id(monkeypatch):
+    container_id = "a" * 12
+    calls: list[list[str]] = []
+    responses = iter(
+        [
+            subprocess.CompletedProcess([], 0, "2026-08-28T00:00:00Z\n", ""),
+            subprocess.CompletedProcess([], 0, f"{container_id}\n", ""),
+            subprocess.CompletedProcess([], 0, "2026-08-28T00:00:11Z\n", ""),
+        ]
+    )
+    monkeypatch.setenv("ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME", "1")
+    monkeypatch.setenv("ISTARA_LONG_HORIZON_BACKEND_CONTAINER", container_id)
+    monkeypatch.setenv("ISTARA_BENCHMARK_DOCKER_RUNNER", "1")
+    monkeypatch.setattr(long_horizon_runner.Path, "is_file", lambda _: True)
+    monkeypatch.setattr(long_horizon_runner.Path, "is_socket", lambda _: True)
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return next(responses)
+
+    monkeypatch.setattr(long_horizon_runner.subprocess, "run", fake_run)
+
+    assert long_horizon_runner._restart_disposable_backend() == (
+        "2026-08-28T00:00:00Z",
+        "2026-08-28T00:00:11Z",
+    )
+    assert calls == [
+        ["docker", "inspect", "--format", "{{.State.StartedAt}}", container_id],
+        ["docker", "restart", "--time", "10", container_id],
+        ["docker", "inspect", "--format", "{{.State.StartedAt}}", container_id],
+    ]
+
+
+def test_restart_resume_oracle_rejects_non_container_targets(monkeypatch):
+    monkeypatch.setenv("ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME", "1")
+    monkeypatch.setenv("ISTARA_LONG_HORIZON_BACKEND_CONTAINER", "backend; rm -rf /")
+
+    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="opaque Docker backend container id"):
+        long_horizon_runner._restart_disposable_backend()
 
 
 def test_tool_call_oracle_counts_canonical_events_only():

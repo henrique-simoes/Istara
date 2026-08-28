@@ -168,7 +168,7 @@ Each chat turn resolves its engine in one order: operator flag `pi_replacement_e
 - `tests/pi_production/test_legacy_long_horizon.py` — seven-step legacy/Istara tool-loop horizon parity through the same shared manager, with cumulative usage and served-identity assertions.
 - `tests/pi_production/test_pi_ensemble_accounting.py` — Pi ensemble usage exactness is all-or-nothing across samples; mixed provider receipts produce an explicit estimate rather than a partial exact ledger row.
 - `tests/pi_production/test_chat_pi_asgi.py` — real-ASGI two-call transcript rehydration after worker restart for both the native Pi loop and the legacy Istara loop over the shared Pi Model Management service.
-- `tests/benchmarks/long_horizon_runner.py` — Docker-only two-call acceptance binds both dispatch receipts to one authorized task and requires unique, successful model/endpoint provenance.
+- `tests/benchmarks/long_horizon_runner.py` — Docker-only two-call acceptance binds both dispatch receipts to one authorized task, requires unique successful model/endpoint provenance, and, for the `combined` profile, restarts the selected disposable backend after the tool-using first turn. The resumed second turn must become healthy and rehydrate the persisted session/task state; a missing Docker socket, non-container execution, invalid container identity, failed restart, or unchanged start timestamp blocks acceptance. This proves a process boundary, not a live-model or three-rater Research Spine pass by itself.
 
 ## Related Features
 

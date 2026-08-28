@@ -138,6 +138,15 @@ if [[ -z "${ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON:-}" ]]; then
     provider|petals) ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON=0 ;;
   esac
 fi
+if [[ -z "${ISTARA_BENCHMARK_REQUIRE_RESTART_RESUME:-}" ]]; then
+  case "$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE" in
+    # A combined claim must survive a real backend process boundary between
+    # the tool-using turn and the resumed turn. Other profiles deliberately
+    # have no chat-continuity claim.
+    combined) ISTARA_BENCHMARK_REQUIRE_RESTART_RESUME=1 ;;
+    provider|petals) ISTARA_BENCHMARK_REQUIRE_RESTART_RESUME=0 ;;
+  esac
+fi
 if [[ -z "${ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION:-}" ]]; then
   case "$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE" in
     provider) ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION=0 ;;
@@ -198,17 +207,21 @@ case "$ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON" in
   0|1|true|false|yes|no) ;;
   *) echo "ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON must be 0/1/true/false/yes/no" >&2; exit 2 ;;
 esac
+case "$ISTARA_BENCHMARK_REQUIRE_RESTART_RESUME" in
+  0|1|true|false|yes|no) ;;
+  *) echo "ISTARA_BENCHMARK_REQUIRE_RESTART_RESUME must be 0/1/true/false/yes/no" >&2; exit 2 ;;
+esac
 
 # The benchmark's donor/model/client helpers invoke Docker from inside the disposable
 # runner. Mount only the Docker API socket into that runner when client sandboxes are
 # enabled; application services never receive the socket. This is a deliberate Docker-only
 # boundary, and missing prerequisites fail closed before any comparison arm starts.
 NESTED_DOCKER_MOUNTS=()
-case "$ISTARA_BENCHMARK_START_CLIENT_SANDBOXES" in
-  1|true|yes)
+case "$ISTARA_BENCHMARK_START_CLIENT_SANDBOXES:$ISTARA_BENCHMARK_REQUIRE_RESTART_RESUME" in
+  1:*|true:*|yes:*|*:1|*:true|*:yes)
     [ -S "$ISTARA_BENCHMARK_DOCKER_SOCKET" ] || {
       echo "required nested Docker socket is unavailable: $ISTARA_BENCHMARK_DOCKER_SOCKET" >&2
-      echo "set ISTARA_BENCHMARK_START_CLIENT_SANDBOXES=0 only for an explicit offline control run" >&2
+      echo "restart-resume and client sandboxes run only inside Docker; disable them only for an explicit offline control run" >&2
       exit 2
     }
     NESTED_DOCKER_MOUNTS=(--mount "type=bind,src=$ISTARA_BENCHMARK_DOCKER_SOCKET,dst=/var/run/docker.sock")
@@ -341,6 +354,8 @@ for engine in "${ENGINES[@]}"; do
     -e "ISTARA_BENCHMARK_PROBE_SCRIPT=$PROBE_SCRIPT"
     -e "ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT=$ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT"
     -e "ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON=$ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON"
+    -e "ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME=$ISTARA_BENCHMARK_REQUIRE_RESTART_RESUME"
+    -e "ISTARA_LONG_HORIZON_BACKEND_CONTAINER=$BACKEND_CONTAINER"
     -e ISTARA_BENCHMARK_DOCKER_RUNNER=1
     -e "ISTARA_BENCHMARK_MODEL_ROOT=$MODEL_ROOT_HOST"
     -e "ISTARA_BENCHMARK_BACKEND_NETWORK=$BACKEND_NET"

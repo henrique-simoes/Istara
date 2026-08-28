@@ -159,6 +159,20 @@ def test_remote_runner_scopes_long_horizon_to_the_combined_acceptance_profile():
     assert 'ISTARA_LONG_HORIZON_ENGINE must be legacy or pi' in inner
 
 
+def test_remote_runner_requires_a_real_backend_restart_for_combined_long_horizon():
+    outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
+    inner = (ROOT / "scripts/runner/inside.sh").read_text(encoding="utf-8")
+
+    assert 'combined) ISTARA_BENCHMARK_REQUIRE_RESTART_RESUME=1' in outer
+    assert 'provider|petals) ISTARA_BENCHMARK_REQUIRE_RESTART_RESUME=0' in outer
+    assert 'ISTARA_BENCHMARK_START_CLIENT_SANDBOXES:$ISTARA_BENCHMARK_REQUIRE_RESTART_RESUME' in outer
+    assert '-e "ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME=$ISTARA_BENCHMARK_REQUIRE_RESTART_RESUME"' in outer
+    assert '-e "ISTARA_LONG_HORIZON_BACKEND_CONTAINER=$BACKEND_CONTAINER"' in outer
+    assert 'ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME:=0' in inner
+    assert 'ISTARA_LONG_HORIZON_BACKEND_CONTAINER' in inner
+    assert 'restart-resume requires the runner Docker socket' in inner
+
+
 def test_remote_runner_keeps_python_dependencies_inside_the_disposable_image():
     dockerfile = (ROOT / "scripts/runner/Dockerfile").read_text(encoding="utf-8")
     outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")

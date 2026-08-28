@@ -7,6 +7,7 @@ export ISTARA_BENCHMARK_CHAT_TIMEOUT_MS="${ISTARA_BENCHMARK_CHAT_TIMEOUT_MS:-300
 : "${ISTARA_BENCHMARK_ENGINE:?set ISTARA_BENCHMARK_ENGINE to legacy or pi}"
 : "${ISTARA_BENCHMARK_ACCEPTANCE_PROFILE:=combined}"
 : "${ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON:=0}"
+: "${ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME:=0}"
 if [[ -z "${ISTARA_RUNNER_SKIP_MARATHON:-}" ]]; then
   case "$ISTARA_BENCHMARK_ACCEPTANCE_PROFILE" in
     combined) ISTARA_RUNNER_SKIP_MARATHON=0 ;;
@@ -50,6 +51,17 @@ else
 fi
 
 if [[ "$RUN_LONG_HORIZON" -eq 1 ]]; then
+  case "$ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME" in
+    0|false|no) ;;
+    1|true|yes)
+      : "${ISTARA_LONG_HORIZON_BACKEND_CONTAINER:?set the selected backend container for restart-resume}"
+      [ -S /var/run/docker.sock ] || {
+        echo "restart-resume requires the runner Docker socket" >&2
+        exit 2
+      }
+      ;;
+    *) echo "ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME must be 0/1/true/false/yes/no" >&2; exit 2 ;;
+  esac
   case "${ISTARA_LONG_HORIZON_ENGINE:-}" in
     legacy|pi) ;;
     *) echo "ISTARA_LONG_HORIZON_ENGINE must be legacy or pi when long-horizon is required" >&2; exit 2 ;;

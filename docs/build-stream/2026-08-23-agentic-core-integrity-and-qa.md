@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T05:08:00Z, ledger: L-480, commit: d05ceeb }
-next_action: "Implement and verify a Docker-only backend-restart oracle, then perform live acceptance only when owner credentials and a clean remote workload are available; otherwise retain the live Qwen/Codex and scientific gates as blocked."
+last: { agent: gpt-5-codex, at: 2026-08-28T05:31:00Z, ledger: L-482, commit: dda8b432 }
+next_action: "Commit and push the reviewed restart-resume acceptance repair; live acceptance remains blocked until owner credentials and a clean remote workload are available."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -11696,3 +11696,54 @@ identity-bound three-rater Research Spine coding-run check before live evidence
 can address recovery or ensemble-bias claims. The external audit records this
 as F-R9-178. No host package installation, Docker mutation, credential read,
 or provider call occurred in this audit checkpoint.
+
+### L-481 | 2026-08-28T05:26:00Z | S2-execute/S3-review | gpt-5-codex | Docker restart-resume acceptance repair
+
+Implemented the missing Docker-only process-boundary oracle. The outer runner
+now makes `combined` acceptance require restart/resume, resolves the selected
+Compose backend container ID per engine arm, and gives the disposable runner a
+Docker socket only when either container-side donor clients or this restart
+gate require it. The inner runner fails before the workload if the required
+socket or selected container identity is absent. The Python long-horizon
+workload accepts only a 12–64 lower-hex opaque container ID, refuses execution
+outside the disposable Docker runner, records the backend `StartedAt` state,
+restarts exactly that container via argument-vector Docker calls, requires a
+changed state, waits for `/api/health`, and only then sends the second turn.
+There is no host Python/Node model workload and no arbitrary Docker command or
+container-name input path.
+
+Focused contract verification passed: shell syntax plus **51 tests** for the
+runner and B0-3 oracle, followed by **63 tests** including real-ASGI Pi chat,
+worker tool-loop, and idempotency paths. The tracked security benchmark passed
+**28/28 (100%)**, and living feature documentation regenerated/check passed
+**224 generated / 86 checked** with `git diff --check` clean. The tests prove
+the fail-closed local contract—not a remote Docker run. No SSH mutation,
+container startup, credential read, live Qwen/Codex request, actual tool
+execution against a provider, or three-rater reliability/reconciliation result
+occurred in this checkpoint. The corresponding audit follow-up is F-R9-179.
+
+The next action is to attach this command/security/documentation evidence to
+CF-15, run the after-gate, commit the reviewed repair, and push it to
+`origin/testing`. The live acceptance remains blocked on the unchanged owner
+prerequisites: a clean disposable remote workload and ephemeral credentials
+injected solely into the target Docker workload.
+
+### L-482 | 2026-08-28T05:31:00Z | S3-review | gpt-5-codex | Compass Forge evidence and final pre-ship review
+
+Attached deterministic command evidence **510** to CF-15 and then ran
+after-gate record **414**. The gate comparison has no new forbidden dependency,
+missing-path, import-cycle, or architecture-rule issue. Its only comparison
+novelty is the intentionally append-only Build Stream document's changed hash
+being rediscovered as an unexpected large file despite an active path-scoped
+suppression; inherited secret-flow findings also keep the aggregate gate status
+at fail. This is accurately recorded in CF evidence **512**, not treated as a
+green gate. Manual review evidence **513** confirms that the restart accepts
+only an opaque lower-hex Docker ID, uses fixed argv calls, verifies the
+container boundary and health before the second turn, and retains the live
+three-rater/provider boundary as open.
+
+Ruff on the changed Python files, shell syntax, and `git diff --check` pass.
+No source has been committed or pushed yet; the next action is exactly that
+transport after one final status/diff review. The active CF-15 task and Build
+Stream goal remain open because committing a deterministic repair does not
+create the live Qwen/Codex, tool, restart, or Research Spine evidence.
