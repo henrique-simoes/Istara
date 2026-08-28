@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T00:43:35Z, ledger: L-453, commit: ccdfb30b }
+last: { agent: gpt-5-codex, at: 2026-08-28T01:16:05Z, ledger: L-454, commit: cb31e76a }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -10799,3 +10799,31 @@ external finding reference, and L-452 checkpoint. It was pushed to
 and the main checkout is clean. CF command evidence `482` and after-gate
 evidence `483` remain attached to CF-15. No live model or Mac Studio state was
 changed; the live three-model/Petals/Research Spine gates remain open.
+
+### L-454 | 2026-08-28T01:16:05Z | S2-execute/S3-review | gpt-5-codex | Closed malformed reliability-metric promotion gap
+
+Compass Forge impact/why was run for the Research Spine reliability helper and
+Ensemble Health contract before editing. The audit found that the benchmark
+oracle already rejected missing, non-finite, or out-of-range kappa/alpha, but
+`evaluate_reliability_gate` could mark a two- or three-coder run accepted from
+a passing Fleiss/Cohen score while ignoring a malformed Krippendorff alpha;
+non-numeric scores could also raise instead of taking the fail-closed path.
+
+`cb31e76a9a2a88679f3c209c08bd7924d68824fd` adds shared finite/domain checks
+(kappa `[-1, 1]`, alpha `<= 1`, booleans/NaN/Infinity rejected) for both
+formal multi-coder branches. Invalid metrics now route to
+`needs_reconciliation` with an explicit reason. Parametrized regressions cover
+missing, non-finite, non-numeric, and out-of-range values. Verification:
+contract/metrics tests `68 passed`; feature docs `86/86`; `git diff --check`
+clean; CF command evidence `487`; CF after-gate evidence `489` reports
+`actionable_failures=[]`, `new_failures=0`, and `new_issue_count=0` (inherited
+31 failures/212 warnings remain). The commit is pushed to `origin/testing`,
+both testing tips are equal at the recorded SHA, and the main checkout is
+clean. External finding F-R9-170 records the same correction.
+
+No live provider, model load, Docker workload, or Mac Studio host change was
+performed. The provider/Petals/combined live matrix, three served model
+identities, Fleiss/alpha receipts, reconciliation, human Done/report,
+two-call, and long-horizon gates remain open. Next: continue the authority and
+Docker-only live-harness audit, preserving these gates as unproven until
+terminal receipts exist.
