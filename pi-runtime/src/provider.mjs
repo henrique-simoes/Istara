@@ -408,11 +408,16 @@ export function modelCapabilities(endpoint, modelApi) {
     };
   }
   const provider = String(endpoint?.pi_provider || "").trim().toLowerCase();
+  // Catalog-managed endpoints advertise this per-model capability. Legacy
+  // bindings leave it null/undefined, so retain the provider default for
+  // backwards compatibility while honoring an explicit false value.
+  const advertisedReasoning = endpoint?.supports_reasoning;
+  const reasoning = advertisedReasoning == null ? true : Boolean(advertisedReasoning);
   if (provider === "deepseek") {
     return {
-      reasoning: true,
+      reasoning,
       thinkingLevels: undefined,
-      compat: { thinkingFormat: "deepseek" },
+      compat: reasoning ? { thinkingFormat: "deepseek" } : undefined,
     };
   }
   // Qwen's OpenAI-compatible APIs use a provider-specific thinking contract:
@@ -432,9 +437,9 @@ export function modelCapabilities(endpoint, modelApi) {
   ]);
   if (qwenProviders.has(provider)) {
     return {
-      reasoning: true,
+      reasoning,
       thinkingLevels: undefined,
-      compat: { thinkingFormat: "qwen", supportsReasoningEffort: false },
+      compat: reasoning ? { thinkingFormat: "qwen", supportsReasoningEffort: false } : undefined,
     };
   }
   return { reasoning: false, thinkingLevels: undefined, compat: undefined };

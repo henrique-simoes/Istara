@@ -23,6 +23,49 @@ from fastapi.testclient import TestClient
 from app.api.routes import settings as settings_routes
 
 
+_DASHSCOPE_SINGAPORE_MODEL_IDS = {
+    "qwen3.8-max",
+    "qwen3.7-max",
+    "qwen3.7-max-2026-06-08",
+    "qwen3.7-max-2026-05-20",
+    "qwen3-max",
+    "qwen3-max-2026-01-23",
+    "qwen3.7-plus",
+    "qwen3.7-plus-2026-05-26",
+    "qwen3.7-flash",
+    "qwen3.6-plus",
+    "qwen3.6-plus-2026-04-02",
+    "qwen3.5-plus",
+    "qwen3.5-plus-2026-04-20",
+    "qwen3.5-plus-2026-02-15",
+    "qwen3.6-flash",
+    "qwen3.6-flash-2026-04-16",
+    "qwen3.5-flash",
+    "qwen3.5-flash-2026-02-23",
+    "qwen-plus",
+    "qwen-flash",
+    "qwen3-coder-plus",
+    "qwen3-coder-flash",
+    "qwen3.6-35b-a3b",
+    "qwen3.5-397b-a17b",
+    "qwen3.5-122b-a10b",
+    "qwen3.5-27b",
+    "qwen3.5-35b-a3b",
+    "qwen-plus-character",
+    "qwen-flash-character",
+    "qwen3-vl-plus",
+    "qwen3-vl-flash",
+    "qwen-vl-max",
+    "qwen-vl-plus",
+    "qwen3.5-omni-plus",
+    "deepseek-v4-pro",
+    "deepseek-v4-flash",
+    "glm-5.1",
+    "glm-5.2",
+    "ZHIPU/GLM-5.2",
+}
+
+
 @pytest.fixture()
 def client(monkeypatch):
     from app import config as app_config
@@ -74,6 +117,52 @@ def test_catalog_provider_auth_hints(client):
     # Google is API-key/ambient-credential only in the installed Pi loaders.
     assert "api_key" in providers["google"]["login_methods"]
     assert "oauth" not in providers["google"]["login_methods"]
+
+
+def test_regular_dashscope_catalog_matches_pi_singapore_contract(client):
+    """Every model in the current Pi DashScope contract must be selectable.
+
+    This is intentionally an exact set check: silently shipping only the two
+    models used by one smoke test would make the settings catalog diverge from
+    the user-owned Pi provider configuration.
+    """
+    resp = client.get("/api/settings/pi-catalog")
+    assert resp.status_code == 200
+    provider = next(item for item in resp.json()["providers"] if item["id"] == "dashscope")
+    models = {item["id"]: item for item in provider["models"]}
+    assert set(models) == _DASHSCOPE_SINGAPORE_MODEL_IDS
+    assert all(item["api"] == "openai-completions" for item in models.values())
+    assert all(item["baseUrl"] == provider["base_url"] for item in models.values())
+    assert all(
+        item["cost"][key] == 0
+        for item in models.values()
+        for key in ("input", "output", "cacheRead", "cacheWrite")
+    )
+
+
+def test_every_dashscope_model_is_resolvable_by_pi_model_management(client):
+    """The expanded Pi list must be usable by the Settings resolver, not only listed."""
+    for index, model_id in enumerate(sorted(_DASHSCOPE_SINGAPORE_MODEL_IDS)):
+        resp = client.post(
+            "/api/settings/pi-endpoints",
+            json={
+                "endpoint_id": f"dashscope-catalog-{index}",
+                "pi_provider": "dashscope",
+                "pi_model": model_id,
+                "keychain_service": "istara-pi-dashscope",
+                "api_key": "sk-test-dashscope",
+            },
+        )
+        assert resp.status_code == 200, f"{model_id}: {resp.text}"
+    endpoints = {
+        item["model"]: item
+        for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
+        if item.get("pi_provider") == "dashscope"
+    }
+    assert endpoints["qwen3.7-plus"]["supports_reasoning"] is True
+    assert endpoints["qwen3.7-plus"]["supports_vision"] is True
+    assert endpoints["qwen-plus"]["supports_reasoning"] is False
+    assert endpoints["qwen-plus"]["supports_vision"] is False
 
 
 def test_add_endpoint_via_catalog_no_manual_url(client):

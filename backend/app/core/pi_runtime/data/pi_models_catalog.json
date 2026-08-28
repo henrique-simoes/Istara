@@ -5761,47 +5761,768 @@
   }
  ],
  "dashscope": [
-  {
-   "id": "qwen3.7-flash",
-   "name": "Qwen3.7 Flash (DashScope)",
-   "api": "openai-completions",
-   "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-   "contextWindow": 1000000,
-   "maxTokens": 65536,
-   "reasoning": true,
-   "input": [
-    "text",
-    "image"
-   ],
-   "thinkingLevels": null,
-   "cost": {
-    "input": 0,
-    "output": 0,
-    "cacheRead": 0,
-    "cacheWrite": 0
-   }
-  },
-  {
-   "id": "qwen3.7-plus",
-   "name": "Qwen3.7 Plus (DashScope)",
-   "api": "openai-completions",
-   "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-   "contextWindow": 1000000,
-   "maxTokens": 65536,
-   "reasoning": true,
-   "input": [
-    "text",
-    "image"
-   ],
-   "thinkingLevels": null,
-   "cost": {
-    "input": 0,
-    "output": 0,
-    "cacheRead": 0,
-    "cacheWrite": 0
-   }
+ {
+  "id": "qwen3.8-max",
+  "name": "Qwen3.8 Max (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
   }
- ],
+ },
+ {
+  "id": "qwen3.7-max",
+  "name": "Qwen3.7 Max (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.7-max-2026-06-08",
+  "name": "Qwen3.7 Max 2026-06-08 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.7-max-2026-05-20",
+  "name": "Qwen3.7 Max 2026-05-20 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3-max",
+  "name": "Qwen3 Max (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3-max-2026-01-23",
+  "name": "Qwen3 Max 2026-01-23 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.7-plus",
+  "name": "Qwen3.7 Plus (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.7-plus-2026-05-26",
+  "name": "Qwen3.7 Plus 2026-05-26 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.7-flash",
+  "name": "Qwen3.7 Flash (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.6-plus",
+  "name": "Qwen3.6 Plus (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.6-plus-2026-04-02",
+  "name": "Qwen3.6 Plus 2026-04-02 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.5-plus",
+  "name": "Qwen3.5 Plus (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.5-plus-2026-04-20",
+  "name": "Qwen3.5 Plus 2026-04-20 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.5-plus-2026-02-15",
+  "name": "Qwen3.5 Plus 2026-02-15 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.6-flash",
+  "name": "Qwen3.6 Flash (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.6-flash-2026-04-16",
+  "name": "Qwen3.6 Flash 2026-04-16 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.5-flash",
+  "name": "Qwen3.5 Flash (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.5-flash-2026-02-23",
+  "name": "Qwen3.5 Flash 2026-02-23 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen-plus",
+  "name": "Qwen Plus (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": false,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen-flash",
+  "name": "Qwen Flash (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": false,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3-coder-plus",
+  "name": "Qwen3 Coder Plus (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3-coder-flash",
+  "name": "Qwen3 Coder Flash (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.6-35b-a3b",
+  "name": "Qwen3.6 35B A3B (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 32768,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.5-397b-a17b",
+  "name": "Qwen3.5 397B A17B (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.5-122b-a10b",
+  "name": "Qwen3.5 122B A10B (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.5-27b",
+  "name": "Qwen3.5 27B (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.5-35b-a3b",
+  "name": "Qwen3.5 35B A3B (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen-plus-character",
+  "name": "Qwen Plus Character (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": false,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen-flash-character",
+  "name": "Qwen Flash Character (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": false,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3-vl-plus",
+  "name": "Qwen3 VL Plus (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 262144,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3-vl-flash",
+  "name": "Qwen3 VL Flash (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 262144,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen-vl-max",
+  "name": "Qwen VL Max (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": false,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen-vl-plus",
+  "name": "Qwen VL Plus (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": false,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "qwen3.5-omni-plus",
+  "name": "Qwen3.5 Omni Plus (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text",
+   "image"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "deepseek-v4-pro",
+  "name": "DeepSeek V4 Pro (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "deepseek-v4-flash",
+  "name": "DeepSeek V4 Flash (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "glm-5.1",
+  "name": "GLM-5.1 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "glm-5.2",
+  "name": "GLM-5.2 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
+  "id": "ZHIPU/GLM-5.2",
+  "name": "ZHIPU GLM-5.2 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 131072,
+  "maxTokens": 32768,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ }
+],
  "deepseek": [
   {
    "id": "deepseek-v4-flash",

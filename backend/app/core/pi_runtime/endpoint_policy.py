@@ -43,6 +43,9 @@ def _apply_catalog_fields(payload: dict[str, Any]) -> None:
     payload["model"] = match["id"]
     payload["context_window"] = int(match.get("contextWindow") or 0)
     payload["max_tokens"] = int(match.get("maxTokens") or 0)
+    payload["supports_vision"] = "image" in (match.get("input") or [])
+    if "reasoning" in match:
+        payload["supports_reasoning"] = bool(match["reasoning"])
     cost = match.get("cost") or {}
     payload["cost_input_per_mtok"] = float(cost.get("input") or 0.0)
     payload["cost_output_per_mtok"] = float(cost.get("output") or 0.0)

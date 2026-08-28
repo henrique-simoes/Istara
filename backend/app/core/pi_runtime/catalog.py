@@ -1,10 +1,14 @@
 """Pi canonical model catalog — the single source for providers/models the
 settings UI offers for selection.
 
-The catalog is extracted from the standalone Pi package's canonical
-``models.generated.js`` (39 providers, ~1267 models) and shipped as a static
-resource so the Istara backend never needs the pi-ai dependency at runtime.
-Auth hints mirror ``docs/providers.md`` of the standalone Pi CLI:
+The catalog mirrors the standalone Pi package's canonical
+``models.generated.js`` (about 39 providers and 1,267 models) and adds
+governed custom-provider snapshots when Istara must expose a provider that Pi
+loads from ``~/.pi/agent/models.json``.  The current regular DashScope
+snapshot contributes 39 Singapore OpenAI-compatible chat models.  The result
+is shipped as a static resource so the Istara backend never needs the pi-ai
+dependency at runtime.  Auth hints mirror ``docs/providers.md`` of the
+standalone Pi CLI:
 
 - OAuth/subscription providers (device-code / PKCE flows as in Pi's ``/login``)
 - API-key providers (env var or auth.json credential custody)

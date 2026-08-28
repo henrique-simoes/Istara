@@ -226,15 +226,24 @@ provider file `~/.pi/agent/models.json`, using the OpenAI-compatible base URL
 `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`, the
 `DASHSCOPE_API_KEY` environment reference, and Qwen compatibility flags that
 emit `enable_thinking` rather than unsupported `reasoning_effort`. Istara's
-canonical catalog mirrors this as the separate `dashscope` provider with
-`qwen3.7-plus` and `qwen3.7-flash` entries, so PI Model Management can resolve
-the same identity instead of rejecting the provider or silently rewriting it
-to Qwen Token Plan. The regular DashScope credential and Token Plan
-credentials/base URLs are not interchangeable; a Token Plan login must remain
-labelled and tested as its own provider. Docker acceptance must inject the
-DashScope key only into the container process and must record the provider-
-reported `served_model` before either Qwen endpoint can count as an
-independent Research Spine coder.
+canonical catalog mirrors this as the separate `dashscope` provider with the
+39-model Singapore snapshot currently documented in Pi (Qwen Max/Plus/Flash,
+Coder, VL and Omni families plus DashScope's DeepSeek V4 and GLM entries).
+Each entry carries its explicit Pi API, endpoint, capability, context, output,
+and cost metadata so PI Model Management can resolve the same identity instead
+of rejecting the provider or silently rewriting it to Qwen Token Plan. This is
+a catalog snapshot, not a claim that every model is enabled for every account:
+regional availability and served identity must be checked at runtime. The
+Settings resolver carries the catalog's reasoning and vision flags through the
+endpoint binding into the Pi worker; provider-name defaults are used only for
+legacy bindings that predate per-model capability metadata. This prevents a
+non-reasoning Qwen model from receiving `enable_thinking` and prevents a
+vision-capable model from being advertised as text-only. The
+regular DashScope credential and Token Plan credentials/base URLs are not
+interchangeable; a Token Plan login must remain labelled and tested as its own
+provider. Docker acceptance must inject the DashScope key only into the
+container process and must record the provider-reported `served_model` before
+any Qwen endpoint can count as an independent Research Spine coder.
 
 When PI endpoint credentials are created from the Settings API, custody is
 platform-aware: the macOS backend writes the raw key only to Keychain, while a

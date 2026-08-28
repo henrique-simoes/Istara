@@ -130,6 +130,7 @@ class ResolvedPiEndpoint:
     max_tokens: int = 0
     supports_tools: bool = True
     supports_vision: bool = False
+    supports_reasoning: bool | None = None
     kind: str = "remote"
 
     def telemetry_identity(self) -> dict[str, str]:
@@ -232,6 +233,7 @@ class PiEndpointResolver:
             max_tokens=endpoint.max_tokens,
             supports_tools=endpoint.supports_tools,
             supports_vision=endpoint.supports_vision,
+            supports_reasoning=endpoint.supports_reasoning,
         )
 
     def configured(self) -> list[PiApiEndpoint]:

@@ -61,6 +61,10 @@ class PiApiEndpoint(BaseModel):
     max_tokens: int = Field(default=0, ge=0)
     supports_tools: bool = True
     supports_vision: bool = False
+    # ``None`` preserves legacy endpoints whose model capability was not
+    # advertised; catalog-managed models set this explicitly so the runtime
+    # does not force provider defaults onto a non-reasoning model.
+    supports_reasoning: bool | None = None
     # Provider-auth metadata is non-secret and lets the runtime choose the
     # correct Pi transport (for example Codex Responses adds account headers).
     pi_provider: str = ""

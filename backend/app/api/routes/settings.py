@@ -780,6 +780,7 @@ class PiEndpointRequest(BaseModel):
     pi_model: str = ""
     api_key: str = ""  # optional: written to Keychain custody when provided
     supports_vision: bool = False
+    supports_reasoning: bool | None = None
     auth_provider: str = ""
     auth_method: str = "api_key"
     oauth_flow_id: str = ""

@@ -1088,6 +1088,7 @@ async def test_settings_pi_catalog_info_merges_identity_view(monkeypatch):
             "max_tokens",
             "supports_tools",
             "supports_vision",
+            "supports_reasoning",
             "kind",
             "pi_provider",
             "auth_method",

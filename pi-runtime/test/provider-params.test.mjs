@@ -61,6 +61,16 @@ test("qwen identities emit the Qwen thinking compatibility contract", () => {
   );
 });
 
+test("explicit non-reasoning catalog models do not inherit Qwen thinking", () => {
+  assert.deepEqual(
+    modelCapabilities(
+      { pi_provider: "dashscope", supports_reasoning: false },
+      "openai-completions",
+    ),
+    { reasoning: false, thinkingLevels: undefined, compat: undefined },
+  );
+});
+
 test("Qwen thinking level becomes enable_thinking without reasoning_effort", async () => {
   const binding = buildRealProvider({
     endpoint_id: "qwen-plus",

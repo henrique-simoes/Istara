@@ -148,6 +148,7 @@ def _bind_payload(
         "pi_provider": endpoint.pi_provider,
         "context_window": endpoint.context_window,
         "max_tokens": endpoint.max_tokens,
+        "supports_reasoning": endpoint.supports_reasoning,
     }
     bind_params = _turn_bind_params(params, endpoint)
     if bind_params:

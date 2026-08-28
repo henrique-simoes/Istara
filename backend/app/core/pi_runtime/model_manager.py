@@ -82,6 +82,7 @@ class PiEndpointInfo:
     max_tokens: int = 0
     supports_tools: bool = True
     supports_vision: bool = False
+    supports_reasoning: bool | None = None
     kind: str = "remote"
     pi_provider: str = ""
     auth_method: str = "api_key"
@@ -108,6 +109,7 @@ class _CatalogEntry:
     max_tokens: int = 0
     supports_tools: bool = True
     supports_vision: bool = False
+    supports_reasoning: bool | None = None
     kind: str = "remote"
     pi_provider: str = ""
     auth_method: str = "api_key"
@@ -172,6 +174,7 @@ class PiModelManager:
             max_tokens=endpoint.max_tokens,
             supports_tools=endpoint.supports_tools,
             supports_vision=endpoint.supports_vision,
+            supports_reasoning=endpoint.supports_reasoning,
         )
 
     @staticmethod
@@ -194,6 +197,7 @@ class PiModelManager:
             max_tokens=endpoint.max_tokens,
             supports_tools=endpoint.supports_tools,
             supports_vision=endpoint.supports_vision,
+            supports_reasoning=endpoint.supports_reasoning,
             kind=endpoint.kind,
             # ``ResolvedPiEndpoint`` is the already-admitted boundary used by
             # explicit test/faux catalogs and does not carry a donor allowlist.
@@ -507,6 +511,7 @@ class PiModelManager:
             max_tokens=entry.max_tokens,
             supports_tools=entry.supports_tools,
             supports_vision=entry.supports_vision,
+            supports_reasoning=entry.supports_reasoning,
             kind=entry.kind,
         )
 
@@ -747,6 +752,7 @@ class PiModelManager:
                 max_tokens=entry.max_tokens,
                 supports_tools=entry.supports_tools,
                 supports_vision=entry.supports_vision,
+                supports_reasoning=entry.supports_reasoning,
                 kind=entry.kind,
             )
             for entry in self._entries.values()
