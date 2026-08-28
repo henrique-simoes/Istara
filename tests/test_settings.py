@@ -83,6 +83,9 @@ async def test_security_integrity_is_admin_only_and_never_exposes_key(
     from app.core.field_encryption import decrypt_field, reset_encryption_health_for_tests
     from app.core.telemetry import telemetry_recorder
 
+    # The admin-only enforcement contract holds in team mode; local desktop
+    # mode intentionally serves every request as the built-in local admin.
+    settings.team_mode = True
     reset_encryption_health_for_tests()
     telemetry_recorder.reset_write_health_for_tests()
     decrypt_field("ENC:tampered")

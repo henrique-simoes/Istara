@@ -540,6 +540,11 @@ async def test_gateway_http_error_propagates():
 
 
 def test_unpinned_resolver_is_not_a_runtime_authority(monkeypatch):
+    # Pin the embed-model inputs: the active embedding profile and ambient env
+    # must not decide whether an unpinned remote endpoint can masquerade as
+    # the local vector-space authority.
+    monkeypatch.setattr(settings, "ollama_embed_model", "w8-active-embed")
+    monkeypatch.setattr(settings, "lmstudio_embed_model", "w8-active-embed")
     monkeypatch.setattr(settings, "llm_provider", "ollama")
     manager = PiModelManager(
         endpoints=[
@@ -570,7 +575,10 @@ def test_unpinned_resolver_is_not_a_runtime_authority(monkeypatch):
     remote_only = PiModelManager(
         endpoints=[
             _endpoint(
-                endpoint_id="pi-llm-remote", kind="remote", base_url="http://r:8000/v1"
+                endpoint_id="pi-llm-remote",
+                kind="remote",
+                base_url="http://r:8000/v1",
+                model="w8-other-embed",
             ),
         ]
     )

@@ -7283,7 +7283,7 @@ that live model responses are independent, source-grounded, reliable, or accepta
 
 ### 1. Non-negotiable boundaries and resume procedure
 
-1. Work from `/Users/user/Documents/Istara-main` on local branch `testing`, and
+1. Work from `<repo-root>` on local branch `testing`, and
    verify `git status --short --branch` is clean before changing or transferring
    anything. The local tip, `origin/testing`, and the Mac Studio detached retake
    `~/istara-testing-retake-47bf` must resolve to the same commit. Do not use the
@@ -9303,7 +9303,7 @@ No source, provider, model, container, or host state was changed by this receipt
 
 Compass Forge remains native Rust (`python_fallback=false`). Its new `CF-SPEC-3`
 records live in the ignored local state database and do not alter Git branches;
-the repository checkout remains `/Users/user/Documents/Istara-main` on clean
+the repository checkout remains `<repo-root>` on clean
 `testing`, exactly equal to `origin/testing` at `13d0f124`. The only other
 registered checkout is the preserved recovery worktree under
 `/Users/user/Documents/Codex/2026-08-10/list/work/istara-pi-linearized-2026-08-10`.
@@ -9323,7 +9323,7 @@ Next: attach these exact commands as CF-SPEC-3 evidence and leave external gates
 
 Corrected the earlier claim that Istara had only five Compass Forge specs beginning on
 2026-08-23. That number is limited to the active repo-local database at
-`/Users/user/Documents/Istara-main/.compass-forge/state.sqlite3`, which currently
+`<repo-root>/.compass-forge/state.sqlite3`, which currently
 contains five rows (`CF-SPEC-1` through `CF-SPEC-5`) and has oldest `created_at`
 `2026-08-23T15:04:20.958685Z`. It is not a complete historical count.
 
@@ -9412,7 +9412,7 @@ April tags `v2026.04.03.3`, `v2026.04.10.13`, and `v2026.04.20.4`, exact histori
 files `AGENT_ENTRYPOINT.md`, `CHANGE_CHECKLIST.md`, `SYSTEM_CHANGE_MATRIX.md`,
 `SYSTEM_PROMPT.md`, `TESTING.md`, and the retained CF databases under
 `/Users/user/Documents/compass-forge/.compass-forge/` and
-`/Users/user/Documents/Istara-main/.compass-forge/`. This was read-only provenance
+`<repo-root>/.compass-forge/`. This was read-only provenance
 work; no code, provider, model, Docker, host, or testing data changed.
 
 Next: retain this two-layer history in all reports, then continue the open CF-SPEC-2
@@ -9786,7 +9786,7 @@ store under `/Users/user/Documents`, and the current branch rather than using on
 database timestamp as a process-origin proxy. The current shared Compass Forge store
 `/Users/user/Documents/compass-forge/.compass-forge/state.sqlite3` contains `60`
 spec rows, oldest `CF-SPEC-1` at `2026-07-03T01:11:53Z`; its Istara roots are `10`
-rows for `/Users/user/Documents/Istara-main` plus `1` row for the Pi migration worktree.
+rows for `<repo-root>` plus `1` row for the Pi migration worktree.
 The repo-local native Istara store contains `5` rows, oldest `CF-SPEC-1` at
 `2026-08-23T15:04:20.958685Z`. Other populated stores belong to Compass Forge,
 Kairos, or Skills and are not Istara process history.
@@ -10256,7 +10256,7 @@ The naming and storage boundaries remain separate. The first literal
 literal `CF-SPEC-*` document marker is `7dca7368` (2026-05-04); both are also
 ancestors of `testing`. The retained shared CF database currently has 60 spec
 rows overall (oldest `2026-07-03T01:11:53Z`): 37 Compass Forge, 12 WildSync,
-10 `/Users/user/Documents/Istara-main`, and 1 Istara Pi-migration worktree.
+10 `<repo-root>`, and 1 Istara Pi-migration worktree.
 The Istara-main project scope therefore has 11 rows across the two registered
 Istara roots, with its first retained row on `2026-08-01T19:46:34Z`. The
 repo-local Istara database has 5 rows from August 23–26. The pre-native backup

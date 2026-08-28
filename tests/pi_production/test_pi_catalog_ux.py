@@ -264,6 +264,10 @@ def test_add_endpoint_unknown_catalog_model_rejected(client):
     assert resp.status_code == 400
 
 
+@pytest.mark.skipif(
+    __import__("sys").platform != "darwin",
+    reason="macOS Keychain custody contract; Linux custody is env-persist by design",
+)
 def test_update_endpoint_reuses_catalog_and_keychain_custody(client, monkeypatch):
     """PUT must preserve the canonical Pi catalog and secret-custody rules."""
     from app import config as app_config
