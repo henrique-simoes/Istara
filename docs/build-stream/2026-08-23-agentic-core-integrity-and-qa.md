@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T04:47:45Z, ledger: L-477, commit: c564ed9 }
-next_action: "Push the redacted Pi tool-result evidence-oracle repair to origin/testing; then perform Docker-only live acceptance when owner credentials and a clean remote workload are available."
+last: { agent: gpt-5-codex, at: 2026-08-28T04:48:12Z, ledger: L-478, commit: 0c67231 }
+next_action: "Perform Docker-only live acceptance when owner credentials and a clean remote workload are available; otherwise retain the live Qwen/Codex and scientific gates as blocked."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -11638,3 +11638,21 @@ reuse of the dirty remote checkout. Do not close CF-15 or the active goal: the
 three-model Research Spine, Qwen/Codex served-model/thinking, Petals,
 reconciliation/Done/report, Docker two-call, and restart/resume gates are
 still incomplete.
+
+### L-478 | 2026-08-28T04:48:12Z | S4-ship/S5-learn | gpt-5-codex | Testing branch synchronized
+
+The reviewed deterministic repair was committed as **0c67231** (`fix: retain
+pi tool execution receipts`) and pushed from local `testing` to
+`origin/testing`. Post-push local `testing` and `origin/testing` resolve to the
+same commit and have ahead/behind **0/0**; the repository worktree is clean.
+The external audit append remains in `/Users/user/Desktop/testing.md` under a
+new `--- FINDINGS ---` marker and is not a repository artifact.
+
+This synchronization does not change the live evidence boundary. No remote
+Mac Studio deployment or provider call is implied by a Git push. The next
+owner-safe action is still a fresh, disposable Docker-only remote checkout
+with ephemeral credentials injected only into the target container; do not use
+the dirty stale remote checkout, install packages on macOS, or turn the
+deterministic Qwen/Codex contracts into a live claim. Keep CF-15 and the
+active Build Stream goal open until those independent three-model, Research
+Spine, tool, two-call, and restart/resume receipts exist.
