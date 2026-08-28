@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T03:22:58Z, ledger: L-470, commit: c0098a72 }
+last: { agent: gpt-5-codex, at: 2026-08-28T03:25:44Z, ledger: L-471, commit: b213ef9c }
 next_action: "Inject the owner credential only as DASHSCOPE_API_KEY into one disposable Mac Studio container process, run Pi 0.84.3 qwen3.7-plus and qwen3.7-flash with thinking enabled, then run the combined three-rater Research Spine profile and prove source spans, Fleiss/Krippendorff agreement, reconciliation, Done/report gates, two-call, and long-horizon receipts."
 ```
 
@@ -11307,3 +11307,22 @@ Fleiss/Krippendorff agreement, reconciliation, human Done/report promotion,
 two-call causality, or long-horizon restart/resume. The next agent must collect
 those receipts in Docker and keep the Research Spine fail-closed until every
 gate is evidenced.
+
+### L-471 | 2026-08-28T03:25:44Z | S3-review | gpt-5-codex | Final Docker cleanup and credential-boundary confirmation
+
+After the Pi 0.84.3 listing receipt, the remote SSH shell and the local shell
+were checked for `DASHSCOPE_API_KEY` without printing its value; both were
+`absent`. No live provider request was attempted, and the prior supplied
+credential was not copied into a command, file, log, or chat response. The
+throwaway `istara-dashscope-contract` Docker volume was removed explicitly
+after verification. Mac Studio `docker ps` now shows only the unrelated healthy
+`plex` container; the pre-existing Pi/runtime volumes were left untouched.
+
+The local `testing` checkout is clean and both `HEAD` and `origin/testing`
+resolve to `b213ef9c8fd72bbe4a998cf7117b252676064fe7`. This entry closes the
+configuration-only verification wave. It does not relax the live-credential
+blocker or Research Spine fail-closed rule: the next continuation must inject
+the owner secret ephemerally as `DASHSCOPE_API_KEY` inside one disposable
+container, capture served identities/usage, and only then run the three-rater
+ensemble and its source-grounded reliability, reconciliation, Done/report,
+two-call, and long-horizon acceptance checks.
