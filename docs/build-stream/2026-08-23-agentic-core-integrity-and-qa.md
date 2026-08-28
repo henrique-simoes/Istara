@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-27T23:56:28Z, ledger: L-442 }
+last: { agent: gpt-5-codex, at: 2026-08-28T00:17:05Z, ledger: L-445, commit: 70e4ad9d6456074ecf862aeb05534916cd2217c5 }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -10657,3 +10657,24 @@ Next: commit and push this correction to `testing`, attach command/gate
 evidence to CF-15, update the YAML `last` pointer to the new commit, and keep
 the live three-model/Petals/two-call/long-horizon/Done/report gates open until
 owner-approved Docker inputs exist.
+
+### L-445 | 2026-08-28T00:17:05Z | S2-execute/S3-review | gpt-5-codex | Pushed taskless traceability correction and synchronized continuation tip
+
+Commit `70e4ad9d6456074ecf862aeb05534916cd2217c5` contains the explicit
+`coding_run_id` traceability filter, benchmark binding, regression coverage,
+architecture/feature documentation, generated site artifacts, and L-444's
+verification record. It is pushed to `origin/testing`; local `testing` and
+`origin/testing` resolve to the same SHA and the worktree is clean. The YAML
+frontier now points at this commit and L-445 so a stateless agent starts from a
+truthful continuation tip. The preserved recovery worktree remains untouched.
+
+CF evidence to attach: after-gate record 379; 62 focused Python tests;
+37 Research Spine benchmark tests; feature-doc check (86/86); diff/compile
+checks. The gate still carries inherited repository debt plus comparison
+warnings for the already-large touched service/test files; no new fail/block
+was introduced by the correction. Live provider-served three-model, Petals,
+two-call, long-horizon, reconciliation, Done, and report gates remain open.
+
+Next: verify CF task evidence attachment, then inspect the remaining Pi
+authority/engine matrix and ensemble route receipts before attempting any new
+live Docker run.
