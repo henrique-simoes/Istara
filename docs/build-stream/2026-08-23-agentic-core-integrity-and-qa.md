@@ -12033,3 +12033,30 @@ score 100%, pass; `python scripts/feature_docs.py --seed-missing
 clean.
 Next: commit + push, refresh remote checkout, rebuild image, and rerun the
 provider profile when the Luna quota window reopens (~2h from L-490).
+
+### L-492 | 2026-08-28T14:25:00Z | S2-execute/S3-review | glm-5.3-flash | Petals gate formal not_runnable receipt; deterministic refresh; fix pushed
+
+The thinking-off repair shipped as `c79877a3` and `origin/testing` advanced to
+it; the Mac Studio acceptance checkout was hard-reset to the same SHA and the
+backend image will be rebuilt before the next live arm. The Petals-acceptance
+profile was then run Docker-only against `istara-r9-final` (run
+`2026-08-28T14-11-16-692Z`, single `pi` arm, no provider spend): it failed
+closed exactly as the registry prescribes — `critical` issues `Relay LLM
+target failed container preflight` and `No runnable donated compute donors`,
+because the Mac Studio carries no donor GGUF model file under
+`~/Istara-Projects/models` and no owner-supplied donor connection strings.
+Per the benchmark registry, missing local GGUF files or endpoints are
+blockers, not downloads, so the donation gate is recorded `not_runnable` on
+missing owner inputs and no donor receipt is fabricated. The provider
+Research Spine gate is unaffected by this input gap.
+
+Verified: `rtk pytest -q tests/pi_production` → **467 passed, 0 failed**
+(full deterministic refresh, includes the two new repair tests);
+`compass-forge task evidence CF-15` recorded; remote
+`git rev-parse HEAD` == `origin/testing` == `c79877a3…`; passive donor
+preflight shows no `~/Istara-Projects/models` entries and no gemma/donor
+Docker volumes.
+Next: rebuild the remote backend image from `c79877a3`, rerun the provider
+profile when the Luna quota window reopens (~16:10Z), then attempt the
+combined run to collect chat/tool/long-horizon/restart-resume evidence with
+the donation gate recorded as its known blocker.
