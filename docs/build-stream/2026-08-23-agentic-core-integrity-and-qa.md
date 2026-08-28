@@ -12160,3 +12160,56 @@ Luna+Plus served in run `16-40-33-732Z`, Flash 403 FreeTierOnly;
 `compass-forge finish-task CF-15` → done.
 Next: owner decision on DashScope billing / third credential and optional
 Petals donor inputs; then resume per the Status Block next_action.
+
+### L-496 | 2026-08-28T19:20:00Z | S3-review | glm-5.3-flash | Branch quality sweep: first-ever green CI on testing
+
+Owner-requested quality review of `testing` before feature testing and a
+future `origin/main` merge. Compass Forge intelligence surfaces used:
+`status`, `index refresh` (twice), `dead-code` (39 candidates — mostly
+framework false positives: alembic migrations, FastAPI route handlers),
+`report`, `impact`/`related`/`test-impact` on the highest-churn spine files;
+`ownership`/`git-history`/`trends` refused with a `stale_repo_index` state
+quirk despite refreshes, compensated with raw git churn analysis. Churn
+leaders since 2026-08-20: research_validity_service (25 commits), settings
+routes (17), pi model manager (16), chat route (15), dispatcher (14).
+
+Findings and remediations (all pushed):
+1. **CI had zero green runs in 100 recorded runs** (18 failures, 82
+   cancellations). Root causes fixed in CI: the backend job never installed
+   `pi-runtime` npm dependencies (Node worker `handshake_timeout` broke
+   ~30 real-worker tests), and the `qa-contract-stack` job lacked backend
+   runtime deps (`pytest_asyncio`/`sqlalchemy` import errors). After fixes
+   (`0fd1da21`, `88ec1e97`) the full CI pipeline is **green for the first
+   time on this branch**.
+2. Four backend tests failed only on Linux CI; each was an environment-
+   dependent test defect, not a product bug: the settings admin-only test
+   relied on ambient `team_mode` (now pinned; local desktop mode bypass is
+   by design), the macOS Keychain custody test now skips on non-darwin,
+   the w8 unpinned-resolver test now pins embed-model inputs so the active
+   embedding profile cannot decide the outcome, and the public-repo audit
+   flagged committed machine checkout paths (redacted to `<repo-root>`).
+   Full deterministic suite: **469 passed** locally.
+3. Inherited gate debt re-verified and still labelled inherited: three
+   `secret_flow` findings are false positives (secret-resolution functions
+   whose flagged "sinks" are not log statements; docstrings forbid logging)
+   and one `unexpected_large_files` finding is the lifecycle document itself.
+   Seven new warn-level complexity findings from the repair-chain wave
+   remain open as warn drift (remediation candidate: split
+   `run_independent_coding_run`).
+4. Repo-hygiene strays at root needing an owner decision (not removed
+   unilaterally): `debug_rereview.py` and `fix_payload.py` (committed debug
+   scratch referencing local conductor/sibling-repo paths),
+   `w7/w8/w9_instructions.md` (completed-wave work orders),
+   `cf-spec-4..8-answers.json` (spec answer scratch outside
+   `docs/agent_plans/`), plus 1159 pre-existing lint errors and 146
+   unformatted files hidden behind `continue-on-error` in CI.
+5. Merge posture: `testing` is 963 ahead / 112 behind `origin/main`
+   (main-side commits are mostly docs/website work); the merge is
+   substantial and needs its own reconciliation plan.
+
+Verified: `gh run view 88ec1e97` → CI **success** (all 7 jobs);
+`rtk pytest -q tests/pi_production` → 469 passed; targeted
+settings/w8/catalog/public-repo tests → 100 passed; CI workflow YAML
+validated locally; QA Artifact workflow success on the same commit.
+Next: owner feature testing on the green baseline; strays/lint-debt
+cleanup; DashScope billing decision to resume the live acceptance wave.
