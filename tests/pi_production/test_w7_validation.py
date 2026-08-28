@@ -1538,6 +1538,7 @@ async def _run_pi_coding_run(
     shared_model=None,
     failing_model=None,
     partial_model=None,
+    split_coverage_model=None,
     expose_manager=False,
 ):
     """Shared driver: full coding run on the Pi plane with stubbed selection/dispatch.
@@ -1602,9 +1603,17 @@ async def _run_pi_coding_run(
             dispatcher_stub.calls.append(("structured", kwargs))
             if kwargs["params"].model == failing_model:
                 raise RuntimeError("simulated coder failure")
-            requested_unit_ids = (
-                unit_ids[:1] if kwargs["params"].model == partial_model else unit_ids
-            )
+            if kwargs["params"].model == split_coverage_model:
+                prior_calls = sum(
+                    1
+                    for method, call in dispatcher_stub.calls[:-1]
+                    if method == "structured" and call["params"].model == kwargs["params"].model
+                )
+                covered = unit_ids[:1] if prior_calls == 0 else unit_ids[1:]
+            else:
+                covered = (
+                    unit_ids[:1] if kwargs["params"].model == partial_model else unit_ids
+                )
             applications = [
                 {
                     "evidence_unit_id": unit_id,
@@ -1622,7 +1631,7 @@ async def _run_pi_coding_run(
                     "confidence": 0.92,
                     "rationale": "The participant is blocked by team invitation setup.",
                 }
-                for unit_id in requested_unit_ids
+                for unit_id in covered
             ]
             return SimpleNamespace(
                 text="",
@@ -1791,6 +1800,24 @@ async def test_coding_run_pi_plane_requires_each_model_to_code_every_evidence_un
     assert result["reliability_method"] == "insufficient_independent_models"
     failures = [r for r in result["route_evidence"] if r.get("outcome") == "failed"]
     assert failures and "complete evidence-unit coverage" in failures[0]["error"]
+
+
+async def test_coding_run_pi_plane_partial_coder_recovers_full_coverage_via_union(
+    monkeypatch, tmp_path, _agentic_core_on
+):
+    """A coder whose repair call covers the units its first call missed is one
+    complete rater after a per-unit union; route evidence keeps both attempts."""
+    result, dispatcher_stub = await _run_pi_coding_run(
+        monkeypatch, tmp_path, split_coverage_model="model-c"
+    )
+
+    assert result["rater_count"] == 3
+    assert result["distinct_model_count"] == 3
+    assert result["promotion_status"] == "accepted"
+    coverage_routes = [
+        r for r in result["route_evidence"] if r.get("coverage_repair")
+    ]
+    assert coverage_routes and coverage_routes[0]["coverage_repair"] == "per_unit_union"
 
 
 async def test_coding_run_pi_plane_insufficient_distinct_blocks_fail_closed(

@@ -615,6 +615,26 @@ def _has_complete_unit_coverage(
     return covered == set(unit_by_id)
 
 
+def _merge_coverage_applications(
+    original: list[tuple[dict, EvidenceUnit, list[str]]],
+    repair: list[tuple[dict, EvidenceUnit, list[str]]],
+) -> list[tuple[dict, EvidenceUnit, list[str]]]:
+    """Union one coder's usable applications across its bounded coverage repair.
+
+    Both attempts come from the same pinned coder identity under the same
+    protocol, so the per-unit union is still a single rater's coding; the
+    repair attempt wins per unit it covered. Replacing instead of merging
+    would discard units the first attempt had already grounded.
+    """
+    merged = list(repair)
+    covered = {unit.id for _, unit, _ in repair}
+    for app, unit, codes in original:
+        if unit.id not in covered:
+            merged.append((app, unit, codes))
+            covered.add(unit.id)
+    return merged
+
+
 async def _use_pi_coding_plane(db: AsyncSession, project_id: str) -> bool:
     """Research coding always uses the Pi model-management authority.
 
@@ -1797,8 +1817,13 @@ async def run_independent_coding_run(
                 )
                 if repair_usable:
                     response = _merge_coding_route_evidence(response, repair_response)
+                    merged_route = dict(response.get("_istara_route", {}) or {})
+                    merged_route["coverage_repair"] = "per_unit_union"
+                    response = {**response, "_istara_route": merged_route}
                     parsed = repair_parsed
-                    usable_applications = repair_usable
+                    usable_applications = _merge_coverage_applications(
+                        usable_applications, repair_usable
+                    )
             if not _has_complete_unit_coverage(usable_applications, unit_by_id=unit_by_id):
                 raise ValueError(
                     "coder response lacked complete evidence-unit coverage "
