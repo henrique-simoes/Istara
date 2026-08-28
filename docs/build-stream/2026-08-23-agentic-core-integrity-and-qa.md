@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T04:49:21Z, ledger: L-479, commit: 6cf0a4a }
-next_action: "Perform Docker-only live acceptance when owner credentials and a clean remote workload are available; otherwise retain the live Qwen/Codex and scientific gates as blocked."
+last: { agent: gpt-5-codex, at: 2026-08-28T05:08:00Z, ledger: L-480, commit: d05ceeb }
+next_action: "Implement and verify a Docker-only backend-restart oracle, then perform live acceptance only when owner credentials and a clean remote workload are available; otherwise retain the live Qwen/Codex and scientific gates as blocked."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -11669,3 +11669,30 @@ observed remote state. This is a current infrastructure observation, not a
 model-quality result. The Docker-only acceptance remains blocked pending a
 fresh disposable checkout/container and owner-controlled ephemeral credential
 injection.
+
+### L-480 | 2026-08-28T05:08:00Z | S2-execute | gpt-5-codex | Long-horizon acceptance audit
+
+Read the current Docker runner, live long-horizon workload, Pi tool/ASGI
+contracts, research-validity implementation, and the owner-approved DashScope
+Pi configuration guide (with secret-like values redacted during inspection).
+The Pi guide confirms the intended Qwen path is the Singapore regular
+DashScope OpenAI-compatible provider with `DASHSCOPE_API_KEY`, not the Token
+Plan route; custom Pi configuration is not evidence of an API request.
+
+Confirmed a material test gap: `long_horizon_runner.py` uses the same persisted
+session and task binding for two HTTP calls, checks the Pi call -> redacted
+authority-result -> later-content chain, history continuity, persisted task
+scope, and route-provenanced usage rows. It **does not restart the Docker
+backend** between those calls. The current ASGI regression simulates a worker
+restart deterministically, but no Docker acceptance presently proves process
+restart/resume. The older Compose `three-model` donor profile is likewise not
+the requested Codex-Luna OAuth plus two independently served Qwen identities.
+
+Result: no prior live-model assertion changes. The deterministic tests are
+valid bounded contract evidence, but a future result may only claim
+same-session two-call continuity until a container restart oracle is added.
+The next implementation slice must add that Docker-only oracle and an
+identity-bound three-rater Research Spine coding-run check before live evidence
+can address recovery or ensemble-bias claims. The external audit records this
+as F-R9-178. No host package installation, Docker mutation, credential read,
+or provider call occurred in this audit checkpoint.
