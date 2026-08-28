@@ -931,6 +931,24 @@ to `origin/testing`, and remove only worktrees/branches proven obsolete and safe
 Why: One continuously current source of truth gives any replacement agent the full rationale,
 exact evidence boundary, and next executable action without depending on chat history.
 
+### DEC-15 | 2026-08-28 | S2-execute | glm-5.3-flash
+Context: The live provider rerun (L-490) reproduced Flash `structured_output_missing`
+deterministically (2/2 live probes) even with the de3c698f bounded core-schema repair,
+while the same core-schema call with reasoning disabled served 3/3 applications. The
+governed coding plane pins `thinking_mode="high"`, so three independent raters could not
+be admitted without either waiting indefinitely or extending the bounded-repair chain.
+Decision: Extend the repair chain by exactly one final mechanically forced call with
+`thinking_mode="off"` and the same pinned coder/endpoint and `repair=False`, only when the
+core-schema call fails with exactly `structured_output_missing`; route evidence records
+`structured_schema_repair=core_schema_thinking_off` and `structured_thinking_fallback=off`.
+Free-form JSON remains rejected; every other typed failure propagates unchanged; rater
+identity and independence semantics are unchanged.
+Why: Preserves fail-closed Research Spine gates while making the three-rater campaign
+runnable; the deviation from the high-reasoning profile is bounded, disclosed in route
+evidence, and reversible. Rejected alternatives: silently dropping `thinking=high` from
+the primary contract (undisclosed methodology change) and using the dated Flash fallback
+identity (reserved exclusively for rate-limit fallbacks per the L-487 owner contract).
+
 ### L-20 | 2026-08-25T00:25:40Z | S1-plan | gpt-5-codex | planner | Phase 9
 Did: Loaded the Build Stream and pinned-native Compass Forge contracts; oriented through
 CF status, next, and compact agent brief; created the explicit completion goal; and resumed
@@ -11940,3 +11958,78 @@ The focused test failed before implementation and passed after it. The affected
 suite passes **75 tests**, Ruff passes, the security benchmark passes **28/28
 (100%)**, living feature docs regenerate/check **224 / 86**, and
 `git diff --check` passes. A rebuilt live rerun is still required.
+
+### L-490 | 2026-08-28T14:05:00Z | S2-execute/S3-review | glm-5.3-flash | Provider-profile live run 1: Plus served, Luna throttled, Flash repair still fail-closed
+
+Owner re-authorized full continuation; Compass Forge oriented (`status`, `next`,
+gate-before baseline id 418 for CF-15; recipe `istara-main`; CF-SPEC-2/CF-13/15/20/21
+remain the active contract). Local focused suite `test_w7_validation.py +
+test_w7_pi_manager_integration.py` passed **44 tests**. Remote checkout
+`$HOME/istara-runs/r9-final-cd4eeb9b` verified clean at full SHA `de3c698f` with
+ignored mode-600 `.env.deploy` symlink; backend image rebuilt from that SHA
+(image `a4f7556a`) and force-recreated healthy (`/api/health` 200).
+
+First provider-profile `docker-run.sh` attempt aborted before any model call:
+sourcing `.env.deploy` into the SSH shell exported `PI_API_ENDPOINTS`, whose
+shell-mangled value overrode Compose `--env-file` interpolation and made
+pydantic fail closed at import (`error parsing value for field
+pi_api_endpoints`). Remediation: never source the deployment env into the
+runner shell; extract only the admin credential by name. The deployment env
+remains outside every repository and no secret entered argv or logs.
+
+Second attempt ran the full provider arm (run
+`2026-08-28T13-51-17-409Z`, project `istara-r9-final`, single `pi` arm —
+the Research Spine gate is engine-independent, halving provider spend).
+Result is negative evidence, fail-closed as designed: coding run completed
+`needs_reconciliation` with only **1 distinct rater** (`qwen3.7-plus` served,
+exact route evidence retained: provider `openai_compat`, account handle
+`0c10b080b8d1c957`, protocol `2026-05-research-validity-v1`); kappa/alpha
+null with `insufficient_independent_models`. Luna failed closed with
+`pi_runtime_turn_error:You have hit your ChatGPT usage limit (plus plan). Try
+again in ~140 min.` — external provider quota, time-bound. Flash failed
+closed with `pi_runtime_turn_error:structured_output_missing` **despite** the
+de3c698f bounded core-schema repair, so the repair path did not rescue the
+rich-schema failure in live conditions. No acceptance claim is made;
+terminal status remains `needs_reconciliation`, not accepted.
+
+Verified: `rtk pytest -q tests/pi_production/test_w7_validation.py
+tests/pi_production/test_w7_pi_manager_integration.py` → 44 passed;
+`compass-forge gate before --task CF-15` → baseline recorded (id 418);
+remote `git rev-parse HEAD` == `origin/testing` == `de3c698f…`;
+`docker exec istara-test-backend curl -s -o /dev/null -w %{http_code}
+http://localhost:8000/api/health` → 200.
+Next: diagnose why the core-schema repair did not fire for Flash, fix behind
+the same fail-closed contract, and rerun when the Luna quota window reopens.
+
+### L-491 | 2026-08-28T14:55:00Z | S2-execute/S4-remediate | glm-5.3-flash | Bounded thinking-off repair: live diagnosis and TDD fix
+
+Live bounded diagnosis inside the backend container against the real DashScope
+endpoint (3 Flash calls total, each < $0.01): the run's own evidence-unit coding
+prompt (~8.8k chars) with `CODING_CORE_RESPONSE_SCHEMA` and `thinking=high`
+failed `structured_output_missing` **2/2**; the identical call with
+`thinking=off` served 3/3 applications with served-model receipt; stripping the
+conflicting "Return JSON" instruction did **not** rescue high thinking (1/1
+failed). Root cause: Flash never makes the forced structured call under high
+reasoning effort with this payload size. Plus is unaffected; Luna was not
+probed (still quota-throttled).
+
+TDD fix (DEC-15): red-first tests added to `test_w7_validation.py` prove (a)
+one final forced call with `thinking_mode=off` fires only after the core-schema
+call fails with exactly `structured_output_missing`, is `repair=False`, keeps
+the pinned endpoint, and records
+`structured_schema_repair=core_schema_thinking_off` +
+`structured_thinking_fallback=off` in route evidence, and (b) every other
+typed failure after the core-schema call propagates unchanged (fail-closed).
+Implementation in `_pi_coder_runner`. Focused tests failed before
+implementation and passed after.
+
+Verified: `rtk pytest -q tests/pi_production/test_w7_validation.py
+tests/pi_production/test_w7_pi_manager_integration.py
+tests/pi_production/test_ensemble_identity_parity.py` → 48 passed;
+`ruff check` on both touched files → clean;
+`python scripts/security_benchmark.py --fail-on-threshold` → 28/28 controls,
+score 100%, pass; `python scripts/feature_docs.py --seed-missing
+--generate-site --check` → 224 generated / 86 checked; `git diff --check` →
+clean.
+Next: commit + push, refresh remote checkout, rebuild image, and rerun the
+provider profile when the Luna quota window reopens (~2h from L-490).

@@ -976,19 +976,51 @@ async def _pi_coder_runner(
 
         if not isinstance(exc, PiRuntimeTurnError) or exc.error != "structured_output_missing":
             raise
-        outcome = await agentic.structured(
-            purpose="validity.coder",
-            project_id=project_id,
-            system=None,
-            messages=messages,
-            schema=CODING_CORE_RESPONSE_SCHEMA,
-            params=params,
-            engine="pi",
-            spine_phase="execution",
-            repair=False,
-            **({"pi_service": coder.pi_service} if coder.pi_service is not None else {}),
-        )
-        structured_schema_repair = "core_schema"
+        try:
+            outcome = await agentic.structured(
+                purpose="validity.coder",
+                project_id=project_id,
+                system=None,
+                messages=messages,
+                schema=CODING_CORE_RESPONSE_SCHEMA,
+                params=params,
+                engine="pi",
+                spine_phase="execution",
+                repair=False,
+                **({"pi_service": coder.pi_service} if coder.pi_service is not None else {}),
+            )
+            structured_schema_repair = "core_schema"
+        except Exception as core_exc:
+            # Live provider evidence (L-490): some reasoning models never make
+            # the forced structured call under high reasoning effort with a
+            # large coding payload, even against the bounded core schema. One
+            # final mechanically forced call with reasoning disabled is the
+            # last governed attempt; the route evidence discloses it and
+            # every other typed failure still propagates unchanged.
+            if (
+                not isinstance(core_exc, PiRuntimeTurnError)
+                or core_exc.error != "structured_output_missing"
+            ):
+                raise
+            off_params = TurnParams(
+                temperature=params.temperature,
+                thinking_mode="off",
+                model=params.model,
+                endpoint_id=params.endpoint_id,
+            )
+            outcome = await agentic.structured(
+                purpose="validity.coder",
+                project_id=project_id,
+                system=None,
+                messages=messages,
+                schema=CODING_CORE_RESPONSE_SCHEMA,
+                params=off_params,
+                engine="pi",
+                spine_phase="execution",
+                repair=False,
+                **({"pi_service": coder.pi_service} if coder.pi_service is not None else {}),
+            )
+            structured_schema_repair = "core_schema_thinking_off"
     served_endpoint_id = str(getattr(outcome, "endpoint_id", "") or "").strip()
     if selected_endpoint_id and served_endpoint_id and served_endpoint_id != selected_endpoint_id:
         # The endpoint is part of the source-of-truth route evidence.  A
@@ -1043,6 +1075,8 @@ async def _pi_coder_runner(
     route.setdefault("outcome", "served")
     if structured_schema_repair:
         route["structured_schema_repair"] = structured_schema_repair
+    if structured_schema_repair == "core_schema_thinking_off":
+        route["structured_thinking_fallback"] = "off"
     return {
         "message": {"content": json.dumps(outcome.value)},
         "_istara_route": {

@@ -871,6 +871,96 @@ async def test_pi_coder_runner_repairs_missing_structured_output_with_core_schem
     assert json.loads(response["message"]["content"]) == value
 
 
+async def test_pi_coder_runner_bounded_thinking_off_fallback_after_core_schema_failure(monkeypatch):
+    """When even the core-schema forced call reports structured_output_missing,
+    exactly one final forced call with reasoning disabled may rescue the rater;
+    the route evidence must disclose the bounded thinking fallback."""
+    from app.core.pi_runtime.endpoints import PiRuntimeTurnError
+    from app.services.research_validity_service import (
+        CODING_CORE_RESPONSE_SCHEMA,
+        CODING_RESPONSE_SCHEMA,
+        CoderSpec,
+        _pi_coder_runner,
+    )
+
+    value = {
+        "applications": [{
+            "evidence_unit_id": "eu-1",
+            "codes": ["traceability"],
+            "primary_code": "traceability",
+            "quote": "source quote",
+            "confidence": 0.9,
+        }]
+    }
+    calls = []
+
+    async def _structured(**kwargs):
+        calls.append(kwargs)
+        if len(calls) < 3:
+            raise PiRuntimeTurnError("error", "structured_output_missing")
+        return SimpleNamespace(
+            value=value,
+            endpoint_id="ep-a",
+            served_model="model-a",
+            route_evidence={"outcome": "served"},
+        )
+
+    monkeypatch.setattr("app.core.agentic.agentic.structured", _structured)
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a", node_id="ep-a", source="pi"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    response = await _pi_coder_runner(coder, [], "model-a", "p1")
+
+    assert [call["schema"] for call in calls] == [
+        CODING_RESPONSE_SCHEMA,
+        CODING_CORE_RESPONSE_SCHEMA,
+        CODING_CORE_RESPONSE_SCHEMA,
+    ]
+    assert calls[1]["repair"] is False
+    assert calls[2]["repair"] is False
+    assert calls[2]["params"].thinking_mode != "high", (
+        "the final bounded attempt must disable reasoning, not repeat the failing mode"
+    )
+    assert calls[2]["params"].endpoint_id == "ep-a"
+    route = response["_istara_route"]
+    assert route["structured_schema_repair"] == "core_schema_thinking_off"
+    assert route["structured_thinking_fallback"] == "off"
+    assert json.loads(response["message"]["content"]) == value
+
+
+async def test_pi_coder_runner_thinking_off_fallback_stays_fail_closed_for_other_errors(monkeypatch):
+    """Only structured_output_missing after the core-schema call may fall back;
+    every other typed failure must propagate unchanged."""
+    from app.core.pi_runtime.endpoints import PiRuntimeTurnError
+    from app.services.research_validity_service import (
+        CoderSpec,
+        _pi_coder_runner,
+    )
+
+    calls = []
+
+    async def _structured(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            raise PiRuntimeTurnError("error", "structured_output_missing")
+        raise PiRuntimeTurnError("error", "provider_auth_failed")
+
+    monkeypatch.setattr("app.core.agentic.agentic.structured", _structured)
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a", node_id="ep-a", source="pi"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    with pytest.raises(PiRuntimeTurnError) as excinfo:
+        await _pi_coder_runner(coder, [], "model-a", "p1")
+    assert excinfo.value.error == "provider_auth_failed"
+    assert len(calls) == 2
+
+
 async def test_qwen_rate_limit_fallback_switches_identity_and_records_attempts():
     """A DashScope 429 may advance the same-key coder slot, with receipts."""
     from app.services.research_validity_service import (
