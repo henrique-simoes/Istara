@@ -387,10 +387,11 @@ async function validateCodingRun({
   const hasNumericKappa = kappa !== null && kappa !== "" && Number.isFinite(Number(kappa));
   const hasNumericAlpha = alpha !== null && alpha !== "" && Number.isFinite(Number(alpha));
   // Fleiss/Cohen kappa is an agreement coefficient bounded to [-1, 1].
-  // Krippendorff alpha is also bounded above by 1 (negative values are valid
-  // disagreement signals and must remain visible to the threshold gate).
+  // Krippendorff alpha is bounded to [-1, 1] (negative values within that
+  // domain are valid disagreement signals and must remain visible to the
+  // threshold gate).
   const kappaInRange = hasNumericKappa && Number(kappa) >= -1 && Number(kappa) <= 1;
-  const alphaInRange = hasNumericAlpha && Number(alpha) <= 1;
+  const alphaInRange = hasNumericAlpha && Number(alpha) >= -1 && Number(alpha) <= 1;
   const reliabilityMetricBoundsOk = kappaInRange && alphaInRange;
   const reliabilityMetricOutOfRange = (hasNumericKappa && !kappaInRange)
     || (hasNumericAlpha && !alphaInRange);
@@ -656,7 +657,7 @@ async function validateCodingRun({
           : `Research Spine coding proved ${distinctModelCount}/${requiredCoders} backend-reported model coders but only ${servedModelCount}/${requiredCoders} distinct served model identities in route evidence.`
       : !algorithmOk
         ? reliabilityMetricOutOfRange
-          ? `Research Spine validation rejected out-of-range reliability metrics (kappa=${kappa ?? "missing"} must be within [-1, 1]; alpha=${alpha ?? "missing"} must be <= 1).`
+          ? `Research Spine validation rejected out-of-range reliability metrics (kappa=${kappa ?? "missing"} must be within [-1, 1]; alpha=${alpha ?? "missing"} must be within [-1, 1]).`
           : `Research Spine validation did not prove the required reliability algorithm with numeric Fleiss kappa and Krippendorff alpha (observed ${reliabilityMethod || "unknown"}, kappa=${kappa ?? "missing"}, alpha=${alpha ?? "missing"}).`
       : !coverageOk
           ? `Research Spine code applications did not prove complete coder-by-evidence-unit coverage, substantive open-code payload, and source/served-model provenance (${coverageEvidence?.observed_coder_count || 0} coders, ${coverageEvidence?.missing_pairs?.length || 0} missing pairs, ${coverageEvidence?.invalid_rows?.length || 0} invalid rows).`

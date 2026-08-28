@@ -108,9 +108,11 @@ Sources
   research artifacts.
 - Three-or-more-coder runs require numeric Fleiss' Kappa and Krippendorff's
   Alpha calculated from the current run's full evidence-unit coding matrix;
-  missing, stale, or non-numeric metrics fail the gate closed. Cohen's Kappa is
-  retained for eligible pairwise comparisons, not substituted for the
-  multi-rater gate.
+  missing, stale, non-numeric, or out-of-domain metrics fail the gate closed.
+  Fleiss/Cohen kappa and Krippendorff alpha are each constrained to their
+  finite theoretical domain `[-1, 1]`; negative alpha remains a valid
+  disagreement signal within that domain. Cohen's Kappa is retained for
+  eligible pairwise comparisons, not substituted for the multi-rater gate.
 - The default promotion threshold is `kappa >= 0.60` unless a governed project
   policy explicitly overrides it.
 - Low-agreement unreconciled evidence cannot become accepted findings or report

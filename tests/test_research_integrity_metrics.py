@@ -177,6 +177,7 @@ def test_single_category_fleiss_kappa_is_undefined_and_requires_reconciliation()
         ("alpha", None),
         ("alpha", float("nan")),
         ("alpha", 2.0),
+        ("alpha", -2.0),
         ("kappa", "not-a-number"),
         ("kappa", float("inf")),
         ("kappa", 2.0),

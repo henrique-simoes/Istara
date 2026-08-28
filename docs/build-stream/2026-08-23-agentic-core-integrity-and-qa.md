@@ -10959,3 +10959,43 @@ request was made, and no remote checkout or host workload was mutated.
 Next: update the YAML frontier to the commit carrying this checkpoint, then continue with
 the owner-gated Docker-only provisioning and exact-SHA acceptance sequence. Do not claim
 ensemble quality or Research Spine completion from deterministic evidence alone.
+
+### L-460 | 2026-08-28T01:53:29Z | S2-execute/S3-review | gpt-5-codex | Krippendorff alpha lower-domain fail-closed hardening
+
+The audit found a concrete fail-open defect in both the production Research Spine
+metric coercion and the real-user benchmark oracle: Krippendorff alpha was checked
+only for a finite value and an upper bound of `1`. An impossible value below `-1`
+could therefore be treated as a valid companion metric and reach the reconciliation
+or promotion branch. Negative alpha values within `[-1, 1]` remain valid disagreement
+signals; values outside that theoretical domain must fail closed.
+
+TDD evidence is preserved. The Python regression first added `alpha=-2.0` to
+`tests/test_research_integrity_metrics.py` and failed before the implementation
+change (`accepted` instead of the expected `needs_reconciliation`). The production
+normalizer in `backend/app/core/research_validity.py` now applies
+`minimum=-1.0, maximum=1.0` to alpha, and the focused Python slice passes `35` tests.
+The JavaScript regression in
+`tests/real_user_benchmark/lib/research-spine-probes.test.mjs` likewise failed before
+the oracle change (`alpha_in_range=true` for `-2`); after changing
+`tests/real_user_benchmark/lib/research-spine-probes.mjs` to enforce `[-1, 1]`, the
+focused out-of-range pair passes and the full Research Spine/scoring package passes
+`62` tests. The diagnostic now states the complete alpha domain.
+
+The Research Spine contract and Ensemble Health living feature documentation were
+updated to state the same finite `[-1, 1]` domain, explicitly retaining in-domain
+negative alpha as a disagreement signal. Feature site regeneration passes with
+`224` generated artifacts and `86/86` feature checks. `py_compile` and `git diff
+--check` pass. Compass Forge before record `395` and after record `396` show no new
+issues, forbidden dependencies, missing required paths, or import cycles; inherited
+complexity, type-drift, secret-flow, and ledger-size findings remain unchanged.
+
+This is deterministic contract hardening only. No provider request, model load,
+Mac Studio workload, host installation, Docker image pull, or remote checkout
+mutation occurred. The live three-served-model Research Spine, Petals, combined,
+two-call/long-horizon, reconciliation, Done/report, browser, benchmark-retake,
+blind-review, and CF-SPEC-2 closure gates remain open pending the owner-approved
+Docker-only inputs and terminal receipts.
+
+Next: commit and push this checkpoint, align the Build Stream YAML pointer to the
+content commit, then continue the remaining live-gate and original-plan work without
+turning deterministic fixtures into scientific acceptance evidence.

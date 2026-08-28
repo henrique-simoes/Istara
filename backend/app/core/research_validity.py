@@ -51,7 +51,7 @@ def _reliability_metric_values(
     """Normalize kappa, alpha, and threshold for a promotion comparison."""
     return (
         _coerce_reliability_metric(score, minimum=-1.0, maximum=1.0),
-        _coerce_reliability_metric(alpha, maximum=1.0),
+        _coerce_reliability_metric(alpha, minimum=-1.0, maximum=1.0),
         _coerce_reliability_metric(threshold),
     )
 
