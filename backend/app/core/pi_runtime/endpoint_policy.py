@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from typing import Any
 
 from fastapi import HTTPException
@@ -98,13 +99,24 @@ def _custody_api_key(data: Any, payload: dict[str, Any]) -> None:
     if not api_key:
         return
     try:
-        from app.config import _write_macos_keychain_secret
+        if sys.platform == "darwin":
+            # Keep raw credentials in macOS Keychain; never mirror them into
+            # a checkout .env on the host.
+            from app.config import _write_macos_keychain_secret
 
-        _write_macos_keychain_secret(
-            payload["keychain_service"],
-            payload.get("keychain_account") or "default",
-            api_key,
-        )
+            _write_macos_keychain_secret(
+                payload["keychain_service"],
+                payload.get("keychain_account") or "default",
+                api_key,
+            )
+        else:
+            # Linux Docker has no macOS Keychain. Persist the endpoint-scoped
+            # env secret into the configured writable runtime env file so the
+            # resolver can bind the endpoint after a restart.
+            from app.config import _pi_endpoint_secret_env_name
+            from app.core.env_persistence import persist_env_value
+
+            persist_env_value(_pi_endpoint_secret_env_name(payload["endpoint_id"]), api_key)
     except Exception as exc:  # pragma: no cover - custody failure is non-fatal to config
         logger.warning(
             "pi endpoint: keychain write failed for %s: %s",

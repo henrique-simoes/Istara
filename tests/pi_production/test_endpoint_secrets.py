@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import time
+from types import SimpleNamespace
 
 import pytest
 
 from app.config import PiApiEndpoint
+from app.core.pi_runtime import endpoint_policy
 from app.core.pi_runtime import endpoints as endpoints_module
 from app.core.pi_runtime.endpoints import PiEndpointResolutionError, PiEndpointResolver
 
@@ -71,6 +73,36 @@ def test_missing_secret_fails_closed(monkeypatch):
 
     with pytest.raises(PiEndpointResolutionError, match="missing_keychain_secret"):
         PiEndpointResolver([_endpoint()]).resolve("pi-test")
+
+
+def test_api_key_custody_persists_endpoint_env_secret_in_linux_docker(monkeypatch):
+    """Linux Docker has no Keychain, so POST custody must persist the env fallback."""
+    import app.config as app_config
+    from app.core import env_persistence
+
+    monkeypatch.setattr(endpoint_policy.sys, "platform", "linux")
+    monkeypatch.setattr(
+        app_config,
+        "_write_macos_keychain_secret",
+        lambda *args, **kwargs: pytest.fail("Linux Docker must not attempt macOS Keychain custody"),
+    )
+    persisted: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        env_persistence,
+        "persist_env_value",
+        lambda key, value: persisted.append((key, value)),
+    )
+
+    endpoint_policy._custody_api_key(
+        SimpleNamespace(api_key="sk-docker-test"),
+        {
+            "endpoint_id": "dashscope-qwen",
+            "keychain_service": "istara-pi-dashscope",
+            "keychain_account": "default",
+        },
+    )
+
+    assert persisted == [("ISTARA_PI_SECRET_DASHSCOPE_QWEN", "sk-docker-test")]
 
 
 @pytest.mark.asyncio

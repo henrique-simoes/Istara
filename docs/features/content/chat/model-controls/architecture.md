@@ -236,6 +236,15 @@ DashScope key only into the container process and must record the provider-
 reported `served_model` before either Qwen endpoint can count as an
 independent Research Spine coder.
 
+When PI endpoint credentials are created from the Settings API, custody is
+platform-aware: the macOS backend writes the raw key only to Keychain, while a
+Linux Docker backend writes the endpoint-scoped `ISTARA_PI_SECRET_<ID>` value
+to the configured writable `ISTARA_ENV_FILE` (never to the image or a host
+checkout). The resolver reads that same env-first contract after restart and
+fails closed when neither the env value nor Keychain contains a secret. This
+keeps the Mac Studio Docker path usable without pretending that a macOS
+Keychain exists inside the container.
+
 The former `POST /api/settings/model` and `POST /api/settings/provider` routes
 remain only as authenticated deprecated adapters for older clients. They
 always return `410 pi_model_management_required` with a successor link to
