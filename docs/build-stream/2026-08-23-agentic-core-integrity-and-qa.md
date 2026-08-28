@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T05:31:00Z, ledger: L-482, commit: dda8b432 }
-next_action: "Commit and push the reviewed restart-resume acceptance repair; live acceptance remains blocked until owner credentials and a clean remote workload are available."
+last: { agent: gpt-5-codex, at: 2026-08-28T05:35:00Z, ledger: L-483, commit: e371441 }
+next_action: "Prepare and execute the credentialed Docker-only live acceptance when owner credentials and a clean remote workload are available; otherwise retain the Qwen/Codex, three-rater Research Spine, and Petals gates as blocked."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -11747,3 +11747,21 @@ No source has been committed or pushed yet; the next action is exactly that
 transport after one final status/diff review. The active CF-15 task and Build
 Stream goal remain open because committing a deterministic repair does not
 create the live Qwen/Codex, tool, restart, or Research Spine evidence.
+
+### L-483 | 2026-08-28T05:35:00Z | S4-ship | gpt-5-codex | Restart-resume repair synchronized
+
+Committed the reviewed deterministic repair as **e371441** (`test: require
+Docker restart for long horizon`) and pushed local `testing` to
+`origin/testing`. Immediate post-push verification found local `testing` and
+`origin/testing` at the same commit with ahead/behind **0/0** and no repository
+worktree changes. The external audit append F-R9-179 remains outside the Git
+worktree in `/Users/user/Desktop/testing.md` as requested.
+
+This transport does not start a Docker stack, move the stale remote checkout,
+install host software, inject/read credentials, or send a model request. It
+only makes the next clean Mac Studio Docker run fail closed unless it can prove
+the restart/resume boundary. The active CF-15 task and Build Stream goal remain
+open for the same live evidence gates: Codex-Luna OAuth plus two provider-served
+Qwen identities, tool/long-horizon receipts across the real restart, and the
+Research Spine coding, reliability, reconciliation, and human Done/report
+gates.
