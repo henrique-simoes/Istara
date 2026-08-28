@@ -10,6 +10,7 @@ matrices, promotion gates, route evidence, and graph traceability.
 from __future__ import annotations
 
 import json
+import math
 import re
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -18,6 +19,66 @@ from hashlib import sha256
 from app.skills.intercoder import cohen_kappa, krippendorff_alpha
 
 DEFAULT_RELIABILITY_THRESHOLD = 0.60
+
+
+def _coerce_reliability_metric(
+    value: object,
+    *,
+    minimum: float | None = None,
+    maximum: float | None = None,
+) -> float | None:
+    """Return a finite, in-domain reliability metric or ``None``."""
+    if isinstance(value, bool) or value is None or value == "":
+        return None
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(numeric):
+        return None
+    if minimum is not None and numeric < minimum:
+        return None
+    if maximum is not None and numeric > maximum:
+        return None
+    return numeric
+
+
+def _reliability_metric_values(
+    score: object,
+    alpha: object,
+    threshold: object,
+) -> tuple[float | None, float | None, float | None]:
+    """Normalize kappa, alpha, and threshold for a promotion comparison."""
+    return (
+        _coerce_reliability_metric(score, minimum=-1.0, maximum=1.0),
+        _coerce_reliability_metric(alpha, maximum=1.0),
+        _coerce_reliability_metric(threshold),
+    )
+
+
+def _metric_gate_decision(
+    score: object,
+    alpha: object,
+    threshold: object,
+    *,
+    metric_name: str,
+) -> tuple[str, str]:
+    """Return promotion status and a diagnostic for malformed metrics."""
+    score_value, alpha_value, threshold_value = _reliability_metric_values(
+        score,
+        alpha,
+        threshold,
+    )
+    if None in (score_value, alpha_value, threshold_value):
+        return (
+            "needs_reconciliation",
+            f"{metric_name} and Krippendorff's Alpha must both be finite "
+            "numeric values within their reliability domains.",
+        )
+    return (
+        "accepted" if score_value >= threshold_value else "needs_reconciliation",
+        "",
+    )
 
 QUALITATIVE_CODING_PROTOCOL = {
     "version": "2026-05-research-validity-v1",
@@ -898,6 +959,12 @@ def evaluate_reliability_gate(
         fleiss = fleiss_kappa_from_matrix(matrix)
         alpha = krippendorff_alpha(coder_item_lists, matrix["codes"])
         score = fleiss.get("kappa")
+        promotion_status, metric_failure_reason = _metric_gate_decision(
+            score,
+            alpha.get("alpha"),
+            threshold,
+            metric_name="Fleiss' Kappa",
+        )
         result.update(
             {
                 "method": "fleiss_kappa_with_krippendorff_alpha_companion",
@@ -907,15 +974,20 @@ def evaluate_reliability_gate(
                 "low_agreement_codes": alpha.get("unreliable_codes", []),
             }
         )
-        result["promotion_status"] = (
-            "accepted" if score is not None and score >= threshold else "needs_reconciliation"
-        )
+        result["promotion_status"] = promotion_status
+        result["fallback_reason"] = metric_failure_reason
         if fleiss.get("status") == "undefined":
             result["fallback_reason"] = str(fleiss.get("reason") or "Reliability is undefined.")
     elif len(coders) == 2:
         cohen = cohen_kappa(coder_item_lists[0], coder_item_lists[1], matrix["codes"])
         alpha = krippendorff_alpha(coder_item_lists, matrix["codes"])
         score = cohen.get("kappa")
+        promotion_status, metric_failure_reason = _metric_gate_decision(
+            score,
+            alpha.get("alpha"),
+            threshold,
+            metric_name="Cohen's Kappa",
+        )
         result.update(
             {
                 "method": "cohen_kappa_with_krippendorff_alpha_companion",
@@ -925,9 +997,8 @@ def evaluate_reliability_gate(
                 "low_agreement_codes": cohen.get("low_agreement_codes", []),
             }
         )
-        result["promotion_status"] = (
-            "accepted" if score is not None and score >= threshold else "needs_reconciliation"
-        )
+        result["promotion_status"] = promotion_status
+        result["fallback_reason"] = metric_failure_reason
     elif len(coders) == 1:
         result.update(
             {

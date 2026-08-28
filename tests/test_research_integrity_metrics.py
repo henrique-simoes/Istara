@@ -171,6 +171,62 @@ def test_single_category_fleiss_kappa_is_undefined_and_requires_reconciliation()
     assert "undefined" in result["fallback_reason"].lower()
 
 
+@pytest.mark.parametrize(
+    ("metric", "value"),
+    [
+        ("alpha", None),
+        ("alpha", float("nan")),
+        ("alpha", 2.0),
+        ("kappa", "not-a-number"),
+        ("kappa", float("inf")),
+        ("kappa", 2.0),
+    ],
+)
+def test_malformed_reliability_metrics_fail_closed(monkeypatch, metric, value):
+    """Three-model promotion requires finite, in-domain kappa and alpha."""
+    from app.core import research_validity
+
+    applications = [
+        {
+            "coder_id": coder_id,
+            "model_name": model_name,
+            "evidence_unit_id": unit_id,
+            "codes": [code],
+        }
+        for coder_id, model_name in (
+            ("coder-a", "model-a"),
+            ("coder-b", "model-b"),
+            ("coder-c", "model-c"),
+        )
+        for unit_id, code in (("eu-1", "nav"), ("eu-2", "trust"))
+    ]
+
+    if metric == "alpha":
+        monkeypatch.setattr(
+            research_validity,
+            "krippendorff_alpha",
+            lambda *_args, **_kwargs: {"alpha": value, "unreliable_codes": []},
+        )
+    else:
+        monkeypatch.setattr(
+            research_validity,
+            "fleiss_kappa_from_matrix",
+            lambda *_args, **_kwargs: {
+                "kappa": value,
+                "status": "computed",
+            },
+        )
+
+    result = research_validity.evaluate_reliability_gate(
+        applications,
+        minimum_distinct_models=3,
+    )
+
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["accepted_evidence_unit_ids"] == []
+    assert "finite numeric" in result["fallback_reason"]
+
+
 def test_effective_rater_provenance_is_reconstructable_and_conflicts_fail_closed():
     from app.core.research_validity import evaluate_reliability_gate
 
