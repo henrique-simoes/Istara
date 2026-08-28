@@ -7,9 +7,9 @@ cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
 stage: S2-execute/S3-review
 status: in-progress
-blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T02:04:02Z, ledger: L-463, commit: cdecdf72d36db8fa7755bfafc4540a655bfba22d }
-next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
+blocked_on: "Owner-approved Docker-only Mac Studio provisioning: Codex Luna OAuth completion and exact provider/base URL for Qwen 3.7 Plus/Flash; live acceptance remains fail-closed until three identities are served"
+last: { agent: gpt-5-codex, at: 2026-08-28T02:12:00Z, ledger: L-465, commit: b3318504f832cf8bd47a36240eb5c5dc7577a1a4 }
+next_action: "Build the pinned Pi 0.84.3 runtime in a disposable Mac Studio Docker checkout, complete Codex Luna OAuth, then provision the owner-specified Qwen Plus/Flash provider inside Docker only; run provider, Petals, and combined profiles with two-call/long-horizon enabled and keep all Research Spine promotion gates open until immutable receipts exist."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
