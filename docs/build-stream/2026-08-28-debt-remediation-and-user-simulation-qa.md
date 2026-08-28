@@ -4,13 +4,59 @@
 item: debt-remediation-and-user-simulation-qa
 branch: testing
 cf: { spec: CF-SPEC-6 }
-phase: "Phase 1 — MECE master planning (three architects)"
-stage: S1-plan
+phase: "Phase 1 — Wave A: branch quality debt remediation (adopted PLAN-A)"
+stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: glm-5.3-flash, at: 2026-08-28T19:35:00Z, ledger: L-1 }
-next_action: "Conductor three-architect MECE planning runs; present winning master plan to owner for approval."
+last: { agent: glm-5.3-flash, at: 2026-08-28T21:00:00Z, ledger: L-3 }
+next_action: "Execute Wave A change set 1: freeze behavior (pi-runtime npm ci in worktree, 122-test barrier green), then facade-split research_validity_service.py behind import-compatibility."
 ```
+
+## Decision log addendum
+
+```text
+DEC-2 | 2026-08-28 | S1-plan | owner (via abort) + glm-5.3-flash
+Context: The conductor three-architect MECE run was aborted by the owner —
+insufficient usage credits across the multi-model cast (sol/opus/glm). Two of
+three architect drafts had completed; PLAN-A (sol, xhigh→high) is a fully
+evidenced, measured debt-remediation plan.
+Decision: Abort the conductor run (daemon stopped, PLAN-B released, strict-wave
+intent stays inert pending-approval with no execution authority). Adopt the
+completed PLAN-A snapshot as the S1 plan for a REGULAR Build Stream execution:
+single agent (glm-5.3-flash) drives CF work orders, gates, and evidence — no
+additional model-CLI credits consumed. Wave B (user-simulation QA,
+deterministic) and Wave C (live serving) unchanged in scope; Wave C still
+pauses for the owner-supplied DashScope credential under owner-only custody.
+Why: Preserves the owner's goals without multi-model spend; PLAN-A already
+contains the measured current-state table (gate record 428, ruff 1651/772
+safe-fixable, 208 files to format) and the four change-set structure with a
+characterization-test barrier.
+```
+
+### PLAN-A adoption (S1 design, summarized)
+
+Four reviewable change sets, zero product-behavior change, Research Spine
+fail-closed invariants protected (`docs/architecture/research-validity-contract.md`):
+
+1. **Freeze behavior.** `npm ci` in `pi-runtime` (worktree lacked node_modules;
+   54 of 498 tests were handshake_timeout as a result). Barrier: focused
+   W7/W8/settings suite — 122 tests green before any structural move.
+2. **Facade-split `research_validity_service.py`** (2,762 lines) into cohesive
+   internal modules behind import compatibility; decompose the flagged
+   functions (`run_independent_coding_run` 63, `_pi_coder_runner` 39,
+   `assess_task_research_validity` 31, `build_evidence_graph_traceability` 28,
+   `_run_pi_coder_with_qwen_fallback` 23, `_resolve_application_unit` 28)
+   without changing query order, commit points, telemetry order, serialized
+   payloads, fallback bounds, or fail-closed decisions. Split the oversized
+   test files by concern.
+3. **Artifacts + Ruff debt in mechanically isolated diffs.** `git rm`
+   `debug_rereview.py`, `fix_payload.py`; `git mv` w7/w8/w9 instructions and
+   cf-spec-4..8 answers to `docs/build-stream/archive/`; `ruff format` backend
+   (208 files) and safe-fixes only (never `--unsafe-fixes`); replace stale CI
+   comments with measured counts; make steps blocking only when clean.
+4. **Truthful gate state.** Fix the 8 new gate-comparison findings; explicit
+   path/rule-scoped expiring suppressions for inherited findings that remain;
+   never relabel inherited as new.
 
 ## Plan overview / roadmap
 
@@ -97,6 +143,20 @@ Verified: `routing.py show --root` reflects the new routes; `pi`/`claude`
 probes → pong; `compass-forge spec show CF-SPEC-6` → clarified/planned.
 Next: write the strict-wave manifest, run make_pipeline + make_cast with
 --with-planning, create the shared worktree, spawn the conductor.
+
+### L-3 | 2026-08-28T21:00:00Z | S1-plan/S2-execute | glm-5.3-flash | planner | Phase 1
+Did: Stopped the conductor daemon (SIGTERM on PID 21425, stop_requested ack'd),
+released debt-qa-20260828-PLAN-B to open, verified the shared worktree clean;
+recovered the completed PLAN-A draft from the consensus snapshots; logged
+DEC-2 and adopted PLAN-A as the S1 plan for regular single-agent Build Stream
+execution under CF-SPEC-6.
+Result: Execution proceeds without further model-CLI spend. Wave C (live
+serving) remains gated on the owner-supplied DashScope credential.
+Verified: `pgrep conductor.py` → empty; `task release` → PLAN-B open;
+`git -C worktree status --porcelain` → 0 lines; PLAN-A snapshot read and
+summarized into this file.
+Next: Wave A change set 1 — freeze behavior (pi-runtime npm ci, 122-test
+barrier), then begin the facade split behind import compatibility.
 
 ### L-2 | 2026-08-28T20:00:00Z | S1-plan | glm-5.3-flash | planner | Phase 1
 Did: Built the strict-wave scaffolding and launched the conductor. Wrote the
