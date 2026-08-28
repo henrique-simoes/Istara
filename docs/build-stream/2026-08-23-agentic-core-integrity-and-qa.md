@@ -12094,3 +12094,29 @@ pass 100.0; `python scripts/feature_docs.py --seed-missing --generate-site
 `needs_reconciliation`, 2 distinct raters, no kappa.
 Next: commit/push, reset remote checkout, rebuild image, rerun provider
 profile expecting three served raters.
+
+### L-494 | 2026-08-28T17:10:00Z | S2-execute/S4-remediate | glm-5.3-flash | Coverage union proven live; second bounded re-ask added
+
+Provider rerun 3 (run `2026-08-28T16-33-23-419Z`, rebuilt `ff70383a`-line
+image, single `pi` arm): **Luna served**, **Plus served through the new
+`coverage_repair=per_unit_union` path** — the disjoint-coverage defect is
+fixed in live conditions. **Flash failed closed** this run with incomplete
+coverage (1/3) whose single re-ask did not recover, so the run stayed at 2
+distinct raters (`needs_reconciliation`, no kappa). Across three live runs
+each of the three coders has now flaked exactly once under provider variance
+while a different pair served — the single bounded re-ask is insufficient.
+
+TDD change (same-coder protocol, still fail-closed): the coverage repair loop
+now permits **exactly two** bounded re-asks per coder (max 3 attempts), each
+unioned per unit with the repair attempt winning, and the merged route
+evidence discloses `coverage_repair=per_unit_union` plus
+`coverage_repair_attempts=n`. A coder that never covers every unit still
+fails the run exactly as before (existing fail-closed test updated to the
+5-call contract and passing).
+
+Verified: targeted set `rtk pytest -q tests/pi_production/test_w7_validation.py
+tests/pi_production/test_w7_pi_manager_integration.py
+tests/pi_production/test_ensemble_identity_parity.py` → 50 passed; `ruff
+check` clean; security benchmark pass 100.0; feature docs 86 checked;
+`git diff --check` clean.
+Next: commit/push, reset remote, rebuild, provider rerun 4.
