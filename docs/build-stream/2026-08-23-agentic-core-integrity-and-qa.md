@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T00:42:44Z, ledger: L-452, commit: pending }
+last: { agent: gpt-5-codex, at: 2026-08-28T00:43:35Z, ledger: L-453, commit: ccdfb30b }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -10788,3 +10788,14 @@ dependency installation occurred. The provider/Petals/combined live matrix,
 three served model identities, Fleiss/alpha, reconciliation, human Done/report,
 two-call, and long-horizon gates remain open. Commit and push this checkpoint,
 then continue the remaining authority and live-acceptance audit.
+
+### L-453 | 2026-08-28T00:43:35Z | S3-review | gpt-5-codex | Transported legacy-width parity checkpoint
+
+Commit `ccdfb30bd3dfac36de1eb14f232f9aabe014e525` contains the shared
+fail-closed width validation, regression coverage, Ensemble Health contract,
+external finding reference, and L-452 checkpoint. It was pushed to
+`origin/testing` without force; `git rev-parse HEAD` and
+`git rev-parse origin/testing` both resolve to `ccdfb30bd3dfac36de1eb14f232f9aabe014e525`,
+and the main checkout is clean. CF command evidence `482` and after-gate
+evidence `483` remain attached to CF-15. No live model or Mac Studio state was
+changed; the live three-model/Petals/Research Spine gates remain open.
