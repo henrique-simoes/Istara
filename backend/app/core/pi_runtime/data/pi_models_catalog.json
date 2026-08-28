@@ -5935,6 +5935,25 @@
   }
  },
  {
+  "id": "qwen3.7-flash-2026-07-15",
+  "name": "Qwen3.7 Flash 2026-07-15 (DashScope)",
+  "api": "openai-completions",
+  "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "contextWindow": 1000000,
+  "maxTokens": 65536,
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "thinkingLevels": null,
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  }
+ },
+ {
   "id": "qwen3.6-plus",
   "name": "Qwen3.6 Plus (DashScope)",
   "api": "openai-completions",

@@ -43,6 +43,17 @@ ACCEPTED_PROMOTION_STATUSES = {"accepted", "accepted_after_reconciliation"}
 # persisted. Reports must use this narrower, post-reconciliation state.
 RECONCILED_CODE_APPLICATION_STATUSES = {"accepted", "reconciled"}
 MAX_CODING_SOURCE_TEXT_CHARS = 700
+# These are deliberately a coder-slot policy, not a general provider retry
+# list. The first identity is the normal Qwen rater; the dated identities are
+# reserved for a DashScope rate-limit response and must never be selected as
+# independent raters while the primary catalog is available.
+QWEN_RATE_LIMIT_FALLBACK_MODELS = (
+    "qwen3.7-plus",
+    "qwen3.7-plus-2026-05-26",
+    "qwen3.7-flash-2026-07-15",
+)
+QWEN_FALLBACK_ONLY_MODELS = QWEN_RATE_LIMIT_FALLBACK_MODELS[1:]
+DASHSCOPE_COMPAT_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 CODING_RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": True,
@@ -107,6 +118,14 @@ class CoderSpec:
     # instead of silently falling back to a process-wide Pi service.
     pi_service: Any | None = None
     pi_endpoint_identity: tuple[str, ...] | None = None
+
+
+class QwenRateLimitFallbackError(RuntimeError):
+    """A rate-limited Qwen slot could not complete with an admitted fallback."""
+
+    def __init__(self, message: str, *, attempts: list[dict[str, str]]) -> None:
+        self.attempts = attempts
+        super().__init__(message)
 
 
 def document_source_id(document_id: str, version: int | None = 1) -> str:
@@ -604,7 +623,11 @@ async def _select_pi_coders(
     # Read-only DB projection of persisted LLMServer endpoint identities;
     # it never connects to a server or loads a model.
     await manager.ensure_db_projection()
-    endpoints = manager.resolve_distinct(max(1, max_coders), project_id=project_id)
+    endpoints = manager.resolve_distinct(
+        max(1, max_coders),
+        project_id=project_id,
+        exclude_models=QWEN_FALLBACK_ONLY_MODELS,
+    )
     return [
         CoderSpec(
             node=SimpleNamespace(
@@ -635,6 +658,237 @@ def _pi_endpoint_identity(endpoint: Any) -> tuple[str, ...]:
         str(getattr(endpoint, "provider_account_handle", "") or ""),
         str(getattr(endpoint, "kind", "") or ""),
     )
+
+
+def _is_qwen_rate_limit_error(exc: BaseException) -> bool:
+    """Recognize provider throttling without treating every failure as retryable."""
+    messages: list[str] = []
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        messages.append(str(current))
+        current = current.__cause__ or current.__context__
+    return bool(
+        re.search(
+            r"(?:(?<!\d)429(?!\d)|too[\s_-]+many[\s_-]+requests|rate[\s_-]*limit|throttl)",
+            " ".join(messages),
+            re.IGNORECASE,
+        )
+    )
+
+
+def _is_dashscope_endpoint(endpoint: Any) -> bool:
+    """Return true only for the regular Singapore DashScope OpenAI wire path."""
+    return (
+        str(getattr(endpoint, "provider_kind", "") or "").strip().lower()
+        == "openai_compat"
+        and str(getattr(endpoint, "pi_provider", "") or "").strip().lower() == "dashscope"
+        and str(getattr(endpoint, "base_url", "") or "").strip().rstrip("/")
+        == DASHSCOPE_COMPAT_BASE_URL
+    )
+
+
+def _same_dashscope_key(original: Any, fallback: Any) -> bool:
+    """Require one non-empty API key and endpoint before changing model identity."""
+    return bool(
+        _is_dashscope_endpoint(original)
+        and _is_dashscope_endpoint(fallback)
+        and str(getattr(original, "api_key", "") or "")
+        and str(getattr(original, "api_key", ""))
+        == str(getattr(fallback, "api_key", ""))
+    )
+
+
+def _fallback_coder(coder: CoderSpec, endpoint: Any) -> CoderSpec:
+    from types import SimpleNamespace
+
+    return CoderSpec(
+        node=SimpleNamespace(
+            node_id=endpoint.endpoint_id,
+            name=endpoint.endpoint_id,
+            source="pi",
+            provider_type=endpoint.provider_kind,
+            endpoint_id=endpoint.endpoint_id,
+            provider_account_handle=getattr(endpoint, "provider_account_handle", ""),
+        ),
+        coder_id=f"model-coder:{endpoint.endpoint_id}",
+        model_name=endpoint.model,
+        pi_manager=coder.pi_manager,
+        pi_service=coder.pi_service,
+        pi_endpoint_identity=_pi_endpoint_identity(endpoint),
+    )
+
+
+def _merge_coding_route_evidence(
+    previous_response: dict, replacement_response: dict
+) -> dict:
+    """Keep fallback provenance when a bounded coding repair replaces output.
+
+    A repair is a second provider call for the same coder slot.  Its response
+    route is authoritative for the accepted application payload, but it must
+    not erase an earlier rate-limit chain that selected the active model.  If
+    the repair itself falls back, both call-level chains are retained in one
+    ordered attempt list and a compact history records their boundaries.
+    """
+    previous_route = dict(previous_response.get("_istara_route", {}) or {})
+    replacement_route = dict(replacement_response.get("_istara_route", {}) or {})
+    previous_attempts = previous_route.get("fallback_attempts")
+    if not isinstance(previous_attempts, list) or not previous_attempts:
+        return replacement_response
+
+    replacement_attempts = replacement_route.get("fallback_attempts")
+    if not isinstance(replacement_attempts, list):
+        replacement_attempts = []
+    merged_route = {**previous_route, **replacement_route}
+    merged_route["fallback_attempts"] = [*previous_attempts, *replacement_attempts]
+    merged_route["initial_requested_model"] = previous_route.get("requested_model", "")
+    merged_route["initial_requested_coder_id"] = previous_route.get(
+        "requested_coder_id", ""
+    )
+    history = [
+        {
+            "requested_model": previous_route.get("requested_model", ""),
+            "served_model": previous_route.get("served_model", ""),
+            "fallback_attempts": previous_attempts,
+        }
+    ]
+    if replacement_attempts:
+        history.append(
+            {
+                "requested_model": replacement_route.get("requested_model", ""),
+                "served_model": replacement_route.get("served_model", ""),
+                "fallback_attempts": replacement_attempts,
+            }
+        )
+    merged_route["fallback_history"] = history
+    return {**replacement_response, "_istara_route": merged_route}
+
+
+async def _run_pi_coder_with_qwen_fallback(
+    coder: CoderSpec,
+    messages: list[dict],
+    model_name: str | None,
+    project_id: str,
+    *,
+    runner: CoderRunner,
+) -> tuple[dict, CoderSpec]:
+    """Run one coder, advancing only a DashScope Qwen slot after a 429.
+
+    Fallback endpoints are resolved through the same PiModelManager and must
+    use the same DashScope base URL and API key. Every attempt is returned in
+    route evidence; auth, transport, malformed, and application failures are
+    never reclassified as rate limits.
+    """
+    requested_model = str(model_name or coder.model_name or "").strip()
+    try:
+        start_index = QWEN_RATE_LIMIT_FALLBACK_MODELS.index(requested_model)
+    except ValueError:
+        return await runner(coder, messages, model_name, project_id), coder
+    manager = coder.pi_manager
+    if manager is None:
+        return await runner(coder, messages, model_name, project_id), coder
+
+    await manager.ensure_db_projection()
+    selected_endpoint_id = str(getattr(coder.node, "endpoint_id", "") or "").strip()
+    original_endpoint = manager.resolve(
+        endpoint_id=selected_endpoint_id or None,
+        model=requested_model,
+        project_id=project_id,
+    )
+    if not _is_dashscope_endpoint(original_endpoint):
+        return await runner(coder, messages, model_name, project_id), coder
+
+    attempts: list[dict[str, str]] = []
+    active_coder = coder
+    original_endpoint_for_key = original_endpoint
+    for index in range(start_index, len(QWEN_RATE_LIMIT_FALLBACK_MODELS)):
+        candidate_model = QWEN_RATE_LIMIT_FALLBACK_MODELS[index]
+        if index == start_index:
+            endpoint = original_endpoint
+        else:
+            try:
+                endpoint = manager.resolve(model=candidate_model, project_id=project_id)
+            except Exception as exc:
+                attempts.append(
+                    {
+                        "model": candidate_model,
+                        "endpoint_id": "",
+                        "outcome": "unavailable",
+                    }
+                )
+                raise QwenRateLimitFallbackError(
+                    f"qwen_rate_limit_fallback_unavailable:{candidate_model}",
+                    attempts=attempts,
+                ) from exc
+            if str(getattr(endpoint, "model", "") or "").strip() != candidate_model:
+                attempts.append(
+                    {
+                        "model": candidate_model,
+                        "endpoint_id": str(getattr(endpoint, "endpoint_id", "") or ""),
+                        "outcome": "identity_mismatch",
+                    }
+                )
+                raise QwenRateLimitFallbackError(
+                    f"qwen_rate_limit_fallback_identity_mismatch:{candidate_model}",
+                    attempts=attempts,
+                )
+            if not _same_dashscope_key(original_endpoint_for_key, endpoint):
+                attempts.append(
+                    {
+                        "model": candidate_model,
+                        "endpoint_id": str(getattr(endpoint, "endpoint_id", "") or ""),
+                        "outcome": "same_key_mismatch",
+                    }
+                )
+                raise QwenRateLimitFallbackError(
+                    f"qwen_rate_limit_fallback_same_key_mismatch:{candidate_model}",
+                    attempts=attempts,
+                )
+            active_coder = _fallback_coder(coder, endpoint)
+
+        endpoint_id = str(getattr(endpoint, "endpoint_id", "") or "").strip()
+        try:
+            response = await runner(
+                active_coder,
+                messages,
+                active_coder.model_name or None,
+                project_id,
+            )
+        except Exception as exc:
+            if not _is_qwen_rate_limit_error(exc):
+                raise
+            attempts.append(
+                {
+                    "model": candidate_model,
+                    "endpoint_id": endpoint_id,
+                    "outcome": "rate_limited",
+                }
+            )
+            if index == len(QWEN_RATE_LIMIT_FALLBACK_MODELS) - 1:
+                raise QwenRateLimitFallbackError(
+                    "qwen_rate_limit_fallback_exhausted", attempts=attempts
+                ) from exc
+            continue
+
+        attempts.append(
+            {"model": candidate_model, "endpoint_id": endpoint_id, "outcome": "served"}
+        )
+        if len(attempts) > 1:
+            route = dict(response.get("_istara_route", {}) or {})
+            route.update(
+                {
+                    "requested_model": requested_model,
+                    "requested_coder_id": coder.coder_id,
+                    "fallback_reason": "rate_limit",
+                    "fallback_index": index - start_index,
+                    "fallback_same_key_verified": True,
+                    "fallback_attempts": attempts,
+                }
+            )
+            response = {**response, "_istara_route": route}
+        return response, active_coder
+    raise AssertionError("unreachable")
 
 
 async def _pi_coder_runner(
@@ -672,6 +926,11 @@ async def _pi_coder_runner(
         schema=CODING_RESPONSE_SCHEMA,
         params=TurnParams(
             temperature=0.2,
+            # The governed coding plane must use the requested reasoning path
+            # for both DashScope Qwen and the Codex Luna rater. Pi clamps this
+            # level against each bound model's supported map; Qwen translates
+            # it to ``enable_thinking`` and Codex to its Responses effort.
+            thinking_mode="high",
             model=model_name,
             endpoint_id=getattr(coder.node, "endpoint_id", None),
         ),
@@ -1326,6 +1585,7 @@ async def run_independent_coding_run(
         return coding_run.to_dict()
 
     runner = coder_runner or _pi_coder_runner
+    use_pi_qwen_fallback = False
     pi_selection_error: str | None = None
     if coder_runner is None and await _use_pi_coding_plane(db, project_id):
         # Coders are distinct Pi-managed model identities, each pinned to its
@@ -1360,6 +1620,7 @@ async def run_independent_coding_run(
                 coders = await _select_pi_coders(
                     max_coders=max_coders, project_id=project_id
                 )
+            use_pi_qwen_fallback = True
         except Exception as exc:
             # Fail-closed: fewer distinct Pi models than requested coders (or
             # an unavailable catalog) means
@@ -1403,8 +1664,18 @@ async def run_independent_coding_run(
             coding_run_id=run_id,
             codebook_version_id=coding_run.codebook_version_id or "",
         )
+        active_coder = coder
         try:
-            response = await runner(coder, messages, coder.model_name or None, project_id)
+            if use_pi_qwen_fallback:
+                response, active_coder = await _run_pi_coder_with_qwen_fallback(
+                    coder,
+                    messages,
+                    coder.model_name or None,
+                    project_id,
+                    runner=runner,
+                )
+            else:
+                response = await runner(coder, messages, coder.model_name or None, project_id)
             content = response.get("message", {}).get("content", "")
             parsed = _extract_json_payload(content)
             usable_applications = _usable_coding_applications(
@@ -1413,12 +1684,23 @@ async def run_independent_coding_run(
                 units=units,
             )
             if not _has_complete_unit_coverage(usable_applications, unit_by_id=unit_by_id):
-                repair_response = await runner(
-                    coder,
-                    _coding_repair_messages(units, codebook, threshold),
-                    coder.model_name or None,
-                    project_id,
-                )
+                repair_messages = _coding_repair_messages(units, codebook, threshold)
+                if use_pi_qwen_fallback:
+                    repair_response, repaired_coder = await _run_pi_coder_with_qwen_fallback(
+                        active_coder,
+                        repair_messages,
+                        active_coder.model_name or None,
+                        project_id,
+                        runner=runner,
+                    )
+                    active_coder = repaired_coder
+                else:
+                    repair_response = await runner(
+                        active_coder,
+                        repair_messages,
+                        active_coder.model_name or None,
+                        project_id,
+                    )
                 repair_content = repair_response.get("message", {}).get("content", "")
                 repair_parsed = _extract_json_payload(repair_content)
                 repair_usable = _usable_coding_applications(
@@ -1427,7 +1709,7 @@ async def run_independent_coding_run(
                     units=units,
                 )
                 if repair_usable:
-                    response = repair_response
+                    response = _merge_coding_route_evidence(response, repair_response)
                     parsed = repair_parsed
                     usable_applications = repair_usable
             if not _has_complete_unit_coverage(usable_applications, unit_by_id=unit_by_id):
@@ -1437,14 +1719,16 @@ async def run_independent_coding_run(
                     f"{len(unit_by_id)})"
                 )
         except Exception as exc:
-            route_evidence.append(
-                {
-                    "coder_id": coder.coder_id,
-                    "model": coder.model_name,
-                    "outcome": "failed",
-                    "error": str(exc)[:160],
-                }
-            )
+            failure_route = {
+                "coder_id": coder.coder_id,
+                "model": coder.model_name,
+                "outcome": "failed",
+                "error": str(exc)[:160],
+            }
+            if isinstance(exc, QwenRateLimitFallbackError):
+                failure_route["fallback_reason"] = "rate_limit"
+                failure_route["fallback_attempts"] = exc.attempts
+            route_evidence.append(failure_route)
             await telemetry_recorder.record_research_validity_event(
                 trace_id=trace_id,
                 operation="donor.failed",
@@ -1489,7 +1773,7 @@ async def run_independent_coding_run(
                 id=str(uuid.uuid4()),
                 coding_run_id=run_id,
                 project_id=project_id,
-                coder_id=coder.coder_id,
+                coder_id=active_coder.coder_id,
                 coder_type="llm",
                 model_name=route.get("model") or coder.model_name,
                 donor_id=served_donor_id,
@@ -1502,7 +1786,7 @@ async def run_independent_coding_run(
             confidence = _confidence(raw_app.get("confidence"))
             gate_applications.append(
                 {
-                    "coder_id": coder.coder_id,
+                    "coder_id": active_coder.coder_id,
                     "model_name": route.get("model") or coder.model_name,
                     "donor_id": served_donor_id,
                     "route_id": served_route_id,
@@ -1542,7 +1826,7 @@ async def run_independent_coding_run(
                     source_location=unit.source_location,
                     start_offset=unit.start_offset,
                     end_offset=unit.end_offset,
-                    coder_id=coder.coder_id,
+                    coder_id=active_coder.coder_id,
                     coder_type="llm",
                     model_name=route.get("model") or coder.model_name,
                     donor_id=served_donor_id,

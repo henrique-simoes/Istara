@@ -142,7 +142,7 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
             created_by="test-researcher",
         )
 
-    assert result["promotion_status"] == "accepted"
+    assert result["promotion_status"] == "accepted", result
     assert result["reliability_method"] == "fleiss_kappa_with_krippendorff_alpha_companion"
     assert result["distinct_model_count"] == 3
     assert result["rater_count"] == 3
@@ -162,6 +162,152 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
         "ep-b",
         "ep-c",
     }
+
+
+async def test_coding_run_qwen_rate_limit_fallback_preserves_three_model_gate(
+    monkeypatch, _agentic_core_on
+):
+    """The real manager/dispatcher path records a Qwen fallback as one rater."""
+    import uuid
+    from unittest.mock import AsyncMock
+
+    from app.core.agentic.dispatcher import AgenticDispatcher
+    from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
+    from app.core.pi_runtime.model_manager import PiModelManager
+    from app.models.database import async_session, init_db
+    from app.models.research_validity import EvidenceUnit
+    from app.services import research_validity_service
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"proj-w7-qwen-fallback-{suffix}"
+    unit_ids = [f"eu-w7-qwen-1-{suffix}", f"eu-w7-qwen-2-{suffix}"]
+    quotes = {unit_id: f"Participant reported invitation friction {index}." for index, unit_id in enumerate(unit_ids, 1)}
+    dashscope_url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    endpoint_specs = (
+        ("ep-luna", "gpt-5.6-luna", "openai-codex", "codex-key"),
+        ("ep-plus", "qwen3.7-plus", "dashscope", "same-dashscope-key"),
+        ("ep-flash", "qwen3.7-flash", "dashscope", "same-dashscope-key"),
+        ("ep-plus-dated", "qwen3.7-plus-2026-05-26", "dashscope", "same-dashscope-key"),
+        ("ep-flash-dated", "qwen3.7-flash-2026-07-15", "dashscope", "same-dashscope-key"),
+    )
+    endpoints = [
+        ResolvedPiEndpoint(
+            endpoint_id=endpoint_id,
+            provider_kind="openai_compat",
+            base_url=dashscope_url if provider == "dashscope" else "https://codex.invalid",
+            model=model,
+            api_key=api_key,
+            timeout_ms=1000,
+            max_retries=0,
+            pi_provider=provider,
+            provider_account_handle=f"account-{provider}",
+        )
+        for endpoint_id, model, provider, api_key in endpoint_specs
+    ]
+    manager = PiModelManager(endpoints=endpoints, include_local=False)
+    manager._db_projected = True
+
+    class _ManagedStructuredService:
+        def __init__(self):
+            self.calls = []
+
+        def model_manager(self):
+            return manager
+
+        async def run_structured(self, **kwargs):
+            self.calls.append(kwargs)
+            model = kwargs["params"].model
+            if model == "qwen3.7-plus":
+                raise RuntimeError("pi_bridge_http_429")
+            applications = [
+                {
+                    "evidence_unit_id": unit_id,
+                    "codes": [
+                        "collaboration-disorientation"
+                        if unit_id == unit_ids[0]
+                        else "invitation-friction"
+                    ],
+                    "primary_code": (
+                        "collaboration-disorientation"
+                        if unit_id == unit_ids[0]
+                        else "invitation-friction"
+                    ),
+                    "quote": quotes[unit_id],
+                    "confidence": 0.92,
+                    "rationale": "The participant is blocked by invitation setup.",
+                }
+                for unit_id in unit_ids
+            ]
+            return {
+                "text": "",
+                "value": {"applications": applications},
+                "status": "success",
+                "usage": {},
+                "stop_reason": "stop",
+                "endpoint_id": kwargs["params"].endpoint_id,
+                "model": model,
+                "served_model": model,
+                "tool_calls": [],
+            }
+
+    service = _ManagedStructuredService()
+    dispatcher = AgenticDispatcher(pi_service=service)
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", AsyncMock())
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
+    monkeypatch.setattr(
+        research_validity_service,
+        "_use_pi_coding_plane",
+        lambda db, pid: _true_async(),
+    )
+    await init_db()
+    async with async_session() as db:
+        for index, unit_id in enumerate(unit_ids, 1):
+            db.add(
+                EvidenceUnit(
+                    id=unit_id,
+                    project_id=project_id,
+                    source_id="interview-qwen",
+                    stable_id=f"interview-qwen#EU-{index:04d}",
+                    unit_index=index,
+                    source_text=quotes[unit_id],
+                    source_location=f"interview-qwen:{index}",
+                )
+            )
+        await db.commit()
+        result = await research_validity_service.run_independent_coding_run(
+            db,
+            project_id=project_id,
+            evidence_unit_ids=unit_ids,
+            created_by="test-researcher",
+        )
+
+    assert result["promotion_status"] == "accepted"
+    assert result["distinct_model_count"] == 3
+    assert [call["params"].model for call in service.calls] == [
+        "gpt-5.6-luna",
+        "qwen3.7-plus",
+        "qwen3.7-plus-2026-05-26",
+        "qwen3.7-flash",
+    ]
+    assert all(call["params"].thinking_mode == "high" for call in service.calls)
+    fallback_routes = [
+        route for route in result["route_evidence"] if route.get("fallback_reason") == "rate_limit"
+    ]
+    assert len(fallback_routes) == 1
+    assert fallback_routes[0]["requested_model"] == "qwen3.7-plus"
+    assert fallback_routes[0]["served_model"] == "qwen3.7-plus-2026-05-26"
+    assert fallback_routes[0]["fallback_same_key_verified"] is True
+    assert fallback_routes[0]["fallback_attempts"] == [
+        {"model": "qwen3.7-plus", "endpoint_id": "ep-plus", "outcome": "rate_limited"},
+        {
+            "model": "qwen3.7-plus-2026-05-26",
+            "endpoint_id": "ep-plus-dated",
+            "outcome": "served",
+        },
+    ]
+    assert {
+        route["served_model"] for route in result["route_evidence"] if route.get("outcome") == "served"
+    } == {"gpt-5.6-luna", "qwen3.7-plus-2026-05-26", "qwen3.7-flash"}
 
 
 async def test_coding_run_uses_project_scoped_petals_projection_and_preserves_route_receipts(

@@ -5,7 +5,7 @@ The catalog mirrors the standalone Pi package's canonical
 ``models.generated.js`` (about 39 providers and 1,267 models) and adds
 governed custom-provider snapshots when Istara must expose a provider that Pi
 loads from ``~/.pi/agent/models.json``.  The current regular DashScope
-snapshot contributes 39 Singapore OpenAI-compatible chat models.  The result
+snapshot contributes 40 Singapore OpenAI-compatible chat models.  The result
 is shipped as a static resource so the Istara backend never needs the pi-ai
 dependency at runtime.  Auth hints mirror ``docs/providers.md`` of the
 standalone Pi CLI:

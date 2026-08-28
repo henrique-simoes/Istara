@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T03:25:44Z, ledger: L-471, commit: b213ef9c }
-next_action: "Inject the owner credential only as DASHSCOPE_API_KEY into one disposable Mac Studio container process, run Pi 0.84.3 qwen3.7-plus and qwen3.7-flash with thinking enabled, then run the combined three-rater Research Spine profile and prove source spans, Fleiss/Krippendorff agreement, reconciliation, Done/report gates, two-call, and long-horizon receipts."
+last: { agent: gpt-5-codex, at: 2026-08-28T04:30:58Z, ledger: L-474, commit: 5e5e70b }
+next_action: "Push 5e5e70b from testing to origin/testing, then perform Docker-only live acceptance when owner credentials and a clean remote workload are available."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -26,8 +26,9 @@ timestamped ledger entry in this file.
 * `testing` tracks `origin/testing` and the checkout is kept clean. Re-run
   `git rev-parse HEAD` and `git rev-parse origin/testing` at the start of every
   continuation because each ledger-only commit necessarily advances both tips.
-  The last observed equal tips before this amendment were `f849f267`; there is
-  no `local/testing` ref. Do not create a local ref merely to make the names
+  The last observed equal tips before this wave were `04b7ef56`; the local
+  implementation commit is now `76b3dcc2` and still needs to be pushed. There
+  is no `local/testing` ref. Do not create a local ref merely to make the names
   symmetrical; record the absence instead.
 * The only other worktree is the clean recovery branch
   `recovery/pi-retake-linearized-2026-08-10`. It is not merged into `testing`
@@ -35,7 +36,8 @@ timestamped ledger entry in this file.
   cleanup. Delete branches/worktrees only after an explicit ancestry, owner, and
   artifact check proves they are unused and merged.
 * The deterministic contract slices currently pass (latest targeted slice:
-  `425 passed, 0 failed, 5 skipped`; the benchmark contract is `100 passed`).
+  `454 passed, 0 failed, 5 skipped`; the embedded Pi runtime is `52 passed`,
+  and the benchmark contract is `100 passed`).
   These results establish routing, rejection, accounting, and harness behavior
   with fakes/fixtures. They do **not** prove that three independent live models
   served the same research source, that Fleiss' kappa was meaningful, or that a
@@ -11326,3 +11328,179 @@ the owner secret ephemerally as `DASHSCOPE_API_KEY` inside one disposable
 container, capture served identities/usage, and only then run the three-rater
 ensemble and its source-grounded reliability, reconciliation, Done/report,
 two-call, and long-horizon acceptance checks.
+
+### L-472 | 2026-08-28T03:45:29Z | S2-execute/S3-review | gpt-5-codex | Embedded Pi 0.84.3 OAuth and catalog-contract hardening
+
+This wave keeps the requested architecture explicit: Pi is a standalone
+package embedded in the Istara backend image (`/app/pi-runtime`), launched by
+the Istara worker. No Pi sidecar/container was added. `pi-runtime`'s lockfile
+and manifests resolve the newest published `@earendil-works/pi-agent-core` and
+`@earendil-works/pi-ai` version available to this checkout, `0.84.3`; a fresh
+`npm ci --engine-strict --omit=dev --ignore-scripts` was performed in the
+runtime package and the installed package versions were checked. The branch
+commit is local `76b3dcc2`; pushing it to `origin/testing` remains the next
+reconciliation action.
+
+Two integration defects were fixed. First, the web OAuth adapter previously
+accepted an arbitrary non-empty Codex access string and could persist a
+credential that Pi 0.84.3 would reject before its first request. Browser PKCE,
+device-code exchange, and refresh now require the Pi-compatible
+`access_token`, `refresh_token`, positive finite `expires_in`, and the
+account-bound `https://api.openai.com/auth.chatgpt_account_id` JWT claim. The
+JWT is decoded only for the non-secret identity claim; no signature or token
+material is logged, returned to the browser, or recorded in this ledger. Invalid
+responses fail the flow closed as `openai_token_response_invalid`/
+`oauth_refresh_failed`. The model-management route test now proves that
+`gpt-5.6-luna` is admitted through the OAuth transport with the Codex Responses
+base URL and catalog limits/capabilities, while malformed and structurally
+unbound responses are rejected.
+
+Second, the embedded provider binding discarded catalog modality metadata and
+always advertised `input: ["text"]`. It now carries `supports_vision` through
+Pi's model binding, so vision-capable Qwen/Codex catalog entries do not silently
+become text-only. A provider-contract test covers the propagation. Existing
+Qwen compatibility behavior remains intact: catalog reasoning metadata maps to
+Qwen's `enable_thinking` contract and does not emit unsupported
+`reasoning_effort`.
+
+Evidence collected after the fixes:
+
+* `rtk npm test --prefix pi-runtime`: **52 passed, 0 failed**.
+* `rtk pytest -q tests/pi_production`: **454 passed, 0 failed, 5 skipped**.
+* `rtk pytest -q tests/pi_migration tests/pi_benchmark tests/petals_bridge`:
+  **300 passed, 0 failed, 5 skipped**.
+* `rtk pytest -q tests/pi_production/test_pi_catalog_ux.py`:
+  **20 passed** after the malformed-JWT guard.
+* `rtk python scripts/security_benchmark.py --fail-on-threshold`: **28/28,
+  100%, pass**; no control files required changes.
+* `rtk python scripts/feature_docs.py --seed-missing --generate-site --check`:
+  **0 seeded, 224 generated, 86 checked, pass**. The generated timestamp-only
+  manifest churn was excluded from the implementation commit.
+* `rtk git diff --check`: pass. `compass-forge gate before` record **407**
+  reported `comparison.new_issues=[]`, with the repository's pre-existing
+  complexity, route/type drift, secret-flow, and suppressed ledger-size debt
+  still visible and not misrepresented as fixed.
+
+This is still not live-provider or scientific evidence. Both local and remote
+shell checks report `DASHSCOPE_API_KEY=absent`; no Qwen API request, Codex OAuth
+request, model loading, three-rater run, source-span receipt, Fleiss' or
+Krippendorff agreement, reconciliation/promotion, two-call causal receipt, or
+long-horizon restart/resume receipt was claimed. The deterministic suites prove
+the management seam's contracts and fail-closed behavior only. The remaining
+acceptance order is: push `76b3dcc2` to `origin/testing`; create a clean,
+detached Mac Studio Docker checkout without touching the dirty owner checkout;
+inject the owner's credential only as an ephemeral `DASHSCOPE_API_KEY` process
+secret; run Qwen `qwen3.7-plus` and `qwen3.7-flash` with thinking enabled;
+complete the Codex Luna OAuth path; then collect one combined Research Spine
+run proving three distinct served identities, raw source spans, extraction and
+open-coding outputs, reliability coefficients, Fleiss/Krippendorff agreement,
+reconciliation, human Done/report gates, Petals interoperability, two-call
+causality, and long-horizon restart/resume. Keep all live claims fail-closed
+until every receipt exists, and tear down only the disposable Docker resources
+afterward.
+
+### L-473 | 2026-08-28T03:59:31Z | S2-execute/S3-review | gpt-5-codex | DashScope Qwen rate-limit fallback contract
+
+The requested DashScope fallback order is now explicit in the canonical Pi
+catalog and model-controls feature contract: `qwen3.7-plus` is attempted
+first, `qwen3.7-plus-2026-05-26` is the second identity, and
+`qwen3.7-flash-2026-07-15` is the final identity. All three use the regular
+Singapore DashScope OpenAI-compatible provider and therefore the same
+`DASHSCOPE_API_KEY` credential boundary. The dated Flash row is catalogued
+with its own context/output/reasoning metadata rather than being a string-only
+alias. Catalog UX tests now resolve all four regular/dated Qwen entries and
+assert that every fallback identity is admitted by the same provider.
+
+The fallback is deliberately specified as rate-limit-only. A provider 429 or
+equivalent documented throttling response may advance to the next identity;
+authentication, model admission, transport, malformed-response, and ordinary
+application failures must stop. Attempted and provider-served identities must
+remain in the receipt, and a fallback response cannot be relabelled as the
+original coder. A final rate limit blocks the provider gate rather than
+fabricating a three-rater result or silently selecting a fourth model.
+
+The embedded Research Spine runtime now performs that switch through a narrow,
+manager-authorized seam in `research_validity_service`: only the production Pi
+coding plane enables it; only the exact Singapore DashScope Qwen identities are
+eligible; only a provider 429/throttling signal advances the slot; and every
+fallback endpoint must resolve to the requested dated model with the same
+non-empty API key and base URL. The dated fallback identities are excluded from
+initial independent-rater selection, so a fallback remains one coder slot and
+cannot fabricate diversity. Attempt receipts, requested/served identities,
+fallback index, and same-key verification are persisted in route evidence; a
+final rate limit or any auth/transport/malformed/application failure remains
+fail-closed. The coder runner also passes `thinking_mode="high"`, which Pi maps
+to Qwen `enable_thinking` and Codex Luna reasoning controls according to the
+bound model capability contract.
+
+Deterministic verification after implementation: focused fallback/dispatcher
+slice **8 passed**; full `tests/pi_production` **462 passed**; migration,
+benchmark, and Petals suites **300 passed, 5 skipped**; embedded Pi Node suite
+**52 passed**; security benchmark **28/28 (100%)**; feature-doc generation/check
+**224 generated, 86 checked**; Ruff on changed Python files and `git diff
+--check` passed. These receipts establish the manager/dispatcher/Research Spine
+contract, not live-provider or scientific evidence. No API key is present in
+the local or Mac Studio shell, so no provider request, served live model,
+meaningful Fleiss/Krippendorff result, reconciliation, human Done/report
+promotion, two-call causality, or long-horizon restart/resume claim is made.
+The remaining acceptance sequence is Docker-only: push this implementation,
+create a clean detached Mac Studio checkout without touching the dirty owner
+checkout, inject the owner's Qwen key ephemerally as `DASHSCOPE_API_KEY`, run
+the three-rater profile (including a deliberate 429 fallback probe), then
+collect provider receipts and all downstream Research Spine gates before
+teardown.
+
+### L-474 | 2026-08-28T04:25:51Z | S2-execute/S3-review | gpt-5-codex | Qwen fallback implementation and deterministic convergence
+
+The requested fallback behavior is implemented in the embedded Pi coding plane,
+not by adding a Pi sidecar or changing the standalone `pi-runtime` package.
+`PiModelManager.resolve_distinct` accepts a normalized `exclude_models` policy;
+the Research Spine selector excludes the two dated fallback identities from
+the initial three-rater set. A selected `qwen3.7-plus` slot is allowed to
+advance only after a 429/equivalent throttling signal, in this exact order:
+`qwen3.7-plus` -> `qwen3.7-plus-2026-05-26` ->
+`qwen3.7-flash-2026-07-15`. Every candidate is resolved through the same
+manager and must retain the Singapore DashScope OpenAI-compatible base URL,
+the exact candidate model identity, and one non-empty equal API key. Auth,
+ordinary transport, malformed-output, and application errors are not retried.
+An exhausted chain raises a typed failure and leaves the reliability gate
+blocked; it never relabels a fallback as the original coder.
+
+The successful response carries `requested_model`, `requested_coder_id`,
+`served_model`, `fallback_reason`, `fallback_index`, the full ordered
+`fallback_attempts` receipt, and `fallback_same_key_verified`. Persistence uses
+the actual active fallback coder ID/model, so the Fleiss/alpha matrix sees the
+provider-served identity. If the initial fallback response is incomplete and a
+bounded structured repair replaces it, the final route merges the original
+attempt chain and records `fallback_history`; repair cannot erase the provider
+provenance. The governed Pi runner now passes
+`thinking_mode="high"`; the Pi capability adapter maps that to Qwen's
+`enable_thinking` contract and Codex Luna's supported reasoning path. The
+integration fixture uses the real `PiModelManager`, `AgenticDispatcher`, a
+three-model coding run, distinct codes across source spans, and a scripted
+429; it proves the fallback still produces exactly three distinct accepted
+raters without claiming a live provider result.
+
+Verification receipts for this checkpoint:
+
+* focused Qwen/dispatcher/manager/repair slice: **9 passed**;
+* full `tests/pi_production`: **463 passed**;
+* `tests/pi_migration tests/pi_benchmark tests/petals_bridge`: **300 passed,
+  5 skipped**;
+* `npm test --prefix pi-runtime`: **52 passed**;
+* security benchmark: **28/28, 100%, pass**;
+* feature docs: **0 seeded, 224 generated, 86 checked, pass**;
+* Ruff on all changed Python files and `git diff --check`: **pass**.
+
+The catalog snapshot is now 40 Singapore rows and includes the dated Flash
+fallback with reasoning/context/output metadata. Generated model-controls site
+artifacts were refreshed. The earlier L-473 statement that automatic fallback
+was not implemented is superseded by this entry and the amended L-473 section.
+Live acceptance is still open: both local and Mac Studio credential checks are
+absent, the remote owner checkout is dirty and behind, and no current Istara
+Docker workload is observable. The next bounded step is to commit/push this
+wave, run a clean detached checkout inside one disposable Mac Studio Docker
+container, inject `DASHSCOPE_API_KEY` only into that process, and collect live
+served-model/thinking/usage receipts plus source-span, reliability,
+reconciliation, human Done/report, two-call, and long-horizon evidence. Do not
+claim scientific or production acceptance from this deterministic checkpoint.

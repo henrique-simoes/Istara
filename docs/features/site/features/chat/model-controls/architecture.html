@@ -461,7 +461,7 @@
 <p><code>DASHSCOPE_API_KEY</code> environment reference, and Qwen compatibility flags that</p>
 <p>emit <code>enable_thinking</code> rather than unsupported <code>reasoning_effort</code>. Istara&#x27;s</p>
 <p>canonical catalog mirrors this as the separate <code>dashscope</code> provider with the</p>
-<p>39-model Singapore snapshot currently documented in Pi (Qwen Max/Plus/Flash,</p>
+<p>40-model Singapore snapshot currently documented in Pi (Qwen Max/Plus/Flash,</p>
 <p>Coder, VL and Omni families plus DashScope&#x27;s DeepSeek V4 and GLM entries).</p>
 <p>Each entry carries its explicit Pi API, endpoint, capability, context, output,</p>
 <p>and cost metadata so PI Model Management can resolve the same identity instead</p>
@@ -478,6 +478,21 @@
 <p>provider. Docker acceptance must inject the DashScope key only into the</p>
 <p>container process and must record the provider-reported <code>served_model</code> before</p>
 <p>any Qwen endpoint can count as an independent Research Spine coder.</p>
+<p>For the bounded live Qwen acceptance probe, the regular DashScope key uses this</p>
+<p>ordered rate-limit-only fallback: <code>qwen3.7-plus</code>, then</p>
+<p><code>qwen3.7-plus-2026-05-26</code>, then <code>qwen3.7-flash-2026-07-15</code>. The probe may move</p>
+<p>to the next identity only after the provider reports a rate-limit response</p>
+<p>(normally HTTP 429 or an equivalent documented throttling error). Authentication,</p>
+<p>model-admission, transport, malformed-response, and application failures stop</p>
+<p>the run; they must not be disguised as capacity exhaustion. Each attempt and</p>
+<p>the provider-served identity are retained in the run receipt, including the</p>
+<p>fallback index and reason. A fallback is therefore an explicit test-run</p>
+<p>selection, not a silent endpoint rewrite, and a served fallback identity cannot</p>
+<p>be counted as the originally requested coder. If the final identity also</p>
+<p>rate-limits, the provider gate remains blocked rather than using a fourth model</p>
+<p>or fabricating a three-rater result. If a bounded structured repair replaces a</p>
+<p>partial fallback response, the final route keeps the original attempt chain and</p>
+<p>an ordered fallback history so repair cannot erase provider provenance.</p>
 <p>When PI endpoint credentials are created from the Settings API, custody is</p>
 <p>platform-aware: the macOS backend writes the raw key only to Keychain, while a</p>
 <p>Linux Docker backend writes the endpoint-scoped <code>ISTARA_PI_SECRET_&lt;ID&gt;</code> value</p>

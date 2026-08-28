@@ -597,6 +597,7 @@ class PiModelManager:
         *,
         model: str | None = None,
         exclude: Iterable[str] = (),
+        exclude_models: Iterable[str] = (),
         require_vision: bool = False,
         min_context: int = 0,
         project_id: str | None = None,
@@ -608,11 +609,15 @@ class PiModelManager:
         judgments and therefore cannot satisfy an ensemble-diversity request.
         """
         excluded = set(exclude)
+        excluded_models = {
+            str(item or "").strip().casefold() for item in exclude_models if str(item or "").strip()
+        }
         matches: list[_CatalogEntry] = []
         seen_models: set[str] = set()
         for entry in self._entries.values():
             if (
                 entry.endpoint_id in excluded
+                or entry.model.strip().casefold() in excluded_models
                 or _is_contract_stub_chat_entry(entry)
                 or not self._matches(
                     entry,

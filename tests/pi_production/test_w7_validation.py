@@ -719,7 +719,13 @@ async def test_select_pi_coders_maps_distinct_endpoint_identities(monkeypatch):
     assert [c.node.node_id for c in coders] == ["ep-a", "ep-b", "ep-c"], (
         "telemetry/route getattr('node_id') must resolve to the endpoint identity"
     )
-    assert manager.resolve_calls == [{"n": 3, "project_id": "project-a"}]
+    assert manager.resolve_calls == [
+        {
+            "n": 3,
+            "project_id": "project-a",
+            "exclude_models": ("qwen3.7-plus-2026-05-26", "qwen3.7-flash-2026-07-15"),
+        }
+    ]
 
 
 async def test_select_pi_coders_fails_closed_on_insufficient_distinct(monkeypatch):
@@ -800,6 +806,7 @@ async def test_pi_coder_runner_dispatches_structured_pinned_to_endpoint(monkeypa
     assert kwargs["project_id"] == "p1"
     assert kwargs["schema"] is CODING_RESPONSE_SCHEMA
     assert kwargs["params"].temperature == 0.2
+    assert kwargs["params"].thinking_mode == "high"
     assert kwargs["params"].model == "model-a"
     assert kwargs["params"].endpoint_id == "ep-a", (
         "dispatch must pin the coder's exact endpoint"
@@ -812,6 +819,370 @@ async def test_pi_coder_runner_dispatches_structured_pinned_to_endpoint(monkeypa
     route = response["_istara_route"]
     assert route["node_id"] == "ep-a" and route["node_source"] == "pi"
     assert route["model"] == "model-a" and route["outcome"] == "served"
+
+
+async def test_qwen_rate_limit_fallback_switches_identity_and_records_attempts():
+    """A DashScope 429 may advance the same-key coder slot, with receipts."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    models = (
+        "qwen3.7-plus",
+        "qwen3.7-plus-2026-05-26",
+        "qwen3.7-flash-2026-07-15",
+    )
+    endpoints = {
+        model: SimpleNamespace(
+            endpoint_id=f"ep-{index}",
+            provider_kind="openai_compat",
+            pi_provider="dashscope",
+            base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+            model=model,
+            api_key="same-key",
+            provider_account_handle="account",
+            kind="remote",
+        )
+        for index, model in enumerate(models, 1)
+    }
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, project_id=None, **_kwargs):
+            del project_id
+            return endpoints[model]
+
+    manager = _Manager()
+    coder = CoderSpec(
+        node=SimpleNamespace(
+            node_id="ep-1",
+            name="ep-1",
+            source="pi",
+            provider_type="openai_compat",
+            endpoint_id="ep-1",
+        ),
+        coder_id="model-coder:ep-1",
+        model_name=models[0],
+        pi_manager=manager,
+        pi_endpoint_identity=(
+            "ep-1",
+            "openai_compat",
+            endpoints[models[0]].base_url,
+            models[0],
+            "account",
+            "remote",
+        ),
+    )
+    calls: list[str] = []
+
+    async def runner(active, _messages, model_name, _project_id):
+        calls.append(model_name)
+        if model_name == models[0]:
+            raise RuntimeError("pi_bridge_http_429")
+        return {
+            "message": {"content": "{}"},
+            "_istara_route": {
+                "endpoint_id": active.node.endpoint_id,
+                "model": model_name,
+                "served_model": model_name,
+                "outcome": "served",
+            },
+        }
+
+    response, active = await _run_pi_coder_with_qwen_fallback(
+        coder,
+        [],
+        models[0],
+        "project-a",
+        runner=runner,
+    )
+
+    assert calls == [models[0], models[1]]
+    assert active.model_name == models[1]
+    route = response["_istara_route"]
+    assert route["requested_model"] == models[0]
+    assert route["model"] == models[1]
+    assert route["served_model"] == models[1]
+    assert route["fallback_reason"] == "rate_limit"
+    assert route["fallback_attempts"] == [
+        {"model": models[0], "endpoint_id": "ep-1", "outcome": "rate_limited"},
+        {"model": models[1], "endpoint_id": "ep-2", "outcome": "served"},
+    ]
+
+
+async def test_qwen_rate_limit_fallback_advances_to_dated_flash_after_second_limit():
+    """A second 429 advances to the dated Flash identity, still same-key."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    models = (
+        "qwen3.7-plus",
+        "qwen3.7-plus-2026-05-26",
+        "qwen3.7-flash-2026-07-15",
+    )
+    endpoints = {
+        model: SimpleNamespace(
+            endpoint_id=f"ep-{index}",
+            provider_kind="openai_compat",
+            pi_provider="dashscope",
+            base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+            model=model,
+            api_key="same-key",
+            provider_account_handle="account",
+            kind="remote",
+        )
+        for index, model in enumerate(models, 1)
+    }
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, **_kwargs):
+            return endpoints[model]
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-1"),
+        coder_id="model-coder:ep-1",
+        model_name=models[0],
+        pi_manager=_Manager(),
+    )
+    calls: list[str] = []
+
+    async def runner(active, _messages, model_name, _project_id):
+        calls.append(model_name)
+        if model_name != models[2]:
+            raise RuntimeError("pi_bridge_http_429")
+        return {
+            "message": {"content": "{}"},
+            "_istara_route": {
+                "endpoint_id": active.node.endpoint_id,
+                "model": model_name,
+                "served_model": model_name,
+                "outcome": "served",
+            },
+        }
+
+    response, active = await _run_pi_coder_with_qwen_fallback(
+        coder, [], models[0], "project-a", runner=runner
+    )
+
+    assert calls == list(models)
+    assert active.model_name == models[2]
+    assert response["_istara_route"]["served_model"] == models[2]
+    assert response["_istara_route"]["fallback_index"] == 2
+    assert response["_istara_route"]["fallback_same_key_verified"] is True
+    assert response["_istara_route"]["fallback_attempts"] == [
+        {"model": models[0], "endpoint_id": "ep-1", "outcome": "rate_limited"},
+        {"model": models[1], "endpoint_id": "ep-2", "outcome": "rate_limited"},
+        {"model": models[2], "endpoint_id": "ep-3", "outcome": "served"},
+    ]
+
+
+async def test_qwen_fallback_does_not_reclassify_auth_failure():
+    """An auth failure must stop the slot without trying another model."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    endpoint = SimpleNamespace(
+        endpoint_id="ep-auth",
+        provider_kind="openai_compat",
+        pi_provider="dashscope",
+        base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        model="qwen3.7-plus",
+        api_key="same-key",
+        provider_account_handle="account",
+        kind="remote",
+    )
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, **_kwargs):
+            if model == endpoint.model:
+                return endpoint
+            raise AssertionError("auth failure must not resolve a fallback")
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id=endpoint.endpoint_id),
+        coder_id="model-coder:ep-auth",
+        model_name=endpoint.model,
+        pi_manager=_Manager(),
+    )
+    calls: list[str] = []
+
+    async def runner(_active, _messages, model_name, _project_id):
+        calls.append(model_name)
+        raise RuntimeError("pi_runtime_turn_error:provider_auth_invalid")
+
+    with pytest.raises(RuntimeError, match="provider_auth_invalid"):
+        await _run_pi_coder_with_qwen_fallback(
+            coder, [], endpoint.model, "project-a", runner=runner
+        )
+    assert calls == [endpoint.model]
+
+
+async def test_qwen_fallback_exhaustion_blocks_with_all_attempt_receipts():
+    """The final throttled identity leaves the Research Spine gate blocked."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        QwenRateLimitFallbackError,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    models = (
+        "qwen3.7-plus",
+        "qwen3.7-plus-2026-05-26",
+        "qwen3.7-flash-2026-07-15",
+    )
+    endpoints = {
+        model: SimpleNamespace(
+            endpoint_id=f"ep-{index}",
+            provider_kind="openai_compat",
+            pi_provider="dashscope",
+            base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+            model=model,
+            api_key="same-key",
+            provider_account_handle="account",
+            kind="remote",
+        )
+        for index, model in enumerate(models, 1)
+    }
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, **_kwargs):
+            return endpoints[model]
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-1"),
+        coder_id="model-coder:ep-1",
+        model_name=models[0],
+        pi_manager=_Manager(),
+    )
+    calls: list[str] = []
+
+    async def runner(_active, _messages, model_name, _project_id):
+        calls.append(model_name)
+        raise RuntimeError("pi_bridge_http_429")
+
+    with pytest.raises(QwenRateLimitFallbackError) as exc_info:
+        await _run_pi_coder_with_qwen_fallback(
+            coder, [], models[0], "project-a", runner=runner
+        )
+
+    assert calls == list(models)
+    assert str(exc_info.value) == "qwen_rate_limit_fallback_exhausted"
+    assert exc_info.value.attempts == [
+        {"model": model, "endpoint_id": f"ep-{index}", "outcome": "rate_limited"}
+        for index, model in enumerate(models, 1)
+    ]
+
+
+async def test_qwen_fallback_rejects_a_different_api_key():
+    """A configured fallback with another credential is not an allowed switch."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        QwenRateLimitFallbackError,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    primary = SimpleNamespace(
+        endpoint_id="ep-primary",
+        provider_kind="openai_compat",
+        pi_provider="dashscope",
+        base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        model="qwen3.7-plus",
+        api_key="primary-key",
+        provider_account_handle="account",
+        kind="remote",
+    )
+    fallback = SimpleNamespace(**{**vars(primary),
+        "endpoint_id": "ep-fallback",
+        "model": "qwen3.7-plus-2026-05-26",
+        "api_key": "different-key",
+    })
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, **_kwargs):
+            return primary if model == primary.model else fallback
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id=primary.endpoint_id),
+        coder_id="model-coder:ep-primary",
+        model_name=primary.model,
+        pi_manager=_Manager(),
+    )
+
+    async def runner(_active, _messages, _model_name, _project_id):
+        raise RuntimeError("pi_bridge_http_429")
+
+    with pytest.raises(QwenRateLimitFallbackError, match="same_key_mismatch"):
+        await _run_pi_coder_with_qwen_fallback(
+            coder, [], primary.model, "project-a", runner=runner
+        )
+
+
+def test_qwen_fallback_receipt_survives_bounded_repair_replacement():
+    """Repair must not erase the initial fallback chain from provenance."""
+    from app.services.research_validity_service import _merge_coding_route_evidence
+
+    initial_attempts = [
+        {
+            "model": "qwen3.7-plus",
+            "endpoint_id": "ep-plus",
+            "outcome": "rate_limited",
+        },
+        {
+            "model": "qwen3.7-plus-2026-05-26",
+            "endpoint_id": "ep-plus-dated",
+            "outcome": "served",
+        },
+    ]
+    initial = {
+        "message": {"content": "{}"},
+        "_istara_route": {
+            "requested_model": "qwen3.7-plus",
+            "requested_coder_id": "model-coder:ep-plus",
+            "model": "qwen3.7-plus-2026-05-26",
+            "served_model": "qwen3.7-plus-2026-05-26",
+            "fallback_reason": "rate_limit",
+            "fallback_attempts": initial_attempts,
+        },
+    }
+    repair = {
+        "message": {"content": '{"applications": []}'},
+        "_istara_route": {
+            "model": "qwen3.7-plus-2026-05-26",
+            "served_model": "qwen3.7-plus-2026-05-26",
+            "outcome": "served",
+        },
+    }
+
+    merged = _merge_coding_route_evidence(initial, repair)
+    route = merged["_istara_route"]
+    assert route["fallback_attempts"] == initial_attempts
+    assert route["initial_requested_model"] == "qwen3.7-plus"
+    assert route["fallback_history"] == [
+        {
+            "requested_model": "qwen3.7-plus",
+            "served_model": "qwen3.7-plus-2026-05-26",
+            "fallback_attempts": initial_attempts,
+        }
+    ]
 
 
 async def test_pi_coder_runner_rejects_provider_served_model_mismatch(monkeypatch):

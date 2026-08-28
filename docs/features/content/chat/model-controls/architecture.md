@@ -227,7 +227,7 @@ provider file `~/.pi/agent/models.json`, using the OpenAI-compatible base URL
 `DASHSCOPE_API_KEY` environment reference, and Qwen compatibility flags that
 emit `enable_thinking` rather than unsupported `reasoning_effort`. Istara's
 canonical catalog mirrors this as the separate `dashscope` provider with the
-39-model Singapore snapshot currently documented in Pi (Qwen Max/Plus/Flash,
+40-model Singapore snapshot currently documented in Pi (Qwen Max/Plus/Flash,
 Coder, VL and Omni families plus DashScope's DeepSeek V4 and GLM entries).
 Each entry carries its explicit Pi API, endpoint, capability, context, output,
 and cost metadata so PI Model Management can resolve the same identity instead
@@ -244,6 +244,22 @@ interchangeable; a Token Plan login must remain labelled and tested as its own
 provider. Docker acceptance must inject the DashScope key only into the
 container process and must record the provider-reported `served_model` before
 any Qwen endpoint can count as an independent Research Spine coder.
+
+For the bounded live Qwen acceptance probe, the regular DashScope key uses this
+ordered rate-limit-only fallback: `qwen3.7-plus`, then
+`qwen3.7-plus-2026-05-26`, then `qwen3.7-flash-2026-07-15`. The probe may move
+to the next identity only after the provider reports a rate-limit response
+(normally HTTP 429 or an equivalent documented throttling error). Authentication,
+model-admission, transport, malformed-response, and application failures stop
+the run; they must not be disguised as capacity exhaustion. Each attempt and
+the provider-served identity are retained in the run receipt, including the
+fallback index and reason. A fallback is therefore an explicit test-run
+selection, not a silent endpoint rewrite, and a served fallback identity cannot
+be counted as the originally requested coder. If the final identity also
+rate-limits, the provider gate remains blocked rather than using a fourth model
+or fabricating a three-rater result. If a bounded structured repair replaces a
+partial fallback response, the final route keeps the original attempt chain and
+an ordered fallback history so repair cannot erase provider provenance.
 
 When PI endpoint credentials are created from the Settings API, custody is
 platform-aware: the macOS backend writes the raw key only to Keychain, while a

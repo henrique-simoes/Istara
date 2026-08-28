@@ -35,6 +35,7 @@ _DASHSCOPE_SINGAPORE_MODEL_IDS = {
     "qwen3.7-plus",
     "qwen3.7-plus-2026-05-26",
     "qwen3.7-flash",
+    "qwen3.7-flash-2026-07-15",
     "qwen3.6-plus",
     "qwen3.6-plus-2026-04-02",
     "qwen3.5-plus",
@@ -67,12 +68,23 @@ _DASHSCOPE_SINGAPORE_MODEL_IDS = {
     "ZHIPU/GLM-5.2",
 }
 
+# The live Docker provider proof may move through these exact model identities
+# only when DashScope reports a provider rate limit. The same
+# ``DASHSCOPE_API_KEY`` is valid for each attempt; a fallback must never be
+# selected for auth, model-admission, transport, or application errors.
+_DASHSCOPE_QWEN_RATE_LIMIT_FALLBACK = (
+    "qwen3.7-plus",
+    "qwen3.7-plus-2026-05-26",
+    "qwen3.7-flash-2026-07-15",
+)
+
 
 def _fake_codex_access_token(account_id: str = "test-account") -> str:
     """Create a structurally valid (unsigned) Codex JWT for contract tests."""
-    encode = lambda value: base64.urlsafe_b64encode(
-        json.dumps(value, separators=(",", ":")).encode()
-    ).rstrip(b"=").decode()
+    def encode(value: object) -> str:
+        return base64.urlsafe_b64encode(
+            json.dumps(value, separators=(",", ":")).encode()
+        ).rstrip(b"=").decode()
     return ".".join(
         (
             encode({"alg": "none", "typ": "JWT"}),
@@ -121,6 +133,8 @@ def test_catalog_provider_auth_hints(client):
     assert providers["dashscope"]["env_var"] == "DASHSCOPE_API_KEY"
     assert providers["dashscope"]["base_url"] == "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
     assert {m["id"] for m in providers["dashscope"]["models"]} >= {"qwen3.7-plus", "qwen3.7-flash"}
+    dashscope_model_ids = {m["id"] for m in providers["dashscope"]["models"]}
+    assert all(model_id in dashscope_model_ids for model_id in _DASHSCOPE_QWEN_RATE_LIMIT_FALLBACK)
     # OAuth/subscription provider
     assert "oauth" in providers["openai-codex"]["login_methods"]
     assert providers["openai-codex"]["oauth_flow"] == "openai_codex"
@@ -206,7 +220,12 @@ def test_add_endpoint_via_catalog_no_manual_url(client):
     assert ep["cost_input_per_mtok"] >= 0
 
 
-@pytest.mark.parametrize("model_id", ["qwen3.7-plus", "qwen3.7-flash"])
+@pytest.mark.parametrize("model_id", [
+    "qwen3.7-plus",
+    "qwen3.7-plus-2026-05-26",
+    "qwen3.7-flash",
+    "qwen3.7-flash-2026-07-15",
+])
 def test_add_regular_dashscope_qwen_endpoint_via_catalog(client, model_id):
     """The supplied Pi custom-provider contract must be resolvable by the manager."""
     resp = client.post(
