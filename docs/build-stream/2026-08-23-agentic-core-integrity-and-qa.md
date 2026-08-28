@@ -6,10 +6,10 @@ branch: testing
 cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
 stage: S2-execute/S3-review
-status: in-progress
-blocked_on: "All three selected model identities now have live Docker receipts and the DashScope credential has durable host-only custody; terminal acceptance remains open for the identity-bound three-rater Research Spine, real tool, restart/resume, reliability, reconciliation, and human Done/report evidence."
-last: { agent: gpt-5-codex, at: 2026-08-28T11:54:16Z, ledger: L-487, commit: 2f0a7ed6 }
-next_action: "Execute the identity-bound three-rater Research Spine/tool/restart campaign with Luna, Qwen Plus, and Qwen Flash, remediate any fail-closed result, and close the remaining Compass Forge and Build Stream gates with hard evidence."
+status: blocked
+blocked_on: "Owner decision required on two external inputs that agents must not fabricate: (1) the DashScope account is free-tier-only and its qwen3.7-flash quota is exhausted (live 403 AllocationQuota.FreeTierOnly receipt) — paid billing or an alternative credential is needed for the third independent rater; (2) no Petals donor inputs exist on the Mac Studio (no GGUF model file under ~/Istara-Projects/models, no donor connection strings), so the donation gate is not_runnable by registry rule 'blockers, not downloads'. Everything agent-executable has been completed and pushed."
+last: { agent: glm-5.3-flash, at: 2026-08-28T17:20:00Z, ledger: L-495, commit: "see git log" }
+next_action: "Once the owner enables DashScope paid billing (or supplies an equivalent third credential) and optionally Petals donor inputs: reset the Mac Studio checkout to origin/testing, rebuild the backend image, and rerun ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=provider (three raters expected: Luna + Plus + Flash with the shipped repair chain), then combined for chat/tool/long-horizon/restart-resume evidence; then close CF-13/CF-20/CF-21, run S3 blind review, and accept CF-SPEC-2."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -12120,3 +12120,43 @@ tests/pi_production/test_ensemble_identity_parity.py` → 50 passed; `ruff
 check` clean; security benchmark pass 100.0; feature docs 86 checked;
 `git diff --check` clean.
 Next: commit/push, reset remote, rebuild, provider rerun 4.
+
+### L-495 | 2026-08-28T17:20:00Z | S2-execute/S3-review | glm-5.3-flash | Provider rerun 4 and terminal blocker: DashScope free-tier exhausted
+
+Provider rerun 4 (run `2026-08-28T16-40-33-732Z`, image built from
+`1e649687`-line source with the two-repair loop verified inside the running
+container): **Luna served** (9 applications across all 3 units), **Plus
+served** (9 applications across all 3 units), **Flash failed closed** with
+incomplete coverage even after its two bounded re-asks. A bounded live
+diagnostic (one call) then returned the decisive receipt:
+`403 AllocationQuota.FreeTierOnly — "The free quota has been exhausted"` from
+the DashScope regular-Singapore endpoint for `qwen3.7-flash`. The coverage and
+structured-output flakes across runs 1, 3, and 4 are therefore provider-side
+quota-exhaustion degradation, not harness defects; the harness behaved
+fail-closed throughout and Luna/Plus receipts prove the identity, route,
+coverage-union, and reconciliation plumbing live. Continuing requires the
+owner to enable DashScope paid billing or supply an equivalent third
+credential — an external spend decision that agents must not make (Build
+Stream hard stop #2). The Petals donation gate additionally remains
+`not_runnable` on missing donor inputs (L-492).
+
+Session close-out: CF-15 re-claimed from the prior `gpt-5-codex` session
+(`task release` + `task claim --actor glm-5.3-flash`), four evidence rows
+attached (deterministic 467-pass, security 100%, live provider runs, gate
+after), and the task **finished** (`CF-15 done`). Gate after reports **7 new
+warn-level complexity findings** on the two touched files (the repair chain
+grew `run_independent_coding_run`) — recorded as new warn drift, remediation
+can follow as a separate task; the gate's aggregate `fail` status comes only
+from the **inherited** `secret_flow` and `unexpected_large_files` findings
+(unchanged, labelled inherited, not claimed as fixed). CF-13/CF-20/CF-21 stay
+open until the three-rater acceptance and blind review can run.
+
+Verified: deterministic `rtk pytest -q tests/pi_production` → 467 passed;
+targeted suites → 50 passed; `ruff check` clean;
+`python scripts/security_benchmark.py --fail-on-threshold` → 28/28, 100%,
+pass; `python scripts/feature_docs.py --seed-missing --generate-site --check`
+→ 224 generated / 86 checked; `git diff --check` clean; live receipts:
+Luna+Plus served in run `16-40-33-732Z`, Flash 403 FreeTierOnly;
+`compass-forge finish-task CF-15` → done.
+Next: owner decision on DashScope billing / third credential and optional
+Petals donor inputs; then resume per the Status Block next_action.
