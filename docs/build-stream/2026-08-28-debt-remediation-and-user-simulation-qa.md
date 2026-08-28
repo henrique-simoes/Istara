@@ -3,13 +3,13 @@
 ```yaml
 item: debt-remediation-and-user-simulation-qa
 branch: testing
-cf: { spec: CF-SPEC-6 }
+cf: { spec: CF-SPEC-6, task: CF-47, gate_baseline: 431 }
 phase: "Phase 1 — Wave A: branch quality debt remediation (adopted PLAN-A)"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: glm-5.3-flash, at: 2026-08-28T21:00:00Z, ledger: L-3 }
-next_action: "Execute Wave A change set 1: freeze behavior (pi-runtime npm ci in worktree, 122-test barrier green), then facade-split research_validity_service.py behind import-compatibility."
+last: { agent: glm-5.3-flash, at: 2026-08-28T21:40:00Z, ledger: L-4, commit: 37480dd7 }
+next_action: "Wave A change set 2 remainder: reduce the six flagged function complexities (run_independent_coding_run 63, _pi_coder_runner 39, assess_task_research_validity 31, build_evidence_graph_traceability 28, _resolve_application_unit 28, _run_pi_coder_with_qwen_fallback 23) by extracting cohesive same-module helpers behind preserved seams; then CS3b (ruff format 208 files + safe fixes, truthful CI counts), CS4 (gate after + expiring suppressions), Wave B, and CF-SPEC-2 closure (CF-13/20/21)."
 ```
 
 ## Decision log addendum
@@ -157,6 +157,42 @@ Verified: `pgrep conductor.py` → empty; `task release` → PLAN-B open;
 summarized into this file.
 Next: Wave A change set 1 — freeze behavior (pi-runtime npm ci, 122-test
 barrier), then begin the facade split behind import compatibility.
+
+### L-4 | 2026-08-28T21:40:00Z | S2-execute | glm-5.3-flash | executor | Wave A: CS3a done; CS2 facade split done — break checkpoint
+
+Owner directive: execute Wave A + Wave B only, and close the open previous
+spec (CF-SPEC-2). Progress this session:
+
+CS3a (committed `f85feaeb`): archived `w7/w8/w9_instructions.md` and
+`cf-spec-4..8-answers.json` to `docs/build-stream/archive/` via `git mv`;
+`git rm` the root debug scratch `debug_rereview.py` and `fix_payload.py`;
+no repo references to the moved/removed paths; `tests/test_public_repo_quality.py`
+green.
+
+CS2 (committed `37480dd7`): split `research_validity_service.py`
+(2,762 lines) verbatim via ast-exact segmentation into four cohesive modules —
+`research_validity_schemas.py` (212: constants/schemas/parsers/CoderSpec),
+`research_validity_evidence_units.py` (499: evidence-unit persistence + coder
+prompts), `research_validity_route_evidence.py` (435: coder dispatch, route
+evidence, Qwen fallback chains), `research_validity_reconciliation.py` (985:
+reconciliation/traceability/task assessment) — behind a 792-line
+`research_validity_service.py` compatibility facade that re-exports every
+moved name. Monkeypatch seams (`_use_pi_coding_plane`, `_select_pi_coders`,
+`llm_router`, `_select_project_coders`) stay facade-resident with their only
+callers; one source-introspection test updated to read `_pi_coder_runner`
+from its owning module (assertions unchanged). One mid-flight header bug was
+caught by py_compile and fixed by regenerating with a correct import builder.
+NOT yet done in CS2: the six flagged function complexities are moved, not yet
+reduced — extraction of same-module helpers is the next step.
+
+Verified: barrier `rtk pytest -q tests/pi_production/test_w7_validation.py
+tests/pi_production/test_w8_embeddings_gateway.py tests/test_settings.py` →
+122 passed (pre-split AND post-split); full `rtk pytest -q
+tests/pi_production` → 469 passed post-split; `import app.main` clean with
+all 27 probed facade names present; both commits pushed to `origin/testing`.
+CF: CF-47 claimed; gate-before baseline record 431.
+Next: resume with the six function-complexity reductions, then CS3b/CS4,
+Wave B, and CF-SPEC-2 closure (CF-13/20/21 evidence + spec accept).
 
 ### L-2 | 2026-08-28T20:00:00Z | S1-plan | glm-5.3-flash | planner | Phase 1
 Did: Built the strict-wave scaffolding and launched the conductor. Wrote the
