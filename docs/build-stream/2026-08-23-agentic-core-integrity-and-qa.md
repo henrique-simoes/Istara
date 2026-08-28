@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T01:36:00Z, ledger: L-455, commit: f849f267 }
+last: { agent: gpt-5-codex, at: 2026-08-28T01:37:56Z, ledger: L-457, commit: 4bfec205 }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -10888,3 +10888,42 @@ three-served-model, formal Fleiss/alpha, two-call, long-horizon,
 reconciliation, Done/report, and UI acceptance gates remain open. The next
 live attempt requires an owner-approved clean disposable Docker checkout and
 explicit provider/model inputs; the dirty remote checkout remains preserved.
+
+### L-457 | 2026-08-28T01:37:56Z | S3-review | gpt-5-codex | Original-plan gap audit and checkpoint reconciliation
+
+The delegated plan-gap audit compared the current branch and Compass Forge
+ledger against the original CF-SPEC-2 requirements. It confirms that the
+deterministic implementation and oracle work is substantially complete:
+Pi authority and legacy/Pi parity, ensemble identity/width validation,
+fail-closed reliability metrics, synthetic Research Spine coding/reliability/
+reconciliation/promotion/Done-report fixtures, Docker-only guardrails,
+benchmark traceability, and deterministic provider/Petals coexistence fakes all
+have coverage. CF-SPEC-3, CF-SPEC-4, and CF-SPEC-5 are accepted. CF-SPEC-2
+remains open with CF-13, CF-15, CF-20, and CF-21 unresolved; its acceptance
+condition cannot be claimed until the linked live and review evidence is
+terminal.
+
+The audit preserves the following as unproven rather than inferring them from
+fakes: three genuinely distinct provider-served PI models; live independent
+source-grounded coding with meaningful Fleiss' kappa and Krippendorff alpha;
+reconciliation and human-approved Done/report promotion; Petals consent,
+projection, routing, revoke/drain/stop and no-post-revocation behavior; a
+combined provider+Petals Docker profile; two-call causality and long-horizon
+checkpoint/restart/resume with duplicate-side-effect proof for both engine
+paths; browser/UI acceptance; a fresh randomized/crossover benchmark retake;
+and the legacy reportability decision for artifacts without `coding_run_id`.
+
+Branch reconciliation is clean: local `testing` and `origin/testing` are equal
+at `4bfec205`, the main checkout has no uncommitted changes, and the recovery
+worktree remains preserved because it is unmerged. The passive Mac Studio
+preflight found only Docker and an unrelated Plex container, no Istara workload,
+and a dirty remote checkout; no host installation, model load, provider call,
+image pull, container creation, or data deletion was performed. The live gate
+therefore remains explicitly blocked on owner-approved disposable Docker
+provisioning plus the required provider-served model identities and inputs.
+
+Next action is not to close CF-SPEC-2 or claim ensemble quality. First obtain
+the approved Docker-only inputs, run the provider, Petals, combined, two-call,
+long-horizon, and Research Spine acceptance profiles with immutable receipts,
+then complete UI/benchmark/blind-review gates and attach all command and gate
+evidence before closing CF-13/15/20/21.
