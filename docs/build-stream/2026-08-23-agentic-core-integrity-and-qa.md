@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T01:37:56Z, ledger: L-457, commit: 4bfec205 }
+last: { agent: gpt-5-codex, at: 2026-08-28T01:39:54Z, ledger: L-458, commit: 23deeefc }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -10927,3 +10927,15 @@ the approved Docker-only inputs, run the provider, Petals, combined, two-call,
 long-horizon, and Research Spine acceptance profiles with immutable receipts,
 then complete UI/benchmark/blind-review gates and attach all command and gate
 evidence before closing CF-13/15/20/21.
+
+### L-458 | 2026-08-28T01:39:54Z | S3-review | gpt-5-codex | Live-status poll remains idle
+
+A fresh passive poll through the existing `ssh macstudio` path invoked only
+`/usr/local/bin/docker ps` and `/usr/local/bin/docker compose ls --all`. It
+again found the unrelated healthy `plex` container and no Istara Compose
+project or benchmark workload. Compass Forge command evidence `497` records
+this as `live_acceptance=not_run`. The poll performed no host installation,
+model load, provider request, image pull, container creation, checkout
+mutation, or data deletion. The live gate is unchanged: it awaits owner-
+approved disposable Docker provisioning and explicit provider-served model
+inputs before any active profile is run.
