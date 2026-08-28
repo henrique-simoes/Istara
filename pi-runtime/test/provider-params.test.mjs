@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildRealProvider,
   captureProviderFetch,
   filterParamsForApi,
   modelCapabilities,
@@ -47,6 +48,46 @@ test("deepseek identity enables explicit thinking controls for forced structured
       compat: { thinkingFormat: "deepseek" },
     },
   );
+});
+
+test("qwen identities emit the Qwen thinking compatibility contract", () => {
+  assert.deepEqual(
+    modelCapabilities({ pi_provider: "qwen-token-plan" }, "openai-completions"),
+    {
+      reasoning: true,
+      thinkingLevels: undefined,
+      compat: { thinkingFormat: "qwen", supportsReasoningEffort: false },
+    },
+  );
+});
+
+test("Qwen thinking level becomes enable_thinking without reasoning_effort", async () => {
+  const binding = buildRealProvider({
+    endpoint_id: "qwen-plus",
+    provider_kind: "openai_compat",
+    pi_provider: "qwen-token-plan",
+    base_url: "https://provider.test/v1",
+    model: "qwen3.7-plus",
+    api_key: "test-key",
+    params: { thinking_level: "high", max_tokens: 64 },
+  });
+  let payload;
+  const stream = binding.stream(
+    binding.model,
+    { messages: [{ role: "user", content: [{ type: "text", text: "probe" }] }] },
+    {
+      fetch: async () => { throw new Error("network_should_not_be_called"); },
+      onPayload: (candidate) => {
+        payload = candidate;
+        throw new Error("payload_captured");
+      },
+    },
+  );
+  for await (const _event of stream) { /* the payload hook terminates before network */ }
+  binding.dispose();
+  assert.equal(payload.enable_thinking, true);
+  assert.equal(payload.reasoning_effort, undefined);
+  assert.equal(payload.model, "qwen3.7-plus");
 });
 
 test("codex identity retains its responses reasoning contract", () => {

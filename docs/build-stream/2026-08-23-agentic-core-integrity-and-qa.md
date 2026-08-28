@@ -11129,3 +11129,34 @@ three-rater identity, Fleiss/alpha agreement, source-grounded reconciliation,
 human Done/report promotion, two-call causality, or long-horizon restart/resume.
 Those gates remain open until a clean disposable Docker campaign has exact
 provider/base-url configuration and emits immutable model/route/usage receipts.
+
+### L-466 | 2026-08-28T02:25:00Z | S2-execute/S3-review | gpt-5-codex | Qwen thinking-contract repair and provider identity audit
+
+The Pi 0.84.3 adapter had a managed-endpoint compatibility gap: Qwen aliases
+were not marked as reasoning-capable, so a `thinking_level` request could be
+silently treated as ordinary generation. A red test reproduced the defect
+(`7 passed, 1 failed` in the targeted provider-parameter file). The minimal
+fix marks the Qwen Token Plan/cloud aliases as reasoning-capable with the Qwen
+compatibility contract. A payload-level regression now proves that a Qwen
+binding with `thinking_level: high` emits `enable_thinking: true`, omits the
+unsupported OpenAI `reasoning_effort` field, and preserves the requested model
+identity. Targeted tests pass (`9/9`); the full Pi runtime suite passes
+(`49/49`), and `git diff --check` is clean.
+
+The live credential audit is fail-closed. The owner-supplied credential class
+authenticates the regular DashScope-compatible Qwen Cloud endpoint for both
+`qwen3.7-plus` and `qwen3.7-flash`, with provider-served model names and
+reasoning content observed inside Docker. The same credential returns
+`401 invalid_api_key` at both Pi Qwen Token Plan AP and CN endpoints, so it
+must not be labeled as a Token Plan credential. Separately, Pi 0.84.3's
+Token Plan catalog admits `qwen3.7-plus` but does not admit
+`qwen3.7-flash`; substituting regular Qwen Cloud or another provider would be
+a different provider identity and requires explicit owner authorization.
+
+No live three-rater Research Spine run is counted from these probes. Codex
+Luna OAuth, a valid Token Plan credential/provider contract, three distinct
+served identities, source-span coding, Fleiss/Krippendorff agreement,
+reconciliation, human-Done/report promotion, two-call causality, and
+long-horizon restart/resume remain open. All probes and package verification
+were run in Docker; no host package was installed and no protected model
+artifact was changed.

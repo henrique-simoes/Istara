@@ -415,6 +415,28 @@ export function modelCapabilities(endpoint, modelApi) {
       compat: { thinkingFormat: "deepseek" },
     };
   }
+  // Qwen's OpenAI-compatible APIs use a provider-specific thinking contract:
+  // `enable_thinking` is emitted only when pi-ai sees both reasoning support
+  // and the Qwen compatibility marker. Custom Pi Model Management endpoints
+  // do not use pi-ai's static provider catalog, so preserve that contract from
+  // the non-secret provider identity resolved by the backend. Qwen accepts a
+  // boolean enable flag rather than OpenAI's `reasoning_effort`; suppress the
+  // latter to avoid sending an unsupported field to DashScope/Token Plan.
+  const qwenProviders = new Set([
+    "qwen",
+    "qwen-cloud",
+    "qwen-token-plan",
+    "qwen-token-plan-cn",
+    "qwen-token-plan-individual",
+    "dashscope",
+  ]);
+  if (qwenProviders.has(provider)) {
+    return {
+      reasoning: true,
+      thinkingLevels: undefined,
+      compat: { thinkingFormat: "qwen", supportsReasoningEffort: false },
+    };
+  }
   return { reasoning: false, thinkingLevels: undefined, compat: undefined };
 }
 

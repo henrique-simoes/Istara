@@ -233,6 +233,19 @@ frontend `switchModel` or `switchProvider` client. Endpoint creation, update,
 deletion, authentication, and model admission live only in
 `PiModelManagement` through `/api/settings/pi-endpoints`.
 
+## Qwen thinking compatibility (2026-08-28)
+
+Custom OpenAI-compatible endpoints resolved by Pi Model Management carry their
+non-secret `pi_provider` identity into the worker. Qwen, Qwen Cloud/DashScope,
+and the Qwen Token Plan variants are marked as reasoning-capable with Pi's
+Qwen compatibility contract, so a non-`off` `thinking_level` emits
+`enable_thinking: true` and does not emit the unsupported OpenAI
+`reasoning_effort` field. The contract is covered by a deterministic worker
+payload test; live acceptance must still prove the provider-served model,
+thinking output/metadata, and endpoint/account provenance inside the Docker
+runner. A regular `sk-ws-*` DashScope credential must not be labeled as a
+Token Plan credential unless the configured Token Plan endpoint accepts it.
+
 The simulation harness likewise never pins or restores a classical global
 model. A requested fixed test model must already be admitted in the Pi catalog
 or setup fails with an actionable error. Settings scenario 10 proves the Pi

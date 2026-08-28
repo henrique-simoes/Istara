@@ -467,6 +467,17 @@
 <p>frontend <code>switchModel</code> or <code>switchProvider</code> client. Endpoint creation, update,</p>
 <p>deletion, authentication, and model admission live only in</p>
 <p><code>PiModelManagement</code> through <code>/api/settings/pi-endpoints</code>.</p>
+<h2 id="qwen-thinking-compatibility-2026-08-28">Qwen thinking compatibility (2026-08-28)</h2>
+<p>Custom OpenAI-compatible endpoints resolved by Pi Model Management carry their</p>
+<p>non-secret <code>pi_provider</code> identity into the worker. Qwen, Qwen Cloud/DashScope,</p>
+<p>and the Qwen Token Plan variants are marked as reasoning-capable with Pi&#x27;s</p>
+<p>Qwen compatibility contract, so a non-<code>off</code> <code>thinking_level</code> emits</p>
+<p><code>enable_thinking: true</code> and does not emit the unsupported OpenAI</p>
+<p><code>reasoning_effort</code> field. The contract is covered by a deterministic worker</p>
+<p>payload test; live acceptance must still prove the provider-served model,</p>
+<p>thinking output/metadata, and endpoint/account provenance inside the Docker</p>
+<p>runner. A regular <code>sk-ws-*</code> DashScope credential must not be labeled as a</p>
+<p>Token Plan credential unless the configured Token Plan endpoint accepts it.</p>
 <p>The simulation harness likewise never pins or restores a classical global</p>
 <p>model. A requested fixed test model must already be admitted in the Pi catalog</p>
 <p>or setup fails with an actionable error. Settings scenario 10 proves the Pi</p>
@@ -499,6 +510,7 @@
 <li class="toc-level-2"><a href="#when-to-update">When To Update</a></li>
 <li class="toc-level-2"><a href="#model-management-compatibility-2026-08-22">Model-management compatibility (2026-08-22)</a></li>
 <li class="toc-level-2"><a href="#sole-model-management-write-authority-2026-08-25">Sole model-management write authority (2026-08-25)</a></li>
+<li class="toc-level-2"><a href="#qwen-thinking-compatibility-2026-08-28">Qwen thinking compatibility (2026-08-28)</a></li>
 </ul></nav>
         </aside>
       </div>
