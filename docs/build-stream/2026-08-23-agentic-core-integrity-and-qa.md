@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T00:23:10Z, ledger: L-449, commit: 28884a67 }
+last: { agent: gpt-5-codex, at: 2026-08-28T00:25:20Z, ledger: L-450, commit: 0b9d5f1d }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -10741,3 +10741,13 @@ gate`). Both `refs/heads/testing` and `refs/remotes/origin/testing` resolve to
 that SHA, and the checkout is clean. The YAML frontier points at the pushed
 tip and this ledger entry. The preserved recovery worktree remains untouched;
 no stale local/testing ref was created.
+
+### L-450 | 2026-08-28T00:25:20Z | S2-execute/S3-review | gpt-5-codex | Attached ancestry correction to CF-15
+
+Compass Forge task evidence `479` now records the deeper ancestry audit and
+post-gate record `382`: March research/ensemble foundations and April Compass
+doctrine are reachable from `testing`/`origin/testing`, while May is the first
+literal managed `compass-forge:start`/`CF-SPEC-*` wiring and July is only the
+oldest persisted CF SQLite spec row. The evidence payload records the exact
+commit frontier `0b9d5f1da5959c2c2fca2f685e3d52185503a5bc`. This is attached to
+CF-15 without changing task status; the live model gates remain open.
