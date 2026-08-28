@@ -101,6 +101,46 @@ test("codex identity retains its responses reasoning contract", () => {
   );
 });
 
+test("Codex identity capture forces the observable SSE transport", async () => {
+  const previousWebSocket = globalThis.WebSocket;
+  let websocketAttempts = 0;
+  let fetchCalls = 0;
+  globalThis.WebSocket = class {
+    constructor() {
+      websocketAttempts += 1;
+      throw new Error("websocket_should_not_be_used_for_identity_receipts");
+    }
+  };
+  const binding = buildRealProvider({
+    endpoint_id: "codex-luna",
+    provider_kind: "openai_codex",
+    pi_provider: "openai-codex",
+    base_url: "https://provider.test/backend-api",
+    model: "gpt-5.6-luna",
+    api_key: "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoidGVzdC1hY2NvdW50In19.sig",
+    params: { thinking_level: "high", max_tokens: 32 },
+  });
+  try {
+    const stream = binding.stream(
+      binding.model,
+      { messages: [{ role: "user", content: [{ type: "text", text: "probe" }] }] },
+      {
+        fetch: async () => {
+          fetchCalls += 1;
+          return new Response("{}", { status: 401, statusText: "Unauthorized" });
+        },
+      },
+    );
+    for await (const _event of stream) { /* terminal error is expected */ }
+  } finally {
+    binding.dispose();
+    if (previousWebSocket === undefined) delete globalThis.WebSocket;
+    else globalThis.WebSocket = previousWebSocket;
+  }
+  assert.equal(websocketAttempts, 0);
+  assert.equal(fetchCalls, 1);
+});
+
 test("provider identity observer captures a split non-SSE JSON response", async () => {
   const observed = [];
   const payload = JSON.stringify({ response: { model: "served-json-model" } });

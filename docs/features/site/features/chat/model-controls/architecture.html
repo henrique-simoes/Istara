@@ -478,6 +478,12 @@
 <p>thinking output/metadata, and endpoint/account provenance inside the Docker</p>
 <p>runner. A regular <code>sk-ws-*</code> DashScope credential must not be labeled as a</p>
 <p>Token Plan credential unless the configured Token Plan endpoint accepts it.</p>
+<p>Codex OAuth model receipts use Pi&#x27;s SSE transport for these managed turns.</p>
+<p>Pi&#x27;s optional Codex WebSocket path does not expose the terminal response</p>
+<p>metadata to Istara&#x27;s served-model observer, so allowing it here would permit a</p>
+<p>successful <code>gpt-5.6-luna</code> request without a provider-reported identity. A</p>
+<p>Codex turn without <code>served_model</code> remains usable for ordinary chat but cannot</p>
+<p>count as an independent Research Spine coder.</p>
 <p>The simulation harness likewise never pins or restores a classical global</p>
 <p>model. A requested fixed test model must already be admitted in the Pi catalog</p>
 <p>or setup fails with an actionable error. Settings scenario 10 proves the Pi</p>

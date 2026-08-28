@@ -503,13 +503,23 @@ export function buildRealProvider(endpoint) {
       // agent-supplied abort signal is always preserved. wireParams excludes
       // API-unsupported controls (see above). The wrapped fetch captures the
       // provider-reported response model without changing the response bytes.
+      // Codex also has a WebSocket transport, but that path does not expose
+      // terminal response metadata to this observer. Research Spine identity
+      // receipts therefore use the observable SSE transport; without this
+      // pin, a successful OAuth turn can be promoted without proof of the
+      // model actually served.
       const observation = providerModelObservation();
       const fetchImpl = options?.fetch || globalThis.fetch;
       const stream = streamWithGuardedRetry(
         models,
         streamModel,
         context,
-        { ...options, fetch: captureProviderFetch(fetchImpl, observation), ...wireParams },
+        {
+          ...options,
+          ...(modelApi === "openai-codex-responses" ? { transport: "sse" } : {}),
+          fetch: captureProviderFetch(fetchImpl, observation),
+          ...wireParams,
+        },
         maxRetries,
       );
       return attachProviderModel(stream, observation);
