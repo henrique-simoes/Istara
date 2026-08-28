@@ -8,8 +8,8 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
-last: { agent: gpt-5-codex, at: 2026-08-28T03:08:00Z, ledger: L-468, commit: 694a4b2d }
-next_action: "Inject the regular DashScope key into one disposable Mac Studio container process, run Pi 0.84.3 qwen3.7-plus and qwen3.7-flash through the custom models.json contract with thinking enabled, then run the combined three-rater Research Spine profile and prove source spans, Fleiss/Krippendorff agreement, reconciliation, Done/report gates, two-call, and long-horizon receipts."
+last: { agent: gpt-5-codex, at: 2026-08-28T03:22:58Z, ledger: L-470, commit: c0098a72 }
+next_action: "Inject the owner credential only as DASHSCOPE_API_KEY into one disposable Mac Studio container process, run Pi 0.84.3 qwen3.7-plus and qwen3.7-flash with thinking enabled, then run the combined three-rater Research Spine profile and prove source spans, Fleiss/Krippendorff agreement, reconciliation, Done/report gates, two-call, and long-horizon receipts."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -11237,3 +11237,73 @@ Next: refresh the disposable Mac Studio checkout to `694a4b2d`, inject the
 owner's regular DashScope key only into one Docker process, and collect the
 provider/model/route/usage receipts before attempting the combined three-rater
 profile.
+
+### L-469 | 2026-08-28T03:14:00Z | S3-review | gpt-5-codex | Mac Studio Docker custody verification
+
+The disposable Mac Studio checkout was refreshed to the pushed `b9282e1`
+ledger tip. A backend image already present on the host was used as a
+read-only, network-isolated test runner with the repository mounted read-only;
+the only writable path was an ephemeral container `/tmp/data` directory. The
+Linux runtime imported the changed endpoint policy and reported `linux`, then
+custodied a non-secret probe value through the new path. The resulting file
+contained the scoped key `ISTARA_PI_SECRET_DASHSCOPE_QWEN` with the expected
+five-character value length; the value itself was never printed. No host
+package install, model load, provider request, persistent container, checkout
+mutation, or protected artifact access occurred. The unrelated healthy Plex
+container remained the only running workload.
+
+This verifies the platform boundary in the actual Mac Studio Docker runtime,
+but it is intentionally not a live Qwen acceptance. The owner credential is
+not available as a remote env/Keychain/Pi volume secret, and cannot be placed
+in a command argument or ledger. A live run still requires the owner to inject
+the regular DashScope credential ephemerally as `DASHSCOPE_API_KEY` into one
+disposable container process. Until then, `qwen3.7-plus` and
+`qwen3.7-flash` provider turns, three independently served identities,
+thinking receipts, Fleiss/Krippendorff agreement, reconciliation/promotion,
+two-call causality, and long-horizon restart/resume remain open.
+
+### L-470 | 2026-08-28T03:22:58Z | S2-execute/S3-review | gpt-5-codex | Updated Pi prompt reread and Docker-only 0.84.3 catalog acceptance
+
+The owner supplied a revised Pi/DashScope configuration prompt and it was
+reread in full before continuing. Its contract remains authoritative: preserve
+existing providers, use the regular Singapore-compatible endpoint with
+`$DASHSCOPE_API_KEY`, keep Token Plan/Coding Plan identities distinct, expose
+the documented OpenAI-compatible chat catalog with per-model capability
+metadata, and make live claims only when the credential is present in the same
+terminal. No key was requested, pasted, logged, or placed in this ledger.
+
+The disposable Mac Studio checkout was refreshed at `c0098a72` (the pushed
+`origin/testing` tip). Pi `0.84.3` was installed inside the throwaway Docker
+volume `istara-dashscope-contract`, never on the Mac Studio host. A generated
+`~/.pi/agent/models.json` was mode `600`, used the regular DashScope URL and
+literal `$DASHSCOPE_API_KEY`, and contained `configured_models=39`. With only a
+non-secret probe value present, `pi --list-models dashscope` enumerated all 39
+rows, including `qwen3.7-plus` and `qwen3.7-flash`; their 1M context / 65.5K
+output and reasoning/image flags matched the checked-in catalog. This is a
+configuration/listing receipt, not a provider API or model-quality receipt.
+The package install used Docker bridge networking only; the listing container
+was network-isolated. No host package, host config, model artifact, persistent
+Istara service, or unrelated container was changed.
+
+Current verification at this tip: `pytest -q tests/pi_production` reports
+`452 passed`; `node --test pi-runtime/test/provider-params.test.mjs` reports
+`11 passed`; feature-doc generation/check reports `224` generated artifacts and
+`86` checked features; the security benchmark reports `28/28`, `100%`, with
+`--fail-on-threshold`; `git diff --check` remains clean for committed content.
+Compass Forge `gate after` record `406` reports `comparison.new_issues=[]` and
+no new dependency/import-cycle/required-path/architecture failures. Its
+non-baseline complexity, route/type-drift, secret-flow, and intentionally
+suppressed ledger-size findings remain inherited debt; the gate is not a claim
+that those warnings are resolved.
+
+Live acceptance is still blocked because the owner credential is not available
+as `DASHSCOPE_API_KEY` inside the disposable Mac Studio Docker process. Thus no
+live Qwen turns, thinking deltas, served-model identities, or endpoint
+availability are claimed, and no three-model Research Spine run is counted.
+The deterministic tests exercise catalog resolution, capability propagation,
+parameter mapping, routing, accounting, and fake ensemble contracts; they do
+not establish three independent models, source-span extraction, meaningful
+Fleiss/Krippendorff agreement, reconciliation, human Done/report promotion,
+two-call causality, or long-horizon restart/resume. The next agent must collect
+those receipts in Docker and keep the Research Spine fail-closed until every
+gate is evidenced.
