@@ -9,7 +9,7 @@ stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Docker-only live Qwen acceptance still needs the owner credential injected as DASHSCOPE_API_KEY (the supplied key authenticates regular DashScope, not Qwen Token Plan); Research Spine remains fail-closed until three served identities and spine receipts are collected"
 last: { agent: gpt-5-codex, at: 2026-08-28T04:30:58Z, ledger: L-474, commit: ee30721 }
-next_action: "Push 5e5e70b from testing to origin/testing, then perform Docker-only live acceptance when owner credentials and a clean remote workload are available."
+next_action: "Push the current testing tip to origin/testing, then perform Docker-only live acceptance when owner credentials and a clean remote workload are available."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -11504,3 +11504,40 @@ container, inject `DASHSCOPE_API_KEY` only into that process, and collect live
 served-model/thinking/usage receipts plus source-span, reliability,
 reconciliation, human Done/report, two-call, and long-horizon evidence. Do not
 claim scientific or production acceptance from this deterministic checkpoint.
+
+### L-475 | 2026-08-28T04:34:01Z | S2-execute/S3-review | gpt-5-codex | Post-gate live-model boundary checkpoint
+
+Compass Forge `gate after` record **410** completed with
+`comparison.new_issues=[]`: this wave introduced no new forbidden dependency,
+import-cycle, missing-path, or architecture violations. Existing repository
+debt remains visible and unclaimed as fixed, including complexity warnings in
+the large research-validity service and validation suite, route/type drift,
+secret-flow findings in older configuration/benchmark paths, and the
+suppressed large Build Stream ledger. The deterministic receipts remain
+**463** Pi production tests passed, **300 passed / 5 skipped** migration,
+benchmark, and Petals tests, **52** embedded-Pi Node tests passed, security
+benchmark **28/28 (100%)**, feature-doc generation/check **224 generated / 86
+checked**, changed-file Ruff pass, and `git diff --check` pass.
+
+The live-model question is still unanswered: no Qwen, Codex Luna, or other
+provider request has been sent from this checkout or the Mac Studio Docker
+environment. Passive Mac Studio inspection still shows no `DASHSCOPE_API_KEY`,
+no current Istara stack, and only the unrelated `plex` container; the existing
+`~/istara-testing` owner checkout is dirty and stale and is not safe to mutate.
+Consequently there is no live tool-call receipt, tool-result/error propagation
+proof, served-model/thinking receipt, three-rater Fleiss' kappa or
+Krippendorff alpha, reconciliation or human Done/report receipt, two-call
+causality receipt, or long-horizon restart/resume receipt. The code and
+deterministic integration fixture now prove the intended manager-authorized
+Qwen fallback and three-rater seam, but they must not be reported as live
+scientific evidence.
+
+The next action is operational rather than another local patch: push the clean
+`testing` tip to `origin/testing`; obtain the owner's credential through the
+approved secret channel; use a clean detached checkout and disposable Docker
+resources on the Mac Studio without installing anything on macOS; then run the
+bounded tool-call, long-horizon, and full Research Spine acceptance profile,
+preserving raw source-span, model identity, thinking, usage, reliability,
+reconciliation, and restart/resume receipts before teardown. If credentials or
+a clean workload remain unavailable, keep the provider and scientific gates
+blocked and record that boundary instead of substituting deterministic fakes.
