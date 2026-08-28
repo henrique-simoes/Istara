@@ -84,6 +84,32 @@ is prompted only when the live wave starts, under owner-only mode-600 custody.
 
 ## Ledger
 
+### L-2 | 2026-08-28T20:00:00Z | S1-plan | glm-5.3-flash | planner | Phase 1
+Did: Built the strict-wave scaffolding and launched the conductor. Wrote the
+3-wave manifest (`debt-qa-20260828`: debt-remediation → user-simulation-qa →
+live-serving-acceptance); ran `make_pipeline --with-planning --wave-manifest`
+with the pinned native binary (planning tasks only, pending owner approval);
+created the shared worktree `conductor/debt-qa-20260828`; ran `make_cast
+--with-planning` from the re-routed registry. Fixed three environment defects
+found on the way: (1) pi routes `openai/gpt-5.6-sol` to the API-key provider —
+preflight failed closed; corrected to the OAuth-backed
+`openai-codex/gpt-5.6-sol` (probe-verified) for architect-a/fixer; (2) the
+pinned R2-native CF binary dropped the global `--workspace` option the
+conductor's `cf()` helper still emitted for external workspaces — patched the
+Skills-library `conductor.py` to rely on target/cwd config resolution (CF
+resolves the `/Users/user/Documents/compass-forge` workspace pointer from
+`--target` itself); (3) run-scoped actor roles must sit inside the recipe's
+`[context.actor_roles]` TOML section — registered all six
+`debt-qa-20260828-*` roles correctly and refreshed. Daemon then dispatched
+architect-a (session 1, PLAN-A).
+Result: Three-architect MECE planning running; conductor pauses at
+AWAITING-OWNER-APPROVAL for the winning master plan.
+Verified: `routing.py show` reflects the final cast; `pi`/`claude` probes →
+pong ×4; `compass-forge actor roles` lists all six debt-qa-20260828 roles;
+conductor.log tick shows active session 1 on PLAN-A with 0 dispatch errors.
+Next: poll the conductor; present the synthesized winning plan to the owner;
+on approval run `conductor.py approve` to release wave 1.
+
 ### L-1 | 2026-08-28T19:35:00Z | S0-frame/S1-plan | glm-5.3-flash | framer | Phase 1
 Did: Oriented via Compass Forge + Build Stream + conductor skills; presented
 the routing registry; applied the owner's role/model changes to the repo
