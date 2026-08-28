@@ -821,6 +821,56 @@ async def test_pi_coder_runner_dispatches_structured_pinned_to_endpoint(monkeypa
     assert route["model"] == "model-a" and route["outcome"] == "served"
 
 
+async def test_pi_coder_runner_repairs_missing_structured_output_with_core_schema(monkeypatch):
+    """One final forced-tool call may simplify shape, never accept free text."""
+    from app.core.pi_runtime.endpoints import PiRuntimeTurnError
+    from app.services.research_validity_service import (
+        CODING_CORE_RESPONSE_SCHEMA,
+        CODING_RESPONSE_SCHEMA,
+        CoderSpec,
+        _pi_coder_runner,
+    )
+
+    value = {
+        "applications": [{
+            "evidence_unit_id": "eu-1",
+            "codes": ["traceability"],
+            "primary_code": "traceability",
+            "quote": "source quote",
+            "confidence": 0.9,
+        }]
+    }
+    calls = []
+
+    async def _structured(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            raise PiRuntimeTurnError("error", "structured_output_missing")
+        return SimpleNamespace(
+            value=value,
+            endpoint_id="ep-a",
+            served_model="model-a",
+            route_evidence={"outcome": "served"},
+        )
+
+    monkeypatch.setattr("app.core.agentic.agentic.structured", _structured)
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a", node_id="ep-a", source="pi"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    response = await _pi_coder_runner(coder, [], "model-a", "p1")
+
+    assert [call["schema"] for call in calls] == [
+        CODING_RESPONSE_SCHEMA,
+        CODING_CORE_RESPONSE_SCHEMA,
+    ]
+    assert calls[1]["repair"] is False
+    assert response["_istara_route"]["structured_schema_repair"] == "core_schema"
+    assert json.loads(response["message"]["content"]) == value
+
+
 async def test_qwen_rate_limit_fallback_switches_identity_and_records_attempts():
     """A DashScope 429 may advance the same-key coder slot, with receipts."""
     from app.services.research_validity_service import (

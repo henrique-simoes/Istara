@@ -11908,3 +11908,35 @@ from the example environment; living feature documentation regenerates and
 checks **224 generated / 86 checked**; and `git diff --check` passes. This slice
 proves deterministic injection wiring only. Remote recreation and the combined
 three-rater Research Spine acceptance remain open until separately evidenced.
+
+### L-489 | 2026-08-28T12:19:49Z | S2-execute/S3-review | gpt-5-codex | Live pricing gate and bounded structured repair
+
+The backend was rebuilt from `f4adcbf4` on the Mac Studio and recreated from
+the owner-only deployment env. Runtime inspection exposed only safe identity
+fields and proved five configured endpoints, an encrypted Luna OAuth blob, and
+presence (not values) for all four endpoint-scoped Qwen secrets. The unrelated
+Plex workload remained healthy. Current official Alibaba Singapore pricing was
+then persisted conservatively at each model family's highest documented token
+tier so budget enforcement cannot understate Plus or Flash cost.
+
+Three live Spine attempts remain negative evidence, not terminal acceptance.
+The first admitted only Luna because both Qwen endpoints correctly failed
+closed as `cost_budget_unpriced`. After pricing, two attempts admitted Luna and
+Plus but Flash exhausted Pi's forced-tool repair as
+`structured_output_missing`; both runs remained at two distinct raters with no
+kappa. Their subsequent human reconciliation proved the report gate transitions
+from blocked to allowed, but cannot substitute for missing three-model
+independence. Isolated Flash structured probes succeeded in both high and off
+thinking modes, localizing the defect to the richer coding schema rather than
+the endpoint, credential, model identity, or reasoning transport.
+
+TDD captured a bounded remediation: only after the runtime's existing repair
+exhausts with exactly `structured_output_missing`, the same pinned coder gets
+one final mechanically forced call using a core schema that retains evidence
+unit identity, codes, primary code, exact quote, and confidence. Free-form JSON
+remains rejected; the path records `structured_schema_repair=core_schema`; all
+other errors retain their existing fail-closed or rate-limit-specific handling.
+The focused test failed before implementation and passed after it. The affected
+suite passes **75 tests**, Ruff passes, the security benchmark passes **28/28
+(100%)**, living feature docs regenerate/check **224 / 86**, and
+`git diff --check` passes. A rebuilt live rerun is still required.

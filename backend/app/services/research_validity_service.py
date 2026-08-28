@@ -93,6 +93,39 @@ CODING_RESPONSE_SCHEMA: dict[str, Any] = {
     "required": ["applications"],
 }
 
+# A bounded final forced-tool shape for providers that exhausted the Pi
+# runtime's normal structured-output repair on the richer coding schema. It
+# retains every field required for source-grounded promotion and omits only
+# optional memo fields. Free-form JSON remains inadmissible.
+CODING_CORE_RESPONSE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "applications": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "evidence_unit_id": {"type": "string"},
+                    "codes": {"type": "array", "items": {"type": "string"}},
+                    "primary_code": {"type": "string"},
+                    "quote": {"type": "string"},
+                    "confidence": {"type": "number"},
+                },
+                "required": [
+                    "evidence_unit_id",
+                    "codes",
+                    "primary_code",
+                    "quote",
+                    "confidence",
+                ],
+            },
+        }
+    },
+    "required": ["applications"],
+}
+
 
 def _json_list_value(value: str | None) -> list[str]:
     if not value:
@@ -917,26 +950,45 @@ async def _pi_coder_runner(
                 f"for {selected_endpoint_id!r}"
             )
 
-    outcome = await agentic.structured(
-        purpose="validity.coder",
-        project_id=project_id,
-        system=None,
-        messages=messages,
-        schema=CODING_RESPONSE_SCHEMA,
-        params=TurnParams(
-            temperature=0.2,
-            # The governed coding plane must use the requested reasoning path
-            # for both DashScope Qwen and the Codex Luna rater. Pi clamps this
-            # level against each bound model's supported map; Qwen translates
-            # it to ``enable_thinking`` and Codex to its Responses effort.
-            thinking_mode="high",
-            model=model_name,
-            endpoint_id=getattr(coder.node, "endpoint_id", None),
-        ),
-        engine="pi",
-        spine_phase="execution",
-        **({"pi_service": coder.pi_service} if coder.pi_service is not None else {}),
+    params = TurnParams(
+        temperature=0.2,
+        # The governed coding plane must use the requested reasoning path for
+        # both DashScope Qwen and the Codex Luna rater.
+        thinking_mode="high",
+        model=model_name,
+        endpoint_id=getattr(coder.node, "endpoint_id", None),
     )
+    structured_schema_repair = ""
+    try:
+        outcome = await agentic.structured(
+            purpose="validity.coder",
+            project_id=project_id,
+            system=None,
+            messages=messages,
+            schema=CODING_RESPONSE_SCHEMA,
+            params=params,
+            engine="pi",
+            spine_phase="execution",
+            **({"pi_service": coder.pi_service} if coder.pi_service is not None else {}),
+        )
+    except Exception as exc:
+        from app.core.pi_runtime.endpoints import PiRuntimeTurnError
+
+        if not isinstance(exc, PiRuntimeTurnError) or exc.error != "structured_output_missing":
+            raise
+        outcome = await agentic.structured(
+            purpose="validity.coder",
+            project_id=project_id,
+            system=None,
+            messages=messages,
+            schema=CODING_CORE_RESPONSE_SCHEMA,
+            params=params,
+            engine="pi",
+            spine_phase="execution",
+            repair=False,
+            **({"pi_service": coder.pi_service} if coder.pi_service is not None else {}),
+        )
+        structured_schema_repair = "core_schema"
     served_endpoint_id = str(getattr(outcome, "endpoint_id", "") or "").strip()
     if selected_endpoint_id and served_endpoint_id and served_endpoint_id != selected_endpoint_id:
         # The endpoint is part of the source-of-truth route evidence.  A
@@ -989,6 +1041,8 @@ async def _pi_coder_runner(
     route.setdefault("endpoint_id", served_endpoint_id or selected_endpoint_id)
     route.setdefault("route_kind", "coding_run")
     route.setdefault("outcome", "served")
+    if structured_schema_repair:
+        route["structured_schema_repair"] = structured_schema_repair
     return {
         "message": {"content": json.dumps(outcome.value)},
         "_istara_route": {

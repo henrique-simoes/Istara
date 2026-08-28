@@ -308,6 +308,14 @@ values. The paired dated Qwen fallbacks therefore survive container recreation
 while remaining eligible only after a rate-limit response from their matching
 Plus or Flash primary.
 
+If a coder exhausts Pi's normal forced-tool repair with
+`structured_output_missing`, the coding plane permits one final bounded call
+using a smaller schema that retains only the required source-grounding fields
+(evidence-unit identity, codes, primary code, exact quote, and confidence).
+That path remains a mechanically forced and validated tool call, is recorded in
+route evidence, and never accepts free-form JSON. It does not intercept rate
+limits or any other transport, authorization, budget, or provider failure.
+
 Codex OAuth model receipts use Pi's SSE transport for these managed turns.
 Pi's optional Codex WebSocket path does not expose the terminal response
 metadata to Istara's served-model observer, so allowing it here would permit a
