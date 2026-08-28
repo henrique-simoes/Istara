@@ -84,6 +84,20 @@ is prompted only when the live wave starts, under owner-only mode-600 custody.
 
 ## Ledger
 
+### L-1 | 2026-08-28T19:35:00Z | S0-frame/S1-plan | glm-5.3-flash | framer | Phase 1
+Did: Oriented via Compass Forge + Build Stream + conductor skills; presented
+the routing registry; applied the owner's role/model changes to the repo
+override (routing.py set ×6) and probe-verified all three new routes live
+(`pong` × 3); classified the request (`security_or_architecture`, full blast);
+created CF-SPEC-6, clarified it (quality: pass), planned it, generated 11
+linked tasks; created this lifecycle file.
+Result: Conductor scaffolding next; three-architect MECE planning pauses for
+owner approval of the winning master plan.
+Verified: `routing.py show --root` reflects the new routes; `pi`/`claude`
+probes → pong; `compass-forge spec show CF-SPEC-6` → clarified/planned.
+Next: write the strict-wave manifest, run make_pipeline + make_cast with
+--with-planning, create the shared worktree, spawn the conductor.
+
 ### L-2 | 2026-08-28T20:00:00Z | S1-plan | glm-5.3-flash | planner | Phase 1
 Did: Built the strict-wave scaffolding and launched the conductor. Wrote the
 3-wave manifest (`debt-qa-20260828`: debt-remediation → user-simulation-qa →
@@ -109,17 +123,3 @@ pong ×4; `compass-forge actor roles` lists all six debt-qa-20260828 roles;
 conductor.log tick shows active session 1 on PLAN-A with 0 dispatch errors.
 Next: poll the conductor; present the synthesized winning plan to the owner;
 on approval run `conductor.py approve` to release wave 1.
-
-### L-1 | 2026-08-28T19:35:00Z | S0-frame/S1-plan | glm-5.3-flash | framer | Phase 1
-Did: Oriented via Compass Forge + Build Stream + conductor skills; presented
-the routing registry; applied the owner's role/model changes to the repo
-override (routing.py set ×6) and probe-verified all three new routes live
-(`pong` × 3); classified the request (`security_or_architecture`, full blast);
-created CF-SPEC-6, clarified it (quality: pass), planned it, generated 11
-linked tasks; created this lifecycle file.
-Result: Conductor scaffolding next; three-architect MECE planning pauses for
-owner approval of the winning master plan.
-Verified: `routing.py show --root` reflects the new routes; `pi`/`claude`
-probes → pong; `compass-forge spec show CF-SPEC-6` → clarified/planned.
-Next: write the strict-wave manifest, run make_pipeline + make_cast with
---with-planning, create the shared worktree, spawn the conductor.
