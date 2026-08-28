@@ -219,6 +219,23 @@ authority; references to a standalone “ComputeRegistry/Ollama plane” or
 “legacy plane” are transport-compatibility terminology, not a second
 management endpoint or an independent model-selection path.
 
+## Regular DashScope custom-provider contract (2026-08-28)
+
+Pi 0.84.3 can load regular Alibaba DashScope Model Studio through the custom
+provider file `~/.pi/agent/models.json`, using the OpenAI-compatible base URL
+`https://dashscope-intl.aliyuncs.com/compatible-mode/v1`, the
+`DASHSCOPE_API_KEY` environment reference, and Qwen compatibility flags that
+emit `enable_thinking` rather than unsupported `reasoning_effort`. Istara's
+canonical catalog mirrors this as the separate `dashscope` provider with
+`qwen3.7-plus` and `qwen3.7-flash` entries, so PI Model Management can resolve
+the same identity instead of rejecting the provider or silently rewriting it
+to Qwen Token Plan. The regular DashScope credential and Token Plan
+credentials/base URLs are not interchangeable; a Token Plan login must remain
+labelled and tested as its own provider. Docker acceptance must inject the
+DashScope key only into the container process and must record the provider-
+reported `served_model` before either Qwen endpoint can count as an
+independent Research Spine coder.
+
 The former `POST /api/settings/model` and `POST /api/settings/provider` routes
 remain only as authenticated deprecated adapters for older clients. They
 always return `410 pi_model_management_required` with a successor link to

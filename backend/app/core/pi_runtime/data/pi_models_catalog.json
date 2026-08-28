@@ -5760,6 +5760,48 @@
    }
   }
  ],
+ "dashscope": [
+  {
+   "id": "qwen3.7-flash",
+   "name": "Qwen3.7 Flash (DashScope)",
+   "api": "openai-completions",
+   "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+   "contextWindow": 1000000,
+   "maxTokens": 65536,
+   "reasoning": true,
+   "input": [
+    "text",
+    "image"
+   ],
+   "thinkingLevels": null,
+   "cost": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   }
+  },
+  {
+   "id": "qwen3.7-plus",
+   "name": "Qwen3.7 Plus (DashScope)",
+   "api": "openai-completions",
+   "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+   "contextWindow": 1000000,
+   "maxTokens": 65536,
+   "reasoning": true,
+   "input": [
+    "text",
+    "image"
+   ],
+   "thinkingLevels": null,
+   "cost": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0
+   }
+  }
+ ],
  "deepseek": [
   {
    "id": "deepseek-v4-flash",

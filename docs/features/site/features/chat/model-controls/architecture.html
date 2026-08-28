@@ -454,6 +454,21 @@
 <p>authority; references to a standalone “ComputeRegistry/Ollama plane” or</p>
 <p>“legacy plane” are transport-compatibility terminology, not a second</p>
 <p>management endpoint or an independent model-selection path.</p>
+<h2 id="regular-dashscope-custom-provider-contract-2026-08-28">Regular DashScope custom-provider contract (2026-08-28)</h2>
+<p>Pi 0.84.3 can load regular Alibaba DashScope Model Studio through the custom</p>
+<p>provider file <code>~/.pi/agent/models.json</code>, using the OpenAI-compatible base URL</p>
+<p><code>https://dashscope-intl.aliyuncs.com/compatible-mode/v1</code>, the</p>
+<p><code>DASHSCOPE_API_KEY</code> environment reference, and Qwen compatibility flags that</p>
+<p>emit <code>enable_thinking</code> rather than unsupported <code>reasoning_effort</code>. Istara&#x27;s</p>
+<p>canonical catalog mirrors this as the separate <code>dashscope</code> provider with</p>
+<p><code>qwen3.7-plus</code> and <code>qwen3.7-flash</code> entries, so PI Model Management can resolve</p>
+<p>the same identity instead of rejecting the provider or silently rewriting it</p>
+<p>to Qwen Token Plan. The regular DashScope credential and Token Plan</p>
+<p>credentials/base URLs are not interchangeable; a Token Plan login must remain</p>
+<p>labelled and tested as its own provider. Docker acceptance must inject the</p>
+<p>DashScope key only into the container process and must record the provider-</p>
+<p>reported <code>served_model</code> before either Qwen endpoint can count as an</p>
+<p>independent Research Spine coder.</p>
 <p>The former <code>POST /api/settings/model</code> and <code>POST /api/settings/provider</code> routes</p>
 <p>remain only as authenticated deprecated adapters for older clients. They</p>
 <p>always return <code>410 pi_model_management_required</code> with a successor link to</p>
@@ -516,6 +531,7 @@
 <li class="toc-level-2"><a href="#when-to-update">When To Update</a></li>
 <li class="toc-level-2"><a href="#model-management-compatibility-2026-08-22">Model-management compatibility (2026-08-22)</a></li>
 <li class="toc-level-2"><a href="#sole-model-management-write-authority-2026-08-25">Sole model-management write authority (2026-08-25)</a></li>
+<li class="toc-level-2"><a href="#regular-dashscope-custom-provider-contract-2026-08-28">Regular DashScope custom-provider contract (2026-08-28)</a></li>
 <li class="toc-level-2"><a href="#qwen-thinking-compatibility-2026-08-28">Qwen thinking compatibility (2026-08-28)</a></li>
 </ul></nav>
         </aside>

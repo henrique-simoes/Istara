@@ -128,6 +128,11 @@ _API_KEY_PROVIDERS: dict[str, tuple[str, str, str]] = {
     "baseten": ("BASETEN_API_KEY", "baseten", "Baseten"),
     "huggingface": ("HF_TOKEN", "huggingface", "Hugging Face"),
     "kimi-coding": ("KIMI_API_KEY", "kimi-coding", "Kimi For Coding"),
+    # Regular Alibaba DashScope Model Studio uses the OpenAI-compatible
+    # endpoint configured in Pi's custom ``models.json``.  Keep this separate
+    # from the qwen-token-plan providers: their credentials and base URLs are
+    # not interchangeable, and the model manager must preserve that identity.
+    "dashscope": ("DASHSCOPE_API_KEY", "dashscope", "Alibaba DashScope"),
     "minimax": ("MINIMAX_API_KEY", "minimax", "MiniMax"),
     "minimax-cn": ("MINIMAX_CN_API_KEY", "minimax-cn", "MiniMax (China)"),
     "moonshotai": ("MOONSHOTAI_API_KEY", "moonshotai", "Moonshot AI"),

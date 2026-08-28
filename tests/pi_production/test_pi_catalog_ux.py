@@ -48,7 +48,7 @@ def test_catalog_exposes_all_pi_providers_and_models(client):
     assert len(providers) >= 30
     assert data["total_models"] > 1000
     ids = {p["id"] for p in providers}
-    for expected in ("deepseek", "openai", "anthropic", "google", "openai-codex", "openrouter", "github-copilot", "mistral", "groq"):
+    for expected in ("deepseek", "dashscope", "openai", "anthropic", "google", "openai-codex", "openrouter", "github-copilot", "mistral", "groq"):
         assert expected in ids, f"catalog missing provider {expected}"
 
 
@@ -58,6 +58,10 @@ def test_catalog_provider_auth_hints(client):
     # API-key provider
     assert "api_key" in providers["deepseek"]["login_methods"]
     assert providers["deepseek"]["env_var"] == "DEEPSEEK_API_KEY"
+    assert "api_key" in providers["dashscope"]["login_methods"]
+    assert providers["dashscope"]["env_var"] == "DASHSCOPE_API_KEY"
+    assert providers["dashscope"]["base_url"] == "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    assert {m["id"] for m in providers["dashscope"]["models"]} >= {"qwen3.7-plus", "qwen3.7-flash"}
     # OAuth/subscription provider
     assert "oauth" in providers["openai-codex"]["login_methods"]
     assert providers["openai-codex"]["oauth_flow"] == "openai_codex"
@@ -95,6 +99,32 @@ def test_add_endpoint_via_catalog_no_manual_url(client):
     assert ep["provider_kind"] in ("openai_compat", "anthropic_compat")
     assert ep["context_window"] > 0
     assert ep["cost_input_per_mtok"] >= 0
+
+
+@pytest.mark.parametrize("model_id", ["qwen3.7-plus", "qwen3.7-flash"])
+def test_add_regular_dashscope_qwen_endpoint_via_catalog(client, model_id):
+    """The supplied Pi custom-provider contract must be resolvable by the manager."""
+    resp = client.post(
+        "/api/settings/pi-endpoints",
+        json={
+            "endpoint_id": f"dashscope-{model_id}",
+            "pi_provider": "dashscope",
+            "pi_model": model_id,
+            "keychain_service": "istara-pi-dashscope",
+            "api_key": "sk-test-dashscope",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    endpoint = next(
+        item for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
+        if item["endpoint_id"] == f"dashscope-{model_id}"
+    )
+    assert endpoint["pi_provider"] == "dashscope"
+    assert endpoint["model"] == model_id
+    assert endpoint["provider_kind"] == "openai_compat"
+    assert endpoint["base_url"] == "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    assert endpoint["context_window"] == 1_000_000
+    assert endpoint["max_tokens"] == 65_536
 
 
 def test_add_endpoint_unknown_catalog_model_rejected(client):
