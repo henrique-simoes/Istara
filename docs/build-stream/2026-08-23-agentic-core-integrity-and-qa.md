@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T00:26:40Z, ledger: L-451, commit: 9aad8972 }
+last: { agent: gpt-5-codex, at: 2026-08-28T00:42:44Z, ledger: L-452, commit: pending }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -10760,3 +10760,31 @@ checkpoint and is pushed to `origin/testing`. Local `testing` and
 evidence `479` remains attached to CF-15; no task was marked done because the
 live three-model, Petals, long-horizon, two-call, reconciliation, and
 Done/report gates are still unproven.
+
+### L-452 | 2026-08-28T00:42:44Z | S2-execute/S3-review | gpt-5-codex | Closed Istara/Pi invalid ensemble-width parity gap
+
+Compass Forge impact/why was run for the legacy adapter, its authority tests,
+and the Ensemble Health living contract before editing; CF before-gate showed
+no new failures. The audit found that `PiExecutionService.run_ensemble`
+rejected non-positive `n`/`minimum_n`, but `backend/app/core/agentic/legacy.py`
+used `kwargs.get("n") or 1` and `kwargs.get("minimum_n") or n`, turning zero
+or negative requests into a one-sample provider call. This violated the
+Research Spine fail-closed ensemble boundary and made the Istara label differ
+from Pi despite both delegating model authority to Pi Model Management.
+
+The legacy adapter now validates both widths as positive integers and raises
+the same typed `PiEndpointResolutionError` before any provider delegation.
+Regression coverage in `tests/pi_production/test_w1_dispatcher_authority.py`
+exercises zero, negative, and zero-minimum cases and proves the provider was
+not called. Verification: focused authority/runtime/validation/identity tests
+`91 passed`; feature docs `86/86`; `git diff --check` clean; CF command
+evidence `482`; CF after-gate evidence `483` (`actionable_failures=[]`,
+`new_failures=0`, inherited 31 failures/212 warnings, one non-blocking
+complexity comparison warning). External finding F-R9-169 records the same
+defect and correction in `/Users/user/Desktop/testing.md`.
+
+No live provider, model load, Docker workload, Mac Studio host change, or
+dependency installation occurred. The provider/Petals/combined live matrix,
+three served model identities, Fleiss/alpha, reconciliation, human Done/report,
+two-call, and long-horizon gates remain open. Commit and push this checkpoint,
+then continue the remaining authority and live-acceptance audit.

@@ -507,9 +507,26 @@ async def _ensemble(kwargs: dict[str, Any]) -> dict[str, Any]:
     mode. When an older caller asks for an optional spare, the governed minimum
     is used so three admitted models remain sufficient for a three-rater gate.
     """
-    n = int(kwargs.get("n") or 1)
+    # Keep the legacy adapter's validation identical to PiExecutionService.
+    # ``n=0`` must not become a one-sample success: an empty/invalid ensemble
+    # cannot provide independent judgments for the Research Spine.  Validate
+    # before calling the shared provider service so custom services cannot
+    # accidentally bypass this fail-closed boundary.
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    raw_n = kwargs.get("n", 1)
+    if not isinstance(raw_n, int) or isinstance(raw_n, bool) or raw_n < 1:
+        raise PiEndpointResolutionError("ensemble_width_must_be_positive")
+    raw_minimum_n = kwargs.get("minimum_n")
+    if raw_minimum_n is not None and (
+        not isinstance(raw_minimum_n, int)
+        or isinstance(raw_minimum_n, bool)
+        or raw_minimum_n < 1
+    ):
+        raise PiEndpointResolutionError("ensemble_minimum_width_must_be_positive")
+    n = raw_n
     if kwargs.get("distinct"):
-        n = max(1, min(int(kwargs.get("minimum_n") or n), n))
+        n = max(1, min(raw_minimum_n if raw_minimum_n is not None else n, n))
     return await _provider_service(kwargs).run_ensemble(
         purpose=str(kwargs.get("purpose") or "legacy_ensemble"),
         project_id=str(kwargs.get("project_id") or ""),

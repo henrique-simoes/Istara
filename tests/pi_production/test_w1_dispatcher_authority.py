@@ -311,6 +311,38 @@ async def test_legacy_mode_ensemble_uses_pi_identity_authority_and_preserves_mod
     }
 
 
+@pytest.mark.parametrize(
+    ("n", "minimum_n", "message"),
+    [
+        (0, None, "ensemble_width_must_be_positive"),
+        (-1, None, "ensemble_width_must_be_positive"),
+        (3, 0, "ensemble_minimum_width_must_be_positive"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_legacy_ensemble_rejects_non_positive_widths_before_provider_call(
+    n, minimum_n, message
+):
+    """Istara's loop label must keep Pi's fail-closed ensemble width contract."""
+    service = _ProviderAuthorityStub()
+    kwargs = {
+        "purpose": "w1.legacy.invalid-width",
+        "project_id": "p1",
+        "agent_id": "a1",
+        "system": "sys",
+        "messages": [{"role": "user", "content": "go"}],
+        "n": n,
+        "params": TurnParams(),
+        "provider_service": service,
+    }
+    if minimum_n is not None:
+        kwargs["minimum_n"] = minimum_n
+
+    with pytest.raises(PiEndpointResolutionError, match=message):
+        await legacy_executor("ensemble", **kwargs)
+    assert service.calls == []
+
+
 @pytest.mark.asyncio
 async def test_pi_mode_forwards_governed_minimum_width_to_pi_service():
     """Pi receives the minimum width when ``n`` includes a legacy spare."""
