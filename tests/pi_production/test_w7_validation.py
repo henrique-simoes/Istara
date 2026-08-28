@@ -48,6 +48,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 VALIDATION = REPO_ROOT / "backend/app/core/validation.py"
 VALIDATION_EXECUTOR = REPO_ROOT / "backend/app/core/validation_executor.py"
 VALIDITY_SERVICE = REPO_ROOT / "backend/app/services/research_validity_service.py"
+VALIDITY_ROUTE = (
+    REPO_ROOT / "backend/app/services/research_validity_route_evidence.py"
+)
 
 SPINE_PHASES = {
     "intent",
@@ -264,7 +267,7 @@ def test_w7_executor_judge_dispatches_structured():
 
 
 def test_w7_validity_dual_coder_dispatches_through_pi_runner():
-    runner = _function_source(VALIDITY_SERVICE, "_pi_coder_runner")
+    runner = _function_source(VALIDITY_ROUTE, "_pi_coder_runner")
     assert "agentic.structured" in runner and 'purpose="validity.coder"' in runner
     assert "endpoint_id" in runner, (
         "the coder's exact Pi endpoint identity must be pinned"
