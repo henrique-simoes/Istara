@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T00:25:20Z, ledger: L-450, commit: 0b9d5f1d }
+last: { agent: gpt-5-codex, at: 2026-08-28T00:26:40Z, ledger: L-451, commit: 9aad8972 }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -10751,3 +10751,12 @@ literal managed `compass-forge:start`/`CF-SPEC-*` wiring and July is only the
 oldest persisted CF SQLite spec row. The evidence payload records the exact
 commit frontier `0b9d5f1da5959c2c2fca2f685e3d52185503a5bc`. This is attached to
 CF-15 without changing task status; the live model gates remain open.
+
+### L-451 | 2026-08-28T00:26:40Z | S2-execute/S3-review | gpt-5-codex | Synchronized CF evidence tip
+
+Commit `9aad89728f049f0c61124a7d92d20116b7322ace` contains the L-450
+checkpoint and is pushed to `origin/testing`. Local `testing` and
+`origin/testing` are equal at this tip, and the worktree is clean. CF task
+evidence `479` remains attached to CF-15; no task was marked done because the
+live three-model, Petals, long-horizon, two-call, reconciliation, and
+Done/report gates are still unproven.
