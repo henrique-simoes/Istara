@@ -1790,7 +1790,12 @@ async def run_independent_coding_run(
                 unit_by_id=unit_by_id,
                 units=units,
             )
-            if not _has_complete_unit_coverage(usable_applications, unit_by_id=unit_by_id):
+            coverage_repair_attempts = 0
+            while (
+                not _has_complete_unit_coverage(usable_applications, unit_by_id=unit_by_id)
+                and coverage_repair_attempts < 2
+            ):
+                coverage_repair_attempts += 1
                 repair_messages = _coding_repair_messages(units, codebook, threshold)
                 if use_pi_qwen_fallback:
                     repair_response, repaired_coder = await _run_pi_coder_with_qwen_fallback(
@@ -1819,6 +1824,7 @@ async def run_independent_coding_run(
                     response = _merge_coding_route_evidence(response, repair_response)
                     merged_route = dict(response.get("_istara_route", {}) or {})
                     merged_route["coverage_repair"] = "per_unit_union"
+                    merged_route["coverage_repair_attempts"] = coverage_repair_attempts
                     response = {**response, "_istara_route": merged_route}
                     parsed = repair_parsed
                     usable_applications = _merge_coverage_applications(
