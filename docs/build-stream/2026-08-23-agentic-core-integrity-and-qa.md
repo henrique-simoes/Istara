@@ -12060,3 +12060,37 @@ Next: rebuild the remote backend image from `c79877a3`, rerun the provider
 profile when the Luna quota window reopens (~16:10Z), then attempt the
 combined run to collect chat/tool/long-horizon/restart-resume evidence with
 the donation gate recorded as its known blocker.
+
+### L-493 | 2026-08-28T16:55:00Z | S2-execute/S4-remediate | glm-5.3-flash | Provider rerun 2: Luna and Flash served; Plus coverage-union fix
+
+Provider-profile rerun on the rebuilt `c79877a3` image (run
+`2026-08-28T16-25-03-416Z`, single `pi` arm). Luna's quota window had reset
+and **gpt-5.6-luna served** with full route evidence; **qwen3.7-flash served**
+through the existing `structured_schema_repair=core_schema` path — notably
+without needing the thinking-off fallback this run, confirming the earlier
+failures are provider-side variance rather than a deterministic defect.
+**qwen3.7-plus failed closed** with `coder response lacked complete
+evidence-unit coverage (1/3)`: its single bounded coverage re-ask (which
+already exists) returned applications that replaced, rather than unioned
+with, the first attempt — if the two attempts covered disjoint units the
+coder failed despite complete combined coverage.
+
+TDD fix: new test proves a coder whose first call covers unit 1 and whose
+repair call covers unit 2 becomes one complete rater (`rater_count=3`,
+`promotion_status=accepted`) with `coverage_repair=per_unit_union` disclosed
+in route evidence; the existing fail-closed partial-coder test still passes.
+Implementation adds `_merge_coverage_applications` (repair attempt wins per
+unit; both attempts' route evidence is retained) and sets the disclosure flag
+on the merged route. Same-coder union only — cross-coder independence is
+untouched.
+
+Verified: `rtk pytest -q tests/pi_production/test_w7_validation.py
+tests/pi_production/test_w7_pi_manager_integration.py
+tests/pi_production/test_ensemble_identity_parity.py` → 49 passed; `ruff
+check` clean; `python scripts/security_benchmark.py --fail-on-threshold` →
+pass 100.0; `python scripts/feature_docs.py --seed-missing --generate-site
+--check` → 86 checked; `git diff --check` clean. Result of run
+`2026-08-28T16-25-03-416Z` remains negative evidence:
+`needs_reconciliation`, 2 distinct raters, no kappa.
+Next: commit/push, reset remote checkout, rebuild image, rerun provider
+profile expecting three served raters.
