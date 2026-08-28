@@ -1770,6 +1770,63 @@ async def test_evidence_graph_traceability_fails_closed_without_task_gate():
 
 
 @pytest.mark.asyncio
+async def test_evidence_graph_traceability_binds_explicit_taskless_coding_run(
+    admin_auth_headers,
+):
+    """Project-level coding runs remain observable without weakening gates."""
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import app
+    from app.models.database import async_session, init_db
+    from app.models.research_validity import CodingRun
+    from app.services.research_validity_service import build_evidence_graph_traceability
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"proj-taskless-trace-{suffix}"
+    run_id = f"run-taskless-trace-{suffix}"
+    await init_db()
+    async with async_session() as db:
+        db.add(
+            CodingRun(
+                id=run_id,
+                project_id=project_id,
+                task_id=None,
+                status="blocked",
+                promotion_status="blocked",
+                reliability_method="no_coders",
+                fallback_reason="insufficient_distinct_pi_models",
+            )
+        )
+        await db.commit()
+
+        trace = await build_evidence_graph_traceability(
+            db,
+            project_id=project_id,
+            coding_run_id=run_id,
+        )
+
+    assert trace["filters"]["coding_run_id"] == run_id
+    assert [row["id"] for row in trace["coding_runs"]] == [run_id]
+    assert trace["summary"]["coding_run_count"] == 1
+    assert trace["summary"]["code_application_count"] == 0
+    assert trace["summary"]["evidence_graph_edge_count"] == 0
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/research-validity/{project_id}/traceability",
+            params={"coding_run_id": run_id},
+            headers=admin_auth_headers,
+        )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["filters"]["coding_run_id"] == run_id
+    assert payload["coding_runs"][0]["id"] == run_id
+    assert payload["code_applications"] == []
+    assert payload["summary"]["blocked_report_count"] == 0
+
+
+@pytest.mark.asyncio
 async def test_report_promotion_gate_records_research_validity_telemetry():
     from sqlalchemy import select
 

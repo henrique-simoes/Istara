@@ -10621,3 +10621,39 @@ Next: attach the post-change gate and this ledger checkpoint to CF-SPEC-2, then
 continue the traceability/oracle audit before changing backend or benchmark
 semantics. Do not create a local/testing ref or delete the preserved recovery
 worktree.
+
+### L-444 | 2026-08-28T00:12:05Z | S2-execute/S3-review | gpt-5-codex | Bound taskless Research Spine coding runs to traceability by explicit run ID
+
+The benchmark creates project-level coding runs with `task_id=null`. The prior
+traceability query only discovered runs through task-linked code applications,
+so a blocked run with zero applications vanished from `/traceability`, and a
+future successful taskless run could never expose its applications or evidence
+edges to the benchmark oracle. The API/service now accept an optional,
+project-scoped `coding_run_id`; that filter includes the exact run even when it
+has zero applications, scopes applications/decisions/edges to the same run,
+and leaves all reportability gates unchanged. The benchmark binds its
+traceability read to the returned run ID, while its exact application/edge
+checks still fail closed for incomplete or blocked runs.
+
+Verification before commit: `rtk pytest -q
+tests/test_research_validity_contract.py tests/test_research_spine_donor_routing.py
+tests/pi_production/test_w3_research_spine.py
+tests/pi_production/test_w7_pi_manager_integration.py` => 62 passed;
+`node --test tests/real_user_benchmark/lib/research-spine-probes.test.mjs` =>
+37 passed; `python scripts/feature_docs.py --seed-missing --generate-site
+--check` => 86 feature checks passed; `git diff --check` and Python compileall
+passed. Compass Forge after-gate record 379 reports no missing paths, forbidden
+dependencies, or import cycles; it flags the touched service/test complexity
+warnings as new comparison warnings alongside the repository's inherited gate
+debt. No Docker workload, host package/model install, or live model load was
+performed for this code-only correction.
+
+Evidence: backend/service and route changes, benchmark query/acceptance test,
+taskless blocked-run regression, architecture/feature documentation, generated
+feature site, and CF after-gate record 379. Working tree was clean at base
+`3d2dcc6993ac2fdbab885547cda6a57f24acef64` before this uncommitted change.
+
+Next: commit and push this correction to `testing`, attach command/gate
+evidence to CF-15, update the YAML `last` pointer to the new commit, and keep
+the live three-model/Petals/two-call/long-horizon/Done/report gates open until
+owner-approved Docker inputs exist.

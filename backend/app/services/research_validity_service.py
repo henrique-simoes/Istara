@@ -1930,6 +1930,7 @@ async def build_evidence_graph_traceability(
     report_id: str | None = None,
     task_id: str | None = None,
     finding_id: str | None = None,
+    coding_run_id: str | None = None,
     limit: int = 50,
 ) -> dict:
     """Build a GraphRAG-ready traceability answer from stored evidence-chain data."""
@@ -1977,8 +1978,18 @@ async def build_evidence_graph_traceability(
     if task_id:
         task_ids.add(task_id)
 
+    normalized_coding_run_id = str(coding_run_id or "").strip() or None
     code_query = select(CodeApplication).where(CodeApplication.project_id == project_id)
-    if task_ids:
+    if normalized_coding_run_id:
+        # Project-level benchmark coding runs intentionally have no task_id.
+        # An explicit run scope keeps their source-grounded applications
+        # observable without broadening the default project trace.
+        code_query = code_query.where(
+            CodeApplication.coding_run_id == normalized_coding_run_id
+        )
+        if task_ids:
+            code_query = code_query.where(CodeApplication.task_id.in_(task_ids))
+    elif task_ids:
         code_query = code_query.where(CodeApplication.task_id.in_(task_ids))
     elif finding_id or report_id or task_id:
         code_query = code_query.where(CodeApplication.task_id == "__no_task_match__")
@@ -1987,6 +1998,8 @@ async def build_evidence_graph_traceability(
     unresolved = [row for row in code_rows if _is_unresolved_code_application(row)]
 
     run_ids = {row.coding_run_id for row in code_rows if row.coding_run_id}
+    if normalized_coding_run_id:
+        run_ids.add(normalized_coding_run_id)
     coding_runs: list[dict] = []
     if run_ids:
         run_rows = (
@@ -2013,7 +2026,15 @@ async def build_evidence_graph_traceability(
     decision_query = select(ReconciliationDecision).where(
         ReconciliationDecision.project_id == project_id
     )
-    if task_ids:
+    if normalized_coding_run_id:
+        decision_query = decision_query.where(
+            ReconciliationDecision.coding_run_id == normalized_coding_run_id
+        )
+        if task_ids:
+            decision_query = decision_query.where(
+                ReconciliationDecision.task_id.in_(task_ids)
+            )
+    elif task_ids:
         decision_query = decision_query.where(ReconciliationDecision.task_id.in_(task_ids))
     elif run_ids:
         decision_query = decision_query.where(ReconciliationDecision.coding_run_id.in_(run_ids))
@@ -2030,7 +2051,13 @@ async def build_evidence_graph_traceability(
     )
 
     edge_query = select(ResearchEvidenceEdge).where(ResearchEvidenceEdge.project_id == project_id)
-    if task_ids:
+    if normalized_coding_run_id:
+        edge_query = edge_query.where(
+            ResearchEvidenceEdge.coding_run_id == normalized_coding_run_id
+        )
+        if task_ids:
+            edge_query = edge_query.where(ResearchEvidenceEdge.task_id.in_(task_ids))
+    elif task_ids:
         edge_query = edge_query.where(ResearchEvidenceEdge.task_id.in_(task_ids))
     elif run_ids:
         edge_query = edge_query.where(ResearchEvidenceEdge.coding_run_id.in_(run_ids))
@@ -2105,6 +2132,7 @@ async def build_evidence_graph_traceability(
             "report_id": report_id,
             "task_id": task_id,
             "finding_id": finding_id,
+            "coding_run_id": normalized_coding_run_id,
             "limit": capped_limit,
         },
         "retrieval_mode": "graph+hybrid",

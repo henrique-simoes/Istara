@@ -269,7 +269,12 @@ The project-scoped traceability route
 for those GraphRAG questions. It joins reports, finding IDs, task-linked coding
 runs, code applications, reconciliation decisions, and evidence graph edges so
 Istara can answer which reports or tasks still depend on low-agreement evidence.
-It is read-only, honors project access, records `graph+hybrid` retrieval
+Project-level coding runs (which intentionally have no task ID) can be bound
+with the optional `coding_run_id` query parameter; this exposes the exact run,
+including a blocked run with zero applications, without broadening the default
+project trace. The filter is project-scoped and does not change reportability:
+blocked, unreconciled, or otherwise unaccepted rows remain non-reportable. The
+route is read-only, honors project access, records `graph+hybrid` retrieval
 telemetry, and does not promote or synthesize new findings by itself.
 
 ## Telemetry Contract

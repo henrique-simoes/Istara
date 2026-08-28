@@ -386,6 +386,7 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
   const logger = makeLogger();
   const blockers = [];
   const featureResults = {};
+  let traceabilityPath = "";
   const api = {
     async get(path) {
       if (path === "/api/research-validity/contract") {
@@ -400,7 +401,10 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
       };
       if (path.includes("/evidence-units")) return makeSubstantiveUnits();
       if (path.includes("/coding-runs")) return [{ id: "run-1" }];
-      if (path.includes("/traceability")) return makeTraceability("run-1");
+      if (path.includes("/traceability")) {
+        traceabilityPath = path;
+        return makeTraceability("run-1");
+      }
       if (path.includes("/telemetry-audit")) return { status: "ok" };
       return {};
     },
@@ -435,6 +439,7 @@ test("three-donor benchmark accepts full multi-model coding evidence", async () 
   assert.equal(featureResults.multiModelResearchSpineValidation, true);
   assert.equal(featureResults.researchSpineTraceability, true);
   assert.equal(featureResults.ragTraceabilityEvidence, true);
+  assert.match(traceabilityPath, /coding_run_id=run-1/);
   assert.deepEqual(blockers, []);
 });
 

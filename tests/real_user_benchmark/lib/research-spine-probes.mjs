@@ -961,7 +961,13 @@ export async function exerciseResearchSpineValidation({
     ["summary", `/api/research-validity/${projectId}/summary`],
     ["evidence_units", `/api/research-validity/${projectId}/evidence-units?limit=25`],
     ["coding_runs", `/api/research-validity/${projectId}/coding-runs?limit=25`],
-    ["traceability", `/api/research-validity/${projectId}/traceability?limit=75`],
+    // Project-level coding runs intentionally have no task_id. Bind the
+    // traceability read to the exact run so its applications/edges remain
+    // observable without broadening the default project graph response.
+    [
+      "traceability",
+      `/api/research-validity/${projectId}/traceability?coding_run_id=${encodeURIComponent(String(evidence.coding_run?.id || ""))}&limit=75`,
+    ],
     ["telemetry_audit", `/api/research-validity/${projectId}/telemetry-audit?limit=500`],
   ]) {
     try {

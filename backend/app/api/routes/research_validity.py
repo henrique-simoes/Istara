@@ -149,6 +149,7 @@ async def get_evidence_graph_traceability(
     report_id: str | None = None,
     task_id: str | None = None,
     finding_id: str | None = None,
+    coding_run_id: str | None = None,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -160,6 +161,7 @@ async def get_evidence_graph_traceability(
         report_id=report_id,
         task_id=task_id,
         finding_id=finding_id,
+        coding_run_id=coding_run_id,
         limit=limit,
     )
     await telemetry_recorder.record_research_validity_event(
@@ -167,6 +169,7 @@ async def get_evidence_graph_traceability(
         operation="evidence_graph.traceability",
         project_id=project_id,
         task_id=task_id,
+        coding_run_id=coding_run_id,
         status="success",
         retrieval_mode="graph+hybrid",
     )
