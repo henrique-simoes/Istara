@@ -100,6 +100,24 @@ test("Qwen thinking level becomes enable_thinking without reasoning_effort", asy
   assert.equal(payload.model, "qwen3.7-plus");
 });
 
+test("catalog vision capability reaches the embedded pi-ai model binding", () => {
+  const binding = buildRealProvider({
+    endpoint_id: "qwen-plus-vision",
+    provider_kind: "openai_compat",
+    pi_provider: "dashscope",
+    base_url: "https://provider.test/v1",
+    model: "qwen3.7-plus",
+    api_key: "test-key",
+    supports_vision: true,
+    params: {},
+  });
+  try {
+    assert.deepEqual(binding.model.input, ["text", "image"]);
+  } finally {
+    binding.dispose();
+  }
+});
+
 test("codex identity retains its responses reasoning contract", () => {
   assert.deepEqual(
     modelCapabilities({ pi_provider: "openai-codex" }, "openai-codex-responses"),

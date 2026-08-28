@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import os
 import tempfile
 
@@ -64,6 +66,20 @@ _DASHSCOPE_SINGAPORE_MODEL_IDS = {
     "glm-5.2",
     "ZHIPU/GLM-5.2",
 }
+
+
+def _fake_codex_access_token(account_id: str = "test-account") -> str:
+    """Create a structurally valid (unsigned) Codex JWT for contract tests."""
+    encode = lambda value: base64.urlsafe_b64encode(
+        json.dumps(value, separators=(",", ":")).encode()
+    ).rstrip(b"=").decode()
+    return ".".join(
+        (
+            encode({"alg": "none", "typ": "JWT"}),
+            encode({"https://api.openai.com/auth": {"chatgpt_account_id": account_id}}),
+            "signature",
+        )
+    )
 
 
 @pytest.fixture()
@@ -398,7 +414,11 @@ def test_openai_codex_exposes_browser_and_headless_methods(monkeypatch):
         if url.endswith("/deviceauth/token"):
             return {"authorization_code": "auth-code", "code_verifier": "device-verifier"}
         if url.endswith("/oauth/token"):
-            return {"access_token": "access.jwt", "refresh_token": "refresh", "expires_in": 3600}
+            return {
+                "access_token": _fake_codex_access_token(),
+                "refresh_token": "refresh",
+                "expires_in": 3600,
+            }
         raise AssertionError(url)
 
     monkeypatch.setattr(oauth, "_http_request", fake_request)
@@ -418,6 +438,72 @@ def test_openai_codex_exposes_browser_and_headless_methods(monkeypatch):
     assert pending.status == "approved"
     assert pending.token_masked
     assert any(url.endswith("/oauth/token") for url, _, _ in calls)
+    oauth._FLOWS.clear()
+
+
+def test_openai_codex_rejects_incomplete_or_unbound_token(monkeypatch):
+    """Match Pi 0.84.3: Codex OAuth must be a complete account-bound JWT."""
+    from app.core.pi_runtime import oauth
+
+    assert oauth._codex_account_id("a.WzFd.c") is None
+    oauth._FLOWS.clear()
+    monkeypatch.setattr(
+        oauth,
+        "_http_request",
+        lambda url, payload=None, **kwargs: {
+            "access_token": "not-a-jwt",
+            "refresh_token": "refresh",
+            "expires_in": 3600,
+        }
+        if url.endswith("/oauth/token")
+        else {},
+    )
+    flow = oauth.start_openai_browser_flow("https://istara.example/callback")
+    with pytest.raises(ValueError, match="openai_token_response_invalid"):
+        oauth.finish_openai_browser_flow("code", flow.state, flow.flow_id)
+    assert flow.status == "failed"
+    assert flow.error == "openai_token_response_invalid"
+    oauth._FLOWS.clear()
+
+
+def test_add_openai_codex_luna_via_catalog_uses_oauth_transport(client):
+    """The requested Luna OAuth path must resolve through Pi Model Management."""
+    from app.config import settings
+    from app.core.pi_runtime import oauth
+
+    flow = oauth._store_flow(oauth.OAuthFlowState(
+        provider="openai-codex",
+        oauth_provider="openai-codex",
+        flow_type="device_code",
+        method="device_code",
+        status="approved",
+        access_token=_fake_codex_access_token("luna-account"),
+        refresh_token="refresh.jwt",
+        credential_expires_at=9_999_999_999,
+    ))
+    endpoint_id = "openai-codex-gpt-5-6-luna-oauth-device-code"
+    response = client.post(
+        "/api/settings/pi-endpoints",
+        json={
+            "endpoint_id": endpoint_id,
+            "pi_provider": "openai-codex",
+            "pi_model": "gpt-5.6-luna",
+            "auth_provider": "openai-codex",
+            "auth_method": "oauth_device_code",
+            "oauth_flow_id": flow.flow_id,
+            "keychain_service": "istara-pi-oauth-openai-codex",
+        },
+    )
+    assert response.status_code == 200, response.text
+    endpoint = next(item for item in settings.pi_api_endpoints if item.endpoint_id == endpoint_id)
+    assert endpoint.provider_kind == "openai_codex"
+    assert endpoint.base_url == "https://chatgpt.com/backend-api"
+    assert endpoint.model == "gpt-5.6-luna"
+    assert endpoint.context_window == 272_000
+    assert endpoint.max_tokens == 128_000
+    assert endpoint.supports_vision is True
+    assert endpoint.supports_reasoning is True
+    settings.pi_api_endpoints = [item for item in settings.pi_api_endpoints if item.endpoint_id != endpoint_id]
     oauth._FLOWS.clear()
 
 

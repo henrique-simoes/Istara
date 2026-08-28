@@ -22,6 +22,7 @@ import hashlib
 import html
 import json
 import logging
+import math
 import os
 import secrets
 import time
@@ -210,6 +211,60 @@ def _complete_flow(flow: OAuthFlowState, response: dict[str, Any]) -> OAuthFlowS
     return flow
 
 
+def _codex_account_id(access_token: str) -> str | None:
+    """Extract Pi's required ChatGPT account claim without verifying secrets.
+
+    The installed pi-ai Codex Responses adapter extracts this claim immediately
+    before every request and fails if it is absent. Validating at OAuth
+    completion keeps the model-management endpoint from reporting a connected
+    credential that can only fail later in the worker.
+    """
+    try:
+        parts = access_token.split(".")
+        if len(parts) != 3:
+            return None
+        encoded = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(encoded.encode("ascii")))
+        if not isinstance(payload, dict):
+            return None
+        auth = payload.get("https://api.openai.com/auth")
+        if not isinstance(auth, dict):
+            return None
+        account = auth.get("chatgpt_account_id")
+        return account if isinstance(account, str) and account.strip() else None
+    except (ValueError, TypeError, KeyError, json.JSONDecodeError, UnicodeError):
+        return None
+
+
+def _codex_token_response(response: dict[str, Any]) -> tuple[str, str, float] | None:
+    """Validate the exact access/refresh/expiry shape required by Pi 0.84.3."""
+    access = response.get("access_token")
+    refresh = response.get("refresh_token")
+    expires_in = response.get("expires_in")
+    if (
+        not isinstance(access, str)
+        or not access
+        or not isinstance(refresh, str)
+        or not refresh
+        or isinstance(expires_in, bool)
+        or not isinstance(expires_in, (int, float))
+        or not math.isfinite(float(expires_in))
+        or expires_in <= 0
+        or _codex_account_id(access) is None
+    ):
+        return None
+    return access, refresh, float(expires_in)
+
+
+def _complete_codex_flow(flow: OAuthFlowState, response: dict[str, Any]) -> OAuthFlowState:
+    """Complete Codex only after matching pi-ai's account-bound token checks."""
+    if _codex_token_response(response) is None:
+        flow.status = "failed"
+        flow.error = "openai_token_response_invalid"
+        raise ValueError(flow.error)
+    return _complete_flow(flow, response)
+
+
 # ---------------------------------------------------------------------------
 # OpenAI Codex — exact Pi browser + headless methods
 # ---------------------------------------------------------------------------
@@ -305,7 +360,7 @@ def finish_openai_browser_flow(code: str, state: str, flow_id: str | None = None
         flow.status = "failed"
         flow.error = str(response.get("error"))[:120]
         raise ValueError("openai_token_exchange_failed")
-    return _complete_flow(flow, response)
+    return _complete_codex_flow(flow, response)
 
 
 def start_openai_device_flow() -> OAuthFlowState:
@@ -352,7 +407,7 @@ def poll_openai_device_flow(flow: OAuthFlowState) -> OAuthFlowState:
             flow.status = "failed"
             flow.error = "openai_token_exchange_failed"
             return flow
-        return _complete_flow(flow, exchanged)
+        return _complete_codex_flow(flow, exchanged)
     error = str(response.get("error") or "")
     if error in {"authorization_pending", "deviceauth_authorization_pending", "http_403", "http_404"}:
         return flow
@@ -397,6 +452,16 @@ def refresh_oauth_credential(provider: str, refresh_token: str) -> dict[str, Any
         }, form=True)
     else:
         raise ValueError("oauth_refresh_not_supported")
+    if provider == "openai-codex":
+        parsed = _codex_token_response(response)
+        if parsed is None:
+            raise ValueError("oauth_refresh_failed")
+        access, refreshed, expires_in = parsed
+        return {
+            "access_token": access,
+            "refresh_token": refreshed,
+            "expires_at": time.time() + expires_in,
+        }
     access = str(response.get("access_token") or "")
     if not access:
         raise ValueError("oauth_refresh_failed")

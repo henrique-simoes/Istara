@@ -477,7 +477,10 @@ export function buildRealProvider(endpoint) {
     reasoning: capabilities.reasoning,
     thinkingLevels: capabilities.thinkingLevels,
     compat: capabilities.compat,
-    input: ["text"],
+    // Preserve the catalog's modality contract. Pi Model Management resolves
+    // `supports_vision` from the selected model; dropping it here makes a
+    // vision-capable Qwen/Codex model appear text-only to pi-agent-core.
+    input: endpoint.supports_vision ? ["text", "image"] : ["text"],
     cost,
     contextWindow: limits.contextWindow,
     maxTokens: limits.maxTokens,
