@@ -10867,3 +10867,24 @@ acceptance, fresh crossover benchmark retake, legacy reportability decision,
 blind review, and CF-13/15/20/21 closure. Next action: commit/push this
 checkpoint, then inspect the Mac Studio Docker preflight/config and run only
 the selected acceptance profiles when required provider inputs are present.
+
+### L-456 | 2026-08-28T01:40:00Z | S2-execute/S3-review | gpt-5-codex | Passive Mac Studio Docker preflight re-confirms live gate is not run
+
+Using the existing `ssh macstudio` control path and explicit
+`/usr/local/bin/docker` only, the passive check reported Docker client/server
+`29.7.2/29.7.2`, one unrelated healthy `plex` container, and no Istara Compose
+project or running benchmark workload. The remote checkout at
+`$HOME/istara-testing` is on `testing` at `1b9b6d6`, behind its fetched
+`origin/testing` by 306 commits, and has extensive uncommitted source,
+documentation, generated-artifact, environment, secret, and TLS changes. It
+was not pulled, reset, cleaned, inspected by mutation, or otherwise touched.
+
+This is a passive infrastructure receipt, not an application or model verdict.
+It confirms that no test is currently observable through the configured Docker
+path and that the dirty checkout is unsafe for the authoritative retake. No
+host installation, model load, image pull, container creation, provider
+request, or data deletion occurred. The live provider/Petals/combined,
+three-served-model, formal Fleiss/alpha, two-call, long-horizon,
+reconciliation, Done/report, and UI acceptance gates remain open. The next
+live attempt requires an owner-approved clean disposable Docker checkout and
+explicit provider/model inputs; the dirty remote checkout remains preserved.
