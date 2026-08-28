@@ -271,3 +271,18 @@ def test_ephemeral_postgres_data_is_writable_tmpfs_not_a_host_volume():
 
     assert "/var/lib/postgresql/data:noexec,nosuid,size=1G" in compose
     assert "postgres-data:" not in compose
+
+
+def test_vps_backend_recreates_with_persistent_pi_endpoint_environment():
+    """Compose must pass identity config and scoped secrets on every restart."""
+    compose = (ROOT / "docker-compose.vps.yml").read_text(encoding="utf-8")
+
+    assert "PI_API_ENDPOINTS=${PI_API_ENDPOINTS:-[]}" in compose
+    for endpoint_slug in (
+        "DASHSCOPE_QWEN37_PLUS",
+        "DASHSCOPE_QWEN37_PLUS_2026_05_26",
+        "DASHSCOPE_QWEN37_FLASH",
+        "DASHSCOPE_QWEN37_FLASH_2026_07_15",
+    ):
+        name = f"ISTARA_PI_SECRET_{endpoint_slug}"
+        assert f"{name}=${{{name}:-}}" in compose

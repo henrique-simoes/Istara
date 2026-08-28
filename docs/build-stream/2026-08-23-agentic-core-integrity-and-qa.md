@@ -11889,3 +11889,22 @@ documentation regenerated and checked **224 generated / 86 checked**; and
 the dated models have not been invoked because neither live primary model was
 rate-limited. This change does not manufacture a fallback receipt or alter the
 still-open combined three-rater/tool/restart acceptance gates.
+
+### L-488 | 2026-08-28T12:00:08Z | S2-execute/S3-review | gpt-5-codex | Recreate-safe endpoint injection contract
+
+The persistent owner-only deployment env could survive Docker and Git lifecycle
+events, but `docker-compose.vps.yml` did not forward `PI_API_ENDPOINTS` or the
+four endpoint-scoped Qwen credentials into a recreated backend. The Compose
+contract now passes the endpoint registry and separate scoped variables for the
+Plus primary, Plus dated fallback, Flash primary, and Flash dated fallback.
+Only variable names and empty defaults are tracked; no secret value is embedded
+in source, generated documentation, an image layer, or command evidence.
+
+TDD first proved the omission with a focused failing Compose contract test, then
+passed after the environment boundary was added. The affected remote-runner,
+Research Spine validation, and Pi manager integration suites pass **68 tests**;
+the tracked security benchmark passes **28/28 (100%)**; Compose renders quietly
+from the example environment; living feature documentation regenerates and
+checks **224 generated / 86 checked**; and `git diff --check` passes. This slice
+proves deterministic injection wiring only. Remote recreation and the combined
+three-rater Research Spine acceptance remain open until separately evidenced.

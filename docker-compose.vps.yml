@@ -99,6 +99,15 @@ services:
       # ISTARA_PI_SECRET_<ENDPOINT_ID_SLUG> first) so non-macOS hosts can bind
       # endpoints. Supply via --env-file (never committed); empty = Keychain path.
       - ISTARA_PI_SECRET_PI_DEEPSEEK_DEFAULT=${ISTARA_PI_SECRET_PI_DEEPSEEK_DEFAULT:-}
+      # Persisted Pi Model Management identities and their endpoint-scoped
+      # credentials are supplied by the owner-only deploy env. Passing them
+      # explicitly keeps every container recreation deterministic without
+      # embedding a secret in this Compose file or an image layer.
+      - PI_API_ENDPOINTS=${PI_API_ENDPOINTS:-[]}
+      - ISTARA_PI_SECRET_DASHSCOPE_QWEN37_PLUS=${ISTARA_PI_SECRET_DASHSCOPE_QWEN37_PLUS:-}
+      - ISTARA_PI_SECRET_DASHSCOPE_QWEN37_PLUS_2026_05_26=${ISTARA_PI_SECRET_DASHSCOPE_QWEN37_PLUS_2026_05_26:-}
+      - ISTARA_PI_SECRET_DASHSCOPE_QWEN37_FLASH=${ISTARA_PI_SECRET_DASHSCOPE_QWEN37_FLASH:-}
+      - ISTARA_PI_SECRET_DASHSCOPE_QWEN37_FLASH_2026_07_15=${ISTARA_PI_SECRET_DASHSCOPE_QWEN37_FLASH_2026_07_15:-}
       - RESOURCE_RESERVE_RAM_GB=${RESOURCE_RESERVE_RAM_GB:-1}
       - RESOURCE_RESERVE_CPU_PERCENT=${RESOURCE_RESERVE_CPU_PERCENT:-10}
     healthcheck:

@@ -300,6 +300,14 @@ thinking output/metadata, and endpoint/account provenance inside the Docker
 runner. A regular `sk-ws-*` DashScope credential must not be labeled as a
 Token Plan credential unless the configured Token Plan endpoint accepts it.
 
+The VPS Compose contract forwards `PI_API_ENDPOINTS` plus endpoint-scoped
+`ISTARA_PI_SECRET_*` variables from the owner-only deployment environment into
+every recreated backend container. The deployment file, image layers, Git
+history, and generated documentation contain only variable names, never secret
+values. The paired dated Qwen fallbacks therefore survive container recreation
+while remaining eligible only after a rate-limit response from their matching
+Plus or Flash primary.
+
 Codex OAuth model receipts use Pi's SSE transport for these managed turns.
 Pi's optional Codex WebSocket path does not expose the terminal response
 metadata to Istara's served-model observer, so allowing it here would permit a
