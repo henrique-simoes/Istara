@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T00:21:45Z, ledger: L-448, commit: 9b8ebfb8 }
+last: { agent: gpt-5-codex, at: 2026-08-28T00:23:10Z, ledger: L-449, commit: 28884a67 }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -10732,3 +10732,12 @@ cycles. The path-scoped suppression for this intentionally append-only Build
 Stream ledger remains active. Commit and push this documentation checkpoint,
 then verify the two testing refs are equal before resuming implementation or
 live Docker acceptance.
+
+### L-449 | 2026-08-28T00:23:10Z | S2-execute/S3-review | gpt-5-codex | Synchronized pushed tip after gate checkpoint
+
+The ancestry correction and its post-gate checkpoint are now pushed as
+`28884a674a12edc71439a480c9b7a30e1e0206ad` (`docs: checkpoint Compass ancestry
+gate`). Both `refs/heads/testing` and `refs/remotes/origin/testing` resolve to
+that SHA, and the checkout is clean. The YAML frontier points at the pushed
+tip and this ledger entry. The preserved recovery worktree remains untouched;
+no stale local/testing ref was created.
