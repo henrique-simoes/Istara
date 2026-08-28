@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T01:16:05Z, ledger: L-454, commit: cb31e76a }
+last: { agent: gpt-5-codex, at: 2026-08-28T01:36:00Z, ledger: L-455, commit: f849f267 }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -26,7 +26,7 @@ timestamped ledger entry in this file.
 * `testing` tracks `origin/testing` and the checkout is kept clean. Re-run
   `git rev-parse HEAD` and `git rev-parse origin/testing` at the start of every
   continuation because each ledger-only commit necessarily advances both tips.
-  The last observed equal tips before this amendment were `992a23bf`; there is
+  The last observed equal tips before this amendment were `f849f267`; there is
   no `local/testing` ref. Do not create a local ref merely to make the names
   symmetrical; record the absence instead.
 * The only other worktree is the clean recovery branch
