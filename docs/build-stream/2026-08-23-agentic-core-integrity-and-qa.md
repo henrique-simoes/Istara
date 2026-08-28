@@ -10999,3 +10999,34 @@ Docker-only inputs and terminal receipts.
 Next: commit and push this checkpoint, align the Build Stream YAML pointer to the
 content commit, then continue the remaining live-gate and original-plan work without
 turning deterministic fixtures into scientific acceptance evidence.
+
+### L-461 | 2026-08-28T01:54:43Z | S3-review/S5-ship&learn | gpt-5-codex | Alpha-domain evidence and clean testing parity
+
+Compass Forge task evidence `498` records the complete alpha-domain red/green
+verification: the focused Python integrity slice passed `35` tests, the full
+Research Spine/scoring Node package passed `62` tests, feature documentation
+regeneration passed with `224` generated artifacts and `86/86` feature checks,
+Python compilation passed, and `git diff --check` passed. Evidence `499` attaches
+after-gate record `396` with `new_issue_count=0`, `new_failures=0`, and no
+actionable failures; only inherited complexity, type-drift, secret-flow, and
+ledger-size findings remain. Evidence `500` records the pushed `testing` branch
+and clean worktree at local/remote SHA `329b9caf78c73e9f6c447604a02838d20d2409d0`.
+
+The implementation checkpoint consists of the production alpha lower-bound guard,
+benchmark oracle lower-bound guard, focused regressions, and synchronized Research
+Spine/Ensemble Health documentation. The unmerged recovery worktree remains
+preserved. No model was loaded, no provider request was made, no Docker workload
+was created, no Mac Studio checkout was mutated, and no host package operation or
+testing-data deletion occurred.
+
+The original plan remains open: owner-approved Docker-only provider/Petals/combined
+profiles still need three genuinely served model identities, source-grounded
+independent coding, meaningful Fleiss/alpha receipts, reconciliation, human Done/
+report promotion, two-call and long-horizon receipts for both engine selectors,
+Petals revoke/drain/stop proof, browser/UI acceptance, fresh benchmark retake,
+legacy reportability decision, blind review, and CF-13/15/20/21 closure. This
+checkpoint improves the fail-closed boundary but does not establish live ensemble
+quality or Research Spine completion.
+
+Next: continue the remaining bounded audit and owner-gated Docker-only acceptance
+sequence, preserving a ledger checkpoint for each material test or decision.
