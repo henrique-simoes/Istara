@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T01:39:54Z, ledger: L-458, commit: 6e12e591 }
+last: { agent: gpt-5-codex, at: 2026-08-28T01:46:02Z, ledger: L-459, commit: 0ba8b415 }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -10939,3 +10939,23 @@ model load, provider request, image pull, container creation, checkout
 mutation, or data deletion. The live gate is unchanged: it awaits owner-
 approved disposable Docker provisioning and explicit provider-served model
 inputs before any active profile is run.
+
+### L-459 | 2026-08-28T01:46:02Z | S3-review | gpt-5-codex | Reconciled current branch and Compass Forge frontier
+
+Did: Re-ran the repository and control-plane reconciliation before continuing the active goal.
+The main `testing` checkout is clean and exactly equal to `origin/testing` at `0ba8b415`;
+the only registered auxiliary worktree is the preserved unmerged recovery branch
+`recovery/pi-retake-linearized-2026-08-10`. Native Rust Compass Forge remains active with
+no Python fallback. The only open CF-SPEC-2 links are CF-13, CF-15, CF-20, and CF-21;
+the task registry contains 42 done tasks and 4 open tasks overall.
+
+The previous YAML frontier pointed at the preceding ledger commit rather than the current
+branch tip. This checkpoint records the correction and keeps the live acceptance claims
+unchanged: no Mac Studio Istara workload, three-served-model Research Spine receipt,
+Petals lifecycle receipt, two-call/long-horizon receipt, browser acceptance, benchmark
+retake, blind review, or CF-SPEC-2 closure exists yet. No model was loaded, no provider
+request was made, and no remote checkout or host workload was mutated.
+
+Next: update the YAML frontier to the commit carrying this checkpoint, then continue with
+the owner-gated Docker-only provisioning and exact-SHA acceptance sequence. Do not claim
+ensemble quality or Research Spine completion from deterministic evidence alone.
