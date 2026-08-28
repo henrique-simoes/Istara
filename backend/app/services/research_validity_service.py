@@ -43,16 +43,17 @@ ACCEPTED_PROMOTION_STATUSES = {"accepted", "accepted_after_reconciliation"}
 # persisted. Reports must use this narrower, post-reconciliation state.
 RECONCILED_CODE_APPLICATION_STATUSES = {"accepted", "reconciled"}
 MAX_CODING_SOURCE_TEXT_CHARS = 700
-# These are deliberately a coder-slot policy, not a general provider retry
-# list. The first identity is the normal Qwen rater; the dated identities are
-# reserved for a DashScope rate-limit response and must never be selected as
-# independent raters while the primary catalog is available.
-QWEN_RATE_LIMIT_FALLBACK_MODELS = (
-    "qwen3.7-plus",
-    "qwen3.7-plus-2026-05-26",
-    "qwen3.7-flash-2026-07-15",
+# These are deliberately per-coder-slot policies, not a general provider retry
+# list. Each dated identity is reserved for a rate limit from its own primary
+# family and must never become a normal independent rater.
+QWEN_RATE_LIMIT_FALLBACK_CHAINS = {
+    "qwen3.7-plus": ("qwen3.7-plus", "qwen3.7-plus-2026-05-26"),
+    "qwen3.7-flash": ("qwen3.7-flash", "qwen3.7-flash-2026-07-15"),
+}
+QWEN_FALLBACK_ONLY_MODELS = tuple(
+    chain[1]
+    for chain in QWEN_RATE_LIMIT_FALLBACK_CHAINS.values()
 )
-QWEN_FALLBACK_ONLY_MODELS = QWEN_RATE_LIMIT_FALLBACK_MODELS[1:]
 DASHSCOPE_COMPAT_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 CODING_RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -781,9 +782,8 @@ async def _run_pi_coder_with_qwen_fallback(
     never reclassified as rate limits.
     """
     requested_model = str(model_name or coder.model_name or "").strip()
-    try:
-        start_index = QWEN_RATE_LIMIT_FALLBACK_MODELS.index(requested_model)
-    except ValueError:
+    fallback_chain = QWEN_RATE_LIMIT_FALLBACK_CHAINS.get(requested_model)
+    if fallback_chain is None:
         return await runner(coder, messages, model_name, project_id), coder
     manager = coder.pi_manager
     if manager is None:
@@ -802,9 +802,8 @@ async def _run_pi_coder_with_qwen_fallback(
     attempts: list[dict[str, str]] = []
     active_coder = coder
     original_endpoint_for_key = original_endpoint
-    for index in range(start_index, len(QWEN_RATE_LIMIT_FALLBACK_MODELS)):
-        candidate_model = QWEN_RATE_LIMIT_FALLBACK_MODELS[index]
-        if index == start_index:
+    for index, candidate_model in enumerate(fallback_chain):
+        if index == 0:
             endpoint = original_endpoint
         else:
             try:
@@ -865,7 +864,7 @@ async def _run_pi_coder_with_qwen_fallback(
                     "outcome": "rate_limited",
                 }
             )
-            if index == len(QWEN_RATE_LIMIT_FALLBACK_MODELS) - 1:
+            if index == len(fallback_chain) - 1:
                 raise QwenRateLimitFallbackError(
                     "qwen_rate_limit_fallback_exhausted", attempts=attempts
                 ) from exc
@@ -881,7 +880,7 @@ async def _run_pi_coder_with_qwen_fallback(
                     "requested_model": requested_model,
                     "requested_coder_id": coder.coder_id,
                     "fallback_reason": "rate_limit",
-                    "fallback_index": index - start_index,
+                    "fallback_index": index,
                     "fallback_same_key_verified": True,
                     "fallback_attempts": attempts,
                 }

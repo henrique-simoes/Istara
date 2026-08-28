@@ -25,6 +25,7 @@ out/
 .env
 .env.local
 .env.*.local
+.env.deploy
 
 # IDE
 .vscode/

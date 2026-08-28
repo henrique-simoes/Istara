@@ -913,17 +913,80 @@ async def test_qwen_rate_limit_fallback_switches_identity_and_records_attempts()
     ]
 
 
-async def test_qwen_rate_limit_fallback_advances_to_dated_flash_after_second_limit():
-    """A second 429 advances to the dated Flash identity, still same-key."""
+async def test_qwen_flash_rate_limit_falls_back_only_to_dated_flash():
+    """The Flash coder slot keeps its own dated, same-family fallback."""
     from app.services.research_validity_service import (
         CoderSpec,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    models = ("qwen3.7-flash", "qwen3.7-flash-2026-07-15")
+    endpoints = {
+        model: SimpleNamespace(
+            endpoint_id=f"ep-flash-{index}",
+            provider_kind="openai_compat",
+            pi_provider="dashscope",
+            base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+            model=model,
+            api_key="same-key",
+            provider_account_handle="account",
+            kind="remote",
+        )
+        for index, model in enumerate(models, 1)
+    }
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, **_kwargs):
+            return endpoints[model]
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-flash-1"),
+        coder_id="model-coder:ep-flash-1",
+        model_name=models[0],
+        pi_manager=_Manager(),
+    )
+    calls: list[str] = []
+
+    async def runner(active, _messages, model_name, _project_id):
+        calls.append(model_name)
+        if model_name == models[0]:
+            raise RuntimeError("pi_bridge_http_429")
+        return {
+            "message": {"content": "{}"},
+            "_istara_route": {
+                "endpoint_id": active.node.endpoint_id,
+                "model": model_name,
+                "served_model": model_name,
+                "outcome": "served",
+            },
+        }
+
+    response, active = await _run_pi_coder_with_qwen_fallback(
+        coder, [], models[0], "project-a", runner=runner
+    )
+
+    assert calls == list(models)
+    assert active.model_name == models[1]
+    assert response["_istara_route"]["fallback_attempts"] == [
+        {"model": models[0], "endpoint_id": "ep-flash-1", "outcome": "rate_limited"},
+        {"model": models[1], "endpoint_id": "ep-flash-2", "outcome": "served"},
+    ]
+
+
+async def test_qwen_plus_fallback_exhaustion_does_not_cross_into_flash():
+    """A throttled dated Plus blocks its slot instead of changing families."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        QwenRateLimitFallbackError,
         _run_pi_coder_with_qwen_fallback,
     )
 
     models = (
         "qwen3.7-plus",
         "qwen3.7-plus-2026-05-26",
-        "qwen3.7-flash-2026-07-15",
     )
     endpoints = {
         model: SimpleNamespace(
@@ -954,33 +1017,19 @@ async def test_qwen_rate_limit_fallback_advances_to_dated_flash_after_second_lim
     )
     calls: list[str] = []
 
-    async def runner(active, _messages, model_name, _project_id):
+    async def runner(_active, _messages, model_name, _project_id):
         calls.append(model_name)
-        if model_name != models[2]:
-            raise RuntimeError("pi_bridge_http_429")
-        return {
-            "message": {"content": "{}"},
-            "_istara_route": {
-                "endpoint_id": active.node.endpoint_id,
-                "model": model_name,
-                "served_model": model_name,
-                "outcome": "served",
-            },
-        }
+        raise RuntimeError("pi_bridge_http_429")
 
-    response, active = await _run_pi_coder_with_qwen_fallback(
-        coder, [], models[0], "project-a", runner=runner
-    )
+    with pytest.raises(QwenRateLimitFallbackError) as exc_info:
+        await _run_pi_coder_with_qwen_fallback(
+            coder, [], models[0], "project-a", runner=runner
+        )
 
     assert calls == list(models)
-    assert active.model_name == models[2]
-    assert response["_istara_route"]["served_model"] == models[2]
-    assert response["_istara_route"]["fallback_index"] == 2
-    assert response["_istara_route"]["fallback_same_key_verified"] is True
-    assert response["_istara_route"]["fallback_attempts"] == [
+    assert exc_info.value.attempts == [
         {"model": models[0], "endpoint_id": "ep-1", "outcome": "rate_limited"},
         {"model": models[1], "endpoint_id": "ep-2", "outcome": "rate_limited"},
-        {"model": models[2], "endpoint_id": "ep-3", "outcome": "served"},
     ]
 
 
@@ -1041,7 +1090,6 @@ async def test_qwen_fallback_exhaustion_blocks_with_all_attempt_receipts():
     models = (
         "qwen3.7-plus",
         "qwen3.7-plus-2026-05-26",
-        "qwen3.7-flash-2026-07-15",
     )
     endpoints = {
         model: SimpleNamespace(

@@ -245,18 +245,21 @@ provider. Docker acceptance must inject the DashScope key only into the
 container process and must record the provider-reported `served_model` before
 any Qwen endpoint can count as an independent Research Spine coder.
 
-For the bounded live Qwen acceptance probe, the regular DashScope key uses this
-ordered rate-limit-only fallback: `qwen3.7-plus`, then
-`qwen3.7-plus-2026-05-26`, then `qwen3.7-flash-2026-07-15`. The probe may move
-to the next identity only after the provider reports a rate-limit response
+For the bounded live Qwen acceptance probe, the regular DashScope key uses two
+independent rate-limit-only fallback pairs: `qwen3.7-plus` to
+`qwen3.7-plus-2026-05-26`, and `qwen3.7-flash` to
+`qwen3.7-flash-2026-07-15`. A probe may move to its paired dated identity only
+after the provider reports a rate-limit response
 (normally HTTP 429 or an equivalent documented throttling error). Authentication,
 model-admission, transport, malformed-response, and application failures stop
-the run; they must not be disguised as capacity exhaustion. Each attempt and
+the run; they must not be disguised as capacity exhaustion. A Plus slot never
+crosses into Flash (or vice versa), so each independent rater retains its
+model-family boundary. Each attempt and
 the provider-served identity are retained in the run receipt, including the
 fallback index and reason. A fallback is therefore an explicit test-run
 selection, not a silent endpoint rewrite, and a served fallback identity cannot
 be counted as the originally requested coder. If the final identity also
-rate-limits, the provider gate remains blocked rather than using a fourth model
+rate-limits, the provider gate remains blocked rather than using another model
 or fabricating a three-rater result. If a bounded structured repair replaces a
 partial fallback response, the final route keeps the original attempt chain and
 an ordered fallback history so repair cannot erase provider provenance.

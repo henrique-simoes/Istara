@@ -7,9 +7,9 @@ cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
 stage: S2-execute/S3-review
 status: in-progress
-blocked_on: "The saved Mac Studio stores contain Codex OAuth and the requested Qwen model bindings, but the referenced DASHSCOPE_API_KEY is absent from the deployment env, both runtime-secret volumes, local/remote process environments, and inspected Keychain handles; Research Spine remains fail-closed until that credential is available to the disposable Docker process and all live receipts pass"
-last: { agent: gpt-5-codex, at: 2026-08-28T11:39:52Z, ledger: L-485, commit: cd4eeb9 }
-next_action: "Run the two live Qwen identity/thinking smokes as soon as DASHSCOPE_API_KEY is present in the disposable mode-600 env file, then execute the identity-bound three-rater Research Spine/tool/restart campaign; Luna OAuth and the clean Docker stack are already live-proven."
+blocked_on: "All three selected model identities now have live Docker receipts and the DashScope credential has durable host-only custody; terminal acceptance remains open for the identity-bound three-rater Research Spine, real tool, restart/resume, reliability, reconciliation, and human Done/report evidence."
+last: { agent: gpt-5-codex, at: 2026-08-28T11:54:16Z, ledger: L-487, commit: 2f0a7ed6 }
+next_action: "Execute the identity-bound three-rater Research Spine/tool/restart campaign with Luna, Qwen Plus, and Qwen Flash, remediate any fail-closed result, and close the remaining Compass Forge and Build Stream gates with hard evidence."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
@@ -11830,3 +11830,62 @@ three-rater, reliability, reconciliation, human-Done/report, Petals, two-call, o
 restart-resume receipt. At this checkpoint `DASHSCOPE_API_KEY` is still absent
 from the disposable env file, so no Qwen request has been attempted and the
 provider ensemble remains fail-closed.
+
+### L-486 | 2026-08-28T11:45:28Z | S2-execute/S3-review | gpt-5-codex | Durable DashScope custody and both Qwen live receipts
+
+The owner supplied the regular DashScope credential through a private Terminal
+prompt. A value-presence check succeeded without reading or printing the value,
+but the resulting checkout-local `.env.deploy` was untracked rather than ignored.
+That staging hazard is now addressed at two layers: this source change explicitly
+ignores `.env.deploy`, while the Mac Studio checkout has a matching local
+`.git/info/exclude` entry. The canonical deployment env was moved outside every
+repository to the owner-only macOS application-support secret directory with a
+mode-700 parent and mode-600 file; the clean acceptance checkout now exposes it
+only through an ignored symlink. Git confirms that the path is ignored and
+untracked. No credential value entered Git, command arguments, logs, chat, a
+container layer, or a named Docker volume.
+
+Two newly created, networked Docker containers then consumed only a transient
+mode-600 one-variable env file derived from that persistent source; the transient
+file was deleted by an exit trap. Pi coding agent `0.84.3` served the configured
+regular-Singapore DashScope identities. `qwen3.7-plus` returned exact output
+`ISTARA_QWEN_PLUS_OK`, provider `dashscope`, API `openai-completions`, stop reason
+`stop`, and 387 input / 38 output / 28 reasoning / 425 total tokens.
+`qwen3.7-flash` returned exact output `ISTARA_QWEN_FLASH_OK` with the same provider
+and API identity, stop reason `stop`, and 387 input / 33 output / 23 reasoning /
+420 total tokens. Both calls explicitly requested high thinking. An initial
+read-only configuration mount failed closed before a provider turn because Pi
+requires a credential-store lock; allowing writes only to the disposable Pi config
+volume resolved that preflight constraint without weakening secret custody.
+
+Together with L-485, all three owner-selected model identities now have direct
+live Docker receipts. These isolated smokes do not yet prove a single
+identity-bound three-rater Research Spine run, tool execution, restart continuity,
+reliability, reconciliation, accepted promotion, Petals governance, or human
+Done/report gates. Those remain the next acceptance slice and no terminal claim is
+made here.
+
+### L-487 | 2026-08-28T11:54:16Z | S2-execute/S3-review | gpt-5-codex | Paired Qwen rate-limit fallbacks
+
+The owner refined the live model contract: `qwen3.7-plus` may fall back only to
+`qwen3.7-plus-2026-05-26`, and `qwen3.7-flash` may fall back only to
+`qwen3.7-flash-2026-07-15`. The Research Spine implementation previously used
+one cross-family sequence that could move a twice-throttled Plus coder into
+dated Flash. It now uses two explicit per-family chains. Only a recognized 429,
+throttling, or equivalent rate-limit error advances a slot; authentication,
+admission, transport, response, and application errors remain fail-closed. A
+dated fallback remains excluded from normal distinct-rater selection, must
+resolve through the same Pi manager, regular-Singapore endpoint, and non-empty
+credential, and retains every attempt plus the provider-served identity in
+route evidence.
+
+TDD evidence captured the missing Flash behavior first: the new focused test
+failed because generic Flash was not admitted to any fallback chain, then passed
+after the paired policy was implemented. The full focused validation and Pi
+manager integration set passed **43 tests**. Ruff passed on both touched Python
+files; the tracked security benchmark passed **28/28 (100%)**; living feature
+documentation regenerated and checked **224 generated / 86 checked**; and
+`git diff --check` passed. The implementation contract is therefore green, but
+the dated models have not been invoked because neither live primary model was
+rate-limited. This change does not manufacture a fallback receipt or alter the
+still-open combined three-rater/tool/restart acceptance gates.

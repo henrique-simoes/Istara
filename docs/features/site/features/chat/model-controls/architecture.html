@@ -478,18 +478,21 @@
 <p>provider. Docker acceptance must inject the DashScope key only into the</p>
 <p>container process and must record the provider-reported <code>served_model</code> before</p>
 <p>any Qwen endpoint can count as an independent Research Spine coder.</p>
-<p>For the bounded live Qwen acceptance probe, the regular DashScope key uses this</p>
-<p>ordered rate-limit-only fallback: <code>qwen3.7-plus</code>, then</p>
-<p><code>qwen3.7-plus-2026-05-26</code>, then <code>qwen3.7-flash-2026-07-15</code>. The probe may move</p>
-<p>to the next identity only after the provider reports a rate-limit response</p>
+<p>For the bounded live Qwen acceptance probe, the regular DashScope key uses two</p>
+<p>independent rate-limit-only fallback pairs: <code>qwen3.7-plus</code> to</p>
+<p><code>qwen3.7-plus-2026-05-26</code>, and <code>qwen3.7-flash</code> to</p>
+<p><code>qwen3.7-flash-2026-07-15</code>. A probe may move to its paired dated identity only</p>
+<p>after the provider reports a rate-limit response</p>
 <p>(normally HTTP 429 or an equivalent documented throttling error). Authentication,</p>
 <p>model-admission, transport, malformed-response, and application failures stop</p>
-<p>the run; they must not be disguised as capacity exhaustion. Each attempt and</p>
+<p>the run; they must not be disguised as capacity exhaustion. A Plus slot never</p>
+<p>crosses into Flash (or vice versa), so each independent rater retains its</p>
+<p>model-family boundary. Each attempt and</p>
 <p>the provider-served identity are retained in the run receipt, including the</p>
 <p>fallback index and reason. A fallback is therefore an explicit test-run</p>
 <p>selection, not a silent endpoint rewrite, and a served fallback identity cannot</p>
 <p>be counted as the originally requested coder. If the final identity also</p>
-<p>rate-limits, the provider gate remains blocked rather than using a fourth model</p>
+<p>rate-limits, the provider gate remains blocked rather than using another model</p>
 <p>or fabricating a three-rater result. If a bounded structured repair replaces a</p>
 <p>partial fallback response, the final route keeps the original attempt chain and</p>
 <p>an ordered fallback history so repair cannot erase provider provenance.</p>
