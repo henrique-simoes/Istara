@@ -11030,3 +11030,42 @@ quality or Research Spine completion.
 
 Next: continue the remaining bounded audit and owner-gated Docker-only acceptance
 sequence, preserving a ledger checkpoint for each material test or decision.
+
+### L-462 | 2026-08-28T02:01:08Z | S3-review | gpt-5-codex | Delegated original-plan gap audit and engine-choice terminology verification
+
+Did: Spawned a read-only sub-agent to compare the current implementation and
+Compass Forge task frontier with the original CF-SPEC-2/Phase 9 plan. The audit
+confirms that deterministic authority/parity, ensemble identity and width
+guards, fail-closed Fleiss/Krippendorff metric validation, synthetic
+Research-Spine promotion fixtures, Docker-only guardrails, benchmark
+traceability, and deterministic Petals/provider fakes are implemented and
+covered. The same audit confirms that CF-SPEC-2 remains open with CF-13, CF-15,
+CF-20, and CF-21 unresolved.
+
+Verified the user-facing engine boundary against the Compass graph, code, and
+focused suite (`252 passed` across dispatcher, Research Spine, autoresearch,
+validation, embeddings, ASGI chat, end-to-end spine, and chat tests). The
+current executable contract has two concrete engine branches: `legacy` (shown
+as Istara) and `pi` (Pi Agentic Loop), with project-level `inherit`; both
+resolve model/provider identity through the shared Pi Model Management
+authority. There is no third `Agentic Loop` enum, dispatcher branch, API value,
+or UI option. The original plan's phrase “Istara, Agentic Loop, and Pi Agentic
+Loop” therefore remains an owner terminology decision, not evidence of a
+missing runtime. Do not add a speculative third engine. If “Agentic Loop” is
+intended as a third semantic, create a separately approved typed contract,
+dispatcher path, UI option, and dedicated tests before claiming P9-04/G9.
+
+Boundary: all verification in this checkpoint is deterministic or passive. It
+does not prove three genuinely provider-served model identities, independent
+raw-span coding, meaningful live Fleiss/alpha, grounding/reconciliation,
+human-Done/report promotion, Petals revoke/drain/stop, two-call causality,
+long-horizon restart/resume, browser acceptance, benchmark crossover, or
+Docker teardown. No model was loaded, provider request sent, host package
+installed, Docker workload created, or remote checkout mutated. The Mac Studio
+live campaign remains blocked on a clean disposable Docker checkout plus
+owner-approved provider-served model inputs.
+
+Next: keep the two-engine interpretation explicit in acceptance artifacts,
+obtain the owner-approved Docker-only inputs, run provider/Petals/combined
+profiles with immutable route and model receipts, then close the live Research
+Spine, long-horizon, UI, benchmark, blind-review, and CF task gates in order.
