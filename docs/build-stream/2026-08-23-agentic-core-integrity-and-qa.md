@@ -8,7 +8,7 @@ phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal ac
 stage: S2-execute/S3-review
 status: in-progress
 blocked_on: "Owner-approved Docker-only Mac Studio provisioning: current env/config, provider-served identities, and three-model inputs; provider profile ran but served zero distinct PI models"
-last: { agent: gpt-5-codex, at: 2026-08-28T00:17:05Z, ledger: L-445, commit: 70e4ad9d6456074ecf862aeb05534916cd2217c5 }
+last: { agent: gpt-5-codex, at: 2026-08-28T00:21:45Z, ledger: L-448, commit: 9b8ebfb8 }
 next_action: "Provision or explicitly supply the required provider-served three-model inputs inside Docker only, then run provider, Petals, and combined profiles with two-call/long-horizon enabled; keep live three-model, Fleiss/alpha, reconciliation, and Done/report gates open until terminal receipts exist."
 ```
 
@@ -10707,3 +10707,28 @@ Next: add this correction to the external findings ledger, commit and push the
 documentation update, then continue the open live three-model/Petals/
 two-call/long-horizon Research Spine acceptance work. No live model load or
 host installation was performed.
+
+### L-447 | 2026-08-28T00:20:10Z | S2-execute/S3-review | gpt-5-codex | Pushed corrected Compass ancestry chronology
+
+The deeper provenance correction is committed as `9b8ebfb8` (`docs: correct
+March Compass ancestry`) and pushed to `origin/testing`. The local
+`refs/heads/testing` and remote-tracking `refs/remotes/origin/testing` tips
+are expected to be equal at this commit after the push; verify before the next
+continuation. The durable YAML frontier now points to L-447 and this SHA.
+External finding F-R9-168 records the same correction in
+`/Users/user/Desktop/testing.md`. CF after-gate record 381 is the post-edit
+receipt; its `new_issues` set is empty, with the large Build Stream document
+remaining covered by the existing path-scoped suppression.
+
+No code, model configuration, container, host package, or live model state was
+changed. The live three-model/Petals/two-call/long-horizon Research Spine gate
+remains open pending provider-served inputs and terminal scientific receipts.
+
+### L-448 | 2026-08-28T00:21:45Z | S2-execute/S3-review | gpt-5-codex | Recorded final post-gate for ancestry correction
+
+CF after-gate record 382 covers the final YAML/ledger update and reports no
+new issues, no missing required paths, no forbidden dependencies, and no import
+cycles. The path-scoped suppression for this intentionally append-only Build
+Stream ledger remains active. Commit and push this documentation checkpoint,
+then verify the two testing refs are equal before resuming implementation or
+live Docker acceptance.
