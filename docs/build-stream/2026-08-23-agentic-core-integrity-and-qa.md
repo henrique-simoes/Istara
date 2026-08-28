@@ -26,7 +26,7 @@ timestamped ledger entry in this file.
 * `testing` tracks `origin/testing` and the checkout is kept clean. Re-run
   `git rev-parse HEAD` and `git rev-parse origin/testing` at the start of every
   continuation because each ledger-only commit necessarily advances both tips.
-  The last observed equal tips before this amendment were `fce174c8`; there is
+  The last observed equal tips before this amendment were `992a23bf`; there is
   no `local/testing` ref. Do not create a local ref merely to make the names
   symmetrical; record the absence instead.
 * The only other worktree is the clean recovery branch
@@ -10604,3 +10604,20 @@ non-empty raw-source code applications, valid bounded Fleiss/alpha metrics,
 reconciliation, accepted promotion, human-approved Done/report, Petals/model
 donation lifecycle evidence, and task/route causality. Do not convert the
 current blocked result into a model-quality claim or close CF-SPEC-2.
+
+### L-443 | 2026-08-28T00:04:06Z | S2-execute/S3-review | gpt-5-codex | Corrected stale Build Stream tip pointer after provenance audit
+
+The deeper retained-history audit is now internally consistent: the Current
+truth section names the latest observed equal `testing`/`origin/testing` tip as
+`992a23bf` instead of the superseded `fce174c8`. The April Compass doctrine and
+three-layer testing evidence remain unchanged; this is a pointer correction,
+not a claim that the standalone CF registry had April rows. `git status` was
+clean before the edit, and the edit was preceded by Compass Forge impact/why
+inspection plus before-gate record `376`. The live Docker-only three-model,
+Petals, Fleiss/alpha, reconciliation, Done/report, two-call, and long-horizon
+gates remain open exactly as recorded in L-442.
+
+Next: attach the post-change gate and this ledger checkpoint to CF-SPEC-2, then
+continue the traceability/oracle audit before changing backend or benchmark
+semantics. Do not create a local/testing ref or delete the preserved recovery
+worktree.
