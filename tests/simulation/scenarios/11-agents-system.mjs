@@ -217,11 +217,26 @@ export async function run(ctx) {
 
   // 12. Navigate to Agents view
   await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
+  await page.setViewportSize({ width: 1280, height: 800 }).catch(() => {});
   await page.waitForTimeout(1500);
 
-  // Try Cmd+7 shortcut
-  await page.keyboard.press("Meta+7");
-  await page.waitForTimeout(800);
+  // Dismiss any modal/overlay if visible
+  const dismissCandidates = [
+    'button[aria-label*="Close"]',
+    'button[aria-label*="Dismiss"]',
+    'button:has-text("Skip")',
+    'button:has-text("Got it")',
+  ];
+  for (const sel of dismissCandidates) {
+    const el = page.locator(sel).first();
+    if (await el.isVisible({ timeout: 200 }).catch(() => false)) {
+      await el.click().catch(() => {});
+    }
+  }
+
+  // Try Cmd+8 shortcut (mapped to agents)
+  await page.keyboard.press("ControlOrMeta+8");
+  await page.waitForTimeout(1000);
 
   // Check Agents view loaded — look for "Agents" heading or agent cards
   // The rendered section heading is uppercase ("SYSTEM AGENTS"). Use a
@@ -233,8 +248,9 @@ export async function run(ctx) {
   if (!agentsViewVisible) {
     const agentsBtn = page.locator('button[aria-label="Agents"]').first();
     if (await agentsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await agentsBtn.scrollIntoViewIfNeeded().catch(() => {});
       await agentsBtn.click();
-      await page.waitForTimeout(800);
+      await page.waitForTimeout(1000);
       agentsViewVisible = await page.getByText(/system agents/i).first().isVisible({ timeout: 3000 }).catch(() => false);
     }
   }

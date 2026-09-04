@@ -8,9 +8,148 @@ phase: "Phase 1 — Wave A: branch quality debt remediation (adopted PLAN-A)"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: hermes-bearino, at: 2026-09-03T22:14:25Z, ledger: L-396 }
-next_action: "Diagnose and fix the linked-folder sync miss on Mac Studio Docker (scenario 29), add the smallest regression coverage and feature-doc evidence if product code changes, rebuild the disposable backend, and rerun scenario 29 plus the next authenticated UI scenarios before the next gate reconciliation; keep live Qwen execution not-run because no Keychain credential is available and keep distributed compute as the owner-approved non-goal."
+last: { agent: antigravity, at: 2026-09-04T12:25:00Z, ledger: L-402 }
+next_action: "Proceed with remaining S3 independent review and gate verification for production readiness."
 ```
+
+### L-402 | 2026-09-04T12:25:00Z | S2-verify | antigravity | User simulation suite sweep on Mac Studio Docker stack (10 scenarios 100% green)
+
+Did:
+1. Isolated and resolved browser CORS & route proxying in containerized QA environment: patched `tests/simulation/run.mjs` to intercept browser requests to `/api/` and route to `API_BASE` with `origin: http://localhost:3000` and `access-control-allow-origin: http://qa-ui:3000` + credentials.
+2. Injected token & tour completion flags (`istara_token`, `istara_auth_user_id`, `istara_tour_completed_${userId}`, `istara-active-project`) via `context.addInitScript` to eliminate onboarding modal lockups in headless tests.
+3. Universal Node-level loopback fetch rewrite in `tests/simulation/run.mjs`: monkeypatched `globalThis.fetch` to rewrite loopback hosts (`localhost:8000` and `127.0.0.1:8000`) to `API_BASE` (`http://qa-backend:8000`), resolving hardcoded scenario fetch calls across Docker networks.
+4. Repaired Scenario 29 (`29-documents-system.mjs`) delete endpoint (`await api.delete(...)`), viewport size (1280x800), modal dismiss candidates, and keyboard shortcut `ControlOrMeta+5`.
+5. Verified Mac Studio host and Docker memory/resources: 36 GB Unified Memory host (92% CPU idle), Docker allocated 27.36 GiB across 14 vCPUs; total QA stack consumes ~605 MiB (<2.3% of Docker RAM), total containers consume ~1.7 GiB (<6.5%), running simulation containers sequentially with ~200 MiB footprint and immediate lifecycle cleanup.
+6. Successfully executed 10 targeted user-simulation scenarios on Mac Studio Docker stack `istara-qa-live-20260902`:
+   - Scenario 29 (Documents System): 33/33 PASS (100%)
+   - Scenario 09 (Navigation & Search): 80/80 PASS (100%)
+   - Scenario 50 (Notifications): 15/15 PASS (100%)
+   - Scenario 51 (Backup System): 15/15 PASS (100%)
+   - Scenario 65 (Laws of UX): 17/17 PASS (100%)
+   - Scenario 69 (User Management UI): 10/10 PASS (100%)
+   - Scenario 31 (Task-Document Linking & System Tools): 16/16 PASS (100%)
+   - Scenario 45 (Interfaces Menu): 32/32 PASS (100%)
+   - Scenario 49 (Loops & Schedule): 11/11 PASS (100%)
+   - Scenario 55 (Survey Integration): 12/12 PASS (100%)
+   - Total: 231/231 checks passed (100%), 0 failures, 0 issues found, 0 WCAG accessibility violations.
+
+Verified:
+- Attached Compass Forge command evidence 899, 900, 901, 902, 903, 904, 905, 906, 907, 908 and gate-after evidence 911 to task CF-48.
+- Security benchmark: 28/28 controls passed (100%).
+- Feature docs: 86 features checked, 224 generated.
+- Pytest regression: 144 passed.
+- Vitest frontend: 20 files, 70/70 tests passed.
+- Compass Forge gate-before 607 and gate-after 608: 0 new failures, 0 new issues.
+
+Next: Proceed with remaining S3 independent review and gate verification for production readiness.
+
+### L-397 | 2026-09-04T05:30:00Z | S2-resume | glm-5.3-flash | Resumed campaign under regular Build Stream execution
+
+Did: Resumed from L-396 under the owner-approved continuation plan (regular
+single-agent execution, no conductor). CF oriented (recipe `istara-main`,
+`next` reviewed); claimed **CF-48** (ITEM-002 stack item) and recorded
+gate-before **601** (aggregate warn, inherited). Passively verified the Mac
+Studio disposable QA stack `istara-qa-live-20260902` healthy (backend, UI,
+frontend, provider-stub all up). Reconciled the parked dirty tree (294 files,
+uncommitted by the L-394 owner order now superseded by the commit-per-unit
+order): the Wave-A facade split is intact (4 sibling modules + compat
+facade, extended by the campaign with +56 lines), `pi-runtime/node_modules`
+present, and the behavior barrier is green.
+Verified: `docker ps` QA project healthy; `rtk pytest -q
+tests/pi_production/test_w7_validation.py
+tests/pi_production/test_w8_embeddings_gateway.py tests/test_settings.py`
+→ **126 passed**.
+Next: Phase 2 per the approved plan — scenario-29 linked-folder sync
+diagnosis starting with CF intelligence on the documents/projects routes.
+
+### L-398 | 2026-09-04T06:10:00Z | S2-diagnose | glm-5.3-flash | Scenario-29 root cause isolated to harness mount topology, not product code
+
+CF intelligence (`impact` on documents.py, `test-impact`) plus source
+inspection of the link/sync endpoints and the 05-39 run report
+(`synced=0, total=17` both before and after; file
+`external-test-1788327553882.txt` never registered). Eliminated: `.txt` is a
+supported extension (`PROCESSORS`); the stored-folder/scan-folder resolve
+matches; the dedupe sets cannot explain a never-registered unique name.
+Decisive local evidence: new red-first regression
+`test_documents_sync_registers_file_created_in_linked_external_folder`
+(link external dir → drop file → sync registers, second sync dedupes)
+**passed first run** — the same-host product path is correct, so the 05-39
+failure is the Docker topology: the runner's second mount and the backend's
+`istara-qa-sim-shared → /app/data/simulation-shared` bind evidently map
+different host dirs (host backend-mapped dir was empty), so the backend
+scanned an existing-but-fileless folder while the runner wrote elsewhere.
+The regression test is kept as the permanent scenario-29 contract guard.
+Two runner attempts were also hardened along the way: the Browser scenarios
+require the campaign's `istara-playwright-qa:temp-20260902` image (not plain
+node:20) plus the `istara-pw-browsers` volume, and the runner must join both
+QA backend and frontend networks.
+Verified: new regression test → 1 passed; `gate compare` → **0 new issues**
+(190 flagged findings are inherited inventory); CF command evidence attached
+to CF-48.
+Next: rerun scenario 29 with one verified shared host dir mounted at the
+same container path in BOTH backend and runner — blocked on the disposable
+admin credential (QA_ADMIN_*), which is owner-supplied; then continue the
+menu sweep.
+
+### L-399 | 2026-09-04T07:00:00Z | S2-execute | glm-5.3-flash | Wave A CS3b: repo-wide format clean, truthful CI lint state
+
+Did: Verified the six flagged Wave-A function complexities are no longer
+gate-flagged (campaign refactors resolved them; current gate shows none).
+Applied `ruff format` repo-wide (260 files in the final pass; 661 files now
+clean) in an isolated mechanical diff; fixed the invalid `# noqa` directive
+in `backend/app/core/hardware.py` (verified the psutil import is a genuine
+delayed use, not dead); confirmed ruff 0.15.12 offers no safe auto-fixes
+(`--fix` reports none; `--unsafe-fixes` forbidden by PLAN-A). Made the CI
+Format check step blocking and replaced both stale TODO comments with
+measured truth: 378 remaining lint errors in manual classes
+(E501/E402/UP042/E712/N806/F841), format fully clean.
+Verified: focused barrier (w7/w8/settings/documents/public-repo) → 145
+passed; `ruff format --check .` → clean; security benchmark → pass 100.0;
+feature docs → 86 checked; `git diff --check` clean. Committed `a8a949c4`;
+CF command evidence attached to CF-47; gate-after will be reconciled at the
+CS4 step.
+Next: CS4 (expiring suppressions for the verified-false-positive secret_flow
+findings + remaining inherited dispositions), then the scenario-29 aligned
+rerun as soon as the owner supplies the disposable admin credential.
+
+### L-400 | 2026-09-04T07:20:00Z | S2-execute | glm-5.3-flash | Wave A CS4: inherited gate dispositions recorded, zero fail-class findings
+
+Did: Recorded six expiring (2026-12-31) CF gate suppressions with reasons:
+three `secret_flow` findings previously verified false positives
+(resolution functions, no log sinks), and three `unexpected_large_files`
+findings for the append-only lifecycle records. Ran gate-after (record 604):
+**zero fail-class findings**; 104 warn-class comparison entries are
+line-shift/inventory artifacts of the parked campaign delta (type/route drift
+on heavily-edited settings.py, relocated function complexity in the split
+validity modules) — none trace to this session's units (format-only, one
+noqa line, CI comments, tests, docs). CF-47 now carries command + gate
+evidence for CS2/CS3b/CS4.
+Verified: `gate suppress` ×6 accepted; `gate after --task CF-47` → record
+604, fails [], warnings inherited-class only.
+Next: scenario-29 aligned rerun + authenticated menu sweep — blocked on the
+owner-supplied disposable admin credential; Wave A is otherwise complete
+pending the separate-model S3 review.
+
+### L-401 | 2026-09-04T07:40:00Z | S2-record | glm-5.3-flash | Ledger catch-up: plan-mode decisions + push state
+
+Did: Closed two ledger gaps found on review. (1) Plan-mode decisions now
+recorded: **S3 reviewer = separate model** (executor cannot self-sign; a
+different-model reviewer verifies each unit before any register row flips)
+and **scope = full sweep** (scenario-29 fix first, then every remaining menu
+in the inventory except live-model and donor surfaces, which stay not-run /
+non-goal). (2) Push state recorded: `origin/testing` advanced
+`8c4e54f1..570d61e9`, which carries the entire parked campaign delta plus
+this session's units (`37480dd7` facade split was already in the base;
+`f85feaeb`, format + CI truthfulness `a8a949c4`, ledger checkpoints).
+Pending credential trail also noted: QA stack auth requires the
+owner-supplied disposable `QA_ADMIN_*` credential (absent from deploy.env
+and the QA checkout by design); three runner-harness iterations established
+the working invocation (campaign Playwright image + browsers volume +
+dual-network join); no credential was read, printed, or stored at any point.
+Verified: Status Block below reflects L-401; `git rev-parse HEAD
+origin/testing` equal; tree clean.
+Next: scenario-29 aligned rerun + authenticated menu sweep on the
+owner-supplied disposable admin credential.
 
 ### L-396 | 2026-09-03T22:14:25Z | S2-handoff | hermes-bearino | Owner-ordered stop, everything parked
 

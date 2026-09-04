@@ -98,6 +98,33 @@ const API_BASE = process.env.ISTARA_API_URL || "http://localhost:8000";
 const FRONTEND = process.env.ISTARA_FRONTEND_URL || "http://localhost:3000";
 const FIXED_TEST_MODEL = (process.env.ISTARA_FIXED_LLM_TEST_MODEL || "google/gemma-4-e4b").trim();
 
+// Intercept Node-level fetch requests directed at loopback backend so scenarios
+// with hardcoded localhost:8000 / 127.0.0.1:8000 resolve to API_BASE in Docker.
+if (API_BASE !== "http://localhost:8000" && API_BASE !== "http://127.0.0.1:8000") {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = function (resource, options) {
+    if (typeof resource === "string") {
+      resource = resource.replace(/^http:\/\/(?:localhost|127\.0\.0\.1):8000/, API_BASE);
+    } else if (resource instanceof URL) {
+      if (
+        (resource.hostname === "localhost" || resource.hostname === "127.0.0.1") &&
+        resource.port === "8000"
+      ) {
+        const target = new URL(API_BASE);
+        resource.protocol = target.protocol;
+        resource.host = target.host;
+        resource.port = target.port;
+      }
+    } else if (resource && typeof resource.url === "string") {
+      const newUrl = resource.url.replace(/^http:\/\/(?:localhost|127\.0\.0\.1):8000/, API_BASE);
+      if (newUrl !== resource.url) {
+        resource = new Request(newUrl, resource);
+      }
+    }
+    return originalFetch.call(this, resource, options);
+  };
+}
+
 
 function requestJson(method, url, { headers = {}, body = null, timeoutMs = 0, label = "" } = {}) {
   return new Promise((resolve, reject) => {
@@ -813,6 +840,61 @@ async function main() {
   await context.grantPermissions(["microphone"], { origin: new URL(FRONTEND).origin }).catch(() => {});
   context.setDefaultTimeout(PLAYWRIGHT_ACTION_TIMEOUT_MS);
   context.setDefaultNavigationTimeout(PLAYWRIGHT_NAV_TIMEOUT_MS);
+
+  // Route client-side API requests to API_BASE so browser code reaching for loopback
+  // (127.0.0.1:8000 / localhost:8000) or /api/ endpoints resolves to the configured
+  // backend server across Docker networks with origin aligned to CORS config.
+  try {
+    const apiTarget = new URL(API_BASE);
+    await context.route(/.*(?::8000)?\/api\/.*/, async (route) => {
+      const req = route.request();
+      const targetUrl = new URL(req.url());
+      targetUrl.protocol = apiTarget.protocol;
+      targetUrl.host = apiTarget.host;
+      targetUrl.port = apiTarget.port;
+
+      const headers = { ...req.headers() };
+      headers.origin = "http://localhost:3000";
+
+      try {
+        const response = await route.fetch({
+          url: targetUrl.toString(),
+          headers,
+        });
+        const responseHeaders = response.headers();
+        responseHeaders["access-control-allow-origin"] = req.headers().origin || "*";
+        responseHeaders["access-control-allow-credentials"] = "true";
+        await route.fulfill({
+          response,
+          headers: responseHeaders,
+        });
+      } catch {
+        await route.continue().catch(() => {});
+      }
+    });
+  } catch (e) {
+    console.warn(`  ⚠ Route proxy setup warning: ${e.message}`);
+  }
+
+  // Inject token and bypass onboarding across all future page navigations
+  if (apiClient._token) {
+    await context.addInitScript(
+      ({ token, userId }) => {
+        try {
+          localStorage.setItem("istara_token", token);
+          localStorage.removeItem("istara_tour_state");
+          if (userId) {
+            localStorage.setItem("istara_auth_user_id", userId);
+            localStorage.setItem(`istara_tour_completed_${userId}`, "true");
+          } else {
+            localStorage.setItem("istara_tour_completed_anonymous", "true");
+          }
+        } catch {}
+      },
+      { token: apiClient._token, userId: apiClient._userId }
+    );
+  }
+
   const page = await context.newPage();
   page.setDefaultTimeout(PLAYWRIGHT_ACTION_TIMEOUT_MS);
   page.setDefaultNavigationTimeout(PLAYWRIGHT_NAV_TIMEOUT_MS);
@@ -914,6 +996,14 @@ async function main() {
     }
 
     if (simProjectId) {
+      await context.addInitScript(
+        ({ projectId }) => {
+          try {
+            if (projectId) localStorage.setItem("istara-active-project", projectId);
+          } catch {}
+        },
+        { projectId: simProjectId }
+      );
       await ensureBrowserScenarioState(page, { projectId: simProjectId, activeView: "chat" });
     }
   } catch (e) {

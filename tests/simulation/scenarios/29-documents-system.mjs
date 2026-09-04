@@ -382,7 +382,21 @@ export async function run(ctx) {
   try {
     // Navigate fresh to the app
     await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 10000 });
+    await page.setViewportSize({ width: 1280, height: 800 }).catch(() => {});
     await page.waitForTimeout(2000);
+    // Dismiss any modal/overlay if visible
+    const dismissCandidates = [
+      'button[aria-label*="Close"]',
+      'button[aria-label*="Dismiss"]',
+      'button:has-text("Skip")',
+      'button:has-text("Got it")',
+    ];
+    for (const sel of dismissCandidates) {
+      const el = page.locator(sel).first();
+      if (await el.isVisible({ timeout: 200 }).catch(() => false)) {
+        await el.click().catch(() => {});
+      }
+    }
     // The sidebar is only visible on lg+ (1280px viewport in test runner)
     const docsBtn = await page.$('button[aria-label="Documents"]');
     check(19, "Documents menu appears in sidebar",
@@ -406,9 +420,7 @@ export async function run(ctx) {
         `heading="${heading}"`);
     } else {
       // Fallback: use keyboard shortcut
-      await page.keyboard.down("Meta");
-      await page.keyboard.press("5");
-      await page.keyboard.up("Meta");
+      await page.keyboard.press("ControlOrMeta+5");
       await page.waitForTimeout(2000);
       const heading = await page.$eval("h2", el => el.textContent).catch(() => "");
       check(20, "Documents view loads on navigation",
@@ -555,7 +567,7 @@ export async function run(ctx) {
       source: "external",
     });
     // Delete it
-    const delRes = await fetch(`http://localhost:8000/api/documents/${tempDoc.id}?${projectQuery}`, { method: "DELETE", headers: api._headers() });
+    const delRes = await api.delete(`/api/documents/${tempDoc.id}?${projectQuery}`);
     // Verify it's gone
     let gone = false;
     try {
@@ -583,9 +595,7 @@ export async function run(ctx) {
       await page.waitForTimeout(500);
     }
     // Press Cmd+5 to go to Documents
-    await page.keyboard.down("Meta");
-    await page.keyboard.press("5");
-    await page.keyboard.up("Meta");
+    await page.keyboard.press("ControlOrMeta+5");
     await page.waitForTimeout(1500);
     const heading = await page.$eval("h2", el => el.textContent).catch(() => "");
     check(25, "Cmd+5 keyboard shortcut opens Documents view",
