@@ -8,8 +8,8 @@ phase: "Phase 2 — execute expanded routing and model-role contract"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: glm-5.3-flash, at: 2026-09-04T06:10:00Z, ledger: L-398 }
-next_action: "Owner supplies the disposable QA admin credential; then rerun scenario 29 with the verified shared mount and continue the authenticated menu sweep. Meanwhile: Wave A complexity verification (credential-free)."
+last: { agent: glm-5.3-flash, at: 2026-09-04T07:20:00Z, ledger: L-400 }
+next_action: "Scenario-29 aligned rerun + authenticated menu sweep on the owner-supplied disposable admin credential. Wave A complete pending S3 review."
 ```
 
 ### L-397 | 2026-09-04T05:30:00Z | S2-resume | glm-5.3-flash | Resumed campaign under regular Build Stream execution
@@ -59,6 +59,45 @@ Next: rerun scenario 29 with one verified shared host dir mounted at the
 same container path in BOTH backend and runner — blocked on the disposable
 admin credential (QA_ADMIN_*), which is owner-supplied; then continue the
 menu sweep.
+
+### L-399 | 2026-09-04T07:00:00Z | S2-execute | glm-5.3-flash | Wave A CS3b: repo-wide format clean, truthful CI lint state
+
+Did: Verified the six flagged Wave-A function complexities are no longer
+gate-flagged (campaign refactors resolved them; current gate shows none).
+Applied `ruff format` repo-wide (260 files in the final pass; 661 files now
+clean) in an isolated mechanical diff; fixed the invalid `# noqa` directive
+in `backend/app/core/hardware.py` (verified the psutil import is a genuine
+delayed use, not dead); confirmed ruff 0.15.12 offers no safe auto-fixes
+(`--fix` reports none; `--unsafe-fixes` forbidden by PLAN-A). Made the CI
+Format check step blocking and replaced both stale TODO comments with
+measured truth: 378 remaining lint errors in manual classes
+(E501/E402/UP042/E712/N806/F841), format fully clean.
+Verified: focused barrier (w7/w8/settings/documents/public-repo) → 145
+passed; `ruff format --check .` → clean; security benchmark → pass 100.0;
+feature docs → 86 checked; `git diff --check` clean. Committed `a8a949c4`;
+CF command evidence attached to CF-47; gate-after will be reconciled at the
+CS4 step.
+Next: CS4 (expiring suppressions for the verified-false-positive secret_flow
+findings + remaining inherited dispositions), then the scenario-29 aligned
+rerun as soon as the owner supplies the disposable admin credential.
+
+### L-400 | 2026-09-04T07:20:00Z | S2-execute | glm-5.3-flash | Wave A CS4: inherited gate dispositions recorded, zero fail-class findings
+
+Did: Recorded six expiring (2026-12-31) CF gate suppressions with reasons:
+three `secret_flow` findings previously verified false positives
+(resolution functions, no log sinks), and three `unexpected_large_files`
+findings for the append-only lifecycle records. Ran gate-after (record 604):
+**zero fail-class findings**; 104 warn-class comparison entries are
+line-shift/inventory artifacts of the parked campaign delta (type/route drift
+on heavily-edited settings.py, relocated function complexity in the split
+validity modules) — none trace to this session's units (format-only, one
+noqa line, CI comments, tests, docs). CF-47 now carries command + gate
+evidence for CS2/CS3b/CS4.
+Verified: `gate suppress` ×6 accepted; `gate after --task CF-47` → record
+604, fails [], warnings inherited-class only.
+Next: scenario-29 aligned rerun + authenticated menu sweep — blocked on the
+owner-supplied disposable admin credential; Wave A is otherwise complete
+pending the separate-model S3 review.
 ### L-396 | 2026-09-03T22:14:25Z | S2-handoff | hermes-bearino | Owner-ordered stop, everything parked
 
 Did: Closed the resume session without product changes. Verified Mac Studio QA stack healthy (istara-qa-live-20260902 backend healthy, UI 200), ran Compass Forge impact/why/test-impact on projects routes, drove QA UI through fresh SSH tunnels, traced the stuck login spinner to LoginScreen connecting state. Two subagents delivered the scenario-29 code trail (resolve mismatch + extension filter lines) and the three-fix regression review (no spine regressions, two small follow-ups). No product source touched, no credentials stored, no live model calls.
