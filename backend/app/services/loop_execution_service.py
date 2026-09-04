@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,11 +76,11 @@ async def record_execution(
     project_id: str | None = None,
     source_name: str = "",
     status: str = "success",
-    started_at: Optional[datetime] = None,
-    finished_at: Optional[datetime] = None,
+    started_at: datetime | None = None,
+    finished_at: datetime | None = None,
     error_message: str = "",
     findings_count: int = 0,
-    metadata: Optional[dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
 ) -> LoopExecution:
     """Create a LoopExecution record and persist it."""
     metadata_payload = dict(metadata or {})
@@ -91,7 +91,7 @@ async def record_execution(
         raise ValueError("project_id is required for loop execution records")
     metadata_payload["project_id"] = scoped_project_id
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start = started_at or now
     end = finished_at
 
@@ -130,14 +130,14 @@ async def record_execution(
 async def list_executions(
     db: AsyncSession,
     *,
-    source_type: Optional[str] = None,
-    source_types: Optional[list[str]] = None,
-    source_id: Optional[str] = None,
-    source_ids: Optional[list[str]] = None,
-    project_id: Optional[str] = None,
-    status: Optional[str] = None,
-    started_from: Optional[datetime] = None,
-    started_to: Optional[datetime] = None,
+    source_type: str | None = None,
+    source_types: list[str] | None = None,
+    source_id: str | None = None,
+    source_ids: list[str] | None = None,
+    project_id: str | None = None,
+    status: str | None = None,
+    started_from: datetime | None = None,
+    started_to: datetime | None = None,
     page: int = 1,
     page_size: int = 50,
 ) -> dict:
@@ -207,9 +207,9 @@ async def list_executions(
 
 async def get_execution_stats(
     db: AsyncSession,
-    source_id: Optional[str] = None,
-    source_ids: Optional[list[str]] = None,
-    project_id: Optional[str] = None,
+    source_id: str | None = None,
+    source_ids: list[str] | None = None,
+    project_id: str | None = None,
 ) -> dict:
     """Aggregate execution statistics.
 

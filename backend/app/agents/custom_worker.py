@@ -8,19 +8,18 @@ When a custom agent is created, a CustomAgentWorker is spawned to:
 """
 
 import asyncio
-import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.resource_governor import governor
-from app.models.database import async_session
-from app.models.agent import Agent, AgentRole, AgentState
-from app.models.task import Task, TaskStatus
 from app.api.websocket import broadcast_agent_status, broadcast_task_progress
 from app.core.datetime_utils import ensure_utc
+from app.core.resource_governor import governor
+from app.models.agent import Agent, AgentRole, AgentState
+from app.models.database import async_session
+from app.models.task import Task, TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +114,7 @@ class CustomAgentWorker:
         """Avoid immediately re-picking a task that just failed."""
         if task.last_retry_at and (task.retry_count or 0) > 0:
             backoff = min(5 * (3 ** (task.retry_count - 1)), 120)
-            elapsed = (datetime.now(timezone.utc) - ensure_utc(task.last_retry_at)).total_seconds()
+            elapsed = (datetime.now(UTC) - ensure_utc(task.last_retry_at)).total_seconds()
             return elapsed < backoff
         return False
 
@@ -164,14 +163,14 @@ class CustomAgentWorker:
             agent_row = agent_row_result.scalar_one_or_none()
             if agent_row:
                 agent_row.executions = (agent_row.executions or 0) + 1
-                agent_row.last_heartbeat_at = datetime.now(timezone.utc)
+                agent_row.last_heartbeat_at = datetime.now(UTC)
                 await db.commit()
 
         except Exception as e:
             error_msg = str(e)
             logger.error(f"Custom agent {self.agent_id} task error: {error_msg}")
             task.retry_count = (task.retry_count or 0) + 1
-            task.last_retry_at = datetime.now(timezone.utc)
+            task.last_retry_at = datetime.now(UTC)
             task.agent_notes = f"Error: {error_msg}"
             max_retries = task.max_retries or 3
             review_event = None
@@ -248,7 +247,7 @@ class CustomAgentWorker:
                     agent.state = state
                     agent.current_task = current_task
                     if state == AgentState.WORKING:
-                        agent.last_heartbeat_at = datetime.now(timezone.utc)
+                        agent.last_heartbeat_at = datetime.now(UTC)
                     await db.commit()
         except Exception as e:
             logger.error(f"Failed to update custom agent state: {e}")

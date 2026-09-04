@@ -15,15 +15,17 @@ Install: pip install browser-use langchain-openai
 
 import logging
 import time
+
 from app.config import settings
-from app.core.pi_runtime.model_manager import PiModelManager
 from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
+from app.core.pi_runtime.model_manager import PiModelManager
 
 logger = logging.getLogger(__name__)
 
 BROWSER_AVAILABLE = False
 try:
-    from browser_use import Agent as BrowserAgent, Browser, BrowserConfig
+    from browser_use import Agent as BrowserAgent
+    from browser_use import Browser, BrowserConfig
     from langchain_openai import ChatOpenAI
 
     BROWSER_AVAILABLE = True

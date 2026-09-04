@@ -4,10 +4,11 @@ Drafts Layer 2/3/4 reports when tasks are marked DONE.
 Uses the MECE/Pyramid logic from ReportManager.
 """
 
-import logging
 import asyncio
-from app.models.database import async_session
+import logging
+
 from app.core.report_manager import report_manager
+from app.models.database import async_session
 
 logger = logging.getLogger(__name__)
 

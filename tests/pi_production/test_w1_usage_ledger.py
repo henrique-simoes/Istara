@@ -25,7 +25,9 @@ from app.models.telemetry_span import TelemetrySpan
 class _StubPiService:
     """Pi seam stub: returns a scripted outcome or raises a scripted failure."""
 
-    def __init__(self, outcome: dict | None = None, exc: Exception | None = None) -> None:
+    def __init__(
+        self, outcome: dict | None = None, exc: Exception | None = None
+    ) -> None:
         self._outcome = outcome or {}
         self._exc = exc
 
@@ -69,14 +71,25 @@ async def test_pi_provider_usage_persists_one_exact_row():
         "endpoint_id": "pi-faux",
         "model": "requested-model",
         "served_model": "served-model",
-        "usage": {"input": 120, "output": 34, "cacheRead": 8, "cacheWrite": 2,
-                  "cost": {"total": 0.0042}, "turn_count": 3},
+        "usage": {
+            "input": 120,
+            "output": 34,
+            "cacheRead": 8,
+            "cacheWrite": 2,
+            "cost": {"total": 0.0042},
+            "turn_count": 3,
+        },
         "tool_calls": [{"tool": "search_documents", "params": {}}],
     }
     result = await AgenticDispatcher(pi_service=_StubPiService(outcome)).completion(
-        purpose="w1.ledger.pi", project_id=project_id, system="system",
-        messages=[{"role": "user", "content": "hello"}], params=TurnParams(model="deepseek-v4-pro"),
-        engine="pi", task_id="task-1", spine_phase="execution",
+        purpose="w1.ledger.pi",
+        project_id=project_id,
+        system="system",
+        messages=[{"role": "user", "content": "hello"}],
+        params=TurnParams(model="deepseek-v4-pro"),
+        engine="pi",
+        task_id="task-1",
+        spine_phase="execution",
     )
     assert result.status == "success"
     rows = await _usage_rows(project_id)
@@ -100,12 +113,19 @@ async def test_legacy_provider_reported_usage_is_exact_not_estimated():
     project_id = _pid()
 
     async def legacy(**_kwargs):
-        return {"text": "ok", "status": "success", "stop_reason": "stop",
-                "usage": {"input_tokens": 55, "output_tokens": 21, "cost_usd": 0.001}}
+        return {
+            "text": "ok",
+            "status": "success",
+            "stop_reason": "stop",
+            "usage": {"input_tokens": 55, "output_tokens": 21, "cost_usd": 0.001},
+        }
 
     await AgenticDispatcher(legacy_executor=legacy).completion(
-        purpose="w1.ledger.legacy", project_id=project_id, system="system",
-        messages=[{"role": "user", "content": "hello"}], params=TurnParams(model="gpt-x"),
+        purpose="w1.ledger.legacy",
+        project_id=project_id,
+        system="system",
+        messages=[{"role": "user", "content": "hello"}],
+        params=TurnParams(model="gpt-x"),
         engine="legacy",
     )
     rows = await _usage_rows(project_id)
@@ -126,8 +146,11 @@ async def test_legacy_absent_provider_usage_is_estimated_and_flagged():
         return {"text": "an answer with no usage block", "status": "success"}
 
     await AgenticDispatcher(legacy_executor=legacy).completion(
-        purpose="w1.ledger.estimate", project_id=project_id, system="system prompt",
-        messages=[{"role": "user", "content": "hello"}], params=TurnParams(model="gpt-x"),
+        purpose="w1.ledger.estimate",
+        project_id=project_id,
+        system="system prompt",
+        messages=[{"role": "user", "content": "hello"}],
+        params=TurnParams(model="gpt-x"),
         engine="legacy",
     )
     rows = await _usage_rows(project_id)
@@ -145,8 +168,12 @@ async def test_endpoint_resolution_failure_records_error_row():
     service = _StubPiService(exc=PiEndpointResolutionError("unknown_pi_endpoint"))
     with pytest.raises(PiEndpointResolutionError):
         await AgenticDispatcher(pi_service=service).completion(
-            purpose="w1.ledger.resolution", project_id=project_id, system="system",
-            messages=[{"role": "user", "content": "hello"}], params=TurnParams(), engine="pi",
+            purpose="w1.ledger.resolution",
+            project_id=project_id,
+            system="system",
+            messages=[{"role": "user", "content": "hello"}],
+            params=TurnParams(),
+            engine="pi",
         )
     rows = await _usage_rows(project_id)
     assert len(rows) == 1
@@ -166,15 +193,23 @@ async def test_legacy_executor_failure_and_unbound_engine_record_error_rows():
 
     with pytest.raises(RuntimeError, match="provider exploded"):
         await AgenticDispatcher(legacy_executor=failing_legacy).completion(
-            purpose="w1.ledger.legacy_fail", project_id=project_id, system="system",
-            messages=[{"role": "user", "content": "hello"}], params=TurnParams(), engine="legacy",
+            purpose="w1.ledger.legacy_fail",
+            project_id=project_id,
+            system="system",
+            messages=[{"role": "user", "content": "hello"}],
+            params=TurnParams(),
+            engine="legacy",
         )
     with pytest.raises(AgenticDispatchError, match="legacy_engine_not_bound"):
         dispatcher = AgenticDispatcher()
         dispatcher._legacy = None  # pin the fail-closed guard in _legacy_outcome
         await dispatcher.completion(
-            purpose="w1.ledger.unbound", project_id=project_id, system="system",
-            messages=[{"role": "user", "content": "hello"}], params=TurnParams(), engine="legacy",
+            purpose="w1.ledger.unbound",
+            project_id=project_id,
+            system="system",
+            messages=[{"role": "user", "content": "hello"}],
+            params=TurnParams(),
+            engine="legacy",
         )
     rows = await _usage_rows(project_id)
     assert len(rows) == 2
@@ -190,11 +225,18 @@ async def test_legacy_executor_failure_and_unbound_engine_record_error_rows():
 async def test_aborted_outcome_records_aborted_row_with_exact_usage():
     await init_db()
     project_id = _pid()
-    outcome = {"text": "", "status": "aborted",
-               "usage": {"input": 40, "output": 3, "cost": {"total": 0.0005}}}
+    outcome = {
+        "text": "",
+        "status": "aborted",
+        "usage": {"input": 40, "output": 3, "cost": {"total": 0.0005}},
+    }
     result = await AgenticDispatcher(pi_service=_StubPiService(outcome)).completion(
-        purpose="w1.ledger.abort", project_id=project_id, system="system",
-        messages=[{"role": "user", "content": "hello"}], params=TurnParams(), engine="pi",
+        purpose="w1.ledger.abort",
+        project_id=project_id,
+        system="system",
+        messages=[{"role": "user", "content": "hello"}],
+        params=TurnParams(),
+        engine="pi",
     )
     assert result.status == "aborted"
     rows = await _usage_rows(project_id)
@@ -209,11 +251,19 @@ async def test_aborted_outcome_records_aborted_row_with_exact_usage():
 async def test_trace_span_keeps_short_identity_route_id_not_packed_ledger():
     await init_db()
     project_id = _pid()
-    outcome = {"text": "done", "status": "success", "endpoint_id": "pi-faux",
-               "usage": {"input": 10, "output": 5}}
+    outcome = {
+        "text": "done",
+        "status": "success",
+        "endpoint_id": "pi-faux",
+        "usage": {"input": 10, "output": 5},
+    }
     await AgenticDispatcher(pi_service=_StubPiService(outcome)).completion(
-        purpose="w1.ledger.span", project_id=project_id, system="system",
-        messages=[{"role": "user", "content": "hello"}], params=TurnParams(), engine="pi",
+        purpose="w1.ledger.span",
+        project_id=project_id,
+        system="system",
+        messages=[{"role": "user", "content": "hello"}],
+        params=TurnParams(),
+        engine="pi",
         task_id="task-9",
     )
     spans = await _trace_spans(project_id)

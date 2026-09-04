@@ -83,7 +83,9 @@ class EmbeddingIdentity:
                 f"EmbeddingIdentity model must be exact, got {self.model!r}"
             )
         if self.model_dim <= 0:
-            raise ProviderError(f"EmbeddingIdentity model_dim must be > 0, got {self.model_dim}")
+            raise ProviderError(
+                f"EmbeddingIdentity model_dim must be > 0, got {self.model_dim}"
+            )
 
 
 def assert_no_fallback(enabled: bool) -> None:
@@ -117,7 +119,9 @@ def vector_space_invariant(
     }
 
 
-def readiness_gate(identity: ChatIdentity, capability_decl: dict[str, Any]) -> ChatReadiness:
+def readiness_gate(
+    identity: ChatIdentity, capability_decl: dict[str, Any]
+) -> ChatReadiness:
     """Fail-closed readiness: identity present, secret-handle present, capability declared.
 
     Never prints a secret value; only presence is checked. A missing, empty, or

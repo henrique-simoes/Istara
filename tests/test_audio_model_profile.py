@@ -4,9 +4,13 @@ from app.core.audio_model_profile import AudioModelProfile, configured_audio_pro
 
 def test_audio_profile_public_projection_is_secret_free():
     profile = AudioModelProfile(
-        provider="gpt4_diarization", model="gpt-4o-transcribe-diarize",
-        endpoint_id="audio-gpt4", credential_ref="keychain://audio/gpt4",
-        mode="remote", diarization=True, speaker_count="2-8",
+        provider="gpt4_diarization",
+        model="gpt-4o-transcribe-diarize",
+        endpoint_id="audio-gpt4",
+        credential_ref="keychain://audio/gpt4",
+        mode="remote",
+        diarization=True,
+        speaker_count="2-8",
     )
     public = profile.public_dict()
     assert public["has_credential"] is True
@@ -15,7 +19,9 @@ def test_audio_profile_public_projection_is_secret_free():
     # advertise support (fail closed until an adapter lands).
     assert public["dispatch_available"] is False
     assert public["capabilities"] == {
-        "interview_audio": False, "microphone_chat": False, "channel_audio": False,
+        "interview_audio": False,
+        "microphone_chat": False,
+        "channel_audio": False,
     }
 
 
@@ -36,7 +42,9 @@ def test_unsupported_provider_and_invalid_diarization_rejected():
 def test_remote_whisper_is_configuration_only_no_dispatch():
     """remote_whisper has no adapter dispatch anywhere: capabilities fail closed."""
     profile = AudioModelProfile(
-        provider="remote_whisper", model="whisper-1", endpoint_id="audio-remote",
+        provider="remote_whisper",
+        model="whisper-1",
+        endpoint_id="audio-remote",
         mode="remote",
     )
     assert profile.dispatch_available is False
@@ -56,7 +64,9 @@ def test_local_whisper_capabilities_follow_runtime(monkeypatch):
         },
     )
     profile = AudioModelProfile(
-        provider="local_whisper", model="whisper-base", endpoint_id="audio-local",
+        provider="local_whisper",
+        model="whisper-base",
+        endpoint_id="audio-local",
     )
     assert profile.dispatch_available is True
     assert profile.supports_interview_audio is False
@@ -77,7 +87,9 @@ def test_local_whisper_capabilities_follow_runtime(monkeypatch):
     public = profile.public_dict()
     assert public["dispatch_available"] is True
     assert public["capabilities"] == {
-        "interview_audio": True, "microphone_chat": True, "channel_audio": True,
+        "interview_audio": True,
+        "microphone_chat": True,
+        "channel_audio": True,
     }
 
 

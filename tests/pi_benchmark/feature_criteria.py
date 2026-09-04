@@ -104,7 +104,9 @@ def compile_features(inventory: dict[str, Any] | None = None) -> list[FeatureCri
         if not feature_id or feature_id in seen:
             continue
         seen.add(feature_id)
-        compiled.append(FeatureCriteria(feature_id=feature_id, derivable=_derivability(feature)))
+        compiled.append(
+            FeatureCriteria(feature_id=feature_id, derivable=_derivability(feature))
+        )
     return compiled
 
 

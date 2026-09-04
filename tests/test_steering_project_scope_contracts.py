@@ -23,13 +23,18 @@ def test_mid_execution_steering_is_project_scoped() -> None:
 
     assert "project_id: str" in route
     assert "def _require_project_id(project_id: str | None) -> str:" in route
-    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert (
+        'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    )
     assert "require_admin_from_request(request)" in route
-    assert "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
+    assert (
+        "await require_project_access(db, request, scoped_project_id, min_role=min_role)"
+        in route
+    )
     assert "select(Project).where(Project.id == scoped_project_id)" in route
     assert "await _require_steerable_agent(db, agent_id, project.id)" in route
-    assert "agent.scope or \"universal\"" in route
-    assert "agent.project_id or \"\") != project_id" in route
+    assert 'agent.scope or "universal"' in route
+    assert 'agent.project_id or "") != project_id' in route
     assert "project_id: str | None = Query(default=None)" in route
     assert "steering_manager.get_status(agent_id, project_id=project.id)" in route
     assert "steering_manager.get_queues(agent_id, project_id=project.id)" in route
@@ -39,7 +44,7 @@ def test_mid_execution_steering_is_project_scoped() -> None:
     assert "def _matches_project" in manager
     assert "project_ids_with_queued_steering" in manager
     assert "project_id: str | None = None" in manager
-    assert "msg_metadata[\"project_id\"] = scoped_project_id" in manager
+    assert 'msg_metadata["project_id"] = scoped_project_id' in manager
     assert "state.active_project_id == scoped_project_id" in manager
     assert "get_all_status(self, project_id: str | None = None)" in manager
 
@@ -47,7 +52,7 @@ def test_mid_execution_steering_is_project_scoped() -> None:
     assert "project_ids_with_queued_steering(self._agent_id)" in lifecycle
     assert "project_id=project.id" in lifecycle
     assert "project_id=task.project_id" in lifecycle
-    assert "project_id=\"\"" not in lifecycle
+    assert 'project_id=""' not in lifecycle
     assert "Steering messages don't require a project" not in lifecycle
 
     assert "const steeringProjectParam = (projectId: string)" in api

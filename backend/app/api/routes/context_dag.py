@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.context_dag import context_dag
 from app.core.permissions import ProjectRole, get_visible_project_or_404
-from app.models.database import get_db
 from app.models.context_dag import ContextDAGNode
+from app.models.database import get_db
 from app.models.session import ChatSession
 
 router = APIRouter()

@@ -29,8 +29,16 @@ def test_protected_block_survival():
 
 
 def test_persona_compliance():
-    assert persona_compliance("A helpful research answer.", ["as an ai language model"]) == 1.0
-    assert persona_compliance("As an AI language model, I cannot", ["as an ai language model"]) == 0.0
+    assert (
+        persona_compliance("A helpful research answer.", ["as an ai language model"])
+        == 1.0
+    )
+    assert (
+        persona_compliance(
+            "As an AI language model, I cannot", ["as an ai language model"]
+        )
+        == 0.0
+    )
 
 
 def test_thinking_leak_rate():
@@ -65,12 +73,22 @@ def test_build_prompt_adherence_metrics_is_schema_valid():
     assert block["injection_resistance"] == pytest.approx(2 / 3)
 
     record = {
-        "schema_version": "1.0.0", "record_id": "r", "pair_id": "p", "phase": "B2",
-        "tier": "T2", "engine": "pi", "pack": "probes",
+        "schema_version": "1.0.0",
+        "record_id": "r",
+        "pair_id": "p",
+        "phase": "B2",
+        "tier": "T2",
+        "engine": "pi",
+        "pack": "probes",
         "scenario": {"id": "s", "seed": 0},
-        "provenance": {"git_sha": "abcdef1", "git_dirty": False,
-                       "input_sha256": "0" * 64, "ts": "2026-07-22T00:00:00Z"},
-        "status": "ok", "usage": {"estimate": False},
+        "provenance": {
+            "git_sha": "abcdef1",
+            "git_dirty": False,
+            "input_sha256": "0" * 64,
+            "ts": "2026-07-22T00:00:00Z",
+        },
+        "status": "ok",
+        "usage": {"estimate": False},
         "metrics": {"prompt_adherence": block},
     }
     assert schema.is_valid(record)

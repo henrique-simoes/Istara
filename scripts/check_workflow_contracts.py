@@ -85,7 +85,9 @@ def check_qa_artifact(issues: list[str], root: Path = ROOT) -> None:
         issues.append("qa-artifact.yml: must trigger on the `testing` branch")
     if "docker" not in qa.lower():
         issues.append("qa-artifact.yml: must build a disposable Docker QA artifact")
-    if "digest" not in qa.lower() or ("sha256" not in qa.lower() and "image_digest" not in qa.lower()):
+    if "digest" not in qa.lower() or (
+        "sha256" not in qa.lower() and "image_digest" not in qa.lower()
+    ):
         issues.append("qa-artifact.yml: manifest must record an immutable image digest")
     if "actions/upload-artifact" not in qa:
         issues.append("qa-artifact.yml: must upload sanitized QA evidence artifacts")
@@ -98,13 +100,17 @@ def check_promote(issues: list[str], root: Path = ROOT) -> None:
     if "workflow_dispatch" not in promo:
         issues.append("promote-testing.yml: must be manual dispatch (no auto-trigger)")
     if "environment" not in promo:
-        issues.append("promote-testing.yml: missing protected environment (human approval gate)")
+        issues.append(
+            "promote-testing.yml: missing protected environment (human approval gate)"
+        )
     if "gh pr create" not in promo:
         issues.append("promote-testing.yml: must create the promotion PR via gh")
     if "gh pr merge" in promo or "--auto" in promo:
         issues.append("promote-testing.yml: must never auto-merge")
     if "source_sha" not in promo:
-        issues.append("promote-testing.yml: must bind the exact source SHA (anti-replay)")
+        issues.append(
+            "promote-testing.yml: must bind the exact source SHA (anti-replay)"
+        )
     if "fail" not in promo.lower() and "exit 1" not in promo:
         issues.append("promote-testing.yml: changed-SHA replay must fail closed")
     # F-5-r2 regression contract: the required-checks step calls

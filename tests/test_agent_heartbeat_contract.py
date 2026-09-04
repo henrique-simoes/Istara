@@ -26,7 +26,9 @@ def auth_headers():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("heartbeat_interval", [9, 3601])
-async def test_agent_create_rejects_heartbeat_outside_contract(auth_headers, heartbeat_interval):
+async def test_agent_create_rejects_heartbeat_outside_contract(
+    auth_headers, heartbeat_interval
+):
     """Agent creation must reject intervals outside the UI and worker contract."""
     await init_db()
     transport = ASGITransport(app=app)

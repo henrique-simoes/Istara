@@ -114,12 +114,16 @@ def is_excluded(path: Path) -> bool:
 def iter_public_text_files() -> list[Path]:
     """Return tracked public text files, independent of ambient local artifacts."""
     output: list[Path] = []
-    tracked = subprocess.run(
-        ["git", "ls-files", "-z"],
-        cwd=REPO_ROOT,
-        check=True,
-        capture_output=True,
-    ).stdout.decode("utf-8").split("\0")
+    tracked = (
+        subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+        )
+        .stdout.decode("utf-8")
+        .split("\0")
+    )
     for relative in tracked:
         if not relative:
             continue
@@ -156,7 +160,9 @@ def scan_global_forbidden(paths: list[Path]) -> list[str]:
 def scan_canonical_raw_sources() -> list[str]:
     findings: list[str] = []
     if not CANONICAL_SOURCES.exists():
-        return [f"{CANONICAL_SOURCES.relative_to(REPO_ROOT)}: canonical sources folder is missing"]
+        return [
+            f"{CANONICAL_SOURCES.relative_to(REPO_ROOT)}: canonical sources folder is missing"
+        ]
     for path in CANONICAL_SOURCES.rglob("*"):
         if not path.is_file() or path.suffix not in {".md", ".csv"}:
             continue
@@ -164,7 +170,9 @@ def scan_canonical_raw_sources() -> list[str]:
         relative = path.relative_to(REPO_ROOT)
         for name, phrase in RAW_SOURCE_FORBIDDEN.items():
             if phrase in text:
-                findings.append(f"{relative}: raw source contains pre-digested artifact marker: {name}")
+                findings.append(
+                    f"{relative}: raw source contains pre-digested artifact marker: {name}"
+                )
     return findings
 
 
@@ -173,7 +181,9 @@ def scan_repeated_source_excerpts() -> list[str]:
     owners: dict[str, Path] = {}
     for path in CANONICAL_SOURCES.rglob("*.md"):
         for line in read_text(path).splitlines():
-            if not (line.startswith("Verbatim/source excerpt:") or line.startswith("P")):
+            if not (
+                line.startswith("Verbatim/source excerpt:") or line.startswith("P")
+            ):
                 continue
             if line.startswith("P") and not line[1:3].isdigit():
                 continue
@@ -188,7 +198,9 @@ def scan_repeated_source_excerpts() -> list[str]:
         if count <= 1:
             continue
         owner = owners[line].relative_to(REPO_ROOT)
-        findings.append(f"{owner}: repeated raw-source excerpt appears {count} times: {line[:140]}")
+        findings.append(
+            f"{owner}: repeated raw-source excerpt appears {count} times: {line[:140]}"
+        )
     return findings
 
 
@@ -196,7 +208,9 @@ def scan_retired_root_files() -> list[str]:
     findings: list[str] = []
     for relative in sorted(RETIRED_ROOT_FILES):
         if (REPO_ROOT / relative).exists():
-            findings.append(f"{relative}: retired generated or diagnostic artifact should not be tracked")
+            findings.append(
+                f"{relative}: retired generated or diagnostic artifact should not be tracked"
+            )
     return findings
 
 
@@ -212,7 +226,9 @@ def audit() -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="exit non-zero when findings are present")
+    parser.add_argument(
+        "--check", action="store_true", help="exit non-zero when findings are present"
+    )
     args = parser.parse_args()
 
     findings = audit()

@@ -10,7 +10,9 @@ from app.models.task import Task, TaskStatus
 
 
 @pytest.mark.asyncio
-async def test_custom_worker_failure_preserves_existing_human_revision_instruction(monkeypatch):
+async def test_custom_worker_failure_preserves_existing_human_revision_instruction(
+    monkeypatch,
+):
     """An orphaned custom task keeps human guidance while exposing the failure reason."""
     from app.agents import custom_worker
 
@@ -27,7 +29,9 @@ async def test_custom_worker_failure_preserves_existing_human_revision_instructi
         async def commit(self) -> None:
             return None
 
-    human_instruction = "Keep the approved quote set and repair only the unsupported pricing claim."
+    human_instruction = (
+        "Keep the approved quote set and repair only the unsupported pricing claim."
+    )
     task = Task(
         id="orphaned-custom-worker-review-history-task",
         project_id="missing-project",
@@ -79,7 +83,9 @@ async def test_custom_worker_failure_broadcasts_terminal_retry_state(monkeypatch
     status_mock = AsyncMock()
     progress_mock = AsyncMock()
     monkeypatch.setattr(custom_worker, "broadcast_agent_status", status_mock)
-    monkeypatch.setattr(custom_worker, "broadcast_task_progress", progress_mock, raising=False)
+    monkeypatch.setattr(
+        custom_worker, "broadcast_task_progress", progress_mock, raising=False
+    )
     monkeypatch.setattr(
         agent_orchestrator,
         "_execute_task",
@@ -169,7 +175,9 @@ async def test_custom_worker_pick_skips_backoff_tasks():
             del statement
             return _Result()
 
-    picked = await CustomAgentWorker("custom-worker-agent", "Test worker")._pick_task(_FakeDb())
+    picked = await CustomAgentWorker("custom-worker-agent", "Test worker")._pick_task(
+        _FakeDb()
+    )
 
     assert picked is ready
 
@@ -211,13 +219,17 @@ async def test_custom_worker_failure_escalates_after_max_retries(monkeypatch):
     status_mock = AsyncMock()
     progress_mock = AsyncMock()
     monkeypatch.setattr(custom_worker, "broadcast_agent_status", status_mock)
-    monkeypatch.setattr(custom_worker, "broadcast_task_progress", progress_mock, raising=False)
+    monkeypatch.setattr(
+        custom_worker, "broadcast_task_progress", progress_mock, raising=False
+    )
     monkeypatch.setattr(
         agent_orchestrator,
         "_execute_task",
         AsyncMock(side_effect=RuntimeError("missing_keychain_secret")),
     )
-    event = SimpleNamespace(id="system-failed-event", outcome="system_failed", quality_score=0.1)
+    event = SimpleNamespace(
+        id="system-failed-event", outcome="system_failed", quality_score=0.1
+    )
     record_event = AsyncMock(return_value=event)
     diagnose_event = AsyncMock()
     side_effects = AsyncMock()

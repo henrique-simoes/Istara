@@ -23,7 +23,12 @@ DEFAULT_RUNS_DIR = ROOT / "qa" / "runs"
 # Private-host fingerprints: local/LAN IPs, mDNS names, localhost aliases,
 # and private URL forms. These are never allowed in public QA artifacts.
 PRIVATE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("private-ipv4", re.compile(r"\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})\b")),
+    (
+        "private-ipv4",
+        re.compile(
+            r"\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})\b"
+        ),
+    ),
     ("loopback", re.compile(r"\b127\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")),
     ("localhost", re.compile(r"\blocalhost\b", re.IGNORECASE)),
     ("mdns-host", re.compile(r"\b[\w-]+\.local\b", re.IGNORECASE)),
@@ -32,10 +37,27 @@ PRIVATE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
 
 # Token/key material patterns.
 SECRET_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("bearer-token", re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{12,}\b", re.IGNORECASE)),
-    ("api-key", re.compile(r"\b(sk-[A-Za-z0-9]{12,}|api[_-]?key\s*[=:]\s*[A-Za-z0-9._-]{8,})\b", re.IGNORECASE)),
-    ("jwt", re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b")),
-    ("connection-string", re.compile(r"\b(postgres(ql)?|mysql|redis|mongodb)(\+[a-z]+)?://[^\s\"']+")),
+    (
+        "bearer-token",
+        re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{12,}\b", re.IGNORECASE),
+    ),
+    (
+        "api-key",
+        re.compile(
+            r"\b(sk-[A-Za-z0-9]{12,}|api[_-]?key\s*[=:]\s*[A-Za-z0-9._-]{8,})\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "jwt",
+        re.compile(
+            r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"
+        ),
+    ),
+    (
+        "connection-string",
+        re.compile(r"\b(postgres(ql)?|mysql|redis|mongodb)(\+[a-z]+)?://[^\s\"']+"),
+    ),
 ]
 
 
@@ -68,9 +90,14 @@ def scan_path(path: Path, max_bytes: int = 2 * 1024 * 1024) -> dict[str, Any]:
     }
 
 
-def scan_run(run_dir: Path, suffixes: tuple[str, ...] = (".json", ".log", ".txt", ".yaml", ".yml", ".csv")) -> dict[str, Any]:
+def scan_run(
+    run_dir: Path,
+    suffixes: tuple[str, ...] = (".json", ".log", ".txt", ".yaml", ".yml", ".csv"),
+) -> dict[str, Any]:
     """Scan an entire run directory tree."""
-    files = sorted(p for p in run_dir.rglob("*") if p.is_file() and p.suffix in suffixes)
+    files = sorted(
+        p for p in run_dir.rglob("*") if p.is_file() and p.suffix in suffixes
+    )
     reports = [scan_path(p) for p in files]
     all_hits = [h for r in reports for h in r["hits"]]
     return {
@@ -105,7 +132,9 @@ def main(argv: list[str] | None = None) -> int:
     for hit in report["hits"]:
         print(f"  {hit['pattern']}: {hit['match']!r}")
     if not report["clean"]:
-        print("Redaction scan FAILED: private fingerprints or secrets found in artifacts")
+        print(
+            "Redaction scan FAILED: private fingerprints or secrets found in artifacts"
+        )
         return 1
     print("Redaction scan passed.")
     return 0

@@ -9,9 +9,9 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.channels.base import ChannelAdapter, OutgoingMessage, channel_router
@@ -277,7 +277,7 @@ async def start_channel_instance(
     if not adapter.enabled:
         instance.is_active = False
         instance.health_status = "not_enabled"
-        instance.last_health_at = datetime.now(timezone.utc)
+        instance.last_health_at = datetime.now(UTC)
         await db.commit()
         return {
             "status": "not_enabled",
@@ -301,14 +301,14 @@ async def start_channel_instance(
         channel_router.unregister(instance_id)
         instance.is_active = False
         instance.health_status = "unhealthy"
-        instance.last_health_at = datetime.now(timezone.utc)
+        instance.last_health_at = datetime.now(UTC)
         await db.commit()
         raise RuntimeError(PUBLIC_HEALTH_ERROR)
 
     # Update DB status
     instance.is_active = True
     instance.health_status = "healthy"
-    instance.last_health_at = datetime.now(timezone.utc)
+    instance.last_health_at = datetime.now(UTC)
     await db.commit()
 
     logger.info("Started channel instance %s (%s)", instance_id, instance.platform)
@@ -359,7 +359,7 @@ async def stop_project_channel_instances(db: AsyncSession, project_id: str) -> i
     )
     instances = list(result.scalars().all())
     stopped = 0
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for instance in instances:
         adapter = channel_router.get(instance.id)
@@ -433,7 +433,7 @@ async def health_check_instance(
 
     # Persist health status
     instance.health_status = health.get("status", "unknown")
-    instance.last_health_at = datetime.now(timezone.utc)
+    instance.last_health_at = datetime.now(UTC)
     await db.commit()
 
     return health

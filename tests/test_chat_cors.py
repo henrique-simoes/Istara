@@ -11,8 +11,12 @@ from app.main import app
 
 @pytest.mark.asyncio
 async def test_chat_preflight_allows_the_agent_engine_header() -> None:
-    origin = next(item.strip() for item in settings.cors_origins.split(",") if item.strip())
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    origin = next(
+        item.strip() for item in settings.cors_origins.split(",") if item.strip()
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.options(
             "/api/chat",
             headers={
@@ -31,7 +35,9 @@ async def test_chat_preflight_allows_the_agent_engine_header() -> None:
 
 @pytest.mark.asyncio
 async def test_chat_preflight_does_not_broaden_origin_trust() -> None:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.options(
             "/api/chat",
             headers={

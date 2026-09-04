@@ -11,13 +11,16 @@ from app.core.improvement_governance_contracts import (
     POLICY,
     RISK,
     STATUS,
+)
+from app.core.improvement_governance_contracts import (
     clean_payload as _clean_payload,
+)
+from app.core.improvement_governance_contracts import (
     clean_string as _clean_string,
-    normalize_surface as _normalize_surface,
+)
+from app.core.improvement_governance_contracts import (
     utcnow as _utcnow,
 )
-from app.core.improvement_governance_policy import ImprovementPolicyMixin
-from app.core.sandbox_evaluation import sandbox_evaluation
 from app.models.database import async_session
 from app.models.improvement_governance import ImprovementProposal
 

@@ -49,11 +49,14 @@ async def test_whatsapp_webhook_rejects_missing_signature():
 async def test_whatsapp_webhook_accepts_valid_meta_signature():
     secret = "app-secret"
     raw_body = json.dumps({"entry": []}, separators=(",", ":")).encode("utf-8")
-    signature = "sha256=" + hmac.new(
-        secret.encode("utf-8"),
-        raw_body,
-        hashlib.sha256,
-    ).hexdigest()
+    signature = (
+        "sha256="
+        + hmac.new(
+            secret.encode("utf-8"),
+            raw_body,
+            hashlib.sha256,
+        ).hexdigest()
+    )
     adapter = WhatsAppAdapter(
         "wa-test",
         {
@@ -85,11 +88,14 @@ async def test_whatsapp_webhook_accepts_valid_meta_signature():
 async def test_whatsapp_webhook_rejects_exact_replay():
     secret = "app-secret"
     raw_body = json.dumps({"entry": []}, separators=(",", ":")).encode("utf-8")
-    signature = "sha256=" + hmac.new(
-        secret.encode("utf-8"),
-        raw_body,
-        hashlib.sha256,
-    ).hexdigest()
+    signature = (
+        "sha256="
+        + hmac.new(
+            secret.encode("utf-8"),
+            raw_body,
+            hashlib.sha256,
+        ).hexdigest()
+    )
     adapter = WhatsAppAdapter(
         "wa-test",
         {
@@ -140,7 +146,9 @@ async def test_google_chat_webhook_requires_shared_token():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/webhooks/google-chat/gc-test", json={"type": "MESSAGE"})
+        response = await ac.post(
+            "/webhooks/google-chat/gc-test", json={"type": "MESSAGE"}
+        )
 
     assert response.status_code == 403
     assert response.json()["detail"] == "Invalid Google Chat webhook token"

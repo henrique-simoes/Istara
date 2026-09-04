@@ -56,7 +56,9 @@ def cap_text(text: str) -> tuple[str, dict[str, Any] | None]:
     }
 
 
-def redact_secrets(value: Any, *, secret_values: tuple[str, ...] = ()) -> tuple[Any, list[str]]:
+def redact_secrets(
+    value: Any, *, secret_values: tuple[str, ...] = ()
+) -> tuple[Any, list[str]]:
     """Recursively redact secrets from a JSON-able value.
 
     Returns (redacted_value, redaction_descriptions). Redacts (a) exact matches of
@@ -74,7 +76,9 @@ def redact_secrets(value: Any, *, secret_values: tuple[str, ...] = ()) -> tuple[
                     redactions.append("provider_api_key_value")
         for pattern in _SECRET_PATTERNS:
             if pattern.search(out):
-                out = pattern.sub(lambda m: (m.group(1) + REDACTED) if m.groups() else REDACTED, out)
+                out = pattern.sub(
+                    lambda m: (m.group(1) + REDACTED) if m.groups() else REDACTED, out
+                )
                 label = f"pattern:{pattern.pattern[:24]}"
                 if label not in redactions:
                     redactions.append(label)
@@ -87,7 +91,14 @@ def redact_secrets(value: Any, *, secret_values: tuple[str, ...] = ()) -> tuple[
             scrubbed = {}
             for key, val in node.items():
                 key_str = str(key)
-                if key_str.lower() in {"api_key", "authorization", "auth_header", "token", "secret", "password"}:
+                if key_str.lower() in {
+                    "api_key",
+                    "authorization",
+                    "auth_header",
+                    "token",
+                    "secret",
+                    "password",
+                }:
                     scrubbed[key_str] = REDACTED
                     redactions.append(f"credential_field:{path}/{key_str}")
                     continue

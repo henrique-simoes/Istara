@@ -32,7 +32,16 @@ from app.core.validation_executor import ValidationExecutor, ValidationResult
 from app.core.report_manager import ReportManager, SCOPE_MAP, SYNTHESIS_SKILLS
 
 # Ensure ALL models are registered with Base (mirrors database.init_db imports)
-from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
+from app.models import (
+    agent,
+    codebook,
+    document,
+    finding,
+    message,
+    project,
+    session,
+    task,
+)  # noqa: F401
 from app.models import user  # noqa: F401
 from app.models import llm_server, method_metric  # noqa: F401
 from app.core.checkpoint import TaskCheckpoint  # noqa: F401
@@ -60,6 +69,7 @@ from app.models.autoresearch_experiment import AutoresearchExperiment  # noqa: F
 # Fixtures: in-memory async SQLite for model tests
 # ============================================================
 
+
 @pytest.fixture
 async def db_session():
     """Create an in-memory async SQLite session for model tests."""
@@ -71,7 +81,9 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with session_factory() as session:
         yield session
 
@@ -83,6 +95,7 @@ async def db_session():
 # ============================================================
 # 1. CodebookVersion Model Tests
 # ============================================================
+
 
 class TestCodebookVersionModel:
     """Test the CodebookVersion ORM model."""
@@ -122,8 +135,12 @@ class TestCodebookVersionModel:
     async def test_codes_json_structure_with_six_components(self, db_session):
         """Verify codes_json structure contains the 6 required Saldana components."""
         required_keys = {
-            "label", "brief_definition", "full_definition",
-            "exclusion_criteria", "typical_example", "boundary_example",
+            "label",
+            "brief_definition",
+            "full_definition",
+            "exclusion_criteria",
+            "typical_example",
+            "boundary_example",
         }
         codes = [
             {

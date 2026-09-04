@@ -9,7 +9,10 @@ import pytest
 from sqlalchemy import select
 
 from app.core.pi_runtime.idempotency import execute_with_idempotency
-from app.core.pi_runtime.supervisor import PiRuntimeSupervisor, current_tool_call_context
+from app.core.pi_runtime.supervisor import (
+    PiRuntimeSupervisor,
+    current_tool_call_context,
+)
 from app.models.database import async_session, init_db
 from app.models.pi_tool_execution import PiToolExecution
 from app.models.project import Project
@@ -91,10 +94,16 @@ async def test_completed_mutation_replays_without_second_authority_call():
     assert len(calls) == 1
     async with async_session() as db:
         rows = (
-            await db.execute(
-                select(PiToolExecution).where(PiToolExecution.project_id == project_id)
+            (
+                await db.execute(
+                    select(PiToolExecution).where(
+                        PiToolExecution.project_id == project_id
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert len(rows) == 1
     assert rows[0].status == "succeeded"
     assert rows[0].args_hash

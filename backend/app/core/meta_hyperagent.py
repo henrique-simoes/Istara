@@ -22,8 +22,8 @@ import logging
 import os
 import tempfile
 import uuid
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -260,7 +260,7 @@ class MetaHyperagent:
         """Append an entry to the audit log (JSONL)."""
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "action": action,
             **details,
         }
@@ -279,7 +279,7 @@ class MetaHyperagent:
         """
         scoped_project_id = self._require_project_id(project_id)
         observation: dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "project_id": scoped_project_id,
             "task_routing": {},
             "self_evolution": {},
@@ -480,7 +480,7 @@ class MetaHyperagent:
                             confidence=60,
                             expected_impact="More skills matched directly, fewer semantic fallbacks",
                             status="pending",
-                            created_at=datetime.now(timezone.utc).isoformat(),
+                            created_at=datetime.now(UTC).isoformat(),
                             project_id=scoped_project_id,
                         )
                     )
@@ -523,7 +523,7 @@ class MetaHyperagent:
                         confidence=45,
                         expected_impact="More learnings promoted, faster agent adaptation",
                         status="pending",
-                        created_at=datetime.now(timezone.utc).isoformat(),
+                        created_at=datetime.now(UTC).isoformat(),
                         project_id=scoped_project_id,
                     )
                 )
@@ -568,7 +568,7 @@ class MetaHyperagent:
                             confidence=55,
                             expected_impact="Higher quality promoted learnings, fewer bad promotions",
                             status="pending",
-                            created_at=datetime.now(timezone.utc).isoformat(),
+                            created_at=datetime.now(UTC).isoformat(),
                             project_id=scoped_project_id,
                         )
                     )
@@ -704,7 +704,7 @@ class MetaHyperagent:
         # Create a project-scoped variant. The owning services consult active
         # variants at read time; meta-hyperagent must not mutate module globals
         # for project-specific evidence.
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = datetime.now(UTC).isoformat()
         variant = MetaVariant(
             id=f"mv_{uuid.uuid4().hex[:12]}",
             proposal_id=proposal_id,
@@ -753,7 +753,7 @@ class MetaHyperagent:
         if variant["status"] != "active":
             return {"error": f"Variant status is '{variant['status']}', expected 'active'"}
 
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = datetime.now(UTC).isoformat()
         variant["status"] = "reverted"
         variant["reverted_at"] = now_iso
 
@@ -807,7 +807,7 @@ class MetaHyperagent:
         project_overrides[variant["parameter_path"]] = {
             "value": variant["new_value"],
             "variant_id": variant_id,
-            "confirmed_at": datetime.now(timezone.utc).isoformat(),
+            "confirmed_at": datetime.now(UTC).isoformat(),
             "project_id": scoped_project_id,
         }
         _atomic_write(OVERRIDES_FILE, json.dumps(overrides, indent=2, default=str))
@@ -1124,7 +1124,7 @@ class MetaHyperagent:
                 and self._matches_project(p, scoped_project_id)
             ):
                 p["status"] = "rejected"
-                p["reviewed_at"] = datetime.now(timezone.utc).isoformat()
+                p["reviewed_at"] = datetime.now(UTC).isoformat()
                 if reason:
                     p["reject_reason"] = reason
                 self._save()

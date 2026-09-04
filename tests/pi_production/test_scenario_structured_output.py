@@ -53,9 +53,15 @@ class _OpenAIStructuredHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.end_headers()
-        chunk = {"model": "stub-model", "choices": [{"index": 0, "delta": {"content": self.body}}]}
+        chunk = {
+            "model": "stub-model",
+            "choices": [{"index": 0, "delta": {"content": self.body}}],
+        }
         self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
-        done = {"model": "stub-model", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
+        done = {
+            "model": "stub-model",
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+        }
         self.wfile.write(f"data: {json.dumps(done)}\n\n".encode())
         self.wfile.write(b"data: [DONE]\n\n")
         self.wfile.flush()
@@ -80,18 +86,47 @@ class _AnthropicStructuredHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.end_headers()
-        self._sse("message_start", {"type": "message_start", "message": {
-            "id": "msg_stub_1", "type": "message", "role": "assistant",
-            "model": "stub-model", "content": [], "stop_reason": None,
-            "stop_sequence": None, "usage": {"input_tokens": 10, "output_tokens": 1}}})
-        self._sse("content_block_start", {"type": "content_block_start", "index": 0,
-            "content_block": {"type": "text", "text": ""}})
-        self._sse("content_block_delta", {"type": "content_block_delta", "index": 0,
-            "delta": {"type": "text_delta", "text": self.body}})
+        self._sse(
+            "message_start",
+            {
+                "type": "message_start",
+                "message": {
+                    "id": "msg_stub_1",
+                    "type": "message",
+                    "role": "assistant",
+                    "model": "stub-model",
+                    "content": [],
+                    "stop_reason": None,
+                    "stop_sequence": None,
+                    "usage": {"input_tokens": 10, "output_tokens": 1},
+                },
+            },
+        )
+        self._sse(
+            "content_block_start",
+            {
+                "type": "content_block_start",
+                "index": 0,
+                "content_block": {"type": "text", "text": ""},
+            },
+        )
+        self._sse(
+            "content_block_delta",
+            {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {"type": "text_delta", "text": self.body},
+            },
+        )
         self._sse("content_block_stop", {"type": "content_block_stop", "index": 0})
-        self._sse("message_delta", {"type": "message_delta",
-            "delta": {"stop_reason": "end_turn", "stop_sequence": None},
-            "usage": {"output_tokens": 5}})
+        self._sse(
+            "message_delta",
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": "end_turn", "stop_sequence": None},
+                "usage": {"output_tokens": 5},
+            },
+        )
         self._sse("message_stop", {"type": "message_stop"})
         self.wfile.flush()
 
@@ -131,9 +166,13 @@ async def _run_structured_turn(handler_cls, provider_kind, endpoint_id):
     events: list[dict] = []
     try:
         async for e in svc.run_chat_turn(
-            project_id=f"pi-prod-s4-{uuid.uuid4()}", agent_id="istara-main",
-            system_prompt="Emit a structured verdict.", history=[],
-            user_text="Grade this.", tool_executor=_no_tools, allowed_tools=[],
+            project_id=f"pi-prod-s4-{uuid.uuid4()}",
+            agent_id="istara-main",
+            system_prompt="Emit a structured verdict.",
+            history=[],
+            user_text="Grade this.",
+            tool_executor=_no_tools,
+            allowed_tools=[],
             endpoint_id=endpoint_id,
         ):
             events.append(e)

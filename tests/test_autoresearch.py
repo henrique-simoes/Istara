@@ -127,42 +127,44 @@ async def test_autoresearch_status_metrics_are_project_scoped(auth_headers):
     project_b = f"autoresearch-scope-b-{suffix}"
 
     async with async_session() as db:
-        db.add_all([
-            Project(id=project_a, name="Autoresearch Scope A"),
-            Project(id=project_b, name="Autoresearch Scope B"),
-            Task(
-                id=f"ar-task-a-{suffix}",
-                project_id=project_a,
-                title="A done task",
-                status=TaskStatus.DONE,
-                review_state="approved",
-            ),
-            Task(
-                id=f"ar-task-b-{suffix}",
-                project_id=project_b,
-                title="B in review task",
-                status=TaskStatus.IN_REVIEW,
-                review_state="needs_revision",
-            ),
-            ResearchDeployment(
-                id=f"ar-deploy-a-{suffix}",
-                project_id=project_a,
-                name="A deployment",
-                deployment_type="survey",
-                state="active",
-                target_responses=10,
-                current_responses=4,
-            ),
-            ResearchDeployment(
-                id=f"ar-deploy-b-{suffix}",
-                project_id=project_b,
-                name="B deployment",
-                deployment_type="survey",
-                state="active",
-                target_responses=50,
-                current_responses=30,
-            ),
-        ])
+        db.add_all(
+            [
+                Project(id=project_a, name="Autoresearch Scope A"),
+                Project(id=project_b, name="Autoresearch Scope B"),
+                Task(
+                    id=f"ar-task-a-{suffix}",
+                    project_id=project_a,
+                    title="A done task",
+                    status=TaskStatus.DONE,
+                    review_state="approved",
+                ),
+                Task(
+                    id=f"ar-task-b-{suffix}",
+                    project_id=project_b,
+                    title="B in review task",
+                    status=TaskStatus.IN_REVIEW,
+                    review_state="needs_revision",
+                ),
+                ResearchDeployment(
+                    id=f"ar-deploy-a-{suffix}",
+                    project_id=project_a,
+                    name="A deployment",
+                    deployment_type="survey",
+                    state="active",
+                    target_responses=10,
+                    current_responses=4,
+                ),
+                ResearchDeployment(
+                    id=f"ar-deploy-b-{suffix}",
+                    project_id=project_b,
+                    name="B deployment",
+                    deployment_type="survey",
+                    state="active",
+                    target_responses=50,
+                    current_responses=30,
+                ),
+            ]
+        )
         await db.commit()
 
     transport = ASGITransport(app=app)
@@ -193,7 +195,9 @@ def test_get_runner_returns_runner_instance():
 
 
 @pytest.mark.asyncio
-async def test_start_autoresearch_calls_engine_with_runner_and_clamped_iterations(monkeypatch):
+async def test_start_autoresearch_calls_engine_with_runner_and_clamped_iterations(
+    monkeypatch,
+):
     await init_db()
     settings.team_mode = False
     settings.autoresearch_enabled = True
@@ -223,7 +227,9 @@ async def test_start_autoresearch_calls_engine_with_runner_and_clamped_iteration
     fake_engine = FakeEngine()
     fake_runner = SimpleNamespace(loop_type="model_temp")
     monkeypatch.setattr("app.api.routes.autoresearch._get_engine", lambda: fake_engine)
-    monkeypatch.setattr("app.api.routes.autoresearch._get_runner", lambda loop_type: fake_runner)
+    monkeypatch.setattr(
+        "app.api.routes.autoresearch._get_runner", lambda loop_type: fake_runner
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -253,7 +259,9 @@ async def test_start_autoresearch_calls_engine_with_runner_and_clamped_iteration
 
 
 @pytest.mark.asyncio
-async def test_start_autoresearch_dry_run_without_pi_does_not_start_background_loop(monkeypatch):
+async def test_start_autoresearch_dry_run_without_pi_does_not_start_background_loop(
+    monkeypatch,
+):
     from fastapi import BackgroundTasks
     from app.api.routes import autoresearch as autoresearch_route
 
@@ -267,8 +275,12 @@ async def test_start_autoresearch_dry_run_without_pi_does_not_start_background_l
         is_running = False
 
     background_tasks = BackgroundTasks()
-    background_tasks.add_task = lambda fn, *args, **kwargs: added.append((fn, args, kwargs))
-    monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", fake_project_scope)
+    background_tasks.add_task = lambda fn, *args, **kwargs: added.append(
+        (fn, args, kwargs)
+    )
+    monkeypatch.setattr(
+        autoresearch_route, "_require_active_project_scope", fake_project_scope
+    )
     monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: FakeEngine())
 
     result = await autoresearch_route.start_experiment(
@@ -304,7 +316,9 @@ async def test_start_autoresearch_dry_run_rejects_unknown_loop_type(monkeypatch)
         is_running = False
 
     background_tasks = BackgroundTasks()
-    monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", fake_project_scope)
+    monkeypatch.setattr(
+        autoresearch_route, "_require_active_project_scope", fake_project_scope
+    )
     monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: FakeEngine())
 
     with pytest.raises(HTTPException) as exc_info:
@@ -400,7 +414,9 @@ async def test_question_bank_runner_rejects_cross_project_deployment_target():
         await db.commit()
 
     runner = QuestionBankRunner()
-    with pytest.raises(RuntimeError, match="project_id is required for autoresearch runner"):
+    with pytest.raises(
+        RuntimeError, match="project_id is required for autoresearch runner"
+    ):
         await runner._load_deployment(deployment_a)
 
     runner.bind_project(project_a)
@@ -420,7 +436,9 @@ async def test_question_bank_runner_rejects_cross_project_deployment_target():
     async with async_session() as db:
         cross_project = await db.get(ResearchDeployment, deployment_b)
         assert cross_project is not None
-        assert json.loads(cross_project.questions_json) == [{"text": "Other?", "type": "open"}]
+        assert json.loads(cross_project.questions_json) == [
+            {"text": "Other?", "type": "open"}
+        ]
         assert json.loads(cross_project.config_json) == {}
 
 
@@ -510,7 +528,9 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
             return 0.5
 
         async def hypothesize(self, target, best_score, results):
-            return "Improve model temperature for synthesis", {"description": "temperature +0.1"}
+            return "Improve model temperature for synthesis", {
+                "description": "temperature +0.1"
+            }
 
         async def apply_mutation(self, target, mutation):
             self.mutated = True
@@ -543,10 +563,14 @@ async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
         return ["proposal-1"]
 
     record = AsyncMock()
-    monkeypatch.setattr("app.core.autoresearch_engine.check_experiment_limit", allow_experiment)
+    monkeypatch.setattr(
+        "app.core.autoresearch_engine.check_experiment_limit", allow_experiment
+    )
     monkeypatch.setattr(AutoresearchEngine, "_persist_experiment", fake_persist)
     monkeypatch.setattr(AutoresearchEngine, "_record_reasoning_memory", fake_record)
-    monkeypatch.setattr(AutoresearchEngine, "_register_improvement_proposals", fake_register)
+    monkeypatch.setattr(
+        AutoresearchEngine, "_register_improvement_proposals", fake_register
+    )
     monkeypatch.setattr(
         "app.core.telemetry.telemetry_recorder.record_research_validity_event",
         record,

@@ -27,8 +27,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 LIFECYCLE = REPO_ROOT / "backend/app/core/agent_lifecycle.py"
 
 SPINE_PHASES = {
-    "intent", "context", "plan", "tool_selection", "execution",
-    "recovery", "grounding", "synthesis", "review", "governance",
+    "intent",
+    "context",
+    "plan",
+    "tool_selection",
+    "execution",
+    "recovery",
+    "grounding",
+    "synthesis",
+    "review",
+    "governance",
 }
 
 
@@ -39,7 +47,10 @@ def _function_source(function_name: str) -> str:
     text = LIFECYCLE.read_text(encoding="utf-8")
     tree = ast.parse(text)
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        ):
             return ast.get_source_segment(text, node) or ""
     raise AssertionError(f"{function_name} not found in {LIFECYCLE}")
 
@@ -123,7 +134,9 @@ def _debate_msg(**overrides):
     return msg
 
 
-async def test_handle_debate_flag_on_dispatches_a2a_debate_critique(monkeypatch, _agentic_core_on):
+async def test_handle_debate_flag_on_dispatches_a2a_debate_critique(
+    monkeypatch, _agentic_core_on
+):
     import app.services.a2a as a2a_service
 
     dispatcher_stub = _StubAgentic(text="dispatcher critique")
@@ -143,14 +156,18 @@ async def test_handle_debate_flag_on_dispatches_a2a_debate_critique(monkeypatch,
     assert kwargs["project_id"] == "p1"
     assert kwargs["spine_phase"] == "review" and kwargs["spine_phase"] in SPINE_PHASES
     assert "critical reviewer" in kwargs["system"]
-    assert kwargs["messages"] == [{"role": "user", "content": "Please critique this analysis."}]
+    assert kwargs["messages"] == [
+        {"role": "user", "content": "Please critique this analysis."}
+    ]
     assert sent[0]["content"] == "dispatcher critique"
 
 
 # ── behavior: _initiate_debate (synthesis) ───────────────────────────────
 
 
-async def test_initiate_debate_flag_on_synthesizes_via_dispatcher(monkeypatch, _agentic_core_on):
+async def test_initiate_debate_flag_on_synthesizes_via_dispatcher(
+    monkeypatch, _agentic_core_on
+):
     import app.services.a2a as a2a_service
 
     dispatcher_stub = _StubAgentic(text="synthesized analysis")
@@ -161,11 +178,13 @@ async def test_initiate_debate_flag_on_synthesizes_via_dispatcher(monkeypatch, _
 
     async def _get_messages(*args, **kwargs):
         context_id = sent[0]["metadata"]["context_id"]
-        return [{
-            "metadata": {"context_id": context_id},
-            "message_type": "debate_response",
-            "content": "peer critique",
-        }]
+        return [
+            {
+                "metadata": {"context_id": context_id},
+                "message_type": "debate_response",
+                "content": "peer critique",
+            }
+        ]
 
     async def _no_sleep(*args, **kwargs):
         return None
@@ -187,7 +206,9 @@ async def test_initiate_debate_flag_on_synthesizes_via_dispatcher(monkeypatch, _
     assert kwargs["purpose"] == "a2a.debate_synthesis"
     assert kwargs["project_id"] == "p1"
     assert kwargs["task_id"] == "t1"
-    assert kwargs["spine_phase"] == "synthesis" and kwargs["spine_phase"] in SPINE_PHASES
+    assert (
+        kwargs["spine_phase"] == "synthesis" and kwargs["spine_phase"] in SPINE_PHASES
+    )
     user = kwargs["messages"][0]["content"]
     assert "Original analysis" in user and "peer critique" in user
 
@@ -195,7 +216,9 @@ async def test_initiate_debate_flag_on_synthesizes_via_dispatcher(monkeypatch, _
 # ── behavior: _handle_collaboration (chat_turn) ──────────────────────────
 
 
-async def test_handle_collaboration_flag_on_dispatches_chat_turn(monkeypatch, _agentic_core_on):
+async def test_handle_collaboration_flag_on_dispatches_chat_turn(
+    monkeypatch, _agentic_core_on
+):
     import app.services.a2a as a2a_service
 
     dispatcher_stub = _StubAgentic(text="collaboration analysis")
@@ -215,12 +238,17 @@ async def test_handle_collaboration_flag_on_dispatches_chat_turn(monkeypatch, _a
     monkeypatch.setattr(a2a_service, "send_message", _send)
     monkeypatch.setattr(a2a_service, "get_conversation_thread", _thread)
     monkeypatch.setattr(
-        "app.core.agent_identity.get_capability_card", lambda agent_id: {"specialties": ["UX"]}
+        "app.core.agent_identity.get_capability_card",
+        lambda agent_id: {"specialties": ["UX"]},
     )
 
     task = SimpleNamespace(
-        id="t1", project_id="p1", title="Usability study", description="d",
-        status="backlog", agent_notes="",
+        id="t1",
+        project_id="p1",
+        title="Usability study",
+        description="d",
+        status="backlog",
+        agent_notes="",
     )
     db = _StubDB(task=task)
     msg = {
@@ -242,7 +270,9 @@ async def test_handle_collaboration_flag_on_dispatches_chat_turn(monkeypatch, _a
     assert kwargs["messages"] == [], "empty thread maps to empty history"
     assert "Usability study" in kwargs["system_prompt"]
     assert kwargs["task_id"] == "t1"
-    assert kwargs["spine_phase"] == "synthesis" and kwargs["spine_phase"] in SPINE_PHASES
+    assert (
+        kwargs["spine_phase"] == "synthesis" and kwargs["spine_phase"] in SPINE_PHASES
+    )
     assert sent[0]["message_type"] == "collaboration_response"
     assert sent[0]["content"] == "collaboration analysis"
     assert sent[0]["project_id"] == "p1"

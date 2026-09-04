@@ -15,7 +15,7 @@ existing reports, not create new ones.
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from sqlalchemy import select
@@ -173,7 +173,7 @@ class ReportManager:
         report.finding_ids_json = json.dumps(merged)
         report.version += 1
         report.status = "in_progress"
-        report.updated_at = datetime.now(timezone.utc)
+        report.updated_at = datetime.now(UTC)
 
         # Track ensemble consensus score on the report
         if consensus_score is not None:
@@ -441,7 +441,7 @@ class ReportManager:
             merged_ids = _merge_ids([], reportable_ids)
             synth.finding_ids_json = json.dumps(merged_ids)
             synth.version += 1
-            synth.updated_at = datetime.now(timezone.utc)
+            synth.updated_at = datetime.now(UTC)
             await db.commit()
             logger.info(
                 "ReportManager: synthesis updated with %d findings from %d L2 reports",
@@ -646,7 +646,7 @@ class ReportManager:
         if existing_l4:
             existing_l4.finding_ids_json = reportable_ids_json
             existing_l4.version += 1
-            existing_l4.updated_at = datetime.now(timezone.utc)
+            existing_l4.updated_at = datetime.now(UTC)
             l4 = existing_l4
         else:
             l4 = ProjectReport(
@@ -732,7 +732,7 @@ class ReportManager:
     async def _compose_full_report(self, report, project_id: str, db: AsyncSession) -> None:
         """Compose the full L4 report document from template sections."""
         try:
-            from app.models.finding import Nugget, Fact, Insight, Recommendation
+            from app.models.finding import Fact, Insight, Nugget, Recommendation
 
             report_id = report.id
             report_snapshot = SimpleNamespace(
@@ -884,7 +884,7 @@ class ReportManager:
             content = json.loads(fresh_report.content_json or report_snapshot.content_json or "{}")
             content["full_document"] = full_doc
             content["sections"] = [t["section"] for t in self.REPORT_TEMPLATE]
-            content["generated_at"] = datetime.now(timezone.utc).isoformat()
+            content["generated_at"] = datetime.now(UTC).isoformat()
             content["refinement_passes"] = (
                 min(pass_num + 1, MAX_REFINEMENT_PASSES) if "pass_num" in dir() else 0
             )

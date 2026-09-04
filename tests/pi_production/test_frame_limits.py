@@ -23,10 +23,17 @@ async def test_megabyte_tool_result_round_trips_without_poisoning_the_worker():
     try:
         await supervisor.ensure_started()
         await supervisor.open_session(
-            "frame-limit", system_prompt="test", history=[], revision="r1",
-            catalog=[{"name": "read_large_evidence", "description": "test", "parameters": {}}],
+            "frame-limit",
+            system_prompt="test",
+            history=[],
+            revision="r1",
+            catalog=[
+                {"name": "read_large_evidence", "description": "test", "parameters": {}}
+            ],
         )
-        endpoint = faux_endpoint([tool_call("read_large_evidence", {}), final_text("complete")])
+        endpoint = faux_endpoint(
+            [tool_call("read_large_evidence", {}), final_text("complete")]
+        )
         await supervisor.bind_provider(
             "frame-limit",
             {
@@ -40,7 +47,9 @@ async def test_megabyte_tool_result_round_trips_without_poisoning_the_worker():
                 "faux_responses": list(endpoint.faux_responses or ()),
             },
         )
-        frames = [frame async for frame in supervisor.run_turn("frame-limit", "go", authority)]
+        frames = [
+            frame async for frame in supervisor.run_turn("frame-limit", "go", authority)
+        ]
         assert any(frame["type"] == "tool.call" for frame in frames)
         assert any(frame["type"] == "run.completed" for frame in frames)
     finally:

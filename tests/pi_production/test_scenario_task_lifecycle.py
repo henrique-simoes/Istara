@@ -37,8 +37,20 @@ async def test_scenario2_multi_turn_session_persists_plan_then_execute():
 
     sup = PiRuntimeSupervisor()
     session_key = f"{project_id}:plan-execute"
-    plan_svc = faux_service([tool_call("create_task", {"title": "Plan the rollout"}), final_text("Planned.")], sup)
-    exec_svc = faux_service([tool_call("create_task", {"title": "Execute the rollout"}), final_text("Executed.")], sup)
+    plan_svc = faux_service(
+        [
+            tool_call("create_task", {"title": "Plan the rollout"}),
+            final_text("Planned."),
+        ],
+        sup,
+    )
+    exec_svc = faux_service(
+        [
+            tool_call("create_task", {"title": "Execute the rollout"}),
+            final_text("Executed."),
+        ],
+        sup,
+    )
 
     async def authority_exec(name, params, pid, aid):
         return await execute_tool(name, params, pid, agent_id=aid)
@@ -47,8 +59,12 @@ async def test_scenario2_multi_turn_session_persists_plan_then_execute():
     turn2: list[dict] = []
     try:
         async for e in plan_svc.run_chat_turn(
-            project_id=project_id, agent_id="istara-main", system_prompt=_SYS,
-            history=[], user_text="Plan the rollout.", tool_executor=authority_exec,
+            project_id=project_id,
+            agent_id="istara-main",
+            system_prompt=_SYS,
+            history=[],
+            user_text="Plan the rollout.",
+            tool_executor=authority_exec,
             session_key=session_key,
         ):
             turn1.append(e)
@@ -59,8 +75,12 @@ async def test_scenario2_multi_turn_session_persists_plan_then_execute():
             {"role": "assistant", "content": "Planned."},
         ]
         async for e in exec_svc.run_chat_turn(
-            project_id=project_id, agent_id="istara-main", system_prompt=_SYS,
-            history=history, user_text="Now execute the rollout.", tool_executor=authority_exec,
+            project_id=project_id,
+            agent_id="istara-main",
+            system_prompt=_SYS,
+            history=history,
+            user_text="Now execute the rollout.",
+            tool_executor=authority_exec,
             session_key=session_key,
         ):
             turn2.append(e)
@@ -75,7 +95,11 @@ async def test_scenario2_multi_turn_session_persists_plan_then_execute():
 
     # Both plan and execute steps persisted via real Python task services.
     async with async_session() as db:
-        tasks = (await db.execute(select(Task).where(Task.project_id == project_id))).scalars().all()
+        tasks = (
+            (await db.execute(select(Task).where(Task.project_id == project_id)))
+            .scalars()
+            .all()
+        )
     titles = sorted(t.title for t in tasks)
     assert titles == ["Execute the rollout", "Plan the rollout"]
     assert sup.is_running is False
@@ -87,14 +111,18 @@ async def test_scenario3_canonical_tools_enforce_project_scope_cross_project_den
     project_a = f"pi-prod-s3a-{uuid.uuid4()}"
     project_b = f"pi-prod-s3b-{uuid.uuid4()}"
     async with async_session() as db:
-        db.add_all([
-            Project(id=project_a, name="Pi Prod S3 A"),
-            Project(id=project_b, name="Pi Prod S3 B"),
-        ])
+        db.add_all(
+            [
+                Project(id=project_a, name="Pi Prod S3 A"),
+                Project(id=project_b, name="Pi Prod S3 B"),
+            ]
+        )
         await db.commit()
 
     # A private task lives only in project B.
-    await execute_tool("create_task", {"title": "Secret B rollout"}, project_b, agent_id="istara-main")
+    await execute_tool(
+        "create_task", {"title": "Secret B rollout"}, project_b, agent_id="istara-main"
+    )
 
     sup = PiRuntimeSupervisor()
     svc = faux_service(
@@ -118,8 +146,12 @@ async def test_scenario3_canonical_tools_enforce_project_scope_cross_project_den
 
     try:
         async for _ in svc.run_chat_turn(
-            project_id=project_a, agent_id="istara-main", system_prompt=_SYS,
-            history=[], user_text="Create a task then list them.", tool_executor=spy_exec,
+            project_id=project_a,
+            agent_id="istara-main",
+            system_prompt=_SYS,
+            history=[],
+            user_text="Create a task then list them.",
+            tool_executor=spy_exec,
             session_key=f"{project_a}:scope",
         ):
             pass
@@ -133,7 +165,15 @@ async def test_scenario3_canonical_tools_enforce_project_scope_cross_project_den
     assert "Secret B rollout" not in blob  # cross-project content never leaks
 
     async with async_session() as db:
-        b_tasks = (await db.execute(select(Task).where(Task.project_id == project_b))).scalars().all()
-        a_tasks = (await db.execute(select(Task).where(Task.project_id == project_a))).scalars().all()
+        b_tasks = (
+            (await db.execute(select(Task).where(Task.project_id == project_b)))
+            .scalars()
+            .all()
+        )
+        a_tasks = (
+            (await db.execute(select(Task).where(Task.project_id == project_a)))
+            .scalars()
+            .all()
+        )
     assert [t.title for t in b_tasks] == ["Secret B rollout"]
     assert "A-only task" in [t.title for t in a_tasks]

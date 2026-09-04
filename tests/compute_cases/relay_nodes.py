@@ -1,5 +1,6 @@
 from tests.compute_cases.common import *
 
+
 class FakeWebSocket:
     def __init__(self):
         self.sent: list[dict] = []
@@ -189,7 +190,9 @@ async def test_relay_node_chat_stream_requires_project_scope_before_direct_dispa
     node._get_client = fail_get_client
 
     with pytest.raises(RuntimeError, match="project_id is required"):
-        async for _ in node.chat_stream([{"role": "user", "content": "secret"}], model="llama3"):
+        async for _ in node.chat_stream(
+            [{"role": "user", "content": "secret"}], model="llama3"
+        ):
             pass
     with pytest.raises(RuntimeError, match="not authorized"):
         async for _ in node.chat_stream(

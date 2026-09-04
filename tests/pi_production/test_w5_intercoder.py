@@ -40,13 +40,27 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 INTERCODER = REPO_ROOT / "backend/app/skills/intercoder.py"
 
 SPINE_PHASES = {
-    "intent", "context", "plan", "tool_selection", "execution",
-    "recovery", "grounding", "synthesis", "review", "governance",
+    "intent",
+    "context",
+    "plan",
+    "tool_selection",
+    "execution",
+    "recovery",
+    "grounding",
+    "synthesis",
+    "review",
+    "governance",
 }
 
 ALLOWED_SCHEMA_KEYS = {
-    "type", "properties", "required", "items", "enum", "const",
-    "additionalProperties", "description",
+    "type",
+    "properties",
+    "required",
+    "items",
+    "enum",
+    "const",
+    "additionalProperties",
+    "description",
 }
 
 
@@ -57,7 +71,10 @@ def _function_source(function_name: str) -> str:
     text = INTERCODER.read_text(encoding="utf-8")
     tree = ast.parse(text)
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        ):
             return ast.get_source_segment(text, node) or ""
     raise AssertionError(f"{function_name} not found in {INTERCODER}")
 
@@ -69,7 +86,9 @@ def _check_schema_subset(node, path: str = "$") -> None:
     extra = set(node) - ALLOWED_SCHEMA_KEYS
     assert not extra, f"{path}: disallowed schema keys {extra}"
     if "additionalProperties" in node:
-        assert isinstance(node["additionalProperties"], bool), f"{path}.additionalProperties must be bool"
+        assert isinstance(node["additionalProperties"], bool), (
+            f"{path}.additionalProperties must be bool"
+        )
     for key, value in node.get("properties", {}).items():
         _check_schema_subset(value, f"{path}.properties.{key}")
     if "items" in node:
@@ -79,8 +98,13 @@ def _check_schema_subset(node, path: str = "$") -> None:
 class _StubAgentic:
     """Recording stand-in for the ``agentic`` dispatcher singleton."""
 
-    def __init__(self, *, text: str = "dispatcher text", values: dict | None = None,
-                 statuses: dict | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        text: str = "dispatcher text",
+        values: dict | None = None,
+        statuses: dict | None = None,
+    ) -> None:
         self.calls: list[tuple[str, dict]] = []
         self._text = text
         self._values = values or {}
@@ -115,7 +139,10 @@ def _skill():
 def _skill_input(**overrides):
     from app.skills.base import SkillInput
 
-    kwargs = {"project_id": "p1", "user_context": "Interview transcript: users discuss onboarding and export speed."}
+    kwargs = {
+        "project_id": "p1",
+        "user_context": "Interview transcript: users discuss onboarding and export speed.",
+    }
     kwargs.update(overrides)
     return SkillInput(**kwargs)
 
@@ -125,8 +152,18 @@ def _skill_input(**overrides):
 CODER_A_DATA = {
     "codebook": [{"code": "ux", "definition": "usability concerns"}],
     "coding_results": [
-        {"item_id": "seg_1", "text": "the onboarding flow was confusing", "source": "i1.txt", "codes": ["ux"]},
-        {"item_id": "seg_2", "text": "export took forever to finish", "source": "i1.txt", "codes": ["perf"]},
+        {
+            "item_id": "seg_1",
+            "text": "the onboarding flow was confusing",
+            "source": "i1.txt",
+            "codes": ["ux"],
+        },
+        {
+            "item_id": "seg_2",
+            "text": "export took forever to finish",
+            "source": "i1.txt",
+            "codes": ["perf"],
+        },
     ],
 }
 
@@ -146,21 +183,39 @@ CODER_B_DATA_AGREE = {
 
 RECONCILE_DATA = {
     "reconciled": [
-        {"item_id": "seg_2", "final_codes": ["perf"], "rationale": "performance complaint"},
+        {
+            "item_id": "seg_2",
+            "final_codes": ["perf"],
+            "rationale": "performance complaint",
+        },
     ],
     "codebook_refinements": [
-        {"code": "perf", "issue": "ambiguous label", "refined_definition": "latency/speed complaints"},
+        {
+            "code": "perf",
+            "issue": "ambiguous label",
+            "refined_definition": "latency/speed complaints",
+        },
     ],
     "themes": [
-        {"name": "Performance", "definition": "speed concerns", "codes": ["perf"],
-         "prevalence": "minor", "description": "Users mention slowness."},
+        {
+            "name": "Performance",
+            "definition": "speed concerns",
+            "codes": ["perf"],
+            "prevalence": "minor",
+            "description": "Users mention slowness.",
+        },
     ],
 }
 
 THEMES_DATA = {
     "themes": [
-        {"name": "Usability", "definition": "ease-of-use concerns", "codes": ["ux"],
-         "prevalence": "dominant", "description": "Users struggle with onboarding."},
+        {
+            "name": "Usability",
+            "definition": "ease-of-use concerns",
+            "codes": ["ux"],
+            "prevalence": "dominant",
+            "description": "Users struggle with onboarding.",
+        },
     ],
 }
 
@@ -180,8 +235,10 @@ def test_w5_execute_carries_structured_paths():
     execute = _function_source("execute")
     assert execute.count("agentic.structured") == 4
     for purpose in (
-        "skill.kappa_code_a", "skill.kappa_code_b",
-        "skill.kappa_reconcile", "skill.kappa_themes",
+        "skill.kappa_code_a",
+        "skill.kappa_code_b",
+        "skill.kappa_reconcile",
+        "skill.kappa_themes",
     ):
         assert f'purpose="{purpose}"' in execute
     assert "agentic_core" not in execute, "W9 removed the feature-flag gate"
@@ -192,8 +249,10 @@ def test_w5_schemas_stay_inside_pi_forced_tool_subset():
     from app.skills import intercoder
 
     for schema in (
-        intercoder._CODER_A_SCHEMA, intercoder._CODER_B_SCHEMA,
-        intercoder._RECONCILIATION_SCHEMA, intercoder._THEMES_SCHEMA,
+        intercoder._CODER_A_SCHEMA,
+        intercoder._CODER_B_SCHEMA,
+        intercoder._RECONCILIATION_SCHEMA,
+        intercoder._THEMES_SCHEMA,
     ):
         assert schema.get("type") == "object"
         _check_schema_subset(schema)
@@ -221,12 +280,16 @@ async def test_plan_flag_on_dispatches_skill_kappa_plan(monkeypatch, _agentic_co
 # ── behavior: execute — disagreement path (reconcile) ───────────────────
 
 
-async def test_execute_flag_on_dispatches_structured_calls_and_reconciles(monkeypatch, _agentic_core_on):
-    dispatcher_stub = _StubAgentic(values={
-        "skill.kappa_code_a": CODER_A_DATA,
-        "skill.kappa_code_b": CODER_B_DATA_DISAGREE,
-        "skill.kappa_reconcile": RECONCILE_DATA,
-    })
+async def test_execute_flag_on_dispatches_structured_calls_and_reconciles(
+    monkeypatch, _agentic_core_on
+):
+    dispatcher_stub = _StubAgentic(
+        values={
+            "skill.kappa_code_a": CODER_A_DATA,
+            "skill.kappa_code_b": CODER_B_DATA_DISAGREE,
+            "skill.kappa_reconcile": RECONCILE_DATA,
+        }
+    )
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
@@ -234,7 +297,11 @@ async def test_execute_flag_on_dispatches_structured_calls_and_reconciles(monkey
 
     assert [method for method, _ in dispatcher_stub.calls] == ["structured"] * 3
     purposes = [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls]
-    assert purposes == ["skill.kappa_code_a", "skill.kappa_code_b", "skill.kappa_reconcile"]
+    assert purposes == [
+        "skill.kappa_code_a",
+        "skill.kappa_code_b",
+        "skill.kappa_reconcile",
+    ]
     for _, kwargs in dispatcher_stub.calls:
         assert kwargs["project_id"] == "p1"
         assert kwargs["params"].temperature == 0.3
@@ -247,35 +314,51 @@ async def test_execute_flag_on_dispatches_structured_calls_and_reconciles(monkey
     seg_2 = next(n for n in output.nuggets if "export" in n["text"])
     assert seg_2["tags"] == ["perf"]
     assert "Cohen's Kappa" in output.insights[0]["text"]
-    theme_insights = [i for i in output.insights if i["text"].startswith("Theme: Performance")]
-    assert theme_insights, "themes from the reconciliation call must surface as insights"
+    theme_insights = [
+        i for i in output.insights if i["text"].startswith("Theme: Performance")
+    ]
+    assert theme_insights, (
+        "themes from the reconciliation call must surface as insights"
+    )
 
 
 # ── behavior: execute — all-agreed path (theme extraction) ──────────────
 
 
-async def test_execute_flag_on_all_agreed_dispatches_kappa_themes(monkeypatch, _agentic_core_on):
-    dispatcher_stub = _StubAgentic(values={
-        "skill.kappa_code_a": CODER_A_DATA,
-        "skill.kappa_code_b": CODER_B_DATA_AGREE,
-        "skill.kappa_themes": THEMES_DATA,
-    })
+async def test_execute_flag_on_all_agreed_dispatches_kappa_themes(
+    monkeypatch, _agentic_core_on
+):
+    dispatcher_stub = _StubAgentic(
+        values={
+            "skill.kappa_code_a": CODER_A_DATA,
+            "skill.kappa_code_b": CODER_B_DATA_AGREE,
+            "skill.kappa_themes": THEMES_DATA,
+        }
+    )
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _skill().execute(_skill_input())
 
     purposes = [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls]
-    assert purposes == ["skill.kappa_code_a", "skill.kappa_code_b", "skill.kappa_themes"]
+    assert purposes == [
+        "skill.kappa_code_a",
+        "skill.kappa_code_b",
+        "skill.kappa_themes",
+    ]
     assert output.success
-    theme_insights = [i for i in output.insights if i["text"].startswith("Theme: Usability")]
+    theme_insights = [
+        i for i in output.insights if i["text"].startswith("Theme: Usability")
+    ]
     assert theme_insights, "theme-extraction call must feed the insights list"
 
 
 # ── behavior: parse-failure fallback mirrors the legacy path ─────────────
 
 
-async def test_execute_flag_on_failed_coder_a_returns_failure_output(monkeypatch, _agentic_core_on):
+async def test_execute_flag_on_failed_coder_a_returns_failure_output(
+    monkeypatch, _agentic_core_on
+):
     dispatcher_stub = _StubAgentic(
         values={"skill.kappa_code_a": {}},
         statuses={"skill.kappa_code_a": "error"},
@@ -285,9 +368,13 @@ async def test_execute_flag_on_failed_coder_a_returns_failure_output(monkeypatch
 
     output = await _skill().execute(_skill_input())
 
-    assert not output.success, "empty Coder A value must mirror the legacy parse-failure path"
+    assert not output.success, (
+        "empty Coder A value must mirror the legacy parse-failure path"
+    )
     assert output.summary == "Coder A produced no coding results."
-    assert len(dispatcher_stub.calls) == 1, "pipeline must stop after the failed first pass"
+    assert len(dispatcher_stub.calls) == 1, (
+        "pipeline must stop after the failed first pass"
+    )
 
 
 # ── raise-path: Pi engine fail-closed errors degrade, never escape ──────
@@ -317,19 +404,29 @@ def _raising_dispatcher(dispatcher_stub, *, raise_for):
     return dispatcher_stub
 
 
-async def test_execute_flag_on_coder_a_raise_returns_failure_output(monkeypatch, _agentic_core_on):
-    dispatcher_stub = _raising_dispatcher(_StubAgentic(), raise_for={"skill.kappa_code_a"})
+async def test_execute_flag_on_coder_a_raise_returns_failure_output(
+    monkeypatch, _agentic_core_on
+):
+    dispatcher_stub = _raising_dispatcher(
+        _StubAgentic(), raise_for={"skill.kappa_code_a"}
+    )
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     output = await _skill().execute(_skill_input())
 
-    assert not output.success, "raised Coder A must mirror the empty-coding path, not escape"
+    assert not output.success, (
+        "raised Coder A must mirror the empty-coding path, not escape"
+    )
     assert output.summary == "Coder A produced no coding results."
-    assert len(dispatcher_stub.calls) == 1, "pipeline must stop after the raised first pass"
+    assert len(dispatcher_stub.calls) == 1, (
+        "pipeline must stop after the raised first pass"
+    )
 
 
-async def test_execute_flag_on_coder_b_raise_degrades_to_union_coding(monkeypatch, _agentic_core_on):
+async def test_execute_flag_on_coder_b_raise_degrades_to_union_coding(
+    monkeypatch, _agentic_core_on
+):
     dispatcher_stub = _raising_dispatcher(
         _StubAgentic(values={"skill.kappa_code_a": CODER_A_DATA}),
         raise_for={"skill.kappa_code_b"},
@@ -346,15 +443,23 @@ async def test_execute_flag_on_coder_b_raise_degrades_to_union_coding(monkeypatc
     seg_2 = next(n for n in output.nuggets if "export" in n["text"])
     assert seg_2["tags"] == ["perf"], "empty Coder B leaves Coder A's union codes"
     purposes = [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls]
-    assert purposes == ["skill.kappa_code_a", "skill.kappa_code_b", "skill.kappa_reconcile"]
+    assert purposes == [
+        "skill.kappa_code_a",
+        "skill.kappa_code_b",
+        "skill.kappa_reconcile",
+    ]
 
 
-async def test_execute_flag_on_reconcile_raise_keeps_union_codes(monkeypatch, _agentic_core_on):
+async def test_execute_flag_on_reconcile_raise_keeps_union_codes(
+    monkeypatch, _agentic_core_on
+):
     dispatcher_stub = _raising_dispatcher(
-        _StubAgentic(values={
-            "skill.kappa_code_a": CODER_A_DATA,
-            "skill.kappa_code_b": CODER_B_DATA_DISAGREE,
-        }),
+        _StubAgentic(
+            values={
+                "skill.kappa_code_a": CODER_A_DATA,
+                "skill.kappa_code_b": CODER_B_DATA_DISAGREE,
+            }
+        ),
         raise_for={"skill.kappa_reconcile"},
     )
 
@@ -366,18 +471,28 @@ async def test_execute_flag_on_reconcile_raise_keeps_union_codes(monkeypatch, _a
     # coder union and no themes surface, but the analysis still completes.
     assert output.success, "raised reconciliation must degrade, not escape"
     seg_2 = next(n for n in output.nuggets if "export" in n["text"])
-    assert set(seg_2["tags"]) == {"perf", "speed"}, "unreconciled disagreement keeps the union"
+    assert set(seg_2["tags"]) == {"perf", "speed"}, (
+        "unreconciled disagreement keeps the union"
+    )
     assert not any(i["text"].startswith("Theme:") for i in output.insights)
     purposes = [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls]
-    assert purposes == ["skill.kappa_code_a", "skill.kappa_code_b", "skill.kappa_reconcile"]
+    assert purposes == [
+        "skill.kappa_code_a",
+        "skill.kappa_code_b",
+        "skill.kappa_reconcile",
+    ]
 
 
-async def test_execute_flag_on_all_agreed_themes_raise_keeps_no_themes(monkeypatch, _agentic_core_on):
+async def test_execute_flag_on_all_agreed_themes_raise_keeps_no_themes(
+    monkeypatch, _agentic_core_on
+):
     dispatcher_stub = _raising_dispatcher(
-        _StubAgentic(values={
-            "skill.kappa_code_a": CODER_A_DATA,
-            "skill.kappa_code_b": CODER_B_DATA_AGREE,
-        }),
+        _StubAgentic(
+            values={
+                "skill.kappa_code_a": CODER_A_DATA,
+                "skill.kappa_code_b": CODER_B_DATA_AGREE,
+            }
+        ),
         raise_for={"skill.kappa_themes"},
     )
 
@@ -390,4 +505,8 @@ async def test_execute_flag_on_all_agreed_themes_raise_keeps_no_themes(monkeypat
     assert output.success, "raised theme extraction must degrade, not escape"
     assert not any(i["text"].startswith("Theme:") for i in output.insights)
     purposes = [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls]
-    assert purposes == ["skill.kappa_code_a", "skill.kappa_code_b", "skill.kappa_themes"]
+    assert purposes == [
+        "skill.kappa_code_a",
+        "skill.kappa_code_b",
+        "skill.kappa_themes",
+    ]

@@ -66,9 +66,15 @@ class _OpenAIStubHandler(BaseHTTPRequestHandler):
             # The model identity must come from the provider response, not the
             # endpoint request label.  This loopback receipt exercises the
             # worker's SSE observer and the Python engine propagation path.
-            chunk = {"model": "stub-model", "choices": [{"index": 0, "delta": {"content": piece}}]}
+            chunk = {
+                "model": "stub-model",
+                "choices": [{"index": 0, "delta": {"content": piece}}],
+            }
             self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
-        done = {"model": "stub-model", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
+        done = {
+            "model": "stub-model",
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+        }
         self.wfile.write(f"data: {json.dumps(done)}\n\n".encode())
         self.wfile.write(b"data: [DONE]\n\n")
         self.wfile.flush()
@@ -102,7 +108,9 @@ async def test_engine_drives_real_openai_compat_http_stack_and_records_endpoint_
         max_retries=0,
     )
     supervisor = PiRuntimeSupervisor()
-    service = PiExecutionService(resolver=_FixedResolver(endpoint), supervisor=supervisor)
+    service = PiExecutionService(
+        resolver=_FixedResolver(endpoint), supervisor=supervisor
+    )
 
     events: list[dict] = []
 

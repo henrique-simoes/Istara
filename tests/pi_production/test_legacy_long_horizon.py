@@ -20,7 +20,9 @@ def _isolated(manager: PiModelManager) -> PiModelManager:
 
 
 @pytest.mark.asyncio
-async def test_legacy_chat_tool_loop_survives_pi_worker_horizon_with_shared_manager(monkeypatch):
+async def test_legacy_chat_tool_loop_survives_pi_worker_horizon_with_shared_manager(
+    monkeypatch,
+):
     """Seven canonical tool rounds and a final answer stay Pi-governed."""
 
     endpoint = replace(
@@ -32,14 +34,16 @@ async def test_legacy_chat_tool_loop_survives_pi_worker_horizon_with_shared_mana
     def _provider_message(call_id: str, title: str) -> dict:
         return {
             "text": "",
-            "tool_calls": [{
-                "id": call_id,
-                "type": "function",
-                "function": {
-                    "name": "create_task",
-                    "arguments": '{"title": "' + title + '"}',
-                },
-            }],
+            "tool_calls": [
+                {
+                    "id": call_id,
+                    "type": "function",
+                    "function": {
+                        "name": "create_task",
+                        "arguments": '{"title": "' + title + '"}',
+                    },
+                }
+            ],
             "status": "success",
             "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
             "stop_reason": "tool_calls",
@@ -49,13 +53,15 @@ async def test_legacy_chat_tool_loop_survives_pi_worker_horizon_with_shared_mana
         _provider_message(f"legacy-horizon-{index}", f"legacy horizon step {index}")
         for index in range(1, 8)
     ]
-    scripted.append({
-        "text": "Legacy loop completed the full governed horizon.",
-        "tool_calls": [],
-        "status": "success",
-        "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
-        "stop_reason": "stop",
-    })
+    scripted.append(
+        {
+            "text": "Legacy loop completed the full governed horizon.",
+            "tool_calls": [],
+            "status": "success",
+            "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
+            "stop_reason": "stop",
+        }
+    )
 
     class _ManagedProviderService:
         def __init__(self):
@@ -69,11 +75,13 @@ async def test_legacy_chat_tool_loop_survives_pi_worker_horizon_with_shared_mana
                 endpoint_id=kwargs["params"].endpoint_id,
                 project_id=kwargs["project_id"],
             )
-            self.calls.append({
-                "messages": list(kwargs["messages"]),
-                "endpoint_id": resolved.endpoint_id,
-                "model": resolved.model,
-            })
+            self.calls.append(
+                {
+                    "messages": list(kwargs["messages"]),
+                    "endpoint_id": resolved.endpoint_id,
+                    "model": resolved.model,
+                }
+            )
             result = scripted[len(self.calls) - 1]
             return {
                 **result,

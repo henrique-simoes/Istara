@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,8 +85,8 @@ async def search_memory(
     query: str = Query("", max_length=500),
     q: str | None = Query(None, max_length=500),
     top_k: int = Query(20, ge=1, le=100),
-    source: Optional[str] = Query(None, max_length=1000),
-    file_type: Optional[str] = Query(None, max_length=32),
+    source: str | None = Query(None, max_length=1000),
+    file_type: str | None = Query(None, max_length=32),
     db: AsyncSession = Depends(get_db),
 ):
     """Hybrid search across project memory."""

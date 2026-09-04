@@ -126,7 +126,9 @@ def test_connection_string_keeps_http_and_websocket_urls_separate():
 
 
 @pytest.mark.asyncio
-async def test_compute_donation_string_validates_but_cannot_redeem_user_account(auth_headers):
+async def test_compute_donation_string_validates_but_cannot_redeem_user_account(
+    auth_headers,
+):
     await init_db()
     settings.network_access_token = ""
     project_id = f"project-{uuid.uuid4()}"
@@ -173,11 +175,16 @@ async def test_compute_donation_string_validates_but_cannot_redeem_user_account(
     assert payload["network_token"]
     assert payload["network_token"] == settings.network_access_token
     assert redemption.status_code == 400
-    assert redemption.json()["detail"] == "Compute donation strings cannot create user accounts"
+    assert (
+        redemption.json()["detail"]
+        == "Compute donation strings cannot create user accounts"
+    )
 
 
 @pytest.mark.asyncio
-async def test_connection_string_lifecycle_tracks_validation_and_redemption(auth_headers):
+async def test_connection_string_lifecycle_tracks_validation_and_redemption(
+    auth_headers,
+):
     await init_db()
     original_team_mode = settings.team_mode
     settings.team_mode = False
@@ -208,7 +215,8 @@ async def test_connection_string_lifecycle_tracks_validation_and_redemption(auth
             async with async_session() as db:
                 result = await db.execute(
                     select(ConnectionString).where(
-                        ConnectionString.connection_string_hash == hash_connection_string(conn_str)
+                        ConnectionString.connection_string_hash
+                        == hash_connection_string(conn_str)
                     )
                 )
                 conn = result.scalar_one()
@@ -248,7 +256,8 @@ async def test_connection_string_lifecycle_tracks_validation_and_redemption(auth
             async with async_session() as db:
                 result = await db.execute(
                     select(ConnectionString).where(
-                        ConnectionString.connection_string_hash == hash_connection_string(conn_str)
+                        ConnectionString.connection_string_hash
+                        == hash_connection_string(conn_str)
                     )
                 )
                 conn = result.scalar_one()
@@ -300,10 +309,16 @@ async def test_team_connection_string_redemption_generates_recovery_codes(auth_h
 
     async with async_session() as db:
         user = (
-            await db.execute(select(User).where(User.username == f"team_redeemer_{suffix}"))
+            await db.execute(
+                select(User).where(User.username == f"team_redeemer_{suffix}")
+            )
         ).scalar_one()
         records = (
-            (await db.execute(select(RecoveryCode).where(RecoveryCode.user_id == user.id)))
+            (
+                await db.execute(
+                    select(RecoveryCode).where(RecoveryCode.user_id == user.id)
+                )
+            )
             .scalars()
             .all()
         )
@@ -329,7 +344,9 @@ async def test_connection_string_revoked_and_expired_fail_clearly(auth_headers):
         assert generated.status_code == 200
         body = generated.json()
 
-        revoked = await ac.delete(f"/api/connections/{body['id']}", headers=auth_headers)
+        revoked = await ac.delete(
+            f"/api/connections/{body['id']}", headers=auth_headers
+        )
         assert revoked.status_code == 200
 
         validation = await ac.post(
@@ -337,7 +354,10 @@ async def test_connection_string_revoked_and_expired_fail_clearly(auth_headers):
             json={"connection_string": body["connection_string"]},
         )
         assert validation.status_code == 200
-        assert validation.json() == {"valid": False, "error": "Connection string has been revoked"}
+        assert validation.json() == {
+            "valid": False,
+            "error": "Connection string has been revoked",
+        }
 
         expired = create_connection_string(
             server_url="http://server.test:3000",
@@ -378,7 +398,9 @@ async def test_network_token_rotation_invalidates_active_connection_strings(
             assert generated.status_code == 200
             conn_str = generated.json()["connection_string"]
 
-            rotated = await ac.post("/api/connections/rotate-network-token", headers=auth_headers)
+            rotated = await ac.post(
+                "/api/connections/rotate-network-token", headers=auth_headers
+            )
             assert rotated.status_code == 200
 
             validation = await ac.post(
@@ -391,7 +413,8 @@ async def test_network_token_rotation_invalidates_active_connection_strings(
             async with async_session() as db:
                 result = await db.execute(
                     select(ConnectionString).where(
-                        ConnectionString.connection_string_hash == hash_connection_string(conn_str)
+                        ConnectionString.connection_string_hash
+                        == hash_connection_string(conn_str)
                     )
                 )
                 conn = result.scalar_one()

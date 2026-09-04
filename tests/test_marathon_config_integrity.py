@@ -20,7 +20,11 @@ def marathon_config() -> dict:
 
 def simulation_runner_scenarios() -> set[str]:
     runner = read("tests/simulation/lib/scenario-registry.mjs")
-    match = re.search(r"export const scenarioFiles = Object\.freeze\(\[(?P<body>.*?)\]\);", runner, re.S)
+    match = re.search(
+        r"export const scenarioFiles = Object\.freeze\(\[(?P<body>.*?)\]\);",
+        runner,
+        re.S,
+    )
     assert match, "tests/simulation/lib/scenario-registry.mjs must define scenarioFiles"
     assert "scenarioFiles" in read("tests/simulation/run.mjs")
     return set(re.findall(r'"([^"]+)"', match.group("body")))
@@ -28,7 +32,11 @@ def simulation_runner_scenarios() -> set[str]:
 
 def custom_check_names() -> set[str]:
     source = read("scripts/marathon/custom-checks.mjs")
-    match = re.search(r"export const CUSTOM_CHECKS = Object\.freeze\(\{(?P<body>.*?)\n\}\);", source, re.S)
+    match = re.search(
+        r"export const CUSTOM_CHECKS = Object\.freeze\(\{(?P<body>.*?)\n\}\);",
+        source,
+        re.S,
+    )
     assert match, "scripts/marathon/custom-checks.mjs must export CUSTOM_CHECKS"
     return set(re.findall(r"^\s{2}([a-zA-Z0-9_]+):", match.group("body"), re.M))
 
@@ -46,15 +54,25 @@ def documented_cycle_requirements() -> set[str]:
 
 def test_marathon_scenario_refs_resolve_to_registered_simulation_scenarios() -> None:
     scenario_files = simulation_runner_scenarios()
-    scenario_stems = {path.stem for path in (ROOT / "tests/simulation/scenarios").glob("*.mjs")}
+    scenario_stems = {
+        path.stem for path in (ROOT / "tests/simulation/scenarios").glob("*.mjs")
+    }
     config = marathon_config()
 
     unresolved: list[str] = []
     unregistered: list[str] = []
     for cycle in config["cycles"]:
         for ref in cycle.get("scenarios", []):
-            matches = {stem for stem in scenario_stems if stem == ref or stem.startswith(f"{ref}-")}
-            registered_matches = {stem for stem in scenario_files if stem == ref or stem.startswith(f"{ref}-")}
+            matches = {
+                stem
+                for stem in scenario_stems
+                if stem == ref or stem.startswith(f"{ref}-")
+            }
+            registered_matches = {
+                stem
+                for stem in scenario_files
+                if stem == ref or stem.startswith(f"{ref}-")
+            }
             if not matches:
                 unresolved.append(f"{cycle['id']}:{ref}")
             if not registered_matches:

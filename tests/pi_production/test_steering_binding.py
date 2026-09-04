@@ -24,7 +24,13 @@ from app.models.database import async_session, init_db
 from app.models.project import Project
 from app.skills.system_actions import execute_tool
 
-from .harness import error_after_partial, faux_service, final_text, requires_node, tool_call
+from .harness import (
+    error_after_partial,
+    faux_service,
+    final_text,
+    requires_node,
+    tool_call,
+)
 
 pytestmark = requires_node
 
@@ -75,9 +81,14 @@ async def test_two_concurrent_turns_independent_bindings_no_spurious_aborts():
             await _collect(
                 svc_b,
                 events_b,
-                project_id=project_id, agent_id=agent_id, system_prompt=_SYS,
-                history=[], user_text="Turn B.", tool_executor=fast_exec,
-                session_key=f"{project_id}:b", steering=binding_b,
+                project_id=project_id,
+                agent_id=agent_id,
+                system_prompt=_SYS,
+                history=[],
+                user_text="Turn B.",
+                tool_executor=fast_exec,
+                session_key=f"{project_id}:b",
+                steering=binding_b,
             )
             b_done.set()
 
@@ -85,9 +96,14 @@ async def test_two_concurrent_turns_independent_bindings_no_spurious_aborts():
             _collect(
                 svc_a,
                 events_a,
-                project_id=project_id, agent_id=agent_id, system_prompt=_SYS,
-                history=[], user_text="Turn A.", tool_executor=slow_exec,
-                session_key=f"{project_id}:a", steering=binding_a,
+                project_id=project_id,
+                agent_id=agent_id,
+                system_prompt=_SYS,
+                history=[],
+                user_text="Turn A.",
+                tool_executor=slow_exec,
+                session_key=f"{project_id}:a",
+                steering=binding_a,
             ),
             run_b(),
         )
@@ -95,8 +111,12 @@ async def test_two_concurrent_turns_independent_bindings_no_spurious_aborts():
         await sup.shutdown()
         await steering_manager.abort(agent_id, project_id=project_id)
 
-    terminals_a = [e["type"] for e in events_a if e["type"] in ("done", "error", "aborted")]
-    terminals_b = [e["type"] for e in events_b if e["type"] in ("done", "error", "aborted")]
+    terminals_a = [
+        e["type"] for e in events_a if e["type"] in ("done", "error", "aborted")
+    ]
+    terminals_b = [
+        e["type"] for e in events_b if e["type"] in ("done", "error", "aborted")
+    ]
     # Zero spurious aborts: both turns complete cleanly on their own bindings.
     assert terminals_a == ["done"]
     assert terminals_b == ["done"]
@@ -114,7 +134,9 @@ async def test_external_abort_still_reaches_only_the_scoped_binding():
 
     sup = PiRuntimeSupervisor()
     abort_sent = asyncio.Event()
-    svc_a = faux_service([tool_call("list_tasks", {}), final_text("A should not finish")], sup)
+    svc_a = faux_service(
+        [tool_call("list_tasks", {}), final_text("A should not finish")], sup
+    )
     svc_b = faux_service([tool_call("list_tasks", {}), final_text("B done")], sup)
 
     async def exec_a(name, params, pid, aid):
@@ -135,26 +157,44 @@ async def test_external_abort_still_reaches_only_the_scoped_binding():
     try:
         await asyncio.gather(
             _collect(
-                svc_a, events_a,
-                project_id=project_a, agent_id=agent_id, system_prompt=_SYS,
-                history=[], user_text="Turn A.", tool_executor=exec_a,
+                svc_a,
+                events_a,
+                project_id=project_a,
+                agent_id=agent_id,
+                system_prompt=_SYS,
+                history=[],
+                user_text="Turn A.",
+                tool_executor=exec_a,
                 session_key=f"{project_a}:a",
-                steering=svc_a.steering_binding(agent_id=agent_id, project_id=project_a),
+                steering=svc_a.steering_binding(
+                    agent_id=agent_id, project_id=project_a
+                ),
             ),
             _collect(
-                svc_b, events_b,
-                project_id=project_b, agent_id=agent_id, system_prompt=_SYS,
-                history=[], user_text="Turn B.", tool_executor=exec_b,
+                svc_b,
+                events_b,
+                project_id=project_b,
+                agent_id=agent_id,
+                system_prompt=_SYS,
+                history=[],
+                user_text="Turn B.",
+                tool_executor=exec_b,
                 session_key=f"{project_b}:b",
-                steering=svc_b.steering_binding(agent_id=agent_id, project_id=project_b),
+                steering=svc_b.steering_binding(
+                    agent_id=agent_id, project_id=project_b
+                ),
             ),
         )
     finally:
         await sup.shutdown()
         await steering_manager.abort(agent_id)
 
-    terminals_a = [e["type"] for e in events_a if e["type"] in ("done", "error", "aborted")]
-    terminals_b = [e["type"] for e in events_b if e["type"] in ("done", "error", "aborted")]
+    terminals_a = [
+        e["type"] for e in events_a if e["type"] in ("done", "error", "aborted")
+    ]
+    terminals_b = [
+        e["type"] for e in events_b if e["type"] in ("done", "error", "aborted")
+    ]
     assert terminals_a == ["aborted"]  # the scoped abort lands on A exactly once
     assert terminals_b == ["done"]  # and never leaks into B
 
@@ -179,7 +219,9 @@ async def test_hundred_failed_opens_leave_sessions_empty_and_capacity_intact():
     try:
         # Occupy one session for real so duplicate opens fail with session_busy.
         await sup.ensure_started()
-        await sup.open_session(taken_key, system_prompt=_SYS, history=[], revision=None, catalog=[])
+        await sup.open_session(
+            taken_key, system_prompt=_SYS, history=[], revision=None, catalog=[]
+        )
         assert set(sup._sessions) == {taken_key}
 
         for _ in range(100):
@@ -246,22 +288,38 @@ async def test_turn_telemetry_distinguishes_aborted_from_error(monkeypatch):
     try:
         events_a: list[dict] = []
         await _collect(
-            svc_abort, events_a,
-            project_id=project_id, agent_id=agent_id, system_prompt=_SYS,
-            history=[], user_text="Abort me.", tool_executor=abort_mid_turn,
+            svc_abort,
+            events_a,
+            project_id=project_id,
+            agent_id=agent_id,
+            system_prompt=_SYS,
+            history=[],
+            user_text="Abort me.",
+            tool_executor=abort_mid_turn,
             session_key=f"{project_id}:abort",
-            steering=svc_abort.steering_binding(agent_id=agent_id, project_id=project_id),
+            steering=svc_abort.steering_binding(
+                agent_id=agent_id, project_id=project_id
+            ),
         )
-        assert [e["type"] for e in events_a if e["type"] in ("done", "error", "aborted")] == ["aborted"]
+        assert [
+            e["type"] for e in events_a if e["type"] in ("done", "error", "aborted")
+        ] == ["aborted"]
 
         events_e: list[dict] = []
         await _collect(
-            svc_error, events_e,
-            project_id=project_id, agent_id=agent_id, system_prompt=_SYS,
-            history=[], user_text="Fail.", tool_executor=exec_ok,
+            svc_error,
+            events_e,
+            project_id=project_id,
+            agent_id=agent_id,
+            system_prompt=_SYS,
+            history=[],
+            user_text="Fail.",
+            tool_executor=exec_ok,
             session_key=f"{project_id}:error",
         )
-        assert [e["type"] for e in events_e if e["type"] in ("done", "error", "aborted")] == ["error"]
+        assert [
+            e["type"] for e in events_e if e["type"] in ("done", "error", "aborted")
+        ] == ["error"]
     finally:
         await sup.shutdown()
 

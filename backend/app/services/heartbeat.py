@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -81,7 +81,7 @@ class HeartbeatManager:
             result = await db.execute(select(Agent).where(Agent.is_active == True))
             agents = result.scalars().all()
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             batch_update = []
 
             for agent in agents:

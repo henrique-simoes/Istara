@@ -39,7 +39,9 @@ async def _seed_agent(
 
 
 @pytest.mark.asyncio
-async def test_project_facing_agent_mutations_require_matching_project(admin_auth_headers):
+async def test_project_facing_agent_mutations_require_matching_project(
+    admin_auth_headers,
+):
     """By-id agent actions must not act on stale cross-project ids."""
     await init_db()
     visible_project_id = f"mutation-visible-project-{uuid.uuid4()}"
@@ -47,8 +49,12 @@ async def test_project_facing_agent_mutations_require_matching_project(admin_aut
     visible_agent_id = f"mutation-visible-agent-{uuid.uuid4()}"
     hidden_agent_id = f"mutation-hidden-agent-{uuid.uuid4()}"
     universal_agent_id = f"mutation-universal-agent-{uuid.uuid4()}"
-    await _seed_agent(visible_agent_id, project_id=visible_project_id, memory={"visible": "before"})
-    await _seed_agent(hidden_agent_id, project_id=hidden_project_id, memory={"hidden": "before"})
+    await _seed_agent(
+        visible_agent_id, project_id=visible_project_id, memory={"visible": "before"}
+    )
+    await _seed_agent(
+        hidden_agent_id, project_id=hidden_project_id, memory={"hidden": "before"}
+    )
     await _seed_agent(universal_agent_id, memory={"global": "before"})
 
     transport = ASGITransport(app=app)

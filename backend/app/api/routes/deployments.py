@@ -103,7 +103,7 @@ class DeploymentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_model(cls, d: ResearchDeployment) -> "DeploymentResponse":
+    def from_model(cls, d: ResearchDeployment) -> DeploymentResponse:
         return cls(
             id=d.id,
             project_id=d.project_id,

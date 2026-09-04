@@ -3,16 +3,16 @@
 import math
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import require_project_access
 from app.core.adaptive_validation import _sample_confidence_weight
+from app.core.permissions import require_project_access
 from app.models.database import get_db
-from app.models.finding import Nugget, Fact, Insight, Recommendation
-from app.models.task import Task, TaskStatus
+from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.message import Message
 from app.models.method_metric import MethodMetric
+from app.models.task import Task, TaskStatus
 
 router = APIRouter()
 

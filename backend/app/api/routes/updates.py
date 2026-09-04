@@ -450,7 +450,7 @@ git pull --ff-only 2>/dev/null || git pull
 
 # Ensure npm and node are available in the path
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-[ -s "$HOME/.nvm/nvm.sh" ] && \. "$HOME/.nvm/nvm.sh"
+[ -s "$HOME/.nvm/nvm.sh" ] && \\. "$HOME/.nvm/nvm.sh"
 [ -s "$HOME/.bashrc" ] && source "$HOME/.bashrc"
 [ -s "$HOME/.zshrc" ] && source "$HOME/.zshrc"
 

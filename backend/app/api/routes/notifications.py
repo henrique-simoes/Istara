@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Iterable
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field

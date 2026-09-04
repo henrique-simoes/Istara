@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,7 +128,7 @@ def _clean_project_id(project_id: Any) -> str | None:
     return cleaned or None
 
 
-def _require_project_id(project_id: Optional[str]) -> str:
+def _require_project_id(project_id: str | None) -> str:
     scoped_project_id = _clean_project_id(project_id)
     if not scoped_project_id:
         raise ValueError("project_id is required for notification queries and mutations")
@@ -140,7 +140,7 @@ def _require_project_id(project_id: Optional[str]) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def persist_notification(event_type: str, data: dict) -> Optional[Notification]:
+async def persist_notification(event_type: str, data: dict) -> Notification | None:
     """Map an event type + data to a Notification record and persist it.
 
     Returns the created Notification, or None if the event type is skipped.
@@ -188,7 +188,7 @@ async def persist_notification(event_type: str, data: dict) -> Optional[Notifica
         action_type=meta.get("action_type", ""),
         action_target=meta.get("action_target", ""),
         metadata_json=json.dumps(data, default=str),
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
     async with async_session() as db:
@@ -206,16 +206,16 @@ async def persist_notification(event_type: str, data: dict) -> Optional[Notifica
 async def list_notifications(
     db: AsyncSession,
     *,
-    category: Optional[str] = None,
-    agent_id: Optional[str] = None,
-    project_id: Optional[str] = None,
-    severity: Optional[str] = None,
-    read: Optional[bool] = None,
-    search: Optional[str] = None,
+    category: str | None = None,
+    agent_id: str | None = None,
+    project_id: str | None = None,
+    severity: str | None = None,
+    read: bool | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = 50,
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
 ) -> dict:
     """Paginated notification query with filters.
 
@@ -263,7 +263,7 @@ async def list_notifications(
 async def mark_read(
     db: AsyncSession,
     notification_id: str,
-    project_id: Optional[str] = None,
+    project_id: str | None = None,
 ) -> bool:
     """Mark a single notification as read. Returns True if found."""
     scoped_project_id = _require_project_id(project_id)
@@ -281,7 +281,7 @@ async def mark_read(
     return True
 
 
-async def mark_all_read(db: AsyncSession, project_id: Optional[str] = None) -> int:
+async def mark_all_read(db: AsyncSession, project_id: str | None = None) -> int:
     """Mark all unread notifications as read. Returns count updated."""
     scoped_project_id = _require_project_id(project_id)
     stmt = (
@@ -298,7 +298,7 @@ async def mark_all_read(db: AsyncSession, project_id: Optional[str] = None) -> i
 async def delete_notification(
     db: AsyncSession,
     notification_id: str,
-    project_id: Optional[str] = None,
+    project_id: str | None = None,
 ) -> bool:
     """Delete a notification by id. Returns True if found and deleted."""
     scoped_project_id = _require_project_id(project_id)
@@ -316,7 +316,7 @@ async def delete_notification(
     return True
 
 
-async def get_unread_count(db: AsyncSession, project_id: Optional[str] = None) -> int:
+async def get_unread_count(db: AsyncSession, project_id: str | None = None) -> int:
     """Count unread notifications, optionally filtered by project."""
     scoped_project_id = _require_project_id(project_id)
     q = (
@@ -359,7 +359,7 @@ async def update_preference(
         pref.show_toast = show_toast
         pref.show_center = show_center
         pref.email_forward = email_forward
-        pref.updated_at = datetime.now(timezone.utc)
+        pref.updated_at = datetime.now(UTC)
     else:
         pref = NotificationPreference(
             id=str(uuid.uuid4()),

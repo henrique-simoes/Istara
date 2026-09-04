@@ -158,10 +158,16 @@ async def test_documents_api_stamps_qa_provisional_metadata(auth_headers):
 
     async with async_session() as db:
         units = (
-            await db.execute(
-                select(EvidenceUnit).where(EvidenceUnit.source_document_id == doc_id)
+            (
+                await db.execute(
+                    select(EvidenceUnit).where(
+                        EvidenceUnit.source_document_id == doc_id
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert units
     for unit in units:
         metadata = json.loads(unit.metadata_json or "{}")
@@ -186,12 +192,16 @@ async def test_documents_api_stamps_qa_provisional_metadata(auth_headers):
     normal_doc_id = response.json()["id"]
     async with async_session() as db:
         units = (
-            await db.execute(
-                select(EvidenceUnit).where(
-                    EvidenceUnit.source_document_id == normal_doc_id
+            (
+                await db.execute(
+                    select(EvidenceUnit).where(
+                        EvidenceUnit.source_document_id == normal_doc_id
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert units
     for unit in units:
         metadata = json.loads(unit.metadata_json or "{}")

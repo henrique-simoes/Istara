@@ -5,7 +5,7 @@ criteria, and versioning. Supports hierarchical codes (parent/child) and
 tracks which project and version each codebook belongs to.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -45,12 +45,12 @@ class Codebook(Base):
     )  # inductive/deductive/hybrid
     status: Mapped[str] = mapped_column(String(20), default="draft")  # draft/in_use/archived
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     # Relationships
@@ -96,7 +96,7 @@ class Code(Base):
     frequency: Mapped[int] = mapped_column(Integer, default=0)
     kappa: Mapped[float | None] = mapped_column(Float, nullable=True)  # per-code ICR score
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     # Relationships

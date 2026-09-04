@@ -80,13 +80,17 @@ def canonical_e2e_files(limit: int = 8) -> list[Path]:
             continue
         if source.get("long_form") is not True:
             continue
-        path = CANONICAL_CORPUS / (source.get("relative_path") or source.get("path", ""))
+        path = CANONICAL_CORPUS / (
+            source.get("relative_path") or source.get("path", "")
+        )
         if path.is_file():
             selected.append(path)
         if len(selected) >= limit:
             break
     if len(selected) < min(limit, 6):
-        raise RuntimeError("Canonical E2E corpus selection did not find enough long-form sources.")
+        raise RuntimeError(
+            "Canonical E2E corpus selection did not find enough long-form sources."
+        )
     return selected
 
 
@@ -116,7 +120,9 @@ def authenticate_or_bootstrap_admin(client: httpx.Client) -> None:
         )
         if login_resp.status_code != 200:
             return False
-        token = login_resp.json().get("token") or login_resp.json().get("access_token", "")
+        token = login_resp.json().get("token") or login_resp.json().get(
+            "access_token", ""
+        )
         if not token:
             return False
         client.headers["Authorization"] = f"Bearer {token}"
@@ -126,7 +132,11 @@ def authenticate_or_bootstrap_admin(client: httpx.Client) -> None:
     if try_login(admin_user, admin_pass):
         return
 
-    if os.environ.get("ISTARA_E2E_ALLOW_LOCAL_TOKEN", "").lower() in {"1", "true", "yes"}:
+    if os.environ.get("ISTARA_E2E_ALLOW_LOCAL_TOKEN", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
         backend_path = Path(__file__).parent.parent / "backend"
         if str(backend_path) not in sys.path:
             sys.path.insert(0, str(backend_path))
@@ -230,9 +240,15 @@ def main():
     print("\n📡 Phase 1: System Health")
 
     run_test_step("Health check", lambda: assert_ok(client.get("/api/health")))
-    run_test_step("System status", lambda: assert_ok(client.get("/api/settings/status")))
-    run_test_step("Hardware info", lambda: assert_ok(client.get("/api/settings/hardware")))
-    run_test_step("Available models", lambda: assert_ok(client.get("/api/settings/models")))
+    run_test_step(
+        "System status", lambda: assert_ok(client.get("/api/settings/status"))
+    )
+    run_test_step(
+        "Hardware info", lambda: assert_ok(client.get("/api/settings/hardware"))
+    )
+    run_test_step(
+        "Available models", lambda: assert_ok(client.get("/api/settings/models"))
+    )
     run_test_step("Resource governor", lambda: assert_ok(client.get("/api/resources")))
 
     # =========================================================
@@ -255,7 +271,9 @@ def main():
     project_id = project["id"] if project else None
 
     if project_id:
-        run_test_step("Get project", lambda: assert_ok(client.get(f"/api/projects/{project_id}")))
+        run_test_step(
+            "Get project", lambda: assert_ok(client.get(f"/api/projects/{project_id}"))
+        )
         run_test_step(
             "Set company context",
             lambda: assert_ok(
@@ -307,14 +325,18 @@ def main():
     if project_id:
         run_test_step(
             "Chat — analyze (legacy core)",
-            lambda: chat_message(client, project_id, "Analyze transcripts.", engine="legacy"),
+            lambda: chat_message(
+                client, project_id, "Analyze transcripts.", engine="legacy"
+            ),
         )
         if os.environ.get("ISTARA_E2E_ENGINE", "").strip().lower() == "pi":
             # Dual-core matrix: the same journey turn routed through the Pi
             # agentic loop. Requires a configured Pi endpoint on the target.
             run_test_step(
                 "Chat — analyze (Pi core)",
-                lambda: chat_message(client, project_id, "Analyze transcripts.", engine="pi"),
+                lambda: chat_message(
+                    client, project_id, "Analyze transcripts.", engine="pi"
+                ),
             )
         run_test_step(
             "Direct skill execute",
@@ -333,7 +355,9 @@ def main():
 
     run_test_step(
         "Get steering status",
-        lambda: assert_ok(client.get(f"/api/steering/istara-main/status?project_id={project_id}")),
+        lambda: assert_ok(
+            client.get(f"/api/steering/istara-main/status?project_id={project_id}")
+        ),
     )
 
     # =========================================================
@@ -367,17 +391,19 @@ def main():
 
     run_test_step(
         "Voice transcription initialization",
-        lambda: assert_ok(
-            client.post(
-                "/api/chat/voice-transcribe",
-                json={
-                    "project_id": project_id,
-                    "dummy": True,
-                },
+        lambda: (
+            assert_ok(
+                client.post(
+                    "/api/chat/voice-transcribe",
+                    json={
+                        "project_id": project_id,
+                        "dummy": True,
+                    },
+                )
             )
-        )
-        if assert_true(project_id)
-        else None,
+            if assert_true(project_id)
+            else None
+        ),
     )
 
     # =========================================================
@@ -433,7 +459,9 @@ def assert_true(condition):
 
 def upload_file(client, project_id, file_path):
     with open(file_path, "rb") as f:
-        resp = client.post(f"/api/files/upload/{project_id}", files={"file": (file_path.name, f)})
+        resp = client.post(
+            f"/api/files/upload/{project_id}", files={"file": (file_path.name, f)}
+        )
     return assert_ok(resp)
 
 
@@ -454,7 +482,10 @@ def pi_migration_ratchet():
     tests_dir = Path(__file__).resolve().parent
     if str(tests_dir) not in sys.path:
         sys.path.insert(0, str(tests_dir))
-    from pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
+    from pi_migration.test_count_to_zero import (
+        EXPECTED_PRODUCT_SITES,
+        check_count_to_zero,
+    )
 
     check_count_to_zero()
     return f"legacy-plane inventory within allowlist; {EXPECTED_PRODUCT_SITES} product sites ratcheted"

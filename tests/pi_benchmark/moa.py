@@ -47,23 +47,27 @@ NOT_RUN = "not_run"
 class MoaEvidence:
     """Verdict on one MoA-routed unit, carried in the record's ``extensions.moa``."""
 
-    requested_mode: str            # "self_moa" | "full_ensemble"
-    requested_samples: int         # moa_n samples (self_moa) or requested slots (full_ensemble)
+    requested_mode: str  # "self_moa" | "full_ensemble"
+    requested_samples: (
+        int  # moa_n samples (self_moa) or requested slots (full_ensemble)
+    )
     temperatures: tuple[float, ...]
-    served_mode: str               # ValidationResult.method actually served
+    served_mode: str  # ValidationResult.method actually served
     response_count: int
-    served_route_ids: tuple[str, ...]      # endpoint ids actually served (redacted ids ok)
+    served_route_ids: tuple[str, ...]  # endpoint ids actually served (redacted ids ok)
     distinct_served_routes: int
-    served_model_ids: tuple[str, ...]      # model identities actually served
+    served_model_ids: tuple[str, ...]  # model identities actually served
     distinct_served_models: int
-    coder_count: int               # successful responses actually used
+    coder_count: int  # successful responses actually used
     consensus_score: float | None  # consensus.agreement_score when exposed, else None
-    consensus_confidence: str      # consensus.confidence when exposed, else ""
-    source_unit_ids: tuple[str, ...]       # all dispatcher endpoint ids (attempt provenance)
-    formal_reliability: bool        # true only when a formal coding run supplies it
-    research_spine_eligible: bool   # response consensus alone is never Spine acceptance
-    reconciliation_status: str     # "reconciled" | "degraded" | "blocked" | "not_run"
-    downgrade: str | None          # None | "<requested>-><served>" | "partial_coder" | "single_coder" | "model_identity_collapse"
+    consensus_confidence: str  # consensus.confidence when exposed, else ""
+    source_unit_ids: tuple[str, ...]  # all dispatcher endpoint ids (attempt provenance)
+    formal_reliability: bool  # true only when a formal coding run supplies it
+    research_spine_eligible: bool  # response consensus alone is never Spine acceptance
+    reconciliation_status: str  # "reconciled" | "degraded" | "blocked" | "not_run"
+    downgrade: (
+        str | None
+    )  # None | "<requested>-><served>" | "partial_coder" | "single_coder" | "model_identity_collapse"
     degraded: bool
 
 
@@ -101,7 +105,9 @@ def _endpoint_ids_from(metadata: dict[str, Any]) -> tuple[str, ...]:
     """
     route_evidence = tuple(metadata.get("route_evidence") or ())
     evidence_ids = tuple(
-        str(route.get("endpoint_id")) for route in route_evidence if route.get("endpoint_id")
+        str(route.get("endpoint_id"))
+        for route in route_evidence
+        if route.get("endpoint_id")
     )
     endpoint_ids = tuple(str(e) for e in (metadata.get("endpoint_ids") or ()))
     return evidence_ids, endpoint_ids or evidence_ids
@@ -146,8 +152,12 @@ def assess_validation_result(
     responses = list(getattr(result, "responses", None) or [])
     metadata = dict(getattr(result, "metadata", None) or {})
     consensus = getattr(result, "consensus", None)
-    consensus_score = getattr(consensus, "agreement_score", None) if consensus is not None else None
-    confidence = str(getattr(consensus, "confidence", "") or "") if consensus is not None else ""
+    consensus_score = (
+        getattr(consensus, "agreement_score", None) if consensus is not None else None
+    )
+    confidence = (
+        str(getattr(consensus, "confidence", "") or "") if consensus is not None else ""
+    )
 
     served_route_ids, source_unit_ids = _endpoint_ids_from(metadata)
     served_model_ids = _model_ids_from(metadata)
@@ -163,7 +173,10 @@ def assess_validation_result(
             # The fail-closed chain served a different method than requested.
             downgrade = f"{requested_mode}->{served_mode}"
             degraded = True
-        elif response_count < requested_samples or successful_route_count < requested_samples:
+        elif (
+            response_count < requested_samples
+            or successful_route_count < requested_samples
+        ):
             # Dispatcher endpoint_ids may include failed samples; successful coders and
             # successful route evidence must both cover the requested MoA width.
             downgrade = "partial_coder"
@@ -172,7 +185,10 @@ def assess_validation_result(
             # Method held but diversity collapsed: fewer distinct routes than slots.
             downgrade = "single_coder"
             degraded = True
-        elif requested_mode == "full_ensemble" and distinct_served_models < requested_samples:
+        elif (
+            requested_mode == "full_ensemble"
+            and distinct_served_models < requested_samples
+        ):
             # Endpoint diversity is not model independence: replicas or missing identity
             # metadata cannot satisfy the Research Spine's independent-coder requirement.
             downgrade = "model_identity_collapse"
@@ -214,7 +230,10 @@ def assess_validation_result(
 
 
 def not_run_evidence(
-    *, requested_mode: str, requested_samples: int, temperatures: tuple[float, ...] = (),
+    *,
+    requested_mode: str,
+    requested_samples: int,
+    temperatures: tuple[float, ...] = (),
 ) -> MoaEvidence:
     """Evidence placeholder for a MoA unit that was blocked before dispatch."""
     return MoaEvidence(
@@ -251,7 +270,9 @@ def record_status_for(evidence: MoaEvidence) -> tuple[str, str | None]:
     return "ok", None
 
 
-def validate_topology(*, available_endpoint_ids: Iterable[str], requested_slots: int) -> dict[str, Any]:
+def validate_topology(
+    *, available_endpoint_ids: Iterable[str], requested_slots: int
+) -> dict[str, Any]:
     """Dry-run topology probe: what the dispatcher's fail-closed chain *would* serve.
 
     Pure computation over the id list — it never calls a provider, the dispatcher, or any
@@ -269,9 +290,17 @@ def validate_topology(*, available_endpoint_ids: Iterable[str], requested_slots:
     if distinct >= requested_slots:
         would_serve, would_degrade, downgrade = "full_ensemble", False, None
     elif distinct >= 2:
-        would_serve, would_degrade, downgrade = "dual_run", True, "full_ensemble->dual_run"
+        would_serve, would_degrade, downgrade = (
+            "dual_run",
+            True,
+            "full_ensemble->dual_run",
+        )
     elif distinct == 1:
-        would_serve, would_degrade, downgrade = "self_moa", True, "full_ensemble->self_moa"
+        would_serve, would_degrade, downgrade = (
+            "self_moa",
+            True,
+            "full_ensemble->self_moa",
+        )
     else:
         would_serve, would_degrade, downgrade = "blocked", True, None
     return {

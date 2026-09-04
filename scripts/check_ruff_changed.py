@@ -40,7 +40,10 @@ def _changed_python_files(base: str, head: str) -> list[str]:
 
     result = _git("diff", "--name-only", "--diff-filter=ACMR", base, head)
     if result.returncode != 0:
-        print(result.stderr.strip() or "Unable to determine changed files.", file=sys.stderr)
+        print(
+            result.stderr.strip() or "Unable to determine changed files.",
+            file=sys.stderr,
+        )
         return []
 
     files = []
@@ -79,7 +82,9 @@ def main() -> int:
     config = str(ROOT / "backend" / "pyproject.toml")
     ruff = [sys.executable, "-m", "ruff"]
     lint_status = _run("Ruff lint", [*ruff, "check", "--config", config, *files])
-    format_status = _run("Ruff format", [*ruff, "format", "--check", "--config", config, *files])
+    format_status = _run(
+        "Ruff format", [*ruff, "format", "--check", "--config", config, *files]
+    )
     return lint_status or format_status
 
 

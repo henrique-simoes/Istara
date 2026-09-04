@@ -5,21 +5,21 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.hardware import detect_hardware
+from app.core.resource_governor import governor
 from app.models.agent import (
+    ALL_CAPABILITIES,
+    DEFAULT_CAPABILITIES,
     Agent,
     AgentRole,
     AgentState,
     HeartbeatStatus,
-    ALL_CAPABILITIES,
-    DEFAULT_CAPABILITIES,
 )
-from app.core.resource_governor import governor
-from app.core.hardware import detect_hardware
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +247,7 @@ async def update_agent(db: AsyncSession, agent_id: str, updates: dict) -> dict |
         elif hasattr(agent, key):
             setattr(agent, key, value)
 
-    agent.updated_at = datetime.now(timezone.utc)
+    agent.updated_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(agent)
     return agent.to_dict()
@@ -269,9 +269,7 @@ async def delete_agent(db: AsyncSession, agent_id: str) -> bool:
 async def set_agent_state(db: AsyncSession, agent_id: str, state: AgentState) -> bool:
     """Update an agent's state."""
     result = await db.execute(
-        update(Agent)
-        .where(Agent.id == agent_id)
-        .values(state=state, updated_at=datetime.now(timezone.utc))
+        update(Agent).where(Agent.id == agent_id).values(state=state, updated_at=datetime.now(UTC))
     )
     await db.commit()
     return result.rowcount > 0
@@ -293,7 +291,7 @@ async def update_agent_memory(db: AsyncSession, agent_id: str, updates: dict) ->
     existing = json.loads(agent.memory or "{}")
     existing.update(updates)
     agent.memory = json.dumps(existing)
-    agent.updated_at = datetime.now(timezone.utc)
+    agent.updated_at = datetime.now(UTC)
     await db.commit()
     return existing
 

@@ -154,36 +154,75 @@ def sample_rss_bytes() -> int | None:
 
 
 def _offline_record(
-    *, config: RunConfig, scenario: Scenario, engine: str, seed: int, repeat: int,
-    pair_index: int, git_sha: str, git_dirty: bool, ts: str,
+    *,
+    config: RunConfig,
+    scenario: Scenario,
+    engine: str,
+    seed: int,
+    repeat: int,
+    pair_index: int,
+    git_sha: str,
+    git_dirty: bool,
+    ts: str,
 ) -> dict[str, Any]:
     """Execute one scenario arm at an offline tier and build its record."""
     pair_order = schema.pair_order_for_identity(
-        phase=config.phase, pack=scenario.pack, scenario_id=scenario.id,
-        seed=seed, repeat=repeat,
+        phase=config.phase,
+        pack=scenario.pack,
+        scenario_id=scenario.id,
+        seed=seed,
+        repeat=repeat,
     )
     pair_index = 0 if pair_order == "legacy_first" else 1
     if not tier_at_least(config.tier, scenario.min_tier):
         # Scenario needs a higher tier than requested — counted, never dropped.
         return build_record(
-            config=config, scenario=scenario, engine=engine, seed=seed, repeat=repeat,
-            pair_index=pair_index, git_sha=git_sha, git_dirty=git_dirty, ts=ts,
-            status="not_runnable", not_runnable_reason="feature_unavailable",
-            extensions={"detail": {"reason": f"scenario min_tier={scenario.min_tier} > requested {config.tier}"}},
+            config=config,
+            scenario=scenario,
+            engine=engine,
+            seed=seed,
+            repeat=repeat,
+            pair_index=pair_index,
+            git_sha=git_sha,
+            git_dirty=git_dirty,
+            ts=ts,
+            status="not_runnable",
+            not_runnable_reason="feature_unavailable",
+            extensions={
+                "detail": {
+                    "reason": f"scenario min_tier={scenario.min_tier} > requested {config.tier}"
+                }
+            },
         )
     if scenario.contract_check is None:  # pragma: no cover - guarded by min_tier above
         return build_record(
-            config=config, scenario=scenario, engine=engine, seed=seed, repeat=repeat,
-            pair_index=pair_index, git_sha=git_sha, git_dirty=git_dirty, ts=ts,
-            status="not_runnable", not_runnable_reason="feature_unavailable",
+            config=config,
+            scenario=scenario,
+            engine=engine,
+            seed=seed,
+            repeat=repeat,
+            pair_index=pair_index,
+            git_sha=git_sha,
+            git_dirty=git_dirty,
+            ts=ts,
+            status="not_runnable",
+            not_runnable_reason="feature_unavailable",
             extensions={"detail": {"reason": "no offline contract check"}},
         )
     result = scenario.contract_check(engine, seed)
     metrics = {"output_quality": {"deterministic_pass": result.passed}}
     return build_record(
-        config=config, scenario=scenario, engine=engine, seed=seed, repeat=repeat,
-        pair_index=pair_index, git_sha=git_sha, git_dirty=git_dirty, ts=ts,
-        status="ok", metrics=metrics,
+        config=config,
+        scenario=scenario,
+        engine=engine,
+        seed=seed,
+        repeat=repeat,
+        pair_index=pair_index,
+        git_sha=git_sha,
+        git_dirty=git_dirty,
+        ts=ts,
+        status="ok",
+        metrics=metrics,
         # outcome_class is the stable label compared across seed repeats (acceptance A5).
         extensions={"outcome_class": result.outcome_class, "detail": result.detail},
     )
@@ -224,11 +263,15 @@ def _open_live_stack(config: RunConfig) -> tuple[Any, Any]:
         ) from exc
     ledger_path = config.budget_ledger or (config.out_dir / "budget-ledger.json")
     ledger = budget_ledger_mod.BudgetLedger(ledger_path, cap_usd=config.budget_usd)
-    provider = provider_mod.DeepSeekProvider(provider=config.provider, model=config.model)
+    provider = provider_mod.DeepSeekProvider(
+        provider=config.provider, model=config.model
+    )
     return ledger, provider
 
 
-def _live_unit_id(config: RunConfig, scenario: Scenario, seed: int, repeat: int, engine: str) -> str:
+def _live_unit_id(
+    config: RunConfig, scenario: Scenario, seed: int, repeat: int, engine: str
+) -> str:
     # Identical to build_record's record_id so the driver's <unit_id>.json and write_run's
     # <record_id>.json are the same file (resume sees both).
     return f"{config.phase}-{config.tier}-{scenario.pack}-{scenario.id}-seed{seed}-r{repeat}-{engine}"
@@ -244,9 +287,19 @@ def _scenario_for_unit(unit: Any) -> Scenario | None:
     return None
 
 
-def _record_unknown_scenario(unit: Any, config: RunConfig, records_dir: Path) -> dict[str, Any]:
+def _record_unknown_scenario(
+    unit: Any, config: RunConfig, records_dir: Path
+) -> dict[str, Any]:
     """A unit whose scenario/pack doesn't resolve still gets a record (never dropped)."""
-    known_packs = ("canonical", "spine", "a2a", "features", "probes", "industry", "deep_research")  # schema enum
+    known_packs = (
+        "canonical",
+        "spine",
+        "a2a",
+        "features",
+        "probes",
+        "industry",
+        "deep_research",
+    )  # schema enum
     pack = unit.pack if unit.pack in known_packs else "canonical"
     scenario = Scenario(id=unit.scenario_id, title=unit.scenario_id, pack=pack)
     git_sha, git_dirty = git_provenance()
@@ -256,17 +309,32 @@ def _record_unknown_scenario(unit: Any, config: RunConfig, records_dir: Path) ->
     if unit_phase and unit_phase != config.phase:
         unit_config = dataclasses.replace(config, phase=unit_phase)
     record = build_record(
-        config=unit_config, scenario=scenario, engine=unit.engine, seed=unit.seed,
+        config=unit_config,
+        scenario=scenario,
+        engine=unit.engine,
+        seed=unit.seed,
         repeat=unit.repeat,
-        pair_index=0 if schema.pair_order_for_identity(
-            phase=unit.phase, pack=unit.pack, scenario_id=unit.scenario_id,
-            seed=unit.seed, repeat=unit.repeat, moa_mode=unit.moa_mode,
-        ) == "legacy_first" else 1,
-        git_sha=git_sha, git_dirty=git_dirty, ts=_utc_now_iso(),
-        status="not_runnable", not_runnable_reason="feature_unavailable",
+        pair_index=0
+        if schema.pair_order_for_identity(
+            phase=unit.phase,
+            pack=unit.pack,
+            scenario_id=unit.scenario_id,
+            seed=unit.seed,
+            repeat=unit.repeat,
+            moa_mode=unit.moa_mode,
+        )
+        == "legacy_first"
+        else 1,
+        git_sha=git_sha,
+        git_dirty=git_dirty,
+        ts=_utc_now_iso(),
+        status="not_runnable",
+        not_runnable_reason="feature_unavailable",
         extensions={
             "unit_id": unit.unit_id,
-            "detail": {"reason": f"unknown scenario {unit.scenario_id!r} in pack {unit.pack!r}"},
+            "detail": {
+                "reason": f"unknown scenario {unit.scenario_id!r} in pack {unit.pack!r}"
+            },
         },
     )
     write_record_atomic(records_dir, unit.unit_id, record)
@@ -302,10 +370,19 @@ def _execute_live_units(
             if scenario is None:
                 records.append(_record_unknown_scenario(unit, config, records_dir))
                 continue
-            records.append(await live_driver.run_live_unit(
-                unit=unit, scenario=scenario, config=config, ledger=ledger, provider=provider,
-                records_dir=records_dir, moa_n=config.moa_n, wave=wave, **kwargs,
-            ))
+            records.append(
+                await live_driver.run_live_unit(
+                    unit=unit,
+                    scenario=scenario,
+                    config=config,
+                    ledger=ledger,
+                    provider=provider,
+                    records_dir=records_dir,
+                    moa_n=config.moa_n,
+                    wave=wave,
+                    **kwargs,
+                )
+            )
         return records
 
     return asyncio.run(execute_batch())
@@ -322,18 +399,31 @@ def _run_live_benchmark(config: RunConfig, dispatch: Any = None) -> RunSummary:
         for seed in config.seeds:
             for repeat in range(1, config.repeats + 1):
                 for engine in ordered_engines(
-                    config.engines, phase=config.phase, pack=scenario.pack,
-                    scenario_id=scenario.id, seed=seed, repeat=repeat,
+                    config.engines,
+                    phase=config.phase,
+                    pack=scenario.pack,
+                    scenario_id=scenario.id,
+                    seed=seed,
+                    repeat=repeat,
                 ):
                     unit = _LiveUnit(
                         unit_id=_live_unit_id(config, scenario, seed, repeat, engine),
-                        pack=scenario.pack, scenario_id=scenario.id, seed=seed,
-                        repeat=repeat, engine=engine, phase=config.phase, moa_mode=moa_mode,
+                        pack=scenario.pack,
+                        scenario_id=scenario.id,
+                        seed=seed,
+                        repeat=repeat,
+                        engine=engine,
+                        phase=config.phase,
+                        moa_mode=moa_mode,
                     )
                     units.append((unit, scenario))
     ledger, provider = _open_live_stack(config)
     records = _execute_live_units(
-        config=config, units=units, ledger=ledger, provider=provider, dispatch=dispatch,
+        config=config,
+        units=units,
+        ledger=ledger,
+        provider=provider,
+        dispatch=dispatch,
     )
     manifest = {
         "schema_version": SCHEMA_VERSION,
@@ -372,15 +462,21 @@ def _coerce_unit(raw: Any, *, manifest: dict[str, Any] | None = None) -> Any:
         raw = {**details, "unit_id": raw}
     if isinstance(raw, dict):
         return _LiveUnit(
-            unit_id=str(raw["unit_id"]), pack=str(raw["pack"]),
-            scenario_id=str(raw["scenario_id"]), seed=int(raw["seed"]),
-            repeat=int(raw["repeat"]), engine=str(raw["engine"]), phase=str(raw["phase"]),
+            unit_id=str(raw["unit_id"]),
+            pack=str(raw["pack"]),
+            scenario_id=str(raw["scenario_id"]),
+            seed=int(raw["seed"]),
+            repeat=int(raw["repeat"]),
+            engine=str(raw["engine"]),
+            phase=str(raw["phase"]),
             moa_mode=raw.get("moa_mode"),
         )
     return raw
 
 
-def run_wave(config: RunConfig, dispatch: Any = None) -> tuple[int, list[dict[str, Any]]]:
+def run_wave(
+    config: RunConfig, dispatch: Any = None
+) -> tuple[int, list[dict[str, Any]]]:
     """Execute this process's shard of an immutable manifest (crash-safe, resumable).
 
     Returns ``(exit_code, records)``: exit 2 on a wave/config refusal, 0 otherwise. Units
@@ -392,7 +488,9 @@ def run_wave(config: RunConfig, dispatch: Any = None) -> tuple[int, list[dict[st
         # already bound as an attribute on the tests.pi_benchmark package.
         scheduler = importlib.import_module("tests.pi_benchmark.scheduler")
     except ImportError as exc:
-        print(f"[refused] wave mode needs Lane A's scheduler.py ({exc})", file=sys.stderr)
+        print(
+            f"[refused] wave mode needs Lane A's scheduler.py ({exc})", file=sys.stderr
+        )
         return 2, []
     manifest = scheduler.load_manifest(config.manifest)
     shards = manifest.get("shards") or []
@@ -421,8 +519,12 @@ def run_wave(config: RunConfig, dispatch: Any = None) -> tuple[int, list[dict[st
             continue
         pending.append((unit, _scenario_for_unit(unit)))
     records = _execute_live_units(
-        config=wave_config, units=pending, ledger=ledger, provider=provider,
-        dispatch=dispatch, wave=config.wave,
+        config=wave_config,
+        units=pending,
+        ledger=ledger,
+        provider=provider,
+        dispatch=dispatch,
+        wave=config.wave,
     )
     skipped = len(shards[config.wave - 1]) - len(pending)
     print(
@@ -468,14 +570,26 @@ def run_benchmark(config: RunConfig) -> RunSummary:
         for seed in config.seeds:
             for repeat in range(1, config.repeats + 1):
                 for engine in ordered_engines(
-                    config.engines, phase=config.phase, pack=scenario.pack,
-                    scenario_id=scenario.id, seed=seed, repeat=repeat,
+                    config.engines,
+                    phase=config.phase,
+                    pack=scenario.pack,
+                    scenario_id=scenario.id,
+                    seed=seed,
+                    repeat=repeat,
                 ):
-                    records.append(_offline_record(
-                        config=config, scenario=scenario, engine=engine, seed=seed,
-                        repeat=repeat, pair_index=pair_index, git_sha=git_sha,
-                        git_dirty=git_dirty, ts=ts,
-                    ))
+                    records.append(
+                        _offline_record(
+                            config=config,
+                            scenario=scenario,
+                            engine=engine,
+                            seed=seed,
+                            repeat=repeat,
+                            pair_index=pair_index,
+                            git_sha=git_sha,
+                            git_dirty=git_dirty,
+                            ts=ts,
+                        )
+                    )
                 pair_index += 1
 
     manifest = {
@@ -506,7 +620,6 @@ def _enforce_owner_gate(config: RunConfig) -> None:
         )
 
 
-
 # ── disk output ─────────────────────────────────────────────────────────────
 
 
@@ -517,7 +630,9 @@ def write_run(summary: RunSummary) -> Path:
     records_dir.mkdir(parents=True, exist_ok=True)
     for record in summary.records:
         path = records_dir / f"{record['record_id']}.json"
-        path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        path.write_text(
+            json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
     (out / "manifest.json").write_text(
         json.dumps(summary.manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
@@ -547,45 +662,118 @@ def build_config_from_args(argv: list[str]) -> RunConfig:
     parser = argparse.ArgumentParser(prog="pi-benchmark-runner", description=__doc__)
     # Wire the parsers as argparse `type=` callables so a bad value produces a clean
     # usage error + SystemExit rather than an uncaught ArgumentTypeError.
-    parser.add_argument("--pack", required=True, type=_parse_packs, help="canonical|spine|a2a|all or a comma list")
+    parser.add_argument(
+        "--pack",
+        required=True,
+        type=_parse_packs,
+        help="canonical|spine|a2a|all or a comma list",
+    )
     parser.add_argument("--tier", required=True, choices=TIERS)
     parser.add_argument("--engine", required=True, choices=("pi", "legacy", "both"))
-    parser.add_argument("--seeds", default=(0,), type=_parse_seeds, help="comma-separated integer seeds")
+    parser.add_argument(
+        "--seeds", default=(0,), type=_parse_seeds, help="comma-separated integer seeds"
+    )
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--phase", default="B1", choices=("B1", "B2", "B3", "B4"))
     parser.add_argument("--out", required=True, help="output run directory")
-    parser.add_argument("--owner-gate", default=None, help="owner-gate artifact (required for T2/T3)")
-    parser.add_argument("--dry-run", action="store_true", help="print the plan and exit without executing")
-    parser.add_argument("--budget-usd", type=float, default=1.00, help="approved budget ceiling for live tiers in USD")
-    parser.add_argument("--judge-config", default=None, help="path to judge configuration JSON file")
-    parser.add_argument("--memory-load", action="store_true", help="enable RSS and cross-session memory load measurement")
-    parser.add_argument("--live", action="store_true",
-                        help="explicit consent for live dispatch + spend; without it T2/T3 print the plan and exit 0")
-    parser.add_argument("--wave", type=int, default=None, help="process wave index (1-based) of an immutable manifest")
-    parser.add_argument("--max-processes", type=int, default=None, help="total wave processes N (shard count)")
-    parser.add_argument("--manifest", default=None, help="path to the Lane A run manifest (wave mode)")
-    parser.add_argument("--budget-ledger", default=None, help="path to the shared crash-safe budget ledger")
-    parser.add_argument("--provider", default=ONLY_PROVIDER, help="live provider (only 'deepseek' is approved)")
-    parser.add_argument("--model", default=ONLY_MODEL, help="live model (only 'deepseek-v4-pro' is approved)")
-    parser.add_argument("--moa-mode", default="none", choices=MOA_MODE_CHOICES,
-                        help="MoA routing mode for live units (default none)")
-    parser.add_argument("--moa-n", type=int, default=3, help="MoA samples (self_moa) / requested slots (full_ensemble)")
-    parser.add_argument("--estimate-scope", default="program", choices=["program", "lane"],
-                        help="estimate gate scope: whole 3-lane program (default) or only the requested lane")
-    parser.add_argument("--plan-only", action="store_true",
-                        help="B0 offline scheduling: build run units, shard into --max-processes disjoint "
-                             "shards, write the immutable manifest, print the plan, exit (no dispatch, no spend)")
+    parser.add_argument(
+        "--owner-gate", default=None, help="owner-gate artifact (required for T2/T3)"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the plan and exit without executing",
+    )
+    parser.add_argument(
+        "--budget-usd",
+        type=float,
+        default=1.00,
+        help="approved budget ceiling for live tiers in USD",
+    )
+    parser.add_argument(
+        "--judge-config", default=None, help="path to judge configuration JSON file"
+    )
+    parser.add_argument(
+        "--memory-load",
+        action="store_true",
+        help="enable RSS and cross-session memory load measurement",
+    )
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="explicit consent for live dispatch + spend; without it T2/T3 print the plan and exit 0",
+    )
+    parser.add_argument(
+        "--wave",
+        type=int,
+        default=None,
+        help="process wave index (1-based) of an immutable manifest",
+    )
+    parser.add_argument(
+        "--max-processes",
+        type=int,
+        default=None,
+        help="total wave processes N (shard count)",
+    )
+    parser.add_argument(
+        "--manifest", default=None, help="path to the Lane A run manifest (wave mode)"
+    )
+    parser.add_argument(
+        "--budget-ledger",
+        default=None,
+        help="path to the shared crash-safe budget ledger",
+    )
+    parser.add_argument(
+        "--provider",
+        default=ONLY_PROVIDER,
+        help="live provider (only 'deepseek' is approved)",
+    )
+    parser.add_argument(
+        "--model",
+        default=ONLY_MODEL,
+        help="live model (only 'deepseek-v4-pro' is approved)",
+    )
+    parser.add_argument(
+        "--moa-mode",
+        default="none",
+        choices=MOA_MODE_CHOICES,
+        help="MoA routing mode for live units (default none)",
+    )
+    parser.add_argument(
+        "--moa-n",
+        type=int,
+        default=3,
+        help="MoA samples (self_moa) / requested slots (full_ensemble)",
+    )
+    parser.add_argument(
+        "--estimate-scope",
+        default="program",
+        choices=["program", "lane"],
+        help="estimate gate scope: whole 3-lane program (default) or only the requested lane",
+    )
+    parser.add_argument(
+        "--plan-only",
+        action="store_true",
+        help="B0 offline scheduling: build run units, shard into --max-processes disjoint "
+        "shards, write the immutable manifest, print the plan, exit (no dispatch, no spend)",
+    )
     ns = parser.parse_args(argv)
 
     if ns.provider != ONLY_PROVIDER:
-        parser.error(f"--provider must be {ONLY_PROVIDER!r} (DEC-5: DeepSeek is the only approved provider)")
+        parser.error(
+            f"--provider must be {ONLY_PROVIDER!r} (DEC-5: DeepSeek is the only approved provider)"
+        )
     if ns.model != ONLY_MODEL:
-        parser.error(f"--model must be {ONLY_MODEL!r} (DEC-5: deepseek-v4-pro is the only approved model)")
+        parser.error(
+            f"--model must be {ONLY_MODEL!r} (DEC-5: deepseek-v4-pro is the only approved model)"
+        )
     if ns.plan_only and ns.max_processes is None:
         # B0 fails closed without an explicit, recorded process bound (acceptance A2).
         parser.error("--plan-only requires --max-processes N")
     if ns.plan_only and ns.wave is not None:
-        parser.error("--plan-only (B0 scheduling) and --wave (execution) are mutually exclusive")
+        parser.error(
+            "--plan-only (B0 scheduling) and --wave (execution) are mutually exclusive"
+        )
     if ns.wave is not None:
         for flag in ("--max-processes", "--manifest", "--budget-ledger"):
             if getattr(ns, flag.lstrip("-").replace("-", "_")) is None:
@@ -644,16 +832,25 @@ def _worst_case_program_cost_usd(
     for scenario in scenarios:
         for seed in config.seeds:
             probe = _LiveUnit(
-                unit_id="estimate", pack=scenario.pack, scenario_id=scenario.id,
-                seed=seed, repeat=1, engine=config.engines[0], phase=config.phase,
+                unit_id="estimate",
+                pack=scenario.pack,
+                scenario_id=scenario.id,
+                seed=seed,
+                repeat=1,
+                engine=config.engines[0],
+                phase=config.phase,
             )
             max_prompt_tokens = max(
                 max_prompt_tokens,
-                live_driver._chars4(live_driver.default_prompt_builder(probe, scenario)),
+                live_driver._chars4(
+                    live_driver.default_prompt_builder(probe, scenario)
+                ),
             )
     reserve_input = max(2 * max_prompt_tokens, live_driver.MIN_RESERVE_INPUT_TOKENS)
     per_call = provider.estimate_cost(reserve_input, live_driver.DEFAULT_MAX_TOKENS)
-    units_per_lane = len(scenarios) * len(config.seeds) * config.repeats * len(config.engines)
+    units_per_lane = (
+        len(scenarios) * len(config.seeds) * config.repeats * len(config.engines)
+    )
     # Model calls per unit summed across the three shared-ledger lanes.
     lane_model_calls = (
         1  # 'none' lane: one dispatch per unit
@@ -696,13 +893,20 @@ def _run_b0_plan_only(config: RunConfig) -> int:
     try:
         scheduler = importlib.import_module("tests.pi_benchmark.scheduler")
     except ImportError as exc:
-        print(f"[refused] B0 scheduling needs Lane A's scheduler.py ({exc})", file=sys.stderr)
+        print(
+            f"[refused] B0 scheduling needs Lane A's scheduler.py ({exc})",
+            file=sys.stderr,
+        )
         return 2
     scenarios = _resolve_scenarios(config.packs)
     moa_modes: tuple[str, ...] = () if config.moa_mode == "none" else (config.moa_mode,)
     units = scheduler.build_run_units(
-        scenarios=scenarios, tier=config.tier, engines=config.engines,
-        seeds=config.seeds, repeats=config.repeats, moa_modes=moa_modes,
+        scenarios=scenarios,
+        tier=config.tier,
+        engines=config.engines,
+        seeds=config.seeds,
+        repeats=config.repeats,
+        moa_modes=moa_modes,
     )
     # RT-2 estimate gate: print the deterministic whole-program worst case and refuse
     # (before any manifest write or live call) when it exceeds the approved budget.
@@ -725,35 +929,55 @@ def _run_b0_plan_only(config: RunConfig) -> int:
         manifest_path = config.manifest or (config.out_dir / "manifest.json")
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest = scheduler.write_manifest(
-            manifest_path, max_processes=config.max_processes, provider=config.provider,
-            model=config.model, budget_cap_usd=config.budget_usd, moa_n=config.moa_n,
-            repeats=config.repeats, tier=config.tier, shards=shards,
+            manifest_path,
+            max_processes=config.max_processes,
+            provider=config.provider,
+            model=config.model,
+            budget_cap_usd=config.budget_usd,
+            moa_n=config.moa_n,
+            repeats=config.repeats,
+            tier=config.tier,
+            shards=shards,
         )
     except (scheduler.ManifestConflict, ValueError) as exc:
         print(f"[refused] {exc}", file=sys.stderr)
         return 2
-    print(f"[plan] B0 schedule: {len(units)} unit(s) across {len(shards)} shard(s) "
-          f"(max_processes={config.max_processes})")
-    print(f"[plan] provider={config.provider} model={config.model} "
-          f"budget_cap_usd={config.budget_usd:.2f} tier={config.tier} "
-          f"moa_modes={moa_modes or ('none',)} moa_n={config.moa_n} repeats={config.repeats}")
+    print(
+        f"[plan] B0 schedule: {len(units)} unit(s) across {len(shards)} shard(s) "
+        f"(max_processes={config.max_processes})"
+    )
+    print(
+        f"[plan] provider={config.provider} model={config.model} "
+        f"budget_cap_usd={config.budget_usd:.2f} tier={config.tier} "
+        f"moa_modes={moa_modes or ('none',)} moa_n={config.moa_n} repeats={config.repeats}"
+    )
     for index, shard in enumerate(shards, start=1):
         print(f"[plan]   wave {index}: {len(shard)} unit(s)")
-    print(f"[plan] immutable manifest: {manifest_path} "
-          f"(content_sha256={manifest['content_sha256'][:16]}...)")
+    print(
+        f"[plan] immutable manifest: {manifest_path} "
+        f"(content_sha256={manifest['content_sha256'][:16]}...)"
+    )
     print("[plan] offline only: no dispatch, no spend")
     return 0
 
 
 def _print_plan(config: RunConfig, scenarios: list[Scenario]) -> None:
-    print(f"[plan] phase={config.phase} tier={config.tier} engines={','.join(config.engines)}")
-    print(f"[plan] packs={','.join(config.packs)} seeds={config.seeds} repeats={config.repeats}")
-    print(f"[plan] scenarios={len(scenarios)} -> "
-          f"{len(scenarios) * len(config.seeds) * config.repeats * len(config.engines)} records")
+    print(
+        f"[plan] phase={config.phase} tier={config.tier} engines={','.join(config.engines)}"
+    )
+    print(
+        f"[plan] packs={','.join(config.packs)} seeds={config.seeds} repeats={config.repeats}"
+    )
+    print(
+        f"[plan] scenarios={len(scenarios)} -> "
+        f"{len(scenarios) * len(config.seeds) * config.repeats * len(config.engines)} records"
+    )
     print(f"[plan] out={config.out_dir}")
     if config.tier not in OFFLINE_TIERS:
-        print(f"[plan] live={config.live} provider={config.provider} model={config.model} "
-              f"moa_mode={config.moa_mode} moa_n={config.moa_n} budget_usd={config.budget_usd}")
+        print(
+            f"[plan] live={config.live} provider={config.provider} model={config.model} "
+            f"moa_mode={config.moa_mode} moa_n={config.moa_n} budget_usd={config.budget_usd}"
+        )
         if not config.live:
             print("[plan] no --live: no dispatch, no spend (pass --live to execute)")
 
@@ -786,7 +1010,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[refused] {exc}", file=sys.stderr)
         return 2
     out = write_run(summary)
-    print(f"[ok] wrote {len(summary.records)} records to {out} (counts={summary.counts})")
+    print(
+        f"[ok] wrote {len(summary.records)} records to {out} (counts={summary.counts})"
+    )
     return 0
 
 

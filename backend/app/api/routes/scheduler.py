@@ -1,16 +1,16 @@
 """Scheduled task CRUD API routes."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import ensure_utc
 from app.core.permissions import get_active_project_or_404, require_project_access
 from app.core.scheduler import CronParser, ScheduledTask
-from app.core.datetime_utils import ensure_utc
 from app.models.database import get_db
 
 router = APIRouter()
@@ -124,7 +124,7 @@ async def create_schedule(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     try:
         next_run = CronParser.next_run_after(cron_expression, now)
     except ValueError as exc:
@@ -215,7 +215,7 @@ async def update_schedule(
         try:
             update_data["next_run"] = CronParser.next_run_after(
                 update_data["cron_expression"],
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc))
@@ -223,7 +223,7 @@ async def update_schedule(
         try:
             update_data["next_run"] = CronParser.next_run_after(
                 task.cron_expression,
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc))

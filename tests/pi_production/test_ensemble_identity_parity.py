@@ -69,7 +69,9 @@ async def test_all_loop_selectors_preserve_distinct_served_identities(monkeypatc
 
     endpoints = [
         replace(
-            faux_endpoint([final_text(f"answer-{name}")], endpoint_id=f"pi-rater-{name}"),
+            faux_endpoint(
+                [final_text(f"answer-{name}")], endpoint_id=f"pi-rater-{name}"
+            ),
             model=f"configured-{name}",
         )
         for name in ("a", "b", "c")
@@ -78,9 +80,7 @@ async def test_all_loop_selectors_preserve_distinct_served_identities(monkeypatc
     supervisor = _ServedIdentitySupervisor()
     service = PiExecutionService(supervisor=supervisor, model_manager=manager)
     monkeypatch.setattr(service, "_record_turn_telemetry", AsyncMock())
-    monkeypatch.setattr(
-        "app.core.agentic.dispatcher.record_agentic_usage", AsyncMock()
-    )
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", AsyncMock())
 
     results = {}
     # The API exposes aliases for the Pi path.  They must all normalize to the
@@ -98,7 +98,11 @@ async def test_all_loop_selectors_preserve_distinct_served_identities(monkeypatc
         )
 
     expected_endpoints = {"pi-rater-a", "pi-rater-b", "pi-rater-c"}
-    expected_served = {"served/configured-a", "served/configured-b", "served/configured-c"}
+    expected_served = {
+        "served/configured-a",
+        "served/configured-b",
+        "served/configured-c",
+    }
     for result in results.values():
         assert result.status == "success"
         assert set(result.endpoint_ids) == expected_endpoints
@@ -126,7 +130,9 @@ async def test_validation_methods_use_pi_authority_for_both_loop_choices(monkeyp
 
     endpoints = [
         replace(
-            faux_endpoint([final_text(f"answer-{name}")], endpoint_id=f"pi-rater-{name}"),
+            faux_endpoint(
+                [final_text(f"answer-{name}")], endpoint_id=f"pi-rater-{name}"
+            ),
             model=f"configured-{name}",
         )
         for name in ("a", "b", "c")
@@ -135,9 +141,7 @@ async def test_validation_methods_use_pi_authority_for_both_loop_choices(monkeyp
     supervisor = _ServedIdentitySupervisor()
     service = PiExecutionService(supervisor=supervisor, model_manager=manager)
     monkeypatch.setattr(service, "_record_turn_telemetry", AsyncMock())
-    monkeypatch.setattr(
-        "app.core.agentic.dispatcher.record_agentic_usage", AsyncMock()
-    )
+    monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", AsyncMock())
     dispatcher = AgenticDispatcher(pi_service=service)
 
     async def no_project_engine(_project_id):
@@ -184,9 +188,7 @@ async def test_validation_methods_use_pi_authority_for_both_loop_choices(monkeyp
                 f"served/configured-{identity.removeprefix('pi-rater-')}"
                 for identity in expected_method_endpoints
             }
-            assert set(result.metadata["endpoint_ids"]) == (
-                expected_method_endpoints
-            )
+            assert set(result.metadata["endpoint_ids"]) == (expected_method_endpoints)
             assert set(result.metadata["models_used"]) == expected_method_served
             assert result.metadata["formal_reliability"] is False
             assert result.metadata["research_spine_eligible"] is False

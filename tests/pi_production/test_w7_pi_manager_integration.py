@@ -50,6 +50,7 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
     # The test exercises the real read-only manager projection without a DB
     # catalog; no production endpoint state is written.
     manager._db_projected = True
+
     class _ManagedStructuredService:
         """Deterministic provider seam behind the real dispatcher.
 
@@ -102,6 +103,7 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
 
     service = _ManagedStructuredService()
     dispatcher = AgenticDispatcher(pi_service=service)
+
     async def no_op_usage(**kwargs):
         return None
 
@@ -143,7 +145,9 @@ async def test_coding_run_uses_real_pi_model_manager_for_identity_distinct_coder
         )
 
     assert result["promotion_status"] == "accepted", result
-    assert result["reliability_method"] == "fleiss_kappa_with_krippendorff_alpha_companion"
+    assert (
+        result["reliability_method"] == "fleiss_kappa_with_krippendorff_alpha_companion"
+    )
     assert result["distinct_model_count"] == 3
     assert result["rater_count"] == 3
     assert [kwargs["params"].endpoint_id for kwargs in service.calls] == [
@@ -181,20 +185,30 @@ async def test_coding_run_qwen_rate_limit_fallback_preserves_three_model_gate(
     suffix = uuid.uuid4().hex[:8]
     project_id = f"proj-w7-qwen-fallback-{suffix}"
     unit_ids = [f"eu-w7-qwen-1-{suffix}", f"eu-w7-qwen-2-{suffix}"]
-    quotes = {unit_id: f"Participant reported invitation friction {index}." for index, unit_id in enumerate(unit_ids, 1)}
+    quotes = {
+        unit_id: f"Participant reported invitation friction {index}."
+        for index, unit_id in enumerate(unit_ids, 1)
+    }
     dashscope_url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
     endpoint_specs = (
         ("ep-luna", "gpt-5.6-luna", "openai-codex", "codex-key"),
         ("ep-plus", "qwen3.7-plus", "dashscope", "same-dashscope-key"),
         ("ep-flash", "qwen3.7-flash", "dashscope", "same-dashscope-key"),
         ("ep-plus-dated", "qwen3.7-plus-2026-05-26", "dashscope", "same-dashscope-key"),
-        ("ep-flash-dated", "qwen3.7-flash-2026-07-15", "dashscope", "same-dashscope-key"),
+        (
+            "ep-flash-dated",
+            "qwen3.7-flash-2026-07-15",
+            "dashscope",
+            "same-dashscope-key",
+        ),
     )
     endpoints = [
         ResolvedPiEndpoint(
             endpoint_id=endpoint_id,
             provider_kind="openai_compat",
-            base_url=dashscope_url if provider == "dashscope" else "https://codex.invalid",
+            base_url=dashscope_url
+            if provider == "dashscope"
+            else "https://codex.invalid",
             model=model,
             api_key=api_key,
             timeout_ms=1000,
@@ -291,7 +305,9 @@ async def test_coding_run_qwen_rate_limit_fallback_preserves_three_model_gate(
     ]
     assert all(call["params"].thinking_mode == "high" for call in service.calls)
     fallback_routes = [
-        route for route in result["route_evidence"] if route.get("fallback_reason") == "rate_limit"
+        route
+        for route in result["route_evidence"]
+        if route.get("fallback_reason") == "rate_limit"
     ]
     assert len(fallback_routes) == 1
     assert fallback_routes[0]["requested_model"] == "qwen3.7-plus"
@@ -306,7 +322,9 @@ async def test_coding_run_qwen_rate_limit_fallback_preserves_three_model_gate(
         },
     ]
     assert {
-        route["served_model"] for route in result["route_evidence"] if route.get("outcome") == "served"
+        route["served_model"]
+        for route in result["route_evidence"]
+        if route.get("outcome") == "served"
     } == {"gpt-5.6-luna", "qwen3.7-plus-2026-05-26", "qwen3.7-flash"}
 
 
@@ -479,10 +497,14 @@ async def test_coding_run_uses_project_scoped_petals_projection_and_preserves_ro
         )
 
     assert result["promotion_status"] == "accepted"
-    assert result["reliability_method"] == "fleiss_kappa_with_krippendorff_alpha_companion"
+    assert (
+        result["reliability_method"] == "fleiss_kappa_with_krippendorff_alpha_companion"
+    )
     assert result["distinct_model_count"] == 3
     assert result["rater_count"] == 3
-    assert {route["route_kind"] for route in result["route_evidence"]} == {"petals_bridge"}
+    assert {route["route_kind"] for route in result["route_evidence"]} == {
+        "petals_bridge"
+    }
     assert {route["node_id"] for route in result["route_evidence"]} == {
         "donor-a",
         "donor-b",

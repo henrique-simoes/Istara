@@ -58,8 +58,14 @@ def test_agentic_eval_contract_evidence_files_exist():
 def test_agentic_eval_simulation_scenarios_are_loaded_by_runner():
     manifest = load_manifest()
     runner = (ROOT / "tests" / "simulation" / "run.mjs").read_text(encoding="utf-8")
-    registry = (ROOT / "tests" / "simulation" / "lib" / "scenario-registry.mjs").read_text(encoding="utf-8")
-    match = re.search(r"export const scenarioFiles = Object\.freeze\(\[(?P<body>.*?)\]\);", registry, re.S)
+    registry = (
+        ROOT / "tests" / "simulation" / "lib" / "scenario-registry.mjs"
+    ).read_text(encoding="utf-8")
+    match = re.search(
+        r"export const scenarioFiles = Object\.freeze\(\[(?P<body>.*?)\]\);",
+        registry,
+        re.S,
+    )
     assert match, "scenario registry must export scenarioFiles"
     loaded_scenarios = set(re.findall(r'"([^"]+)"', match.group("body")))
     assert "./lib/scenario-registry.mjs" in runner
@@ -89,9 +95,7 @@ def test_agentic_eval_metrics_are_quantifiable():
 def test_live_orchestration_baselines_are_companion_only():
     """The historical live benchmark must not masquerade as PI acceptance evidence."""
     manifest = load_manifest()
-    contracts = {
-        contract["id"]: contract for contract in manifest["contracts"]
-    }
+    contracts = {contract["id"]: contract for contract in manifest["contracts"]}
     for contract_id in ("ensemble_llm_orchestration", "tool_calling_react"):
         contract = contracts[contract_id]
         assert contract["evidence_role"] == "companion"

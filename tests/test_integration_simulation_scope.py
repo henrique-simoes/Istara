@@ -82,7 +82,9 @@ def test_integration_simulation_by_id_calls_keep_active_project_scope() -> None:
     for relative_path in HARNESS_FILES:
         source = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
         for line_number, line in _api_lines(source):
-            if not any(endpoint in line for endpoint in PROJECT_SCOPED_DYNAMIC_ENDPOINTS):
+            if not any(
+                endpoint in line for endpoint in PROJECT_SCOPED_DYNAMIC_ENDPOINTS
+            ):
                 continue
             if _is_body_scoped_create(line) or _has_project_scope(line):
                 continue
@@ -99,7 +101,9 @@ def test_integration_simulation_project_lists_keep_active_project_scope() -> Non
         for line_number, line in _api_lines(source):
             if _is_body_scoped_create(line):
                 continue
-            if not any(endpoint in line for endpoint in PROJECT_SCOPED_COLLECTION_ENDPOINTS):
+            if not any(
+                endpoint in line for endpoint in PROJECT_SCOPED_COLLECTION_ENDPOINTS
+            ):
                 continue
             if "/api/mcp/server/status" in line:
                 continue

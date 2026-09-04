@@ -76,7 +76,9 @@ async def test_auth_users_fail_closed_on_unreadable_encrypted_email():
 
         assert response.status_code == 200
         assert "ENC:" not in response.text
-        user = next(item for item in response.json() if item["username"] == "cipher_admin")
+        user = next(
+            item for item in response.json() if item["username"] == "cipher_admin"
+        )
         assert user["email"] == ""
         assert encryption_health_snapshot()["decryption_failures"] >= 1
     finally:
@@ -159,7 +161,11 @@ async def test_admin_users_fail_closed_on_unreadable_encrypted_email():
 
         assert response.status_code == 200
         assert "ENC:" not in response.text
-        user = next(item for item in response.json()["users"] if item["username"] == "cipher_admin_list")
+        user = next(
+            item
+            for item in response.json()["users"]
+            if item["username"] == "cipher_admin_list"
+        )
         assert user["email"] == ""
         assert encryption_health_snapshot()["decryption_failures"] >= 1
     finally:

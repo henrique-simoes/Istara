@@ -37,8 +37,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORT_MANAGER = REPO_ROOT / "backend/app/core/report_manager.py"
 
 SPINE_PHASES = {
-    "intent", "context", "plan", "tool_selection", "execution",
-    "recovery", "grounding", "synthesis", "review", "governance",
+    "intent",
+    "context",
+    "plan",
+    "tool_selection",
+    "execution",
+    "recovery",
+    "grounding",
+    "synthesis",
+    "review",
+    "governance",
 }
 
 
@@ -49,7 +57,10 @@ def _function_source(function_name: str) -> str:
     text = REPORT_MANAGER.read_text(encoding="utf-8")
     tree = ast.parse(text)
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        ):
             return ast.get_source_segment(text, node) or ""
     raise AssertionError(f"{function_name} not found in {REPORT_MANAGER}")
 
@@ -57,7 +68,9 @@ def _function_source(function_name: str) -> str:
 class _StubAgentic:
     """Recording stand-in for the ``agentic`` dispatcher singleton."""
 
-    def __init__(self, *, text: str = "dispatcher text", value=None, status: str = "success") -> None:
+    def __init__(
+        self, *, text: str = "dispatcher text", value=None, status: str = "success"
+    ) -> None:
         self.calls: list[tuple[str, dict]] = []
         self._text = text
         self._value = value
@@ -184,7 +197,9 @@ def test_w5_report_manager_sites_carry_dispatcher_path_and_no_legacy_branch():
     assert "llm_router.chat" not in compose_full
 
     section = _function_source("_compose_section")
-    assert section.count("settings.agentic_core") == 0, "W9 retired all three flag gates"
+    assert section.count("settings.agentic_core") == 0, (
+        "W9 retired all three flag gates"
+    )
     assert section.count("agentic.completion") == 3
     assert 'purpose="report.insights_narrative"' in section
     assert 'purpose="report.recommendations_narrative"' in section
@@ -195,14 +210,18 @@ def test_w5_report_manager_sites_carry_dispatcher_path_and_no_legacy_branch():
 # ── behavior: _generate_executive_summary (report.exec_summary) ─────────
 
 
-async def test_exec_summary_flag_on_dispatches_report_exec_summary(monkeypatch, _agentic_core_on):
+async def test_exec_summary_flag_on_dispatches_report_exec_summary(
+    monkeypatch, _agentic_core_on
+):
     router_stub = _StubRouter()
     dispatcher_stub = _StubAgentic(text="SITUATION\nA dispatcher executive summary.")
     monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     fresh = SimpleNamespace(executive_summary=None)
-    db = _StubDB(execute_results=[[SimpleNamespace(text="finding text one")]], fresh=fresh)
+    db = _StubDB(
+        execute_results=[[SimpleNamespace(text="finding text one")]], fresh=fresh
+    )
 
     await _manager()._generate_executive_summary(_report(), db)
 
@@ -222,7 +241,11 @@ async def test_exec_summary_flag_on_dispatches_report_exec_summary(monkeypatch, 
 
 
 _MECE_CATEGORIES = [
-    {"name": "Users struggle with exports", "description": "So-what.", "finding_ids": ["f1"]},
+    {
+        "name": "Users struggle with exports",
+        "description": "So-what.",
+        "finding_ids": ["f1"],
+    },
 ]
 
 
@@ -255,7 +278,9 @@ async def test_mece_flag_on_dispatches_report_mece(monkeypatch, _agentic_core_on
     assert json.loads(fresh.mece_categories_json) == _MECE_CATEGORIES
 
 
-async def test_mece_flag_on_failed_outcome_writes_nothing(monkeypatch, _agentic_core_on):
+async def test_mece_flag_on_failed_outcome_writes_nothing(
+    monkeypatch, _agentic_core_on
+):
     router_stub = _StubRouter()
     dispatcher_stub = _StubAgentic(value=None, status="failure")
     monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
@@ -300,10 +325,13 @@ async def test_compose_section_ensemble_scores_discloses_response_level_heuristi
 
 
 _SCORES_CONVERGED = {
-    "scores": {t["section"]: 9 for t in [
-        {"section": "I. Executive Summary (SCR)"},
-        {"section": "II. Research Methodology & Rigor"},
-    ]},
+    "scores": {
+        t["section"]: 9
+        for t in [
+            {"section": "I. Executive Summary (SCR)"},
+            {"section": "II. Research Methodology & Rigor"},
+        ]
+    },
     "weakest": "",
     "reason": "all good",
     "suggestion": "",

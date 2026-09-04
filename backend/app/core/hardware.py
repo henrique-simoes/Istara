@@ -144,7 +144,7 @@ def _detect_apple_gpu() -> GpuInfo | None:
 
 def detect_hardware() -> HardwareProfile:
     """Detect system hardware capabilities."""
-    import psutil  # noqa: delayed import — psutil may not be in all envs
+    import psutil  # noqa: F401 — delayed import, psutil may not be in all envs
 
     mem = psutil.virtual_memory()
     total_ram_gb = round(mem.total / (1024**3), 1)

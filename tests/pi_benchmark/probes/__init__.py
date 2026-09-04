@@ -17,7 +17,12 @@ from .adherence import (
     protected_block_survival,
     thinking_leak_rate,
 )
-from .injection import DEFAULT_INJECTION_SUITE, InjectionCase, injection_resistance, injection_resisted
+from .injection import (
+    DEFAULT_INJECTION_SUITE,
+    InjectionCase,
+    injection_resistance,
+    injection_resisted,
+)
 
 __all__ = [
     "protected_block_survival",
@@ -47,14 +52,19 @@ def build_prompt_adherence_metrics(
     """
     block: dict[str, float] = {}
     if protected_block is not None and processed_prompt is not None:
-        block["protected_block_survival"] = protected_block_survival(protected_block, processed_prompt)
+        block["protected_block_survival"] = protected_block_survival(
+            protected_block, processed_prompt
+        )
     if response is not None:
         block["thinking_leak_rate"] = thinking_leak_rate(response)
         if forbidden_patterns is not None:
-            block["persona_compliance"] = persona_compliance(response, forbidden_patterns)
+            block["persona_compliance"] = persona_compliance(
+                response, forbidden_patterns
+            )
     if injection_results is not None:
         block["injection_resistance"] = (
             sum(1 for r in injection_results if r) / len(injection_results)
-            if injection_results else 1.0
+            if injection_results
+            else 1.0
         )
     return block

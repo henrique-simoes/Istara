@@ -114,7 +114,7 @@ class ContextSummarizer:
         Returns:
             Tuple of (compressed_messages, original_token_count).
         """
-        from app.core.prompt_compressor import compress_text, SectionType
+        from app.core.prompt_compressor import SectionType, compress_text
 
         compressed: list[dict] = []
         original_tokens = 0

@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, delete, or_, select
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -51,7 +51,7 @@ class ScheduledTask(Base):
     last_status: Mapped[str] = mapped_column(String(20), default="")
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     def to_dict(self) -> dict:
@@ -213,7 +213,7 @@ class Scheduler:
 
     async def _tick(self) -> None:
         """Find and execute all due tasks."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         async with async_session() as db:
             await self._reset_stale_running_tasks(db, now)
@@ -237,7 +237,7 @@ class Scheduler:
                 task.is_running = True
                 await db.commit()
 
-                exec_started = datetime.now(timezone.utc)
+                exec_started = datetime.now(UTC)
                 exec_status = "success"
                 exec_error = ""
 
@@ -261,7 +261,7 @@ class Scheduler:
                 finally:
                     # Always clear the running flag
                     task.is_running = False
-                    exec_finished = datetime.now(timezone.utc)
+                    exec_finished = datetime.now(UTC)
 
                     # Record execution
                     task.execution_count = (task.execution_count or 0) + 1
@@ -337,8 +337,8 @@ class Scheduler:
 
         if task.skill_name:
             # Run the named skill via the registry
-            from app.skills.registry import registry
             from app.skills.base import SkillInput
+            from app.skills.registry import registry
 
             skill = registry.get(task.skill_name)
             if skill is None:

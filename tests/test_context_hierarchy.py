@@ -10,7 +10,11 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
-from app.core.context_hierarchy import ContextDocument, PLATFORM_CONTEXT, context_hierarchy
+from app.core.context_hierarchy import (
+    ContextDocument,
+    PLATFORM_CONTEXT,
+    context_hierarchy,
+)
 from app.main import app
 from app.models.database import async_session, init_db
 from app.models.project import Project
@@ -87,7 +91,9 @@ async def _seed_context_documents(db: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-async def test_project_list_excludes_global_and_other_project_contexts(context_db: AsyncSession):
+async def test_project_list_excludes_global_and_other_project_contexts(
+    context_db: AsyncSession,
+):
     await _seed_context_documents(context_db)
 
     contexts = await context_hierarchy.list_contexts(context_db, project_id="project-a")
@@ -105,7 +111,9 @@ async def test_composed_context_uses_platform_defaults_and_active_project_only(
 ):
     await _seed_context_documents(context_db)
 
-    composed = await context_hierarchy.compose_context(context_db, project_id="project-a")
+    composed = await context_hierarchy.compose_context(
+        context_db, project_id="project-a"
+    )
 
     assert PLATFORM_CONTEXT in composed
     assert "Project A product language." in composed
@@ -176,13 +184,19 @@ async def _seed_api_context_documents() -> tuple[str, str, str, str, str]:
 @pytest.mark.asyncio
 async def test_context_by_id_routes_require_active_project_scope(admin_auth_headers):
     await init_db()
-    project_a, project_b, read_doc_id, delete_doc_id, global_doc_id = (
-        await _seed_api_context_documents()
-    )
+    (
+        project_a,
+        project_b,
+        read_doc_id,
+        delete_doc_id,
+        global_doc_id,
+    ) = await _seed_api_context_documents()
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        missing = await ac.get(f"/api/contexts/{read_doc_id}", headers=admin_auth_headers)
+        missing = await ac.get(
+            f"/api/contexts/{read_doc_id}", headers=admin_auth_headers
+        )
         wrong = await ac.get(
             f"/api/contexts/{read_doc_id}?project_id={project_b}",
             headers=admin_auth_headers,

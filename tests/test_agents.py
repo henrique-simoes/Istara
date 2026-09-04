@@ -44,7 +44,9 @@ def _researcher_headers(user_id: str = "agent-scope-user") -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _seed_project_member(project_id: str, user_id: str, role: str = "researcher") -> None:
+async def _seed_project_member(
+    project_id: str, user_id: str, role: str = "researcher"
+) -> None:
     async with async_session() as db:
         if await db.get(Project, project_id) is None:
             db.add(
@@ -208,7 +210,9 @@ async def test_agent_creation_proposals_require_project_id(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/agents/creation-proposals/all", headers=auth_headers)
+        response = await ac.get(
+            "/api/agents/creation-proposals/all", headers=auth_headers
+        )
 
     assert response.status_code == 400
     assert response.json()["detail"] == "project_id is required"
@@ -226,7 +230,9 @@ async def test_agent_creation_proposals_are_filtered_by_project(
     import app.core.agent_factory as agent_factory_module
 
     monkeypatch.setattr(agent_factory_module, "DATA_DIR", tmp_path)
-    monkeypatch.setattr(agent_factory_module, "PROPOSALS_FILE", tmp_path / "_agent_proposals.json")
+    monkeypatch.setattr(
+        agent_factory_module, "PROPOSALS_FILE", tmp_path / "_agent_proposals.json"
+    )
 
     factory = agent_factory_module.AgentFactory()
     project_a = factory.propose_agent_creation(
@@ -325,13 +331,19 @@ async def test_agent_project_routes_require_active_project_for_non_admins():
         assert unscoped_detail.status_code == 400
         assert unscoped_detail.json()["detail"] == "project_id is required"
 
-        unscoped_memory = await ac.get(f"/api/agents/{agent_id}/memory", headers=headers)
+        unscoped_memory = await ac.get(
+            f"/api/agents/{agent_id}/memory", headers=headers
+        )
         assert unscoped_memory.status_code == 400
 
-        unscoped_identity = await ac.get(f"/api/agents/{agent_id}/identity", headers=headers)
+        unscoped_identity = await ac.get(
+            f"/api/agents/{agent_id}/identity", headers=headers
+        )
         assert unscoped_identity.status_code == 400
 
-        unscoped_heartbeat = await ac.get("/api/agents/heartbeat/status", headers=headers)
+        unscoped_heartbeat = await ac.get(
+            "/api/agents/heartbeat/status", headers=headers
+        )
         assert unscoped_heartbeat.status_code == 400
 
         unscoped_log = await ac.get(
@@ -555,7 +567,9 @@ async def test_agents_get_nonexistent_returns_404(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_agent_restart_scope_and_promotion_routes_use_persistent_agent(auth_headers):
+async def test_agent_restart_scope_and_promotion_routes_use_persistent_agent(
+    auth_headers,
+):
     """Lifecycle helpers should operate on ORM state, not serialized agent dicts."""
     await init_db()
     transport = ASGITransport(app=app)
@@ -599,12 +613,16 @@ async def test_agent_restart_scope_and_promotion_routes_use_persistent_agent(aut
         )
         assert invalid_scope.status_code == 422
 
-        promotion = await ac.post(f"/api/agents/{agent_id}/request-promotion", headers=auth_headers)
+        promotion = await ac.post(
+            f"/api/agents/{agent_id}/request-promotion", headers=auth_headers
+        )
         assert promotion.status_code == 200
         assert promotion.json()["status"] == "requested"
         assert promotion.json()["project_id"] == "project-test"
 
-        await ac.delete(f"/api/agents/{agent_id}?project_id=project-test", headers=auth_headers)
+        await ac.delete(
+            f"/api/agents/{agent_id}?project_id=project-test", headers=auth_headers
+        )
 
 
 @pytest.mark.asyncio
@@ -734,7 +752,9 @@ async def test_a2a_log_filters_by_project_id(auth_headers):
             assert message_b not in contents
             assert message_global not in contents
 
-            unscoped = await ac.get("/api/agents/a2a/log?limit=20", headers=auth_headers)
+            unscoped = await ac.get(
+                "/api/agents/a2a/log?limit=20", headers=auth_headers
+            )
             assert unscoped.status_code == 422
     finally:
         async with async_session() as db:
@@ -760,8 +780,16 @@ async def test_system_action_agent_tools_reject_cross_project_targets():
             [
                 Project(id=visible_project_id, name="Tool Visible Project"),
                 Project(id=hidden_project_id, name="Tool Hidden Project"),
-                Task(id=visible_task_id, project_id=visible_project_id, title="Visible tool task"),
-                Task(id=hidden_task_id, project_id=hidden_project_id, title="Hidden tool task"),
+                Task(
+                    id=visible_task_id,
+                    project_id=visible_project_id,
+                    title="Visible tool task",
+                ),
+                Task(
+                    id=hidden_task_id,
+                    project_id=hidden_project_id,
+                    title="Hidden tool task",
+                ),
                 Agent(
                     id=hidden_agent_id,
                     name="Hidden project agent",
@@ -799,8 +827,14 @@ async def test_system_action_agent_tools_reject_cross_project_targets():
     async with async_session() as db:
         hidden_task = await db.get(Task, hidden_task_id)
         stored_messages = (
-            await db.execute(select(A2AMessage).where(A2AMessage.content == message_content))
-        ).scalars().all()
+            (
+                await db.execute(
+                    select(A2AMessage).where(A2AMessage.content == message_content)
+                )
+            )
+            .scalars()
+            .all()
+        )
         assert "not available in this project" in assign_result["result"]
         assert "Task not found" in move_result["result"]
         assert "not available in this project" in message_result["result"]
@@ -808,11 +842,17 @@ async def test_system_action_agent_tools_reject_cross_project_targets():
         assert stored_messages == []
 
     async with async_session() as db:
-        await db.execute(delete(A2AMessage).where(A2AMessage.content == message_content))
-        await db.execute(delete(Agent).where(Agent.id == hidden_agent_id))
-        await db.execute(delete(Task).where(Task.id.in_([visible_task_id, hidden_task_id])))
         await db.execute(
-            delete(Project).where(Project.id.in_([visible_project_id, hidden_project_id]))
+            delete(A2AMessage).where(A2AMessage.content == message_content)
+        )
+        await db.execute(delete(Agent).where(Agent.id == hidden_agent_id))
+        await db.execute(
+            delete(Task).where(Task.id.in_([visible_task_id, hidden_task_id]))
+        )
+        await db.execute(
+            delete(Project).where(
+                Project.id.in_([visible_project_id, hidden_project_id])
+            )
         )
         await db.commit()
 
@@ -869,10 +909,16 @@ async def test_system_action_create_task_validates_project_documents_and_priorit
 
     async with async_session() as db:
         tasks = (
-            await db.execute(
-                select(Task).where(Task.project_id == visible_project_id).order_by(Task.created_at)
+            (
+                await db.execute(
+                    select(Task)
+                    .where(Task.project_id == visible_project_id)
+                    .order_by(Task.created_at)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
     assert rejected["success"] is True
     assert "unknown documents for this project" in rejected["result"]
@@ -883,9 +929,13 @@ async def test_system_action_create_task_validates_project_documents_and_priorit
 
     async with async_session() as db:
         await db.execute(delete(Task).where(Task.project_id == visible_project_id))
-        await db.execute(delete(Document).where(Document.id.in_([visible_doc_id, hidden_doc_id])))
         await db.execute(
-            delete(Project).where(Project.id.in_([visible_project_id, hidden_project_id]))
+            delete(Document).where(Document.id.in_([visible_doc_id, hidden_doc_id]))
+        )
+        await db.execute(
+            delete(Project).where(
+                Project.id.in_([visible_project_id, hidden_project_id])
+            )
         )
         await db.commit()
 
@@ -1109,7 +1159,13 @@ async def test_manual_skill_execute_survives_poisoned_storage_session(monkeypatc
     from app.models.database import async_session
     from app.models.project import Project
     from app.models.task import Task
-    from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
+    from app.skills.base import (
+        BaseSkill,
+        SkillInput,
+        SkillOutput,
+        SkillPhase,
+        SkillType,
+    )
     from app.skills.registry import registry
 
     await init_db()
@@ -1164,7 +1220,13 @@ async def test_manual_skill_execute_survives_poisoned_storage_session(monkeypatc
             return SkillOutput(
                 success=True,
                 summary="Valid skill output",
-                nuggets=[{"text": "A valid piece of evidence", "source": "test", "tags": ["valid"]}],
+                nuggets=[
+                    {
+                        "text": "A valid piece of evidence",
+                        "source": "test",
+                        "tags": ["valid"],
+                    }
+                ],
                 facts=[{"text": "A valid fact"}],
             )
 
@@ -1246,6 +1308,8 @@ async def test_agent_store_findings_blocks_skill_output_without_source_span():
         assert "provisional" in task.what_to_review
 
         facts = (
-            await db.execute(select(Fact).where(Fact.task_id == task_id))
-        ).scalars().all()
+            (await db.execute(select(Fact).where(Fact.task_id == task_id)))
+            .scalars()
+            .all()
+        )
         assert len(facts) == 1

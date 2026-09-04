@@ -47,7 +47,9 @@ def validate_target(run_id: str) -> None:
             )
 
 
-def reset_project(run_id: str, *, dry_run: bool = False, compose_files: list[str] | None = None) -> dict[str, str]:
+def reset_project(
+    run_id: str, *, dry_run: bool = False, compose_files: list[str] | None = None
+) -> dict[str, str]:
     """Tear down one QA project namespace with ``docker compose -p ... down -v``.
 
     Returns the command run. When ``dry_run`` is true nothing is executed.
@@ -66,19 +68,28 @@ def reset_project(run_id: str, *, dry_run: bool = False, compose_files: list[str
     result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"reset failed for {project}: {result.stderr.strip()}")
-    return {"dry_run": False, "command": " ".join(cmd), "project": project, "output": result.stdout.strip()}
+    return {
+        "dry_run": False,
+        "command": " ".join(cmd),
+        "project": project,
+        "output": result.stdout.strip(),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--run-id", required=True, help="QA run id (istara-qa-<run-id>)")
+    parser.add_argument(
+        "--run-id", required=True, help="QA run id (istara-qa-<run-id>)"
+    )
     parser.add_argument(
         "--confirm",
         choices=[CONFIRM_TOKEN],
         required=True,
         help=f"confirmation token (must be {CONFIRM_TOKEN})",
     )
-    parser.add_argument("--dry-run", action="store_true", help="print the command without running it")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="print the command without running it"
+    )
     args = parser.parse_args(argv)
 
     if args.confirm != CONFIRM_TOKEN:
@@ -90,7 +101,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"QA reset FAILED: {exc}")
         return 1
 
-    print(f"QA reset {'(dry-run) ' if result.get('dry_run') else ''}completed for {result['project']}")
+    print(
+        f"QA reset {'(dry-run) ' if result.get('dry_run') else ''}completed for {result['project']}"
+    )
     print(f"command: {result['command']}")
     return 0
 

@@ -123,7 +123,9 @@ def check_llm_profiles(issues: list[str]) -> None:
                 f"LLM test harness still references stale endpoint `{snippet}`"
             )
     if "10.0.10." in combined:
-        issues.append("LLM test harness must not commit private live-test server addresses")
+        issues.append(
+            "LLM test harness must not commit private live-test server addresses"
+        )
 
 
 def check_simulation_runner(issues: list[str]) -> None:
@@ -151,9 +153,13 @@ def check_simulation_runner(issues: list[str]) -> None:
     )
     for scenario in sorted(REQUIRED_SIMULATION_SCENARIOS):
         if f'"{scenario}"' not in scenario_registry:
-            issues.append(f"tests/simulation/lib/scenario-registry.mjs: missing scenario `{scenario}`")
+            issues.append(
+                f"tests/simulation/lib/scenario-registry.mjs: missing scenario `{scenario}`"
+            )
     if "scenarioFiles" not in runner or "./lib/scenario-registry.mjs" not in runner:
-        issues.append("tests/simulation/run.mjs: must load scenarios from the shared registry")
+        issues.append(
+            "tests/simulation/run.mjs: must load scenarios from the shared registry"
+        )
     if "process.env.ISTARA_API_URL" not in runner:
         issues.append(
             "tests/simulation/run.mjs: API base must be environment-configurable"
@@ -203,7 +209,10 @@ def check_simulation_runner(issues: list[str]) -> None:
             issues.append(
                 f"tests/simulation/scenarios/20-all-skills-comprehensive.mjs: missing `{snippet}`"
             )
-    if 'positiveIntegerEnv("ISTARA_SCENARIO20_DEFAULT_SKILL_LIMIT", 3)' not in scenario20:
+    if (
+        'positiveIntegerEnv("ISTARA_SCENARIO20_DEFAULT_SKILL_LIMIT", 3)'
+        not in scenario20
+    ):
         issues.append(
             "tests/simulation/scenarios/20-all-skills-comprehensive.mjs: default live subset must be 3 skills"
         )
@@ -236,14 +245,29 @@ def check_simulation_runner(issues: list[str]) -> None:
             "scripts/marathon/run-cycle.mjs: protected probes must send auth headers"
         )
     if "runCustomChecks" not in marathon or "./custom-checks.mjs" not in marathon:
-        issues.append("scripts/marathon/run-cycle.mjs: custom checks must use the registry module")
-    for snippet in ("ISTARA_TEST_AUTH_TOKEN", "ISTARA_E2E_ALLOW_LOCAL_TOKEN", 'create_token("marathon-admin"'):
+        issues.append(
+            "scripts/marathon/run-cycle.mjs: custom checks must use the registry module"
+        )
+    for snippet in (
+        "ISTARA_TEST_AUTH_TOKEN",
+        "ISTARA_E2E_ALLOW_LOCAL_TOKEN",
+        'create_token("marathon-admin"',
+    ):
         if snippet not in marathon:
-            issues.append(f"scripts/marathon/run-cycle.mjs: missing marathon auth fallback `{snippet}`")
+            issues.append(
+                f"scripts/marathon/run-cycle.mjs: missing marathon auth fallback `{snippet}`"
+            )
     if "Placeholder" in marathon:
-        issues.append("scripts/marathon/run-cycle.mjs: custom checks must not silently pass placeholders")
-    if simulation_package.get("scripts", {}).get("test:static") != 'node lib/static-check.mjs && node --test "lib/**/*.test.mjs"':
-        issues.append("tests/simulation/package.json: missing deterministic `test:static` script")
+        issues.append(
+            "scripts/marathon/run-cycle.mjs: custom checks must not silently pass placeholders"
+        )
+    if (
+        simulation_package.get("scripts", {}).get("test:static")
+        != 'node lib/static-check.mjs && node --test "lib/**/*.test.mjs"'
+    ):
+        issues.append(
+            "tests/simulation/package.json: missing deterministic `test:static` script"
+        )
 
 
 def check_project_scope_harness(issues: list[str]) -> None:
@@ -260,17 +284,29 @@ def check_project_scope_harness(issues: list[str]) -> None:
     selection = read("tests/simulation/lib/project-selection.mjs")
     selection_test = read("tests/simulation/lib/project-selection.test.mjs")
     if "selectCanonicalSimulationProject" not in runner:
-        issues.append("tests/simulation/run.mjs: must use deterministic simulation project selection")
+        issues.append(
+            "tests/simulation/run.mjs: must use deterministic simulation project selection"
+        )
     if "SIMULATION_PROJECT_NAME" not in runner:
-        issues.append("tests/simulation/run.mjs: must use the shared simulation project name")
+        issues.append(
+            "tests/simulation/run.mjs: must use the shared simulation project name"
+        )
     if "does not fall back to the first project" not in selection_test:
-        issues.append("tests/simulation/lib/project-selection.test.mjs: missing many-project fallback guard")
+        issues.append(
+            "tests/simulation/lib/project-selection.test.mjs: missing many-project fallback guard"
+        )
     if "does not reuse paused simulation projects" not in selection_test:
-        issues.append("tests/simulation/lib/project-selection.test.mjs: missing paused-project selection guard")
+        issues.append(
+            "tests/simulation/lib/project-selection.test.mjs: missing paused-project selection guard"
+        )
     if "isProjectPaused" not in selection:
-        issues.append("tests/simulation/lib/project-selection.mjs: missing paused project helper")
+        issues.append(
+            "tests/simulation/lib/project-selection.mjs: missing paused project helper"
+        )
     if "requireActiveProjectId" not in selection:
-        issues.append("tests/simulation/lib/project-selection.mjs: missing explicit project_id helper")
+        issues.append(
+            "tests/simulation/lib/project-selection.mjs: missing explicit project_id helper"
+        )
 
 
 def check_clean_test_environment_contract(issues: list[str]) -> None:
@@ -291,7 +327,9 @@ def check_clean_test_environment_contract(issues: list[str]) -> None:
         if snippet not in reset_script:
             issues.append(f"scripts/reset_test_environment.py: missing `{snippet}`")
     if "CANONICAL_MANIFEST" not in e2e or "tests/fixtures" in e2e:
-        issues.append("tests/e2e_test.py: product-level E2E must use the canonical corpus")
+        issues.append(
+            "tests/e2e_test.py: product-level E2E must use the canonical corpus"
+        )
     for label, source in (
         ("tests/e2e_test.py", e2e),
         ("scripts/marathon/run-cycle.mjs", marathon),
@@ -301,7 +339,9 @@ def check_clean_test_environment_contract(issues: list[str]) -> None:
         if "istara123" not in source:
             issues.append(f"{label}: missing reset test credential contract")
     if "`researcher_${index + 1}`" not in benchmark:
-        issues.append("tests/real_user_benchmark/run.mjs: researcher client usernames must be researcher_N by default")
+        issues.append(
+            "tests/real_user_benchmark/run.mjs: researcher client usernames must be researcher_N by default"
+        )
 
 
 def check_marathon_config_integrity(issues: list[str]) -> None:
@@ -318,18 +358,26 @@ def check_marathon_config_integrity(issues: list[str]) -> None:
         if snippet not in custom_checks:
             issues.append(f"scripts/marathon/custom-checks.mjs: missing `{snippet}`")
     if "project_id=test" in custom_checks:
-        issues.append("scripts/marathon/custom-checks.mjs: must not use fake project_id=test")
+        issues.append(
+            "scripts/marathon/custom-checks.mjs: must not use fake project_id=test"
+        )
     if "Unknown marathon custom check" not in custom_checks:
-        issues.append("scripts/marathon/custom-checks.mjs: unknown checks must fail explicitly")
+        issues.append(
+            "scripts/marathon/custom-checks.mjs: unknown checks must fail explicitly"
+        )
     if "Placeholder" in custom_checks:
-        issues.append("scripts/marathon/custom-checks.mjs: custom checks must not contain placeholders")
+        issues.append(
+            "scripts/marathon/custom-checks.mjs: custom checks must not contain placeholders"
+        )
     for snippet in (
         "test_marathon_scenario_refs_resolve_to_registered_simulation_scenarios",
         "test_marathon_custom_checks_resolve_to_registered_implementations",
         "test_marathon_cycle_requirements_are_documented_and_bounded",
     ):
         if snippet not in integrity_test:
-            issues.append(f"tests/test_marathon_config_integrity.py: missing `{snippet}`")
+            issues.append(
+                f"tests/test_marathon_config_integrity.py: missing `{snippet}`"
+            )
 
 
 def check_js_static_harness(issues: list[str]) -> None:
@@ -349,8 +397,12 @@ def check_js_static_harness(issues: list[str]) -> None:
     for snippet in ("node_modules", ".results", "test-results", '"--check"'):
         if snippet not in simulation_static:
             issues.append(f"tests/simulation/lib/static-check.mjs: missing `{snippet}`")
-    if "node --check run.mjs" not in real_user_package.get("scripts", {}).get("check", ""):
-        issues.append("tests/real_user_benchmark/package.json: missing `check` syntax script")
+    if "node --check run.mjs" not in real_user_package.get("scripts", {}).get(
+        "check", ""
+    ):
+        issues.append(
+            "tests/real_user_benchmark/package.json: missing `check` syntax script"
+        )
 
 
 def check_agentic_eval_contract(issues: list[str]) -> None:
@@ -385,9 +437,13 @@ def check_ci_governance(issues: list[str]) -> None:
             ".github/workflows/ci.yml: missing agentic eval contract smoke test"
         )
     if "tests/test_harness_project_scope_contracts.py" not in ci:
-        issues.append(".github/workflows/ci.yml: missing project-scope harness smoke test")
+        issues.append(
+            ".github/workflows/ci.yml: missing project-scope harness smoke test"
+        )
     if "tests/test_marathon_config_integrity.py" not in ci:
-        issues.append(".github/workflows/ci.yml: missing marathon config integrity smoke test")
+        issues.append(
+            ".github/workflows/ci.yml: missing marathon config integrity smoke test"
+        )
     governance = read("scripts/check_ci_governance.py")
     if "check_test_harness.py" not in governance:
         issues.append("scripts/check_ci_governance.py: missing test harness self-check")
@@ -403,10 +459,16 @@ def check_mutation_property_harness(issues: list[str]) -> None:
         "app/core/compute_capacity.py",
     ):
         if snippet not in backend_pyproject:
-            issues.append(f"backend/pyproject.toml: missing mutation/property snippet `{snippet}`")
+            issues.append(
+                f"backend/pyproject.toml: missing mutation/property snippet `{snippet}`"
+            )
     if not (ROOT / "tests" / "test_property_contracts.py").exists():
-        issues.append("tests/test_property_contracts.py: missing Hypothesis property tests")
-    if not (ROOT / "backend" / "tests" / "test_compute_capacity_properties.py").exists():
+        issues.append(
+            "tests/test_property_contracts.py: missing Hypothesis property tests"
+        )
+    if not (
+        ROOT / "backend" / "tests" / "test_compute_capacity_properties.py"
+    ).exists():
         issues.append(
             "backend/tests/test_compute_capacity_properties.py: missing mutmut-local property tests"
         )
@@ -415,7 +477,9 @@ def check_mutation_property_harness(issues: list[str]) -> None:
     dev_deps = set(frontend_package.get("devDependencies", {}))
     missing_deps = sorted(REQUIRED_FRONTEND_MUTATION_DEPS - dev_deps)
     if missing_deps:
-        issues.append(f"frontend/package.json: missing mutation test dev deps {missing_deps}")
+        issues.append(
+            f"frontend/package.json: missing mutation test dev deps {missing_deps}"
+        )
     scripts = frontend_package.get("scripts", {})
     for name in ("test:unit", "test:mutation"):
         if name not in scripts:
@@ -437,7 +501,9 @@ def check_mutation_property_harness(issues: list[str]) -> None:
         "npm run test:mutation",
     ):
         if snippet not in ci:
-            issues.append(f".github/workflows/ci.yml: missing executable test gate `{snippet}`")
+            issues.append(
+                f".github/workflows/ci.yml: missing executable test gate `{snippet}`"
+            )
 
 
 def check_qa_obligation_harness(issues: list[str]) -> None:
@@ -464,7 +530,12 @@ def check_qa_obligation_harness(issues: list[str]) -> None:
             issues.append(f"{relative_path}: missing public QA harness file")
 
     registry = read("testing/feature_coverage.yml")
-    for snippet in ("schema_version: 1", "allowlist:", "obligations:", "requires_human_review"):
+    for snippet in (
+        "schema_version: 1",
+        "allowlist:",
+        "obligations:",
+        "requires_human_review",
+    ):
         if snippet not in registry:
             issues.append(f"testing/feature_coverage.yml: missing `{snippet}`")
 
@@ -485,12 +556,18 @@ def check_qa_obligation_harness(issues: list[str]) -> None:
 
     workflow_ci = read(".github/workflows/ci.yml")
     if "check_feature_obligations.py" not in workflow_ci:
-        issues.append(".github/workflows/ci.yml: missing feature-obligation classifier step")
+        issues.append(
+            ".github/workflows/ci.yml: missing feature-obligation classifier step"
+        )
     if "branches: [main, staging, testing]" not in workflow_ci:
         issues.append(".github/workflows/ci.yml: missing `testing` integration trigger")
 
     promote = read(".github/workflows/promote-testing.yml")
-    for snippet in ("workflow_dispatch", "environment: testing-promotion", "gh pr create"):
+    for snippet in (
+        "workflow_dispatch",
+        "environment: testing-promotion",
+        "gh pr create",
+    ):
         if snippet not in promote:
             issues.append(f".github/workflows/promote-testing.yml: missing `{snippet}`")
 

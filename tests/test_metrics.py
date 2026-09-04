@@ -13,7 +13,9 @@ from app.models.project import Project
 
 
 @pytest.mark.asyncio
-async def test_validation_metrics_aggregate_method_contexts_with_intervals(admin_auth_headers):
+async def test_validation_metrics_aggregate_method_contexts_with_intervals(
+    admin_auth_headers,
+):
     await init_db()
     project_id = f"metrics-{uuid.uuid4()}"
     now = datetime.now(timezone.utc)
@@ -71,4 +73,6 @@ async def test_validation_metrics_aggregate_method_contexts_with_intervals(admin
     assert 0 <= dual_run["success_rate_ci_low"] <= dual_run["success_rate_ci_high"] <= 1
     assert dual_run["sample_confidence_weight"] == 1.0
     assert dual_run["rigor_status"] == "stable_sample"
-    assert "Wilson 95% confidence intervals" in body["statistical_notes"]["success_rate"]
+    assert (
+        "Wilson 95% confidence intervals" in body["statistical_notes"]["success_rate"]
+    )

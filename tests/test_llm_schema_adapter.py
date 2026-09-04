@@ -71,6 +71,6 @@ def test_parse_json_object_skips_visible_thinking_and_prose_braces():
 
 
 def test_strip_thinking_markers_supports_common_local_model_tags():
-    content = "<think>private</think><thought>hidden</thought><thinking>also hidden</thinking>{\"summary\":\"ok\"}"
+    content = '<think>private</think><thought>hidden</thought><thinking>also hidden</thinking>{"summary":"ok"}'
 
     assert strip_thinking_markers(content) == '{"summary":"ok"}'

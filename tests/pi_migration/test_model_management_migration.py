@@ -3,7 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from app.core.pi_runtime.model_management_compat import SUPPORTED_PROVIDERS, plan_migration
+from app.core.pi_runtime.model_management_compat import (
+    SUPPORTED_PROVIDERS,
+    plan_migration,
+)
 from app.core.pi_runtime.model_manager import PiModelManager
 
 
@@ -38,7 +41,9 @@ def test_plan_state_matches_catalog_projection_for_every_provider(provider):
     assert mapping["canonical_endpoint_id"] == f"pi-llm-row-{provider}"
     assert entry is not None
     assert entry.endpoint_id == f"pi-llm-row-{provider}"
-    expected_kind = "anthropic_compat" if provider.startswith("anthropic") else "openai_compat"
+    expected_kind = (
+        "anthropic_compat" if provider.startswith("anthropic") else "openai_compat"
+    )
     assert entry.provider_kind == expected_kind
     assert entry.base_url == "http://localhost:8080/v1"
     assert entry.context_window == 8192
@@ -67,7 +72,10 @@ def test_plan_and_catalog_reject_unsupported_providers_identically():
 @pytest.mark.parametrize(
     ("host", "provider"),
     [
-        ("localhost:11434", "ollama"),  # schemeless — projection base_url is dead on arrival
+        (
+            "localhost:11434",
+            "ollama",
+        ),  # schemeless — projection base_url is dead on arrival
         ("//llm.invalid/v1", "openai_compat"),  # scheme-relative
         ("http://user:pass@llm.invalid/v1", "openai_compat"),  # embedded credentials
         ("http://llm.invalid/v1?key=secret", "openai_compat"),  # query string
@@ -121,8 +129,12 @@ def test_plan_is_idempotent_and_preserves_source_rows():
 
 def test_plan_fails_closed_without_silent_fallback():
     rows = [
-        SimpleNamespace(id="relay", provider_type="ollama", host="http://relay", is_relay=True),
-        SimpleNamespace(id="bad", provider_type="unknown", host="http://bad", is_relay=False),
+        SimpleNamespace(
+            id="relay", provider_type="ollama", host="http://relay", is_relay=True
+        ),
+        SimpleNamespace(
+            id="bad", provider_type="unknown", host="http://bad", is_relay=False
+        ),
         SimpleNamespace(id="host", provider_type="ollama", host="", is_relay=False),
     ]
     plan = plan_migration(rows)
@@ -168,4 +180,6 @@ def test_active_clients_do_not_call_classical_model_management_writes():
         for marker in forbidden:
             if marker in source:
                 violations.append(f"{relative_path}: {marker}")
-    assert not violations, "active classical model-management clients remain: " + ", ".join(violations)
+    assert not violations, (
+        "active classical model-management clients remain: " + ", ".join(violations)
+    )

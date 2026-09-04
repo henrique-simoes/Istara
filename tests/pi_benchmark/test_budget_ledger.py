@@ -21,7 +21,9 @@ def _row_types(path: Path) -> list[str]:
     return [json.loads(line)["type"] for line in path.read_text().splitlines()]
 
 
-def _hammer_reserve(path_str: str, cap: float, prefix: str, attempts: int, cost: float) -> None:
+def _hammer_reserve(
+    path_str: str, cap: float, prefix: str, attempts: int, cost: float
+) -> None:
     """Multiprocessing worker: hammer reserve until the cap refuses further bookings."""
     ledger = BudgetLedger(path_str, cap_usd=cap)
     for index in range(attempts):

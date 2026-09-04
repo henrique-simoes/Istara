@@ -8,11 +8,10 @@ Supports multiple instances per platform (e.g. two Telegram bots).
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Callable, Awaitable
 
 logger = logging.getLogger(__name__)
 

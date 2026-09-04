@@ -21,8 +21,13 @@ pytestmark = pytest.mark.benchmark
 def test_scorecard_generation_and_schema_traceability(tmp_path):
     # Run B1 T0
     cfg = RunConfig(
-        packs=("canonical",), tier="T0", engines=("pi", "legacy"), seeds=(0,),
-        repeats=1, phase="B1", out_dir=tmp_path / "b1-t0",
+        packs=("canonical",),
+        tier="T0",
+        engines=("pi", "legacy"),
+        seeds=(0,),
+        repeats=1,
+        phase="B1",
+        out_dir=tmp_path / "b1-t0",
     )
     summary = run_benchmark(cfg)
     write_run(summary)
@@ -40,8 +45,13 @@ def test_scorecard_generation_and_schema_traceability(tmp_path):
 
 def test_report_generation_reproducibility_and_html_self_contained(tmp_path):
     cfg = RunConfig(
-        packs=("canonical",), tier="T0", engines=("pi", "legacy"), seeds=(0,),
-        repeats=1, phase="B1", out_dir=tmp_path / "b1-t0",
+        packs=("canonical",),
+        tier="T0",
+        engines=("pi", "legacy"),
+        seeds=(0,),
+        repeats=1,
+        phase="B1",
+        out_dir=tmp_path / "b1-t0",
     )
     summary = run_benchmark(cfg)
     write_run(summary)
@@ -66,7 +76,9 @@ def test_report_generation_reproducibility_and_html_self_contained(tmp_path):
     scorecard2_copy = dict(scorecard2)
     del scorecard1_copy["generated_ts"]
     del scorecard2_copy["generated_ts"]
-    assert json.dumps(scorecard1_copy, sort_keys=True) == json.dumps(scorecard2_copy, sort_keys=True)
+    assert json.dumps(scorecard1_copy, sort_keys=True) == json.dumps(
+        scorecard2_copy, sort_keys=True
+    )
 
     # A13: HTML is self-contained (no external http/https urls or CDN scripts)
     html_content = (out_dir1 / "report.html").read_text()

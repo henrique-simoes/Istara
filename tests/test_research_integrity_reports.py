@@ -33,7 +33,16 @@ from app.core.validation_executor import ValidationExecutor, ValidationResult
 from app.core.report_manager import ReportManager, SCOPE_MAP, SYNTHESIS_SKILLS
 
 # Ensure ALL models are registered with Base (mirrors database.init_db imports)
-from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
+from app.models import (
+    agent,
+    codebook,
+    document,
+    finding,
+    message,
+    project,
+    session,
+    task,
+)  # noqa: F401
 from app.models import research_validity  # noqa: F401
 from app.models import user  # noqa: F401
 from app.models import llm_server, method_metric  # noqa: F401
@@ -62,6 +71,7 @@ from app.models.autoresearch_experiment import AutoresearchExperiment  # noqa: F
 # Fixtures: in-memory async SQLite for model tests
 # ============================================================
 
+
 @pytest.fixture
 async def db_session():
     """Create an in-memory async SQLite session for model tests."""
@@ -73,7 +83,9 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with session_factory() as session:
         yield session
 
@@ -156,6 +168,7 @@ async def add_reportable_nugget_fixture(
 # ============================================================
 # 1. CodebookVersion Model Tests
 # ============================================================
+
 
 class TestReportManager:
     """Test the ReportManager progressive document convergence."""
@@ -250,14 +263,20 @@ class TestReportManager:
     def test_synthesis_skills_set(self):
         """Verify SYNTHESIS_SKILLS contains the expected skill names."""
         expected = {
-            "research-synthesis", "persona-creation", "journey-mapping",
-            "affinity-mapping", "empathy-mapping",
+            "research-synthesis",
+            "persona-creation",
+            "journey-mapping",
+            "affinity-mapping",
+            "empathy-mapping",
         }
         assert SYNTHESIS_SKILLS == expected
 
     def test_unknown_skill_defaults_to_general_analysis(self):
         """Skills not in SCOPE_MAP default to 'General Analysis'."""
-        assert SCOPE_MAP.get("totally-unknown-skill", "General Analysis") == "General Analysis"
+        assert (
+            SCOPE_MAP.get("totally-unknown-skill", "General Analysis")
+            == "General Analysis"
+        )
 
     async def test_find_or_create_report_creates_new(self, db_session):
         """_find_or_create_report creates a new report when none exists."""
@@ -364,11 +383,15 @@ class TestReportManager:
         )
 
         result = await db_session.execute(
-            select(ProjectReport).where(ProjectReport.project_id == "proj-rm-taskless-block")
+            select(ProjectReport).where(
+                ProjectReport.project_id == "proj-rm-taskless-block"
+            )
         )
         assert result.scalars().all() == []
 
-    async def test_task_bound_findings_wait_for_human_approved_done_task(self, db_session):
+    async def test_task_bound_findings_wait_for_human_approved_done_task(
+        self, db_session
+    ):
         """Task-bound findings should not reach reports while the task is still in review."""
         manager = ReportManager()
         task_row = Task(
@@ -654,6 +677,7 @@ class TestReportManager:
 # 7. ProjectReport Model Tests
 # ============================================================
 
+
 class TestProjectReportModel:
     """Test the ProjectReport ORM model at each pyramid layer."""
 
@@ -858,7 +882,9 @@ class TestProjectReportModel:
             project_id="proj-pr-content-json",
             title="Final Report",
             layer=4,
-            content_json=json.dumps({"full_document": "# Final Report\n\nComplete synthesis."}),
+            content_json=json.dumps(
+                {"full_document": "# Final Report\n\nComplete synthesis."}
+            ),
         )
         db_session.add(report)
         await db_session.commit()

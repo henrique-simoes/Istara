@@ -6,15 +6,15 @@ settings.telemetry_export_dir for the user to share or inspect as they wish.
 
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 
 from app.config import settings
 from app.models.database import async_session
-from app.models.telemetry_span import TelemetrySpan
 from app.models.model_skill_stats import ModelSkillStats
+from app.models.telemetry_span import TelemetrySpan
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +36,8 @@ async def export_telemetry(
         dict with export metadata and paths to generated files.
     """
     settings.ensure_telemetry_dir()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     project_tag = project_id or "all"
     base_name = f"istara_telemetry_{project_tag}_{timestamp}"
 
@@ -86,7 +86,7 @@ async def export_telemetry(
 
     summary = {
         "export_version": "1.0",
-        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "exported_at": datetime.now(UTC).isoformat(),
         "project_id": project_id,
         "days": days,
         "cutoff": cutoff.isoformat(),
@@ -146,7 +146,7 @@ async def export_telemetry(
             "spans": str(spans_path),
         },
         "export_dir": settings.telemetry_export_dir,
-        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "exported_at": datetime.now(UTC).isoformat(),
     }
     if include_models:
         res["model_stats_count"] = summary.get("model_stats_count", 0)

@@ -47,8 +47,8 @@ class StitchService:
         """Open a short-lived MCP session and call a single tool."""
         resolved_key = self._ensure_configured(api_key)
 
-        from mcp.client.streamable_http import streamablehttp_client
         from mcp import ClientSession
+        from mcp.client.streamable_http import streamablehttp_client
 
         headers = {"X-Goog-Api-Key": resolved_key}
         async with streamablehttp_client(MCP_URL, headers=headers) as (read, write, _):

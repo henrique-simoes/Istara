@@ -1368,7 +1368,9 @@ async def test_task_research_validity_gate_revokes_acceptance_for_changed_or_del
                     source_id=f"document:{document_id}:v1",
                     stable_id=f"document:{document_id}:v1:0",
                     source_text="The participant could not find the invitation control.",
-                    metadata_json=json.dumps({"document_id": document_id, "document_version": 1}),
+                    metadata_json=json.dumps(
+                        {"document_id": document_id, "document_version": 1}
+                    ),
                 ),
                 CodingRun(
                     id=run_id,

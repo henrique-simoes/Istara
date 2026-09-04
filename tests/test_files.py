@@ -76,7 +76,9 @@ async def test_files_stats_returns_response(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_upload_rejects_oversized_file_without_partial_artifact(auth_headers, tmp_path):
+async def test_upload_rejects_oversized_file_without_partial_artifact(
+    auth_headers, tmp_path
+):
     """Upload streaming should fail closed once the configured byte cap is exceeded."""
     await init_db()
     settings.upload_dir = str(tmp_path / "uploads")
@@ -103,7 +105,9 @@ async def test_upload_rejects_oversized_file_without_partial_artifact(auth_heade
 
 
 @pytest.mark.asyncio
-async def test_upload_quarantines_prompt_injection_before_rag_ingestion(auth_headers, tmp_path):
+async def test_upload_quarantines_prompt_injection_before_rag_ingestion(
+    auth_headers, tmp_path
+):
     """Prompt-injection documents should be stored for review but not indexed into RAG."""
     await init_db()
     settings.upload_dir = str(tmp_path / "uploads")
@@ -225,10 +229,16 @@ async def test_text_upload_registers_raw_source_evidence_units(auth_headers, tmp
 
     async with async_session() as db:
         units = (
-            await db.execute(
-                select(EvidenceUnit).where(EvidenceUnit.source_document_id == body["doc_id"])
+            (
+                await db.execute(
+                    select(EvidenceUnit).where(
+                        EvidenceUnit.source_document_id == body["doc_id"]
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
     assert len(units) == body["evidence_units_created"]
     assert {unit.unit_type for unit in units} == {"source_span"}
@@ -236,7 +246,9 @@ async def test_text_upload_registers_raw_source_evidence_units(auth_headers, tmp
 
 
 @pytest.mark.asyncio
-async def test_audio_file_content_returns_stored_transcript(auth_headers, tmp_path, monkeypatch):
+async def test_audio_file_content_returns_stored_transcript(
+    auth_headers, tmp_path, monkeypatch
+):
     """Audio previews expose the transcript persisted by background processing."""
     await init_db()
     project_id = f"audio-project-{uuid.uuid4()}"
@@ -300,7 +312,9 @@ async def test_audio_file_content_returns_stored_transcript(auth_headers, tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_linked_folder_media_can_be_served_and_previewed(auth_headers, tmp_path, monkeypatch):
+async def test_linked_folder_media_can_be_served_and_previewed(
+    auth_headers, tmp_path, monkeypatch
+):
     """Files linked from a project watch folder should use the same preview/serve path as uploads."""
     await init_db()
     project_id = f"linked-files-{uuid.uuid4()}"
@@ -326,7 +340,13 @@ async def test_linked_folder_media_can_be_served_and_previewed(auth_headers, tmp
     )
 
     async with async_session() as db:
-        db.add(Project(id=project_id, name="Linked File Project", watch_folder_path=str(linked_dir)))
+        db.add(
+            Project(
+                id=project_id,
+                name="Linked File Project",
+                watch_folder_path=str(linked_dir),
+            )
+        )
         db.add(doc)
         await db.commit()
 

@@ -58,7 +58,9 @@ async def test_laws_compliance_returns_response(auth_headers):
     project_id = f"law-compliance-{uuid.uuid4()}"
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/laws/compliance/{project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/laws/compliance/{project_id}", headers=auth_headers
+        )
     assert response.status_code == 200
     assert "by_law" in response.json()
 
@@ -70,7 +72,9 @@ async def test_laws_radar_returns_response(auth_headers):
     project_id = f"law-radar-{uuid.uuid4()}"
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/laws/compliance/{project_id}/radar", headers=auth_headers)
+        response = await ac.get(
+            f"/api/laws/compliance/{project_id}/radar", headers=auth_headers
+        )
     assert response.status_code == 200
     assert {"categories", "category_scores", "detailed_axes"}.issubset(response.json())
 
@@ -83,7 +87,10 @@ async def test_laws_phrase_matching_detects_multiword_keywords(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get(
             "/api/laws/match",
-            params={"query": "The small tap target is hard to click on mobile.", "top_k": 3},
+            params={
+                "query": "The small tap target is hard to click on mobile.",
+                "top_k": 3,
+            },
             headers=auth_headers,
         )
         assert response.status_code == 200
@@ -110,13 +117,17 @@ async def test_laws_compliance_scores_tagged_findings(auth_headers):
         )
         assert created.status_code == 201
 
-        response = await ac.get(f"/api/laws/compliance/{project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/laws/compliance/{project_id}", headers=auth_headers
+        )
         assert response.status_code == 200
         profile = response.json()
         assert profile["evaluated"] is True
         assert profile["evidence_count"] == 1
         assert profile["law_tag_count"] == 1
-        fitts = next(item for item in profile["by_law"] if item["law_id"] == "fitts-law")
+        fitts = next(
+            item for item in profile["by_law"] if item["law_id"] == "fitts-law"
+        )
         assert fitts["violation_count"] == 1
         assert created.json()["id"] in fitts["finding_ids"]
 

@@ -80,9 +80,7 @@ def seed_plan(
 
     slices = {s.get("slice_id"): s for s in manifest.get("slices", [])}
     if slice_id not in slices:
-        raise KeyError(
-            f"unknown corpus slice {slice_id!r}; known: {sorted(slices)}"
-        )
+        raise KeyError(f"unknown corpus slice {slice_id!r}; known: {sorted(slices)}")
     slice_info = slices[slice_id]
     sources = slice_info.get("sources", [])
     spans = []
@@ -109,7 +107,9 @@ def seed_plan(
     }
 
 
-def write_seed_manifest(plan: dict[str, Any], runs_dir: Path = DEFAULT_RUNS_DIR) -> Path:
+def write_seed_manifest(
+    plan: dict[str, Any], runs_dir: Path = DEFAULT_RUNS_DIR
+) -> Path:
     run_dir = runs_dir / plan["run_id"]
     run_dir.mkdir(parents=True, exist_ok=True)
     out = run_dir / "seed_manifest.json"
@@ -126,7 +126,9 @@ def _project_name(run_id: str, slice_id: str) -> str:
     return f"qa-synthetic-{slice_id}-{run_id}"
 
 
-def _find_or_create_project(client: Any, project_name: str, description: str) -> dict[str, Any]:
+def _find_or_create_project(
+    client: Any, project_name: str, description: str
+) -> dict[str, Any]:
     """Reuse an existing run-scoped QA project or create it."""
     list_response = client.get("/api/projects")
     list_response.raise_for_status()
@@ -218,7 +220,10 @@ def ingest_slice_via_api(
         f"Disposable QA synthetic corpus project for slice {slice_id} "
         f"(run {run_id}). Provisional-only: no row may become report evidence."
     )
-    client_kwargs: dict[str, Any] = {"base_url": api_base.rstrip("/"), "timeout": timeout}
+    client_kwargs: dict[str, Any] = {
+        "base_url": api_base.rstrip("/"),
+        "timeout": timeout,
+    }
     if transport is not None:
         client_kwargs["transport"] = transport
     with httpx.Client(**client_kwargs) as client:
@@ -261,8 +266,12 @@ def ingest_slice_via_api(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--slice", required=True, help="canonical corpus slice id")
-    parser.add_argument("--run-id", required=True, help="QA run id (istara-qa-<run-id>)")
-    parser.add_argument("--runs-dir", default=str(DEFAULT_RUNS_DIR), help="qa/runs root")
+    parser.add_argument(
+        "--run-id", required=True, help="QA run id (istara-qa-<run-id>)"
+    )
+    parser.add_argument(
+        "--runs-dir", default=str(DEFAULT_RUNS_DIR), help="qa/runs root"
+    )
     parser.add_argument(
         "--api-base",
         default=os.environ.get("QA_API_BASE", ""),

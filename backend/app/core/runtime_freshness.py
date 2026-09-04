@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-
 FRONTEND_SOURCE_GLOBS = ("**/*.css", "**/*.js", "**/*.mjs", "**/*.ts", "**/*.tsx")
 STALE_GRACE_SECONDS = 1.0
 

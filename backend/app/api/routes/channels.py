@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -80,8 +79,8 @@ async def _get_project_channel_or_404(
 @router.get("/channels")
 async def list_channels(
     request: Request,
-    platform: Optional[str] = Query(None, description="Filter by platform"),
-    project_id: Optional[str] = Query(None, description="Filter by project"),
+    platform: str | None = Query(None, description="Filter by platform"),
+    project_id: str | None = Query(None, description="Filter by project"),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     """List all channel instances, optionally filtered by platform."""
@@ -119,7 +118,7 @@ async def create_channel(
 async def get_channel(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Get details of a single channel instance."""
@@ -134,7 +133,7 @@ async def update_channel(
     instance_id: str,
     body: UpdateChannelRequest,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Update a channel instance."""
@@ -167,7 +166,7 @@ async def update_channel(
 async def delete_channel(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Delete a channel instance (stops it first if running)."""
@@ -189,7 +188,7 @@ async def delete_channel(
 async def start_channel(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Start a channel instance (instantiate adapter and begin polling/listening)."""
@@ -215,7 +214,7 @@ async def start_channel(
 async def stop_channel(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Stop a running channel instance."""
@@ -238,7 +237,7 @@ async def stop_channel(
 async def health_check_channel(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Run a health check on a channel instance."""
@@ -260,7 +259,7 @@ async def health_check_channel(
 async def get_channel_messages(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -282,7 +281,7 @@ async def get_channel_messages(
 async def get_channel_conversations(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     """Get conversations for a channel instance."""
@@ -297,7 +296,7 @@ async def send_channel_message(
     instance_id: str,
     body: SendMessageRequest,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Send a manual message through a channel instance."""

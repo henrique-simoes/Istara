@@ -5,8 +5,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import get_subject, require_project_access
 from app.config import settings
+from app.core.permissions import get_subject, require_project_access
 from app.models.code_application import CodeApplication
 from app.models.database import get_db
 from app.services.research_validity_service import (

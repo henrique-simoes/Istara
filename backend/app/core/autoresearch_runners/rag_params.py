@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from app.config import settings
 from app.core.autoresearch_runners import BaseLoopRunner

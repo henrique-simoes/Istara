@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from functools import lru_cache
 
 from app.config import settings
 

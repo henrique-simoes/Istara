@@ -21,7 +21,6 @@ import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ class TranscriptionResult:
     icr_kappa: float  # Legacy compatibility field; heuristic agreement only
     icr_confidence: str  # high | medium | low | insufficient (heuristic)
     needs_review: bool  # True if the transcription signal is below threshold
-    original_audio_path: Optional[str] = None
+    original_audio_path: str | None = None
     tags: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
 

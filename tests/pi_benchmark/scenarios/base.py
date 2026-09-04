@@ -65,11 +65,17 @@ class Scenario:
 
     def __post_init__(self) -> None:
         if self.min_tier not in TIER_ORDER:
-            raise ValueError(f"scenario {self.id!r}: invalid min_tier {self.min_tier!r}")
+            raise ValueError(
+                f"scenario {self.id!r}: invalid min_tier {self.min_tier!r}"
+            )
         if not self.id:
             raise ValueError("scenario id must be non-empty")
 
 
-def deterministic_check_result(passed: bool, outcome_class: str, **detail: Any) -> DeterministicResult:
+def deterministic_check_result(
+    passed: bool, outcome_class: str, **detail: Any
+) -> DeterministicResult:
     """Ergonomic constructor used by pack modules."""
-    return DeterministicResult(passed=passed, outcome_class=outcome_class, detail=detail)
+    return DeterministicResult(
+        passed=passed, outcome_class=outcome_class, detail=detail
+    )

@@ -13,24 +13,20 @@ This agent runs as a background process that:
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.datetime_utils import ensure_utc
-
-from app.config import settings
-from app.core.ollama import ollama
-from app.core.self_check import check_findings, Confidence
-from app.core.rag import VectorStore
 from app.api.websocket import broadcast_agent_status
+from app.core.datetime_utils import ensure_utc
+from app.core.ollama import ollama
+from app.core.rag import VectorStore
 from app.models.database import async_session
+from app.models.finding import Fact, Insight, Nugget
+from app.models.message import Message
 from app.models.project import Project
 from app.models.task import Task, TaskStatus
-from app.models.finding import Nugget, Fact, Insight, Recommendation
-from app.models.message import Message
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +117,7 @@ class DevOpsAuditAgent:
 
     async def run_audit_cycle(self) -> dict:
         """Run a complete audit cycle across all checks."""
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
         issues: list[dict] = []
         checks_passed: list[str] = []
 
@@ -224,7 +220,7 @@ class DevOpsAuditAgent:
 
             if msgs == 0 and nugs == 0 and tasks == 0:
                 age_hours = (
-                    datetime.now(timezone.utc) - ensure_utc(project.created_at)
+                    datetime.now(UTC) - ensure_utc(project.created_at)
                 ).total_seconds() / 3600
                 if age_hours > 24:
                     issues.append(
@@ -268,7 +264,7 @@ class DevOpsAuditAgent:
                             "type": "corrupt_data",
                             "severity": "high",
                             "finding_id": fact.id,
-                            "message": f"Fact has corrupt nugget_ids JSON.",
+                            "message": "Fact has corrupt nugget_ids JSON.",
                         }
                     )
 
@@ -329,9 +325,7 @@ class DevOpsAuditAgent:
         # Tasks in_progress for too long without progress update
         result = await db.execute(select(Task).where(Task.status == TaskStatus.IN_PROGRESS))
         for task in result.scalars().all():
-            hours_stale = (
-                datetime.now(timezone.utc) - ensure_utc(task.updated_at)
-            ).total_seconds() / 3600
+            hours_stale = (datetime.now(UTC) - ensure_utc(task.updated_at)).total_seconds() / 3600
             if hours_stale > 24:
                 issues.append(
                     {

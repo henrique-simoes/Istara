@@ -77,7 +77,13 @@ class _StubRouter:
 
 @pytest.mark.parametrize(
     "value,expected",
-    [(None, None), ("pi", "pi"), ("legacy", "legacy"), ("PI", "pi"), ("  legacy ", "legacy")],
+    [
+        (None, None),
+        ("pi", "pi"),
+        ("legacy", "legacy"),
+        ("PI", "pi"),
+        ("  legacy ", "legacy"),
+    ],
 )
 def test_start_request_accepts_and_normalizes_valid_engine(value, expected):
     kwargs = {"loop_type": "persona", "target": "agent-x"}
@@ -216,9 +222,7 @@ async def _run_one(monkeypatch, *, engine, flag):
     async def _noop(self, *a, **k):
         return []
 
-    monkeypatch.setattr(
-        "app.core.autoresearch_engine.check_experiment_limit", _allow
-    )
+    monkeypatch.setattr("app.core.autoresearch_engine.check_experiment_limit", _allow)
     monkeypatch.setattr(AutoresearchEngine, "_persist_experiment", _fake_persist)
     monkeypatch.setattr(AutoresearchEngine, "_record_reasoning_memory", _noop)
     monkeypatch.setattr(AutoresearchEngine, "_register_improvement_proposals", _noop)

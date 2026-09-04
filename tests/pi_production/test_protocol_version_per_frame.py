@@ -101,7 +101,13 @@ async def test_dispatch_rejects_v1_frame_with_no_active_run_using_frame_run_id()
     # No entry in _session_runs: no run is active for this session.
 
     sup._dispatch(
-        {"v": 1, "type": "run.completed", "session_key": key, "run_id": "orphan-run", "stop_reason": "stop"}
+        {
+            "v": 1,
+            "type": "run.completed",
+            "session_key": key,
+            "run_id": "orphan-run",
+            "stop_reason": "stop",
+        }
     )
 
     frame = queue.get_nowait()
@@ -118,7 +124,9 @@ async def test_dispatch_drops_v1_frame_for_unknown_session():
     other: asyncio.Queue = asyncio.Queue()
     sup._sessions["known"] = other
 
-    sup._dispatch({"v": 1, "type": "run.completed", "session_key": "ghost", "run_id": "r"})
+    sup._dispatch(
+        {"v": 1, "type": "run.completed", "session_key": "ghost", "run_id": "r"}
+    )
 
     assert other.empty()
     assert sup._fatal is None  # a version mismatch never poisons the worker
@@ -133,7 +141,13 @@ async def test_dispatch_keeps_valid_v2_session_frame():
     queue: asyncio.Queue = asyncio.Queue()
     sup._sessions[key] = queue
 
-    valid = {"v": PROTOCOL_VERSION, "type": "assistant.delta", "session_key": key, "run_id": "run-1", "text": "hi"}
+    valid = {
+        "v": PROTOCOL_VERSION,
+        "type": "assistant.delta",
+        "session_key": key,
+        "run_id": "run-1",
+        "text": "hi",
+    }
     sup._dispatch(valid)
 
     assert queue.get_nowait() is valid
@@ -179,7 +193,11 @@ async def test_post_handshake_v1_run_frame_is_rejected_without_tool_or_artifact(
         await supervisor.ensure_started()
         assert supervisor.is_running  # the v2 handshake succeeded
         await supervisor.open_session(
-            "adv-session", system_prompt="sys", history=[], revision="r1", catalog=[],
+            "adv-session",
+            system_prompt="sys",
+            history=[],
+            revision="r1",
+            catalog=[],
         )
         async for frame in supervisor.run_turn("adv-session", "go", tool_handler):
             frames.append(frame)

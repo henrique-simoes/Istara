@@ -24,6 +24,8 @@ from app.agents.user_sim_agent import user_sim_agent
 from app.agents.ux_eval_agent import ux_eval_agent
 from app.api.routes import (
     a2a as a2a_routes,
+)
+from app.api.routes import (
     admin,
     agents,
     audit,
@@ -37,7 +39,6 @@ from app.api.routes import (
     interfaces,
     memory,
     metrics,
-    petals_bridge as petals_bridge_routes,
     projects,
     sessions,
     settings,
@@ -63,6 +64,9 @@ from app.api.routes import mcp as mcp_routes
 from app.api.routes import meta_hyperagent as meta_hyperagent_routes
 from app.api.routes import notifications as notification_routes
 from app.api.routes import permission_requests as permission_request_routes
+from app.api.routes import (
+    petals_bridge as petals_bridge_routes,
+)
 from app.api.routes import presentation as presentation_routes
 from app.api.routes import reasoning_bank as reasoning_bank_routes
 from app.api.routes import reports as reports_routes

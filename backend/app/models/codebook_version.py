@@ -5,7 +5,7 @@ label, brief_definition, full_definition, exclusion_criteria,
 typical_example, boundary_example.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -36,7 +36,7 @@ class CodebookVersion(Base):
     created_by: Mapped[str] = mapped_column(String(100), default="")
     methodology: Mapped[str] = mapped_column(String(30), default="codebook_ta")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     def to_dict(self) -> dict:

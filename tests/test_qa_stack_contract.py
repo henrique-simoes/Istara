@@ -73,7 +73,9 @@ def test_qa_frontend_websocket_setting_is_a_base_url():
         r"NEXT_PUBLIC_WS_URL=\$\{NEXT_PUBLIC_WS_URL:-([^}]+)\}", text
     )
 
-    assert len(configured_urls) == 2, "Both QA frontend services must configure a websocket base URL"
+    assert len(configured_urls) == 2, (
+        "Both QA frontend services must configure a websocket base URL"
+    )
     assert all(not url.rstrip("/").endswith("/ws") for url in configured_urls)
 
 
@@ -81,19 +83,24 @@ def test_qa_frontend_uses_the_published_loopback_host_for_api_and_websocket():
     """The canonical 127.0.0.1 UI must not cross over to localhost at login."""
     text = QA_COMPOSE.read_text(encoding="utf-8")
 
-    assert text.count(
-        "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://127.0.0.1:8000}"
-    ) == 2
-    assert text.count(
-        "NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://127.0.0.1:8000}"
-    ) == 2
-    assert "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}" not in text
+    assert (
+        text.count("NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://127.0.0.1:8000}")
+        == 2
+    )
+    assert (
+        text.count("NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://127.0.0.1:8000}") == 2
+    )
+    assert (
+        "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}" not in text
+    )
     assert "NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://localhost:8000}" not in text
 
 
 def test_contract_stub_is_non_model_and_in_network():
     text = QA_COMPOSE.read_text(encoding="utf-8")
-    stub = text[text.index("  qa-provider-stub:"):text.index("  # Synthetic corpus seeder")]
+    stub = text[
+        text.index("  qa-provider-stub:") : text.index("  # Synthetic corpus seeder")
+    ]
     assert "dockerfile: qa/provider-stub.Dockerfile" in stub
     assert "busybox" not in stub.lower()
     assert "qa-provider-stub:11434" in text
@@ -130,7 +137,7 @@ def test_istara_qa_sh_seed_passes_run_id_to_seeder_explicitly():
     # run, so the seeder service never falls back to `local` even if the export
     # is later removed.
     script = (ROOT / "scripts" / "istara-qa.sh").read_text(encoding="utf-8")
-    seed_cmd = script[script.index('cmd_seed()'):script.index('cmd_qa()')]
+    seed_cmd = script[script.index("cmd_seed()") : script.index("cmd_qa()")]
     assert '-e QA_RUN_ID="$RUN_ID"' in seed_cmd
 
 
@@ -146,7 +153,7 @@ def test_istara_qa_sh_seed_unset_input_propagates_generated_run_id():
         stub.write_text(
             "#!/usr/bin/env bash\n"
             'printf \'%s\\n\' "ARGS: $*" >> "$STUB_LOG"\n'
-            'env | grep \'^QA_RUN_ID=\' >> "$STUB_LOG"\n'
+            "env | grep '^QA_RUN_ID=' >> \"$STUB_LOG\"\n"
             "exit 0\n",
             encoding="utf-8",
         )
@@ -180,14 +187,14 @@ def test_istara_qa_sh_seed_unset_input_propagates_generated_run_id():
 def test_istara_qa_governance_and_collection_are_container_only():
     """The Mac Studio wrapper must not run repository Python on the host."""
     script = (ROOT / "scripts" / "istara-qa.sh").read_text(encoding="utf-8")
-    qa = script[script.index("cmd_qa()"):script.index("cmd_collect()")]
-    collect = script[script.index("cmd_collect()"):script.index("cmd_reset()")]
+    qa = script[script.index("cmd_qa()") : script.index("cmd_collect()")]
+    collect = script[script.index("cmd_collect()") : script.index("cmd_reset()")]
 
     assert "run_qa_python scripts/check_feature_obligations.py" in qa
     assert "run_qa_python scripts/check_qa_capabilities.py" in qa
-    assert "python \"$ROOT/scripts/" not in qa
+    assert 'python "$ROOT/scripts/' not in qa
     assert "run_qa_python qa/scripts/audit_qa.py" in collect
-    assert "python \"$ROOT/qa/scripts/" not in collect
+    assert 'python "$ROOT/qa/scripts/' not in collect
     assert "--build" in script
     assert "--no-deps" in script
     assert '"$ROOT:/workspace:ro"' in script
@@ -195,12 +202,12 @@ def test_istara_qa_governance_and_collection_are_container_only():
 
 def test_istara_qa_reset_is_docker_only_and_requires_explicit_confirmation():
     script = (ROOT / "scripts" / "istara-qa.sh").read_text(encoding="utf-8")
-    reset = script[script.index("cmd_reset()"):script.index("cmd_down()")]
+    reset = script[script.index("cmd_reset()") : script.index("cmd_down()")]
 
     assert "python" not in reset
     assert '"${COMPOSE[@]}" -p "$PROJECT" down -v' in reset
-    assert 'QA_CONFIRM:-RESET-ISTARA-QA-RUN' not in reset
-    assert 'QA_CONFIRM=RESET-ISTARA-QA-RUN' in reset
+    assert "QA_CONFIRM:-RESET-ISTARA-QA-RUN" not in reset
+    assert "QA_CONFIRM=RESET-ISTARA-QA-RUN" in reset
 
 
 def test_qa_seeder_depends_on_healthy_backend():
@@ -212,7 +219,7 @@ def test_qa_seeder_depends_on_healthy_backend():
 
 def test_qa_backend_has_bounded_ephemeral_data_surface():
     text = QA_COMPOSE.read_text(encoding="utf-8")
-    backend = text[text.index("  qa-backend:"):text.index("  qa-frontend:")]
+    backend = text[text.index("  qa-backend:") : text.index("  qa-frontend:")]
     assert "read_only: true" in text
     assert "/app/data:rw,nosuid,nodev,uid=999,gid=999,mode=0750,size=2G" in backend
 
@@ -220,12 +227,16 @@ def test_qa_backend_has_bounded_ephemeral_data_surface():
 def test_qa_ui_profile_uses_loopback_api_proxy_and_keeps_backend_unpublished():
     """The host-facing API must be a scoped proxy, not the internal backend."""
     text = QA_COMPOSE.read_text(encoding="utf-8")
-    backend = text[text.index("  qa-backend:"):text.index("\n  # The Browser runs on the Mac host")]
-    proxy = text[text.index("  qa-api-proxy:"):text.index("  qa-frontend:")]
+    backend = text[
+        text.index("  qa-backend:") : text.index(
+            "\n  # The Browser runs on the Mac host"
+        )
+    ]
+    proxy = text[text.index("  qa-api-proxy:") : text.index("  qa-frontend:")]
 
     assert "ports:" not in backend
     assert "profiles:\n      - ui" in proxy
-    assert '127.0.0.1:${QA_API_PORT:-8000}:8000' in proxy
+    assert "127.0.0.1:${QA_API_PORT:-8000}:8000" in proxy
     assert "./qa/Caddyfile:/etc/caddy/Caddyfile:ro" in proxy
     assert "qa-frontend-net" in proxy
     assert "qa-backend-net" in proxy
@@ -246,7 +257,7 @@ def test_qa_backend_uses_stable_qa_only_data_encryption_key():
     # Encrypted fields must remain decryptable with a stable QA-only key,
     # while the production/base compose must not inherit the fallback secret.
     qa_text = QA_COMPOSE.read_text(encoding="utf-8")
-    backend = qa_text[qa_text.index("  qa-backend:"):qa_text.index("  qa-frontend:")]
+    backend = qa_text[qa_text.index("  qa-backend:") : qa_text.index("  qa-frontend:")]
     base_text = BASE_COMPOSE.read_text(encoding="utf-8")
 
     marker = (
@@ -295,7 +306,7 @@ def test_live_gate_never_echoes_target_verbatim():
     # private endpoint) verbatim into logs; it may only emit a redacted
     # label/handle.
     text = QA_COMPOSE.read_text(encoding="utf-8")
-    gate = text[text.index("qa-live-gate"):]
+    gate = text[text.index("qa-live-gate") :]
     assert "live-target=$${" not in gate
     assert "echo live-target=" not in gate
     assert "live-target-label" in gate or "live-target-set" in gate

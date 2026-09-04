@@ -12,7 +12,6 @@ import logging
 from pathlib import Path
 
 from app.core.file_processor import process_file
-from app.core.rag import retrieve_context
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
 
 logger = logging.getLogger(__name__)

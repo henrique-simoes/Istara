@@ -36,7 +36,9 @@ async def create_project(project_id: str, name: str = "Meta Project") -> None:
         await db.commit()
 
 
-async def create_paused_project(project_id: str, name: str = "Paused Meta Project") -> None:
+async def create_paused_project(
+    project_id: str, name: str = "Paused Meta Project"
+) -> None:
     async with async_session() as db:
         db.add(Project(id=project_id, name=name, is_paused=True))
         await db.commit()
@@ -199,7 +201,9 @@ async def test_meta_hyperagent_start_retains_task_and_stop_cancels(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_meta_hyperagent_stops_before_proposing_when_project_is_paused(monkeypatch):
+async def test_meta_hyperagent_stops_before_proposing_when_project_is_paused(
+    monkeypatch,
+):
     from app.core.meta_hyperagent import MetaHyperagent
 
     await init_db()
@@ -369,10 +373,16 @@ async def test_meta_hyperagent_filters_proposals_by_project():
     mh._variants = []
     mh._recent_observations = []
 
-    assert [p["id"] for p in mh.get_pending_proposals(project_id="project-a")] == ["proposal-a"]
-    assert [p["id"] for p in mh.get_pending_proposals(project_id="project-b")] == ["proposal-b"]
+    assert [p["id"] for p in mh.get_pending_proposals(project_id="project-a")] == [
+        "proposal-a"
+    ]
+    assert [p["id"] for p in mh.get_pending_proposals(project_id="project-b")] == [
+        "proposal-b"
+    ]
     assert mh.reject_proposal("proposal-b", project_id="project-a") is None
-    assert mh.reject_proposal("proposal-a", project_id="project-a")["status"] == "rejected"
+    assert (
+        mh.reject_proposal("proposal-a", project_id="project-a")["status"] == "rejected"
+    )
 
 
 @pytest.mark.asyncio

@@ -39,6 +39,7 @@ from app.api.websocket import (
 # Fixtures
 # ============================================================
 
+
 @pytest.fixture
 def manager():
     """Fresh SteeringManager for each test."""
@@ -62,6 +63,7 @@ def configure_settings():
 def auth_headers():
     """Generate a valid JWT token for test requests."""
     from app.core.auth import create_token
+
     token = create_token("local", "test-user", "admin")
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
@@ -69,6 +71,7 @@ def auth_headers():
 # ============================================================
 # Unit Tests: SteeringQueue
 # ============================================================
+
 
 class TestSteeringQueue:
     """Tests for SteeringQueue — mirrors pi-mono's PendingMessageQueue."""

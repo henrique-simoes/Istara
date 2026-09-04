@@ -32,7 +32,16 @@ from app.core.validation_executor import ValidationExecutor, ValidationResult
 from app.core.report_manager import ReportManager, SCOPE_MAP, SYNTHESIS_SKILLS
 
 # Ensure ALL models are registered with Base (mirrors database.init_db imports)
-from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
+from app.models import (
+    agent,
+    codebook,
+    document,
+    finding,
+    message,
+    project,
+    session,
+    task,
+)  # noqa: F401
 from app.models import user  # noqa: F401
 from app.models import llm_server, method_metric  # noqa: F401
 from app.core.checkpoint import TaskCheckpoint  # noqa: F401
@@ -92,7 +101,12 @@ def test_explicit_abstention_is_distinct_from_a_missing_rating():
 
     matrix = build_binary_coding_matrix(
         [
-            {"coder_id": "coder-a", "evidence_unit_id": "eu-1", "codes": [], "rating_status": "abstained"},
+            {
+                "coder_id": "coder-a",
+                "evidence_unit_id": "eu-1",
+                "codes": [],
+                "rating_status": "abstained",
+            },
             {"coder_id": "coder-b", "evidence_unit_id": "eu-1", "codes": ["nav"]},
             {"coder_id": "coder-c", "evidence_unit_id": "eu-1", "codes": []},
         ]
@@ -257,16 +271,28 @@ def test_effective_rater_provenance_is_reconstructable_and_conflicts_fail_closed
 
     assert result["method"] == "invalid_rater_provenance"
     assert result["promotion_status"] == "needs_reconciliation"
-    assert result["matrix"]["rater_provenance"]["coder-a"]["model_checkpoint"] == "model-a"
+    assert (
+        result["matrix"]["rater_provenance"]["coder-a"]["model_checkpoint"] == "model-a"
+    )
     assert result["matrix"]["provenance_conflicts"] == [
         {"coder_id": "coder-a", "field": "endpoint_id"}
     ]
-    assert result["item_promotion_statuses"] == {"eu-1": "needs_reconciliation", "eu-2": "needs_reconciliation"}
+    assert result["item_promotion_statuses"] == {
+        "eu-1": "needs_reconciliation",
+        "eu-2": "needs_reconciliation",
+    }
     assert result["accepted_evidence_unit_ids"] == []
     assert result["reconciliation_evidence_unit_ids"] == ["eu-1", "eu-2"]
 
     incomplete = evaluate_reliability_gate(
-        [{"coder_id": "coder-a", "model_name": "model-a", "evidence_unit_id": "eu-1", "codes": ["nav"]}],
+        [
+            {
+                "coder_id": "coder-a",
+                "model_name": "model-a",
+                "evidence_unit_id": "eu-1",
+                "codes": ["nav"],
+            }
+        ],
         require_rater_provenance=True,
     )
     assert incomplete["method"] == "incomplete_rater_provenance"
@@ -277,7 +303,10 @@ def test_effective_rater_provenance_is_reconstructable_and_conflicts_fail_closed
 
 
 def test_fleiss_kappa_matches_independent_count_formula_and_category_order():
-    from app.core.research_validity import build_binary_coding_matrix, fleiss_kappa_from_matrix
+    from app.core.research_validity import (
+        build_binary_coding_matrix,
+        fleiss_kappa_from_matrix,
+    )
 
     labels = {
         "eu-1": ("a", "a", "b"),
@@ -305,12 +334,16 @@ def test_fleiss_kappa_matches_independent_count_formula_and_category_order():
         {**application, "codes": list(reversed(application["codes"]))}
         for application in applications
     ]
-    assert fleiss_kappa_from_matrix(build_binary_coding_matrix(reordered))["kappa"] == 0.333
+    assert (
+        fleiss_kappa_from_matrix(build_binary_coding_matrix(reordered))["kappa"]
+        == 0.333
+    )
 
 
 # ============================================================
 # Fixtures: in-memory async SQLite for model tests
 # ============================================================
+
 
 @pytest.fixture
 async def db_session():
@@ -323,7 +356,9 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with session_factory() as session:
         yield session
 
@@ -335,6 +370,7 @@ async def db_session():
 # ============================================================
 # 1. CodebookVersion Model Tests
 # ============================================================
+
 
 class TestCohenKappa:
     """Test Cohen's Kappa calculation with known mathematical examples."""
@@ -418,7 +454,16 @@ class TestCohenKappa:
         """Verify 'substantial' interpretation for kappa in (0.60, 0.80]."""
         # 8 items, 7 agree, 1 disagrees -> high but not perfect kappa
         coder_a = [["a"], ["b"], ["a"], ["b"], ["a"], ["b"], ["a"], ["b"]]
-        coder_b = [["a"], ["b"], ["a"], ["b"], ["a"], ["b"], ["a"], ["a"]]  # last one differs
+        coder_b = [
+            ["a"],
+            ["b"],
+            ["a"],
+            ["b"],
+            ["a"],
+            ["b"],
+            ["a"],
+            ["a"],
+        ]  # last one differs
         all_codes = ["a", "b"]
 
         result = cohen_kappa(coder_a, coder_b, all_codes)
@@ -455,6 +500,7 @@ class TestCohenKappa:
 # ============================================================
 # 4. Krippendorff's Alpha Calculation Tests
 # ============================================================
+
 
 class TestKrippendorffAlpha:
     """Test Krippendorff's Alpha calculation with known examples."""

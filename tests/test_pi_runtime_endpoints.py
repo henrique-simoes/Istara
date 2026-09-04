@@ -17,7 +17,8 @@ def test_pi_endpoint_resolver_rejects_same_model_identity_mismatch(monkeypatch):
         keychain_service="pi-test",
     )
     monkeypatch.setattr(
-        "app.core.pi_runtime.endpoints._read_macos_keychain_secret", lambda *_: "test-key"
+        "app.core.pi_runtime.endpoints._read_macos_keychain_secret",
+        lambda *_: "test-key",
     )
     resolver = PiEndpointResolver([endpoint])
 

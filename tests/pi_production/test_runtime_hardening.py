@@ -67,7 +67,9 @@ def test_unit_suite_allows_reserved_provider_test_domain(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_provider_only_turn_blocks_external_endpoint_before_worker_start(monkeypatch):
+async def test_provider_only_turn_blocks_external_endpoint_before_worker_start(
+    monkeypatch,
+):
     """Provider-only turns must share the ordinary test network guard.
 
     The legacy ReAct bridge reaches this Pi seam directly; omitting the guard here
@@ -135,6 +137,7 @@ async def test_embedding_gateway_blocks_external_provider_before_http(monkeypatc
         migration_source="test",
     )
     gateway = EmbeddingsGateway(manager=manager, profile=profile)
+
     async def _network_must_not_start(*_args, **_kwargs):
         raise AssertionError("embedding HTTP must be blocked before network dispatch")
 
@@ -147,7 +150,9 @@ async def test_embedding_gateway_blocks_external_provider_before_http(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_ensemble_routes_project_scoped_petals_endpoints_through_pi_manager(monkeypatch):
+async def test_ensemble_routes_project_scoped_petals_endpoints_through_pi_manager(
+    monkeypatch,
+):
     """A distinct ensemble must bind Petals donors through the Pi authority.
 
     This keeps the test deterministic while exercising the real
@@ -232,7 +237,11 @@ async def test_ensemble_routes_project_scoped_petals_endpoints_through_pi_manage
     assert result["status"] == "success"
     assert result["endpoint_ids"] == ["pi-faux-a", "pi-petals-b", "pi-petals-c"]
     assert len(supervisor.binds) == 3
-    petals_binds = [payload for payload in supervisor.binds if payload["endpoint_id"].startswith("pi-petals")]
+    petals_binds = [
+        payload
+        for payload in supervisor.binds
+        if payload["endpoint_id"].startswith("pi-petals")
+    ]
     assert [payload["model"] for payload in petals_binds] == ["model-b", "model-c"]
     assert [payload["base_url"] for payload in petals_binds] == [
         "http://127.0.0.1:8000/api/petals/v1/nodes/donor-b/projects/project%20spine%2F1",
@@ -341,7 +350,9 @@ async def test_ensemble_runs_three_project_scoped_petals_donors_with_route_recei
         "pi-petals-donor-b",
         "pi-petals-donor-c",
     ]
-    assert [sample["endpoint_id"] for sample in result["samples"]] == result["endpoint_ids"]
+    assert [sample["endpoint_id"] for sample in result["samples"]] == result[
+        "endpoint_ids"
+    ]
     assert {sample["route_evidence"]["route_kind"] for sample in result["samples"]} == {
         "petals_bridge"
     }
@@ -359,7 +370,9 @@ async def test_ensemble_runs_three_project_scoped_petals_donors_with_route_recei
 
 
 @pytest.mark.asyncio
-async def test_pi_ensemble_uses_minimum_width_when_optional_spare_is_requested(monkeypatch):
+async def test_pi_ensemble_uses_minimum_width_when_optional_spare_is_requested(
+    monkeypatch,
+):
     """Pi must resolve the required width, not the legacy optional spare.
 
     The validation facade asks for ``min_responses + 1`` so the legacy engine
@@ -451,7 +464,9 @@ async def test_pi_ensemble_rejects_zero_width_before_manager_or_worker_work():
         model_manager=UnusedManager(),
     )
 
-    with pytest.raises(PiEndpointResolutionError, match="ensemble_width_must_be_positive"):
+    with pytest.raises(
+        PiEndpointResolutionError, match="ensemble_width_must_be_positive"
+    ):
         await service.run_ensemble(
             purpose="research_spine.invalid_width",
             project_id="project-spine",

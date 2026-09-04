@@ -33,7 +33,9 @@ from app.core.pi_runtime.engine import _bind_payload
 
 
 class FakeDonorNode:
-    def __init__(self, node_id="donor-1", *, source="relay", pi_served=True, is_healthy=True):
+    def __init__(
+        self, node_id="donor-1", *, source="relay", pi_served=True, is_healthy=True
+    ):
         self.node_id = node_id
         self.source = source
         self.pi_served = pi_served
@@ -66,12 +68,16 @@ def registry_with(donor, monkeypatch):
 
 def test_research_scoped_donor_dispatch_keeps_route_evidence(registry_with):
     """Spine traffic is pinned to the donor and stamps the full evidence handle."""
-    result = asyncio.run(petals_bridge.chat_completions({
-        "model": "pi-petals-donor-1",
-        "messages": [{"role": "user", "content": "interview transcript chunk"}],
-        "project_id": "project-spine-1",
-        "purpose": "research_analysis",
-    }))
+    result = asyncio.run(
+        petals_bridge.chat_completions(
+            {
+                "model": "pi-petals-donor-1",
+                "messages": [{"role": "user", "content": "interview transcript chunk"}],
+                "project_id": "project-spine-1",
+                "purpose": "research_analysis",
+            }
+        )
+    )
     route = result["_istara_route"]
     assert route["route_kind"] == "petals_bridge"
     assert route["node_id"] == "donor-1"
@@ -116,14 +122,16 @@ def test_pi_binding_refuses_unscoped_donated_compute():
 
 
 def test_pinned_bridge_keeps_actual_model_identity_and_project_scope(registry_with):
-    result = asyncio.run(petals_bridge.chat_completions(
-        {
-            "model": "petals-model-7b",
-            "messages": [{"role": "user", "content": "research input"}],
-        },
-        pinned_node_id="donor-1",
-        project_id="project-spine-1",
-    ))
+    result = asyncio.run(
+        petals_bridge.chat_completions(
+            {
+                "model": "petals-model-7b",
+                "messages": [{"role": "user", "content": "research input"}],
+            },
+            pinned_node_id="donor-1",
+            project_id="project-spine-1",
+        )
+    )
     assert result["_istara_route"]["model"] == "petals-model-7b"
     call = registry_with._nodes["donor-1"].calls[0]
     assert call["model"] == "petals-model-7b"
@@ -159,7 +167,9 @@ def test_research_bridge_requires_project_id(registry_with):
         )
 
 
-def test_missing_admission_condition_is_typed_unavailable_never_paid_fallback(donor, registry_with):
+def test_missing_admission_condition_is_typed_unavailable_never_paid_fallback(
+    donor, registry_with
+):
     """Every admission condition is enforced for spine traffic — typed 503, no fallback."""
     cases = [
         (lambda d: setattr(d, "source", "network"), "not_a_donor"),
@@ -172,22 +182,30 @@ def test_missing_admission_condition_is_typed_unavailable_never_paid_fallback(do
         donor.is_healthy = True
         mutate(donor)
         with pytest.raises(PetalsUnavailable, match=reason_fragment):
-            asyncio.run(petals_bridge.chat_completions({
-                "model": "pi-petals-donor-1",
-                "messages": [{"role": "user", "content": "research input"}],
-                "project_id": "project-spine-1",
-            }))
+            asyncio.run(
+                petals_bridge.chat_completions(
+                    {
+                        "model": "pi-petals-donor-1",
+                        "messages": [{"role": "user", "content": "research input"}],
+                        "project_id": "project-spine-1",
+                    }
+                )
+            )
         # No dispatch ever reached the donor while failing closed.
         assert donor.calls == []
 
 
 def test_unknown_node_fails_closed_for_research_traffic(registry_with):
     with pytest.raises(PetalsUnavailable, match="unknown_node"):
-        asyncio.run(petals_bridge.chat_completions({
-            "model": "pi-petals-ghost",
-            "messages": [{"role": "user", "content": "research input"}],
-            "project_id": "project-spine-1",
-        }))
+        asyncio.run(
+            petals_bridge.chat_completions(
+                {
+                    "model": "pi-petals-ghost",
+                    "messages": [{"role": "user", "content": "research input"}],
+                    "project_id": "project-spine-1",
+                }
+            )
+        )
 
 
 def test_api_layer_maps_donor_failure_to_typed_503():
@@ -197,7 +215,9 @@ def test_api_layer_maps_donor_failure_to_typed_503():
     response = _unavailable(PetalsUnavailable("donor_unhealthy:donor-1"))
     assert response.status_code == 503
     body = json.loads(response.body)
-    assert body == {"error": {"type": "petals_unavailable", "reason": "donor_unhealthy:donor-1"}}
+    assert body == {
+        "error": {"type": "petals_unavailable", "reason": "donor_unhealthy:donor-1"}
+    }
 
 
 def test_bridge_disabled_fails_closed_with_typed_503(monkeypatch):
@@ -206,33 +226,50 @@ def test_bridge_disabled_fails_closed_with_typed_503(monkeypatch):
     from app.config import settings
 
     monkeypatch.setattr(settings, "petals_bridge_enabled", False)
-    request = Request({
-        "type": "http",
-        "method": "POST",
-        "path": "/api/petals/v1/chat/completions",
-        "headers": [(b"authorization", f"Bearer {petals_bridge.bridge_token()}".encode())],
-    })
-    response = asyncio.run(petals_chat_completions({
-        "model": "pi-petals-donor-1",
-        "messages": [{"role": "user", "content": "research input"}],
-    }, request))
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/petals/v1/chat/completions",
+            "headers": [
+                (b"authorization", f"Bearer {petals_bridge.bridge_token()}".encode())
+            ],
+        }
+    )
+    response = asyncio.run(
+        petals_chat_completions(
+            {
+                "model": "pi-petals-donor-1",
+                "messages": [{"role": "user", "content": "research input"}],
+            },
+            request,
+        )
+    )
     assert response.status_code == 503
     body = json.loads(response.body)
-    assert body == {"error": {"type": "petals_unavailable", "reason": "bridge_disabled"}}
+    assert body == {
+        "error": {"type": "petals_unavailable", "reason": "bridge_disabled"}
+    }
 
 
 def test_loopback_route_requires_process_private_bearer():
     from app.api.routes.petals_bridge import _bridge_authorized
 
     missing = Request({"type": "http", "headers": []})
-    wrong = Request({
-        "type": "http",
-        "headers": [(b"authorization", b"Bearer not-the-token")],
-    })
-    valid = Request({
-        "type": "http",
-        "headers": [(b"authorization", f"Bearer {petals_bridge.bridge_token()}".encode())],
-    })
+    wrong = Request(
+        {
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer not-the-token")],
+        }
+    )
+    valid = Request(
+        {
+            "type": "http",
+            "headers": [
+                (b"authorization", f"Bearer {petals_bridge.bridge_token()}".encode())
+            ],
+        }
+    )
     assert _bridge_authorized(missing) is False
     assert _bridge_authorized(wrong) is False
     assert _bridge_authorized(valid) is True

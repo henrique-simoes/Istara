@@ -10,9 +10,18 @@ from __future__ import annotations
 from .base import Scenario
 
 _A2A_SCENARIOS = (
-    ("a2a.debate_report", "Two agents debate a recommendation, then converge on a report"),
-    ("a2a.delegation_chain", "Lead delegates subtasks down a chain and reconciles results"),
-    ("a2a.collaboration_handoff", "Agents hand off partial findings and preserve evidence handles"),
+    (
+        "a2a.debate_report",
+        "Two agents debate a recommendation, then converge on a report",
+    ),
+    (
+        "a2a.delegation_chain",
+        "Lead delegates subtasks down a chain and reconciles results",
+    ),
+    (
+        "a2a.collaboration_handoff",
+        "Agents hand off partial findings and preserve evidence handles",
+    ),
 )
 
 

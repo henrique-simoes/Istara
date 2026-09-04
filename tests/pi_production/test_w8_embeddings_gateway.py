@@ -582,7 +582,9 @@ def test_unpinned_resolver_is_not_a_runtime_authority(monkeypatch):
             ),
         ]
     )
-    with pytest.raises(PiEndpointResolutionError, match="no_matching_pi_embed_endpoint_model"):
+    with pytest.raises(
+        PiEndpointResolutionError, match="no_matching_pi_embed_endpoint_model"
+    ):
         remote_only.resolve_embed()
 
 

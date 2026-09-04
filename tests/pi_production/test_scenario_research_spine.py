@@ -48,8 +48,10 @@ async def test_scenario9_provisional_evidence_stays_candidate_and_cannot_be_repo
     # The Pi run opens the research task via the real canonical tool.
     sup = PiRuntimeSupervisor()
     svc = faux_service(
-        [tool_call("create_task", {"title": "Investigate retention drivers"}),
-         final_text("Opened the research task.")],
+        [
+            tool_call("create_task", {"title": "Investigate retention drivers"}),
+            final_text("Opened the research task."),
+        ],
         sup,
     )
 
@@ -58,8 +60,12 @@ async def test_scenario9_provisional_evidence_stays_candidate_and_cannot_be_repo
 
     try:
         async for _ in svc.run_chat_turn(
-            project_id=project_id, agent_id="istara-main", system_prompt=_SYS,
-            history=[], user_text="Open a research task on retention.", tool_executor=authority_exec,
+            project_id=project_id,
+            agent_id="istara-main",
+            system_prompt=_SYS,
+            history=[],
+            user_text="Open a research task on retention.",
+            tool_executor=authority_exec,
             session_key=f"{project_id}:spine",
         ):
             pass
@@ -67,7 +73,9 @@ async def test_scenario9_provisional_evidence_stays_candidate_and_cannot_be_repo
         await sup.shutdown()
 
     async with async_session() as db:
-        task = (await db.execute(select(Task).where(Task.project_id == project_id))).scalar_one()
+        task = (
+            await db.execute(select(Task).where(Task.project_id == project_id))
+        ).scalar_one()
     task_id = task.id
 
     # Provisional source/evidence is persisted through the real spine service as
@@ -75,27 +83,47 @@ async def test_scenario9_provisional_evidence_stays_candidate_and_cannot_be_repo
     source_text = "Cohort A shows a 30-day retention lift after onboarding changes."
     async with async_session() as db:
         document = Document(
-            id=str(uuid.uuid4()), project_id=project_id, title="Retention source",
-            description="Pi research source unit.", file_name="retention.md", file_type="md",
-            status=DocumentStatus.READY, source=DocumentSource.TASK_OUTPUT, task_id=task_id,
-            phase="develop", content_preview=source_text, content_text=source_text,
+            id=str(uuid.uuid4()),
+            project_id=project_id,
+            title="Retention source",
+            description="Pi research source unit.",
+            file_name="retention.md",
+            file_type="md",
+            status=DocumentStatus.READY,
+            source=DocumentSource.TASK_OUTPUT,
+            task_id=task_id,
+            phase="develop",
+            content_preview=source_text,
+            content_text=source_text,
         )
         document.set_agent_ids(["istara-main"])
         document.set_skill_names(["pi-research"])
         document.set_tags(["retention"])
         db.add(document)
         nugget = Nugget(
-            id=str(uuid.uuid4()), project_id=project_id, agent_id="istara-main", task_id=task_id,
-            text="Onboarding changes lifted 30-day retention.", source=document.id,
-            source_location="retention.md#unit-1", tags=json.dumps(["retention"]),
-            phase="develop", confidence=0.9,
+            id=str(uuid.uuid4()),
+            project_id=project_id,
+            agent_id="istara-main",
+            task_id=task_id,
+            text="Onboarding changes lifted 30-day retention.",
+            source=document.id,
+            source_location="retention.md#unit-1",
+            tags=json.dumps(["retention"]),
+            phase="develop",
+            confidence=0.9,
         )
         db.add(nugget)
         await db.flush()
         units = await persist_task_nugget_evidence_units(
-            db, project_id=project_id, task_id=task_id, nugget_id=nugget.id,
-            source_text=source_text, source_location="retention.md#unit-1",
-            source_document_id=document.id, method="pi_research_step", phase="develop",
+            db,
+            project_id=project_id,
+            task_id=task_id,
+            nugget_id=nugget.id,
+            source_text=source_text,
+            source_location="retention.md#unit-1",
+            source_document_id=document.id,
+            method="pi_research_step",
+            phase="develop",
             candidate_only=True,
         )
         await db.commit()
@@ -103,18 +131,31 @@ async def test_scenario9_provisional_evidence_stays_candidate_and_cannot_be_repo
 
     # The evidence is candidate-only (provisional), never an accepted source span.
     async with async_session() as db:
-        stored = (await db.execute(select(EvidenceUnit).where(EvidenceUnit.id.in_(unit_ids)))).scalars().all()
+        stored = (
+            (
+                await db.execute(
+                    select(EvidenceUnit).where(EvidenceUnit.id.in_(unit_ids))
+                )
+            )
+            .scalars()
+            .all()
+        )
     assert stored
     assert all(u.unit_type == "candidate_atom" for u in stored)
 
     # Governance computes reportability: provisional work is NOT report-eligible.
     async with async_session() as db:
-        assessment = await assess_task_research_validity(db, project_id=project_id, task_id=task_id)
+        assessment = await assess_task_research_validity(
+            db, project_id=project_id, task_id=task_id
+        )
     assert assessment["report_allowed"] is False
 
     # The model cannot manufacture Done — the canonical tool refuses it.
     done_attempt = await execute_tool(
-        "move_task", {"task_id": task_id, "status": "done"}, project_id, agent_id="istara-main"
+        "move_task",
+        {"task_id": task_id, "status": "done"},
+        project_id,
+        agent_id="istara-main",
     )
     assert done_attempt["success"] is True  # the tool call itself succeeds...
     assert "cannot mark tasks Done" in done_attempt["result"]  # ...but Done is refused

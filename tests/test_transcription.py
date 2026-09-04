@@ -9,9 +9,11 @@ from types import SimpleNamespace
 # Transcription module imports
 # ---------------------------------------------------------------------------
 
+
 def test_transcription_module_imports():
     """Transcription module imports correctly."""
     from app.core.transcription import TranscriptionResult, transcribe_audio
+
     assert TranscriptionResult is not None
     assert transcribe_audio is not None
 
@@ -19,6 +21,7 @@ def test_transcription_module_imports():
 def test_transcription_result_dataclass():
     """TranscriptionResult has all expected fields."""
     from app.core.transcription import TranscriptionResult
+
     result = TranscriptionResult(
         text="Test transcription",
         language="en",
@@ -41,7 +44,7 @@ def test_transcription_unavailable_fallback():
     """When Whisper is unavailable, returns error transcription."""
     from app.core import transcription
     import tempfile
-    
+
     with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
         with patch("app.core.transcription._load_whisper_model", return_value=None):
             result = transcription.transcribe_audio(tmp.name)
@@ -73,7 +76,10 @@ def test_transcription_requires_ffmpeg_when_whisper_is_available(monkeypatch):
 
     with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
         monkeypatch.setattr(transcription, "_WHISPER_AVAILABLE", True)
-        monkeypatch.setattr("app.core.transcription._load_whisper_model", lambda *_args, **_kwargs: FakeModel())
+        monkeypatch.setattr(
+            "app.core.transcription._load_whisper_model",
+            lambda *_args, **_kwargs: FakeModel(),
+        )
         monkeypatch.setattr("app.core.transcription.shutil.which", lambda _name: None)
 
         result = transcription.transcribe_audio(tmp.name)
@@ -101,11 +107,18 @@ def test_transcription_uses_detected_language_and_segment_confidence(monkeypatch
 
     with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
         monkeypatch.setattr(transcription, "_WHISPER_AVAILABLE", True)
-        monkeypatch.setattr("app.core.transcription._load_whisper_model", lambda *_args, **_kwargs: FakeModel())
-        monkeypatch.setattr("app.core.transcription.shutil.which", lambda _name: "/usr/bin/ffmpeg")
+        monkeypatch.setattr(
+            "app.core.transcription._load_whisper_model",
+            lambda *_args, **_kwargs: FakeModel(),
+        )
+        monkeypatch.setattr(
+            "app.core.transcription.shutil.which", lambda _name: "/usr/bin/ffmpeg"
+        )
         monkeypatch.setattr(
             "app.core.transcription._compute_transcription_icr",
-            lambda *_args, **_kwargs: SimpleNamespace(kappa=0.72, confidence="high", details={}),
+            lambda *_args, **_kwargs: SimpleNamespace(
+                kappa=0.72, confidence="high", details={}
+            ),
         )
 
         result = transcription.transcribe_audio(tmp.name)
@@ -125,10 +138,14 @@ def test_transcription_uses_detected_language_and_segment_confidence(monkeypatch
 # Auto-tagging
 # ---------------------------------------------------------------------------
 
+
 def test_auto_tagging_pain_points():
     """Transcription tags pain-point keywords correctly."""
     from app.core.transcription import _generate_transcription_tags
-    tags = _generate_transcription_tags("This feature is really frustrating and confusing to use")
+
+    tags = _generate_transcription_tags(
+        "This feature is really frustrating and confusing to use"
+    )
     assert "pain-point" in tags
     assert "negative" in tags
 
@@ -136,14 +153,20 @@ def test_auto_tagging_pain_points():
 def test_auto_tagging_feature_requests():
     """Transcription tags feature request keywords."""
     from app.core.transcription import _generate_transcription_tags
-    tags = _generate_transcription_tags("It would be nice if you could add a search feature")
+
+    tags = _generate_transcription_tags(
+        "It would be nice if you could add a search feature"
+    )
     assert "feature-request" in tags
 
 
 def test_auto_tagging_usability():
     """Transcription tags usability keywords."""
     from app.core.transcription import _generate_transcription_tags
-    tags = _generate_transcription_tags("The interface is very intuitive and easy to use and it is great")
+
+    tags = _generate_transcription_tags(
+        "The interface is very intuitive and easy to use and it is great"
+    )
     assert "usability" in tags
     assert "positive" in tags
 
@@ -151,14 +174,20 @@ def test_auto_tagging_usability():
 def test_auto_tagging_spoken_style():
     """Transcription detects spoken-style text with filler words."""
     from app.core.transcription import _generate_transcription_tags
-    tags = _generate_transcription_tags("Um, I think like the button is uh not working properly")
+
+    tags = _generate_transcription_tags(
+        "Um, I think like the button is uh not working properly"
+    )
     assert "spoken-style" in tags
 
 
 def test_auto_tagging_interview_style():
     """Transcription tags interview-style phrases."""
     from app.core.transcription import _generate_transcription_tags
-    tags = _generate_transcription_tags("In my experience, our team usually prefers the old design")
+
+    tags = _generate_transcription_tags(
+        "In my experience, our team usually prefers the old design"
+    )
     assert "interview" in tags
 
 
@@ -176,6 +205,7 @@ def test_auto_tagging_length_based():
 # ---------------------------------------------------------------------------
 # ICR Consensus
 # ---------------------------------------------------------------------------
+
 
 def test_icr_consensus_computes():
     """ICR consensus is computed for transcriptions."""
@@ -209,9 +239,13 @@ def test_transcription_icr_without_independent_pass_is_insufficient(monkeypatch)
     """ICR does not manufacture agreement when no alternative transcription is available."""
     from app.core import transcription
 
-    monkeypatch.setattr("app.core.transcription._load_whisper_model", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        "app.core.transcription._load_whisper_model", lambda *_args, **_kwargs: None
+    )
 
-    result = transcription._compute_transcription_icr("The interface is easy to use", "/tmp/audio.wav")
+    result = transcription._compute_transcription_icr(
+        "The interface is easy to use", "/tmp/audio.wav"
+    )
 
     assert result.confidence == "insufficient"
     assert result.details["reason"].startswith("Single response")
@@ -221,9 +255,11 @@ def test_transcription_icr_without_independent_pass_is_insufficient(monkeypatch)
 # Audio conversion
 # ---------------------------------------------------------------------------
 
+
 def test_audio_conversion_wav_passthrough():
     """WAV files are returned as-is without conversion."""
     from app.core.transcription import convert_audio_to_wav
+
     # Mock: just verify the function handles .wav paths correctly
     result = convert_audio_to_wav("/tmp/test.wav")
     assert result == "/tmp/test.wav"

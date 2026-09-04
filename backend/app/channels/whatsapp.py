@@ -12,8 +12,8 @@ Required config keys (or environment fallbacks):
 
 from __future__ import annotations
 
-import hmac
 import hashlib
+import hmac
 import logging
 import os
 import re

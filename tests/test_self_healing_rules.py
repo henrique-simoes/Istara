@@ -73,10 +73,16 @@ class TestSelfHealingRules:
 
         rules = SelfHealingRules()
         failed = MockSpan(
-            status="success", operation="tool_call", tool_success=False, tool_name="mcp_search"
+            status="success",
+            operation="tool_call",
+            tool_success=False,
+            tool_name="mcp_search",
         )
         successful = MockSpan(
-            status="success", operation="tool_call", tool_success=True, tool_name="mcp_search"
+            status="success",
+            operation="tool_call",
+            tool_success=True,
+            tool_name="mcp_search",
         )
         for _ in range(3):
             await rules.evaluate_span(successful)

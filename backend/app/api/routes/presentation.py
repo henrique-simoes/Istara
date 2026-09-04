@@ -1,14 +1,15 @@
 """Presentation API — generate slide creation instructions from reports."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.ext.asyncio import AsyncSession
 import json
 
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.agentic import agentic
+from app.core.agentic.types import TurnParams
 from app.core.permissions import require_project_access
 from app.models.database import get_db
 from app.models.project_report import ProjectReport
-from app.core.agentic import agentic
-from app.core.agentic.types import TurnParams
 
 router = APIRouter(prefix="/presentation")
 

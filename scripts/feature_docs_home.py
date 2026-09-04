@@ -20,10 +20,20 @@ SHELL_INSTALL = "curl -fsSL https://raw.githubusercontent.com/henrique-simoes/Is
 SOURCE_INSTALL = "git clone https://github.com/henrique-simoes/Istara.git"
 
 HERO_PROOFS = (
-    ("Local-first Security", "Run workspace inference and model routing entirely on your own local machine."),
-    ("Evidence-gated Rigor", "Keep report materials tied to source spans, inter-coder review, and reconciled tasks."),
-    ("Compute Swarm Pool", "Use project-authorized local models and donated hardware compute with route evidence."),
+    (
+        "Local-first Security",
+        "Run workspace inference and model routing entirely on your own local machine.",
+    ),
+    (
+        "Evidence-gated Rigor",
+        "Keep report materials tied to source spans, inter-coder review, and reconciled tasks.",
+    ),
+    (
+        "Compute Swarm Pool",
+        "Use project-authorized local models and donated hardware compute with route evidence.",
+    ),
 )
+
 
 def copy_home_screenshots(root: Path, assets: Path) -> list[Path]:
     written: list[Path] = []
@@ -35,11 +45,15 @@ def copy_home_screenshots(root: Path, assets: Path) -> list[Path]:
             written.append(target)
     return written
 
+
 def _copy_button(command: str, label: str = "Copy command") -> str:
     escaped = html.escape(command)
     return f'<button type="button" data-copy-command="{escaped}">{html.escape(label)}</button>'
 
-def _install_card(kind: str, title: str, body: str, command: str, *, primary: bool = False) -> str:
+
+def _install_card(
+    kind: str, title: str, body: str, command: str, *, primary: bool = False
+) -> str:
     css_class = "install-card primary" if primary else "install-card"
     return (
         f'<article class="{css_class}">'
@@ -51,7 +65,10 @@ def _install_card(kind: str, title: str, body: str, command: str, *, primary: bo
         "</article>"
     )
 
-def _tech_section(num: str, tag: str, title: str, desc: str, detail: str, img: str, link: str) -> str:
+
+def _tech_section(
+    num: str, tag: str, title: str, desc: str, detail: str, img: str, link: str
+) -> str:
     return f"""
 <div class="tech-section-row scroll-animate">
   <div class="tech-section-copy">
@@ -68,78 +85,113 @@ def _tech_section(num: str, tag: str, title: str, desc: str, detail: str, img: s
 </div>
 """
 
+
 def home_marketing_sections() -> str:
     proofs_html = "".join(
         f"<li><strong>{html.escape(title)}</strong><span>{html.escape(copy)}</span></li>"
         for title, copy in HERO_PROOFS
     )
-    
-    swarm_sections_html = "".join([
-        _tech_section(
-            "01 / 10", "Spine Guarded", "Intelligent Grounded Chat",
-            "Ask research questions without losing grounding. Project chat keeps source material, accepted evidence, and task context close to the conversation for fully reviewable evidence.",
-            "Istara's source-bounded reasoning and context DAG routing ensure that every AI claim is completely backed by source citations. Powered by semantic vector search.",
-            "assets/tech_chat.png", "technology/grounded-chat.html"
-        ),
-        _tech_section(
-            "02 / 10", "Double Diamond", "53+ UX Research Skills",
-            "Run focused UX research skills from competitive analysis, card sorting, and accessibility audits to SUS usability scoring and design briefs.",
-            "Workflows are organized across Discover, Define, Develop, and Deliver phases of the Double Diamond. The execution harness supports custom skill creation and automatic prompt-evolution.",
-            "assets/tech_skills.png", "technology/ux-skills.html"
-        ),
-        _tech_section(
-            "03 / 10", "Governed Prompts", "Self-Evolving Agents & Personas",
-            "Evolve Cleo, Sentinel, Pixel, Sage, and Echo from project-scoped process memory and verified outcomes. Create new agents at runtime via Memento agent factory.",
-            "The runtime Memento agent factory reads from project-scoped ReasoningBank memory stores, allowing agents to evolve their prompts and strategies governed by security contracts.",
-            "assets/tech_swarm.png", "technology/evolving-agents.html"
-        ),
-        _tech_section(
-            "04 / 10", "Local Swarms", "Collaborative Compute Swarm",
-            "Share GPU and CPU capacity with team members via a WebSocket-based Compute Relay. Route inference requests to local nodes with capability detection and automatic failover.",
-            "Idle hardware forms a secure WebSocket-based compute relay pool. Requests are dynamically routed to local donor nodes with automatic fallback queue management.",
-            "assets/tech_relay.png", "technology/compute-swarm.html"
-        ),
-    ])
 
-    arch_sections_html = "".join([
-        _tech_section(
-            "05 / 10", "Retrieval", "Hybrid RAG + Graph RAG",
-            "Get exact evidence with Hybrid RAG (LanceDB vector + BM25 keyword search blended via Reciprocal Rank Fusion) and explore relationships across sources, codes, and tasks via Graph RAG.",
-            "Graph answers must backfill exact evidence before promotion. Hybrid rank blending prevents semantic drift and ensures precise reference lookup across multi-thousand-page repositories.",
-            "assets/tech_rag.png", "technology/hybrid-rag.html"
-        ),
-        _tech_section(
-            "06 / 10", "Verification", "Multi-Model Ensemble Health",
-            "Independent atomic extraction and open coding reduce bias. Distinct project-authorized models independently code same evidence units with Fleiss' Kappa reliability before human reconciliation.",
-            "Real-time inter-coder consensus metrics score reliability across models, automatically flagging diverging classifications for human adjudication before promotion.",
-            "assets/tech_reliability.png", "technology/multi-model.html"
-        ),
-        _tech_section(
-            "07 / 10", "Collaboration", "Distributed Compute & Roles",
-            "Idle hardware forms a collaborative compute swarm. Strict separation of access roles (Admin/Researcher) ensures secure operation, protected by WebAuthn passkeys and Fernet field encryption.",
-            "Cryptographic passkeys and field-level AES encryption prevent data leaks, keeping active local SQLite workspaces completely isolated and secure.",
-            "assets/tech_roles.png", "technology/distributed-compute.html"
-        ),
-        _tech_section(
-            "08 / 10", "Governance", "Human-in-the-Loop Kanban",
-            "Agents pick up tasks and propose findings, but they remain provisional and in review. Human-in-the-loop review states and reconciliation ensure only accepted findings enter approved Done tasks.",
-            "The human researcher retains absolute control. Task-level review gates prevent automated findings from leaking into reports without researcher sign-off.",
-            "assets/tech_kanban.png", "technology/human-kanban.html"
-        ),
-        _tech_section(
-            "09 / 10", "Design Handoff", "Stitch & Figma Interfaces",
-            "Import Figma files to link screen design decisions to accepted research evidence. Use the Google Stitch MCP server to generate wireframes and specs directly from reportable insights.",
-            "Bidirectional canvas syncing connects design layout layers to qualitative research nuggets. Enables evidence-backed design handoffs that developers can trace immediately.",
-            "assets/tech_handoff.png", "technology/stitch-figma.html"
-        ),
-        _tech_section(
-            "10 / 10", "Reporting", "Grounded Decisions & Reports",
-            "Export research reports directly from approved Done tasks. Ground every recommendation back through the spine: accepted atoms → facts → insights → recommendations linked to raw source spans.",
-            "Mathematically grounded in primary sources. Generates interactive trace indicators (e.g. [Evidence #42]) within compiled documents, allowing absolute audibility.",
-            "assets/tech_reports.png", "technology/grounded-decisions.html"
-        ),
-    ])
-    
+    swarm_sections_html = "".join(
+        [
+            _tech_section(
+                "01 / 10",
+                "Spine Guarded",
+                "Intelligent Grounded Chat",
+                "Ask research questions without losing grounding. Project chat keeps source material, accepted evidence, and task context close to the conversation for fully reviewable evidence.",
+                "Istara's source-bounded reasoning and context DAG routing ensure that every AI claim is completely backed by source citations. Powered by semantic vector search.",
+                "assets/tech_chat.png",
+                "technology/grounded-chat.html",
+            ),
+            _tech_section(
+                "02 / 10",
+                "Double Diamond",
+                "53+ UX Research Skills",
+                "Run focused UX research skills from competitive analysis, card sorting, and accessibility audits to SUS usability scoring and design briefs.",
+                "Workflows are organized across Discover, Define, Develop, and Deliver phases of the Double Diamond. The execution harness supports custom skill creation and automatic prompt-evolution.",
+                "assets/tech_skills.png",
+                "technology/ux-skills.html",
+            ),
+            _tech_section(
+                "03 / 10",
+                "Governed Prompts",
+                "Self-Evolving Agents & Personas",
+                "Evolve Cleo, Sentinel, Pixel, Sage, and Echo from project-scoped process memory and verified outcomes. Create new agents at runtime via Memento agent factory.",
+                "The runtime Memento agent factory reads from project-scoped ReasoningBank memory stores, allowing agents to evolve their prompts and strategies governed by security contracts.",
+                "assets/tech_swarm.png",
+                "technology/evolving-agents.html",
+            ),
+            _tech_section(
+                "04 / 10",
+                "Local Swarms",
+                "Collaborative Compute Swarm",
+                "Share GPU and CPU capacity with team members via a WebSocket-based Compute Relay. Route inference requests to local nodes with capability detection and automatic failover.",
+                "Idle hardware forms a secure WebSocket-based compute relay pool. Requests are dynamically routed to local donor nodes with automatic fallback queue management.",
+                "assets/tech_relay.png",
+                "technology/compute-swarm.html",
+            ),
+        ]
+    )
+
+    arch_sections_html = "".join(
+        [
+            _tech_section(
+                "05 / 10",
+                "Retrieval",
+                "Hybrid RAG + Graph RAG",
+                "Get exact evidence with Hybrid RAG (LanceDB vector + BM25 keyword search blended via Reciprocal Rank Fusion) and explore relationships across sources, codes, and tasks via Graph RAG.",
+                "Graph answers must backfill exact evidence before promotion. Hybrid rank blending prevents semantic drift and ensures precise reference lookup across multi-thousand-page repositories.",
+                "assets/tech_rag.png",
+                "technology/hybrid-rag.html",
+            ),
+            _tech_section(
+                "06 / 10",
+                "Verification",
+                "Multi-Model Ensemble Health",
+                "Independent atomic extraction and open coding reduce bias. Distinct project-authorized models independently code same evidence units with Fleiss' Kappa reliability before human reconciliation.",
+                "Real-time inter-coder consensus metrics score reliability across models, automatically flagging diverging classifications for human adjudication before promotion.",
+                "assets/tech_reliability.png",
+                "technology/multi-model.html",
+            ),
+            _tech_section(
+                "07 / 10",
+                "Collaboration",
+                "Distributed Compute & Roles",
+                "Idle hardware forms a collaborative compute swarm. Strict separation of access roles (Admin/Researcher) ensures secure operation, protected by WebAuthn passkeys and Fernet field encryption.",
+                "Cryptographic passkeys and field-level AES encryption prevent data leaks, keeping active local SQLite workspaces completely isolated and secure.",
+                "assets/tech_roles.png",
+                "technology/distributed-compute.html",
+            ),
+            _tech_section(
+                "08 / 10",
+                "Governance",
+                "Human-in-the-Loop Kanban",
+                "Agents pick up tasks and propose findings, but they remain provisional and in review. Human-in-the-loop review states and reconciliation ensure only accepted findings enter approved Done tasks.",
+                "The human researcher retains absolute control. Task-level review gates prevent automated findings from leaking into reports without researcher sign-off.",
+                "assets/tech_kanban.png",
+                "technology/human-kanban.html",
+            ),
+            _tech_section(
+                "09 / 10",
+                "Design Handoff",
+                "Stitch & Figma Interfaces",
+                "Import Figma files to link screen design decisions to accepted research evidence. Use the Google Stitch MCP server to generate wireframes and specs directly from reportable insights.",
+                "Bidirectional canvas syncing connects design layout layers to qualitative research nuggets. Enables evidence-backed design handoffs that developers can trace immediately.",
+                "assets/tech_handoff.png",
+                "technology/stitch-figma.html",
+            ),
+            _tech_section(
+                "10 / 10",
+                "Reporting",
+                "Grounded Decisions & Reports",
+                "Export research reports directly from approved Done tasks. Ground every recommendation back through the spine: accepted atoms → facts → insights → recommendations linked to raw source spans.",
+                "Mathematically grounded in primary sources. Generates interactive trace indicators (e.g. [Evidence #42]) within compiled documents, allowing absolute audibility.",
+                "assets/tech_reports.png",
+                "technology/grounded-decisions.html",
+            ),
+        ]
+    )
+
     return f"""
 <section class="home-hero-v2" aria-labelledby="home-hero-heading">
   <div class="hero-v2-copy">

@@ -30,7 +30,9 @@ def file_encryption_settings(tmp_path, monkeypatch):
     original_keychain = settings.file_encryption_keychain_service
     monkeypatch.setattr(settings, "file_encryption_enabled", True)
     monkeypatch.setattr(settings, "file_encryption_key", "")
-    monkeypatch.setattr(settings, "file_encryption_key_file", str(tmp_path / "file-encryption.key"))
+    monkeypatch.setattr(
+        settings, "file_encryption_key_file", str(tmp_path / "file-encryption.key")
+    )
     monkeypatch.setattr(settings, "file_encryption_keychain_service", "")
     yield
     settings.file_encryption_enabled = original_enabled
@@ -50,7 +52,10 @@ def test_managed_file_encryption_round_trip(tmp_path):
 
     restored = tmp_path / "restored.txt"
     decrypt_file_to_path(source, restored)
-    assert restored.read_text(encoding="utf-8") == "participant quote with sensitive details"
+    assert (
+        restored.read_text(encoding="utf-8")
+        == "participant quote with sensitive details"
+    )
 
 
 def test_document_text_encryption_round_trip():
@@ -65,7 +70,9 @@ def test_encrypted_backup_archive_verifies_with_configured_key(tmp_path):
     encrypted_archive = tmp_path / "backup.tar.gz.enc"
 
     with tarfile.open(plain_archive, "w:gz") as tar:
-        manifest = json.dumps({"version": "1.0", "checksums": {}, "components": {}}).encode()
+        manifest = json.dumps(
+            {"version": "1.0", "checksums": {}, "components": {}}
+        ).encode()
         info = tarfile.TarInfo("manifest.json")
         info.size = len(manifest)
         tar.addfile(info, BytesIO(manifest))

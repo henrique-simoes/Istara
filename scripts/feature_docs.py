@@ -92,7 +92,9 @@ def frontmatter_for(feature: dict[str, Any], audience: str) -> str:
         "compass": feature.get("compass", "CF-SPEC-53 / CF-657"),
     }
     lines = ["---"]
-    lines.extend(f"{key}: {as_frontmatter_value(value)}" for key, value in metadata.items())
+    lines.extend(
+        f"{key}: {as_frontmatter_value(value)}" for key, value in metadata.items()
+    )
     lines.append("---")
     return "\n".join(lines)
 
@@ -124,48 +126,63 @@ def default_user_flows(feature: dict[str, Any]) -> list[str]:
     return [
         f"Open {path} from the Istara navigation or the parent tab.",
         f"Use the visible controls in this surface to work with {feature['title'].lower()} in the active project context.",
-        "Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface."
+        "Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.",
     ]
+
 
 def default_why(feature: dict[str, Any]) -> str:
     path = " > ".join(feature.get("ui_path", [])) or feature["title"]
     return f"{feature['title']} exists so the work represented by {path} has a stable, discoverable place in Istara's project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools."
 
+
 def default_workflows(feature: dict[str, Any]) -> list[str]:
     workflows = [
         f"Start from {(' > '.join(feature.get('ui_path', [])) or feature['title'])} when the current research task needs {feature['title'].lower()}.",
-        "Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context."
+        "Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.",
     ]
     related = feature.get("related_features", [])
     if related:
         workflows.append(f"Move to related surfaces when needed: {', '.join(related)}.")
     return workflows
 
+
 def default_outputs(feature: dict[str, Any]) -> list[str]:
     return [
         f"Project-scoped state or artifact updates associated with {feature['title'].lower()}.",
-        "Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes."
+        "Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.",
     ]
+
 
 def default_ai_architecture(feature: dict[str, Any]) -> list[str]:
     notes: list[str] = []
     glossary_terms = set(feature.get("glossary_terms", []))
     if "mcp" in glossary_terms:
-        notes.append("MCP-related behavior must keep access policy, audit evidence, and tool/resource exposure synchronized with the cited route or integration component.")
+        notes.append(
+            "MCP-related behavior must keep access policy, audit evidence, and tool/resource exposure synchronized with the cited route or integration component."
+        )
     if "rag" in glossary_terms:
-        notes.append("RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes.")
+        notes.append(
+            "RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes."
+        )
     if "a2a" in glossary_terms:
-        notes.append("Agent-to-agent behavior should be traced through agent stores, A2A routes, permissions, and review surfaces before changing assumptions.")
+        notes.append(
+            "Agent-to-agent behavior should be traced through agent stores, A2A routes, permissions, and review surfaces before changing assumptions."
+        )
     if "webauthn" in glossary_terms or "totp" in glossary_terms:
-        notes.append("Authentication-factor behavior is security-sensitive and must be verified with the repository security benchmark when implementation changes.")
+        notes.append(
+            "Authentication-factor behavior is security-sensitive and must be verified with the repository security benchmark when implementation changes."
+        )
     if not notes:
-        notes.append("No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files.")
+        notes.append(
+            "No direct agent, skill, LLM, or MCP behavior is asserted beyond the cited source files."
+        )
     return notes
+
 
 def default_caveats(feature: dict[str, Any]) -> list[str]:
     return [
         "Needs interactive verification for exact empty, loading, error, and permission-denied states.",
-        "Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence."
+        "Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.",
     ]
 
 
@@ -175,14 +192,20 @@ def default_architecture_notes(feature: dict[str, Any]) -> list[str]:
     return [
         f"The feature is mounted through `{primary}` and the UI navigation path recorded in the inventory.",
         "The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.",
-        "When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation."
+        "When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.",
     ]
 
 
 def render_researcher_doc(feature: dict[str, Any]) -> str:
-    flows = "\n".join(f"- {item}" for item in feature.get("user_flows") or default_user_flows(feature))
-    outputs = "\n".join(f"- {item}" for item in feature.get("outputs") or default_outputs(feature))
-    caveats = "\n".join(f"- {item}" for item in feature.get("caveats") or default_caveats(feature))
+    flows = "\n".join(
+        f"- {item}" for item in feature.get("user_flows") or default_user_flows(feature)
+    )
+    outputs = "\n".join(
+        f"- {item}" for item in feature.get("outputs") or default_outputs(feature)
+    )
+    caveats = "\n".join(
+        f"- {item}" for item in feature.get("caveats") or default_caveats(feature)
+    )
     related = "\n".join(related_links(feature, "researcher"))
     glossary = "\n".join(glossary_links(feature))
     return f"""{frontmatter_for(feature, "researcher")}
@@ -236,14 +259,21 @@ def render_researcher_doc(feature: dict[str, Any]) -> str:
 
 
 def render_architecture_doc(feature: dict[str, Any]) -> str:
-    notes = "\n".join(f"- {item}" for item in feature.get("architecture_notes") or default_architecture_notes(feature))
+    notes = "\n".join(
+        f"- {item}"
+        for item in feature.get("architecture_notes")
+        or default_architecture_notes(feature)
+    )
     related = "\n".join(related_links(feature, "architecture"))
     glossary = "\n".join(glossary_links(feature))
     code_refs = "\n".join(f"- `{path}`" for path in feature.get("code_refs", []))
     api_refs = "\n".join(f"- `{path}`" for path in feature.get("api_refs", []))
     store_refs = "\n".join(f"- `{path}`" for path in feature.get("store_refs", []))
     test_refs = "\n".join(f"- `{path}`" for path in feature.get("test_refs", []))
-    ai_notes = "\n".join(f"- {item}" for item in feature.get("ai_architecture") or default_ai_architecture(feature))
+    ai_notes = "\n".join(
+        f"- {item}"
+        for item in feature.get("ai_architecture") or default_ai_architecture(feature)
+    )
     return f"""{frontmatter_for(feature, "architecture")}
 
 # {feature["title"]} Architecture
@@ -298,7 +328,9 @@ def render_architecture_doc(feature: dict[str, Any]) -> str:
 """
 
 
-def seed_missing_docs(features: list[dict[str, Any]], overwrite: bool = False) -> list[Path]:
+def seed_missing_docs(
+    features: list[dict[str, Any]], overwrite: bool = False
+) -> list[Path]:
     written: list[Path] = []
     for feature in features:
         for audience, renderer in (
@@ -372,7 +404,9 @@ def markdown_to_html(
     for line in lines:
         if line.startswith("```"):
             if in_code:
-                html_lines.append("<pre><code>" + html.escape("\n".join(code_lines)) + "</code></pre>")
+                html_lines.append(
+                    "<pre><code>" + html.escape("\n".join(code_lines)) + "</code></pre>"
+                )
                 code_lines = []
                 in_code = False
             else:
@@ -391,30 +425,44 @@ def markdown_to_html(
             if skip_first_h1 and not skipped_h1:
                 skipped_h1 = True
                 continue
-            html_lines.append(f'<h1 id="{slugify(title)}">{inline_markdown(title, source_path, output_path)}</h1>')
+            html_lines.append(
+                f'<h1 id="{slugify(title)}">{inline_markdown(title, source_path, output_path)}</h1>'
+            )
         elif line.startswith("## "):
             close_list()
             title = line[3:].strip()
-            html_lines.append(f'<h2 id="{slugify(title)}">{inline_markdown(title, source_path, output_path)}</h2>')
+            html_lines.append(
+                f'<h2 id="{slugify(title)}">{inline_markdown(title, source_path, output_path)}</h2>'
+            )
         elif line.startswith("### "):
             close_list()
             title = line[4:].strip()
-            html_lines.append(f'<h3 id="{slugify(title)}">{inline_markdown(title, source_path, output_path)}</h3>')
+            html_lines.append(
+                f'<h3 id="{slugify(title)}">{inline_markdown(title, source_path, output_path)}</h3>'
+            )
         elif line.startswith("- "):
             if not in_list:
                 html_lines.append("<ul>")
                 in_list = True
-            html_lines.append(f"<li>{inline_markdown(line[2:].strip(), source_path, output_path)}</li>")
+            html_lines.append(
+                f"<li>{inline_markdown(line[2:].strip(), source_path, output_path)}</li>"
+            )
         else:
             close_list()
-            html_lines.append(f"<p>{inline_markdown(line.strip(), source_path, output_path)}</p>")
+            html_lines.append(
+                f"<p>{inline_markdown(line.strip(), source_path, output_path)}</p>"
+            )
     close_list()
     if in_code:
-        html_lines.append("<pre><code>" + html.escape("\n".join(code_lines)) + "</code></pre>")
+        html_lines.append(
+            "<pre><code>" + html.escape("\n".join(code_lines)) + "</code></pre>"
+        )
     return "\n".join(html_lines)
 
 
-def resolve_markdown_href(target: str, source_path: Path | None, output_path: Path | None) -> str:
+def resolve_markdown_href(
+    target: str, source_path: Path | None, output_path: Path | None
+) -> str:
     if not source_path or not output_path:
         return target.replace(".md", ".html").replace("../", "")
     if re.match(r"^[a-z][a-z0-9+.-]*:", target) or target.startswith("#"):
@@ -458,7 +506,9 @@ def resolve_markdown_href(target: str, source_path: Path | None, output_path: Pa
     return relative_url(output_path, site_target) + suffix
 
 
-def inline_markdown(text: str, source_path: Path | None = None, output_path: Path | None = None) -> str:
+def inline_markdown(
+    text: str, source_path: Path | None = None, output_path: Path | None = None
+) -> str:
     escaped = html.escape(text)
     escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
 
@@ -471,7 +521,9 @@ def inline_markdown(text: str, source_path: Path | None = None, output_path: Pat
     return re.sub(r"\[([^\]]+)\]\(([^)]+)\)", link, escaped)
 
 
-def extract_headings(markdown: str, *, skip_first_h1: bool = False) -> list[tuple[int, str, str]]:
+def extract_headings(
+    markdown: str, *, skip_first_h1: bool = False
+) -> list[tuple[int, str, str]]:
     _, body = parse_frontmatter(markdown)
     headings: list[tuple[int, str, str]] = []
     skipped_h1 = False
@@ -592,7 +644,9 @@ def build_nav(
         parts.append(f"<h2>{html.escape(group)}</h2>")
         parts.append("<ul>")
         for feature in sorted(items, key=lambda item: item.get("order", 0)):
-            href = relative_url(current_path, feature_site_path(feature["id"], audience))
+            href = relative_url(
+                current_path, feature_site_path(feature["id"], audience)
+            )
             ui_path = " > ".join(feature.get("ui_path", []))
             active = feature["id"] == current_feature_id
             aria = ' aria-current="page"' if active else ""
@@ -623,13 +677,19 @@ def feature_page_header(
 ) -> str:
     ui_path = " > ".join(feature.get("ui_path", []))
     status = feature.get("status", "documented")
-    researcher_href = relative_url(current_path, feature_site_path(feature["id"], "researcher"))
-    architecture_href = relative_url(current_path, feature_site_path(feature["id"], "architecture"))
+    researcher_href = relative_url(
+        current_path, feature_site_path(feature["id"], "researcher")
+    )
+    architecture_href = relative_url(
+        current_path, feature_site_path(feature["id"], "architecture")
+    )
     related_links_html = []
     for related_id in feature.get("related_features", []):
         related = features_by_id.get(related_id, {"title": related_id})
         href = relative_url(current_path, feature_site_path(related_id, audience))
-        related_links_html.append(f'<a href="{html.escape(href)}">{html.escape(related["title"])}</a>')
+        related_links_html.append(
+            f'<a href="{html.escape(href)}">{html.escape(related["title"])}</a>'
+        )
     related = "\n".join(related_links_html) or "<span>None recorded</span>"
     glossary = ", ".join(feature.get("glossary_terms", [])) or "None recorded"
     researcher_current = ' aria-current="page"' if audience == "researcher" else ""
@@ -687,7 +747,7 @@ def docs_content(features: list[dict[str, Any]], current_path: Path) -> str:
         first = sorted(items, key=lambda item: item.get("order", 0))[:4]
         links = "\n".join(
             f'<li><a href="{html.escape(relative_url(current_path, feature_site_path(item["id"], "researcher")))}">'
-            f'{html.escape(item["title"])}</a></li>'
+            f"{html.escape(item['title'])}</a></li>"
             for item in first
         )
         search_text = f"{group} {' '.join(item['title'] for item in items)}"
@@ -697,8 +757,12 @@ def docs_content(features: list[dict[str, Any]], current_path: Path) -> str:
         )
     feature_cards = []
     for feature in sorted(features, key=lambda item: item.get("order", 0)):
-        researcher = relative_url(current_path, feature_site_path(feature["id"], "researcher"))
-        architecture = relative_url(current_path, feature_site_path(feature["id"], "architecture"))
+        researcher = relative_url(
+            current_path, feature_site_path(feature["id"], "researcher")
+        )
+        architecture = relative_url(
+            current_path, feature_site_path(feature["id"], "architecture")
+        )
         ui_path = " > ".join(feature.get("ui_path", []))
         search_text = f"{feature['title']} {ui_path} {feature.get('summary', '')} {feature.get('nav_group', '')}"
         feature_cards.append(
@@ -743,15 +807,20 @@ def docs_content(features: list[dict[str, Any]], current_path: Path) -> str:
 """
 
 
-
 def glossary_index_content(features: list[dict[str, Any]], current_path: Path) -> str:
     cards = []
     for source in sorted(GLOSSARY_ROOT.glob("*.md")):
         term_id = source.stem
         title = source.read_text(encoding="utf-8").splitlines()[0].lstrip("# ").strip()
-        used_by = [feature for feature in features if term_id in feature.get("glossary_terms", [])]
+        used_by = [
+            feature
+            for feature in features
+            if term_id in feature.get("glossary_terms", [])
+        ]
         href = relative_url(current_path, glossary_site_path(term_id))
-        search_text = f"{term_id} {title} {' '.join(feature['title'] for feature in used_by)}"
+        search_text = (
+            f"{term_id} {title} {' '.join(feature['title'] for feature in used_by)}"
+        )
         cards.append(
             f'<article class="glossary-card" data-glossary-card data-search-text="{html.escape(search_text.lower())}">'
             f'<h2><a href="{html.escape(href)}">{html.escape(title)}</a></h2>'
@@ -771,15 +840,22 @@ def glossary_index_content(features: list[dict[str, Any]], current_path: Path) -
 """
 
 
-def glossary_page_content(source: Path, features: list[dict[str, Any]], current_path: Path) -> tuple[str, str]:
+def glossary_page_content(
+    source: Path, features: list[dict[str, Any]], current_path: Path
+) -> tuple[str, str]:
     term_id = source.stem
     markdown = source.read_text(encoding="utf-8")
     title = markdown.splitlines()[0].lstrip("# ").strip()
-    used_by = [feature for feature in features if term_id in feature.get("glossary_terms", [])]
-    links = "\n".join(
-        f'<a href="{html.escape(relative_url(current_path, feature_site_path(feature["id"], "researcher")))}">{html.escape(feature["title"])}</a>'
-        for feature in used_by
-    ) or "<span>No related features recorded.</span>"
+    used_by = [
+        feature for feature in features if term_id in feature.get("glossary_terms", [])
+    ]
+    links = (
+        "\n".join(
+            f'<a href="{html.escape(relative_url(current_path, feature_site_path(feature["id"], "researcher")))}">{html.escape(feature["title"])}</a>'
+            for feature in used_by
+        )
+        or "<span>No related features recorded.</span>"
+    )
     body = markdown_to_html(markdown, source, current_path, skip_first_h1=True)
     content = f"""
 <header class="feature-hero">
@@ -800,8 +876,6 @@ def glossary_page_content(source: Path, features: list[dict[str, Any]], current_
     return title, content
 
 
-
-
 def generate_site(inventory: dict[str, Any]) -> list[Path]:
     features = inventory["features"]
     features_by_id = {feature["id"]: feature for feature in features}
@@ -819,13 +893,13 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
         shutil.copyfile(logo_source, logo_target)
         written.append(logo_target)
     written.extend(copy_home_screenshots(ROOT, assets))
-    
+
     # Copy generated tech image assets
     for img_path in (DOCS_ROOT / "assets").glob("tech_*.png"):
         target = assets / img_path.name
         shutil.copyfile(img_path, target)
         written.append(target)
-        
+
     nojekyll = SITE_ROOT / ".nojekyll"
     nojekyll.write_text("", encoding="utf-8")
     written.append(nojekyll)
@@ -834,21 +908,23 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
     for tech_id, tech in TECH_PAGES.items():
         target = SITE_ROOT / "technology" / f"{tech_id}.html"
         target.parent.mkdir(parents=True, exist_ok=True)
-        
+
         code_refs_html = ""
         if tech.get("code_refs"):
-            refs_li = "".join(f"<li><code>{ref}</code></li>" for ref in tech["code_refs"])
+            refs_li = "".join(
+                f"<li><code>{ref}</code></li>" for ref in tech["code_refs"]
+            )
             code_refs_html = f"""
             <div class="code-refs-box">
               <h4>Source Code Reference</h4>
               <ul>{refs_li}</ul>
             </div>
             """
-        
+
         logo_rel = relative_url(target, SITE_ROOT / "assets" / "istara-logo.png")
         img_rel = relative_url(target, SITE_ROOT / "assets" / tech["image"])
         index_rel = relative_url(target, SITE_ROOT / "index.html")
-        
+
         tech_content = f"""
         <a href="{html.escape(index_rel)}" class="tech-detail-back">Back to Homepage</a>
         <header class="feature-hero">
@@ -866,7 +942,7 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
           </div>
         </div>
         """
-        
+
         shell = page_shell(
             tech["title"],
             build_nav(features, target),
@@ -886,10 +962,17 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
             target.parent.mkdir(parents=True, exist_ok=True)
             markdown = source.read_text(encoding="utf-8")
             body = markdown_to_html(markdown, source, target, skip_first_h1=True)
-            content = feature_page_header(feature, features_by_id, audience, target) + body
+            content = (
+                feature_page_header(feature, features_by_id, audience, target) + body
+            )
             shell = page_shell(
                 feature["title"],
-                build_nav(features, target, current_feature_id=feature["id"], audience=audience),
+                build_nav(
+                    features,
+                    target,
+                    current_feature_id=feature["id"],
+                    audience=audience,
+                ),
                 content,
                 current_path=target,
                 subtitle=audience_label(audience),
@@ -925,7 +1008,11 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
                 content,
                 current_path=target,
                 subtitle="Shared concepts",
-                toc=build_toc(extract_headings(source.read_text(encoding="utf-8"), skip_first_h1=True)),
+                toc=build_toc(
+                    extract_headings(
+                        source.read_text(encoding="utf-8"), skip_first_h1=True
+                    )
+                ),
                 body_class="glossary-page",
             ),
             encoding="utf-8",
@@ -985,18 +1072,24 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
             for feature in features
         ],
     }
-    (SITE_ROOT / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (SITE_ROOT / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     written.append(SITE_ROOT / "manifest.json")
 
     graph = {
-        "nodes": [{"id": feature["id"], "title": feature["title"]} for feature in features],
+        "nodes": [
+            {"id": feature["id"], "title": feature["title"]} for feature in features
+        ],
         "edges": [
             {"source": feature["id"], "target": target}
             for feature in features
             for target in feature.get("related_features", [])
         ],
     }
-    (SITE_ROOT / "feature-graph.json").write_text(json.dumps(graph, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (SITE_ROOT / "feature-graph.json").write_text(
+        json.dumps(graph, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     written.append(SITE_ROOT / "feature-graph.json")
 
     search_index = [
@@ -1013,16 +1106,27 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
     ]
     for source in sorted(GLOSSARY_ROOT.glob("*.md")):
         title = source.read_text(encoding="utf-8").splitlines()[0].lstrip("# ").strip()
-        search_index.append({"kind": "glossary", "id": source.stem, "title": title, "url": f"glossary/{source.stem}.html"})
+        search_index.append(
+            {
+                "kind": "glossary",
+                "id": source.stem,
+                "title": title,
+                "url": f"glossary/{source.stem}.html",
+            }
+        )
     for tech_id, tech in TECH_PAGES.items():
-        search_index.append({
-            "kind": "technology",
-            "id": tech_id,
-            "title": tech["title"],
-            "summary": tech["summary"],
-            "url": f"technology/{tech_id}.html"
-        })
-    (SITE_ROOT / "search-index.json").write_text(json.dumps(search_index, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        search_index.append(
+            {
+                "kind": "technology",
+                "id": tech_id,
+                "title": tech["title"],
+                "summary": tech["summary"],
+                "url": f"technology/{tech_id}.html",
+            }
+        )
+    (SITE_ROOT / "search-index.json").write_text(
+        json.dumps(search_index, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     written.append(SITE_ROOT / "search-index.json")
 
     urls = ["index.html", "docs.html"]
@@ -1032,10 +1136,13 @@ def generate_site(inventory: dict[str, Any]) -> list[Path]:
         base = f"features/{feature['id'].replace('.', '/')}"
         urls.extend([f"{base}/researcher.html", f"{base}/architecture.html"])
     urls.append("glossary/index.html")
-    urls.extend(f"glossary/{source.stem}.html" for source in sorted(GLOSSARY_ROOT.glob("*.md")))
+    urls.extend(
+        f"glossary/{source.stem}.html" for source in sorted(GLOSSARY_ROOT.glob("*.md"))
+    )
     base_url = os.environ.get("ISTARA_DOCS_BASE_URL", "").rstrip("/")
     sitemap = "\n".join(
-        f"  <url><loc>{html.escape(f'{base_url}/{url}' if base_url else url)}</loc></url>" for url in urls
+        f"  <url><loc>{html.escape(f'{base_url}/{url}' if base_url else url)}</loc></url>"
+        for url in urls
     )
     (SITE_ROOT / "sitemap.xml").write_text(
         f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{sitemap}\n</urlset>\n',
@@ -1066,7 +1173,9 @@ def build_llms_txt(features: list[dict[str, Any]]) -> str:
     ]
     for feature in sorted(features, key=lambda item: item.get("order", 0)):
         base = f"docs/features/content/{feature['id'].replace('.', '/')}"
-        lines.append(f"- {feature['id']}: {feature['title']} | {base}/researcher.md | {base}/architecture.md")
+        lines.append(
+            f"- {feature['id']}: {feature['title']} | {base}/researcher.md | {base}/architecture.md"
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -1088,7 +1197,9 @@ def generated_link_errors() -> list[str]:
                 continue
             path_part, fragment_sep, fragment = href.partition("#")
             path_part = path_part.split("?", 1)[0]
-            target = html_file if not path_part else (html_file.parent / path_part).resolve()
+            target = (
+                html_file if not path_part else (html_file.parent / path_part).resolve()
+            )
             if path_part and not target.exists():
                 errors.append(f"{html_file.relative_to(ROOT)} has broken link: {href}")
                 continue
@@ -1097,8 +1208,11 @@ def generated_link_errors() -> list[str]:
                     target_text = target.read_text(encoding="utf-8")
                     id_cache[target] = set(re.findall(r'id="([^"]+)"', target_text))
                 if fragment and fragment not in id_cache[target]:
-                    errors.append(f"{html_file.relative_to(ROOT)} links to missing anchor #{fragment}: {href}")
+                    errors.append(
+                        f"{html_file.relative_to(ROOT)} links to missing anchor #{fragment}: {href}"
+                    )
     return errors
+
 
 def validate(inventory: dict[str, Any]) -> list[str]:
     errors: list[str] = []
@@ -1113,12 +1227,21 @@ def validate(inventory: dict[str, Any]) -> list[str]:
         if not feature_id or not re.match(r"^[a-z0-9][a-z0-9.-]*$", feature_id):
             errors.append(f"Invalid feature id: {feature_id!r}")
             continue
-        for key in ("title", "summary", "ui_path", "nav_group", "component", "code_refs"):
+        for key in (
+            "title",
+            "summary",
+            "ui_path",
+            "nav_group",
+            "component",
+            "code_refs",
+        ):
             if key not in feature:
                 errors.append(f"{feature_id} missing inventory field {key}")
         for related in feature.get("related_features", []):
             if related not in id_set:
-                errors.append(f"{feature_id} references unknown related feature {related}")
+                errors.append(
+                    f"{feature_id} references unknown related feature {related}"
+                )
         for term in feature.get("glossary_terms", []):
             if not (GLOSSARY_ROOT / f"{term}.md").exists():
                 errors.append(f"{feature_id} references missing glossary term {term}")
@@ -1133,7 +1256,9 @@ def validate(inventory: dict[str, Any]) -> list[str]:
             frontmatter, body = parse_frontmatter(path.read_text(encoding="utf-8"))
             missing = REQUIRED_FRONTMATTER - set(frontmatter)
             if missing:
-                errors.append(f"{path} missing frontmatter: {', '.join(sorted(missing))}")
+                errors.append(
+                    f"{path} missing frontmatter: {', '.join(sorted(missing))}"
+                )
             if frontmatter.get("stable_id") != feature_id:
                 errors.append(f"{path} stable_id mismatch")
             if frontmatter.get("audience") != audience:
@@ -1145,12 +1270,16 @@ def validate(inventory: dict[str, Any]) -> list[str]:
 
             generated = feature_site_path(feature_id, audience)
             if not generated.exists():
-                errors.append(f"Missing generated {audience} HTML for {feature_id}: {generated}")
+                errors.append(
+                    f"Missing generated {audience} HTML for {feature_id}: {generated}"
+                )
 
     for source in sorted(GLOSSARY_ROOT.glob("*.md")):
         generated = glossary_site_path(source.stem)
         if not generated.exists():
-            errors.append(f"Missing generated glossary page for {source.stem}: {generated}")
+            errors.append(
+                f"Missing generated glossary page for {source.stem}: {generated}"
+            )
 
     for required in (
         "index.html",
@@ -1165,22 +1294,42 @@ def validate(inventory: dict[str, Any]) -> list[str]:
         "glossary/index.html",
     ):
         if not (SITE_ROOT / required).exists():
-            errors.append(f"Missing generated site artifact: docs/features/site/{required}")
+            errors.append(
+                f"Missing generated site artifact: docs/features/site/{required}"
+            )
     errors.extend(generated_link_errors())
     return errors
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--seed-missing", action="store_true", help="Create missing per-feature docs from inventory.")
-    parser.add_argument("--overwrite-source", action="store_true", help="Overwrite per-feature markdown source docs.")
-    parser.add_argument("--generate-site", action="store_true", help="Generate static HTML and machine-readable manifests.")
-    parser.add_argument("--check", action="store_true", help="Validate inventory, docs, and generated artifacts.")
+    parser.add_argument(
+        "--seed-missing",
+        action="store_true",
+        help="Create missing per-feature docs from inventory.",
+    )
+    parser.add_argument(
+        "--overwrite-source",
+        action="store_true",
+        help="Overwrite per-feature markdown source docs.",
+    )
+    parser.add_argument(
+        "--generate-site",
+        action="store_true",
+        help="Generate static HTML and machine-readable manifests.",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Validate inventory, docs, and generated artifacts.",
+    )
     args = parser.parse_args(argv)
 
     inventory = load_inventory()
     if args.seed_missing or args.overwrite_source:
-        print(f"seeded {len(seed_missing_docs(inventory['features'], overwrite=args.overwrite_source))} feature doc file(s)")
+        print(
+            f"seeded {len(seed_missing_docs(inventory['features'], overwrite=args.overwrite_source))} feature doc file(s)"
+        )
     if args.generate_site:
         print(f"generated {len(generate_site(inventory))} site artifact(s)")
     if args.check:
@@ -1190,7 +1339,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"ERROR: {error}", file=sys.stderr)
             return 1
         print(f"feature docs check passed for {len(inventory['features'])} feature(s)")
-    if not any((args.seed_missing, args.overwrite_source, args.generate_site, args.check)):
+    if not any(
+        (args.seed_missing, args.overwrite_source, args.generate_site, args.check)
+    ):
         parser.print_help()
     return 0
 

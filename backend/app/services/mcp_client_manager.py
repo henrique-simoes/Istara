@@ -10,7 +10,7 @@ import json
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlsplit, urlunsplit
 
 from sqlalchemy import select
@@ -42,8 +42,8 @@ MAX_MCP_TOOL_SCHEMA_BYTES = 16 * 1024
 # ---------------------------------------------------------------------------
 
 try:
-    from mcp.client.streamable_http import streamablehttp_client  # type: ignore[import-untyped]
     from mcp import ClientSession  # type: ignore[import-untyped]
+    from mcp.client.streamable_http import streamablehttp_client  # type: ignore[import-untyped]
 
     MCP_CLIENT_AVAILABLE = True
 except ImportError:
@@ -113,7 +113,7 @@ async def register_server(
     if existing:
         existing.name = name
         existing.headers_json = encrypt_field(json.dumps(safe_headers))
-        existing.updated_at = datetime.now(timezone.utc)
+        existing.updated_at = datetime.now(UTC)
         await db.commit()
         await db.refresh(existing)
         logger.info(
@@ -242,7 +242,7 @@ async def discover_tools(
                     if descriptor is not None
                 ]
                 server.tools_json = json.dumps(tools)
-                server.last_discovery_at = datetime.now(timezone.utc)
+                server.last_discovery_at = datetime.now(UTC)
                 server.health_status = "healthy"
                 await db.commit()
                 logger.info("Discovered %d tools from MCP server '%s'", len(tools), server.name)

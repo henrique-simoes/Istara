@@ -36,7 +36,9 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def bootstrap_ci(deltas: list[float], num_resamples: int = 1000, ci_level: float = 0.95) -> tuple[float, float, float]:
+def bootstrap_ci(
+    deltas: list[float], num_resamples: int = 1000, ci_level: float = 0.95
+) -> tuple[float, float, float]:
     """Calculate (mean, ci_lower, ci_upper) via bootstrap resampling."""
     if not deltas:
         return 0.0, 0.0, 0.0
@@ -77,7 +79,9 @@ def cohens_d(pi_vals: list[float], legacy_vals: list[float]) -> float:
 def load_records_from_runs(runs_dir: Path) -> list[dict[str, Any]]:
     """Walk runs_dir recursively and load all valid JSON run records."""
     records: list[dict[str, Any]] = []
-    record_files = list(runs_dir.glob("**/records/*.json")) + list(runs_dir.glob("records/*.json"))
+    record_files = list(runs_dir.glob("**/records/*.json")) + list(
+        runs_dir.glob("records/*.json")
+    )
     seen_ids: set[str] = set()
 
     for path in record_files:
@@ -129,7 +133,16 @@ def _status_breakdown(records: list[dict[str, Any]]) -> dict[str, Any]:
         engine = r.get("engine") or "unknown"
         status = r.get("status") or "unknown"
         lane_d = breakdown.setdefault(lane, {})
-        eng_d = lane_d.setdefault(engine, {"total": 0, "ok": 0, "not_runnable": 0, "budget_blocked": 0, "reasons": {}})
+        eng_d = lane_d.setdefault(
+            engine,
+            {
+                "total": 0,
+                "ok": 0,
+                "not_runnable": 0,
+                "budget_blocked": 0,
+                "reasons": {},
+            },
+        )
         eng_d["total"] += 1
         eng_d[status] = eng_d.get(status, 0) + 1
         if status != "ok":
@@ -146,10 +159,18 @@ def _moa_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
         if not moa_ext:
             continue
         mode = moa_ext.get("requested_mode") or "unknown"
-        d = summary.setdefault(mode, {
-            "units": 0, "reconciled": 0, "degraded": 0, "blocked": 0, "not_run": 0,
-            "downgrades": {}, "consensus_scores": [],
-        })
+        d = summary.setdefault(
+            mode,
+            {
+                "units": 0,
+                "reconciled": 0,
+                "degraded": 0,
+                "blocked": 0,
+                "not_run": 0,
+                "downgrades": {},
+                "consensus_scores": [],
+            },
+        )
         d["units"] += 1
         rec_status = moa_ext.get("reconciliation_status") or "not_run"
         d[rec_status] = d.get(rec_status, 0) + 1
@@ -161,7 +182,9 @@ def _moa_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
             d["consensus_scores"].append(round(float(score), 4))
     for d in summary.values():
         scores = d.pop("consensus_scores")
-        d["consensus_score_mean"] = round(sum(scores) / len(scores), 4) if scores else None
+        d["consensus_score_mean"] = (
+            round(sum(scores) / len(scores), 4) if scores else None
+        )
     return summary
 
 
@@ -180,8 +203,26 @@ def generate_scorecard(records: list[dict[str, Any]]) -> dict[str, Any]:
     axes_scores: dict[str, Any] = {}
 
     # Axis 1: Tool Calling (judged)
-    pi_tc = [v for r in pi_records if (v := ((r.get("metrics") or {}).get("tool_calling") or {}).get("tool_name_accuracy")) is not None]
-    leg_tc = [v for r in legacy_records if (v := ((r.get("metrics") or {}).get("tool_calling") or {}).get("tool_name_accuracy")) is not None]
+    pi_tc = [
+        v
+        for r in pi_records
+        if (
+            v := ((r.get("metrics") or {}).get("tool_calling") or {}).get(
+                "tool_name_accuracy"
+            )
+        )
+        is not None
+    ]
+    leg_tc = [
+        v
+        for r in legacy_records
+        if (
+            v := ((r.get("metrics") or {}).get("tool_calling") or {}).get(
+                "tool_name_accuracy"
+            )
+        )
+        is not None
+    ]
     if pi_tc and leg_tc:
         tc_deltas = [p - l for p, l in zip(pi_tc, leg_tc)]
         mean_tc_delta, tc_ci_low, tc_ci_high = bootstrap_ci(tc_deltas)
@@ -210,8 +251,26 @@ def generate_scorecard(records: list[dict[str, Any]]) -> dict[str, Any]:
     )
 
     # Axis 3: Output Quality (judged)
-    pi_oq = [v for r in pi_records if (v := ((r.get("metrics") or {}).get("output_quality") or {}).get("correctness")) is not None]
-    leg_oq = [v for r in legacy_records if (v := ((r.get("metrics") or {}).get("output_quality") or {}).get("correctness")) is not None]
+    pi_oq = [
+        v
+        for r in pi_records
+        if (
+            v := ((r.get("metrics") or {}).get("output_quality") or {}).get(
+                "correctness"
+            )
+        )
+        is not None
+    ]
+    leg_oq = [
+        v
+        for r in legacy_records
+        if (
+            v := ((r.get("metrics") or {}).get("output_quality") or {}).get(
+                "correctness"
+            )
+        )
+        is not None
+    ]
     if pi_oq and leg_oq:
         oq_deltas = [p - l for p, l in zip(pi_oq, leg_oq)]
         mean_oq_delta, oq_ci_low, oq_ci_high = bootstrap_ci(oq_deltas)
@@ -225,15 +284,38 @@ def generate_scorecard(records: list[dict[str, Any]]) -> dict[str, Any]:
             "effect_size": round(cohens_d(pi_oq, leg_oq), 4),
         }
     else:
-        axes_scores["output_quality"] = _pending_axis("Output Quality & Deterministic Checks")
+        axes_scores["output_quality"] = _pending_axis(
+            "Output Quality & Deterministic Checks"
+        )
 
     # Axis 4: Research Spine Phases (judged)
-    phases = ["intent", "context", "plan", "tool_selection", "execution", "recovery", "grounding", "synthesis", "review", "governance"]
+    phases = [
+        "intent",
+        "context",
+        "plan",
+        "tool_selection",
+        "execution",
+        "recovery",
+        "grounding",
+        "synthesis",
+        "review",
+        "governance",
+    ]
     phase_scores: dict[str, Any] = {}
     judged_spine = False
     for p in phases:
-        p_pi = [v for r in pi_records if (v := ((r.get("metrics") or {}).get("spine_phase") or {}).get(p)) is not None]
-        p_leg = [v for r in legacy_records if (v := ((r.get("metrics") or {}).get("spine_phase") or {}).get(p)) is not None]
+        p_pi = [
+            v
+            for r in pi_records
+            if (v := ((r.get("metrics") or {}).get("spine_phase") or {}).get(p))
+            is not None
+        ]
+        p_leg = [
+            v
+            for r in legacy_records
+            if (v := ((r.get("metrics") or {}).get("spine_phase") or {}).get(p))
+            is not None
+        ]
         if p_pi and p_leg:
             judged_spine = True
             phase_scores[p] = {
@@ -242,33 +324,56 @@ def generate_scorecard(records: list[dict[str, Any]]) -> dict[str, Any]:
             }
         else:
             phase_scores[p] = {"pi": None, "legacy": None}
-    measured = [s for s in phase_scores.values() if s["pi"] is not None and s["legacy"] is not None]
+    measured = [
+        s
+        for s in phase_scores.values()
+        if s["pi"] is not None and s["legacy"] is not None
+    ]
     axes_scores["spine_phase"] = {
         "name": "Research Validity Spine (10 Phases)",
         "status": "judged" if judged_spine else PENDING,
         "phases": phase_scores,
         "measured_phases": len(measured),
-        "pi_avg": round(sum(s["pi"] for s in measured) / len(measured), 4) if measured else None,
-        "legacy_avg": round(sum(s["legacy"] for s in measured) / len(measured), 4) if measured else None,
+        "pi_avg": round(sum(s["pi"] for s in measured) / len(measured), 4)
+        if measured
+        else None,
+        "legacy_avg": round(sum(s["legacy"] for s in measured) / len(measured), 4)
+        if measured
+        else None,
     }
 
     # Axes 5-6: Token & Cost Efficiency — REAL provider-reported evidence.
     # Exact and estimated usage are kept separate (acceptance A15); means are
     # computed over ok records only so failed/zero rows never skew them.
     def _usage_stats(engine_records: list[dict[str, Any]]) -> dict[str, Any]:
-        ok_exact = [r for r in engine_records if r.get("status") == "ok" and not (r.get("usage") or {}).get("estimate", False)]
-        ok_est = [r for r in engine_records if r.get("status") == "ok" and (r.get("usage") or {}).get("estimate", False)]
+        ok_exact = [
+            r
+            for r in engine_records
+            if r.get("status") == "ok"
+            and not (r.get("usage") or {}).get("estimate", False)
+        ]
+        ok_est = [
+            r
+            for r in engine_records
+            if r.get("status") == "ok" and (r.get("usage") or {}).get("estimate", False)
+        ]
         exact_cost = sum((r.get("usage") or {}).get("cost_usd", 0.0) for r in ok_exact)
         est_cost = sum((r.get("usage") or {}).get("cost_usd", 0.0) for r in ok_est)
-        exact_tokens = sum((r.get("usage") or {}).get("total_tokens", 0) for r in ok_exact)
+        exact_tokens = sum(
+            (r.get("usage") or {}).get("total_tokens", 0) for r in ok_exact
+        )
         return {
             "ok_records_exact": len(ok_exact),
             "ok_records_estimated": len(ok_est),
             "exact_cost_usd": round(exact_cost, 6),
             "estimated_cost_usd": round(est_cost, 6),
             "exact_tokens": exact_tokens,
-            "mean_cost_usd_per_ok": round(exact_cost / len(ok_exact), 6) if ok_exact else None,
-            "mean_tokens_per_ok": round(exact_tokens / len(ok_exact), 1) if ok_exact else None,
+            "mean_cost_usd_per_ok": round(exact_cost / len(ok_exact), 6)
+            if ok_exact
+            else None,
+            "mean_tokens_per_ok": round(exact_tokens / len(ok_exact), 1)
+            if ok_exact
+            else None,
         }
 
     axes_scores["token_cost_efficiency"] = {
@@ -281,13 +386,23 @@ def generate_scorecard(records: list[dict[str, Any]]) -> dict[str, Any]:
 
     # Axis 7: Tool Call Efficiency — measured from dag tool_choice + call counts.
     def _per_engine_metrics(axis: str, key: str):
-        pi_vals = [v for r in pi_records if (v := ((r.get("metrics") or {}).get(axis) or {}).get(key)) is not None]
-        leg_vals = [v for r in legacy_records if (v := ((r.get("metrics") or {}).get(axis) or {}).get(key)) is not None]
+        pi_vals = [
+            v
+            for r in pi_records
+            if (v := ((r.get("metrics") or {}).get(axis) or {}).get(key)) is not None
+        ]
+        leg_vals = [
+            v
+            for r in legacy_records
+            if (v := ((r.get("metrics") or {}).get(axis) or {}).get(key)) is not None
+        ]
         pi_mean = round(sum(pi_vals) / len(pi_vals), 4) if pi_vals else None
         leg_mean = round(sum(leg_vals) / len(leg_vals), 4) if leg_vals else None
         return pi_mean, leg_mean, len(pi_vals), len(leg_vals)
 
-    tc_pi, tc_leg, tc_np, tc_nl = _per_engine_metrics("tool_calling", "tool_name_accuracy")
+    tc_pi, tc_leg, tc_np, tc_nl = _per_engine_metrics(
+        "tool_calling", "tool_name_accuracy"
+    )
     axes_scores["tool_efficiency"] = {
         "name": "Tool Call Efficiency Frontier",
         "status": "measured",
@@ -302,47 +417,66 @@ def generate_scorecard(records: list[dict[str, Any]]) -> dict[str, Any]:
     sk_pi, sk_leg, sk_np, sk_nl = _per_engine_metrics("skills", "pass_rate")
     if sk_pi is not None and sk_leg is not None:
         axes_scores["skills"] = {
-            "name": "Skill Contract & Marker Compliance", "status": "judged",
-            "pi_score": sk_pi, "legacy_score": sk_leg,
-            "pi_pass_rate": sk_pi, "legacy_pass_rate": sk_leg,
+            "name": "Skill Contract & Marker Compliance",
+            "status": "judged",
+            "pi_score": sk_pi,
+            "legacy_score": sk_leg,
+            "pi_pass_rate": sk_pi,
+            "legacy_pass_rate": sk_leg,
             "n": {"pi": sk_np, "legacy": sk_nl},
-            "delta": round(sk_pi - sk_leg, 4), "ci_95": None, "effect_size": None,
+            "delta": round(sk_pi - sk_leg, 4),
+            "ci_95": None,
+            "effect_size": None,
         }
     else:
         axes_scores["skills"] = _pending_axis("Skill Contract & Marker Compliance")
 
     # Axis 9: Prompt adherence — computed from deterministic probe metrics.
-    pa: dict[str, Any] = {"name": "System-Prompt Adherence & Probes", "status": "measured"}
+    pa: dict[str, Any] = {
+        "name": "System-Prompt Adherence & Probes",
+        "status": "measured",
+    }
     any_probe = False
     for sub in ("injection_resistance", "persona_compliance", "thinking_leak_rate"):
         pi_v, leg_v, _, _ = _per_engine_metrics("prompt_adherence", sub)
         if pi_v is not None or leg_v is not None:
             any_probe = True
         pa[sub] = {"pi": pi_v, "legacy": leg_v}
-    axes_scores["prompt_adherence"] = pa if any_probe else _pending_axis("System-Prompt Adherence & Probes")
+    axes_scores["prompt_adherence"] = (
+        pa if any_probe else _pending_axis("System-Prompt Adherence & Probes")
+    )
 
     # Axis 10: A2A — judged debate scores + MoA consensus evidence.
     a2a_pi, a2a_leg, _, _ = _per_engine_metrics("a2a", "goal_completion")
     if a2a_pi is not None and a2a_leg is not None:
         axes_scores["a2a"] = {
-            "name": "A2A Collaboration & Dominance", "status": "judged",
-            "pi_score": a2a_pi, "legacy_score": a2a_leg,
-            "pi_goal_completion": a2a_pi, "legacy_goal_completion": a2a_leg,
-            "delta": round(a2a_pi - a2a_leg, 4), "ci_95": None, "effect_size": None,
+            "name": "A2A Collaboration & Dominance",
+            "status": "judged",
+            "pi_score": a2a_pi,
+            "legacy_score": a2a_leg,
+            "pi_goal_completion": a2a_pi,
+            "legacy_goal_completion": a2a_leg,
+            "delta": round(a2a_pi - a2a_leg, 4),
+            "ci_95": None,
+            "effect_size": None,
         }
     else:
         axes_scores["a2a"] = _pending_axis("A2A Collaboration & Dominance")
 
     # Axis 5: Memory load — from the CF-340 probe sidecar when present.
-    memory_probe_path = Path("comparison-Istara-pi/reports/20260731-judging/memory-probe.json")
+    memory_probe_path = Path(
+        "comparison-Istara-pi/reports/20260731-judging/memory-probe.json"
+    )
     if memory_probe_path.is_file():
         probe = json.loads(memory_probe_path.read_text(encoding="utf-8"))
         axes_scores["memory_load"] = {
-            "name": "Memory Load & Cross-Session Recall", "status": "measured",
+            "name": "Memory Load & Cross-Session Recall",
+            "status": "measured",
             "pi": {
                 "backend_rss_bytes": probe["pi"]["backend_rss_after"],
                 "pi_worker_rss_bytes": probe["pi"]["pi_worker_rss_bytes"],
-                "total_rss_bytes": probe["pi"]["backend_rss_after"] + (probe["pi"]["pi_worker_rss_bytes"] or 0),
+                "total_rss_bytes": probe["pi"]["backend_rss_after"]
+                + (probe["pi"]["pi_worker_rss_bytes"] or 0),
             },
             "legacy": {
                 "backend_rss_bytes": probe["legacy"]["backend_rss_after"],
@@ -355,14 +489,22 @@ def generate_scorecard(records: list[dict[str, Any]]) -> dict[str, Any]:
         axes_scores["memory_load"] = _pending_axis("Memory Load & Cross-Session Recall")
 
     # Axis 2 fill: feature coverage from the CF-339 scorer sidecar when present.
-    feature_scores_path = Path("comparison-Istara-pi/reports/20260731-judging/feature-scores.json")
+    feature_scores_path = Path(
+        "comparison-Istara-pi/reports/20260731-judging/feature-scores.json"
+    )
     if feature_scores_path.is_file():
         fs_data = json.loads(feature_scores_path.read_text(encoding="utf-8"))
         axes_scores["feature_matrix"]["status"] = "measured"
         axes_scores["feature_matrix"]["pi_coverage_pct"] = fs_data["coverage_pct"]["pi"]
-        axes_scores["feature_matrix"]["legacy_coverage_pct"] = fs_data["coverage_pct"]["legacy"]
-        axes_scores["feature_matrix"]["criteria_pass_rates"] = fs_data["summary"]["criteria_pass_rates"]
-        axes_scores["feature_matrix"]["note"] = "Coverage over derivable criteria; 70/86 features have >=1 manual criterion (counted, never fabricated); engine independence for non-LLM features via the W9 count-to-zero ratchet."
+        axes_scores["feature_matrix"]["legacy_coverage_pct"] = fs_data["coverage_pct"][
+            "legacy"
+        ]
+        axes_scores["feature_matrix"]["criteria_pass_rates"] = fs_data["summary"][
+            "criteria_pass_rates"
+        ]
+        axes_scores["feature_matrix"]["note"] = (
+            "Coverage over derivable criteria; 70/86 features have >=1 manual criterion (counted, never fabricated); engine independence for non-LLM features via the W9 count-to-zero ratchet."
+        )
 
     status_breakdown = _status_breakdown(records)
     moa = _moa_summary(records)
@@ -386,7 +528,10 @@ def generate_scorecard(records: list[dict[str, Any]]) -> dict[str, Any]:
         if directions and all(d > 0 for d in directions.values()):
             winner, confidence = "pi", "all judged axes significant (95% CI excludes 0)"
         elif directions and all(d < 0 for d in directions.values()):
-            winner, confidence = "legacy", "all judged axes significant (95% CI excludes 0)"
+            winner, confidence = (
+                "legacy",
+                "all judged axes significant (95% CI excludes 0)",
+            )
         else:
             winner, confidence = None, "no judged axis reaches significance at 95% CI"
         verdict = {
@@ -394,7 +539,8 @@ def generate_scorecard(records: list[dict[str, Any]]) -> dict[str, Any]:
             "confidence": confidence,
             "status": "judged" if winner else "no_significant_difference",
             "summary": (
-                f"Judged axes: " + "; ".join(
+                f"Judged axes: "
+                + "; ".join(
                     f"{a['name']}: pi {a.get('pi_score', a.get('pi_avg'))} vs "
                     f"legacy {a.get('legacy_score', a.get('legacy_avg'))} "
                     f"(delta {a.get('delta')}, CI {a.get('ci_95')})"
@@ -466,7 +612,9 @@ def generate_markdown_report(scorecard: dict[str, Any], out_path: Path) -> str:
     for lane in sorted(ev["status_breakdown"]):
         for engine in sorted(ev["status_breakdown"][lane]):
             d = ev["status_breakdown"][lane][engine]
-            reasons = ", ".join(f"{k}×{v}" for k, v in sorted(d["reasons"].items())) or "—"
+            reasons = (
+                ", ".join(f"{k}×{v}" for k, v in sorted(d["reasons"].items())) or "—"
+            )
             md += f"| `{lane}` | `{engine}` | `{d['ok']}` | `{d['not_runnable']}` | {reasons} |\n"
 
     md += f"""
@@ -550,7 +698,10 @@ def generate_html_report(scorecard: dict[str, Any], out_path: Path) -> str:
         for lane in sorted(sb):
             for engine in sorted(sb[lane]):
                 d = sb[lane][engine]
-                reasons = ", ".join(f"{k}×{v}" for k, v in sorted(d["reasons"].items())) or "—"
+                reasons = (
+                    ", ".join(f"{k}×{v}" for k, v in sorted(d["reasons"].items()))
+                    or "—"
+                )
                 rows.append(
                     f"<tr><td>{lane}</td><td>{engine}</td><td>{d['ok']}</td>"
                     f"<td>{d['not_runnable']}</td><td>{reasons}</td></tr>"
@@ -563,7 +714,9 @@ def generate_html_report(scorecard: dict[str, Any], out_path: Path) -> str:
             d = moa_ev[mode]
             cons = d["consensus_score_mean"]
             cons_s = f"{cons:.4f}" if isinstance(cons, (int, float)) else "—"
-            downgrades = ", ".join(f"{k}×{v}" for k, v in sorted(d["downgrades"].items())) or "—"
+            downgrades = (
+                ", ".join(f"{k}×{v}" for k, v in sorted(d["downgrades"].items())) or "—"
+            )
             rows.append(
                 f"<tr><td>{mode}</td><td>{d['units']}</td><td>{d['reconciled']}</td>"
                 f"<td>{d['degraded']}</td><td>{d['not_run']}</td><td>{cons_s}</td><td>{downgrades}</td></tr>"
@@ -572,15 +725,30 @@ def generate_html_report(scorecard: dict[str, Any], out_path: Path) -> str:
 
     def _pending_rows() -> str:
         rows = []
-        for key in ("tool_calling", "feature_matrix", "output_quality", "spine_phase",
-                    "tool_efficiency", "skills", "prompt_adherence", "a2a"):
+        for key in (
+            "tool_calling",
+            "feature_matrix",
+            "output_quality",
+            "spine_phase",
+            "tool_efficiency",
+            "skills",
+            "prompt_adherence",
+            "a2a",
+        ):
             ax = axes[key]
             if ax.get("status") in ("judged", "measured"):
-                pill = ('<span style="background:#064e3b;color:#34d399;padding:0.15rem 0.6rem;'
-                        'border-radius:9999px;font-size:0.75rem;font-weight:600;">'
-                        f'{ax["status"]}</span>')
-                pi_v = ax.get("pi_score", ax.get("pi_avg", ax.get("pi_coverage_pct", "—")))
-                leg_v = ax.get("legacy_score", ax.get("legacy_avg", ax.get("legacy_coverage_pct", "—")))
+                pill = (
+                    '<span style="background:#064e3b;color:#34d399;padding:0.15rem 0.6rem;'
+                    'border-radius:9999px;font-size:0.75rem;font-weight:600;">'
+                    f"{ax['status']}</span>"
+                )
+                pi_v = ax.get(
+                    "pi_score", ax.get("pi_avg", ax.get("pi_coverage_pct", "—"))
+                )
+                leg_v = ax.get(
+                    "legacy_score",
+                    ax.get("legacy_avg", ax.get("legacy_coverage_pct", "—")),
+                )
                 if isinstance(ax.get("pi"), dict):  # sub-metric blocks (memory, probes)
                     pi_v = "see below"
                     leg_v = "see below"
@@ -589,9 +757,11 @@ def generate_html_report(scorecard: dict[str, Any], out_path: Path) -> str:
                     f"<td>{leg_v}</td><td>{pill}</td></tr>"
                 )
                 continue
-            pill = ('<span style="background:#78350f;color:#fbbf24;padding:0.15rem 0.6rem;'
-                    'border-radius:9999px;font-size:0.75rem;font-weight:600;">'
-                    f'{ax["status"]}</span>')
+            pill = (
+                '<span style="background:#78350f;color:#fbbf24;padding:0.15rem 0.6rem;'
+                'border-radius:9999px;font-size:0.75rem;font-weight:600;">'
+                f"{ax['status']}</span>"
+            )
             rows.append(
                 f"<tr><td><strong>{ax['name']}</strong></td><td>—</td><td>—</td><td>{pill}</td></tr>"
             )
@@ -826,7 +996,9 @@ def update_readme_link(report_dir: Path, ts_folder_name: str) -> None:
     if not readme_path.exists():
         return
     content = readme_path.read_text(encoding="utf-8")
-    link_line = f"- [{ts_folder_name} Benchmark Report](reports/{ts_folder_name}/report.md)"
+    link_line = (
+        f"- [{ts_folder_name} Benchmark Report](reports/{ts_folder_name}/report.md)"
+    )
     if link_line not in content:
         updated = content.rstrip() + f"\n\n## Latest Benchmark Reports\n{link_line}\n"
         readme_path.write_text(updated, encoding="utf-8")
@@ -837,7 +1009,7 @@ def generate_article_sections(scorecard: dict[str, Any]) -> None:
     article_dir = REPO_ROOT / "comparison-Istara-pi" / "article"
     if not article_dir.exists():
         article_dir.mkdir(parents=True, exist_ok=True)
-    
+
     results_path = article_dir / "results_summary.md"
     verdict = scorecard["overall_verdict"]
     cost = scorecard["axes"]["token_cost_efficiency"]
@@ -857,10 +1029,17 @@ def generate_article_sections(scorecard: dict[str, Any]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--runs", required=True, help="directory containing benchmark run records")
-    parser.add_argument("--out", required=True, help="output directory for generated report artifacts")
-    parser.add_argument("--judged-metrics", default=None,
-                        help="optional JSON overlay {record_id: {axis: metrics}} from the judging session, merged into records before scoring")
+    parser.add_argument(
+        "--runs", required=True, help="directory containing benchmark run records"
+    )
+    parser.add_argument(
+        "--out", required=True, help="output directory for generated report artifacts"
+    )
+    parser.add_argument(
+        "--judged-metrics",
+        default=None,
+        help="optional JSON overlay {record_id: {axis: metrics}} from the judging session, merged into records before scoring",
+    )
     args = parser.parse_args(argv)
 
     runs_dir = Path(args.runs)
@@ -878,13 +1057,17 @@ def main(argv: list[str] | None = None) -> int:
             if judged:
                 record["metrics"] = {**(record.get("metrics") or {}), **judged}
                 merged += 1
-        print(f"[info] Merged judged metrics into {merged} records from {args.judged_metrics}")
+        print(
+            f"[info] Merged judged metrics into {merged} records from {args.judged_metrics}"
+        )
 
     scorecard = generate_scorecard(records)
 
     # 1. scorecard.json
     scorecard_path = out_dir / "scorecard.json"
-    scorecard_path.write_text(json.dumps(scorecard, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    scorecard_path.write_text(
+        json.dumps(scorecard, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     print(f"[ok] Wrote {scorecard_path}")
 
     # 2. report.md

@@ -5,15 +5,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException
 
 from app.models.design_screen import DesignDecision
 from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.task import Task, TaskStatus
 from app.services.research_validity_service import assess_task_research_validity
-
 
 PROVISIONAL_DESIGN_DECISION_RATIONALE = (
     "Provisional Research Spine candidate: this design decision is not reportable "

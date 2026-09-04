@@ -24,12 +24,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.orchestrator import meta_orchestrator
-from app.agents.ux_eval_agent import ux_eval_agent
 from app.agents.user_sim_agent import user_sim_agent
-from app.config import settings
-from app.core.improvement_governance import improvement_governance
-from app.core.permissions import get_active_project_or_404, require_project_access
-from app.core.security_middleware import require_admin_from_request
+from app.agents.ux_eval_agent import ux_eval_agent
 from app.api.agent_project_scope import (
     agent_project_id,
     clean_project_id,
@@ -41,9 +37,13 @@ from app.api.agent_project_scope import (
     require_agent_collection_scope,
     require_project_owned_agent,
 )
-from app.models.database import get_db
+from app.config import settings
+from app.core.improvement_governance import improvement_governance
+from app.core.permissions import get_active_project_or_404, require_project_access
+from app.core.security_middleware import require_admin_from_request
 from app.models.agent import AgentRole
-from app.services import agent_service, a2a
+from app.models.database import get_db
+from app.services import a2a, agent_service
 
 logger = logging.getLogger(__name__)
 
@@ -362,8 +362,7 @@ async def restart_agent(
 ):
     """Reset an agent from ERROR state back to IDLE, clearing error counters."""
     await require_project_owned_agent(db, request, agent_id, project_id)
-    from app.models.agent import AgentState, HeartbeatStatus
-    from app.models.agent import Agent
+    from app.models.agent import Agent, AgentState, HeartbeatStatus
 
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
@@ -439,8 +438,9 @@ async def request_promotion(
         raise HTTPException(status_code=400, detail="project_id is required")
 
     # Create a notification for admins
-    from app.models.notification import Notification
     import uuid
+
+    from app.models.notification import Notification
 
     notif = Notification(
         id=str(uuid.uuid4()),
@@ -526,9 +526,9 @@ async def get_identity(
 ):
     """Get an agent's full identity from its persona MD files."""
     from app.core.agent_identity import (
-        load_agent_identity,
-        get_agent_display_name,
         IDENTITY_FILES,
+        get_agent_display_name,
+        load_agent_identity,
         persona_file_path,
     )
 
@@ -619,7 +619,7 @@ async def update_identity(
 async def list_personas(request: Request):
     """List all agents that have persona directories."""
     require_admin_from_request(request)
-    from app.core.agent_identity import list_agent_personas, get_agent_display_name
+    from app.core.agent_identity import get_agent_display_name, list_agent_personas
 
     personas = list_agent_personas()
     return {
@@ -999,7 +999,7 @@ async def get_prompt_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Get compression stats for an agent's system prompt."""
-    from app.core.agent_identity import load_agent_identity, _estimate_tokens
+    from app.core.agent_identity import _estimate_tokens, load_agent_identity
     from app.core.prompt_compressor import compress_prompt
 
     await require_agent_by_id(db, request, agent_id, project_id=project_id)
@@ -1040,14 +1040,14 @@ async def compose_prompt_for_query(
     query — critical for verifying that small models receive relevant
     context rather than the entire persona.
     """
+    from app.core.agent_identity import _estimate_tokens, load_agent_identity
     from app.core.prompt_rag import (
+        _extract_identity_anchor,
+        _keyword_similarity,
+        _tokenize,
         compose_dynamic_prompt,
         index_agent_sections,
-        _extract_identity_anchor,
-        _tokenize,
-        _keyword_similarity,
     )
-    from app.core.agent_identity import load_agent_identity, _estimate_tokens
 
     await require_agent_by_id(db, request, agent_id, project_id=project_id)
 

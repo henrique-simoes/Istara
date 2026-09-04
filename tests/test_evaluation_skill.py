@@ -5,21 +5,26 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from app.skills.evaluation_skill import EvaluationSkill
 from app.skills.base import SkillInput
 
+
 @pytest.mark.asyncio
 async def test_evaluation_skill_triggers_multi_model_validation():
     skill = EvaluationSkill()
     skill_input = SkillInput(
-        project_id="test",
-        user_context="Some research output to evaluate"
+        project_id="test", user_context="Some research output to evaluate"
     )
-    
+
     # Mock validation methods
-    with patch("app.core.validation.adversarial_review", new_callable=AsyncMock) as mock_adv:
-        with patch("app.core.validation.full_ensemble", new_callable=AsyncMock) as mock_ens:
-            
+    with patch(
+        "app.core.validation.adversarial_review", new_callable=AsyncMock
+    ) as mock_adv:
+        with patch(
+            "app.core.validation.full_ensemble", new_callable=AsyncMock
+        ) as mock_ens:
             # Setup mock returns
-            mock_adv.return_value = MagicMock(metadata={"review_text": "Critical feedback"})
-            
+            mock_adv.return_value = MagicMock(
+                metadata={"review_text": "Critical feedback"}
+            )
+
             ens_res = MagicMock()
             ens_res.consensus.agreement_score = 0.85
             ens_res.consensus.kappa = 0.72
@@ -31,16 +36,16 @@ async def test_evaluation_skill_triggers_multi_model_validation():
                 "research_spine_eligible": False,
             }
             mock_ens.return_value = ens_res
-            
+
             output = await skill.execute(skill_input)
-            
+
             # Should have called both validation strategies
             assert output.success is True
             mock_adv.assert_called_once()
             mock_ens.assert_called_once()
             assert mock_adv.call_args.kwargs["project_id"] == "test"
             assert mock_ens.call_args.kwargs["project_id"] == "test"
-            
+
             # Artifact should contain the combined report
             report = output.artifacts["evaluation_report.md"]
             assert "## Quality Audit Report" in report

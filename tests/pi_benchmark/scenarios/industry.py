@@ -124,15 +124,20 @@ def _load_bfcl_category(category: str) -> list[Scenario]:
     answers = {a["id"]: a.get("ground_truth") for a in _read_jsonl(a_path)}
     scenarios = []
     for item in items:
-        scenarios.append(Scenario(
-            id=f"industry.{category}.{item['id']}",
-            title=f"BFCL v4 {category}: {item['id']}",
-            pack=PACK,
-            min_tier="T3",
-            prompt=_bfcl_prompt(item),
-            expected={"bfcl_ground_truth": answers.get(item["id"]), "category": category},
-            tags=("industry", "bfcl", category),
-        ))
+        scenarios.append(
+            Scenario(
+                id=f"industry.{category}.{item['id']}",
+                title=f"BFCL v4 {category}: {item['id']}",
+                pack=PACK,
+                min_tier="T3",
+                prompt=_bfcl_prompt(item),
+                expected={
+                    "bfcl_ground_truth": answers.get(item["id"]),
+                    "category": category,
+                },
+                tags=("industry", "bfcl", category),
+            )
+        )
     return scenarios
 
 
@@ -158,11 +163,15 @@ def _parse_tau_tasks(path: Path) -> list[dict[str, Any]]:
         for keyword in node.keywords:
             if keyword.arg == "instruction" and isinstance(keyword.value, ast.Constant):
                 instruction = str(keyword.value.value)
-            if keyword.arg == "actions" and isinstance(keyword.value, (ast.List, ast.Tuple)):
+            if keyword.arg == "actions" and isinstance(
+                keyword.value, (ast.List, ast.Tuple)
+            ):
                 for element in keyword.value.elts:
                     if isinstance(element, ast.Call):
                         for action_kw in element.keywords:
-                            if action_kw.arg == "name" and isinstance(action_kw.value, ast.Constant):
+                            if action_kw.arg == "name" and isinstance(
+                                action_kw.value, ast.Constant
+                            ):
                                 action_names.append(str(action_kw.value.value))
         if instruction:
             tasks.append({"instruction": instruction, "actions": action_names})
@@ -186,16 +195,21 @@ def _load_tau_category(category: str) -> list[Scenario]:
             "Output ONLY the JSON object.\n\n"
             f"User goal: {task['instruction']}"
         )
-        scenarios.append(Scenario(
-            id=f"industry.{category}.task{index}",
-            title=f"τ-bench {domain} adapted task {index}",
-            pack=PACK,
-            min_tier="T3",
-            prompt=prompt,
-            expected={"tau_expected_actions": task["actions"], "domain": domain,
-                      "fidelity": "adapted_single_turn"},
-            tags=("industry", "tau_bench", domain),
-        ))
+        scenarios.append(
+            Scenario(
+                id=f"industry.{category}.task{index}",
+                title=f"τ-bench {domain} adapted task {index}",
+                pack=PACK,
+                min_tier="T3",
+                prompt=prompt,
+                expected={
+                    "tau_expected_actions": task["actions"],
+                    "domain": domain,
+                    "fidelity": "adapted_single_turn",
+                },
+                tags=("industry", "tau_bench", domain),
+            )
+        )
     return scenarios
 
 
@@ -221,5 +235,7 @@ def industry_contract_check(engine: str, seed: int):
     return deterministic_check_result(
         ok,
         f"industry_data_{'complete' if ok else 'missing'}",
-        engine=engine, seed=seed, present_categories=present,
+        engine=engine,
+        seed=seed,
+        present_categories=present,
     )

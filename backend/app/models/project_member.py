@@ -1,6 +1,6 @@
 """Project member access control — per-project user permissions."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -25,7 +25,7 @@ class ProjectMember(Base):
     role: Mapped[str] = mapped_column(String(20), default="researcher")
     added_by: Mapped[str] = mapped_column(String(36), default="")
     added_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     last_active: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

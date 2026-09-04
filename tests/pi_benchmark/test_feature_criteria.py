@@ -17,12 +17,18 @@ pytestmark = pytest.mark.benchmark
 def _record_with(block: dict) -> dict:
     return {
         "schema_version": "1.0.0",
-        "record_id": "r", "pair_id": "p", "phase": "B2", "tier": "T2",
-        "engine": "pi", "pack": "features",
+        "record_id": "r",
+        "pair_id": "p",
+        "phase": "B2",
+        "tier": "T2",
+        "engine": "pi",
+        "pack": "features",
         "scenario": {"id": "s", "seed": 0},
         "provenance": {
-            "git_sha": "abcdef1", "git_dirty": False,
-            "input_sha256": "0" * 64, "ts": "2026-07-22T00:00:00Z",
+            "git_sha": "abcdef1",
+            "git_dirty": False,
+            "input_sha256": "0" * 64,
+            "ts": "2026-07-22T00:00:00Z",
         },
         "status": "ok",
         "usage": {"estimate": False},
@@ -38,7 +44,9 @@ def test_every_inventory_feature_is_compiled_once():
     # No feature dropped: ids are unique and cover the whole matrix denominator.
     ids = [c.feature_id for c in compiled]
     assert len(ids) == len(set(ids))
-    assert summary["total"] >= 80  # inventory ships 86 features; guard against silent shrink
+    assert (
+        summary["total"] >= 80
+    )  # inventory ships 86 features; guard against silent shrink
 
 
 def test_auto_and_manual_are_both_present():
@@ -50,6 +58,7 @@ def test_auto_and_manual_are_both_present():
 
 def test_derivability_rules():
     from tests.pi_benchmark.feature_criteria import _derivability
+
     both = _derivability({"api_refs": ["/x"], "test_refs": ["t"]})
     assert all(both.values())  # api + test → fully auto
     no_test = _derivability({"api_refs": ["/x"], "test_refs": []})

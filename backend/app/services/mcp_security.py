@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -215,7 +215,7 @@ async def enforce_rate_limits(
 
     Uses the audit log to count invocations in the past hour.
     """
-    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    one_hour_ago = datetime.now(UTC) - timedelta(hours=1)
 
     result = await db.execute(
         select(func.count(MCPAuditEntry.id)).where(
@@ -287,7 +287,7 @@ async def get_exposure_summary(db: AsyncSession) -> dict:
             enabled_by_risk.setdefault(risk, []).append(tool_name)
 
     # Recent activity counts (last 24h)
-    one_day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+    one_day_ago = datetime.now(UTC) - timedelta(hours=24)
     total_result = await db.execute(
         select(func.count(MCPAuditEntry.id)).where(
             MCPAuditEntry.timestamp >= one_day_ago,

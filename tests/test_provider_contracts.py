@@ -31,7 +31,10 @@ def test_contract_stub_vectors_are_deterministic_and_bounded():
     assert first != other
     assert len(first) == EMBEDDING_DIMENSION
     assert all(-1.0 <= value <= 1.0 for value in first)
-    assert embeddings_for_input(["source span", "other"]) == [first, embedding_for_text("other")]
+    assert embeddings_for_input(["source span", "other"]) == [
+        first,
+        embedding_for_text("other"),
+    ]
 
 
 def test_contract_stub_openai_stream_has_terminal_finish_reason():
@@ -53,7 +56,9 @@ def test_chat_identity_requires_exact_model():
         ChatIdentity(ProviderKind.OLLAMA, ApiShape.NATIVE, "*")
     with pytest.raises(ProviderError):
         ChatIdentity(ProviderKind.OLLAMA, ApiShape.NATIVE, "default")
-    identity = ChatIdentity(ProviderKind.OPENAI_COMPAT, ApiShape.OPENAI_COMPAT, "qwen3.5-35b-a3b")
+    identity = ChatIdentity(
+        ProviderKind.OPENAI_COMPAT, ApiShape.OPENAI_COMPAT, "qwen3.5-35b-a3b"
+    )
     assert identity.model == "qwen3.5-35b-a3b"
 
 
@@ -106,7 +111,9 @@ def test_readiness_gate_requires_capability_decl_and_secret_handle():
     assert "capability_decl" in missing.capability_decl["missing"]
     assert "secret_handle" in missing.capability_decl["missing"]
     # A non-empty string secret handle (a handle, never the secret value) passes.
-    ready = readiness_gate(identity, {"capability": "chat", "secret_handle": "qa-live-openai"})
+    ready = readiness_gate(
+        identity, {"capability": "chat", "secret_handle": "qa-live-openai"}
+    )
     assert ready.healthy is True
     assert ready.capability_decl["secret_handle_present"] is True
     # An empty or non-string secret handle still fails closed.

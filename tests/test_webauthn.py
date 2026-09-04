@@ -171,8 +171,14 @@ async def test_webauthn_challenges_are_scoped_by_ceremony():
         await _store_challenge(db, "registration", suffix, b"registration")
         await _store_challenge(db, "authentication", suffix, b"authentication")
 
-        assert await _get_and_clear_challenge(db, "registration", suffix) == b"registration"
-        assert await _get_and_clear_challenge(db, "authentication", suffix) == b"authentication"
+        assert (
+            await _get_and_clear_challenge(db, "registration", suffix)
+            == b"registration"
+        )
+        assert (
+            await _get_and_clear_challenge(db, "authentication", suffix)
+            == b"authentication"
+        )
         assert await _get_and_clear_challenge(db, "registration", suffix) is None
 
 
@@ -181,7 +187,9 @@ def test_webauthn_expected_origins_are_configurable():
     from app.api.routes.webauthn import _expected_origins, _rp_id
 
     settings.webauthn_rp_id = "istara.example.com"
-    settings.webauthn_origins = "https://istara.example.com, https://app.istara.example.com/"
+    settings.webauthn_origins = (
+        "https://istara.example.com, https://app.istara.example.com/"
+    )
 
     assert _rp_id() == "istara.example.com"
     assert _expected_origins() == [

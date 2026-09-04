@@ -66,7 +66,9 @@ def test_golden_not_runnable_variant_validates():
 # --- negative tests: acceptance A1 -------------------------------------------------
 
 
-@pytest.mark.parametrize("missing", ["tier", "engine", "phase", "pack", "usage", "provenance"])
+@pytest.mark.parametrize(
+    "missing", ["tier", "engine", "phase", "pack", "usage", "provenance"]
+)
 def test_missing_required_top_level_field_is_rejected(missing):
     record = _golden()
     del record[missing]

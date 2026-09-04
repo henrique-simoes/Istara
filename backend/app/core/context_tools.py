@@ -96,7 +96,7 @@ async def context_describe(session_id: str, node_id: str) -> str:
         f"  Time range:        {info.get('time_range_start', '?')} .. {info.get('time_range_end', '?')}",
         f"  Child nodes:       {info.get('child_node_ids', [])}",
         f"  Created at:        {info.get('created_at', '?')}",
-        f"  Summary:",
+        "  Summary:",
         f"    {info.get('summary_text', '')}",
     ]
 

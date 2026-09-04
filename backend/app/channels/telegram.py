@@ -15,8 +15,8 @@ import os
 import re
 from pathlib import Path
 
-from app.config import settings
 from app.channels.base import ChannelAdapter, IncomingMessage, OutgoingMessage
+from app.config import settings
 from app.core.channel_resilience import CircuitBreaker
 
 logger = logging.getLogger(__name__)
@@ -292,7 +292,7 @@ class TelegramAdapter(ChannelAdapter):
             transcription_text = "[Voice message — transcription unavailable]"
             transcription_tags = []
             try:
-                from app.core.transcription import transcribe_audio, convert_audio_to_wav
+                from app.core.transcription import convert_audio_to_wav, transcribe_audio
 
                 wav_path = convert_audio_to_wav(str(audio_path))
                 result = transcribe_audio(wav_path)

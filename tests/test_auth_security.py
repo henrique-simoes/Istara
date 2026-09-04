@@ -63,7 +63,9 @@ async def test_team_status_reports_origin_hardening_warnings():
     settings.cors_origin_regex = original_regex
     assert response.status_code == 200
     warnings = response.json()["security_warnings"]
-    assert any("CORS_ORIGIN_REGEX allows arbitrary hosts" in warning for warning in warnings)
+    assert any(
+        "CORS_ORIGIN_REGEX allows arbitrary hosts" in warning for warning in warnings
+    )
 
 
 @pytest.mark.asyncio
@@ -121,7 +123,9 @@ async def test_local_mode_admin_bypass():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # In local mode, auth/me returns admin
-        response = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        response = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
+        )
         assert response.status_code == 200
         assert response.json()["role"] == "admin"
 
@@ -200,6 +204,7 @@ async def test_user_can_update_profile_with_current_password(monkeypatch):
     settings.team_mode = True
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
+
     async def not_breached(_password: str) -> bool:
         return False
 
@@ -247,6 +252,7 @@ async def test_user_can_change_password_and_old_password_stops_working(monkeypat
     settings.team_mode = True
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
+
     async def not_breached(_password: str) -> bool:
         return False
 
@@ -378,7 +384,9 @@ async def test_jwt_alg_none_rejected():
 
     # Create a token with alg:none
     header = _b64encode(json.dumps({"alg": "none", "typ": "JWT"}).encode())
-    payload = _b64encode(json.dumps({"sub": "hacker", "role": "admin", "exp": 9999999999}).encode())
+    payload = _b64encode(
+        json.dumps({"sub": "hacker", "role": "admin", "exp": 9999999999}).encode()
+    )
     fake_token = f"{header}.{payload}.fakesig"
 
     result = verify_token(fake_token)
@@ -427,7 +435,9 @@ async def test_expired_jwt_rejected():
     from app.core.auth import hashlib, hmac
 
     sig_input = f"{header}.{payload}".encode()
-    sig = _b64encode(hmac.new(settings.jwt_secret.encode(), sig_input, hashlib.sha256).digest())
+    sig = _b64encode(
+        hmac.new(settings.jwt_secret.encode(), sig_input, hashlib.sha256).digest()
+    )
     expired_token = f"{header}.{payload}.{sig}"
 
     result = verify_token(expired_token)
@@ -449,9 +459,13 @@ async def test_login_sets_session_cookie():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/api/auth/login", json={"username": "testuser", "password": ""})
+        response = await ac.post(
+            "/api/auth/login", json={"username": "testuser", "password": ""}
+        )
         assert response.status_code == 200
-        assert AUTH_COOKIE_NAME in response.cookies, "Login should set hardened session cookie"
+        assert AUTH_COOKIE_NAME in response.cookies, (
+            "Login should set hardened session cookie"
+        )
         set_cookie = response.headers.get("set-cookie", "")
         assert f"{AUTH_COOKIE_NAME}=" in set_cookie
         assert "HttpOnly" in set_cookie
@@ -477,7 +491,9 @@ async def test_logout_requires_auth():
 
         # With token — should succeed
         token = create_token("local", "tester", "admin")
-        response = await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+        response = await ac.post(
+            "/api/auth/logout", headers={"Authorization": f"Bearer {token}"}
+        )
         assert response.status_code == 200
 
 
@@ -561,10 +577,14 @@ async def test_login_creates_revocable_server_auth_session():
             assert session.token_jti == payload["jti"]
             assert session.revoked_at is None
 
-        active = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        active = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
+        )
         assert active.status_code == 200
 
-        logout = await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+        logout = await ac.post(
+            "/api/auth/logout", headers={"Authorization": f"Bearer {token}"}
+        )
         assert logout.status_code == 200
 
         async with async_session() as db:
@@ -572,7 +592,9 @@ async def test_login_creates_revocable_server_auth_session():
             assert session is not None
             assert session.revoked_at is not None
 
-        revoked = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        revoked = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
+        )
         assert revoked.status_code == 401
 
 
@@ -638,8 +660,12 @@ async def test_auth_sessions_list_and_revoke_specific_other_session():
         assert revoke.json()["revoked"] is True
         assert revoke.json()["revoked_current"] is False
 
-        revoked = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {second_token}"})
-        active = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {first_token}"})
+        revoked = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {second_token}"}
+        )
+        active = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {first_token}"}
+        )
         assert revoked.status_code == 401
         assert active.status_code == 200
 
@@ -679,8 +705,12 @@ async def test_auth_sessions_revoke_others_keeps_current_session():
         assert revoke.status_code == 200
         assert revoke.json()["revoked_count"] >= 1
 
-        current = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {first_token}"})
-        other = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {second_token}"})
+        current = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {first_token}"}
+        )
+        other = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {second_token}"}
+        )
         assert current.status_code == 200
         assert other.status_code == 401
 
@@ -722,7 +752,9 @@ async def test_auth_session_revoke_current_invalidates_token():
         assert revoke.json()["revoked"] is True
         assert revoke.json()["revoked_current"] is True
 
-        revoked = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        revoked = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
+        )
         assert revoked.status_code == 401
 
 
@@ -874,7 +906,8 @@ async def test_login_returns_requires_2fa_when_totp_enabled():
 
         # Login WITHOUT TOTP code — should return requires_2fa
         login = await ac.post(
-            "/api/auth/login", json={"username": username, "password": "xK9#mP2$vL7nQ4@wR1!"}
+            "/api/auth/login",
+            json={"username": username, "password": "xK9#mP2$vL7nQ4@wR1!"},
         )
         assert login.status_code == 200
         data = login.json()
@@ -1028,9 +1061,15 @@ async def test_recovery_code_is_table_backed_and_single_use():
         from sqlalchemy import select
 
         async with async_session() as db:
-            user = (await db.execute(select(User).where(User.username == username))).scalar_one()
+            user = (
+                await db.execute(select(User).where(User.username == username))
+            ).scalar_one()
             records = (
-                (await db.execute(select(RecoveryCode).where(RecoveryCode.user_id == user.id)))
+                (
+                    await db.execute(
+                        select(RecoveryCode).where(RecoveryCode.user_id == user.id)
+                    )
+                )
                 .scalars()
                 .all()
             )
@@ -1052,11 +1091,19 @@ async def test_recovery_code_is_table_backed_and_single_use():
 
         first = await ac.post(
             "/api/auth/login",
-            json={"username": username, "password": password, "recovery_code": recovery_code},
+            json={
+                "username": username,
+                "password": password,
+                "recovery_code": recovery_code,
+            },
         )
         second = await ac.post(
             "/api/auth/login",
-            json={"username": username, "password": password, "recovery_code": recovery_code},
+            json={
+                "username": username,
+                "password": password,
+                "recovery_code": recovery_code,
+            },
         )
         assert first.status_code == 200
         assert second.status_code == 401
@@ -1069,7 +1116,9 @@ async def test_recovery_code_is_table_backed_and_single_use():
         assert status.json() == {"remaining": 7, "total": 8}
 
         async with async_session() as db:
-            user = (await db.execute(select(User).where(User.username == username))).scalar_one()
+            user = (
+                await db.execute(select(User).where(User.username == username))
+            ).scalar_one()
             used = (
                 (
                     await db.execute(
@@ -1103,7 +1152,9 @@ async def test_auth_events_are_written_to_audit_log():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        login = await ac.post("/api/auth/login", json={"username": username, "password": password})
+        login = await ac.post(
+            "/api/auth/login", json={"username": username, "password": password}
+        )
         assert login.status_code == 200
 
     from app.core.audit_middleware import AuditLog

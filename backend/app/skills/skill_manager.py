@@ -15,13 +15,12 @@ from __future__ import annotations
 import json
 import logging
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.config import settings
 from app.core.checkpoint import atomic_write
 from app.skills.skill_creation import SkillCreationMixin
 from app.skills.skill_models import (
-    SKILLS_DIR,
     SOURCE_SKILLS_DIR,
     SkillCreationProposal,
     SkillDefinition,
@@ -148,8 +147,8 @@ class SkillManager(SkillUsageMixin, SkillProposalMixin, SkillCreationMixin):
         name = data["name"]
         data.setdefault("version", "1.0.0")
         data.setdefault("enabled", True)
-        data.setdefault("created_at", datetime.now(timezone.utc).isoformat())
-        data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        data.setdefault("created_at", datetime.now(UTC).isoformat())
+        data["updated_at"] = datetime.now(UTC).isoformat()
         data.setdefault(
             "changelog",
             [{"version": "1.0.0", "date": data["created_at"], "changes": "Initial creation"}],
@@ -180,7 +179,7 @@ class SkillManager(SkillUsageMixin, SkillProposalMixin, SkillCreationMixin):
         # Update data
         defn.data.update(updates)
         defn.data["version"] = new_version
-        defn.data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        defn.data["updated_at"] = datetime.now(UTC).isoformat()
 
         # Add changelog
         changelog = defn.data.setdefault("changelog", [])

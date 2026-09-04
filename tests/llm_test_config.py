@@ -42,7 +42,7 @@ def _parse_gitignored_env_assignment(raw_line: str) -> tuple[str, str] | None:
     if not line or line.startswith("#") or "=" not in line:
         return None
     if line.startswith("export "):
-        line = line[len("export "):].strip()
+        line = line[len("export ") :].strip()
     key, value = line.split("=", 1)
     key = key.strip()
     if key not in LIVE_LLM_ENV_KEYS:
@@ -323,16 +323,24 @@ async def post_live_llm_chat_completion(
                     fallback_used=False,
                     errors=tuple(errors),
                 )
-            errors.append(f"{profile.name} attempt {attempt}: HTTP {response.status_code}")
+            errors.append(
+                f"{profile.name} attempt {attempt}: HTTP {response.status_code}"
+            )
         except Exception as exc:  # pragma: no cover - exercised through fake clients
-            errors.append(f"{profile.name} attempt {attempt}: {type(exc).__name__}: {exc}")
+            errors.append(
+                f"{profile.name} attempt {attempt}: {type(exc).__name__}: {exc}"
+            )
 
     raise RuntimeError("Live LLM test provider failed: " + " | ".join(errors[-5:]))
 
 
 def configure_live_compute_registry(*, clear_existing: bool = True):
     """Register exactly the private main OpenAI-compatible live-test node."""
-    from app.core.compute_registry import ComputeNode, compute_registry, infer_provider_type
+    from app.core.compute_registry import (
+        ComputeNode,
+        compute_registry,
+        infer_provider_type,
+    )
 
     profile, api_key = require_live_llm_profile()
     from app.config import settings

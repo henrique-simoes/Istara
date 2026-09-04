@@ -78,7 +78,9 @@ async def test_project_pause_nonexistent_returns_404(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/api/projects/non-existent-id/pause", headers=auth_headers)
+        response = await ac.post(
+            "/api/projects/non-existent-id/pause", headers=auth_headers
+        )
         assert response.status_code == 404
 
 
@@ -88,7 +90,9 @@ async def test_project_resume_nonexistent_returns_404(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/api/projects/non-existent-id/resume", headers=auth_headers)
+        response = await ac.post(
+            "/api/projects/non-existent-id/resume", headers=auth_headers
+        )
         assert response.status_code == 404
 
 
@@ -125,7 +129,13 @@ async def test_delete_project_cleans_managed_runtime_artifacts_but_keeps_externa
     managed_paths[3].write_text("keyword index")
 
     async with async_session() as db:
-        db.add(Project(id=project_id, name="Delete cleanup", watch_folder_path=str(external_watch)))
+        db.add(
+            Project(
+                id=project_id,
+                name="Delete cleanup",
+                watch_folder_path=str(external_watch),
+            )
+        )
         await db.commit()
 
     transport = ASGITransport(app=app)
@@ -215,7 +225,9 @@ async def test_project_pause_stops_project_background_work(auth_headers, monkeyp
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post(f"/api/projects/{project_id}/pause", headers=auth_headers)
+        response = await ac.post(
+            f"/api/projects/{project_id}/pause", headers=auth_headers
+        )
 
     assert response.status_code == 200
     body = response.json()
@@ -249,7 +261,9 @@ async def test_project_versions_returns_list(auth_headers):
 async def test_link_folder_rejects_filesystem_root(auth_headers):
     """Folder linking should not allow broad system roots as project watch folders."""
     await init_db()
-    project = Project(id=f"link-root-project-{uuid.uuid4().hex[:8]}", name="Link Root Project")
+    project = Project(
+        id=f"link-root-project-{uuid.uuid4().hex[:8]}", name="Link Root Project"
+    )
     async with async_session() as db:
         db.add(project)
         await db.commit()
@@ -269,7 +283,9 @@ async def test_link_folder_rejects_filesystem_root(auth_headers):
 async def test_link_folder_persists_resolved_directory(auth_headers, tmp_path):
     """Valid linked folders should be persisted as the project watch folder."""
     await init_db()
-    project = Project(id=f"link-valid-project-{uuid.uuid4().hex[:8]}", name="Link Valid Project")
+    project = Project(
+        id=f"link-valid-project-{uuid.uuid4().hex[:8]}", name="Link Valid Project"
+    )
     linked_dir = tmp_path / "research-files"
     linked_dir.mkdir()
     async with async_session() as db:

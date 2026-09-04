@@ -25,9 +25,13 @@ class ReadinessCheck:
 
 
 REQUIRED_SNIPPETS: tuple[ReadinessCheck, ...] = (
-    ReadinessCheck("SECURITY.md", "vulnerability disclosure", "Reporting a Vulnerability"),
+    ReadinessCheck(
+        "SECURITY.md", "vulnerability disclosure", "Reporting a Vulnerability"
+    ),
     ReadinessCheck("SECURITY.md", "incident response", "Incident Response"),
-    ReadinessCheck("SECURITY.md", "log sensitivity", "Logs are treated as sensitive data"),
+    ReadinessCheck(
+        "SECURITY.md", "log sensitivity", "Logs are treated as sensitive data"
+    ),
     ReadinessCheck(
         "security/RELEASE_SECURITY_READINESS.md",
         "Better Auth comparison",
@@ -151,7 +155,9 @@ def evaluate_readiness() -> dict[str, Any]:
         .get("minimum_score_percent", 0)
     )
     if float(threshold) < 98:
-        issues.append("security/control_matrix.json: production threshold must be >= 98")
+        issues.append(
+            "security/control_matrix.json: production threshold must be >= 98"
+        )
 
     partial_controls = [
         str(control.get("id", "unknown"))
@@ -174,10 +180,14 @@ def evaluate_readiness() -> dict[str, Any]:
             issues.append(f"security/control_matrix.json: missing {required} standard")
 
     try:
-        from app.core.security_headers import SECURITY_HEADERS, validate_security_headers
+        from app.core.security_headers import (
+            SECURITY_HEADERS,
+            validate_security_headers,
+        )
 
         issues.extend(
-            f"security headers: {issue}" for issue in validate_security_headers(SECURITY_HEADERS)
+            f"security headers: {issue}"
+            for issue in validate_security_headers(SECURITY_HEADERS)
         )
     except Exception as exc:  # pragma: no cover - defensive CLI path
         issues.append(f"security headers contract unreadable: {exc}")
@@ -196,7 +206,9 @@ def evaluate_readiness() -> dict[str, Any]:
         )
         issues.extend(
             f"production auth config: {issue}"
-            for issue in production_security_configuration_issues(secure_production_config)
+            for issue in production_security_configuration_issues(
+                secure_production_config
+            )
         )
     except Exception as exc:  # pragma: no cover - defensive CLI path
         issues.append(f"production auth config audit unreadable: {exc}")

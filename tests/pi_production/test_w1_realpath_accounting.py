@@ -100,24 +100,43 @@ async def test_real_legacy_react_accumulates_multi_turn_usage(monkeypatch):
     the actual turn count — not the final turn's usage recorded as one turn."""
     await init_db()
     project_id = _pid()
-    fake = _ScriptedPiAuthority([
-        # Turn 1: a tool call; provider reports 100 in / 10 out.
-        {"message": {"content": "", "tool_calls": [
-            {"function": {"name": "search_documents", "arguments": {}}}]},
-         "prompt_eval_count": 100, "eval_count": 10},
-        # Turn 2: final text; provider reports 200 in / 20 out.
-        {"message": {"content": "final answer"},
-         "prompt_eval_count": 200, "eval_count": 20},
-    ])
+    fake = _ScriptedPiAuthority(
+        [
+            # Turn 1: a tool call; provider reports 100 in / 10 out.
+            {
+                "message": {
+                    "content": "",
+                    "tool_calls": [
+                        {"function": {"name": "search_documents", "arguments": {}}}
+                    ],
+                },
+                "prompt_eval_count": 100,
+                "eval_count": 10,
+            },
+            # Turn 2: final text; provider reports 200 in / 20 out.
+            {
+                "message": {"content": "final answer"},
+                "prompt_eval_count": 200,
+                "eval_count": 20,
+            },
+        ]
+    )
 
     async def tool_executor(name, arguments, pid, aid):
         return {"ok": True, "result": "done"}
 
     result = await AgenticDispatcher(pi_service=fake).react(
-        purpose="w1.realacct.react", project_id=project_id, agent_id="istara-main",
-        session_key=None, system="system", messages=[], user_text="do the task",
-        tool_executor=tool_executor, tool_names=["search_documents"],
-        params=TurnParams(model="gpt-x"), engine="legacy",
+        purpose="w1.realacct.react",
+        project_id=project_id,
+        agent_id="istara-main",
+        session_key=None,
+        system="system",
+        messages=[],
+        user_text="do the task",
+        tool_executor=tool_executor,
+        tool_names=["search_documents"],
+        params=TurnParams(model="gpt-x"),
+        engine="legacy",
     )
     assert result.status == "success"
     assert fake.calls == 2  # the loop really ran two provider turns
@@ -125,7 +144,9 @@ async def test_real_legacy_react_accumulates_multi_turn_usage(monkeypatch):
     assert len(rows) == 1
     row = rows[0]
     assert row.estimate == 0  # provider-reported usage is exact
-    assert row.input_tokens == 300 and row.output_tokens == 30  # cumulative, not final-turn-only
+    assert (
+        row.input_tokens == 300 and row.output_tokens == 30
+    )  # cumulative, not final-turn-only
     assert row.total_tokens == 330
     assert row.turns == 2  # the real turn count, not the defaulted 1
 
@@ -136,14 +157,25 @@ async def test_real_legacy_provider_usage_is_exact(monkeypatch):
     unestimated ledger row."""
     await init_db()
     project_id = _pid()
-    fake = _ScriptedPiAuthority([
-        {"message": {"content": "ok"},
-         "usage": {"prompt_tokens": 55, "completion_tokens": 21, "total_tokens": 76}},
-    ])
+    fake = _ScriptedPiAuthority(
+        [
+            {
+                "message": {"content": "ok"},
+                "usage": {
+                    "prompt_tokens": 55,
+                    "completion_tokens": 21,
+                    "total_tokens": 76,
+                },
+            },
+        ]
+    )
 
     await AgenticDispatcher(pi_service=fake).completion(
-        purpose="w1.realacct.exact", project_id=project_id, system="system",
-        messages=[{"role": "user", "content": "hello"}], params=TurnParams(model="gpt-x"),
+        purpose="w1.realacct.exact",
+        project_id=project_id,
+        system="system",
+        messages=[{"role": "user", "content": "hello"}],
+        params=TurnParams(model="gpt-x"),
         engine="legacy",
     )
     rows = await _usage_rows(project_id)
@@ -160,13 +192,18 @@ async def test_real_legacy_absent_usage_is_estimated(monkeypatch):
     estimated — never a fabricated exact-zero row that suppresses estimation."""
     await init_db()
     project_id = _pid()
-    fake = _ScriptedPiAuthority([
-        {"message": {"content": "an answer with no usage block at all"}},
-    ])
+    fake = _ScriptedPiAuthority(
+        [
+            {"message": {"content": "an answer with no usage block at all"}},
+        ]
+    )
 
     await AgenticDispatcher(pi_service=fake).completion(
-        purpose="w1.realacct.estimate", project_id=project_id, system="system prompt",
-        messages=[{"role": "user", "content": "hello"}], params=TurnParams(model="gpt-x"),
+        purpose="w1.realacct.estimate",
+        project_id=project_id,
+        system="system prompt",
+        messages=[{"role": "user", "content": "hello"}],
+        params=TurnParams(model="gpt-x"),
         engine="legacy",
     )
     rows = await _usage_rows(project_id)
@@ -178,7 +215,9 @@ async def test_real_legacy_absent_usage_is_estimated(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_real_legacy_react_mixed_usage_is_estimated_not_partial_exact(monkeypatch):
+async def test_real_legacy_react_mixed_usage_is_estimated_not_partial_exact(
+    monkeypatch,
+):
     """F-W1-R2-1: a ReAct loop whose first turn reports provider usage and whose
     final turn reports none is *mixed*. Exactness is all-or-nothing, so the
     aggregate must NOT be persisted as a partial exact total — the old bug
@@ -186,23 +225,39 @@ async def test_real_legacy_react_mixed_usage_is_estimated_not_partial_exact(monk
     The ledger must instead estimate the complete dispatch and flag it."""
     await init_db()
     project_id = _pid()
-    fake = _ScriptedPiAuthority([
-        # Turn 1: a tool call; provider reports 100 in / 10 out.
-        {"message": {"content": "", "tool_calls": [
-            {"function": {"name": "search_documents", "arguments": {}}}]},
-         "prompt_eval_count": 100, "eval_count": 10},
-        # Turn 2: final text; provider reports NO usage at all.
-        {"message": {"content": "final answer"}},
-    ])
+    fake = _ScriptedPiAuthority(
+        [
+            # Turn 1: a tool call; provider reports 100 in / 10 out.
+            {
+                "message": {
+                    "content": "",
+                    "tool_calls": [
+                        {"function": {"name": "search_documents", "arguments": {}}}
+                    ],
+                },
+                "prompt_eval_count": 100,
+                "eval_count": 10,
+            },
+            # Turn 2: final text; provider reports NO usage at all.
+            {"message": {"content": "final answer"}},
+        ]
+    )
 
     async def tool_executor(name, arguments, pid, aid):
         return {"ok": True, "result": "done"}
 
     result = await AgenticDispatcher(pi_service=fake).react(
-        purpose="w1.realacct.react.mixed", project_id=project_id, agent_id="istara-main",
-        session_key=None, system="system", messages=[], user_text="do the task",
-        tool_executor=tool_executor, tool_names=["search_documents"],
-        params=TurnParams(model="gpt-x"), engine="legacy",
+        purpose="w1.realacct.react.mixed",
+        project_id=project_id,
+        agent_id="istara-main",
+        session_key=None,
+        system="system",
+        messages=[],
+        user_text="do the task",
+        tool_executor=tool_executor,
+        tool_names=["search_documents"],
+        params=TurnParams(model="gpt-x"),
+        engine="legacy",
     )
     assert result.status == "success"
     assert fake.calls == 2  # the loop really ran two provider turns
@@ -211,7 +266,9 @@ async def test_real_legacy_react_mixed_usage_is_estimated_not_partial_exact(monk
     row = rows[0]
     # Mixed run → governed text estimate, never the reported subset as exact.
     assert row.estimate == 1
-    assert not (row.input_tokens == 100 and row.output_tokens == 10)  # not the partial subset
+    assert not (
+        row.input_tokens == 100 and row.output_tokens == 10
+    )  # not the partial subset
     assert row.input_tokens > 0 and row.output_tokens > 0
     assert row.total_tokens == row.input_tokens + row.output_tokens
     assert row.turns == 2
@@ -224,15 +281,21 @@ async def test_real_legacy_ensemble_all_reported_usage_is_exact_cumulative(monke
     must keep intact."""
     await init_db()
     project_id = _pid()
-    fake = _ScriptedPiAuthority([
-        {"message": {"content": "a"}, "prompt_eval_count": 100, "eval_count": 10},
-        {"message": {"content": "b"}, "prompt_eval_count": 200, "eval_count": 20},
-    ])
+    fake = _ScriptedPiAuthority(
+        [
+            {"message": {"content": "a"}, "prompt_eval_count": 100, "eval_count": 10},
+            {"message": {"content": "b"}, "prompt_eval_count": 200, "eval_count": 20},
+        ]
+    )
 
     result = await AgenticDispatcher(pi_service=fake).ensemble(
-        purpose="w1.realacct.ensemble.exact", project_id=project_id, system="system",
-        messages=[{"role": "user", "content": "hello"}], n=2,
-        params=TurnParams(model="gpt-x"), engine="legacy",
+        purpose="w1.realacct.ensemble.exact",
+        project_id=project_id,
+        system="system",
+        messages=[{"role": "user", "content": "hello"}],
+        n=2,
+        params=TurnParams(model="gpt-x"),
+        engine="legacy",
     )
     assert result.status == "success"
     assert fake.calls == 2
@@ -246,21 +309,31 @@ async def test_real_legacy_ensemble_all_reported_usage_is_exact_cumulative(monke
 
 
 @pytest.mark.asyncio
-async def test_real_legacy_ensemble_mixed_usage_is_estimated_not_partial_exact(monkeypatch):
+async def test_real_legacy_ensemble_mixed_usage_is_estimated_not_partial_exact(
+    monkeypatch,
+):
     """F-W1-R2-1 (ensemble seam): an ensemble where one sample reports provider
     usage and another reports none is mixed — estimated for the complete
     dispatch, never the reported subset (input=100/output=10) persisted exact."""
     await init_db()
     project_id = _pid()
-    fake = _ScriptedPiAuthority([
-        {"message": {"content": "a"}, "prompt_eval_count": 100, "eval_count": 10},
-        {"message": {"content": "b with no usage block"}},  # provider reports nothing
-    ])
+    fake = _ScriptedPiAuthority(
+        [
+            {"message": {"content": "a"}, "prompt_eval_count": 100, "eval_count": 10},
+            {
+                "message": {"content": "b with no usage block"}
+            },  # provider reports nothing
+        ]
+    )
 
     result = await AgenticDispatcher(pi_service=fake).ensemble(
-        purpose="w1.realacct.ensemble.mixed", project_id=project_id, system="system prompt",
-        messages=[{"role": "user", "content": "hello"}], n=2,
-        params=TurnParams(model="gpt-x"), engine="legacy",
+        purpose="w1.realacct.ensemble.mixed",
+        project_id=project_id,
+        system="system prompt",
+        messages=[{"role": "user", "content": "hello"}],
+        n=2,
+        params=TurnParams(model="gpt-x"),
+        engine="legacy",
     )
     assert result.status == "success"
     assert fake.calls == 2
@@ -270,7 +343,9 @@ async def test_real_legacy_ensemble_mixed_usage_is_estimated_not_partial_exact(m
     # Mixed → estimated, not the reported subset recorded as an exact total.
     assert row.estimate == 1
     assert not (row.input_tokens == 100 and row.output_tokens == 10)
-    assert row.input_tokens > 3  # both provider requests, not the old single-request estimate
+    assert (
+        row.input_tokens > 3
+    )  # both provider requests, not the old single-request estimate
     assert row.output_tokens > 0  # both non-empty sample outputs are represented
     assert row.total_tokens == row.input_tokens + row.output_tokens
     assert row.turns == 2
@@ -297,8 +372,14 @@ class _CacheUsageStubHandler(BaseHTTPRequestHandler):
         self.wfile.write(f"data: {json.dumps(content)}\n\n".encode())
         done = {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
         self.wfile.write(f"data: {json.dumps(done)}\n\n".encode())
-        usage = {"choices": [], "usage": {
-            "prompt_tokens": 1000, "prompt_cache_hit_tokens": 600, "completion_tokens": 50}}
+        usage = {
+            "choices": [],
+            "usage": {
+                "prompt_tokens": 1000,
+                "prompt_cache_hit_tokens": 600,
+                "completion_tokens": 50,
+            },
+        }
         self.wfile.write(f"data: {json.dumps(usage)}\n\n".encode())
         self.wfile.write(b"data: [DONE]\n\n")
         self.wfile.flush()
@@ -341,12 +422,17 @@ async def test_real_pi_worker_usage_reaches_ledger_with_cache_and_turns():
         cost_cache_read_per_mtok=0.4,
     )
     supervisor = PiRuntimeSupervisor()
-    service = PiExecutionService(resolver=_FixedResolver(endpoint), supervisor=supervisor)
+    service = PiExecutionService(
+        resolver=_FixedResolver(endpoint), supervisor=supervisor
+    )
     try:
         result = await AgenticDispatcher(pi_service=service).completion(
-            purpose="w1.realacct.pi", project_id=project_id, system="system",
+            purpose="w1.realacct.pi",
+            project_id=project_id,
+            system="system",
             messages=[{"role": "user", "content": "hello"}],
-            params=TurnParams(), engine="pi",
+            params=TurnParams(),
+            engine="pi",
         )
     finally:
         await supervisor.shutdown()

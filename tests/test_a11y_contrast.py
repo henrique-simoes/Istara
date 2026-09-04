@@ -19,4 +19,6 @@ def test_agentic_core_chooser_passes_wcag_contrast_audit():
         capture_output=True,
         text=True,
     )
-    assert result.returncode == 0, f"contrast audit failed:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"contrast audit failed:\n{result.stdout}\n{result.stderr}"
+    )

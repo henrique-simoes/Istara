@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -306,7 +306,7 @@ async def record_task_review_event(
         if quality_score is not None
         else feedback_score(outcome, severity, failure_category)
     )
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if outcome == APPROVED:
         task.approval_streak = (task.approval_streak or 0) + 1
@@ -531,4 +531,4 @@ async def diagnose_review_event(db: AsyncSession, event_id: str) -> None:
     }
     event.diagnosis_status = "complete"
     event.diagnosis_json = json.dumps(diagnosis)
-    event.updated_at = datetime.now(timezone.utc)
+    event.updated_at = datetime.now(UTC)

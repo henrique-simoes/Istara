@@ -43,13 +43,27 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_FACTORY = REPO_ROOT / "backend/app/skills/skill_factory.py"
 
 SPINE_PHASES = {
-    "intent", "context", "plan", "tool_selection", "execution",
-    "recovery", "grounding", "synthesis", "review", "governance",
+    "intent",
+    "context",
+    "plan",
+    "tool_selection",
+    "execution",
+    "recovery",
+    "grounding",
+    "synthesis",
+    "review",
+    "governance",
 }
 
 PI_SCHEMA_KEYS = {
-    "type", "properties", "required", "items", "enum", "const",
-    "additionalProperties", "description",
+    "type",
+    "properties",
+    "required",
+    "items",
+    "enum",
+    "const",
+    "additionalProperties",
+    "description",
 }
 
 FINDINGS = {
@@ -69,7 +83,10 @@ def _function_source(function_name: str) -> str:
     text = SKILL_FACTORY.read_text(encoding="utf-8")
     tree = ast.parse(text)
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        ):
             return ast.get_source_segment(text, node) or ""
     raise AssertionError(f"{function_name} not found in {SKILL_FACTORY}")
 
@@ -196,17 +213,23 @@ async def test_execute_flag_on_dispatches_skill_execute(monkeypatch, _agentic_co
     assert output.success is True
     assert output.summary == FINDINGS["summary"]
     assert output.facts[0]["text"] == FINDINGS["facts"][0]["text"]
-    assert len(dispatcher_stub.calls) == 1, "valid structured output needs no repair stage"
+    assert len(dispatcher_stub.calls) == 1, (
+        "valid structured output needs no repair stage"
+    )
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "structured"
     assert kwargs["purpose"] == "skill.execute"
     assert kwargs["project_id"] == "p1"
-    assert kwargs["repair"] is False, "the Pi engine must not double-repair inside the chain"
+    assert kwargs["repair"] is False, (
+        "the Pi engine must not double-repair inside the chain"
+    )
     assert "UX Research Auditor" in kwargs["system"]
     assert kwargs["params"].temperature == 0.2
     assert kwargs["params"].thinking_mode == "off"
     assert kwargs["params"].max_tokens is not None
-    assert kwargs["spine_phase"] == "execution" and kwargs["spine_phase"] in SPINE_PHASES
+    assert (
+        kwargs["spine_phase"] == "execution" and kwargs["spine_phase"] in SPINE_PHASES
+    )
     schema = kwargs["schema"]
     assert schema["type"] == "object", "Pi forced-tool root must be an object"
     assert set(schema) <= PI_SCHEMA_KEYS
@@ -214,7 +237,9 @@ async def test_execute_flag_on_dispatches_skill_execute(monkeypatch, _agentic_co
         assert set(prop) <= PI_SCHEMA_KEYS and "type" in prop
 
 
-async def test_execute_flag_on_preserves_four_stage_fallback_chain(monkeypatch, _agentic_core_on):
+async def test_execute_flag_on_preserves_four_stage_fallback_chain(
+    monkeypatch, _agentic_core_on
+):
     monkeypatch.setattr("app.config.settings.llm_provider", "ollama")
     dispatcher_stub = _StubAgentic(
         structured_results=[
@@ -225,7 +250,10 @@ async def test_execute_flag_on_preserves_four_stage_fallback_chain(monkeypatch, 
         ],
         completion_results=[
             # skill.repair_plain: valid JSON but zero findings → repair stage 3
-            {"text": json.dumps({"summary": "Recovered but empty."}), "status": "success"},
+            {
+                "text": json.dumps({"summary": "Recovered but empty."}),
+                "status": "success",
+            },
             # skill.repair_findings: valid JSON with findings → chain ends
             {"text": json.dumps(FINDINGS), "status": "success"},
         ],

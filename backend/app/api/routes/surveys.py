@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import ProjectRole, get_visible_project_or_404
 from app.core.field_encryption import decrypt_field, encrypt_field
+from app.core.permissions import ProjectRole, get_visible_project_or_404
 from app.models.database import get_db
 from app.models.survey_integration import SurveyIntegration, SurveyLink
 
@@ -259,7 +259,7 @@ async def list_platform_surveys(
         )
 
     # Update last_sync_at
-    integration.last_sync_at = datetime.now(timezone.utc)
+    integration.last_sync_at = datetime.now(UTC)
     await db.commit()
 
     return {
@@ -368,7 +368,7 @@ async def sync_responses(
     integration = await _get_integration(db, link.integration_id)
     _require_matching_project(integration, link.project_id)
     if _is_demo_integration(integration):
-        integration.last_sync_at = datetime.now(timezone.utc)
+        integration.last_sync_at = datetime.now(UTC)
         await db.commit()
         return {
             "status": "no_new_responses",
@@ -402,7 +402,7 @@ async def sync_responses(
     result = await ingest_responses(db, link, responses, link.project_id)
 
     # Update integration sync timestamp
-    integration.last_sync_at = datetime.now(timezone.utc)
+    integration.last_sync_at = datetime.now(UTC)
     await db.commit()
 
     return {

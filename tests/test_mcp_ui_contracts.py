@@ -7,7 +7,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_mcp_registration_form_blocks_malformed_urls_before_network_actions() -> None:
-    setup = (ROOT / "frontend/src/components/integrations/MCPServerSetup.tsx").read_text()
+    setup = (
+        ROOT / "frontend/src/components/integrations/MCPServerSetup.tsx"
+    ).read_text()
 
     assert 'isValidMcpServerUrl, mcpServerUrlError } from "@/lib/mcpUrl";' in setup
     assert "const urlValid = isValidMcpServerUrl(url);" in setup

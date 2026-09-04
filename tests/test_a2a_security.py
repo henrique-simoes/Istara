@@ -9,7 +9,11 @@ from sqlalchemy import delete, select
 
 from app.config import settings
 from app.core.auth import create_token
-from app.api.routes.a2a import _a2a_rate_limiter, _a2a_replay_cache, _a2a_tasks_send_rate_limiter
+from app.api.routes.a2a import (
+    _a2a_rate_limiter,
+    _a2a_replay_cache,
+    _a2a_tasks_send_rate_limiter,
+)
 from app.main import app
 from app.core.audit_middleware import AuditLog
 from app.models.agent import A2AMessage, Agent
@@ -47,7 +51,9 @@ async def _clear_a2a_messages() -> None:
         await db.commit()
 
 
-async def _seed_a2a_project(user_id: str = "researcher-a2a", role: str = "researcher") -> str:
+async def _seed_a2a_project(
+    user_id: str = "researcher-a2a", role: str = "researcher"
+) -> str:
     project_id = f"a2a-security-{uuid.uuid4()}"
     async with async_session() as db:
         db.add(Project(id=project_id, name="A2A Security Project"))
@@ -85,13 +91,20 @@ async def test_a2a_tasks_send_requires_authentication_in_team_mode():
 
     async with async_session() as db:
         stored = (
-            (await db.execute(select(A2AMessage).where(A2AMessage.content.like("%persist me%"))))
+            (
+                await db.execute(
+                    select(A2AMessage).where(A2AMessage.content.like("%persist me%"))
+                )
+            )
             .scalars()
             .all()
         )
 
     assert response.status_code == 401
-    assert response.json()["error"]["message"] == "Authentication required for A2A JSON-RPC."
+    assert (
+        response.json()["error"]["message"]
+        == "Authentication required for A2A JSON-RPC."
+    )
     assert stored == []
 
 
@@ -119,7 +132,10 @@ async def test_a2a_tasks_send_allows_authenticated_researcher_and_records_actor(
                     "to": "istara-main",
                     "message": {
                         "text": "Review this bounded task",
-                        "metadata": {"source": "security-test", "project_id": project_id},
+                        "metadata": {
+                            "source": "security-test",
+                            "project_id": project_id,
+                        },
                     },
                 },
                 "id": "researcher-submit",
@@ -132,7 +148,9 @@ async def test_a2a_tasks_send_allows_authenticated_researcher_and_records_actor(
 
     async with async_session() as db:
         message = (
-            await db.execute(select(A2AMessage).where(A2AMessage.id == payload["result"]["id"]))
+            await db.execute(
+                select(A2AMessage).where(A2AMessage.id == payload["result"]["id"])
+            )
         ).scalar_one()
 
     metadata = json.loads(message.extra_data)
@@ -170,7 +188,9 @@ async def test_a2a_tasks_send_requires_project_scope():
         stored = (
             (
                 await db.execute(
-                    select(A2AMessage).where(A2AMessage.content == "No project should not persist")
+                    select(A2AMessage).where(
+                        A2AMessage.content == "No project should not persist"
+                    )
                 )
             )
             .scalars()
@@ -178,7 +198,10 @@ async def test_a2a_tasks_send_requires_project_scope():
         )
 
     assert response.status_code == 400
-    assert response.json()["error"]["message"] == "project_id is required for A2A tasks/send."
+    assert (
+        response.json()["error"]["message"]
+        == "project_id is required for A2A tasks/send."
+    )
     assert stored == []
 
 
@@ -300,25 +323,40 @@ async def test_a2a_tasks_send_rejects_exact_replay_and_preserves_single_message(
     payload = {
         "jsonrpc": "2.0",
         "method": "tasks/send",
-        "params": {"message": {"text": "Only persist once", "metadata": {"project_id": project_id}}},
+        "params": {
+            "message": {
+                "text": "Only persist once",
+                "metadata": {"project_id": project_id},
+            }
+        },
         "id": "replay-me",
     }
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        first = await ac.post("/a2a", headers={"Authorization": f"Bearer {token}"}, json=payload)
-        second = await ac.post("/a2a", headers={"Authorization": f"Bearer {token}"}, json=payload)
+        first = await ac.post(
+            "/a2a", headers={"Authorization": f"Bearer {token}"}, json=payload
+        )
+        second = await ac.post(
+            "/a2a", headers={"Authorization": f"Bearer {token}"}, json=payload
+        )
 
     async with async_session() as db:
         stored = (
-            (await db.execute(select(A2AMessage).where(A2AMessage.content == "Only persist once")))
+            (
+                await db.execute(
+                    select(A2AMessage).where(A2AMessage.content == "Only persist once")
+                )
+            )
             .scalars()
             .all()
         )
         audit_events = (
             (
                 await db.execute(
-                    select(AuditLog).where(AuditLog.event_type == "a2a.tasks_send.accepted")
+                    select(AuditLog).where(
+                        AuditLog.event_type == "a2a.tasks_send.accepted"
+                    )
                 )
             )
             .scalars()
@@ -351,7 +389,9 @@ async def test_a2a_tasks_send_has_dedicated_rate_limit():
             json={
                 "jsonrpc": "2.0",
                 "method": "tasks/send",
-                "params": {"message": {"text": "first", "metadata": {"project_id": project_id}}},
+                "params": {
+                    "message": {"text": "first", "metadata": {"project_id": project_id}}
+                },
                 "id": "rate-1",
             },
         )
@@ -361,7 +401,12 @@ async def test_a2a_tasks_send_has_dedicated_rate_limit():
             json={
                 "jsonrpc": "2.0",
                 "method": "tasks/send",
-                "params": {"message": {"text": "second", "metadata": {"project_id": project_id}}},
+                "params": {
+                    "message": {
+                        "text": "second",
+                        "metadata": {"project_id": project_id},
+                    }
+                },
                 "id": "rate-2",
             },
         )
@@ -421,7 +466,12 @@ async def test_a2a_agent_discover_requires_authorized_project_scope():
         missing_scope = await ac.post(
             "/a2a",
             headers={"Authorization": f"Bearer {token}"},
-            json={"jsonrpc": "2.0", "method": "agent/discover", "params": {}, "id": "discover-missing"},
+            json={
+                "jsonrpc": "2.0",
+                "method": "agent/discover",
+                "params": {},
+                "id": "discover-missing",
+            },
         )
         hidden_scope = await ac.post(
             "/a2a",
@@ -445,7 +495,10 @@ async def test_a2a_agent_discover_requires_authorized_project_scope():
         )
 
     assert missing_scope.status_code == 400
-    assert missing_scope.json()["error"]["message"] == "project_id is required for A2A agent/discover."
+    assert (
+        missing_scope.json()["error"]["message"]
+        == "project_id is required for A2A agent/discover."
+    )
     assert hidden_scope.status_code == 404
 
     assert visible_scope.status_code == 200

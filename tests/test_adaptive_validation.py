@@ -34,7 +34,9 @@ class _Dispatcher:
 
 
 @pytest.mark.asyncio
-async def test_adaptive_selector_prefers_full_ensemble_when_three_models_are_healthy(monkeypatch):
+async def test_adaptive_selector_prefers_full_ensemble_when_three_models_are_healthy(
+    monkeypatch,
+):
     from app.core import agentic as agentic_module
 
     manager = _PiManager({"project-a": ("model-a", "model-b", "model-c")})
@@ -44,12 +46,19 @@ async def test_adaptive_selector_prefers_full_ensemble_when_three_models_are_hea
         _Dispatcher(manager),
     )
 
-    assert await AdaptiveSelector().select_method("project-a", "user-interviews", "agent-a") == "full_ensemble"
+    assert (
+        await AdaptiveSelector().select_method(
+            "project-a", "user-interviews", "agent-a"
+        )
+        == "full_ensemble"
+    )
     assert manager.project_ids == ["project-a"]
 
 
 @pytest.mark.asyncio
-async def test_adaptive_selector_uses_self_moa_only_when_compute_constrained(monkeypatch):
+async def test_adaptive_selector_uses_self_moa_only_when_compute_constrained(
+    monkeypatch,
+):
     from app.core import agentic as agentic_module
 
     manager = _PiManager({"project-a": ("model-a",)})
@@ -59,7 +68,12 @@ async def test_adaptive_selector_uses_self_moa_only_when_compute_constrained(mon
         _Dispatcher(manager),
     )
 
-    assert await AdaptiveSelector().select_method("project-a", "user-interviews", "agent-a") == "self_moa"
+    assert (
+        await AdaptiveSelector().select_method(
+            "project-a", "user-interviews", "agent-a"
+        )
+        == "self_moa"
+    )
 
 
 @pytest.mark.asyncio

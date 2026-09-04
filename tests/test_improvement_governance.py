@@ -31,7 +31,9 @@ def auth_headers():
     return {"Authorization": f"Bearer {token}"}
 
 
-async def create_project(project_id: str, name: str = "Governance Test Project") -> None:
+async def create_project(
+    project_id: str, name: str = "Governance Test Project"
+) -> None:
     async with async_session() as db:
         db.add(Project(id=project_id, name=name))
         await db.commit()
@@ -86,7 +88,9 @@ async def test_governance_lifecycle_redacts_evaluates_and_reverts():
     blocked = await improvement_governance.apply_proposal(proposal.id, actor_id="user1")
     assert "approval required" in blocked["error"]
 
-    approved = await improvement_governance.approve_proposal(proposal.id, reviewer_id="user1")
+    approved = await improvement_governance.approve_proposal(
+        proposal.id, reviewer_id="user1"
+    )
     assert approved["proposal"]["status"] == "approved"
 
     applied = await improvement_governance.apply_proposal(
@@ -96,7 +100,8 @@ async def test_governance_lifecycle_redacts_evaluates_and_reverts():
     )
     assert applied["proposal"]["status"] == "applied"
     sandbox_events = [
-        item for item in applied["proposal"]["evidence"]
+        item
+        for item in applied["proposal"]["evidence"]
         if item.get("event") == "sandbox_evaluation"
     ]
     assert sandbox_events
@@ -181,7 +186,9 @@ async def test_governance_api_contract_and_admin_guard(auth_headers):
             headers=auth_headers,
         )
         assert other_listed.status_code == 200
-        assert all(item["id"] != proposal["id"] for item in other_listed.json()["proposals"])
+        assert all(
+            item["id"] != proposal["id"] for item in other_listed.json()["proposals"]
+        )
 
         feature_contract = await ac.get(
             "/api/improvement-governance/feature-contract",
@@ -301,7 +308,11 @@ async def test_hyperagent_proposal_registers_governance_contract():
     assert proposal.id == proposal_id
     assert proposal.project_id == project_id
     assert proposal.status == "proposed"
-    assert set(proposal.get_affected_surfaces()) >= {"skills", "orchestration", "configs"}
+    assert set(proposal.get_affected_surfaces()) >= {
+        "skills",
+        "orchestration",
+        "configs",
+    }
     variants = await dgmh_archive.list_variants(
         source_system="hyperagent",
         project_id=project_id,
@@ -383,36 +394,54 @@ async def test_skill_proposal_governance_registration_requires_project_id():
             applied=True,
         )
 
-    assert await improvement_governance.get_proposal_by_source(
-        source_system="skill_evolution",
-        source_id=update_source_id,
-        project_id="",
-    ) is None
-    assert await improvement_governance.get_proposal_by_source(
-        source_system="memento_skill_factory",
-        source_id=creation_source_id,
-        project_id="",
-    ) is None
-    assert await improvement_governance.get_proposal_by_source(
-        source_system="autoresearch",
-        source_id=autoresearch_source_id,
-        project_id="",
-    ) is None
-    assert await improvement_governance.get_proposal_by_source(
-        source_system="hyperagent",
-        source_id=meta_source_id,
-        project_id="",
-    ) is None
-    assert await improvement_governance.get_proposal_by_source(
-        source_system="memento_agent_factory",
-        source_id=agent_source_id,
-        project_id="",
-    ) is None
-    assert await improvement_governance.get_proposal_by_source(
-        source_system="self_evolution",
-        source_id="istara-main:123",
-        project_id="",
-    ) is None
+    assert (
+        await improvement_governance.get_proposal_by_source(
+            source_system="skill_evolution",
+            source_id=update_source_id,
+            project_id="",
+        )
+        is None
+    )
+    assert (
+        await improvement_governance.get_proposal_by_source(
+            source_system="memento_skill_factory",
+            source_id=creation_source_id,
+            project_id="",
+        )
+        is None
+    )
+    assert (
+        await improvement_governance.get_proposal_by_source(
+            source_system="autoresearch",
+            source_id=autoresearch_source_id,
+            project_id="",
+        )
+        is None
+    )
+    assert (
+        await improvement_governance.get_proposal_by_source(
+            source_system="hyperagent",
+            source_id=meta_source_id,
+            project_id="",
+        )
+        is None
+    )
+    assert (
+        await improvement_governance.get_proposal_by_source(
+            source_system="memento_agent_factory",
+            source_id=agent_source_id,
+            project_id="",
+        )
+        is None
+    )
+    assert (
+        await improvement_governance.get_proposal_by_source(
+            source_system="self_evolution",
+            source_id="istara-main:123",
+            project_id="",
+        )
+        is None
+    )
 
 
 @pytest.mark.asyncio

@@ -11,10 +11,9 @@ Required config keys:
 
 from __future__ import annotations
 
-import json
+import hmac
 import logging
 import os
-import hmac
 
 from app.channels.base import ChannelAdapter, IncomingMessage, OutgoingMessage
 

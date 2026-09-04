@@ -5,12 +5,9 @@ through the actual API to verify everything works as a real user would experienc
 """
 
 import asyncio
-import json
 import logging
-import uuid
-from datetime import datetime, timezone
-
 import os
+from datetime import UTC, datetime
 
 import httpx
 
@@ -92,7 +89,7 @@ class UserSimAgent:
 
     async def run_simulation(self) -> dict:
         """Run a full user simulation cycle."""
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
         results: list[dict] = []
 
         client = await self._get_client()

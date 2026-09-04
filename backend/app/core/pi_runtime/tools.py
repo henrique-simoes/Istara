@@ -9,7 +9,8 @@ pi-agent-core tools validate against — so the pass-through is mechanical.
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from app.skills.system_actions import OPENAI_TOOLS
 

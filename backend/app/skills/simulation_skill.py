@@ -6,15 +6,14 @@ before deploying real research.
 """
 
 import logging
-from typing import Any, Optional
 
-from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
 from app.core.participant_simulation import (
+    GameScenario,
     ParticipantProfile,
     ParticipantStrategy,
-    GameScenario,
     run_simulation_round,
 )
+from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
 
 logger = logging.getLogger(__name__)
 

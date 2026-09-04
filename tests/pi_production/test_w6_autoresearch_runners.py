@@ -49,8 +49,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNNERS = REPO_ROOT / "backend/app/core/autoresearch_runners"
 
 SPINE_PHASES = {
-    "intent", "context", "plan", "tool_selection", "execution",
-    "recovery", "grounding", "synthesis", "review", "governance",
+    "intent",
+    "context",
+    "plan",
+    "tool_selection",
+    "execution",
+    "recovery",
+    "grounding",
+    "synthesis",
+    "review",
+    "governance",
 }
 
 # (module, function, purpose slug) for every migrated chat site.
@@ -80,7 +88,10 @@ def _function_source(module: str, function_name: str) -> str:
     text = path.read_text(encoding="utf-8")
     tree = ast.parse(text)
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        ):
             return ast.get_source_segment(text, node) or ""
     raise AssertionError(f"{function_name} not found in {path}")
 
@@ -88,7 +99,9 @@ def _function_source(module: str, function_name: str) -> str:
 class _StubAgentic:
     """Recording stand-in for the ``agentic`` dispatcher singleton."""
 
-    def __init__(self, *, text: str = "dispatcher text", status: str = "success") -> None:
+    def __init__(
+        self, *, text: str = "dispatcher text", status: str = "success"
+    ) -> None:
         self.calls: list[tuple[str, dict]] = []
         self._text = text
         self._status = status
@@ -189,7 +202,9 @@ def test_w6_site_routes_through_dispatcher(module, function, purpose):
 # ── model_temp sweeping decision (master plan §8 W6) ─────────────────────
 
 
-async def test_model_temp_pi_sweep_uses_catalog_and_filters_embeddings(_flag_on, monkeypatch):
+async def test_model_temp_pi_sweep_uses_catalog_and_filters_embeddings(
+    _flag_on, monkeypatch
+):
     manager = _FakeManager(["m-alpha", "m-beta", "nomic-embed-text"])
     monkeypatch.setattr(
         "app.core.pi_runtime.model_manager.PiModelManager",
@@ -278,7 +293,9 @@ async def test_model_temp_pi_sweep_truncated_against_requested_endpoint_width(
     assert runner._sweep_truncated is True
 
 
-async def test_model_temp_pi_sweep_empty_catalog_records_truncated(_flag_on, monkeypatch):
+async def test_model_temp_pi_sweep_empty_catalog_records_truncated(
+    _flag_on, monkeypatch
+):
     monkeypatch.setattr(
         "app.core.pi_runtime.model_manager.PiModelManager",
         lambda *a, **k: _FakeManager([]),
@@ -290,15 +307,18 @@ async def test_model_temp_pi_sweep_empty_catalog_records_truncated(_flag_on, mon
     assert runner._sweep_truncated is True
 
 
-async def test_model_temp_istara_sweep_uses_pi_catalog_authority(_flag_off, monkeypatch):
+async def test_model_temp_istara_sweep_uses_pi_catalog_authority(
+    _flag_off, monkeypatch
+):
     """Istara loop semantics do not imply a second model catalog."""
+
     class _ForbiddenRouter:
         async def list_models(self):
-            raise AssertionError("Istara execution must not read a legacy model catalog")
+            raise AssertionError(
+                "Istara execution must not read a legacy model catalog"
+            )
 
-    manager = _FakeManager(
-        [("ep-a", "a"), ("ep-b", "b"), ("ep-embed", "x-embed")]
-    )
+    manager = _FakeManager([("ep-a", "a"), ("ep-b", "b"), ("ep-embed", "x-embed")])
     monkeypatch.setattr(
         "app.core.pi_runtime.model_manager.PiModelManager",
         lambda *a, **k: manager,
@@ -339,7 +359,9 @@ async def test_model_temp_score_dispatches_when_flag_on(_flag_on, monkeypatch):
     assert not router.calls, "legacy plane must not be touched when the flag is on"
 
 
-async def test_model_temp_evaluate_forwards_candidate_model_when_flag_on(_flag_on, monkeypatch):
+async def test_model_temp_evaluate_forwards_candidate_model_when_flag_on(
+    _flag_on, monkeypatch
+):
     """The Pi path must carry the swept candidate model in TurnParams."""
     dispatcher = _StubAgentic(text="sample output text")
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
@@ -348,13 +370,16 @@ async def test_model_temp_evaluate_forwards_candidate_model_when_flag_on(_flag_o
         data = {"execute_prompt": "You are a UX skill."}
 
     monkeypatch.setattr(
-        "app.skills.skill_manager.skill_manager", SimpleNamespace(get=lambda name: _Defn())
+        "app.skills.skill_manager.skill_manager",
+        SimpleNamespace(get=lambda name: _Defn()),
     )
+
     # Score step returns a constant so we isolate the evaluate dispatch.
     async def _fixed_score(self, output, skill_name):
         return 0.5
 
     monkeypatch.setattr(ModelTempRunner, "_score_output", _fixed_score)
+
     async def _noop_record(self, *a, **k):
         return None
 
@@ -364,14 +389,20 @@ async def test_model_temp_evaluate_forwards_candidate_model_when_flag_on(_flag_o
     runner.bind_project("proj-w6")
     await runner._evaluate_skill("skill-a", model="candidate-model", temperature=0.9)
 
-    evaluate_calls = [c for c in dispatcher.calls if c[1]["purpose"] == "autoresearch.model_temp.evaluate"]
+    evaluate_calls = [
+        c
+        for c in dispatcher.calls
+        if c[1]["purpose"] == "autoresearch.model_temp.evaluate"
+    ]
     assert len(evaluate_calls) == 1
     params = evaluate_calls[0][1]["params"]
     assert params.model == "candidate-model"
     assert params.temperature == 0.9
 
 
-async def test_model_temp_evaluate_pins_exact_endpoint_id_when_flag_on(_flag_on, monkeypatch):
+async def test_model_temp_evaluate_pins_exact_endpoint_id_when_flag_on(
+    _flag_on, monkeypatch
+):
     """The Pi dispatch pins the exact swept endpoint via TurnParams.endpoint_id."""
     dispatcher = _StubAgentic(text="sample output text")
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
@@ -380,7 +411,8 @@ async def test_model_temp_evaluate_pins_exact_endpoint_id_when_flag_on(_flag_on,
         data = {"execute_prompt": "You are a UX skill."}
 
     monkeypatch.setattr(
-        "app.skills.skill_manager.skill_manager", SimpleNamespace(get=lambda name: _Defn())
+        "app.skills.skill_manager.skill_manager",
+        SimpleNamespace(get=lambda name: _Defn()),
     )
 
     async def _fixed_score(self, output, skill_name):
@@ -402,7 +434,9 @@ async def test_model_temp_evaluate_pins_exact_endpoint_id_when_flag_on(_flag_on,
     )
 
     evaluate_calls = [
-        c for c in dispatcher.calls if c[1]["purpose"] == "autoresearch.model_temp.evaluate"
+        c
+        for c in dispatcher.calls
+        if c[1]["purpose"] == "autoresearch.model_temp.evaluate"
     ]
     assert len(evaluate_calls) == 1
     params = evaluate_calls[0][1]["params"]
@@ -428,7 +462,8 @@ async def test_model_temp_hypothesize_to_measure_preserves_endpoint_identity(
         data = {"execute_prompt": "You are a UX skill."}
 
     monkeypatch.setattr(
-        "app.skills.skill_manager.skill_manager", SimpleNamespace(get=lambda name: _Defn())
+        "app.skills.skill_manager.skill_manager",
+        SimpleNamespace(get=lambda name: _Defn()),
     )
 
     async def _fixed_score(self, output, skill_name):
@@ -478,8 +513,12 @@ def test_rag_params_hypothesis_migrates_but_embedding_stays_legacy():
     assert "llm_router.chat" not in hypo  # W9 retired the legacy fallthrough
 
     score_query = _function_source("rag_params", "_score_single_query")
-    assert "embed_text" in score_query, "retrieval-eval embedding must stay on the legacy plane"
-    assert "agentic.embed" not in score_query, "W6 must not route embeddings through the dispatcher"
+    assert "embed_text" in score_query, (
+        "retrieval-eval embedding must stay on the legacy plane"
+    )
+    assert "agentic.embed" not in score_query, (
+        "W6 must not route embeddings through the dispatcher"
+    )
     assert "W8" in score_query, "the deliberate embed-skip must be documented in-line"
 
 
@@ -493,9 +532,13 @@ def test_rag_params_hypothesis_migrates_but_embedding_stays_legacy():
 # or execution under an unauthorized project id.
 
 
-async def test_rag_params_hypothesis_dispatches_under_authorized_binding(_flag_on, monkeypatch):
+async def test_rag_params_hypothesis_dispatches_under_authorized_binding(
+    _flag_on, monkeypatch
+):
     """The dispatch scopes to the authorized binding, not the caller target."""
-    dispatcher = _StubAgentic(text='{"param": "rag_chunk_size", "value": 800, "reason": "r"}')
+    dispatcher = _StubAgentic(
+        text='{"param": "rag_chunk_size", "value": 800, "reason": "r"}'
+    )
     router = _StubRouter()
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
     monkeypatch.setattr("app.core.llm_router.llm_router", router)
@@ -513,7 +556,9 @@ async def test_rag_params_hypothesis_dispatches_under_authorized_binding(_flag_o
     assert not router.calls, "legacy plane must not be touched when the flag is on"
 
 
-async def test_rag_params_mismatched_target_fails_closed_before_dispatch(_flag_on, monkeypatch):
+async def test_rag_params_mismatched_target_fails_closed_before_dispatch(
+    _flag_on, monkeypatch
+):
     """A target that diverges from the authorized project id fails closed: no
     retrieval, dispatcher, or legacy call runs under the unauthorized id."""
     dispatcher = _StubAgentic()
@@ -551,7 +596,9 @@ async def test_rag_params_hypothesis_requires_binding(_flag_on, monkeypatch):
     assert not router.calls
 
 
-async def test_rag_params_matched_target_binds_retrieval_to_authorized(_flag_on, monkeypatch):
+async def test_rag_params_matched_target_binds_retrieval_to_authorized(
+    _flag_on, monkeypatch
+):
     """A matching target resolves retrieval under the authorized binding."""
     seen: list[str] = []
 
@@ -600,9 +647,18 @@ class _RecordingPiService:
         self.calls: list[dict] = []
         self._text = text
 
-    async def run_completion(self, *, purpose, project_id, agent_id, system, messages, params):
-        self.calls.append({"purpose": purpose, "project_id": project_id, "params": params})
-        return {"text": self._text, "status": "success", "usage": {}, "endpoint_id": "pi-endpoint"}
+    async def run_completion(
+        self, *, purpose, project_id, agent_id, system, messages, params
+    ):
+        self.calls.append(
+            {"purpose": purpose, "project_id": project_id, "params": params}
+        )
+        return {
+            "text": self._text,
+            "status": "success",
+            "usage": {},
+            "endpoint_id": "pi-endpoint",
+        }
 
 
 def _install_real_dispatcher(monkeypatch, *, pi_text: str):
@@ -617,8 +673,11 @@ def _install_real_dispatcher(monkeypatch, *, pi_text: str):
 
     async def _fake_legacy(**kwargs):
         legacy_calls.append(kwargs)
-        return {"text": "0.11", "status": "success",
-                "usage": {"input_tokens": 1, "output_tokens": 1}}
+        return {
+            "text": "0.11",
+            "status": "success",
+            "usage": {"input_tokens": 1, "output_tokens": 1},
+        }
 
     dispatcher = AgenticDispatcher(pi_service=pi_service, legacy_executor=_fake_legacy)
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
@@ -636,7 +695,9 @@ async def test_pi_bound_run_executes_on_pi_over_conflicting_legacy_default(monke
     repro must now be ``pi_calls=1, legacy_calls=0``."""
     pi_service, legacy_calls = _install_real_dispatcher(monkeypatch, pi_text="0.85")
     # Both the global default AND the feature flag say legacy — maximal conflict.
-    monkeypatch.setattr("app.config.settings.agentic_engine_default", "legacy", raising=False)
+    monkeypatch.setattr(
+        "app.config.settings.agentic_engine_default", "legacy", raising=False
+    )
     monkeypatch.setattr("app.config.settings.agentic_core", False, raising=False)
 
     runner = ModelTempRunner()
@@ -653,14 +714,18 @@ async def test_pi_bound_run_executes_on_pi_over_conflicting_legacy_default(monke
     assert not legacy_calls, "the legacy backend must not run for a pi-bound experiment"
 
 
-async def test_legacy_bound_run_stays_on_legacy_over_conflicting_pi_default(monkeypatch):
+async def test_legacy_bound_run_stays_on_legacy_over_conflicting_pi_default(
+    monkeypatch,
+):
     """A legacy-bound experiment never lands on Pi even when the project/global
     configuration defaults to pi. W9: the runner always dispatches, forwarding
     ``engine=self.engine``, so the bound choice wins INSIDE the real dispatcher
     and its legacy executor runs instead of the Pi backend."""
     pi_service, legacy_calls = _install_real_dispatcher(monkeypatch, pi_text="0.85")
     # Both the global default AND the feature flag say pi — maximal conflict.
-    monkeypatch.setattr("app.config.settings.agentic_engine_default", "pi", raising=False)
+    monkeypatch.setattr(
+        "app.config.settings.agentic_engine_default", "pi", raising=False
+    )
     monkeypatch.setattr("app.config.settings.agentic_core", True, raising=False)
 
     runner = ModelTempRunner()
@@ -673,11 +738,15 @@ async def test_legacy_bound_run_stays_on_legacy_over_conflicting_pi_default(monk
     # The score is parsed from the dispatcher's legacy executor answer (0.11),
     # not the Pi backend's 0.85.
     assert score == pytest.approx(0.11)
-    assert not pi_service.calls, "the Pi backend must not run for a legacy-bound experiment"
+    assert not pi_service.calls, (
+        "the Pi backend must not run for a legacy-bound experiment"
+    )
     assert len(legacy_calls) == 1
 
 
-async def test_real_dispatcher_completion_forwards_engine_override_both_ways(monkeypatch):
+async def test_real_dispatcher_completion_forwards_engine_override_both_ways(
+    monkeypatch,
+):
     """The explicit ``engine=`` override the runners now pass wins over a
     conflicting global default in BOTH directions at the dispatcher itself —
     isolating the resolution seam the runner fix depends on."""
@@ -689,8 +758,11 @@ async def test_real_dispatcher_completion_forwards_engine_override_both_ways(mon
 
     async def _fake_legacy(**kwargs):
         legacy_calls.append(kwargs)
-        return {"text": "legacy-answer", "status": "success",
-                "usage": {"input_tokens": 1, "output_tokens": 1}}
+        return {
+            "text": "legacy-answer",
+            "status": "success",
+            "usage": {"input_tokens": 1, "output_tokens": 1},
+        }
 
     dispatcher = AgenticDispatcher(pi_service=pi_service, legacy_executor=_fake_legacy)
 
@@ -701,20 +773,34 @@ async def test_real_dispatcher_completion_forwards_engine_override_both_ways(mon
     messages = [{"role": "user", "content": "hi"}]
 
     # Global default legacy, explicit engine="pi" → Pi wins.
-    monkeypatch.setattr("app.config.settings.agentic_engine_default", "legacy", raising=False)
+    monkeypatch.setattr(
+        "app.config.settings.agentic_engine_default", "legacy", raising=False
+    )
     pi_res = await dispatcher.completion(
-        purpose="autoresearch.model_temp.score", project_id="p",
-        system="s", messages=messages, params=TurnParams(), engine="pi",
+        purpose="autoresearch.model_temp.score",
+        project_id="p",
+        system="s",
+        messages=messages,
+        params=TurnParams(),
+        engine="pi",
     )
     assert pi_res.text == "pi-answer"
     assert len(pi_service.calls) == 1 and not legacy_calls
 
     # Global default pi, explicit engine="legacy" → legacy wins.
-    monkeypatch.setattr("app.config.settings.agentic_engine_default", "pi", raising=False)
+    monkeypatch.setattr(
+        "app.config.settings.agentic_engine_default", "pi", raising=False
+    )
     legacy_res = await dispatcher.completion(
-        purpose="autoresearch.model_temp.score", project_id="p",
-        system="s", messages=messages, params=TurnParams(), engine="legacy",
+        purpose="autoresearch.model_temp.score",
+        project_id="p",
+        system="s",
+        messages=messages,
+        params=TurnParams(),
+        engine="legacy",
     )
     assert legacy_res.text == "legacy-answer"
     assert len(legacy_calls) == 1
-    assert len(pi_service.calls) == 1, "the Pi backend must not run for the legacy override"
+    assert len(pi_service.calls) == 1, (
+        "the Pi backend must not run for the legacy override"
+    )

@@ -9,9 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.codebook import Codebook, Code
-from app.models.database import get_db
 from app.core.permissions import require_project_access
+from app.models.codebook import Code, Codebook
+from app.models.database import get_db
 
 router = APIRouter()
 

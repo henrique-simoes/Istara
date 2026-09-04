@@ -28,6 +28,7 @@ def reset_settings():
 # WebSocket auth token structure
 # ---------------------------------------------------------------------------
 
+
 def test_websocket_token_can_be_created():
     """A valid JWT token can be created for WebSocket auth."""
     if not settings.jwt_secret:
@@ -44,6 +45,7 @@ def test_websocket_token_contains_user_info():
     token = create_token("user1", "testuser", "admin")
 
     from app.core.auth import verify_token
+
     payload = verify_token(token)
     assert payload is not None
     assert payload["username"] == "testuser"
@@ -54,9 +56,11 @@ def test_websocket_token_contains_user_info():
 # WebSocket broadcast event structure
 # ---------------------------------------------------------------------------
 
+
 def test_steering_manager_has_queues():
     """SteeringManager has steering and follow-up queues."""
     from app.core.steering import SteeringManager
+
     manager = SteeringManager()
     status = manager.get_all_status()
     assert isinstance(status, dict)
@@ -65,6 +69,7 @@ def test_steering_manager_has_queues():
 def test_steering_queue_drain():
     """SteeringQueue drain returns items."""
     from app.core.steering import SteeringQueue
+
     queue = SteeringQueue()
     queue.enqueue({"message": "test"})
     items = queue.drain()
@@ -75,6 +80,7 @@ def test_steering_queue_drain():
 def test_websocket_manager_imports():
     """WebSocket manager module imports correctly."""
     from app.api.websocket import manager
+
     assert manager is not None
 
 
@@ -152,6 +158,7 @@ async def test_notification_drain_discards_tasks_from_foreign_event_loops():
 # WebSocket query parameter auth pattern
 # ---------------------------------------------------------------------------
 
+
 def test_websocket_auth_url_pattern():
     """WebSocket auth uses ?token= query parameter pattern."""
     if not settings.jwt_secret:
@@ -192,9 +199,18 @@ async def test_websocket_project_subscription_requires_membership():
         user_context = {"id": user_id, "username": "researcher", "role": "researcher"}
         admin_context = {"id": "admin", "username": "admin", "role": "admin"}
 
-        assert await _can_subscribe_to_project(db, user_context, visible_project_id) is True
-        assert await _can_subscribe_to_project(db, user_context, hidden_project_id) is False
-        assert await _can_subscribe_to_project(db, admin_context, hidden_project_id) is True
+        assert (
+            await _can_subscribe_to_project(db, user_context, visible_project_id)
+            is True
+        )
+        assert (
+            await _can_subscribe_to_project(db, user_context, hidden_project_id)
+            is False
+        )
+        assert (
+            await _can_subscribe_to_project(db, admin_context, hidden_project_id)
+            is True
+        )
         assert await _can_subscribe_to_project(db, user_context, None) is False
         assert await _can_subscribe_to_project(db, admin_context, None) is True
 
@@ -208,13 +224,22 @@ async def test_websocket_resolves_project_from_agent_id():
 
     async with async_session() as db:
         db.add(Project(id=project_id, name="Websocket agent project"))
-        db.add(Agent(id=agent_id, name="Realtime Agent", scope="project", project_id=project_id))
+        db.add(
+            Agent(
+                id=agent_id,
+                name="Realtime Agent",
+                scope="project",
+                project_id=project_id,
+            )
+        )
         await db.commit()
 
     from app.api.websocket import ConnectionManager
 
     manager = ConnectionManager()
-    resolved = await manager._resolve_project_id({"agent_id": agent_id, "thought": "project work"})
+    resolved = await manager._resolve_project_id(
+        {"agent_id": agent_id, "thought": "project work"}
+    )
 
     assert resolved == project_id
 
@@ -343,7 +368,9 @@ async def test_project_bound_websocket_events_with_conflicting_claims_are_not_br
         }
     ]
 
-    valid_project = await manager._resolve_project_id({"project_id": project_a, "task_id": task_a})
+    valid_project = await manager._resolve_project_id(
+        {"project_id": project_a, "task_id": task_a}
+    )
     conflict_project = await manager._resolve_project_id(
         {
             "project_id": project_a,
@@ -383,11 +410,21 @@ async def test_project_bound_websocket_events_without_scope_are_not_broadcast():
     global_ws = FakeWebSocket()
     manager = ConnectionManager()
     manager._connections = [
-        {"websocket": project_ws, "user_context": {"id": "u1"}, "active_project_id": "project-a"},
-        {"websocket": global_ws, "user_context": {"id": "admin"}, "active_project_id": None},
+        {
+            "websocket": project_ws,
+            "user_context": {"id": "u1"},
+            "active_project_id": "project-a",
+        },
+        {
+            "websocket": global_ws,
+            "user_context": {"id": "admin"},
+            "active_project_id": None,
+        },
     ]
 
-    await manager.broadcast("agent_thinking", {"agent_id": "missing-agent", "thought": "hidden"})
+    await manager.broadcast(
+        "agent_thinking", {"agent_id": "missing-agent", "thought": "hidden"}
+    )
 
     assert project_ws.sent == []
     assert global_ws.sent == []
@@ -434,7 +471,11 @@ async def test_websocket_broadcast_rechecks_project_membership():
     manager._connections = [
         {
             "websocket": project_ws,
-            "user_context": {"id": user_id, "username": "researcher", "role": "researcher"},
+            "user_context": {
+                "id": user_id,
+                "username": "researcher",
+                "role": "researcher",
+            },
             "active_project_id": project_id,
         }
     ]
@@ -491,7 +532,11 @@ async def test_global_notification_websocket_events_are_admin_only():
         },
         {
             "websocket": project_ws,
-            "user_context": {"id": user_id, "username": "researcher", "role": "researcher"},
+            "user_context": {
+                "id": user_id,
+                "username": "researcher",
+                "role": "researcher",
+            },
             "active_project_id": project_id,
         },
     ]

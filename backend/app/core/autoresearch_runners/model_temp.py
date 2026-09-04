@@ -21,10 +21,10 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Awaitable, Callable
 
 from app.core.autoresearch_runners import BaseLoopRunner
 
@@ -409,7 +409,7 @@ class ModelTempRunner(BaseLoopRunner):
                 # EMA update (alpha=0.1)
                 stats.quality_ema = stats.quality_ema * 0.9 + score * 0.1
                 stats.best_quality = max(stats.best_quality, score)
-                stats.last_used = datetime.now(timezone.utc)
+                stats.last_used = datetime.now(UTC)
                 stats.source = "autoresearch"
             else:
                 stats = ModelSkillStats(
@@ -422,7 +422,7 @@ class ModelTempRunner(BaseLoopRunner):
                     quality_ema=score,
                     best_quality=score,
                     source="autoresearch",
-                    last_used=datetime.now(timezone.utc),
+                    last_used=datetime.now(UTC),
                 )
                 db.add(stats)
 
@@ -454,7 +454,7 @@ class ModelTempRunner(BaseLoopRunner):
                 "model": model_name,
                 "temperature": temperature,
                 "best_quality": score,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
             }
             CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
             atomic_write(CONFIG_PATH, json.dumps(config, indent=2))

@@ -6,12 +6,10 @@ critical user journeys: project creation, file upload, task processing, and find
 """
 
 import asyncio
-import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 
 import httpx
 
@@ -97,7 +95,7 @@ class UXEvalAgent:
 
     async def run_evaluation(self) -> dict:
         """Run real API journey tests."""
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
         client = await self._get_client()
         journeys: list[dict] = []
 

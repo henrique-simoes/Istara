@@ -127,17 +127,29 @@ def test_shard_map_deterministic_disjoint_complete():
     for shard in first:
         by_pair: dict[str, list] = {}
         for unit in shard:
-            by_pair.setdefault(pair_identity(
-                phase=unit.phase, pack=unit.pack, scenario_id=unit.scenario_id,
-                seed=unit.seed, repeat=unit.repeat, moa_mode=unit.moa_mode,
-            ), []).append(unit)
+            by_pair.setdefault(
+                pair_identity(
+                    phase=unit.phase,
+                    pack=unit.pack,
+                    scenario_id=unit.scenario_id,
+                    seed=unit.seed,
+                    repeat=unit.repeat,
+                    moa_mode=unit.moa_mode,
+                ),
+                [],
+            ).append(unit)
         for arms in by_pair.values():
-            assert [unit.engine for unit in arms] == list(ordered_engines(
-                tuple(unit.engine for unit in arms), phase=arms[0].phase,
-                pack=arms[0].pack, scenario_id=arms[0].scenario_id,
-                seed=arms[0].seed, repeat=arms[0].repeat,
-                moa_mode=arms[0].moa_mode,
-            ))
+            assert [unit.engine for unit in arms] == list(
+                ordered_engines(
+                    tuple(unit.engine for unit in arms),
+                    phase=arms[0].phase,
+                    pack=arms[0].pack,
+                    scenario_id=arms[0].scenario_id,
+                    seed=arms[0].seed,
+                    repeat=arms[0].repeat,
+                    moa_mode=arms[0].moa_mode,
+                )
+            )
             assert len({unit.engine for unit in arms}) == 2
 
 
@@ -147,10 +159,17 @@ def test_shard_map_keeps_each_moa_lane_pair_together():
     locations: dict[str, list[RunUnit]] = {}
     for shard in shards:
         for unit in shard:
-            locations.setdefault(pair_identity(
-                phase=unit.phase, pack=unit.pack, scenario_id=unit.scenario_id,
-                seed=unit.seed, repeat=unit.repeat, moa_mode=unit.moa_mode,
-            ), []).append(unit)
+            locations.setdefault(
+                pair_identity(
+                    phase=unit.phase,
+                    pack=unit.pack,
+                    scenario_id=unit.scenario_id,
+                    seed=unit.seed,
+                    repeat=unit.repeat,
+                    moa_mode=unit.moa_mode,
+                ),
+                [],
+            ).append(unit)
     assert locations
     for arms in locations.values():
         assert len(arms) == 2
@@ -175,7 +194,9 @@ def test_write_manifest_records_separate_fields(tmp_path):
     assert manifest["tier"] == "T2"
     assert manifest["shard_count"] == 4
     assert len(manifest["shards"]) == 4
-    assert set(manifest["units"]) == {u.unit_id for u in _units(moa_modes=("self_moa",))}
+    assert set(manifest["units"]) == {
+        u.unit_id for u in _units(moa_modes=("self_moa",))
+    }
     assert all(entry["status"] == "pending" for entry in manifest["units"].values())
     assert manifest["content_sha256"]
 
@@ -206,7 +227,9 @@ def test_write_manifest_conflict_on_different_args(tmp_path):
 
 def test_write_manifest_validates_process_count(tmp_path):
     with pytest.raises(ValueError):
-        write_manifest(tmp_path / "m.json", **_manifest_kwargs(shard_units(_units(), 0)))
+        write_manifest(
+            tmp_path / "m.json", **_manifest_kwargs(shard_units(_units(), 0))
+        )
     kwargs = _manifest_kwargs(shard_units(_units(), 3))
     kwargs["max_processes"] = 4  # != len(shards)
     with pytest.raises(ValueError):

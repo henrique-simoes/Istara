@@ -29,7 +29,9 @@ async def test_compute_nodes_returns_list(auth_headers):
     project_id = await _seed_project("Compute Nodes Project")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/compute/nodes?project_id={project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/compute/nodes?project_id={project_id}", headers=auth_headers
+        )
         assert response.status_code == 200
         body = response.json()
         assert isinstance(body, dict)
@@ -81,7 +83,9 @@ async def test_compute_stats_returns_response(auth_headers):
     project_id = await _seed_project("Compute Stats Project")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/compute/stats?project_id={project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/compute/stats?project_id={project_id}", headers=auth_headers
+        )
         assert response.status_code == 200
         body = response.json()
         assert "nodes" in body
@@ -166,7 +170,9 @@ async def test_admin_compute_stats_is_explicit_global_admin_route(
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            admin_global = await ac.get("/api/admin/compute/stats", headers=auth_headers)
+            admin_global = await ac.get(
+                "/api/admin/compute/stats", headers=auth_headers
+            )
             researcher_global = await ac.get(
                 "/api/admin/compute/stats",
                 headers=researcher_headers,
@@ -181,9 +187,15 @@ async def test_admin_compute_stats_is_explicit_global_admin_route(
         global_body = admin_global.json()
         assert global_body["scope"] == "global_admin"
         assert global_body["project_id"] is None
-        assert {node["node_id"] for node in global_body["nodes"]} == {"relay-a", "relay-b"}
+        assert {node["node_id"] for node in global_body["nodes"]} == {
+            "relay-a",
+            "relay-b",
+        }
         assert global_body["total_ram_gb"] == 40
-        assert set(global_body["available_models"]) == {"project-a-model", "project-b-model"}
+        assert set(global_body["available_models"]) == {
+            "project-a-model",
+            "project-b-model",
+        }
 
         assert researcher_global.status_code == 403
         assert admin_projectless.status_code == 400
@@ -200,7 +212,9 @@ async def test_admin_compute_stats_is_explicit_global_admin_route(
 
 
 @pytest.mark.asyncio
-async def test_team_researcher_compute_stats_requires_active_project(researcher_headers):
+async def test_team_researcher_compute_stats_requires_active_project(
+    researcher_headers,
+):
     await init_db()
     settings.team_mode = True
     transport = ASGITransport(app=app)
@@ -212,7 +226,9 @@ async def test_team_researcher_compute_stats_requires_active_project(researcher_
 
 
 @pytest.mark.asyncio
-async def test_team_researcher_compute_stats_requires_project_membership(researcher_headers):
+async def test_team_researcher_compute_stats_requires_project_membership(
+    researcher_headers,
+):
     await init_db()
     settings.team_mode = True
     project_id = f"project-{uuid.uuid4()}"

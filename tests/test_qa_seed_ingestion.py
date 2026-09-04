@@ -47,7 +47,9 @@ def _fake_backend_handler(request: httpx.Request) -> httpx.Response:
             ],
         )
     if request.method == "POST" and request.url.path == "/api/projects":
-        return httpx.Response(201, json={"id": "proj-qa-1", "name": json.loads(request.content)["name"]})
+        return httpx.Response(
+            201, json={"id": "proj-qa-1", "name": json.loads(request.content)["name"]}
+        )
     if request.method == "POST" and request.url.path == "/api/documents":
         payload = json.loads(request.content)
         # The real documents route would stamp this metadata on every unit.
@@ -114,7 +116,10 @@ def test_ingest_slice_creates_project_when_absent():
         if request.method == "GET" and request.url.path == "/api/projects":
             return httpx.Response(200, json=[])
         if request.method == "POST" and request.url.path == "/api/projects":
-            return httpx.Response(201, json={"id": "proj-new", "name": json.loads(request.content)["name"]})
+            return httpx.Response(
+                201,
+                json={"id": "proj-new", "name": json.loads(request.content)["name"]},
+            )
         if request.method == "POST" and request.url.path == "/api/documents":
             return httpx.Response(
                 201, json={"id": "doc-1", "project_id": "proj-new", "title": "x"}
@@ -161,7 +166,9 @@ def test_ingested_manifest_records_live_handles(tmp_path):
     assert loaded["promotion_blocked"] is True
     assert loaded["ingestion"]["project_id"] == "proj-qa-1"
     assert loaded["ingestion"]["evidence_unit_count"] == 2
-    assert all(uid.startswith("eu-") for uid in loaded["ingestion"]["evidence_unit_ids"])
+    assert all(
+        uid.startswith("eu-") for uid in loaded["ingestion"]["evidence_unit_ids"]
+    )
 
 
 def test_offline_plan_mode_has_no_ingestion():

@@ -69,19 +69,21 @@ async def test_pi_ensemble_mixed_provider_usage_is_estimated_as_one_dispatch():
     """A missing real-provider receipt must not leave a partial exact total."""
     await init_db()
     project_id = _project_id()
-    service = _ScriptedPiService([
-        {
-            "text": "rater A",
-            "usage": {
-                "input_tokens": 100,
-                "output_tokens": 10,
-                "total_tokens": 110,
-                "cost_usd": 0.01,
-                "turns": 1,
+    service = _ScriptedPiService(
+        [
+            {
+                "text": "rater A",
+                "usage": {
+                    "input_tokens": 100,
+                    "output_tokens": 10,
+                    "total_tokens": 110,
+                    "cost_usd": 0.01,
+                    "turns": 1,
+                },
             },
-        },
-        {"text": "rater B without a provider usage receipt", "usage": {}},
-    ])
+            {"text": "rater B without a provider usage receipt", "usage": {}},
+        ]
+    )
 
     result = await AgenticDispatcher(pi_service=service).ensemble(
         purpose="research_spine.pi_ensemble.mixed_usage",
@@ -112,13 +114,15 @@ async def test_pi_ensemble_all_zero_provider_placeholder_is_estimated():
     """pi-ai's all-zero placeholder is not a provider receipt."""
     await init_db()
     project_id = _project_id()
-    service = _ScriptedPiService([
-        {"text": "rater A", "usage": {"input_tokens": 100, "output_tokens": 10}},
-        {
-            "text": "rater B with adapter placeholder",
-            "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
-        },
-    ])
+    service = _ScriptedPiService(
+        [
+            {"text": "rater A", "usage": {"input_tokens": 100, "output_tokens": 10}},
+            {
+                "text": "rater B with adapter placeholder",
+                "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            },
+        ]
+    )
 
     result = await AgenticDispatcher(pi_service=service).ensemble(
         purpose="research_spine.pi_ensemble.zero_placeholder",
@@ -143,32 +147,34 @@ async def test_pi_ensemble_all_provider_usage_is_aggregated_exactly():
     """Fully reported samples retain cache, cost, total, and turn accounting."""
     await init_db()
     project_id = _project_id()
-    service = _ScriptedPiService([
-        {
-            "text": "rater A",
-            "usage": {
-                "input_tokens": 100,
-                "output_tokens": 10,
-                "cache_read": 4,
-                "cache_write": 1,
-                "total_tokens": 115,
-                "cost_usd": 0.01,
-                "turns": 1,
+    service = _ScriptedPiService(
+        [
+            {
+                "text": "rater A",
+                "usage": {
+                    "input_tokens": 100,
+                    "output_tokens": 10,
+                    "cache_read": 4,
+                    "cache_write": 1,
+                    "total_tokens": 115,
+                    "cost_usd": 0.01,
+                    "turns": 1,
+                },
             },
-        },
-        {
-            "text": "rater B",
-            "usage": {
-                "input_tokens": 200,
-                "output_tokens": 20,
-                "cache_read": 6,
-                "cache_write": 2,
-                "total_tokens": 228,
-                "cost_usd": 0.02,
-                "turns": 1,
+            {
+                "text": "rater B",
+                "usage": {
+                    "input_tokens": 200,
+                    "output_tokens": 20,
+                    "cache_read": 6,
+                    "cache_write": 2,
+                    "total_tokens": 228,
+                    "cost_usd": 0.02,
+                    "turns": 1,
+                },
             },
-        },
-    ])
+        ]
+    )
 
     result = await AgenticDispatcher(pi_service=service).ensemble(
         purpose="research_spine.pi_ensemble.exact_usage",

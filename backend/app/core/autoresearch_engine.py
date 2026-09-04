@@ -9,7 +9,7 @@ import json
 import logging
 import statistics
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.config import settings
 from app.core.autoresearch_isolation import autoresearch_context
@@ -252,7 +252,7 @@ class AutoresearchEngine:
                         logger.warning(f"  [{i + 1}/{max_iterations}] HYPOTHESIS FAILED: {e}")
 
                     # Persist experiment
-                    experiment["completed_at"] = datetime.now(timezone.utc).isoformat()
+                    experiment["completed_at"] = datetime.now(UTC).isoformat()
                     await self._persist_experiment(experiment, project_id)
                     await self._record_validity_telemetry(experiment, project_id)
                     experiment["reasoning_memory_ids"] = await self._record_reasoning_memory(
@@ -419,7 +419,7 @@ class AutoresearchEngine:
                 ),
                 error_message=experiment.get("error_message", ""),
                 project_id=project_id,
-                completed_at=datetime.now(timezone.utc),
+                completed_at=datetime.now(UTC),
             )
             db.add(record)
             await db.commit()

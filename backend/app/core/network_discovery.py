@@ -211,7 +211,7 @@ async def discover_and_register() -> list[dict]:
     Called at startup and can be called on-demand via API.
     Returns list of newly registered servers.
     """
-    from app.core.llm_router import llm_router, LLMServerEntry
+    from app.core.llm_router import LLMServerEntry, llm_router
 
     discovered = await discover_network_servers()
     newly_registered = []
@@ -261,8 +261,9 @@ async def discover_and_register() -> list[dict]:
     # Persist discovered servers to database
     if newly_registered:
         try:
-            import uuid
             import json
+            import uuid
+
             from app.models.database import async_session
             from app.models.llm_server import LLMServer
 

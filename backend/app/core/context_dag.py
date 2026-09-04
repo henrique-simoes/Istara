@@ -18,14 +18,13 @@ import json
 import logging
 import uuid
 from collections import defaultdict
-from datetime import datetime, timezone
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from app.config import settings
+from app.models.context_dag import ContextDAGNode
 from app.models.database import async_session
 from app.models.message import Message
-from app.models.context_dag import ContextDAGNode
 
 logger = logging.getLogger(__name__)
 

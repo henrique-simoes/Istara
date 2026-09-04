@@ -54,7 +54,9 @@ async def test_codebooks_list_returns_project_codebooks(auth_headers):
                 Project(id=project_id, name="Codebook List A"),
                 Project(id=other_project_id, name="Codebook List B"),
                 Codebook(id=visible_id, project_id=project_id, name="Visible Codebook"),
-                Codebook(id=hidden_id, project_id=other_project_id, name="Hidden Codebook"),
+                Codebook(
+                    id=hidden_id, project_id=other_project_id, name="Hidden Codebook"
+                ),
             ]
         )
         await db.commit()

@@ -82,7 +82,7 @@ class PiEndpointResolutionError(ValueError):
     """A selected Pi request has no usable, exact endpoint binding."""
 
 
-def enforce_test_provider_network_policy(endpoint: "ResolvedPiEndpoint") -> None:
+def enforce_test_provider_network_policy(endpoint: ResolvedPiEndpoint) -> None:
     """Fail closed before ordinary tests can contact a public provider.
 
     Keep this guard at the shared Pi endpoint boundary so both worker-backed

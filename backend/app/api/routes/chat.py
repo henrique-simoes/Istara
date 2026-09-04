@@ -12,13 +12,13 @@ Falls back to text-based regex parsing when native tool calling is rejected
 by the provider (e.g. models without function-calling support).
 """
 
+import asyncio
 import json
 import logging
 import re
 import tempfile
 import uuid
-import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
@@ -29,20 +29,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_project_scope import require_agent_assignable_to_project
 from app.config import settings
-from app.core.agent import agent
-from app.core.agent_identity import load_agent_identity, get_agent_display_name
+from app.core.agent_identity import load_agent_identity
 from app.core.agentic import AgenticDispatcher
 from app.core.agentic.bridge import stream_chat_turn
 from app.core.agentic.types import TurnParams
 from app.core.content_guard import ContentGuard
-from app.core.prompt_rag import compose_dynamic_prompt, compose_keyword_prompt
 from app.core.context_summarizer import context_summarizer
 from app.core.llm_thinking import (
     apply_thinking_control,
     normalize_thinking_mode,
     validate_model_effort,
 )
-from app.core.ollama import ollama  # noqa: F401 — W2: transport moved to the dispatcher; tests monkeypatch this handle
+from app.core.ollama import (
+    ollama,  # noqa: F401 — W2: transport moved to the dispatcher; tests monkeypatch this handle
+)
 from app.core.permissions import get_visible_project_or_404, require_project_access
 from app.core.pi_replacement import (
     PI_ENGINE_VALUES,
@@ -53,22 +53,20 @@ from app.core.pi_replacement import (
 )
 from app.core.pi_runtime import PiExecutionService
 from app.core.pi_runtime.model_manager import PiModelManager
+from app.core.prompt_rag import compose_dynamic_prompt
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.research_validity import RESEARCH_VALIDITY_CONTRACT, protected_block
-from app.core.token_counter import context_guard
-from app.models.database import get_db, async_session
+from app.models.database import async_session, get_db
 
 _guard = ContentGuard()
 from app.models.message import Message
 from app.models.project import Project
-from app.models.session import ChatSession, INFERENCE_PRESETS
+from app.models.session import INFERENCE_PRESETS, ChatSession
 from app.models.task import Task
-from app.skills.registry import registry
 from app.skills.system_actions import (
+    OPENAI_TOOLS,
     build_tools_prompt,
     execute_tool,
-    SYSTEM_TOOLS,
-    OPENAI_TOOLS,
 )
 
 
@@ -624,12 +622,12 @@ async def _generate_native_tools(
     queue: asyncio.Queue = asyncio.Queue()
 
     async def _tool_exec(name, params, project_id, agent):
-        tool_started = datetime.now(timezone.utc)
+        tool_started = datetime.now(UTC)
         result = await execute_tool(name, params, project_id, agent_id=agent)
         if pi_metrics:
             pi_metrics.observe_tool_call()
         if pi_candidate:
-            tool_duration_ms = (datetime.now(timezone.utc) - tool_started).total_seconds() * 1000
+            tool_duration_ms = (datetime.now(UTC) - tool_started).total_seconds() * 1000
             await record_pi_span(
                 operation="pi_candidate_tool_call",
                 project_id=request.project_id,
@@ -955,7 +953,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
         request.session_id = session.id
 
     # Save user message
-    user_created_at = datetime.now(timezone.utc)
+    user_created_at = datetime.now(UTC)
     user_msg = Message(
         id=str(uuid.uuid4()),
         project_id=request.project_id,
@@ -1128,9 +1126,9 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
         ]
         if project_files:
             files_context = (
-                f"\n\n## Project Files Available\n"
-                f"The following files are in this project's scope and can be "
-                f"referenced without the user needing to upload them again:\n"
+                "\n\n## Project Files Available\n"
+                "The following files are in this project's scope and can be "
+                "referenced without the user needing to upload them again:\n"
                 + "\n".join(f"- {name}" for name in project_files[:50])
             )
             system_prompt += files_context
@@ -1358,7 +1356,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                 return
             async with async_session() as save_db:
                 assistant_content = "".join(all_text_parts)
-                assistant_created_at = datetime.now(timezone.utc)
+                assistant_created_at = datetime.now(UTC)
                 assistant_msg = Message(
                     id=str(uuid.uuid4()),
                     project_id=request.project_id,
@@ -1413,7 +1411,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
             if all_text_parts:
                 try:
                     async with async_session() as save_db:
-                        interrupted_created_at = datetime.now(timezone.utc)
+                        interrupted_created_at = datetime.now(UTC)
                         msg = Message(
                             id=str(uuid.uuid4()),
                             project_id=request.project_id,
@@ -1665,7 +1663,7 @@ async def transcribe_voice(
             tmp_path = tmp.name
 
         # Convert and transcribe
-        from app.core.transcription import transcribe_audio, convert_audio_to_wav
+        from app.core.transcription import convert_audio_to_wav, transcribe_audio
 
         wav_path = convert_audio_to_wav(tmp_path)
         result = transcribe_audio(wav_path, language=language)

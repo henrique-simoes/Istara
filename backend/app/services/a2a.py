@@ -5,9 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
 
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent import A2AMessage
@@ -362,8 +361,9 @@ async def send_task_request(
     priority: str = "medium",
 ) -> dict:
     """Send a task request via A2A — creates a task assigned to the target agent."""
-    from app.models.task import Task, TaskStatus
     import uuid as _uuid
+
+    from app.models.task import Task, TaskStatus
 
     # Create the task assigned to the target agent
     task = Task(

@@ -12,17 +12,19 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import get_subject, is_global_admin, require_project_access
 from app.models.database import get_db
 from app.models.design_screen import DesignDecision, DesignScreen
 from app.models.finding import Fact, Insight, Nugget, Recommendation
-from app.core.permissions import get_subject, is_global_admin, require_project_access
 from app.services.finding_validity_service import (
     chain_research_validity_diagnostics,
     design_decision_research_validity_map,
     ensure_project_link_ids,
     finding_research_validity_map,
-    parse_json_list as _parse_json_list,
     provisional_finding_validity,
+)
+from app.services.finding_validity_service import (
+    parse_json_list as _parse_json_list,
 )
 from app.services.research_validity_service import persist_task_nugget_evidence_units
 
@@ -123,7 +125,7 @@ class NuggetResponse(BaseModel):
         cls,
         nugget: Nugget,
         research_validity: dict[str, Any] | None = None,
-    ) -> "NuggetResponse":
+    ) -> NuggetResponse:
         tags = _parse_json_list(nugget.tags) or ["untagged"]
         source_location = nugget.source_location or nugget.source or "unknown"
         return cls(
@@ -166,7 +168,7 @@ class FactResponse(BaseModel):
         cls,
         fact: Fact,
         research_validity: dict[str, Any] | None = None,
-    ) -> "FactResponse":
+    ) -> FactResponse:
         nugget_ids = _parse_json_list(fact.nugget_ids)
         return cls(
             id=fact.id,
@@ -208,7 +210,7 @@ class InsightResponse(BaseModel):
         cls,
         insight: Insight,
         research_validity: dict[str, Any] | None = None,
-    ) -> "InsightResponse":
+    ) -> InsightResponse:
         fact_ids = _parse_json_list(insight.fact_ids)
         return cls(
             id=insight.id,
@@ -253,7 +255,7 @@ class RecommendationResponse(BaseModel):
         cls,
         rec: Recommendation,
         research_validity: dict[str, Any] | None = None,
-    ) -> "RecommendationResponse":
+    ) -> RecommendationResponse:
         insight_ids = _parse_json_list(rec.insight_ids)
         return cls(
             id=rec.id,
@@ -887,7 +889,7 @@ class DesignDecisionResponse(BaseModel):
         cls,
         dd: DesignDecision,
         research_validity: dict[str, Any] | None = None,
-    ) -> "DesignDecisionResponse":
+    ) -> DesignDecisionResponse:
         rec_ids = _parse_json_list(dd.recommendation_ids)
         scr_ids = _parse_json_list(dd.screen_ids)
         return cls(

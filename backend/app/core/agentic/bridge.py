@@ -15,7 +15,8 @@ inline loops. Closing the generator (client disconnect) cancels the turn task.
 from __future__ import annotations
 
 import asyncio
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 _SENTINEL = object()
 

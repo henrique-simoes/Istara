@@ -167,8 +167,12 @@ async def test_global_admin_notification_bulk_routes_are_project_scoped(auth_hea
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         no_scope_list = await ac.get("/api/notifications", headers=auth_headers)
-        no_scope_count = await ac.get("/api/notifications/unread-count", headers=auth_headers)
-        no_scope_mark = await ac.post("/api/notifications/read-all", json={}, headers=auth_headers)
+        no_scope_count = await ac.get(
+            "/api/notifications/unread-count", headers=auth_headers
+        )
+        no_scope_mark = await ac.post(
+            "/api/notifications/read-all", json={}, headers=auth_headers
+        )
         list_response = await ac.get(
             "/api/notifications",
             params={"project_id": project_id},
@@ -273,12 +277,18 @@ async def test_project_member_notifications_are_scoped_without_admin():
         )
         await db.commit()
 
-    headers = {"Authorization": f"Bearer {create_token(user_id, 'scoped', 'researcher')}"}
+    headers = {
+        "Authorization": f"Bearer {create_token(user_id, 'scoped', 'researcher')}"
+    }
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         no_scope_list = await ac.get("/api/notifications", headers=headers)
-        no_scope_count = await ac.get("/api/notifications/unread-count", headers=headers)
-        no_scope_mark = await ac.post("/api/notifications/read-all", json={}, headers=headers)
+        no_scope_count = await ac.get(
+            "/api/notifications/unread-count", headers=headers
+        )
+        no_scope_mark = await ac.post(
+            "/api/notifications/read-all", json={}, headers=headers
+        )
         hidden_response = await ac.get(
             "/api/notifications",
             params={"project_id": hidden_project_id},
@@ -308,7 +318,9 @@ async def test_project_member_notifications_are_scoped_without_admin():
     assert no_scope_mark.json()["detail"] == "project_id is required"
     assert hidden_response.status_code == 404
     assert list_response.status_code == 200
-    assert [n["title"] for n in list_response.json()["notifications"]] == ["visible unread"]
+    assert [n["title"] for n in list_response.json()["notifications"]] == [
+        "visible unread"
+    ]
     assert count_response.json() == {"count": 1}
     assert mark_response.status_code == 200
     assert mark_response.json()["count"] == 1
@@ -317,7 +329,9 @@ async def test_project_member_notifications_are_scoped_without_admin():
         rows = (
             await db.execute(
                 select(Notification.title, Notification.read).where(
-                    Notification.title.in_(["visible unread", "hidden unread", "global unread"])
+                    Notification.title.in_(
+                        ["visible unread", "hidden unread", "global unread"]
+                    )
                 )
             )
         ).all()
@@ -392,7 +406,9 @@ async def test_notification_item_actions_are_bound_to_active_project():
         )
         await db.commit()
 
-    headers = {"Authorization": f"Bearer {create_token(user_id, 'scoped', 'researcher')}"}
+    headers = {
+        "Authorization": f"Bearer {create_token(user_id, 'scoped', 'researcher')}"
+    }
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         no_scope_read = await ac.post(
@@ -465,10 +481,16 @@ async def test_persist_notification_drops_project_bound_events_without_project_s
     assert notification is None
     async with async_session() as db:
         rows = (
-            await db.execute(
-                select(Notification).where(Notification.message == "missing project")
+            (
+                await db.execute(
+                    select(Notification).where(
+                        Notification.message == "missing project"
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert rows == []
 
 
@@ -531,13 +553,21 @@ async def test_notification_service_helpers_require_project_scope():
         with pytest.raises(ValueError, match="project_id is required"):
             await notification_service.delete_notification(db, delete_id)
 
-        assert await notification_service.get_unread_count(db, project_id=project_id) == 2
-        assert await notification_service.mark_read(db, read_id, project_id=project_id) is True
-        assert await notification_service.delete_notification(
-            db,
-            other_id,
-            project_id=project_id,
-        ) is False
+        assert (
+            await notification_service.get_unread_count(db, project_id=project_id) == 2
+        )
+        assert (
+            await notification_service.mark_read(db, read_id, project_id=project_id)
+            is True
+        )
+        assert (
+            await notification_service.delete_notification(
+                db,
+                other_id,
+                project_id=project_id,
+            )
+            is False
+        )
         assert await notification_service.mark_all_read(db, project_id=project_id) == 1
 
         rows = (
@@ -555,7 +585,9 @@ async def test_notification_service_helpers_require_project_scope():
 
 
 @pytest.mark.asyncio
-async def test_notification_preferences_use_wrapped_payload_and_validate_categories(auth_headers):
+async def test_notification_preferences_use_wrapped_payload_and_validate_categories(
+    auth_headers,
+):
     """Preference updates should match the frontend API helper and reject orphans."""
     await init_db()
     transport = ASGITransport(app=app)

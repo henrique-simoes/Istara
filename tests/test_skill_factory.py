@@ -127,9 +127,7 @@ async def test_generated_skill_preserves_literal_prompt_braces(monkeypatch):
         skill_type=SkillType.QUANTITATIVE,
         plan_prompt="Plan for {context}; keep ux-law:{id}.",
         execute_prompt=(
-            "Context: {context}\n"
-            "Survey Data: {content}\n"
-            "Tag findings with ux-law:{id}."
+            "Context: {context}\nSurvey Data: {content}\nTag findings with ux-law:{id}."
         ),
         output_schema='{"nuggets": [{"text": "..."}], "summary": "..."}',
     )
@@ -150,7 +148,9 @@ async def test_generated_skill_preserves_literal_prompt_braces(monkeypatch):
     assert "Tag findings with ux-law:{id}." in prompt
     assert "candidate/provisional Research Spine artifacts" in prompt
     assert "<research_spine_contract>" in prompt
-    assert "Sources and exact source spans come before trusted Atomic Research" in prompt
+    assert (
+        "Sources and exact source spans come before trusted Atomic Research" in prompt
+    )
     assert "Do not describe any artifact as accepted" in prompt
 
     assert output.success is True
@@ -197,7 +197,9 @@ async def test_generated_skill_plan_falls_back_on_empty_llm_response(monkeypatch
         output_schema='{"summary": "..."}',
     )
 
-    plan = await skill_cls().plan(SkillInput(project_id="project-1", user_context="Need a plan"))
+    plan = await skill_cls().plan(
+        SkillInput(project_id="project-1", user_context="Need a plan")
+    )
 
     assert plan["skill"] == "empty-plan-skill"
     assert plan["fallback"] is True
@@ -222,7 +224,9 @@ async def test_generated_skill_plan_falls_back_on_llm_error(monkeypatch):
         output_schema='{"summary": "..."}',
     )
 
-    plan = await skill_cls().plan(SkillInput(project_id="project-1", user_context="Provider down"))
+    plan = await skill_cls().plan(
+        SkillInput(project_id="project-1", user_context="Provider down")
+    )
 
     assert plan["skill"] == "error-plan-skill"
     assert plan["fallback"] is True
@@ -288,7 +292,9 @@ async def test_generated_skill_repairs_non_json_llm_response(monkeypatch):
                 {
                     "summary": "Onboarding friction is high.",
                     "nuggets": [],
-                    "facts": [{"text": "The failed response identified onboarding friction."}],
+                    "facts": [
+                        {"text": "The failed response identified onboarding friction."}
+                    ],
                     "insights": [],
                     "recommendations": [],
                     "suggestions": [],
@@ -317,7 +323,10 @@ async def test_generated_skill_repairs_non_json_llm_response(monkeypatch):
     assert output.summary == "Onboarding friction is high."
     assert "json-repair-execute-skill_raw_response.txt" in output.artifacts
     assert len(dispatcher_stub.calls) == 2
-    assert [method for method, _ in dispatcher_stub.calls] == ["structured", "structured"]
+    assert [method for method, _ in dispatcher_stub.calls] == [
+        "structured",
+        "structured",
+    ]
     native_repair = dispatcher_stub.calls[1][1]
     assert native_repair["purpose"] == "skill.repair_native"
     assert native_repair["schema"]["type"] == "object"
@@ -325,7 +334,9 @@ async def test_generated_skill_repairs_non_json_llm_response(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_generated_skill_plain_json_repair_fallback_when_native_repair_fails(monkeypatch):
+async def test_generated_skill_plain_json_repair_fallback_when_native_repair_fails(
+    monkeypatch,
+):
     monkeypatch.setattr(settings, "llm_provider", "ollama")
     dispatcher_stub = _StubAgentic(
         structured_results=[
@@ -373,7 +384,9 @@ async def test_generated_skill_plain_json_repair_fallback_when_native_repair_fai
 
 
 @pytest.mark.asyncio
-async def test_generated_skill_ignores_classical_provider_when_running_native_repair(monkeypatch):
+async def test_generated_skill_ignores_classical_provider_when_running_native_repair(
+    monkeypatch,
+):
     monkeypatch.setattr(settings, "llm_provider", "lmstudio")
     dispatcher_stub = _StubAgentic(
         structured_results=[
@@ -413,7 +426,10 @@ async def test_generated_skill_ignores_classical_provider_when_running_native_re
     assert output.json_success is True
     assert output.summary == "Recovered through Pi native repair."
     assert len(dispatcher_stub.calls) == 2
-    assert [method for method, _ in dispatcher_stub.calls] == ["structured", "structured"]
+    assert [method for method, _ in dispatcher_stub.calls] == [
+        "structured",
+        "structured",
+    ]
     assert [kwargs["purpose"] for _, kwargs in dispatcher_stub.calls] == [
         "skill.execute",
         "skill.repair_native",
@@ -433,7 +449,12 @@ async def test_generated_skill_repairs_valid_json_with_empty_findings(monkeypatc
                 json.dumps(
                     {
                         "summary": "Extracted findings.",
-                        "nuggets": [{"text": "Participant could not find discount code.", "source": "test"}],
+                        "nuggets": [
+                            {
+                                "text": "Participant could not find discount code.",
+                                "source": "test",
+                            }
+                        ],
                         "facts": [{"text": "Discount discovery failed in checkout."}],
                         "insights": [],
                         "recommendations": [],
@@ -456,14 +477,20 @@ async def test_generated_skill_repairs_valid_json_with_empty_findings(monkeypatc
     )
 
     output = await skill_cls().execute(
-        SkillInput(project_id="project-1", user_context="Participant could not find discount code.")
+        SkillInput(
+            project_id="project-1",
+            user_context="Participant could not find discount code.",
+        )
     )
 
     assert output.success is True
     assert output.summary == "Extracted findings."
     assert output.nuggets[0]["text"] == "Participant could not find discount code."
     assert len(dispatcher_stub.calls) == 2
-    assert [method for method, _ in dispatcher_stub.calls] == ["structured", "completion"]
+    assert [method for method, _ in dispatcher_stub.calls] == [
+        "structured",
+        "completion",
+    ]
     assert "schema" not in dispatcher_stub.calls[1][1]
     assert "empty-findings-repair-skill_empty_findings_repair.txt" in output.artifacts
 
@@ -509,9 +536,14 @@ async def test_generated_skill_attempts_model_repair_before_deterministic_fallba
     assert "columns: date, sessions, nps" in output.facts[0]["text"]
     assert "preliminary" in output.insights[0]["text"]
     assert "deterministic evidence fallback was used" in output.suggestions[0]
-    assert "deterministic-fallback-skill_deterministic_fallback.json" in output.artifacts
+    assert (
+        "deterministic-fallback-skill_deterministic_fallback.json" in output.artifacts
+    )
     assert len(dispatcher_stub.calls) == 2
-    assert [method for method, _ in dispatcher_stub.calls] == ["structured", "completion"]
+    assert [method for method, _ in dispatcher_stub.calls] == [
+        "structured",
+        "completion",
+    ]
     assert dispatcher_stub.calls[1][1]["purpose"] == "skill.repair_findings"
 
 
@@ -524,7 +556,9 @@ async def test_generated_skill_normalizes_hmw_schema_fields(monkeypatch):
                     "source_insights": [
                         {
                             "text": "Users cannot find the promo code field.",
-                            "evidence": ["3 of 8 participants failed to locate the promo code field."],
+                            "evidence": [
+                                "3 of 8 participants failed to locate the promo code field."
+                            ],
                             "data_point_count": 3,
                             "confidence": "high",
                         }
@@ -562,7 +596,10 @@ async def test_generated_skill_normalizes_hmw_schema_fields(monkeypatch):
     )
 
     assert output.success is True
-    assert output.nuggets[0]["text"] == "3 of 8 participants failed to locate the promo code field."
+    assert (
+        output.nuggets[0]["text"]
+        == "3 of 8 participants failed to locate the promo code field."
+    )
     assert output.facts[0]["text"].startswith("Users cannot find the promo code field.")
     assert output.insights[0]["text"] == "Users cannot find the promo code field."
     assert output.recommendations[0]["text"].startswith("Use this HMW for ideation:")
@@ -621,7 +658,10 @@ async def test_generated_skill_normalizes_longitudinal_schema_fields(monkeypatch
     assert "NPS observed data points" in output.nuggets[0]["text"]
     assert "HEART happiness tracks NPS" in output.facts[0]["text"]
     assert "NPS regression severity=major" in output.insights[0]["text"]
-    assert output.recommendations[0]["text"] == "Investigate the NPS regression (needs_investigation)."
+    assert (
+        output.recommendations[0]["text"]
+        == "Investigate the NPS regression (needs_investigation)."
+    )
 
 
 @pytest.mark.asyncio
@@ -666,7 +706,9 @@ async def test_generated_skill_counts_native_schema_in_context_budget(monkeypatc
     assert method == "structured"
     expected_floor = (
         count_tokens(captured["messages"][0]["content"])
-        + count_tokens("You are a meticulous UX Research Auditor. You prioritize evidence over assumption.")
+        + count_tokens(
+            "You are a meticulous UX Research Auditor. You prioritize evidence over assumption."
+        )
         + captured["params"].max_tokens
         + count_tokens(json.dumps(captured["schema"], ensure_ascii=False))
     )
@@ -676,7 +718,9 @@ async def test_generated_skill_counts_native_schema_in_context_budget(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_generated_skill_uses_normalized_schema_when_native_schema_is_too_large(monkeypatch):
+async def test_generated_skill_uses_normalized_schema_when_native_schema_is_too_large(
+    monkeypatch,
+):
     dispatcher_stub = _StubAgentic(
         structured_results=[
             _structured_outcome(
@@ -696,7 +740,9 @@ async def test_generated_skill_uses_normalized_schema_when_native_schema_is_too_
     output_schema = json.dumps(
         {
             "summary": "...",
-            "fields": {f"field_{idx}": {"nested": "...", "type": "label"} for idx in range(200)},
+            "fields": {
+                f"field_{idx}": {"nested": "...", "type": "label"} for idx in range(200)
+            },
         }
     )
     skill_cls = create_skill(
@@ -718,17 +764,27 @@ async def test_generated_skill_uses_normalized_schema_when_native_schema_is_too_
     method, captured = dispatcher_stub.calls[0]
     assert method == "structured"
     assert captured["schema"]["type"] == "object"
-    assert {"summary", "nuggets", "facts", "insights", "recommendations", "suggestions"}.issubset(
-        set(captured["schema"].get("properties", {}))
-    )
+    assert {
+        "summary",
+        "nuggets",
+        "facts",
+        "insights",
+        "recommendations",
+        "suggestions",
+    }.issubset(set(captured["schema"].get("properties", {})))
     assert output_schema not in captured["messages"][0]["content"]
     budget = json.loads(output.artifacts["oversized-schema-skill_schema_budget.json"])
     assert budget["schema_name"] == "oversized_schema_skill_normalized_output"
     assert budget["used_fallback"] is True
     assert budget["reason"] == "schema-token-budget-exceeded"
-    assert {"summary", "nuggets", "facts", "insights", "recommendations", "suggestions"}.issubset(
-        set(budget["preserved_fields"])
-    )
+    assert {
+        "summary",
+        "nuggets",
+        "facts",
+        "insights",
+        "recommendations",
+        "suggestions",
+    }.issubset(set(budget["preserved_fields"]))
 
 
 def test_example_output_schema_allows_business_type_fields():

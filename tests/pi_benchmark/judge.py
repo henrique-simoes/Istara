@@ -82,17 +82,20 @@ class Rubric:
 # A minimal default rubric bank; a live run supplies owner-versioned rubrics per axis.
 DEFAULT_RUBRIC_BANK: dict[str, Rubric] = {
     "output_quality": Rubric(
-        "output_quality", "1.0.0",
+        "output_quality",
+        "1.0.0",
         "Score each response 1-7 for correctness, grounding, and completeness. "
         "Prefer responses whose claims trace to provided evidence.",
     ),
     "a2a": Rubric(
-        "a2a", "1.0.0",
+        "a2a",
+        "1.0.0",
         "Score each multi-agent transcript 1-7 for goal completion, coordination "
         "efficiency, and absence of redundant rounds.",
     ),
     "spine_phase": Rubric(
-        "spine_phase", "1.0.0",
+        "spine_phase",
+        "1.0.0",
         "Score adherence to the research-validity spine phase under review 1-7.",
     ),
 }
@@ -142,7 +145,9 @@ class JudgeLayer:
         digest = hashlib.sha256(pair_key.encode()).digest()
         return bool(digest[0] & 1)
 
-    def _blind(self, pair_key: str, pi_output: str, legacy_output: str) -> tuple[dict[str, str], dict[str, str]]:
+    def _blind(
+        self, pair_key: str, pi_output: str, legacy_output: str
+    ) -> tuple[dict[str, str], dict[str, str]]:
         """Return ``(arms, position)``: arms maps A/B → text, position maps A/B → engine."""
         if self._swap(pair_key):
             return {"A": legacy_output, "B": pi_output}, {"A": "legacy", "B": "pi"}
@@ -170,7 +175,13 @@ class JudgeLayer:
 
     # ── judging ──────────────────────────────────────────────────────────────
     def judge(
-        self, *, scenario_id: str, run_id: str, axis: str, pi_output: str, legacy_output: str,
+        self,
+        *,
+        scenario_id: str,
+        run_id: str,
+        axis: str,
+        pi_output: str,
+        legacy_output: str,
     ) -> Judgment:
         rubric = self.rubric_for(axis)
         cache_key = (scenario_id, run_id, rubric.version, self.config.judge_model)
@@ -191,15 +202,24 @@ class JudgeLayer:
 
         raw = self._judge_fn(prompt, arms)
         winner_slot = str(raw.get("winner", "tie")).upper()
-        winner = position.get(winner_slot, "tie") if winner_slot in ("A", "B") else "tie"
+        winner = (
+            position.get(winner_slot, "tie") if winner_slot in ("A", "B") else "tie"
+        )
         scores = {
             position["A"]: float(raw.get("score_a", 0.0)),
             position["B"]: float(raw.get("score_b", 0.0)),
         }
         judgment = Judgment(
-            scenario_id=scenario_id, run_id=run_id, axis=axis, rubric_version=rubric.version,
-            judge_model=self.config.judge_model, prompt_sha256=prompt_sha, winner=winner,
-            scores=scores, position=position, cached=False,
+            scenario_id=scenario_id,
+            run_id=run_id,
+            axis=axis,
+            rubric_version=rubric.version,
+            judge_model=self.config.judge_model,
+            prompt_sha256=prompt_sha,
+            winner=winner,
+            scores=scores,
+            position=position,
+            cached=False,
         )
         self._cache[cache_key] = judgment
         return judgment

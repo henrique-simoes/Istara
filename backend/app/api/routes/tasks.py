@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -10,12 +10,12 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.agent import agent as agent_orchestrator
+from app.core.permissions import get_visible_project_or_404
 from app.models.database import get_db
 from app.models.document import Document
 from app.models.task import Task, TaskStatus
 from app.models.task_review import TaskReviewEvent
-from app.core.agent import agent as agent_orchestrator
-from app.core.permissions import get_visible_project_or_404
 
 LOCK_EXPIRY_MINUTES = 30
 TASK_PRIORITIES = {"urgent", "high", "medium", "low"}
@@ -718,7 +718,7 @@ async def request_task_revision(
         "rejected_after_done" if previous_status == TaskStatus.DONE else "needs_revision"
     )
 
-    from app.core.task_review import record_task_review_event, diagnose_review_event
+    from app.core.task_review import diagnose_review_event, record_task_review_event
 
     event = await record_task_review_event(
         db,
@@ -963,13 +963,13 @@ async def lock_task(
         db, request, task_id, project_id, min_role="researcher"
     )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Check if already locked by someone else (and not expired)
     if task.locked_by and task.locked_by != user_id:
         expires = task.lock_expires_at
         if expires and expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
+            expires = expires.replace(tzinfo=UTC)
         if expires and expires > now:
             raise HTTPException(
                 status_code=409,

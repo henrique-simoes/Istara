@@ -277,7 +277,9 @@ def test_compute_stats_count_reachable_nodes_separately_from_ready_nodes():
 
 
 @pytest.mark.asyncio
-async def test_health_check_discovers_lmstudio_capabilities_without_loaded_model(monkeypatch):
+async def test_health_check_discovers_lmstudio_capabilities_without_loaded_model(
+    monkeypatch,
+):
     registry = ComputeRegistry()
     node = ComputeNode(
         node_id="lmstudio",
@@ -291,7 +293,9 @@ async def test_health_check_discovers_lmstudio_capabilities_without_loaded_model
     async def get_client():
         return client
 
-    async def detect_capabilities(host, api_key="", provider_type="openai_compat", active_probe=None):
+    async def detect_capabilities(
+        host, api_key="", provider_type="openai_compat", active_probe=None
+    ):
         return {
             "qwen3": SimpleNamespace(
                 to_dict=lambda: {
@@ -519,7 +523,10 @@ def test_project_scoped_relay_stays_visible_beside_local_same_endpoint(monkeypat
     stats = registry.get_stats(project_id="project-a")
 
     assert set(registry._nodes) == {"local-lmstudio", "relay-lmstudio"}
-    assert {node["node_id"] for node in stats["nodes"]} == {"local-lmstudio", "relay-lmstudio"}
+    assert {node["node_id"] for node in stats["nodes"]} == {
+        "local-lmstudio",
+        "relay-lmstudio",
+    }
     assert stats["hardware_node_count"] == 1
 
 
@@ -559,7 +566,9 @@ def test_project_scoped_relay_stays_distinct_from_unscoped_relay_same_endpoint()
     assert [node["node_id"] for node in stats["nodes"]] == ["relay-scoped"]
 
 
-def test_compute_stats_keep_distinct_local_services_but_count_machine_ram_once(monkeypatch):
+def test_compute_stats_keep_distinct_local_services_but_count_machine_ram_once(
+    monkeypatch,
+):
     import app.core.compute_registry_helpers as compute_registry_helpers
 
     monkeypatch.setattr(
@@ -807,7 +816,9 @@ async def test_registry_translates_response_format_to_ollama_raw_schema(monkeypa
 
 
 @pytest.mark.asyncio
-async def test_chat_readiness_uses_positive_cache_for_repeated_status_checks(monkeypatch):
+async def test_chat_readiness_uses_positive_cache_for_repeated_status_checks(
+    monkeypatch,
+):
     registry = ComputeRegistry()
     client = _SuccessfulChatClient()
     node = ComputeNode(
@@ -844,7 +855,9 @@ async def test_chat_readiness_uses_positive_cache_for_repeated_status_checks(mon
 
 
 @pytest.mark.asyncio
-async def test_registry_openai_compatible_chat_suppresses_reasoning_content(monkeypatch):
+async def test_registry_openai_compatible_chat_suppresses_reasoning_content(
+    monkeypatch,
+):
     registry = ComputeRegistry()
     node = ComputeNode(
         node_id="qwen",
@@ -941,8 +954,13 @@ async def test_registry_chat_emits_content_free_donor_route_telemetry(monkeypatc
 
     operations = [call.kwargs["operation"] for call in record_event.await_args_list]
     assert operations == ["donor.selected", "donor.served"]
-    assert all(call.kwargs["project_id"] == "project-a" for call in record_event.await_args_list)
-    assert all(call.kwargs["donor_id"] == "qwen-node" for call in record_event.await_args_list)
+    assert all(
+        call.kwargs["project_id"] == "project-a"
+        for call in record_event.await_args_list
+    )
+    assert all(
+        call.kwargs["donor_id"] == "qwen-node" for call in record_event.await_args_list
+    )
     assert all("host" not in call.kwargs for call in record_event.await_args_list)
 
 
@@ -973,9 +991,19 @@ async def test_relay_registration_emits_project_scoped_lifecycle_telemetry(monke
     await asyncio.sleep(0)
 
     operations = [call.kwargs["operation"] for call in record_event.await_args_list]
-    assert operations == ["donor.registered", "donor.visible", "donor.reachable", "donor.ready"]
-    assert all(call.kwargs["project_id"] == "project-a" for call in record_event.await_args_list)
-    assert all(call.kwargs["donor_id"] == "relay-node" for call in record_event.await_args_list)
+    assert operations == [
+        "donor.registered",
+        "donor.visible",
+        "donor.reachable",
+        "donor.ready",
+    ]
+    assert all(
+        call.kwargs["project_id"] == "project-a"
+        for call in record_event.await_args_list
+    )
+    assert all(
+        call.kwargs["donor_id"] == "relay-node" for call in record_event.await_args_list
+    )
 
 
 @pytest.mark.asyncio
@@ -1022,7 +1050,9 @@ async def test_openai_compatible_chat_strips_inline_thinking(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_openai_compatible_chat_applies_thinking_control_without_payload_field(monkeypatch):
+async def test_openai_compatible_chat_applies_thinking_control_without_payload_field(
+    monkeypatch,
+):
     node = ComputeNode(
         node_id="qwen",
         name="Qwen",
@@ -1086,7 +1116,10 @@ async def test_openai_compatible_stream_strips_inline_thinking(monkeypatch):
 
     monkeypatch.setattr(node, "_get_client", get_client)
 
-    chunks = [chunk async for chunk in node.chat_stream([{"role": "user", "content": "hello"}])]
+    chunks = [
+        chunk
+        async for chunk in node.chat_stream([{"role": "user", "content": "hello"}])
+    ]
 
     assert chunks == ["Final streamed"]
 

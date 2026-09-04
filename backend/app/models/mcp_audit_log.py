@@ -1,6 +1,6 @@
 """MCP audit log model — tracks every MCP request for security monitoring."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -19,7 +19,7 @@ class MCPAuditEntry(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     tool_name: Mapped[str] = mapped_column(String(100), nullable=False)
     project_id: Mapped[str] = mapped_column(String(36), default="", index=True)

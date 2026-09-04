@@ -33,37 +33,57 @@ async def test_scenario11_reasoningbank_memento_and_skillstats_are_governed_and_
     project_a = f"pi-prod-s11a-{uuid.uuid4()}"
     project_b = f"pi-prod-s11b-{uuid.uuid4()}"
     async with async_session() as db:
-        db.add_all([
-            Project(id=project_a, name="Pi Prod S11 A"),
-            Project(id=project_b, name="Pi Prod S11 B"),
-        ])
+        db.add_all(
+            [
+                Project(id=project_a, name="Pi Prod S11 A"),
+                Project(id=project_b, name="Pi Prod S11 B"),
+            ]
+        )
         await db.commit()
         # Snapshot pre-existing global (project-blank) rows so the "no global
         # write" assertions measure *this run's* delta, not the shared/persistent
         # DB's accumulated state from other suites.
         global_items_before = {
-            i.id for i in (await db.execute(
-                select(ReasoningMemoryItem).where(ReasoningMemoryItem.project_id == "")
-            )).scalars().all()
+            i.id
+            for i in (
+                await db.execute(
+                    select(ReasoningMemoryItem).where(
+                        ReasoningMemoryItem.project_id == ""
+                    )
+                )
+            )
+            .scalars()
+            .all()
         }
         global_stats_before = {
-            s.id for s in (await db.execute(
-                select(ModelSkillStats).where(ModelSkillStats.project_id == "")
-            )).scalars().all()
+            s.id
+            for s in (
+                await db.execute(
+                    select(ModelSkillStats).where(ModelSkillStats.project_id == "")
+                )
+            )
+            .scalars()
+            .all()
         }
 
     # A real Pi run occurs (reads the project), after which the memory-governance
     # path records the run's outcomes through the real services.
     sup = PiRuntimeSupervisor()
-    svc = faux_service([tool_call("list_tasks", {}), final_text("Reviewed the project.")], sup)
+    svc = faux_service(
+        [tool_call("list_tasks", {}), final_text("Reviewed the project.")], sup
+    )
 
     async def authority_exec(name, params, pid, aid):
         return await execute_tool(name, params, pid, agent_id=aid)
 
     try:
         async for _ in svc.run_chat_turn(
-            project_id=project_a, agent_id="istara-main", system_prompt=_SYS,
-            history=[], user_text="Review the project.", tool_executor=authority_exec,
+            project_id=project_a,
+            agent_id="istara-main",
+            system_prompt=_SYS,
+            history=[],
+            user_text="Review the project.",
+            tool_executor=authority_exec,
             session_key=f"{project_a}:memory-gov",
         ):
             pass
@@ -73,21 +93,41 @@ async def test_scenario11_reasoningbank_memento_and_skillstats_are_governed_and_
     # A raw success that was NOT independently verified must not become a strong
     # positive signal — the memento memory records it as a failure outcome.
     await reasoning_bank.record_task_execution(
-        project_id=project_a, agent_id="istara-main", task_id=f"t-raw-{uuid.uuid4()}",
-        task_title="Raw success step", task_description="unverified", skill_name="pi-analysis",
-        output_summary="did the thing", success=True, verified=False,
+        project_id=project_a,
+        agent_id="istara-main",
+        task_id=f"t-raw-{uuid.uuid4()}",
+        task_title="Raw success step",
+        task_description="unverified",
+        skill_name="pi-analysis",
+        output_summary="did the thing",
+        success=True,
+        verified=False,
     )
     # A verified success is recorded as a success outcome.
     await reasoning_bank.record_task_execution(
-        project_id=project_a, agent_id="istara-main", task_id=f"t-ok-{uuid.uuid4()}",
-        task_title="Verified success step", task_description="verified", skill_name="pi-analysis",
-        output_summary="did the thing, checked", success=True, verified=True,
+        project_id=project_a,
+        agent_id="istara-main",
+        task_id=f"t-ok-{uuid.uuid4()}",
+        task_title="Verified success step",
+        task_description="verified",
+        skill_name="pi-analysis",
+        output_summary="did the thing, checked",
+        success=True,
+        verified=True,
     )
 
     async with async_session() as db:
-        items = (await db.execute(
-            select(ReasoningMemoryItem).where(ReasoningMemoryItem.project_id == project_a)
-        )).scalars().all()
+        items = (
+            (
+                await db.execute(
+                    select(ReasoningMemoryItem).where(
+                        ReasoningMemoryItem.project_id == project_a
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
     outcomes = sorted(i.outcome for i in items)
     assert "failure" in outcomes  # raw success stored as failure (not a strong signal)
     assert "success" in outcomes  # verified success stored as success
@@ -98,27 +138,55 @@ async def test_scenario11_reasoningbank_memento_and_skillstats_are_governed_and_
     # No global-memory rows were written by the Pi path (project_id == "") —
     # measured as this run's delta over any pre-existing global rows.
     async with async_session() as db:
-        global_items = (await db.execute(
-            select(ReasoningMemoryItem).where(ReasoningMemoryItem.project_id == "")
-        )).scalars().all()
+        global_items = (
+            (
+                await db.execute(
+                    select(ReasoningMemoryItem).where(
+                        ReasoningMemoryItem.project_id == ""
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
     new_global_items = [i for i in global_items if i.id not in global_items_before]
     assert new_global_items == []
 
     # ModelSkillStats: a blank-project skill-stat write is rejected (no global
     # skill stats); a project-scoped one is recorded under source "production".
     await telemetry_recorder.record_model_performance(
-        skill_name="pi-analysis", model_name="deepseek-v4-pro", quality=0.9, project_id=""
+        skill_name="pi-analysis",
+        model_name="deepseek-v4-pro",
+        quality=0.9,
+        project_id="",
     )
     await telemetry_recorder.record_model_performance(
-        skill_name="pi-analysis", model_name="deepseek-v4-pro", quality=0.9, project_id=project_a
+        skill_name="pi-analysis",
+        model_name="deepseek-v4-pro",
+        quality=0.9,
+        project_id=project_a,
     )
     async with async_session() as db:
-        global_stats = (await db.execute(
-            select(ModelSkillStats).where(ModelSkillStats.project_id == "")
-        )).scalars().all()
-        a_stats = (await db.execute(
-            select(ModelSkillStats).where(ModelSkillStats.project_id == project_a)
-        )).scalars().all()
+        global_stats = (
+            (
+                await db.execute(
+                    select(ModelSkillStats).where(ModelSkillStats.project_id == "")
+                )
+            )
+            .scalars()
+            .all()
+        )
+        a_stats = (
+            (
+                await db.execute(
+                    select(ModelSkillStats).where(
+                        ModelSkillStats.project_id == project_a
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
     new_global_stats = [s for s in global_stats if s.id not in global_stats_before]
     assert new_global_stats == []  # the blank-project skill-stat write was rejected
     assert len(a_stats) == 1

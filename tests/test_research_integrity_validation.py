@@ -32,7 +32,16 @@ from app.core.validation_executor import ValidationExecutor, ValidationResult
 from app.core.report_manager import ReportManager, SCOPE_MAP, SYNTHESIS_SKILLS
 
 # Ensure ALL models are registered with Base (mirrors database.init_db imports)
-from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
+from app.models import (
+    agent,
+    codebook,
+    document,
+    finding,
+    message,
+    project,
+    session,
+    task,
+)  # noqa: F401
 from app.models import user  # noqa: F401
 from app.models import llm_server, method_metric  # noqa: F401
 from app.core.checkpoint import TaskCheckpoint  # noqa: F401
@@ -60,6 +69,7 @@ from app.models.autoresearch_experiment import AutoresearchExperiment  # noqa: F
 # Fixtures: in-memory async SQLite for model tests
 # ============================================================
 
+
 @pytest.fixture
 async def db_session():
     """Create an in-memory async SQLite session for model tests."""
@@ -71,7 +81,9 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with session_factory() as session:
         yield session
 
@@ -83,6 +95,7 @@ async def db_session():
 # ============================================================
 # 1. CodebookVersion Model Tests
 # ============================================================
+
 
 class TestValidationExecutor:
     """Test the ValidationExecutor multi-pass validation."""
@@ -99,7 +112,9 @@ class TestValidationExecutor:
         input_data = MagicMock()
 
         # Mock compute_registry.chat to simulate an LLM failure
-        with patch("app.core.validation_executor.ValidationExecutor._adversarial_review") as mock_review:
+        with patch(
+            "app.core.validation_executor.ValidationExecutor._adversarial_review"
+        ) as mock_review:
             mock_review.return_value = ValidationResult(
                 passed=True, method="adversarial_review", confidence=0.5
             )

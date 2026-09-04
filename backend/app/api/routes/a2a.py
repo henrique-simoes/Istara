@@ -395,9 +395,7 @@ async def a2a_jsonrpc(request: Request):
 
         body_hash = hashlib.sha256(raw_body).hexdigest()
         replay_key = hashlib.sha256(
-            f"{authorized.get('id', '')}:{method}:{json.dumps(req_id, sort_keys=True, default=str)}:{body_hash}".encode(
-                "utf-8"
-            )
+            f"{authorized.get('id', '')}:{method}:{json.dumps(req_id, sort_keys=True, default=str)}:{body_hash}".encode()
         ).hexdigest()
         if _a2a_replay_cache.seen_or_store(
             replay_key,
@@ -567,8 +565,8 @@ async def a2a_jsonrpc(request: Request):
                 req_id,
             )
 
-        from app.services import agent_service
         from app.api.agent_project_scope import filter_agent_dicts_for_project
+        from app.services import agent_service
 
         async with async_session() as db:
             denied = await _authorize_project_scope(

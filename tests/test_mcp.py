@@ -156,7 +156,9 @@ async def test_mcp_clients_returns_list(auth_headers):
     project = await _seed_project()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/mcp/clients?project_id={project.id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/mcp/clients?project_id={project.id}", headers=auth_headers
+        )
         assert response.status_code == 200
         body = response.json()
         assert isinstance(body["servers"], list)
@@ -175,7 +177,9 @@ async def test_mcp_clients_require_project_id_for_project_facing_api(auth_header
 
 
 @pytest.mark.asyncio
-async def test_mcp_toggle_reports_restart_required_when_config_enabled(auth_headers, monkeypatch):
+async def test_mcp_toggle_reports_restart_required_when_config_enabled(
+    auth_headers, monkeypatch
+):
     await init_db()
     monkeypatch.setattr("app.mcp.server.MCP_AVAILABLE", True)
     persisted: dict[str, str] = {}
@@ -296,14 +300,26 @@ async def test_mcp_client_registration_reuses_same_http_server(auth_headers):
         first = await ac.post(
             "/api/mcp/clients",
             headers=auth_headers,
-            json={"name": "MCP Brasil", "url": url, "transport": "http", "project_id": project.id},
+            json={
+                "name": "MCP Brasil",
+                "url": url,
+                "transport": "http",
+                "project_id": project.id,
+            },
         )
         second = await ac.post(
             "/api/mcp/clients",
             headers=auth_headers,
-            json={"name": "MCP Brasil", "url": url, "transport": "http", "project_id": project.id},
+            json={
+                "name": "MCP Brasil",
+                "url": url,
+                "transport": "http",
+                "project_id": project.id,
+            },
         )
-        listed = await ac.get(f"/api/mcp/clients?project_id={project.id}", headers=auth_headers)
+        listed = await ac.get(
+            f"/api/mcp/clients?project_id={project.id}", headers=auth_headers
+        )
 
     assert first.status_code == 201
     assert second.status_code == 201
@@ -330,21 +346,37 @@ async def test_mcp_clients_are_project_scoped_for_project_admins(auth_headers):
         created_a = await ac.post(
             "/api/mcp/clients",
             headers=auth_headers,
-            json={"name": "MCP Brasil", "url": url, "transport": "http", "project_id": project_a.id},
+            json={
+                "name": "MCP Brasil",
+                "url": url,
+                "transport": "http",
+                "project_id": project_a.id,
+            },
         )
         created_b = await ac.post(
             "/api/mcp/clients",
             headers=auth_headers,
-            json={"name": "MCP Brasil", "url": url, "transport": "http", "project_id": project_b.id},
+            json={
+                "name": "MCP Brasil",
+                "url": url,
+                "transport": "http",
+                "project_id": project_b.id,
+            },
         )
-        list_a = await ac.get(f"/api/mcp/clients?project_id={project_a.id}", headers=project_admin_headers)
-        list_b = await ac.get(f"/api/mcp/clients?project_id={project_b.id}", headers=project_admin_headers)
+        list_a = await ac.get(
+            f"/api/mcp/clients?project_id={project_a.id}", headers=project_admin_headers
+        )
+        list_b = await ac.get(
+            f"/api/mcp/clients?project_id={project_b.id}", headers=project_admin_headers
+        )
 
     assert created_a.status_code == 201
     assert created_b.status_code == 201
     assert created_a.json()["id"] != created_b.json()["id"]
     assert list_a.status_code == 200
-    assert [server["project_id"] for server in list_a.json()["servers"]] == [project_a.id]
+    assert [server["project_id"] for server in list_a.json()["servers"]] == [
+        project_a.id
+    ]
     assert list_b.status_code == 404
 
 
@@ -354,7 +386,9 @@ async def test_mcp_project_admin_can_discover_project_client(auth_headers, monke
     project = await _seed_project("MCP Discover Scope")
     project_admin_id = f"mcp-discover-admin-{uuid.uuid4()}"
     await _seed_member(project.id, project_admin_id, "project_admin")
-    project_admin_headers = _headers(project_admin_id, "mcp-discover-admin", "researcher")
+    project_admin_headers = _headers(
+        project_admin_id, "mcp-discover-admin", "researcher"
+    )
     monkeypatch.setattr("app.services.mcp_client_manager.MCP_CLIENT_AVAILABLE", False)
 
     transport = ASGITransport(app=app)
@@ -377,7 +411,10 @@ async def test_mcp_project_admin_can_discover_project_client(auth_headers, monke
 
     assert created.status_code == 201
     assert response.status_code == 400
-    assert response.json()["detail"] == "MCP client library not installed. Run: pip install mcp"
+    assert (
+        response.json()["detail"]
+        == "MCP client library not installed. Run: pip install mcp"
+    )
 
 
 @pytest.mark.asyncio
@@ -427,7 +464,9 @@ async def test_mcp_health_sanitizes_transport_exception(auth_headers, monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_mcp_client_detail_actions_require_active_project_scope(auth_headers, monkeypatch):
+async def test_mcp_client_detail_actions_require_active_project_scope(
+    auth_headers, monkeypatch
+):
     await init_db()
     project_a = await _seed_project("MCP Detail Scope A")
     project_b = await _seed_project("MCP Detail Scope B")
@@ -552,10 +591,12 @@ async def test_mcp_client_service_helpers_require_matching_project_scope():
         assert await list_all_tools(db, project_id=project_b) == []
         assert await unregister_server(db, server_id, project_id=project_b) is False
 
-        assert [item["id"] for item in await list_servers(db, project_id=project_a)] == [server_id]
-        assert [item["name"] for item in await list_all_tools(db, project_id=project_a)] == [
-            "service.visible"
-        ]
+        assert [
+            item["id"] for item in await list_servers(db, project_id=project_a)
+        ] == [server_id]
+        assert [
+            item["name"] for item in await list_all_tools(db, project_id=project_a)
+        ] == ["service.visible"]
         assert await unregister_server(db, server_id, project_id=project_a) is True
 
 
@@ -568,7 +609,11 @@ async def test_mcp_client_registration_requires_project_in_team_mode(auth_header
         response = await ac.post(
             "/api/mcp/clients",
             headers=auth_headers,
-            json={"name": "Global MCP", "url": "http://localhost:3001/mcp", "transport": "http"},
+            json={
+                "name": "Global MCP",
+                "url": "http://localhost:3001/mcp",
+                "transport": "http",
+            },
         )
 
     assert response.status_code == 400
@@ -601,7 +646,9 @@ async def test_mcp_project_scoped_tools_require_project_and_allowlist():
         policy.allowed_project_ids_json = "[]"
         await db.commit()
 
-        allowed, reason = await check_access(db, "search_memory", {"project_id": "project-a"})
+        allowed, reason = await check_access(
+            db, "search_memory", {"project_id": "project-a"}
+        )
         assert allowed is False
         assert reason == "No projects are allowed for 'search_memory'"
 
@@ -612,11 +659,15 @@ async def test_mcp_project_scoped_tools_require_project_and_allowlist():
         policy.allowed_project_ids_json = '["project-a"]'
         await db.commit()
 
-        allowed, reason = await check_access(db, "search_memory", {"project_id": "project-b"})
+        allowed, reason = await check_access(
+            db, "search_memory", {"project_id": "project-b"}
+        )
         assert allowed is False
         assert reason == "Project 'project-b' is not in the allowed project list"
 
-        allowed, reason = await check_access(db, "search_memory", {"project_id": "project-a"})
+        allowed, reason = await check_access(
+            db, "search_memory", {"project_id": "project-a"}
+        )
         assert allowed is True
         assert reason == "access_granted"
 

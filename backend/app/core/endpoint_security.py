@@ -8,7 +8,6 @@ from urllib.parse import parse_qsl, urlparse
 
 from app.core.log_redaction import SENSITIVE_QUERY_KEYS, redact_url
 
-
 LOCAL_HOSTNAMES = {"localhost"}
 LOCAL_SUFFIXES = (".localhost", ".local")
 

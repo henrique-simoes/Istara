@@ -38,8 +38,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DISCOVER = REPO_ROOT / "backend/app/skills/discover"
 
 SPINE_PHASES = {
-    "intent", "context", "plan", "tool_selection", "execution",
-    "recovery", "grounding", "synthesis", "review", "governance",
+    "intent",
+    "context",
+    "plan",
+    "tool_selection",
+    "execution",
+    "recovery",
+    "grounding",
+    "synthesis",
+    "review",
+    "governance",
 }
 
 
@@ -50,7 +58,10 @@ def _function_source(module_file: str, function_name: str) -> str:
     text = (DISCOVER / module_file).read_text(encoding="utf-8")
     tree = ast.parse(text)
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        ):
             return ast.get_source_segment(text, node) or ""
     raise AssertionError(f"{function_name} not found in {module_file}")
 
@@ -58,8 +69,13 @@ def _function_source(module_file: str, function_name: str) -> str:
 class _StubAgentic:
     """Recording stand-in for the ``agentic`` dispatcher singleton."""
 
-    def __init__(self, *, text: str = "dispatcher text", value: dict | None = None,
-                 status: str = "success") -> None:
+    def __init__(
+        self,
+        *,
+        text: str = "dispatcher text",
+        value: dict | None = None,
+        status: str = "success",
+    ) -> None:
         self.calls: list[tuple[str, dict]] = []
         self._text = text
         self._value = value
@@ -84,8 +100,13 @@ def _agentic_core_on(monkeypatch):
 def _skill_input(**overrides):
     from app.skills.base import SkillInput
 
-    kwargs = {"project_id": "p1", "parameters": {}, "user_context": "",
-              "project_context": "", "company_context": ""}
+    kwargs = {
+        "project_id": "p1",
+        "parameters": {},
+        "user_context": "",
+        "project_context": "",
+        "company_context": "",
+    }
     kwargs.update(overrides)
     return SkillInput(**kwargs)
 
@@ -100,7 +121,9 @@ def test_w5_discover_sites_carry_dispatcher_path():
 
     analyze = _function_source("channel_deployment.py", "_analyze")
     assert "agentic.structured" in analyze
-    assert "skill.discover_analyze" in analyze and "DEPLOYMENT_ANALYSIS_SCHEMA" in analyze
+    assert (
+        "skill.discover_analyze" in analyze and "DEPLOYMENT_ANALYSIS_SCHEMA" in analyze
+    )
 
     ci_plan = _function_source("contextual_inquiry.py", "plan")
     assert "agentic.completion" in ci_plan
@@ -108,7 +131,9 @@ def test_w5_discover_sites_carry_dispatcher_path():
 
     ci_exec = _function_source("contextual_inquiry.py", "execute")
     assert "agentic.structured" in ci_exec
-    assert "skill.discover_analyze" in ci_exec and "CONTEXTUAL_INQUIRY_SCHEMA" in ci_exec
+    assert (
+        "skill.discover_analyze" in ci_exec and "CONTEXTUAL_INQUIRY_SCHEMA" in ci_exec
+    )
 
     diary_plan = _function_source("diary_studies.py", "plan")
     assert "agentic.completion" in diary_plan
@@ -116,7 +141,9 @@ def test_w5_discover_sites_carry_dispatcher_path():
 
     diary_exec = _function_source("diary_studies.py", "execute")
     assert "agentic.structured" in diary_exec
-    assert "skill.discover_analyze" in diary_exec and "DIARY_ANALYSIS_SCHEMA" in diary_exec
+    assert (
+        "skill.discover_analyze" in diary_exec and "DIARY_ANALYSIS_SCHEMA" in diary_exec
+    )
 
     ui_plan = _function_source("user_interviews.py", "plan")
     assert "agentic.completion" in ui_plan
@@ -137,7 +164,9 @@ def _channel_skill():
     return ChannelResearchDeploymentSkill()
 
 
-async def test_channel_plan_flag_on_dispatches_completion(monkeypatch, _agentic_core_on):
+async def test_channel_plan_flag_on_dispatches_completion(
+    monkeypatch, _agentic_core_on
+):
     dispatcher_stub = _StubAgentic(text='{"channel_strategy": "telegram"}')
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
@@ -153,21 +182,35 @@ async def test_channel_plan_flag_on_dispatches_completion(monkeypatch, _agentic_
     assert result["channel_strategy"] == "telegram"
 
 
-async def test_channel_analyze_flag_on_dispatches_structured(monkeypatch, _agentic_core_on):
+async def test_channel_analyze_flag_on_dispatches_structured(
+    monkeypatch, _agentic_core_on
+):
     from app.skills.discover.channel_deployment import DEPLOYMENT_ANALYSIS_SCHEMA
 
-    dispatcher_stub = _StubAgentic(value={
-        "candidate_nuggets": [{"text": "dispatcher nugget", "confidence": "high"}],
-        "candidate_insights": [{"text": "insight", "confidence": "medium", "impact": "high"}],
-        "candidate_recommendations": [{"text": "rec", "priority": "high", "effort": "low"}],
-    })
+    dispatcher_stub = _StubAgentic(
+        value={
+            "candidate_nuggets": [{"text": "dispatcher nugget", "confidence": "high"}],
+            "candidate_insights": [
+                {"text": "insight", "confidence": "medium", "impact": "high"}
+            ],
+            "candidate_recommendations": [
+                {"text": "rec", "priority": "high", "effort": "low"}
+            ],
+        }
+    )
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
-    output = await _channel_skill().execute(_skill_input(
-        parameters={"mode": "analyze", "deployment_name": "onboarding",
-                    "deployment_type": "survey", "responses": [{"answer": "a"}]},
-    ))
+    output = await _channel_skill().execute(
+        _skill_input(
+            parameters={
+                "mode": "analyze",
+                "deployment_name": "onboarding",
+                "deployment_type": "survey",
+                "responses": [{"answer": "a"}],
+            },
+        )
+    )
 
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "structured"
@@ -175,7 +218,9 @@ async def test_channel_analyze_flag_on_dispatches_structured(monkeypatch, _agent
     assert kwargs["project_id"] == "p1"
     assert kwargs["schema"] is DEPLOYMENT_ANALYSIS_SCHEMA
     assert kwargs["params"].temperature == 0.3
-    assert kwargs["spine_phase"] == "synthesis" and kwargs["spine_phase"] in SPINE_PHASES
+    assert (
+        kwargs["spine_phase"] == "synthesis" and kwargs["spine_phase"] in SPINE_PHASES
+    )
     assert output.nuggets[0]["text"] == "dispatcher nugget"
     assert output.nuggets[0]["artifact_state"] == "candidate_atom"
     assert output.insights[0]["artifact_state"] == "candidate_insight"
@@ -189,10 +234,16 @@ async def test_channel_analyze_flag_on_structured_failure_keeps_raw_fallback(
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
-    output = await _channel_skill().execute(_skill_input(
-        parameters={"mode": "analyze", "deployment_name": "onboarding",
-                    "deployment_type": "interview", "responses": [{"answer": "a"}]},
-    ))
+    output = await _channel_skill().execute(
+        _skill_input(
+            parameters={
+                "mode": "analyze",
+                "deployment_name": "onboarding",
+                "deployment_type": "interview",
+                "responses": [{"answer": "a"}],
+            },
+        )
+    )
 
     artifact = json.loads(output.artifacts["deployment_analysis.json"])
     assert artifact["raw_analysis"] == "not json at all", "parse-failure path preserved"
@@ -208,7 +259,9 @@ def _ci_skill():
     return ContextualInquirySkill()
 
 
-async def test_contextual_inquiry_plan_flag_on_dispatches_completion(monkeypatch, _agentic_core_on):
+async def test_contextual_inquiry_plan_flag_on_dispatches_completion(
+    monkeypatch, _agentic_core_on
+):
     dispatcher_stub = _StubAgentic(text="dispatcher markdown plan")
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
@@ -228,10 +281,12 @@ async def test_contextual_inquiry_execute_flag_on_dispatches_structured(
 ):
     from app.skills.discover.contextual_inquiry import CONTEXTUAL_INQUIRY_SCHEMA
 
-    dispatcher_stub = _StubAgentic(value={
-        "nuggets": [{"text": "dispatcher observation", "tags": ["workflow"]}],
-        "summary": "dispatcher summary",
-    })
+    dispatcher_stub = _StubAgentic(
+        value={
+            "nuggets": [{"text": "dispatcher observation", "tags": ["workflow"]}],
+            "summary": "dispatcher summary",
+        }
+    )
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
@@ -284,13 +339,19 @@ async def test_diary_plan_flag_on_dispatches_completion(monkeypatch, _agentic_co
     assert result["plan"] == "dispatcher diary plan"
 
 
-async def test_diary_execute_flag_on_dispatches_structured(monkeypatch, _agentic_core_on):
+async def test_diary_execute_flag_on_dispatches_structured(
+    monkeypatch, _agentic_core_on
+):
     from app.skills.discover.diary_studies import DIARY_ANALYSIS_SCHEMA
 
-    dispatcher_stub = _StubAgentic(value={
-        "nuggets": [{"text": "dispatcher diary nugget", "day": "3", "tags": ["habit"]}],
-        "summary": "dispatcher diary summary",
-    })
+    dispatcher_stub = _StubAgentic(
+        value={
+            "nuggets": [
+                {"text": "dispatcher diary nugget", "day": "3", "tags": ["habit"]}
+            ],
+            "summary": "dispatcher diary summary",
+        }
+    )
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
@@ -315,7 +376,9 @@ def _ui_skill():
     return UserInterviewsSkill()
 
 
-async def test_interviews_plan_flag_on_dispatches_completion(monkeypatch, _agentic_core_on):
+async def test_interviews_plan_flag_on_dispatches_completion(
+    monkeypatch, _agentic_core_on
+):
     dispatcher_stub = _StubAgentic(text="dispatcher interview guide")
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
@@ -335,13 +398,19 @@ async def test_interviews_execute_single_transcript_flag_on_dispatches_structure
 ):
     from app.skills.discover.user_interviews import TRANSCRIPT_ANALYSIS_SCHEMA
 
-    dispatcher_stub = _StubAgentic(value={
-        "nuggets": [{"text": "dispatcher quote", "location": "00:12", "tags": ["trust"]}],
-    })
+    dispatcher_stub = _StubAgentic(
+        value={
+            "nuggets": [
+                {"text": "dispatcher quote", "location": "00:12", "tags": ["trust"]}
+            ],
+        }
+    )
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
-    output = await _ui_skill().execute(_skill_input(user_context="interview transcript"))
+    output = await _ui_skill().execute(
+        _skill_input(user_context="interview transcript")
+    )
 
     assert len(dispatcher_stub.calls) == 1, "single transcript — no synthesis call"
     method, kwargs = dispatcher_stub.calls[0]
@@ -370,7 +439,10 @@ def _fake_process_file(path):
 async def test_interviews_synthesis_flag_on_dispatches_structured(
     monkeypatch, _agentic_core_on, tmp_path
 ):
-    from app.skills.discover.user_interviews import SYNTHESIS_SCHEMA, TRANSCRIPT_ANALYSIS_SCHEMA
+    from app.skills.discover.user_interviews import (
+        SYNTHESIS_SCHEMA,
+        TRANSCRIPT_ANALYSIS_SCHEMA,
+    )
 
     dispatcher_stub = _StubAgentic()
 
@@ -378,10 +450,16 @@ async def test_interviews_synthesis_flag_on_dispatches_structured(
         dispatcher_stub.calls.append(("structured", kwargs))
         if kwargs["schema"] is SYNTHESIS_SCHEMA:
             value = {
-                "facts": [{"text": "dispatcher fact", "evidence_count": 2, "sources": []}],
+                "facts": [
+                    {"text": "dispatcher fact", "evidence_count": 2, "sources": []}
+                ],
                 "insights": [{"text": "dispatcher insight", "confidence": "high"}],
-                "recommendations": [{"text": "dispatcher rec", "priority": "critical", "effort": "high"}],
-                "research_gaps": [{"description": "dispatcher gap", "suggested_method": "diary study"}],
+                "recommendations": [
+                    {"text": "dispatcher rec", "priority": "critical", "effort": "high"}
+                ],
+                "research_gaps": [
+                    {"description": "dispatcher gap", "suggested_method": "diary study"}
+                ],
             }
         else:
             value = {"nuggets": [{"text": "quote", "location": "", "tags": []}]}
@@ -390,7 +468,9 @@ async def test_interviews_synthesis_flag_on_dispatches_structured(
     dispatcher_stub.structured = _structured
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-    monkeypatch.setattr("app.skills.discover.user_interviews.process_file", _fake_process_file)
+    monkeypatch.setattr(
+        "app.skills.discover.user_interviews.process_file", _fake_process_file
+    )
 
     output = await _ui_skill().execute(_skill_input(files=_two_transcripts(tmp_path)))
 
@@ -421,21 +501,29 @@ async def test_interviews_synthesis_flag_on_structured_failure_keeps_raw_fallbac
     async def _structured(**kwargs):
         dispatcher_stub.calls.append(("structured", kwargs))
         if kwargs["schema"] is SYNTHESIS_SCHEMA:
-            return SimpleNamespace(text="not json", status="error", usage={}, value=None)
+            return SimpleNamespace(
+                text="not json", status="error", usage={}, value=None
+            )
         return SimpleNamespace(
-            text="", status="success", usage={},
+            text="",
+            status="success",
+            usage={},
             value={"nuggets": [{"text": "quote", "location": "", "tags": []}]},
         )
 
     dispatcher_stub.structured = _structured
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-    monkeypatch.setattr("app.skills.discover.user_interviews.process_file", _fake_process_file)
+    monkeypatch.setattr(
+        "app.skills.discover.user_interviews.process_file", _fake_process_file
+    )
 
     output = await _ui_skill().execute(_skill_input(files=_two_transcripts(tmp_path)))
 
     synthesis_artifact = json.loads(output.artifacts["synthesis.json"])
-    assert synthesis_artifact == {"raw_synthesis": "not json"}, "parse-failure path preserved"
+    assert synthesis_artifact == {"raw_synthesis": "not json"}, (
+        "parse-failure path preserved"
+    )
     assert output.facts == [] and output.insights == [] and output.recommendations == []
 
 
@@ -472,14 +560,22 @@ async def test_channel_analyze_flag_on_structured_raise_keeps_raw_fallback(
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
-    output = await _channel_skill().execute(_skill_input(
-        parameters={"mode": "analyze", "deployment_name": "onboarding",
-                    "deployment_type": "interview", "responses": [{"answer": "a"}]},
-    ))
+    output = await _channel_skill().execute(
+        _skill_input(
+            parameters={
+                "mode": "analyze",
+                "deployment_name": "onboarding",
+                "deployment_type": "interview",
+                "responses": [{"answer": "a"}],
+            },
+        )
+    )
 
     assert len(dispatcher_stub.calls) == 1
     artifact = json.loads(output.artifacts["deployment_analysis.json"])
-    assert artifact["raw_analysis"] == "", "raised structured call must degrade to raw_analysis"
+    assert artifact["raw_analysis"] == "", (
+        "raised structured call must degrade to raw_analysis"
+    )
     assert output.nuggets == []
 
 
@@ -518,7 +614,9 @@ async def test_interviews_execute_flag_on_structured_raise_keeps_raw_analysis(
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
-    output = await _ui_skill().execute(_skill_input(user_context="interview transcript"))
+    output = await _ui_skill().execute(
+        _skill_input(user_context="interview transcript")
+    )
 
     assert len(dispatcher_stub.calls) == 1, "single transcript — no synthesis call"
     assert output.success is True
@@ -541,7 +639,9 @@ async def test_interviews_synthesis_flag_on_structured_raise_keeps_raw_fallback(
     _raising_dispatcher(dispatcher_stub, raise_for=[SYNTHESIS_SCHEMA])
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
-    monkeypatch.setattr("app.skills.discover.user_interviews.process_file", _fake_process_file)
+    monkeypatch.setattr(
+        "app.skills.discover.user_interviews.process_file", _fake_process_file
+    )
 
     output = await _ui_skill().execute(_skill_input(files=_two_transcripts(tmp_path)))
 

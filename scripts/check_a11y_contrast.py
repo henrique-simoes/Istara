@@ -31,13 +31,24 @@ TAILWIND_CONFIG = ROOT / "frontend" / "tailwind.config.js"
 # istara palette is parsed live from tailwind.config.js so silent palette
 # edits break this audit instead of drifting under it.
 SLATE = {
-    "50": "#f8fafc", "100": "#f1f5f9", "200": "#e2e8f0", "300": "#cbd5e1",
-    "400": "#94a3b8", "500": "#64748b", "600": "#475569", "700": "#334155",
-    "800": "#1e293b", "900": "#0f172a", "950": "#020617",
+    "50": "#f8fafc",
+    "100": "#f1f5f9",
+    "200": "#e2e8f0",
+    "300": "#cbd5e1",
+    "400": "#94a3b8",
+    "500": "#64748b",
+    "600": "#475569",
+    "700": "#334155",
+    "800": "#1e293b",
+    "900": "#0f172a",
+    "950": "#020617",
 }
 AMBER = {
-    "50": "#fffbeb", "200": "#fde68a", "300": "#fcd34d",
-    "800": "#92400e", "950": "#451a03",
+    "50": "#fffbeb",
+    "200": "#fde68a",
+    "300": "#fcd34d",
+    "800": "#92400e",
+    "950": "#451a03",
 }
 RED = {"300": "#fca5a5", "700": "#b91c1c"}
 BLUE = {"400": "#93c5fd", "600": "#2563eb"}
@@ -45,7 +56,7 @@ LITERALS = {"white": "#ffffff"}
 
 LIGHT_PAGE = "#ffffff"
 DARK_PAGE = SLATE["950"]
-LIGHT_PANEL = "#ffffff"   # .ui-panel -> --ui-surface
+LIGHT_PANEL = "#ffffff"  # .ui-panel -> --ui-surface
 DARK_PANEL = SLATE["900"]
 
 
@@ -55,7 +66,9 @@ def _parse_istara_palette() -> dict[str, str]:
     if not match:
         raise SystemExit("istara palette not found in tailwind.config.js")
     palette: dict[str, str] = {}
-    for shade, hex_value in re.findall(r"(\d+):\s*\"(#[0-9a-fA-F]{6})\"", match.group(1)):
+    for shade, hex_value in re.findall(
+        r"(\d+):\s*\"(#[0-9a-fA-F]{6})\"", match.group(1)
+    ):
         palette[shade] = hex_value.lower()
     return palette
 
@@ -68,7 +81,9 @@ def _hex_to_rgb(value: str) -> tuple[float, float, float]:
     return tuple(int(value[i : i + 2], 16) / 255.0 for i in (0, 2, 4))  # type: ignore[return-value]
 
 
-def _composite(fg_hex: str, alpha: float, bg_rgb: tuple[float, float, float]) -> tuple[float, float, float]:
+def _composite(
+    fg_hex: str, alpha: float, bg_rgb: tuple[float, float, float]
+) -> tuple[float, float, float]:
     fr, fg_, fb = _hex_to_rgb(fg_hex)
     return (
         fr * alpha + bg_rgb[0] * (1 - alpha),
@@ -85,7 +100,9 @@ def _luminance(rgb: tuple[float, float, float]) -> float:
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
-def _ratio(fg_rgb: tuple[float, float, float], bg_rgb: tuple[float, float, float]) -> float:
+def _ratio(
+    fg_rgb: tuple[float, float, float], bg_rgb: tuple[float, float, float]
+) -> float:
     l1, l2 = sorted((_luminance(fg_rgb), _luminance(bg_rgb)), reverse=True)
     return (l1 + 0.05) / (l2 + 0.05)
 
@@ -94,13 +111,21 @@ def _resolve(token: str) -> str:
     if token in LITERALS:
         return LITERALS[token]
     family, _, shade = token.partition("-")
-    source = {"istara": ISTARA, "slate": SLATE, "amber": AMBER, "red": RED, "blue": BLUE}[family]
+    source = {
+        "istara": ISTARA,
+        "slate": SLATE,
+        "amber": AMBER,
+        "red": RED,
+        "blue": BLUE,
+    }[family]
     if shade not in source:
         raise KeyError(f"undefined color token: {token}")
     return source[shade]
 
 
-def _effective(bg_chain: list[tuple[str, float]], base: str) -> tuple[float, float, float]:
+def _effective(
+    bg_chain: list[tuple[str, float]], base: str
+) -> tuple[float, float, float]:
     rgb = _hex_to_rgb(base)
     for token, alpha in reversed(bg_chain):
         rgb = _composite(_resolve(token), alpha, rgb)
@@ -120,7 +145,15 @@ BENCH_DARK: list[tuple[str, float]] = [("slate-800", 1.0)]
 PAIRS: list[dict[str, object]] = []
 
 
-def _pair(name: str, mode: str, fg: str, chain: list[tuple[str, float]], kind: str, minimum: float, base: str) -> None:
+def _pair(
+    name: str,
+    mode: str,
+    fg: str,
+    chain: list[tuple[str, float]],
+    kind: str,
+    minimum: float,
+    base: str,
+) -> None:
     PAIRS.append(
         {
             "name": name,
@@ -135,21 +168,103 @@ def _pair(name: str, mode: str, fg: str, chain: list[tuple[str, float]], kind: s
 
 
 # ── Light mode ────────────────────────────────────────────────────────────────
-_pair("option-title/unselected", "light", "slate-950", CARD_UNSEL_LIGHT, "text", 4.5, LIGHT_PANEL)
-_pair("option-title/selected", "light", "slate-950", CARD_SEL_LIGHT, "text", 4.5, LIGHT_PANEL)
-_pair("option-description/unselected", "light", "slate-600", CARD_UNSEL_LIGHT, "text", 4.5, LIGHT_PANEL)
-_pair("option-description/selected", "light", "slate-600", CARD_SEL_LIGHT, "text", 4.5, LIGHT_PANEL)
-_pair("best-for-label/unselected", "light", "slate-500", CARD_UNSEL_LIGHT, "text", 4.5, LIGHT_PANEL)
-_pair("best-for-label/selected", "light", "slate-500", CARD_SEL_LIGHT, "text", 4.5, LIGHT_PANEL)
+_pair(
+    "option-title/unselected",
+    "light",
+    "slate-950",
+    CARD_UNSEL_LIGHT,
+    "text",
+    4.5,
+    LIGHT_PANEL,
+)
+_pair(
+    "option-title/selected",
+    "light",
+    "slate-950",
+    CARD_SEL_LIGHT,
+    "text",
+    4.5,
+    LIGHT_PANEL,
+)
+_pair(
+    "option-description/unselected",
+    "light",
+    "slate-600",
+    CARD_UNSEL_LIGHT,
+    "text",
+    4.5,
+    LIGHT_PANEL,
+)
+_pair(
+    "option-description/selected",
+    "light",
+    "slate-600",
+    CARD_SEL_LIGHT,
+    "text",
+    4.5,
+    LIGHT_PANEL,
+)
+_pair(
+    "best-for-label/unselected",
+    "light",
+    "slate-500",
+    CARD_UNSEL_LIGHT,
+    "text",
+    4.5,
+    LIGHT_PANEL,
+)
+_pair(
+    "best-for-label/selected",
+    "light",
+    "slate-500",
+    CARD_SEL_LIGHT,
+    "text",
+    4.5,
+    LIGHT_PANEL,
+)
 _pair("selected-pill", "light", "white", [], "text", 4.5, _resolve("istara-600"))
-_pair("provisional-badge-text", "light", "amber-800", [("amber-50", 1.0)], "text", 4.5, LIGHT_PANEL)
-_pair("radio-circle/unselected-border", "light", "slate-500", CARD_UNSEL_LIGHT, "ui", 3.0, LIGHT_PANEL)
-_pair("radio-circle/selected-border", "light", "istara-600", CARD_SEL_LIGHT, "ui", 3.0, LIGHT_PANEL)
-_pair("card-border/selected-state", "light", "istara-600", CARD_UNSEL_LIGHT, "ui", 3.0, LIGHT_PANEL)
+_pair(
+    "provisional-badge-text",
+    "light",
+    "amber-800",
+    [("amber-50", 1.0)],
+    "text",
+    4.5,
+    LIGHT_PANEL,
+)
+_pair(
+    "radio-circle/unselected-border",
+    "light",
+    "slate-500",
+    CARD_UNSEL_LIGHT,
+    "ui",
+    3.0,
+    LIGHT_PANEL,
+)
+_pair(
+    "radio-circle/selected-border",
+    "light",
+    "istara-600",
+    CARD_SEL_LIGHT,
+    "ui",
+    3.0,
+    LIGHT_PANEL,
+)
+_pair(
+    "card-border/selected-state",
+    "light",
+    "istara-600",
+    CARD_UNSEL_LIGHT,
+    "ui",
+    3.0,
+    LIGHT_PANEL,
+)
 _pair("section-eyebrow", "light", "istara-700", [], "text", 4.5, LIGHT_PANEL)
 _pair("section-heading", "light", "slate-950", [], "text", 4.5, LIGHT_PANEL)
 _pair("section-lead", "light", "slate-600", [], "text", 4.5, LIGHT_PANEL)
-_pair("principle-tile-strong", "light", "slate-900", TILE_LIGHT, "text", 4.5, LIGHT_PANEL)
+_pair(
+    "principle-tile-strong", "light", "slate-900", TILE_LIGHT, "text", 4.5, LIGHT_PANEL
+)
 _pair("principle-tile-text", "light", "slate-600", TILE_LIGHT, "text", 4.5, LIGHT_PANEL)
 _pair("benchmark-label", "light", "slate-500", BENCH_LIGHT, "text", 4.5, LIGHT_PANEL)
 _pair("benchmark-value", "light", "slate-900", BENCH_LIGHT, "text", 4.5, LIGHT_PANEL)
@@ -160,17 +275,83 @@ _pair("footer-text", "light", "slate-500", [], "text", 4.5, LIGHT_PANEL)
 _pair("focus-ring", "light", "blue-600", CARD_UNSEL_LIGHT, "ui", 3.0, LIGHT_PANEL)
 
 # ── Dark mode ────────────────────────────────────────────────────────────────
-_pair("option-title/unselected", "dark", "white", CARD_UNSEL_DARK, "text", 4.5, DARK_PANEL)
+_pair(
+    "option-title/unselected", "dark", "white", CARD_UNSEL_DARK, "text", 4.5, DARK_PANEL
+)
 _pair("option-title/selected", "dark", "white", CARD_SEL_DARK, "text", 4.5, DARK_PANEL)
-_pair("option-description/unselected", "dark", "slate-300", CARD_UNSEL_DARK, "text", 4.5, DARK_PANEL)
-_pair("option-description/selected", "dark", "slate-300", CARD_SEL_DARK, "text", 4.5, DARK_PANEL)
-_pair("best-for-label/unselected", "dark", "slate-400", CARD_UNSEL_DARK, "text", 4.5, DARK_PANEL)
-_pair("best-for-label/selected", "dark", "slate-400", CARD_SEL_DARK, "text", 4.5, DARK_PANEL)
+_pair(
+    "option-description/unselected",
+    "dark",
+    "slate-300",
+    CARD_UNSEL_DARK,
+    "text",
+    4.5,
+    DARK_PANEL,
+)
+_pair(
+    "option-description/selected",
+    "dark",
+    "slate-300",
+    CARD_SEL_DARK,
+    "text",
+    4.5,
+    DARK_PANEL,
+)
+_pair(
+    "best-for-label/unselected",
+    "dark",
+    "slate-400",
+    CARD_UNSEL_DARK,
+    "text",
+    4.5,
+    DARK_PANEL,
+)
+_pair(
+    "best-for-label/selected",
+    "dark",
+    "slate-400",
+    CARD_SEL_DARK,
+    "text",
+    4.5,
+    DARK_PANEL,
+)
 _pair("selected-pill", "dark", "white", [], "text", 4.5, _resolve("istara-600"))
-_pair("provisional-badge-text", "dark", "amber-200", [("amber-950", 0.4), ("slate-900", 0.4)], "text", 4.5, DARK_PANEL)
-_pair("radio-circle/unselected-border", "dark", "slate-400", CARD_UNSEL_DARK, "ui", 3.0, DARK_PANEL)
-_pair("radio-circle/selected-border", "dark", "istara-400", CARD_SEL_DARK, "ui", 3.0, DARK_PANEL)
-_pair("card-border/selected-state", "dark", "istara-400", CARD_UNSEL_DARK, "ui", 3.0, DARK_PANEL)
+_pair(
+    "provisional-badge-text",
+    "dark",
+    "amber-200",
+    [("amber-950", 0.4), ("slate-900", 0.4)],
+    "text",
+    4.5,
+    DARK_PANEL,
+)
+_pair(
+    "radio-circle/unselected-border",
+    "dark",
+    "slate-400",
+    CARD_UNSEL_DARK,
+    "ui",
+    3.0,
+    DARK_PANEL,
+)
+_pair(
+    "radio-circle/selected-border",
+    "dark",
+    "istara-400",
+    CARD_SEL_DARK,
+    "ui",
+    3.0,
+    DARK_PANEL,
+)
+_pair(
+    "card-border/selected-state",
+    "dark",
+    "istara-400",
+    CARD_UNSEL_DARK,
+    "ui",
+    3.0,
+    DARK_PANEL,
+)
 _pair("section-eyebrow", "dark", "istara-300", [], "text", 4.5, DARK_PANEL)
 _pair("section-heading", "dark", "white", [], "text", 4.5, DARK_PANEL)
 _pair("section-lead", "dark", "slate-300", [], "text", 4.5, DARK_PANEL)
@@ -209,7 +390,9 @@ def run() -> tuple[list[dict[str, object]], bool]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--json", action="store_true", help="emit JSON instead of a table")
+    parser.add_argument(
+        "--json", action="store_true", help="emit JSON instead of a table"
+    )
     args = parser.parse_args()
 
     findings, ok = run()

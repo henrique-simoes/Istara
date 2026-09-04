@@ -29,7 +29,9 @@ def auth_headers():
 
 
 async def _seed_project(name: str | None = None) -> Project:
-    project = Project(id=str(uuid.uuid4()), name=name or f"Survey Project {uuid.uuid4()}")
+    project = Project(
+        id=str(uuid.uuid4()), name=name or f"Survey Project {uuid.uuid4()}"
+    )
     async with async_session() as db:
         db.add(project)
         await db.commit()
@@ -53,7 +55,9 @@ async def test_surveys_integrations_returns_list(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_surveys_integrations_require_project_id_for_project_facing_api(auth_headers):
+async def test_surveys_integrations_require_project_id_for_project_facing_api(
+    auth_headers,
+):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -101,14 +105,18 @@ async def test_surveys_links_require_project_id_for_project_facing_api(auth_head
 
 
 @pytest.mark.asyncio
-async def test_demo_survey_link_sync_and_responses_do_not_call_platform(auth_headers, monkeypatch):
+async def test_demo_survey_link_sync_and_responses_do_not_call_platform(
+    auth_headers, monkeypatch
+):
     """Simulation/demo survey integrations stay local and deterministic."""
     await init_db()
     project = await _seed_project("Survey Demo")
     project_id = project.id
 
     def fail_adapter(_integration):
-        raise AssertionError("demo integrations must not instantiate a platform adapter")
+        raise AssertionError(
+            "demo integrations must not instantiate a platform adapter"
+        )
 
     monkeypatch.setattr("app.api.routes.surveys._get_adapter", fail_adapter)
 
@@ -160,13 +168,17 @@ async def test_demo_survey_link_sync_and_responses_do_not_call_platform(auth_hea
 
 
 @pytest.mark.asyncio
-async def test_survey_detail_actions_require_active_project_scope(auth_headers, monkeypatch):
+async def test_survey_detail_actions_require_active_project_scope(
+    auth_headers, monkeypatch
+):
     await init_db()
     project_a = await _seed_project("Survey Scope A")
     project_b = await _seed_project("Survey Scope B")
 
     def fail_adapter(_integration):
-        raise AssertionError("wrong-project and missing-project checks must run before adapters")
+        raise AssertionError(
+            "wrong-project and missing-project checks must run before adapters"
+        )
 
     monkeypatch.setattr("app.api.routes.surveys._get_adapter", fail_adapter)
 

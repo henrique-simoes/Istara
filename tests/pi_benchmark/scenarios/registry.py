@@ -8,7 +8,14 @@ from .base import Scenario
 # The `features` and `probes` packs are produced by their own compilers (B0-6, B0-8)
 # rather than by static scenario lists, so they are not loadable here; the runner routes
 # them to their dedicated builders.
-PACK_NAMES: tuple[str, ...] = ("canonical", "spine", "a2a", "industry", "probes", "deep_research")
+PACK_NAMES: tuple[str, ...] = (
+    "canonical",
+    "spine",
+    "a2a",
+    "industry",
+    "probes",
+    "deep_research",
+)
 
 _LOADERS = {
     "canonical": canonical.scenarios,
@@ -27,5 +34,7 @@ def load_pack(name: str) -> tuple[Scenario, ...]:
     rather than running an empty, silently-wrong pack.
     """
     if name not in _LOADERS:
-        raise KeyError(f"unknown scenario pack {name!r}; known: {', '.join(PACK_NAMES)}")
+        raise KeyError(
+            f"unknown scenario pack {name!r}; known: {', '.join(PACK_NAMES)}"
+        )
     return _LOADERS[name]()

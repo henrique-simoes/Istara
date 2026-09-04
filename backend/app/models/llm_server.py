@@ -1,6 +1,6 @@
 """LLM Server model — external LLM endpoints (Ollama, LM Studio, OpenAI-compatible)."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -32,5 +32,5 @@ class LLMServer(Base):
         Text, default="{}"
     )  # JSON: models, embed support, etc.
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

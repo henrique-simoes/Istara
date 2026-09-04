@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -322,7 +322,7 @@ class ConnectionManager:
             {
                 "type": event_type,
                 "data": data,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
 
@@ -384,7 +384,7 @@ class ConnectionManager:
             {
                 "type": event_type,
                 "data": data,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
         await websocket.send_text(message)
@@ -476,7 +476,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 message = json.loads(data)
                 if message.get("type") == "ping":
                     await manager.send_to(websocket, "pong", {})
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Send keepalive ping
                 try:
                     await manager.send_to(websocket, "ping", {})
@@ -596,7 +596,7 @@ async def broadcast_finding_created(
     )
 
 
-async def broadcast_resource_throttle(reason: str, resources: Optional[dict] = None) -> None:
+async def broadcast_resource_throttle(reason: str, resources: dict | None = None) -> None:
     """Broadcast a resource throttle event (agent paused due to hardware)."""
     await manager.broadcast(
         "resource_throttle",
@@ -636,9 +636,7 @@ async def broadcast_document_event(
     )
 
 
-async def broadcast_backup_event(
-    event: str, backup_id: str, details: Optional[dict] = None
-) -> None:
+async def broadcast_backup_event(event: str, backup_id: str, details: dict | None = None) -> None:
     """Broadcast a backup lifecycle event (started, completed, failed, etc.)."""
     await manager.broadcast(
         event,

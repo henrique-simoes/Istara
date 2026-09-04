@@ -69,77 +69,83 @@ async def _seed_loop_scope_fixture(user_id: str) -> dict[str, str]:
     hidden_agent_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     async with async_session() as db:
-        db.add_all([
-            Project(id=visible_project_id, name="Visible Loops Project"),
-            Project(id=hidden_project_id, name="Hidden Loops Project"),
-            ProjectMember(
-                id=str(uuid.uuid4()),
-                project_id=visible_project_id,
-                user_id=user_id,
-                role="researcher",
-                added_by="test",
-            ),
-            Agent(
-                id=visible_agent_id,
-                name="Visible Loop Agent",
-                role=AgentRole.CUSTOM,
-                state=AgentState.IDLE,
-                scope="project",
-                project_id=visible_project_id,
-                memory=json.dumps({"loop_config": {"skills_to_run": ["visible-skill"]}}),
-            ),
-            Agent(
-                id=hidden_agent_id,
-                name="Hidden Loop Agent",
-                role=AgentRole.CUSTOM,
-                state=AgentState.IDLE,
-                scope="project",
-                project_id=hidden_project_id,
-                memory=json.dumps({"loop_config": {"skills_to_run": ["hidden-skill"]}}),
-            ),
-            ScheduledTask(
-                id=visible_schedule_id,
-                name="Visible Project Schedule",
-                description="",
-                cron_expression="0 * * * *",
-                skill_name="visible_skill",
-                project_id=visible_project_id,
-                next_run=now + timedelta(hours=1),
-            ),
-            ScheduledTask(
-                id=hidden_schedule_id,
-                name="Hidden Project Schedule",
-                description="",
-                cron_expression="0 * * * *",
-                skill_name="hidden_skill",
-                project_id=hidden_project_id,
-                next_run=now + timedelta(hours=1),
-            ),
-            LoopExecution(
-                id=str(uuid.uuid4()),
-                source_type="schedule",
-                source_id=visible_schedule_id,
-                source_name="Visible Project Schedule",
-                project_id=visible_project_id,
-                status="success",
-                started_at=now - timedelta(minutes=10),
-                finished_at=now - timedelta(minutes=9),
-                duration_ms=60000,
-                metadata_json=json.dumps({"project_id": visible_project_id}),
-            ),
-            LoopExecution(
-                id=str(uuid.uuid4()),
-                source_type="schedule",
-                source_id=hidden_schedule_id,
-                source_name="Hidden Project Schedule",
-                project_id=hidden_project_id,
-                status="failure",
-                started_at=now - timedelta(minutes=8),
-                finished_at=now - timedelta(minutes=7),
-                duration_ms=60000,
-                metadata_json=json.dumps({"project_id": hidden_project_id}),
-            ),
-        ])
+        db.add_all(
+            [
+                Project(id=visible_project_id, name="Visible Loops Project"),
+                Project(id=hidden_project_id, name="Hidden Loops Project"),
+                ProjectMember(
+                    id=str(uuid.uuid4()),
+                    project_id=visible_project_id,
+                    user_id=user_id,
+                    role="researcher",
+                    added_by="test",
+                ),
+                Agent(
+                    id=visible_agent_id,
+                    name="Visible Loop Agent",
+                    role=AgentRole.CUSTOM,
+                    state=AgentState.IDLE,
+                    scope="project",
+                    project_id=visible_project_id,
+                    memory=json.dumps(
+                        {"loop_config": {"skills_to_run": ["visible-skill"]}}
+                    ),
+                ),
+                Agent(
+                    id=hidden_agent_id,
+                    name="Hidden Loop Agent",
+                    role=AgentRole.CUSTOM,
+                    state=AgentState.IDLE,
+                    scope="project",
+                    project_id=hidden_project_id,
+                    memory=json.dumps(
+                        {"loop_config": {"skills_to_run": ["hidden-skill"]}}
+                    ),
+                ),
+                ScheduledTask(
+                    id=visible_schedule_id,
+                    name="Visible Project Schedule",
+                    description="",
+                    cron_expression="0 * * * *",
+                    skill_name="visible_skill",
+                    project_id=visible_project_id,
+                    next_run=now + timedelta(hours=1),
+                ),
+                ScheduledTask(
+                    id=hidden_schedule_id,
+                    name="Hidden Project Schedule",
+                    description="",
+                    cron_expression="0 * * * *",
+                    skill_name="hidden_skill",
+                    project_id=hidden_project_id,
+                    next_run=now + timedelta(hours=1),
+                ),
+                LoopExecution(
+                    id=str(uuid.uuid4()),
+                    source_type="schedule",
+                    source_id=visible_schedule_id,
+                    source_name="Visible Project Schedule",
+                    project_id=visible_project_id,
+                    status="success",
+                    started_at=now - timedelta(minutes=10),
+                    finished_at=now - timedelta(minutes=9),
+                    duration_ms=60000,
+                    metadata_json=json.dumps({"project_id": visible_project_id}),
+                ),
+                LoopExecution(
+                    id=str(uuid.uuid4()),
+                    source_type="schedule",
+                    source_id=hidden_schedule_id,
+                    source_name="Hidden Project Schedule",
+                    project_id=hidden_project_id,
+                    status="failure",
+                    started_at=now - timedelta(minutes=8),
+                    finished_at=now - timedelta(minutes=7),
+                    duration_ms=60000,
+                    metadata_json=json.dumps({"project_id": hidden_project_id}),
+                ),
+            ]
+        )
         await db.commit()
     return {
         "visible_project_id": visible_project_id,
@@ -161,7 +167,9 @@ async def test_loops_overview_returns_response(auth_headers):
         await db.commit()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/loops/overview?project_id={project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/loops/overview?project_id={project_id}", headers=auth_headers
+        )
         assert response.status_code == 200
         body = response.json()
         assert "active_loops" in body
@@ -183,7 +191,9 @@ async def test_loops_overview_requires_auth():
 
 
 @pytest.mark.asyncio
-async def test_project_member_loop_surfaces_require_active_project_scope(researcher_headers):
+async def test_project_member_loop_surfaces_require_active_project_scope(
+    researcher_headers,
+):
     """Non-admin loop surfaces must not fall back to global data."""
     await init_db()
     settings.team_mode = True
@@ -237,7 +247,9 @@ async def test_project_member_loop_surfaces_require_active_project_scope(researc
             headers=researcher_headers,
         )
         assert agents.status_code == 200
-        assert {item["agent_id"] for item in agents.json()["agents"]} == {visible_agent_id}
+        assert {item["agent_id"] for item in agents.json()["agents"]} == {
+            visible_agent_id
+        }
 
         executions = await ac.get(
             f"/api/loops/executions?project_id={visible_project_id}",
@@ -258,7 +270,9 @@ async def test_project_member_loop_surfaces_require_active_project_scope(researc
 
 
 @pytest.mark.asyncio
-async def test_loop_execution_project_scope_uses_row_scope_and_legacy_fallback(auth_headers):
+async def test_loop_execution_project_scope_uses_row_scope_and_legacy_fallback(
+    auth_headers,
+):
     """Execution history must prefer row project_id and only fall back inside scope."""
     await init_db()
     project_a = f"loop-row-scope-{uuid.uuid4()}"
@@ -267,88 +281,90 @@ async def test_loop_execution_project_scope_uses_row_scope_and_legacy_fallback(a
     schedule_b = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     async with async_session() as db:
-        db.add_all([
-            Project(id=project_a, name="Loop Row Scope"),
-            Project(id=project_b, name="Loop Hidden Scope"),
-            ScheduledTask(
-                id=schedule_a,
-                name="Visible Schedule",
-                description="",
-                cron_expression="0 * * * *",
-                skill_name="visible_skill",
-                project_id=project_a,
-                next_run=now + timedelta(hours=1),
-            ),
-            ScheduledTask(
-                id=schedule_b,
-                name="Hidden Schedule",
-                description="",
-                cron_expression="0 * * * *",
-                skill_name="hidden_skill",
-                project_id=project_b,
-                next_run=now + timedelta(hours=1),
-            ),
-            LoopExecution(
-                id=str(uuid.uuid4()),
-                source_type="schedule",
-                source_id=schedule_a,
-                source_name="Row Scope Wins",
-                project_id=project_a,
-                status="success",
-                started_at=now - timedelta(minutes=6),
-                finished_at=now - timedelta(minutes=5),
-                duration_ms=60000,
-                metadata_json=json.dumps({"project_id": project_b}),
-            ),
-            LoopExecution(
-                id=str(uuid.uuid4()),
-                source_type="schedule",
-                source_id=schedule_a,
-                source_name="Legacy Metadata Scope",
-                project_id="",
-                status="failure",
-                started_at=now - timedelta(minutes=5),
-                finished_at=now - timedelta(minutes=4),
-                duration_ms=60000,
-                metadata_json=json.dumps({"project_id": project_a}),
-            ),
-            LoopExecution(
-                id=str(uuid.uuid4()),
-                source_type="schedule",
-                source_id=schedule_a,
-                source_name="Legacy Source Scope",
-                project_id="",
-                status="skipped",
-                started_at=now - timedelta(minutes=4),
-                finished_at=now - timedelta(minutes=3),
-                duration_ms=60000,
-                metadata_json="{}",
-            ),
-            LoopExecution(
-                id=str(uuid.uuid4()),
-                source_type="schedule",
-                source_id=schedule_b,
-                source_name="Hidden Row Scope",
-                project_id=project_b,
-                status="success",
-                started_at=now - timedelta(minutes=3),
-                finished_at=now - timedelta(minutes=2),
-                duration_ms=60000,
-                metadata_json=json.dumps({"project_id": project_b}),
-            ),
-            LoopExecution(
-                id=str(uuid.uuid4()),
-                source_type="schedule",
-                source_id=schedule_a,
-                source_name="Hidden Legacy Metadata",
-                project_id="",
-                status="running",
-                started_at=now - timedelta(minutes=2),
-                finished_at=None,
-                duration_ms=None,
-                metadata_json=json.dumps({"project_id": project_b}),
-            ),
-        ])
+        db.add_all(
+            [
+                Project(id=project_a, name="Loop Row Scope"),
+                Project(id=project_b, name="Loop Hidden Scope"),
+                ScheduledTask(
+                    id=schedule_a,
+                    name="Visible Schedule",
+                    description="",
+                    cron_expression="0 * * * *",
+                    skill_name="visible_skill",
+                    project_id=project_a,
+                    next_run=now + timedelta(hours=1),
+                ),
+                ScheduledTask(
+                    id=schedule_b,
+                    name="Hidden Schedule",
+                    description="",
+                    cron_expression="0 * * * *",
+                    skill_name="hidden_skill",
+                    project_id=project_b,
+                    next_run=now + timedelta(hours=1),
+                ),
+                LoopExecution(
+                    id=str(uuid.uuid4()),
+                    source_type="schedule",
+                    source_id=schedule_a,
+                    source_name="Row Scope Wins",
+                    project_id=project_a,
+                    status="success",
+                    started_at=now - timedelta(minutes=6),
+                    finished_at=now - timedelta(minutes=5),
+                    duration_ms=60000,
+                    metadata_json=json.dumps({"project_id": project_b}),
+                ),
+                LoopExecution(
+                    id=str(uuid.uuid4()),
+                    source_type="schedule",
+                    source_id=schedule_a,
+                    source_name="Legacy Metadata Scope",
+                    project_id="",
+                    status="failure",
+                    started_at=now - timedelta(minutes=5),
+                    finished_at=now - timedelta(minutes=4),
+                    duration_ms=60000,
+                    metadata_json=json.dumps({"project_id": project_a}),
+                ),
+                LoopExecution(
+                    id=str(uuid.uuid4()),
+                    source_type="schedule",
+                    source_id=schedule_a,
+                    source_name="Legacy Source Scope",
+                    project_id="",
+                    status="skipped",
+                    started_at=now - timedelta(minutes=4),
+                    finished_at=now - timedelta(minutes=3),
+                    duration_ms=60000,
+                    metadata_json="{}",
+                ),
+                LoopExecution(
+                    id=str(uuid.uuid4()),
+                    source_type="schedule",
+                    source_id=schedule_b,
+                    source_name="Hidden Row Scope",
+                    project_id=project_b,
+                    status="success",
+                    started_at=now - timedelta(minutes=3),
+                    finished_at=now - timedelta(minutes=2),
+                    duration_ms=60000,
+                    metadata_json=json.dumps({"project_id": project_b}),
+                ),
+                LoopExecution(
+                    id=str(uuid.uuid4()),
+                    source_type="schedule",
+                    source_id=schedule_a,
+                    source_name="Hidden Legacy Metadata",
+                    project_id="",
+                    status="running",
+                    started_at=now - timedelta(minutes=2),
+                    finished_at=None,
+                    duration_ms=None,
+                    metadata_json=json.dumps({"project_id": project_b}),
+                ),
+            ]
+        )
         await db.commit()
 
     transport = ASGITransport(app=app)
@@ -360,7 +376,11 @@ async def test_loop_execution_project_scope_uses_row_scope_and_legacy_fallback(a
         assert response.status_code == 200
         executions = response.json()["executions"]
         names = {item["source_name"] for item in executions}
-        assert names == {"Row Scope Wins", "Legacy Metadata Scope", "Legacy Source Scope"}
+        assert names == {
+            "Row Scope Wins",
+            "Legacy Metadata Scope",
+            "Legacy Source Scope",
+        }
         assert {item["project_id"] for item in executions} == {project_a}
 
         stats = await ac.get(
@@ -386,7 +406,9 @@ async def test_loops_health_returns_response(auth_headers):
         await db.commit()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/loops/health?project_id={project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/loops/health?project_id={project_id}", headers=auth_headers
+        )
         assert response.status_code == 200
 
 
@@ -400,7 +422,9 @@ async def test_loops_executions_returns_list(auth_headers):
         await db.commit()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/loops/executions?project_id={project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/loops/executions?project_id={project_id}", headers=auth_headers
+        )
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
         assert "executions" in response.json()
@@ -435,7 +459,11 @@ async def test_agent_loop_config_persists_skills_and_project_filter(auth_headers
             headers=auth_headers,
             json={
                 "loop_interval_seconds": 120,
-                "skills_to_run": ["thematic-analysis", " thematic-analysis ", "card-sorting"],
+                "skills_to_run": [
+                    "thematic-analysis",
+                    " thematic-analysis ",
+                    "card-sorting",
+                ],
                 "project_filter": project_id,
             },
         )
@@ -456,9 +484,13 @@ async def test_agent_loop_config_persists_skills_and_project_filter(auth_headers
         assert config["skills_to_run"] == ["thematic-analysis", "card-sorting"]
         assert config["project_filter"] == project_id
 
-        listed = await ac.get(f"/api/loops/agents?project_id={project_id}", headers=auth_headers)
+        listed = await ac.get(
+            f"/api/loops/agents?project_id={project_id}", headers=auth_headers
+        )
         assert listed.status_code == 200
-        matching = [item for item in listed.json()["agents"] if item["agent_id"] == agent_id]
+        matching = [
+            item for item in listed.json()["agents"] if item["agent_id"] == agent_id
+        ]
         assert matching
         assert matching[0]["id"] == agent_id
 
@@ -469,7 +501,9 @@ async def test_agent_loop_config_persists_skills_and_project_filter(auth_headers
         )
         assert invalid.status_code == 422
 
-        await ac.delete(f"/api/agents/{agent_id}?project_id={project_id}", headers=auth_headers)
+        await ac.delete(
+            f"/api/agents/{agent_id}?project_id={project_id}", headers=auth_headers
+        )
 
 
 @pytest.mark.asyncio
@@ -499,10 +533,13 @@ async def test_custom_loop_persists_as_custom_health_item(auth_headers):
         assert custom["interval_seconds"] == 300
         assert custom["next_run"].endswith("+00:00")
 
-        health = await ac.get(f"/api/loops/health?project_id={project_id}", headers=auth_headers)
+        health = await ac.get(
+            f"/api/loops/health?project_id={project_id}", headers=auth_headers
+        )
         assert health.status_code == 200
         matching = [
-            item for item in health.json()["health"]
+            item
+            for item in health.json()["health"]
             if item["source_id"] == custom["id"]
         ]
         assert matching
@@ -550,9 +587,13 @@ async def test_schedule_crud_and_cron_validation(auth_headers):
         assert schedule["enabled"] is True
         assert schedule["next_run"].endswith("+00:00")
 
-        listed = await ac.get(f"/api/schedules?project_id={project_id}", headers=auth_headers)
+        listed = await ac.get(
+            f"/api/schedules?project_id={project_id}", headers=auth_headers
+        )
         assert listed.status_code == 200
-        listed_match = next(item for item in listed.json() if item["id"] == schedule["id"])
+        listed_match = next(
+            item for item in listed.json() if item["id"] == schedule["id"]
+        )
         assert listed_match["next_run"].endswith("+00:00")
 
         paused = await ac.patch(
@@ -582,10 +623,12 @@ async def test_schedule_detail_actions_require_active_project_scope(auth_headers
     project_a = f"schedule-active-{uuid.uuid4()}"
     project_b = f"schedule-other-{uuid.uuid4()}"
     async with async_session() as db:
-        db.add_all([
-            Project(id=project_a, name="Schedule Active"),
-            Project(id=project_b, name="Schedule Other"),
-        ])
+        db.add_all(
+            [
+                Project(id=project_a, name="Schedule Active"),
+                Project(id=project_b, name="Schedule Other"),
+            ]
+        )
         await db.commit()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -602,7 +645,9 @@ async def test_schedule_detail_actions_require_active_project_scope(auth_headers
         assert created.status_code == 201
         schedule = created.json()
 
-        unscoped = await ac.get(f"/api/schedules/{schedule['id']}", headers=auth_headers)
+        unscoped = await ac.get(
+            f"/api/schedules/{schedule['id']}", headers=auth_headers
+        )
         assert unscoped.status_code == 400
         assert unscoped.json()["detail"] == "project_id is required"
 
@@ -679,15 +724,17 @@ async def test_execution_history_uses_persisted_records_and_aliases(auth_headers
     finished = datetime.now(timezone.utc)
     async with async_session() as db:
         db.add(Project(id=project_id, name="History Project"))
-        db.add(ScheduledTask(
-            id=schedule_id,
-            name="History Contract Check",
-            description="",
-            cron_expression="0 * * * *",
-            skill_name="history_skill",
-            project_id=project_id,
-            next_run=finished + timedelta(hours=1),
-        ))
+        db.add(
+            ScheduledTask(
+                id=schedule_id,
+                name="History Contract Check",
+                description="",
+                cron_expression="0 * * * *",
+                skill_name="history_skill",
+                project_id=project_id,
+                next_run=finished + timedelta(hours=1),
+            )
+        )
         await db.commit()
     created_execution = await record_execution(
         source_type="schedule",
@@ -712,7 +759,9 @@ async def test_execution_history_uses_persisted_records_and_aliases(auth_headers
         )
         assert response.status_code == 200
         body = response.json()
-        match = [item for item in body["executions"] if item["source_id"] == schedule_id]
+        match = [
+            item for item in body["executions"] if item["source_id"] == schedule_id
+        ]
         assert match
         execution = match[0]
         assert execution["id"]
@@ -740,31 +789,41 @@ async def test_scheduler_records_missing_skill_as_failure(auth_headers):
     now = datetime.now(timezone.utc)
     async with async_session() as db:
         db.add(Project(id=project_id, name="Missing Skill Schedule Project"))
-        db.add(ScheduledTask(
-            id=schedule_id,
-            name="Missing Skill Schedule",
-            description="",
-            cron_expression="* * * * *",
-            skill_name="missing-skill-for-loop-test",
-            project_id=project_id,
-            next_run=now - timedelta(minutes=1),
-        ))
+        db.add(
+            ScheduledTask(
+                id=schedule_id,
+                name="Missing Skill Schedule",
+                description="",
+                cron_expression="* * * * *",
+                skill_name="missing-skill-for-loop-test",
+                project_id=project_id,
+                next_run=now - timedelta(minutes=1),
+            )
+        )
         await db.commit()
 
     await scheduler._tick()
 
     async with async_session() as db:
-        task = (await db.execute(
-            select(ScheduledTask).where(ScheduledTask.id == schedule_id)
-        )).scalar_one()
+        task = (
+            await db.execute(
+                select(ScheduledTask).where(ScheduledTask.id == schedule_id)
+            )
+        ).scalar_one()
         assert task.is_running is False
         assert task.enabled is False
         assert task.next_run is None
         assert task.execution_count >= 1
         assert task.last_status == "failure"
-        execution = (await db.execute(
-            select(LoopExecution).where(LoopExecution.source_id == schedule_id)
-        )).scalars().first()
+        execution = (
+            (
+                await db.execute(
+                    select(LoopExecution).where(LoopExecution.source_id == schedule_id)
+                )
+            )
+            .scalars()
+            .first()
+        )
         assert execution is not None
         assert execution.project_id == project_id
         assert json.loads(execution.metadata_json)["project_id"] == project_id
@@ -773,12 +832,20 @@ async def test_scheduler_records_missing_skill_as_failure(auth_headers):
     await scheduler._tick()
 
     async with async_session() as db:
-        task = (await db.execute(
-            select(ScheduledTask).where(ScheduledTask.id == schedule_id)
-        )).scalar_one()
-        executions = (await db.execute(
-            select(LoopExecution).where(LoopExecution.source_id == schedule_id)
-        )).scalars().all()
+        task = (
+            await db.execute(
+                select(ScheduledTask).where(ScheduledTask.id == schedule_id)
+            )
+        ).scalar_one()
+        executions = (
+            (
+                await db.execute(
+                    select(LoopExecution).where(LoopExecution.source_id == schedule_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         assert task.execution_count == 1
         assert len(executions) == 1
 
@@ -792,26 +859,36 @@ async def test_scheduler_skips_paused_project_without_running_skill(auth_headers
     now = datetime.now(timezone.utc)
     async with async_session() as db:
         db.add(Project(id=project_id, name="Paused schedule project", is_paused=True))
-        db.add(ScheduledTask(
-            id=schedule_id,
-            name="Paused Project Schedule",
-            description="",
-            cron_expression="* * * * *",
-            skill_name="missing-skill-that-should-not-run",
-            project_id=project_id,
-            next_run=now - timedelta(minutes=1),
-        ))
+        db.add(
+            ScheduledTask(
+                id=schedule_id,
+                name="Paused Project Schedule",
+                description="",
+                cron_expression="* * * * *",
+                skill_name="missing-skill-that-should-not-run",
+                project_id=project_id,
+                next_run=now - timedelta(minutes=1),
+            )
+        )
         await db.commit()
 
     await scheduler._tick()
 
     async with async_session() as db:
-        task = (await db.execute(
-            select(ScheduledTask).where(ScheduledTask.id == schedule_id)
-        )).scalar_one()
-        execution = (await db.execute(
-            select(LoopExecution).where(LoopExecution.source_id == schedule_id)
-        )).scalars().first()
+        task = (
+            await db.execute(
+                select(ScheduledTask).where(ScheduledTask.id == schedule_id)
+            )
+        ).scalar_one()
+        execution = (
+            (
+                await db.execute(
+                    select(LoopExecution).where(LoopExecution.source_id == schedule_id)
+                )
+            )
+            .scalars()
+            .first()
+        )
 
     assert task.enabled is True
     assert task.last_status == ""

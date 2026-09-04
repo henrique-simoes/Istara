@@ -74,7 +74,9 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
                 kwargs["messages"][-1]["content"],
                 re.DOTALL,
             )
-            assert evidence_units_match, "protected coding prompt must carry source evidence units"
+            assert evidence_units_match, (
+                "protected coding prompt must carry source evidence units"
+            )
             prompt_units = json.loads(evidence_units_match.group(1))
             applications = [
                 {
@@ -126,7 +128,9 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
         ]
 
     project_id_outer = project_id
-    monkeypatch.setattr(research_validity_service, "_select_pi_coders", select_pi_coders)
+    monkeypatch.setattr(
+        research_validity_service, "_select_pi_coders", select_pi_coders
+    )
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
 
     await init_db()
@@ -149,7 +153,9 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
                 version=1,
                 content_text=quotes[unit_id],
             )
-            for index, (document_id, unit_id) in enumerate(zip(document_ids, unit_ids), start=1)
+            for index, (document_id, unit_id) in enumerate(
+                zip(document_ids, unit_ids), start=1
+            )
         ]
         db.add_all([project, task, *documents])
         output = SkillOutput(
@@ -174,7 +180,9 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
         orchestrator = AgentOrchestrator()
         await orchestrator._store_findings(db, project_id, output, task)
         await db.refresh(task)
-        coding_run_id = json.loads(task.validation_result)["research_validity"]["coding_run_id"]
+        coding_run_id = json.loads(task.validation_result)["research_validity"][
+            "coding_run_id"
+        ]
         coding_run_row = await db.get(CodingRun, coding_run_id)
         assert coding_run_row is not None
         coding_run = coding_run_row.to_dict()
@@ -225,7 +233,9 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
         )
         assert len(generated_units) == 3
         assert all(unit.unit_type == "source_span" for unit in generated_units)
-        assert {unit.source_document_id for unit in generated_units} == set(document_ids)
+        assert {unit.source_document_id for unit in generated_units} == set(
+            document_ids
+        )
         assert {unit.source_text for unit in generated_units} == set(quotes.values())
         generated_unit_ids = {unit.id for unit in generated_units}
         assert {row.evidence_unit_id for row in applications} == generated_unit_ids
@@ -282,7 +292,9 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
         assert len(nuggets) == 3
         assert len(facts) == len(insights) == len(recommendations) == 1
         nugget_by_text = {nugget.text: nugget for nugget in nuggets}
-        ordered_nugget_ids = [nugget_by_text[quotes[unit_id]].id for unit_id in unit_ids]
+        ordered_nugget_ids = [
+            nugget_by_text[quotes[unit_id]].id for unit_id in unit_ids
+        ]
         fact_id = facts[0].id
         insight_id = insights[0].id
         recommendation_id = recommendations[0].id
@@ -307,9 +319,12 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
             (edge.source_type, edge.target_type, edge.source_id, edge.target_id)
             for edge in derivation_edges
         } == {
-            *(('fact', 'nugget', fact_id, nugget_id) for nugget_id in ordered_nugget_ids),
-            ('insight', 'fact', insight_id, fact_id),
-            ('recommendation', 'insight', recommendation_id, insight_id),
+            *(
+                ("fact", "nugget", fact_id, nugget_id)
+                for nugget_id in ordered_nugget_ids
+            ),
+            ("insight", "fact", insight_id, fact_id),
+            ("recommendation", "insight", recommendation_id, insight_id),
         }
         assert all(edge.reliability_status == "uncoded" for edge in derivation_edges)
         assert all(
@@ -335,14 +350,16 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
         assert len(evidence_edges) == 3
         assert {edge.target_id for edge in evidence_edges} == generated_unit_ids
 
-        human_acceptance = await research_validity_service.create_reconciliation_decision(
-            db,
-            project_id=project_id,
-            code_application_id=applications[0].id,
-            decision_type="accepted",
-            decided_by="human-researcher",
-            rationale="The exact source span supports this accepted code.",
-            source="human_review",
+        human_acceptance = (
+            await research_validity_service.create_reconciliation_decision(
+                db,
+                project_id=project_id,
+                code_application_id=applications[0].id,
+                decision_type="accepted",
+                decided_by="human-researcher",
+                rationale="The exact source span supports this accepted code.",
+                source="human_review",
+            )
         )
         assert human_acceptance["source"] == "human_review"
         partial_gate = await research_validity_service.assess_task_research_validity(
@@ -435,7 +452,9 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
         )
 
     assert trace["summary"]["blocked_report_count"] == 0
-    assert trace["report_dependencies"][0]["report_allowed_by_research_validity"] is True
+    assert (
+        trace["report_dependencies"][0]["report_allowed_by_research_validity"] is True
+    )
     assert trace["report_dependencies"][0]["task_ids"] == [task_id]
     assert len(decisions) == 9
     assert {decision.decided_by for decision in decisions} == {"human-researcher"}
@@ -500,7 +519,9 @@ async def test_agent_findings_drop_cross_project_downstream_links():
         fact = (
             (
                 await db.execute(
-                    select(Fact).where(Fact.project_id == project_id, Fact.task_id == task_id)
+                    select(Fact).where(
+                        Fact.project_id == project_id, Fact.task_id == task_id
+                    )
                 )
             )
             .scalars()

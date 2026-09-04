@@ -49,13 +49,17 @@ class FakeLedger:
             # Resume after a crash: this unit already has an outstanding reservation, so
             # a fresh reserve is refused. The booking stays (retained worst-case spend).
             self.reserved[call_id] = max_cost_usd
-            raise live_driver.LedgerStateError(f"call_id {call_id!r} already has a reservation")
+            raise live_driver.LedgerStateError(
+                f"call_id {call_id!r} already has a reservation"
+            )
         self.reserved[call_id] = max_cost_usd
 
     def commit(self, call_id, actual_cost_usd, *, usage, meta=None):
         if self._commit_over_reservation:
             # Actual cost exceeded the worst-case reservation: the real ledger refuses this.
-            raise live_driver.LedgerStateError(f"commit {call_id!r} exceeds its reservation")
+            raise live_driver.LedgerStateError(
+                f"commit {call_id!r} exceeds its reservation"
+            )
         self.committed[call_id] = (actual_cost_usd, usage, meta)
 
     def release(self, call_id, *, reason):
@@ -77,10 +81,14 @@ class FakeProvider:
     def __init__(self):
         self.calls = []
 
-    def estimate_cost(self, input_tokens, output_tokens, cache_read_tokens=0, cache_write_tokens=0):
+    def estimate_cost(
+        self, input_tokens, output_tokens, cache_read_tokens=0, cache_write_tokens=0
+    ):
         return (
-            input_tokens * 0.55 + output_tokens * 2.19
-            + cache_read_tokens * 0.14 + cache_write_tokens * 0.55
+            input_tokens * 0.55
+            + output_tokens * 2.19
+            + cache_read_tokens * 0.14
+            + cache_write_tokens * 0.55
         ) / 1e6
 
     def endpoint_fingerprint(self):
@@ -92,15 +100,25 @@ class FakeProvider:
     def chat(self, **kwargs):
         self.calls.append(kwargs)
         return "legacy provider response", types.SimpleNamespace(
-            input_tokens=11, output_tokens=7, cache_read_tokens=0,
-            cache_write_tokens=0, total_tokens=18, estimate=False,
+            input_tokens=11,
+            output_tokens=7,
+            cache_read_tokens=0,
+            cache_write_tokens=0,
+            total_tokens=18,
+            estimate=False,
         )
 
 
 def _unit(**overrides):
     base = dict(
-        unit_id="u-1", pack="canonical", scenario_id="s1", seed=0, repeat=1,
-        engine="pi", phase="B2", moa_mode=None,
+        unit_id="u-1",
+        pack="canonical",
+        scenario_id="s1",
+        seed=0,
+        repeat=1,
+        engine="pi",
+        phase="B2",
+        moa_mode=None,
     )
     base.update(overrides)
     return types.SimpleNamespace(**base)
@@ -112,8 +130,13 @@ def _scenario():
 
 def _config(tmp_path, **overrides):
     base = dict(
-        packs=("canonical",), tier="T3", engines=("pi",), seeds=(0,), repeats=1,
-        phase="B2", out_dir=tmp_path,
+        packs=("canonical",),
+        tier="T3",
+        engines=("pi",),
+        seeds=(0,),
+        repeats=1,
+        phase="B2",
+        out_dir=tmp_path,
     )
     base.update(overrides)
     return RunConfig(**base)
@@ -121,16 +144,23 @@ def _config(tmp_path, **overrides):
 
 def _usage(inp=100, out=50, cr=10, cw=5, total=150):
     return {
-        "input_tokens": inp, "output_tokens": out, "cache_read_tokens": cr,
-        "cache_write_tokens": cw, "total_tokens": total,
+        "input_tokens": inp,
+        "output_tokens": out,
+        "cache_read_tokens": cr,
+        "cache_write_tokens": cw,
+        "total_tokens": total,
     }
 
 
 def _capture(**overrides):
     base = dict(
-        text="hello live world", usage=_usage(), estimate=False,
+        text="hello live world",
+        usage=_usage(),
+        estimate=False,
         endpoint_ids=("pi-deepseek-default",),
-        route_evidence=({"endpoint_id": "pi-deepseek-default", "route_kind": "agentic_ensemble"},),
+        route_evidence=(
+            {"endpoint_id": "pi-deepseek-default", "route_kind": "agentic_ensemble"},
+        ),
         raw_method=None,
     )
     base.update(overrides)
@@ -140,19 +170,30 @@ def _capture(**overrides):
 def _dispatch_returning(capture, calls=None):
     async def _dispatch(*, unit, tier, prompt, system, moa_n, max_tokens):
         if calls is not None:
-            calls.append({
-                "unit": unit, "tier": tier, "prompt": prompt,
-                "moa_n": moa_n, "max_tokens": max_tokens,
-            })
+            calls.append(
+                {
+                    "unit": unit,
+                    "tier": tier,
+                    "prompt": prompt,
+                    "moa_n": moa_n,
+                    "max_tokens": max_tokens,
+                }
+            )
         return capture
+
     return _dispatch
 
 
 def _run(tmp_path, *, unit=None, ledger=None, dispatch, config=None, **kwargs):
     return live_driver.run_live_unit_sync(
-        unit=unit or _unit(), scenario=_scenario(), config=config or _config(tmp_path),
-        ledger=ledger or FakeLedger(), provider=FakeProvider(),
-        records_dir=tmp_path / "records", dispatch=dispatch, **kwargs,
+        unit=unit or _unit(),
+        scenario=_scenario(),
+        config=config or _config(tmp_path),
+        ledger=ledger or FakeLedger(),
+        provider=FakeProvider(),
+        records_dir=tmp_path / "records",
+        dispatch=dispatch,
+        **kwargs,
     )
 
 
@@ -161,11 +202,17 @@ def _run(tmp_path, *, unit=None, ledger=None, dispatch, config=None, **kwargs):
 
 def test_dispatch_unit_plain_path_uses_estimator_when_outcome_has_no_usage():
     outcome = types.SimpleNamespace(
-        samples=[types.SimpleNamespace(
-            text="x" * 40, usage=None, endpoint_id="pi-deepseek-default",
-            served_model="deepseek-v4-pro", status="success",
-        )],
-        endpoint_ids=["pi-deepseek-default"], usage=None,
+        samples=[
+            types.SimpleNamespace(
+                text="x" * 40,
+                usage=None,
+                endpoint_id="pi-deepseek-default",
+                served_model="deepseek-v4-pro",
+                status="success",
+            )
+        ],
+        endpoint_ids=["pi-deepseek-default"],
+        usage=None,
     )
     seen = {}
 
@@ -173,17 +220,25 @@ def test_dispatch_unit_plain_path_uses_estimator_when_outcome_has_no_usage():
         seen.update(kwargs)
         return outcome
 
-    capture = asyncio.run(live_driver.dispatch_unit(
-        unit=_unit(), tier="T3", prompt="p" * 20, moa_n=3, max_tokens=37,
-        ensemble_fn=ensemble_fn,
-    ))
+    capture = asyncio.run(
+        live_driver.dispatch_unit(
+            unit=_unit(),
+            tier="T3",
+            prompt="p" * 20,
+            moa_n=3,
+            max_tokens=37,
+            ensemble_fn=ensemble_fn,
+        )
+    )
     assert capture.estimate is True
     assert capture.usage["output_tokens"] == 10  # 40 chars / 4
-    assert capture.usage["input_tokens"] == 5    # 20 chars / 4
+    assert capture.usage["input_tokens"] == 5  # 20 chars / 4
     assert capture.raw_method is None
     # The fake received the pinned DeepSeek params as a plain dict (no backend types).
     assert seen["params"] == {
-        "endpoint_id": "pi-deepseek-default", "model": "deepseek-v4-pro", "max_tokens": 37,
+        "endpoint_id": "pi-deepseek-default",
+        "model": "deepseek-v4-pro",
+        "max_tokens": 37,
     }
     assert seen["engine"] == "pi"
     assert seen["n"] == 1 and seen["distinct"] is False
@@ -191,37 +246,62 @@ def test_dispatch_unit_plain_path_uses_estimator_when_outcome_has_no_usage():
 
 def test_dispatch_unit_plain_path_rejects_missing_served_model_identity():
     outcome = types.SimpleNamespace(
-        samples=[types.SimpleNamespace(
-            text="response", usage=None, endpoint_id="pi-deepseek-default", status="success",
-        )],
-        endpoint_ids=["pi-deepseek-default"], usage=None,
+        samples=[
+            types.SimpleNamespace(
+                text="response",
+                usage=None,
+                endpoint_id="pi-deepseek-default",
+                status="success",
+            )
+        ],
+        endpoint_ids=["pi-deepseek-default"],
+        usage=None,
     )
 
     async def ensemble_fn(**kwargs):
         return outcome
 
-    with pytest.raises(live_driver.RouteAdmissionError, match="provider-served model identity"):
-        asyncio.run(live_driver.dispatch_unit(
-            unit=_unit(), tier="T3", prompt="hello", ensemble_fn=ensemble_fn,
-        ))
+    with pytest.raises(
+        live_driver.RouteAdmissionError, match="provider-served model identity"
+    ):
+        asyncio.run(
+            live_driver.dispatch_unit(
+                unit=_unit(),
+                tier="T3",
+                prompt="hello",
+                ensemble_fn=ensemble_fn,
+            )
+        )
 
 
 def test_dispatch_unit_plain_path_rejects_configured_label_when_provider_served_model_differs():
     outcome = types.SimpleNamespace(
-        samples=[types.SimpleNamespace(
-            text="response", usage=None, endpoint_id="pi-deepseek-default",
-            model="deepseek-v4-pro", served_model="proxy-substitute", status="success",
-        )],
-        endpoint_ids=["pi-deepseek-default"], usage=None,
+        samples=[
+            types.SimpleNamespace(
+                text="response",
+                usage=None,
+                endpoint_id="pi-deepseek-default",
+                model="deepseek-v4-pro",
+                served_model="proxy-substitute",
+                status="success",
+            )
+        ],
+        endpoint_ids=["pi-deepseek-default"],
+        usage=None,
     )
 
     async def ensemble_fn(**kwargs):
         return outcome
 
     with pytest.raises(live_driver.RouteAdmissionError, match="not DeepSeek-approved"):
-        asyncio.run(live_driver.dispatch_unit(
-            unit=_unit(), tier="T3", prompt="hello", ensemble_fn=ensemble_fn,
-        ))
+        asyncio.run(
+            live_driver.dispatch_unit(
+                unit=_unit(),
+                tier="T3",
+                prompt="hello",
+                ensemble_fn=ensemble_fn,
+            )
+        )
 
 
 def test_dispatch_unit_full_ensemble_requests_exactly_moa_n_slots():
@@ -233,20 +313,31 @@ def test_dispatch_unit_full_ensemble_requests_exactly_moa_n_slots():
             return types.SimpleNamespace(
                 samples=[
                     types.SimpleNamespace(
-                        text=text, usage=None, endpoint_id="pi-deepseek-default",
-                        served_model="deepseek-v4-pro", status="success",
+                        text=text,
+                        usage=None,
+                        endpoint_id="pi-deepseek-default",
+                        served_model="deepseek-v4-pro",
+                        status="success",
                     )
                     for text in ("a", "b", "c")
                 ],
                 endpoint_ids=["pi-deepseek-default"] * 3,
-                usage={}, status="success",
+                usage={},
+                status="success",
             )
 
-    capture = asyncio.run(live_driver.dispatch_unit(
-        unit=_unit(moa_mode="full_ensemble"), tier="T3", prompt="hello",
-        moa_n=3, agentic_module=FakeAgentic(),
-    ))
-    assert calls["n"] == 3 and calls["distinct"] is True  # CF-338: real distinct resolution
+    capture = asyncio.run(
+        live_driver.dispatch_unit(
+            unit=_unit(moa_mode="full_ensemble"),
+            tier="T3",
+            prompt="hello",
+            moa_n=3,
+            agentic_module=FakeAgentic(),
+        )
+    )
+    assert (
+        calls["n"] == 3 and calls["distinct"] is True
+    )  # CF-338: real distinct resolution
     assert calls["minimum_n"] == 3
     assert calls["engine"] == "pi"
     assert capture.raw_method == "full_ensemble"
@@ -266,25 +357,34 @@ def test_dispatch_unit_legacy_dispatches_through_shared_pi_model_manager():
         seen.update(kwargs)
         seen["params"] = params
         return types.SimpleNamespace(
-            samples=[types.SimpleNamespace(
-                text="legacy loop response",
-                usage={"input_tokens": 11, "output_tokens": 7, "total_tokens": 18},
-                endpoint_id="pi-deepseek-default",
-                served_model="deepseek-v4-pro",
-                route_evidence={
-                    "endpoint_id": "pi-deepseek-default",
-                    "provider": "deepseek",
-                    "served_model": "deepseek-v4-pro",
-                },
-                status="success",
-            )],
-            endpoint_ids=["pi-deepseek-default"], usage=None, status="success",
+            samples=[
+                types.SimpleNamespace(
+                    text="legacy loop response",
+                    usage={"input_tokens": 11, "output_tokens": 7, "total_tokens": 18},
+                    endpoint_id="pi-deepseek-default",
+                    served_model="deepseek-v4-pro",
+                    route_evidence={
+                        "endpoint_id": "pi-deepseek-default",
+                        "provider": "deepseek",
+                        "served_model": "deepseek-v4-pro",
+                    },
+                    status="success",
+                )
+            ],
+            endpoint_ids=["pi-deepseek-default"],
+            usage=None,
+            status="success",
         )
 
-    capture = asyncio.run(live_driver.dispatch_unit(
-        unit=_unit(engine="legacy"), tier="T3", prompt="hello",
-        provider=provider, ensemble_fn=fake_ensemble,
-    ))
+    capture = asyncio.run(
+        live_driver.dispatch_unit(
+            unit=_unit(engine="legacy"),
+            tier="T3",
+            prompt="hello",
+            provider=provider,
+            ensemble_fn=fake_ensemble,
+        )
+    )
 
     assert seen["engine"] == "legacy"
     assert seen["params"]["endpoint_id"] == "pi-deepseek-default"
@@ -310,21 +410,33 @@ def test_dispatch_unit_legacy_moa_routes_through_shared_pi_model_manager():
                     usage={"input_tokens": 5, "output_tokens": 3, "total_tokens": 8},
                     endpoint_id="pi-deepseek-default",
                     served_model="deepseek-v4-pro",
-                    route_evidence={"endpoint_id": "pi-deepseek-default", "model": "deepseek-v4-pro"},
+                    route_evidence={
+                        "endpoint_id": "pi-deepseek-default",
+                        "model": "deepseek-v4-pro",
+                    },
                     status="success",
                 )
                 for i in range(3)
             ]
             return types.SimpleNamespace(
-                samples=samples, endpoint_ids=[], usage=None, status="success",
+                samples=samples,
+                endpoint_ids=[],
+                usage=None,
+                status="success",
                 method="self_moa",
             )
 
     agentic = FakeAgentic()
-    capture = asyncio.run(live_driver.dispatch_unit(
-        unit=_unit(engine="legacy", moa_mode="self_moa"), tier="T3", prompt="hello",
-        moa_n=3, provider=provider, agentic_module=agentic,
-    ))
+    capture = asyncio.run(
+        live_driver.dispatch_unit(
+            unit=_unit(engine="legacy", moa_mode="self_moa"),
+            tier="T3",
+            prompt="hello",
+            moa_n=3,
+            provider=provider,
+            agentic_module=agentic,
+        )
+    )
 
     assert agentic.kwargs["engine"] == "legacy"
     assert agentic.kwargs["params"].endpoint_id == "pi-deepseek-default"
@@ -334,20 +446,29 @@ def test_dispatch_unit_legacy_moa_routes_through_shared_pi_model_manager():
     assert len(provider.calls) == 0
 
 
-def test_run_live_unit_default_dispatch_routes_legacy_through_shared_pi_model_manager(tmp_path, monkeypatch):
+def test_run_live_unit_default_dispatch_routes_legacy_through_shared_pi_model_manager(
+    tmp_path, monkeypatch
+):
     provider = FakeProvider()
 
     async def fake_ensemble(**kwargs):
         return types.SimpleNamespace(
-            samples=[types.SimpleNamespace(
-                text="legacy loop response",
-                usage={"input_tokens": 11, "output_tokens": 7, "total_tokens": 18},
-                endpoint_id="pi-deepseek-default",
-                served_model="deepseek-v4-pro",
-                route_evidence={"endpoint_id": "pi-deepseek-default", "model": "deepseek-v4-pro"},
-                status="success",
-            )],
-            endpoint_ids=["pi-deepseek-default"], usage=None, status="success",
+            samples=[
+                types.SimpleNamespace(
+                    text="legacy loop response",
+                    usage={"input_tokens": 11, "output_tokens": 7, "total_tokens": 18},
+                    endpoint_id="pi-deepseek-default",
+                    served_model="deepseek-v4-pro",
+                    route_evidence={
+                        "endpoint_id": "pi-deepseek-default",
+                        "model": "deepseek-v4-pro",
+                    },
+                    status="success",
+                )
+            ],
+            endpoint_ids=["pi-deepseek-default"],
+            usage=None,
+            status="success",
         )
 
     fake_module = types.ModuleType("app.core.agentic")
@@ -355,13 +476,20 @@ def test_run_live_unit_default_dispatch_routes_legacy_through_shared_pi_model_ma
     monkeypatch.setitem(sys.modules, "app.core.agentic", fake_module)
 
     record = live_driver.run_live_unit_sync(
-        unit=_unit(engine="legacy"), scenario=_scenario(), config=_config(tmp_path),
-        ledger=FakeLedger(), provider=provider, records_dir=tmp_path / "records",
+        unit=_unit(engine="legacy"),
+        scenario=_scenario(),
+        config=_config(tmp_path),
+        ledger=FakeLedger(),
+        provider=provider,
+        records_dir=tmp_path / "records",
     )
 
     assert record["status"] == "ok"
     assert len(provider.calls) == 0
-    assert record["extensions"]["route_evidence"][0]["endpoint_id"] == "pi-deepseek-default"
+    assert (
+        record["extensions"]["route_evidence"][0]["endpoint_id"]
+        == "pi-deepseek-default"
+    )
     assert schema.is_valid(record)
 
 
@@ -369,18 +497,30 @@ def test_dispatch_unit_moa_rejects_an_unapproved_served_route():
     class FakeAgentic:
         async def ensemble(self, **kwargs):
             return types.SimpleNamespace(
-                samples=[types.SimpleNamespace(
-                    text="local response", usage=None, endpoint_id="pi-local-ollama",
-                    served_model="local-model", status="success",
-                )],
-                endpoint_ids=["pi-local-ollama"], usage={}, status="success",
+                samples=[
+                    types.SimpleNamespace(
+                        text="local response",
+                        usage=None,
+                        endpoint_id="pi-local-ollama",
+                        served_model="local-model",
+                        status="success",
+                    )
+                ],
+                endpoint_ids=["pi-local-ollama"],
+                usage={},
+                status="success",
             )
 
     with pytest.raises(live_driver.RouteAdmissionError, match="not approved"):
-        asyncio.run(live_driver.dispatch_unit(
-            unit=_unit(moa_mode="self_moa"), tier="T3", prompt="hello", moa_n=1,
-            agentic_module=FakeAgentic(),
-        ))
+        asyncio.run(
+            live_driver.dispatch_unit(
+                unit=_unit(moa_mode="self_moa"),
+                tier="T3",
+                prompt="hello",
+                moa_n=1,
+                agentic_module=FakeAgentic(),
+            )
+        )
 
 
 def test_unapproved_route_is_recorded_without_live_provenance(tmp_path):
@@ -410,7 +550,9 @@ def test_unapproved_route_is_recorded_without_live_provenance(tmp_path):
 def test_ok_record_exact_usage_commit_and_atomic_write(tmp_path):
     ledger = FakeLedger()
     calls = []
-    record = _run(tmp_path, ledger=ledger, dispatch=_dispatch_returning(_capture(), calls))
+    record = _run(
+        tmp_path, ledger=ledger, dispatch=_dispatch_returning(_capture(), calls)
+    )
 
     assert record["status"] == "ok"
     assert schema.is_valid(record)
@@ -425,14 +567,24 @@ def test_ok_record_exact_usage_commit_and_atomic_write(tmp_path):
     # Provenance: DeepSeek model id + redacted fingerprint (never a raw URL).
     assert record["provenance"]["model_id"] == "deepseek-v4-pro"
     fingerprint = record["provenance"]["endpoint_fingerprint"]
-    assert fingerprint.startswith("deepseek-route:") and "api.deepseek.com" not in fingerprint
-    assert record["extensions"]["route_evidence"][0]["endpoint_id"] == "pi-deepseek-default"
+    assert (
+        fingerprint.startswith("deepseek-route:")
+        and "api.deepseek.com" not in fingerprint
+    )
+    assert (
+        record["extensions"]["route_evidence"][0]["endpoint_id"]
+        == "pi-deepseek-default"
+    )
 
     # Ledger: reserved worst-case, committed actual, nothing outstanding.
     assert "u-1" in ledger.reserved
     prompt = live_driver.default_prompt_builder(_unit(), _scenario())
-    reserve_input = max(2 * live_driver._chars4(prompt), live_driver.MIN_RESERVE_INPUT_TOKENS)
-    worst_case = FakeProvider().estimate_cost(reserve_input, live_driver.DEFAULT_MAX_TOKENS)
+    reserve_input = max(
+        2 * live_driver._chars4(prompt), live_driver.MIN_RESERVE_INPUT_TOKENS
+    )
+    worst_case = FakeProvider().estimate_cost(
+        reserve_input, live_driver.DEFAULT_MAX_TOKENS
+    )
     assert ledger.reserved["u-1"] == pytest.approx(worst_case)
     actual, committed_usage, meta = ledger.committed["u-1"]
     assert actual == pytest.approx(expected_cost)
@@ -451,7 +603,9 @@ def test_ok_record_exact_usage_commit_and_atomic_write(tmp_path):
 def test_run_live_unit_forwards_the_reserved_output_bound(tmp_path):
     calls = []
     record = _run(
-        tmp_path, dispatch=_dispatch_returning(_capture(), calls), max_tokens=17,
+        tmp_path,
+        dispatch=_dispatch_returning(_capture(), calls),
+        max_tokens=17,
     )
     assert record["status"] == "ok"
     assert calls[0]["max_tokens"] == 17
@@ -468,7 +622,9 @@ def test_estimate_path_names_the_estimator(tmp_path):
 
 def test_unknown_usage_after_dispatch_fails_closed_and_retains_reservation(tmp_path):
     ledger = FakeLedger()
-    capture = _capture(text="", usage=None, estimate=False, endpoint_ids=(), route_evidence=())
+    capture = _capture(
+        text="", usage=None, estimate=False, endpoint_ids=(), route_evidence=()
+    )
     record = _run(tmp_path, ledger=ledger, dispatch=_dispatch_returning(capture))
     assert record["status"] == "not_runnable"
     assert record["not_runnable_reason"] == "other"
@@ -576,7 +732,9 @@ def test_moa_downgrade_is_recorded_not_runnable_with_evidence(tmp_path):
         raw_method="dual_run",
     )
     record = _run(
-        tmp_path, unit=_unit(moa_mode="full_ensemble"), ledger=ledger,
+        tmp_path,
+        unit=_unit(moa_mode="full_ensemble"),
+        ledger=ledger,
         dispatch=_dispatch_returning(capture),
     )
     assert record["status"] == "not_runnable"
@@ -598,7 +756,9 @@ def test_moa_clean_self_moa_records_ok_with_evidence(tmp_path):
         raw_method="self_moa",
     )
     record = _run(
-        tmp_path, unit=_unit(moa_mode="self_moa"), dispatch=_dispatch_returning(capture),
+        tmp_path,
+        unit=_unit(moa_mode="self_moa"),
+        dispatch=_dispatch_returning(capture),
     )
     assert record["status"] == "ok"
     evidence = record["extensions"]["moa"]
@@ -618,7 +778,9 @@ def test_moa_partial_self_moa_fails_closed_even_when_endpoint_list_is_full(tmp_p
         consensus_confidence="high",
     )
     record = _run(
-        tmp_path, unit=_unit(moa_mode="self_moa"), dispatch=_dispatch_returning(capture),
+        tmp_path,
+        unit=_unit(moa_mode="self_moa"),
+        dispatch=_dispatch_returning(capture),
     )
     evidence = record["extensions"]["moa"]
     assert record["status"] == "not_runnable"
@@ -639,7 +801,9 @@ def test_moa_partial_full_ensemble_ignores_failed_selected_routes(tmp_path):
         consensus_confidence="high",
     )
     record = _run(
-        tmp_path, unit=_unit(moa_mode="full_ensemble"), dispatch=_dispatch_returning(capture),
+        tmp_path,
+        unit=_unit(moa_mode="full_ensemble"),
+        dispatch=_dispatch_returning(capture),
     )
     evidence = record["extensions"]["moa"]
     assert record["status"] == "not_runnable"
@@ -668,8 +832,10 @@ def test_record_identity_follows_the_unit_not_the_cli_phase(tmp_path):
     # and the record identity (phase + record_id) must follow the unit so the file
     # name, ledger call id, and record_id all agree (resume keys on the file stem).
     unit = _unit(
-        unit_id="B1-T3-canonical-s1-seed0-r0-pi-self_moa", phase="B1",
-        repeat=0, moa_mode="self_moa",
+        unit_id="B1-T3-canonical-s1-seed0-r0-pi-self_moa",
+        phase="B1",
+        repeat=0,
+        moa_mode="self_moa",
     )
     capture = _capture(
         endpoint_ids=("pi-deepseek-default",) * 3,
@@ -677,7 +843,9 @@ def test_record_identity_follows_the_unit_not_the_cli_phase(tmp_path):
         raw_method="self_moa",
     )
     record = _run(
-        tmp_path, unit=unit, dispatch=_dispatch_returning(capture),
+        tmp_path,
+        unit=unit,
+        dispatch=_dispatch_returning(capture),
         config=_config(tmp_path, phase="B2"),  # CLI phase disagrees with the unit
     )
     assert record["phase"] == "B1"
@@ -705,17 +873,24 @@ def test_live_pair_order_is_independent_of_engine_specific_unit_id():
     pi_unit = _unit(unit_id="B2-T3-canonical-s1-seed0-r1-pi", engine="pi")
     legacy_unit = _unit(unit_id="B2-T3-canonical-s1-seed0-r1-legacy", engine="legacy")
     assert live_driver.schema.pair_order_for_identity(
-        phase=pi_unit.phase, pack=pi_unit.pack, scenario_id=pi_unit.scenario_id,
-        seed=pi_unit.seed, repeat=pi_unit.repeat,
+        phase=pi_unit.phase,
+        pack=pi_unit.pack,
+        scenario_id=pi_unit.scenario_id,
+        seed=pi_unit.seed,
+        repeat=pi_unit.repeat,
     ) == live_driver.schema.pair_order_for_identity(
-        phase=legacy_unit.phase, pack=legacy_unit.pack, scenario_id=legacy_unit.scenario_id,
-        seed=legacy_unit.seed, repeat=legacy_unit.repeat,
+        phase=legacy_unit.phase,
+        pack=legacy_unit.pack,
+        scenario_id=legacy_unit.scenario_id,
+        seed=legacy_unit.seed,
+        repeat=legacy_unit.repeat,
     )
 
 
 def test_dispatch_unit_full_ensemble_requests_distinct_slots(monkeypatch):
     """CF-338: full_ensemble goes through real distinct resolution (petals-ready),
     not a hardcoded single-route collapse."""
+
     class FakeAgentic:
         def __init__(self):
             self.kwargs = None
@@ -727,7 +902,11 @@ def test_dispatch_unit_full_ensemble_requests_distinct_slots(monkeypatch):
                     text=f"slot {i} response",
                     usage={"input_tokens": 4, "output_tokens": 2, "total_tokens": 6},
                     endpoint_id=endpoint,
-                    served_model=("deepseek-v4-pro" if endpoint == "pi-deepseek-default" else f"petals-model-{i}"),
+                    served_model=(
+                        "deepseek-v4-pro"
+                        if endpoint == "pi-deepseek-default"
+                        else f"petals-model-{i}"
+                    ),
                     route_evidence=None,
                     status="success",
                 )
@@ -736,15 +915,24 @@ def test_dispatch_unit_full_ensemble_requests_distinct_slots(monkeypatch):
                 )
             ]
             return types.SimpleNamespace(
-                samples=samples, endpoint_ids=[], usage=None, status="success",
+                samples=samples,
+                endpoint_ids=[],
+                usage=None,
+                status="success",
                 method="full_ensemble",
             )
 
     agentic = FakeAgentic()
-    capture = asyncio.run(live_driver.dispatch_unit(
-        unit=_unit(moa_mode="full_ensemble"), tier="T3", prompt="hello", moa_n=3,
-        provider=FakeProvider(), agentic_module=agentic,
-    ))
+    capture = asyncio.run(
+        live_driver.dispatch_unit(
+            unit=_unit(moa_mode="full_ensemble"),
+            tier="T3",
+            prompt="hello",
+            moa_n=3,
+            provider=FakeProvider(),
+            agentic_module=agentic,
+        )
+    )
     assert agentic.kwargs["distinct"] is True
     assert agentic.kwargs["minimum_n"] == 3
     assert capture.raw_method == "full_ensemble"

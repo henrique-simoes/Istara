@@ -17,6 +17,7 @@ from app.models.project_member import ProjectMember
 from app.models.user import User, UserRole
 from tests.compute_cases.common import *
 
+
 def test_compute_stats_include_capacity_envelope():
     registry = ComputeRegistry()
     registry.register_node(

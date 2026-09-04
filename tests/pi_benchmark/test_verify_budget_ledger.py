@@ -17,7 +17,9 @@ def _ledger(path, rows=()):
     for call_id, reserved, actual in rows:
         ledger.reserve(call_id, reserved, kind="benchmark")
         if actual is not None:
-            ledger.commit(call_id, actual, usage={"input_tokens": 1, "output_tokens": 1})
+            ledger.commit(
+                call_id, actual, usage={"input_tokens": 1, "output_tokens": 1}
+            )
     return ledger
 
 
@@ -52,7 +54,10 @@ def test_orphan_commit_is_a_violation(tmp_path):
     ("row", "needle"),
     [
         ({"type": "reserve", "call_id": "a", "max_cost_usd": 0.4}, "duplicate reserve"),
-        ({"type": "commit", "call_id": "a", "actual_cost_usd": 0.41, "usage": {}}, "exceeds reservation"),
+        (
+            {"type": "commit", "call_id": "a", "actual_cost_usd": 0.41, "usage": {}},
+            "exceeds reservation",
+        ),
         ({"type": "reserve", "call_id": "a", "max_cost_usd": -0.1}, "invalid amount"),
     ],
 )
@@ -92,7 +97,9 @@ def test_close_seals_the_ledger(tmp_path, capsys):
 def test_non_deepseek_provider_is_rejected(tmp_path):
     path = tmp_path / "ledger.json"
     _ledger(path)
-    assert verify_budget_ledger.main(["--ledger", str(path), "--provider", "claude"]) == 1
+    assert (
+        verify_budget_ledger.main(["--ledger", str(path), "--provider", "claude"]) == 1
+    )
 
 
 def test_no_ledger_argument_is_a_usage_error():

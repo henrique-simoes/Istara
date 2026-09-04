@@ -6,7 +6,7 @@ to test research instrument robustness.
 """
 
 from enum import Enum
-from typing import Dict, Any
+from typing import Any
 
 
 class SimulationStrategy(str, Enum):
@@ -46,7 +46,7 @@ class ParticipantSimulationStrategy:
         return prompts.get(strategy, prompts[SimulationStrategy.TRUTHFUL])
 
     @staticmethod
-    def apply_to_context(context: Dict[str, Any], strategy: SimulationStrategy) -> Dict[str, Any]:
+    def apply_to_context(context: dict[str, Any], strategy: SimulationStrategy) -> dict[str, Any]:
         """Apply strategy constraints to the simulation context."""
         context["simulation_strategy"] = strategy.value
         context["strategy_modifier"] = ParticipantSimulationStrategy.get_strategy_prompt(strategy)

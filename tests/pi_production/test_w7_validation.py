@@ -49,9 +49,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 VALIDATION = REPO_ROOT / "backend/app/core/validation.py"
 VALIDATION_EXECUTOR = REPO_ROOT / "backend/app/core/validation_executor.py"
 VALIDITY_SERVICE = REPO_ROOT / "backend/app/services/research_validity_service.py"
-VALIDITY_ROUTE = (
-    REPO_ROOT / "backend/app/services/research_validity_route_evidence.py"
-)
+VALIDITY_ROUTE = REPO_ROOT / "backend/app/services/research_validity_route_evidence.py"
 
 SPINE_PHASES = {
     "intent",
@@ -758,7 +756,9 @@ async def test_select_pi_coders_maps_distinct_endpoint_identities(monkeypatch):
     ]
 
 
-async def test_select_pi_coders_prefers_configured_order_then_fills_from_catalog(monkeypatch):
+async def test_select_pi_coders_prefers_configured_order_then_fills_from_catalog(
+    monkeypatch,
+):
     manager = _StubPiModelManager(
         endpoints=[
             _fake_endpoint("ep-a", "model-a"),
@@ -784,7 +784,9 @@ async def test_select_pi_coders_prefers_configured_order_then_fills_from_catalog
     assert manager.resolve_calls[-1]["exclude"] == ("ep-c", "ep-a")
 
 
-async def test_select_pi_coders_keeps_healthy_fallback_when_preference_is_unavailable(monkeypatch):
+async def test_select_pi_coders_keeps_healthy_fallback_when_preference_is_unavailable(
+    monkeypatch,
+):
     manager = _StubPiModelManager(
         endpoints=[
             _fake_endpoint("ep-a", "model-a"),
@@ -897,7 +899,9 @@ async def test_pi_coder_runner_dispatches_structured_pinned_to_endpoint(monkeypa
     assert route["model"] == "model-a" and route["outcome"] == "served"
 
 
-async def test_pi_coder_runner_repairs_missing_structured_output_with_core_schema(monkeypatch):
+async def test_pi_coder_runner_repairs_missing_structured_output_with_core_schema(
+    monkeypatch,
+):
     """One final forced-tool call may simplify shape, never accept free text."""
     from app.core.pi_runtime.endpoints import PiRuntimeTurnError
     from app.services.research_validity_service import (
@@ -908,13 +912,15 @@ async def test_pi_coder_runner_repairs_missing_structured_output_with_core_schem
     )
 
     value = {
-        "applications": [{
-            "evidence_unit_id": "eu-1",
-            "codes": ["traceability"],
-            "primary_code": "traceability",
-            "quote": "source quote",
-            "confidence": 0.9,
-        }]
+        "applications": [
+            {
+                "evidence_unit_id": "eu-1",
+                "codes": ["traceability"],
+                "primary_code": "traceability",
+                "quote": "source quote",
+                "confidence": 0.9,
+            }
+        ]
     }
     calls = []
 
@@ -947,7 +953,9 @@ async def test_pi_coder_runner_repairs_missing_structured_output_with_core_schem
     assert json.loads(response["message"]["content"]) == value
 
 
-async def test_pi_coder_runner_bounded_thinking_off_fallback_after_core_schema_failure(monkeypatch):
+async def test_pi_coder_runner_bounded_thinking_off_fallback_after_core_schema_failure(
+    monkeypatch,
+):
     """When even the core-schema forced call reports structured_output_missing,
     exactly one final forced call with reasoning disabled may rescue the rater;
     the route evidence must disclose the bounded thinking fallback."""
@@ -960,13 +968,15 @@ async def test_pi_coder_runner_bounded_thinking_off_fallback_after_core_schema_f
     )
 
     value = {
-        "applications": [{
-            "evidence_unit_id": "eu-1",
-            "codes": ["traceability"],
-            "primary_code": "traceability",
-            "quote": "source quote",
-            "confidence": 0.9,
-        }]
+        "applications": [
+            {
+                "evidence_unit_id": "eu-1",
+                "codes": ["traceability"],
+                "primary_code": "traceability",
+                "quote": "source quote",
+                "confidence": 0.9,
+            }
+        ]
     }
     calls = []
 
@@ -1007,7 +1017,9 @@ async def test_pi_coder_runner_bounded_thinking_off_fallback_after_core_schema_f
     assert json.loads(response["message"]["content"]) == value
 
 
-async def test_pi_coder_runner_thinking_off_fallback_stays_fail_closed_for_other_errors(monkeypatch):
+async def test_pi_coder_runner_thinking_off_fallback_stays_fail_closed_for_other_errors(
+    monkeypatch,
+):
     """Only structured_output_missing after the core-schema call may fall back;
     every other typed failure must propagate unchanged."""
     from app.core.pi_runtime.endpoints import PiRuntimeTurnError
@@ -1371,11 +1383,14 @@ async def test_qwen_fallback_rejects_a_different_api_key():
         provider_account_handle="account",
         kind="remote",
     )
-    fallback = SimpleNamespace(**{**vars(primary),
-        "endpoint_id": "ep-fallback",
-        "model": "qwen3.7-plus-2026-05-26",
-        "api_key": "different-key",
-    })
+    fallback = SimpleNamespace(
+        **{
+            **vars(primary),
+            "endpoint_id": "ep-fallback",
+            "model": "qwen3.7-plus-2026-05-26",
+            "api_key": "different-key",
+        }
+    )
 
     class _Manager:
         async def ensure_db_projection(self):
@@ -1497,7 +1512,9 @@ async def test_pi_coder_runner_rejects_missing_served_model_identity(monkeypatch
 
 async def test_pi_coder_runner_rejects_contradictory_route_model_receipt(monkeypatch):
     """A route must not overwrite the provider receipt with a configured alias."""
-    dispatcher_stub = _StubAgentic(structured_endpoint_id="ep-a", structured_model="model-a")
+    dispatcher_stub = _StubAgentic(
+        structured_endpoint_id="ep-a", structured_model="model-a"
+    )
 
     async def _structured(**kwargs):
         dispatcher_stub.calls.append(("structured", kwargs))
@@ -1647,7 +1664,9 @@ async def _run_pi_coding_run(
 
     if selection_error is not None:
 
-        async def _select(max_coders, *, project_id=None, manager=None, pi_service=None):
+        async def _select(
+            max_coders, *, project_id=None, manager=None, pi_service=None
+        ):
             selection_managers.append(manager)
             raise selection_error
 
@@ -1670,7 +1689,9 @@ async def _run_pi_coding_run(
             for name in ("a", "b", "c")
         ]
 
-        async def _select(max_coders, *, project_id=None, manager=None, pi_service=None):
+        async def _select(
+            max_coders, *, project_id=None, manager=None, pi_service=None
+        ):
             selection_managers.append(manager)
             return coders
 
@@ -1684,14 +1705,16 @@ async def _run_pi_coding_run(
                 prior_calls = sum(
                     1
                     for method, call in dispatcher_stub.calls[:-1]
-                    if method == "structured" and call["params"].model == kwargs["params"].model
+                    if method == "structured"
+                    and call["params"].model == kwargs["params"].model
                 )
                 covered = unit_ids[:1] if prior_calls == 0 else unit_ids[1:]
             elif kwargs["params"].model == staged_coverage_model:
                 prior_calls = sum(
                     1
                     for method, call in dispatcher_stub.calls[:-1]
-                    if method == "structured" and call["params"].model == kwargs["params"].model
+                    if method == "structured"
+                    and call["params"].model == kwargs["params"].model
                 )
                 covered = (
                     unit_ids[:1]
@@ -1702,7 +1725,9 @@ async def _run_pi_coding_run(
                 )
             else:
                 covered = (
-                    unit_ids[:1] if kwargs["params"].model == partial_model else unit_ids
+                    unit_ids[:1]
+                    if kwargs["params"].model == partial_model
+                    else unit_ids
                 )
             applications = [
                 {
@@ -1904,9 +1929,7 @@ async def test_coding_run_pi_plane_staged_partial_coder_recovers_within_two_repa
     assert result["rater_count"] == 3
     assert result["distinct_model_count"] == 3
     assert result["promotion_status"] == "accepted"
-    coverage_routes = [
-        r for r in result["route_evidence"] if r.get("coverage_repair")
-    ]
+    coverage_routes = [r for r in result["route_evidence"] if r.get("coverage_repair")]
     assert coverage_routes
     assert coverage_routes[0]["coverage_repair"] == "per_unit_union"
     assert coverage_routes[0]["coverage_repair_attempts"] == 2
@@ -1924,9 +1947,7 @@ async def test_coding_run_pi_plane_partial_coder_recovers_full_coverage_via_unio
     assert result["rater_count"] == 3
     assert result["distinct_model_count"] == 3
     assert result["promotion_status"] == "accepted"
-    coverage_routes = [
-        r for r in result["route_evidence"] if r.get("coverage_repair")
-    ]
+    coverage_routes = [r for r in result["route_evidence"] if r.get("coverage_repair")]
     assert coverage_routes and coverage_routes[0]["coverage_repair"] == "per_unit_union"
 
 

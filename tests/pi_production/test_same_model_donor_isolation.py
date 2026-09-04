@@ -46,7 +46,9 @@ pytestmark = requires_node
 
 
 @pytest.mark.asyncio
-async def test_same_model_pi_endpoint_and_donor_prove_bidirectional_isolation(monkeypatch):
+async def test_same_model_pi_endpoint_and_donor_prove_bidirectional_isolation(
+    monkeypatch,
+):
     await init_db()
 
     # One shared model alias advertised by BOTH the Pi endpoint and the donor.
@@ -174,7 +176,9 @@ async def test_same_model_pi_endpoint_and_donor_prove_bidirectional_isolation(mo
 
         # The Pi turn genuinely reached its pinned API endpoint over real HTTP...
         assert pi_endpoint_requests, "Pi request never reached the pinned API endpoint"
-        pi_text = "".join(e.get("text", "") for e in pi_events if e["type"] == "content")
+        pi_text = "".join(
+            e.get("text", "") for e in pi_events if e["type"] == "content"
+        )
         assert "pinned Istara Pi endpoint" in pi_text
         done = [e for e in pi_events if e["type"] == "done"]
         assert done and done[0]["endpoint_id"] == pi_endpoint_id

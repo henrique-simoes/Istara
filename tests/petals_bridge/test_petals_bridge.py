@@ -236,7 +236,10 @@ async def test_openai_compute_node_preserves_provider_usage(monkeypatch):
                 json={
                     "choices": [
                         {
-                            "message": {"role": "assistant", "content": "provider text"},
+                            "message": {
+                                "role": "assistant",
+                                "content": "provider text",
+                            },
                             "finish_reason": "stop",
                         }
                     ],
@@ -257,6 +260,7 @@ async def test_openai_compute_node_preserves_provider_usage(monkeypatch):
         is_healthy=True,
         loaded_models=["provider-model"],
     )
+
     async def get_client():
         return UsageClient()
 
@@ -321,7 +325,10 @@ def test_static_endpoint_cannot_shadow_petals_projection(
 ):
     """The generated Petals namespace must fail closed on a static collision."""
     monkeypatch.setattr(settings, "petals_bridge_enabled", True)
-    from app.core.pi_runtime.endpoints import PiEndpointResolutionError, ResolvedPiEndpoint
+    from app.core.pi_runtime.endpoints import (
+        PiEndpointResolutionError,
+        ResolvedPiEndpoint,
+    )
     from app.core.pi_runtime.model_manager import PiModelManager
 
     manager = PiModelManager(
@@ -346,11 +353,11 @@ def test_static_endpoint_cannot_shadow_petals_projection(
         manager.resolve(endpoint_id="pi-petals-donor-1", project_id="project-a")
     with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
         manager.resolve_distinct(1, project_id="project-a")
-    with pytest.raises(PiEndpointResolutionError, match="no_matching_pi_embed_endpoint"):
+    with pytest.raises(
+        PiEndpointResolutionError, match="no_matching_pi_embed_endpoint"
+    ):
         manager.resolve_embed()
-    assert "pi-petals-donor-1" not in {
-        entry.endpoint_id for entry in manager.catalog()
-    }
+    assert "pi-petals-donor-1" not in {entry.endpoint_id for entry in manager.catalog()}
 
 
 def test_pi_runtime_never_imports_registry():
@@ -407,6 +414,7 @@ def test_stream_yields_chunks_and_final_route(donor, registry_with):
 
 def test_stream_preserves_provider_usage_from_donor_chat(donor, registry_with):
     """The stream shim must not turn an exact donor receipt into an estimate."""
+
     async def chat_with_usage(messages, **kwargs):
         return {
             "message": {"role": "assistant", "content": "exact donor"},
@@ -418,7 +426,9 @@ def test_stream_preserves_provider_usage_from_donor_chat(donor, registry_with):
         }
 
     async def stream_must_not_run(*_args, **_kwargs):
-        raise AssertionError("Petals stream should use the receipt-preserving chat seam")
+        raise AssertionError(
+            "Petals stream should use the receipt-preserving chat seam"
+        )
         yield "unreachable"
 
     donor.chat = chat_with_usage
@@ -643,7 +653,10 @@ def test_consent_revocation_removes_pi_projection_and_reconsent_restores_it(
 
     manager = PiModelManager(endpoints=[])
     manager._project_petals()
-    assert manager.resolve(endpoint_id="pi-petals-donor-1").endpoint_id == "pi-petals-donor-1"
+    assert (
+        manager.resolve(endpoint_id="pi-petals-donor-1").endpoint_id
+        == "pi-petals-donor-1"
+    )
     petals_bridge.set_donor_consent("donor-1", False)
     assert "pi-petals-donor-1" not in manager._entries
     with pytest.raises(PiEndpointResolutionError):
@@ -651,7 +664,10 @@ def test_consent_revocation_removes_pi_projection_and_reconsent_restores_it(
 
     petals_bridge.set_donor_consent("donor-1", True)
     manager._refresh_petals_projection()
-    assert manager.resolve(endpoint_id="pi-petals-donor-1").endpoint_id == "pi-petals-donor-1"
+    assert (
+        manager.resolve(endpoint_id="pi-petals-donor-1").endpoint_id
+        == "pi-petals-donor-1"
+    )
 
 
 def test_project_scoped_resolution_excludes_unauthorized_petals_donors(
@@ -660,7 +676,9 @@ def test_project_scoped_resolution_excludes_unauthorized_petals_donors(
     """Pi selection filters donor authorization before an ensemble slot is consumed."""
     monkeypatch.setattr(settings, "petals_bridge_enabled", True)
     donor.allowed_project_ids = ["project-a"]
-    donor2 = FakeNode("donor-2", model="petals-model-13b", allowed_project_ids=["project-b"])
+    donor2 = FakeNode(
+        "donor-2", model="petals-model-13b", allowed_project_ids=["project-b"]
+    )
     registry_with._nodes[donor2.node_id] = donor2
 
     from app.core.pi_runtime.endpoints import PiEndpointResolutionError
@@ -670,7 +688,9 @@ def test_project_scoped_resolution_excludes_unauthorized_petals_donors(
     manager._project_petals()
     selected = manager.resolve_distinct(1, project_id="project-a")
     assert [endpoint.endpoint_id for endpoint in selected] == ["pi-petals-donor-1"]
-    with pytest.raises(PiEndpointResolutionError, match="petals_project_not_authorized"):
+    with pytest.raises(
+        PiEndpointResolutionError, match="petals_project_not_authorized"
+    ):
         manager.resolve(endpoint_id="pi-petals-donor-2", project_id="project-a")
     with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
         manager.resolve_distinct(2, project_id="project-a")
@@ -693,9 +713,7 @@ def test_restricted_petals_resolution_requires_project_scope(
     with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
         manager.resolve_distinct(1)
     assert manager.resolve(endpoint_id="pi-petals-donor-1", project_id="project-a")
-    assert "pi-petals-donor-1" in {
-        entry.endpoint_id for entry in manager.catalog()
-    }
+    assert "pi-petals-donor-1" in {entry.endpoint_id for entry in manager.catalog()}
 
 
 def test_wildcard_petals_resolution_remains_available_without_project(
@@ -707,4 +725,7 @@ def test_wildcard_petals_resolution_remains_available_without_project(
 
     manager = PiModelManager(endpoints=[])
     manager._project_petals()
-    assert manager.resolve(endpoint_id="pi-petals-donor-1").endpoint_id == "pi-petals-donor-1"
+    assert (
+        manager.resolve(endpoint_id="pi-petals-donor-1").endpoint_id
+        == "pi-petals-donor-1"
+    )

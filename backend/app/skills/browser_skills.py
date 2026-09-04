@@ -5,10 +5,9 @@ them in structured UX research methodology (Competitive Analysis, Accessibility,
 """
 
 import logging
-from typing import Any, Optional
 
+from app.services.browser_service import BROWSER_AVAILABLE, browse_website
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
-from app.services.browser_service import browse_website, BROWSER_AVAILABLE
 
 logger = logging.getLogger(__name__)
 

@@ -63,25 +63,39 @@ def parse_verdict(text: str) -> dict[str, Any]:
     """
     start = text.find("{")
     if start < 0:
-        raise ProviderCallFailed(f"judge verdict contained no JSON object: {text[:120]!r}")
+        raise ProviderCallFailed(
+            f"judge verdict contained no JSON object: {text[:120]!r}"
+        )
     try:
         data, _ = json.JSONDecoder().raw_decode(text[start:])
     except json.JSONDecodeError as exc:
         raise ProviderCallFailed(f"judge verdict JSON malformed: {exc}") from exc
     if not isinstance(data, dict):
-        raise ProviderCallFailed(f"judge verdict was not a JSON object: {type(data).__name__}")
+        raise ProviderCallFailed(
+            f"judge verdict was not a JSON object: {type(data).__name__}"
+        )
     winner = str(data.get("winner", "")).strip().upper()
     if winner not in _VALID_WINNERS:
-        raise ProviderCallFailed(f"judge verdict winner invalid: {data.get('winner')!r}")
+        raise ProviderCallFailed(
+            f"judge verdict winner invalid: {data.get('winner')!r}"
+        )
     try:
         score_a = float(data["score_a"])
         score_b = float(data["score_b"])
     except (KeyError, TypeError, ValueError) as exc:
-        raise ProviderCallFailed(f"judge verdict scores missing/non-numeric: {exc}") from exc
-    return {"winner": "tie" if winner == "TIE" else winner, "score_a": score_a, "score_b": score_b}
+        raise ProviderCallFailed(
+            f"judge verdict scores missing/non-numeric: {exc}"
+        ) from exc
+    return {
+        "winner": "tie" if winner == "TIE" else winner,
+        "score_a": score_a,
+        "score_b": score_b,
+    }
 
 
-def make_deepseek_judge_fn(*, provider: Any, ledger: Any = None, max_tokens: int = 512) -> JudgeFn:
+def make_deepseek_judge_fn(
+    *, provider: Any, ledger: Any = None, max_tokens: int = 512
+) -> JudgeFn:
     """Build a JudgeLayer-compatible judge_fn backed by DeepSeek through ``provider``.
 
     Judge calls carry ``kind="judge"`` and share the benchmark's ledger/cap; the call id

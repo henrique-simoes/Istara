@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -38,7 +38,7 @@ def _history_event(actor_id: str, actor_username: str, event: str, note: str = "
         "actor_user_id": actor_id,
         "actor_username": actor_username,
         "note": note,
-        "at": datetime.now(timezone.utc).isoformat(),
+        "at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -90,7 +90,7 @@ async def create_permission_request(
         conceal_unrelated=True,
     )
     title = data.title.strip() or data.action.strip().replace("_", " ").title()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     history = [_history_event(subject.id, subject.username, "created")]
     item = PermissionRequest(
         id=str(uuid.uuid4()),
@@ -188,7 +188,7 @@ async def review_permission_request(
     item.reviewer_user_id = subject.id
     item.reviewer_username = subject.username
     item.review_note = data.review_note.strip()
-    item.reviewed_at = datetime.now(timezone.utc)
+    item.reviewed_at = datetime.now(UTC)
     item.updated_at = item.reviewed_at
     try:
         history = json.loads(item.history_json or "[]")

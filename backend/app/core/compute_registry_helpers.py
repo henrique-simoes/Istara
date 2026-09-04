@@ -250,7 +250,7 @@ def _positive_number(value: Any) -> float:
     return parsed if parsed > 0 else 0.0
 
 
-def _hydrate_local_resources(node: "ComputeNode") -> None:
+def _hydrate_local_resources(node: ComputeNode) -> None:
     """Fill local-node hardware fields so compute stats do not report 0 GB."""
     global _LOCAL_RESOURCE_SNAPSHOT
     if node.source != "local":

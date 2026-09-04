@@ -9,10 +9,7 @@ Conversation states: intro -> questions -> probing -> wrap_up -> completed
 import json
 import logging
 import time
-from datetime import datetime, timezone
 from enum import Enum
-
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.channel_conversation import ChannelConversation
 from app.models.research_deployment import ResearchDeployment

@@ -215,7 +215,10 @@ def classify_path(path: str) -> str:
         return "source"
     if path.startswith("infra/"):
         return "source"
-    if any(part in ("node_modules", ".venv", "dist", "build", "__pycache__") for part in parts):
+    if any(
+        part in ("node_modules", ".venv", "dist", "build", "__pycache__")
+        for part in parts
+    ):
         return "generated"
     return "unknown"
 
@@ -312,7 +315,10 @@ OBLIGATION_TEST_OWNERS: dict[str, list[str]] = {
     "ci_governance": ["scripts/check_ci_governance.py"],
     "test_harness": ["scripts/check_test_harness.py"],
     "feature_obligations": ["tests/test_feature_obligations.py"],
-    "qa_artifact_contract": ["tests/test_qa_stack_contract.py", "tests/test_qa_artifacts.py"],
+    "qa_artifact_contract": [
+        "tests/test_qa_stack_contract.py",
+        "tests/test_qa_artifacts.py",
+    ],
     "qa_stack_contract": ["tests/test_qa_stack_contract.py"],
     "public_tree": ["tests/test_public_repo_quality.py"],
     "workflow_contract": ["scripts/check_workflow_contracts.py"],
@@ -330,7 +336,14 @@ OBLIGATION_TEST_OWNERS: dict[str, list[str]] = {
 
 # Cross-cutting obligations added from change class, independent of registry.
 CROSS_CUTTING: dict[str, list[str]] = {
-    "workflow": ["governance", "ci_governance", "test_harness", "feature_obligations", "workflow_contract", "security_benchmark"],
+    "workflow": [
+        "governance",
+        "ci_governance",
+        "test_harness",
+        "feature_obligations",
+        "workflow_contract",
+        "security_benchmark",
+    ],
     "qa": ["governance", "qa_stack_contract", "qa_artifact_contract", "public_tree"],
     "security": ["security_benchmark"],
     "script": ["governance"],
@@ -338,13 +351,31 @@ CROSS_CUTTING: dict[str, list[str]] = {
 
 # Cross-cutting pinned commands added from change class (catalog keys).
 CROSS_CUTTING_COMMANDS: dict[str, list[str]] = {
-    "workflow": ["check_integrity", "check_ci_governance", "check_test_harness", "check_feature_obligations", "check_workflow_contracts", "security_benchmark"],
-    "qa": ["check_integrity", "compose_qa_render", "pytest_qa_stack", "check_public_tree"],
+    "workflow": [
+        "check_integrity",
+        "check_ci_governance",
+        "check_test_harness",
+        "check_feature_obligations",
+        "check_workflow_contracts",
+        "security_benchmark",
+    ],
+    "qa": [
+        "check_integrity",
+        "compose_qa_render",
+        "pytest_qa_stack",
+        "check_public_tree",
+    ],
     "security": ["security_benchmark", "pytest_security_benchmark"],
     "script": ["check_integrity"],
 }
 
-OPTIONAL_LANES = {"authorized_live", "staging_adapter", "simulation_live", "dimension_probe_live", "authorized_chat_smoke"}
+OPTIONAL_LANES = {
+    "authorized_live",
+    "staging_adapter",
+    "simulation_live",
+    "dimension_probe_live",
+    "authorized_chat_smoke",
+}
 
 
 def build_report(base: str, head: str) -> dict:
@@ -364,7 +395,9 @@ def build_report(base: str, head: str) -> dict:
     for path in changed:
         zone = classify_path(path)
         matched = [
-            f for f in features if any(path_matches(path, pat) for pat in f.get("paths", []))
+            f
+            for f in features
+            if any(path_matches(path, pat) for pat in f.get("paths", []))
         ]
         if matched:
             for feature in matched:
@@ -372,7 +405,9 @@ def build_report(base: str, head: str) -> dict:
                     "id": feature.get("id"),
                     "owner": feature.get("owner"),
                     "matched_path": path,
-                    "requires_human_review": bool(feature.get("requires_human_review", False)),
+                    "requires_human_review": bool(
+                        feature.get("requires_human_review", False)
+                    ),
                 }
                 if entry not in matched_features:
                     matched_features.append(entry)
@@ -389,7 +424,9 @@ def build_report(base: str, head: str) -> dict:
             # Docs and tests are governed by cross-cutting obligations, not by
             # feature ownership; a test change without any source change still
             # runs harness governance.
-            obligation_reasons.setdefault("governance", []).append(f"{path} is a {zone} path")
+            obligation_reasons.setdefault("governance", []).append(
+                f"{path} is a {zone} path"
+            )
             continue
         unknown_paths.append(path)
 
@@ -403,7 +440,11 @@ def build_report(base: str, head: str) -> dict:
     # the surface's deterministic obligations plus spine_touch handling.
     spine_touched = False
     for surface in capabilities.get("surfaces", []):
-        if any(path_matches(path, pat) for pat in surface.get("paths", []) for path in changed):
+        if any(
+            path_matches(path, pat)
+            for pat in surface.get("paths", [])
+            for path in changed
+        ):
             for obl in surface.get("deterministic", []):
                 obligation_reasons.setdefault(obl, []).append(
                     f"capability surface {surface.get('id')}"
@@ -453,7 +494,9 @@ def build_report(base: str, head: str) -> dict:
             missing_test_ownership.append(f"{obl}: no declared test owner")
             continue
         if not any((ROOT / owner).exists() for owner in owners):
-            missing_test_ownership.append(f"{obl}: test owner missing ({', '.join(owners)})")
+            missing_test_ownership.append(
+                f"{obl}: test owner missing ({', '.join(owners)})"
+            )
 
     required_artifacts = ["artifacts/feature-obligations.json"]
     if "security_benchmark" in deterministic:
@@ -491,7 +534,11 @@ def main(argv: list[str] | None = None) -> int:
 
     report = build_report(args.base, args.head)
     if args.json_out:
-        out = ROOT / args.json_out if not Path(args.json_out).is_absolute() else Path(args.json_out)
+        out = (
+            ROOT / args.json_out
+            if not Path(args.json_out).is_absolute()
+            else Path(args.json_out)
+        )
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         print(f"Obligation report written to {out}")
@@ -499,7 +546,9 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps(report, indent=2))
 
     if report["unknown_paths"]:
-        print("\nFAIL: unclassified changed paths require a registry entry or allowlist update:")
+        print(
+            "\nFAIL: unclassified changed paths require a registry entry or allowlist update:"
+        )
         for path in report["unknown_paths"]:
             print(f"  - {path}")
     if report["missing_test_ownership"]:

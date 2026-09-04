@@ -146,8 +146,9 @@ Format as Markdown."""
         return {"skill": self.name, "plan": plan_text}
 
     async def execute(self, skill_input: SkillInput) -> SkillOutput:
-        from app.core.file_processor import process_file
         from pathlib import Path
+
+        from app.core.file_processor import process_file
 
         all_text = []
         for f in skill_input.files or []:

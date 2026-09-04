@@ -25,7 +25,9 @@ def test_capabilities_validate_clean():
 def test_capabilities_every_surface_has_deterministic():
     data = json.loads(CAPABILITIES.read_text(encoding="utf-8"))
     for surface in data["surfaces"]:
-        assert surface["deterministic"], f"{surface['id']} has no deterministic obligations"
+        assert surface["deterministic"], (
+            f"{surface['id']} has no deterministic obligations"
+        )
         assert set(surface["deterministic"]) <= DETERMINISTIC_OBLIGATIONS
         assert set(surface.get("live_optional", [])) <= LIVE_OBLIGATIONS
 

@@ -1,6 +1,6 @@
 """Method Metric model — tracks validation method performance for adaptive learning."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -26,8 +26,8 @@ class MethodMetric(Base):
     total_runs: Mapped[int] = mapped_column(Integer, default=0)
     weight: Mapped[float] = mapped_column(Float, default=1.0)  # Adaptive weight with recency bias
     last_used: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

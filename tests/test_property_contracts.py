@@ -37,7 +37,9 @@ def _node(**overrides):
 @settings(max_examples=80)
 def test_capacity_envelope_preserves_slot_invariants(max_slots, active, healthy):
     active = min(active, max_slots)
-    node = _node(max_active_requests=max_slots, active_requests=active, is_healthy=healthy)
+    node = _node(
+        max_active_requests=max_slots, active_requests=active, is_healthy=healthy
+    )
 
     envelope = compute_capacity_envelope([node])
 
@@ -45,18 +47,26 @@ def test_capacity_envelope_preserves_slot_invariants(max_slots, active, healthy)
     assert envelope["request_slots_used"] == active
     assert 0 <= envelope["request_slots_available"] <= max_slots
     assert 0.0 <= envelope["request_slot_utilization_pct"] <= 100.0
-    assert envelope["saturated_nodes"] == (1 if max_slots > 0 and active >= max_slots else 0)
+    assert envelope["saturated_nodes"] == (
+        1 if max_slots > 0 and active >= max_slots else 0
+    )
 
 
 @pytest.mark.mutation
 @given(
     active=st.integers(min_value=0, max_value=4),
-    latency=st.floats(min_value=0, max_value=2000, allow_nan=False, allow_infinity=False),
+    latency=st.floats(
+        min_value=0, max_value=2000, allow_nan=False, allow_infinity=False
+    ),
     priority=st.integers(min_value=0, max_value=20),
-    cpu_load=st.floats(min_value=0, max_value=100, allow_nan=False, allow_infinity=False),
+    cpu_load=st.floats(
+        min_value=0, max_value=100, allow_nan=False, allow_infinity=False
+    ),
 )
 @settings(max_examples=80)
-def test_node_capacity_score_is_available_and_bounded(active, latency, priority, cpu_load):
+def test_node_capacity_score_is_available_and_bounded(
+    active, latency, priority, cpu_load
+):
     node = _node(
         active_requests=active,
         max_active_requests=5,
@@ -70,8 +80,16 @@ def test_node_capacity_score_is_available_and_bounded(active, latency, priority,
     assert math.isfinite(score)
     assert score <= 120.0
     assert node_capacity_score(_node(is_healthy=False), now=100.0) == -1
-    assert node_capacity_score(_node(active_requests=5, max_active_requests=5), now=100.0) == -1
-    assert node_capacity_score(_node(health_state="cooldown", cooldown_until=101.0), now=100.0) == -1
+    assert (
+        node_capacity_score(_node(active_requests=5, max_active_requests=5), now=100.0)
+        == -1
+    )
+    assert (
+        node_capacity_score(
+            _node(health_state="cooldown", cooldown_until=101.0), now=100.0
+        )
+        == -1
+    )
 
 
 @pytest.mark.mutation
@@ -85,12 +103,21 @@ def test_node_capacity_score_penalizes_active_requests_monotonically():
 @pytest.mark.mutation
 def test_node_capacity_score_formula_components_are_stable():
     assert node_capacity_score(_node(), now=100.0) == 100.0
-    assert node_capacity_score(_node(active_requests=2, max_active_requests=5), now=100.0) == 70.0
+    assert (
+        node_capacity_score(_node(active_requests=2, max_active_requests=5), now=100.0)
+        == 70.0
+    )
     assert node_capacity_score(_node(latency_ms=100), now=100.0) == 90.0
     assert node_capacity_score(_node(latency_ms=1000), now=100.0) == 70.0
     assert node_capacity_score(_node(priority=7), now=100.0) == 93.0
-    assert node_capacity_score(_node(ram_available_gb=6, ram_total_gb=24), now=100.0) == 112.0
-    assert node_capacity_score(_node(ram_available_gb=2, ram_total_gb=32), now=100.0) == 84.0
+    assert (
+        node_capacity_score(_node(ram_available_gb=6, ram_total_gb=24), now=100.0)
+        == 112.0
+    )
+    assert (
+        node_capacity_score(_node(ram_available_gb=2, ram_total_gb=32), now=100.0)
+        == 84.0
+    )
     assert node_capacity_score(_node(cpu_load_pct=80), now=100.0) == 92.5
     assert node_capacity_score(_node(cpu_load_pct=100), now=100.0) == 80.0
 
@@ -115,7 +142,9 @@ def test_capacity_envelope_aggregates_pool_state_exactly():
     nodes = [
         _node(active_requests=1, max_active_requests=4, cpu_load_pct=0),
         _node(active_requests=4, max_active_requests=4, cpu_load_pct=50),
-        _node(active_requests=2, max_active_requests=6, is_healthy=False, cpu_load_pct=100),
+        _node(
+            active_requests=2, max_active_requests=6, is_healthy=False, cpu_load_pct=100
+        ),
     ]
 
     envelope = compute_capacity_envelope(nodes)

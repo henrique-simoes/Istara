@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.checkpoint import atomic_write
 
@@ -36,7 +36,7 @@ class SkillUsageMixin:
             stats["failures"] += 1
             stats["utility_score"] = stats.get("utility_score", 0.5) * 0.9
         stats["total_quality"] += quality_score
-        stats["last_used"] = datetime.now(timezone.utc).isoformat()
+        stats["last_used"] = datetime.now(UTC).isoformat()
 
     def _usage_stats_with_rates(self, stats: dict) -> dict:
         result = dict(stats)
@@ -92,6 +92,7 @@ class SkillUsageMixin:
     ) -> None:
         try:
             import asyncio
+
             from app.api.websocket import broadcast_suggestion
 
             if allow_lifecycle_change:

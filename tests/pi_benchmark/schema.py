@@ -74,9 +74,13 @@ def validate_record(record: dict[str, Any]) -> dict[str, Any]:
 # driver both depend on this leaf module; neither execution path imports the other.
 def _git(*args: str) -> str:
     try:
-        return subprocess.check_output(
-            ["git", *args], cwd=str(_REPO_ROOT), stderr=subprocess.DEVNULL
-        ).decode().strip()
+        return (
+            subprocess.check_output(
+                ["git", *args], cwd=str(_REPO_ROOT), stderr=subprocess.DEVNULL
+            )
+            .decode()
+            .strip()
+        )
     except Exception:  # pragma: no cover - git absent / not a repo
         return ""
 
@@ -90,7 +94,9 @@ def git_provenance() -> tuple[str, bool]:
 
 def input_sha256(scenario_id: str, seed: int) -> str:
     """Return the deterministic input hash shared by both engine arms."""
-    payload = json.dumps({"scenario": scenario_id, "seed": seed}, sort_keys=True).encode()
+    payload = json.dumps(
+        {"scenario": scenario_id, "seed": seed}, sort_keys=True
+    ).encode()
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -104,7 +110,12 @@ def _order_for_pair(pair_index: int) -> str:
 
 
 def pair_identity(
-    *, phase: str, pack: str, scenario_id: str, seed: int, repeat: int,
+    *,
+    phase: str,
+    pack: str,
+    scenario_id: str,
+    seed: int,
+    repeat: int,
     moa_mode: str | None = None,
 ) -> str:
     """Return the engine-independent identity used for one paired comparison."""
@@ -114,27 +125,46 @@ def pair_identity(
 
 
 def pair_order_for_identity(
-    *, phase: str, pack: str, scenario_id: str, seed: int, repeat: int,
+    *,
+    phase: str,
+    pack: str,
+    scenario_id: str,
+    seed: int,
+    repeat: int,
     moa_mode: str | None = None,
 ) -> str:
     """Return a stable crossover assignment shared by both engine arms."""
     identity = pair_identity(
-        phase=phase, pack=pack, scenario_id=scenario_id, seed=seed,
-        repeat=repeat, moa_mode=moa_mode,
+        phase=phase,
+        pack=pack,
+        scenario_id=scenario_id,
+        seed=seed,
+        repeat=repeat,
+        moa_mode=moa_mode,
     )
     pair_index = int(hashlib.sha256(identity.encode()).hexdigest()[:8], 16)
     return _order_for_pair(pair_index)
 
 
 def ordered_engines(
-    engines: tuple[str, ...] | list[str], *, phase: str, pack: str,
-    scenario_id: str, seed: int, repeat: int, moa_mode: str | None = None,
+    engines: tuple[str, ...] | list[str],
+    *,
+    phase: str,
+    pack: str,
+    scenario_id: str,
+    seed: int,
+    repeat: int,
+    moa_mode: str | None = None,
 ) -> tuple[str, ...]:
     """Order engine arms according to the pair's deterministic crossover assignment."""
     requested = tuple(dict.fromkeys(engines))
     order = pair_order_for_identity(
-        phase=phase, pack=pack, scenario_id=scenario_id, seed=seed,
-        repeat=repeat, moa_mode=moa_mode,
+        phase=phase,
+        pack=pack,
+        scenario_id=scenario_id,
+        seed=seed,
+        repeat=repeat,
+        moa_mode=moa_mode,
     )
     preferred = ("legacy", "pi") if order == "legacy_first" else ("pi", "legacy")
     return tuple(engine for engine in preferred if engine in requested) + tuple(
@@ -185,9 +215,16 @@ def build_record(
             "ts": ts,
         },
         "status": status,
-        "usage": usage if usage is not None else {
-            "input_tokens": 0, "output_tokens": 0, "cache_tokens": 0,
-            "total_tokens": 0, "cost_usd": 0, "estimate": False, "estimator": None,
+        "usage": usage
+        if usage is not None
+        else {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_tokens": 0,
+            "total_tokens": 0,
+            "cost_usd": 0,
+            "estimate": False,
+            "estimator": None,
         },
     }
     if not_runnable_reason is not None:
@@ -200,12 +237,16 @@ def build_record(
     return record
 
 
-def write_record_atomic(records_dir: Path, unit_id: str, record: dict[str, Any]) -> Path:
+def write_record_atomic(
+    records_dir: Path, unit_id: str, record: dict[str, Any]
+) -> Path:
     """Write one record with a temporary file and atomic replacement."""
     records_dir = Path(records_dir)
     records_dir.mkdir(parents=True, exist_ok=True)
     tmp_path = records_dir / f"{unit_id}.json.tmp"
     final_path = records_dir / f"{unit_id}.json"
-    tmp_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp_path.write_text(
+        json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     os.replace(tmp_path, final_path)
     return final_path

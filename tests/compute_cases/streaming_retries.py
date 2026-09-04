@@ -1,5 +1,6 @@
 from tests.compute_cases.common import *
 
+
 class _FailingStreamResponse:
     def __init__(self, path: str, status_code: int):
         self.path = path
@@ -18,7 +19,9 @@ class _FailingStreamResponse:
             request=request,
             json={"error": {"message": "stream provider overloaded"}},
         )
-        raise httpx.HTTPStatusError("stream provider overloaded", request=request, response=response)
+        raise httpx.HTTPStatusError(
+            "stream provider overloaded", request=request, response=response
+        )
 
     async def aiter_lines(self):
         if False:
@@ -60,6 +63,7 @@ class _SuccessfulStreamClient:
         self.paths.append(path)
         return _SuccessfulStreamResponse()
 
+
 async def test_chat_stream_retries_transient_errors_before_fallback(monkeypatch):
     registry = ComputeRegistry()
     primary_client = _FailingStreamClient(status_code=503)
@@ -98,7 +102,10 @@ async def test_chat_stream_retries_transient_errors_before_fallback(monkeypatch)
     registry.register_node(primary)
     registry.register_node(fallback)
 
-    chunks = [chunk async for chunk in registry.chat_stream([{"role": "user", "content": "hello"}])]
+    chunks = [
+        chunk
+        async for chunk in registry.chat_stream([{"role": "user", "content": "hello"}])
+    ]
 
     assert chunks == ["fallback streamed"]
     assert primary_client.calls == 5
@@ -109,7 +116,9 @@ async def test_chat_stream_retries_transient_errors_before_fallback(monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_strict_model_stream_does_not_fallback_after_pinned_node_fails(monkeypatch):
+async def test_strict_model_stream_does_not_fallback_after_pinned_node_fails(
+    monkeypatch,
+):
     registry = ComputeRegistry()
     deepseek_client = _FailingStreamClient(status_code=503)
     fallback_client = _SuccessfulStreamClient()

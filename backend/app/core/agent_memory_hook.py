@@ -5,12 +5,13 @@ style, and project-specific workflow tastes.
 """
 
 import logging
-import json
+
 from sqlalchemy import select
+
+from app.core.agent_learning import agent_learning
 from app.models.database import async_session
 from app.models.message import Message
 from app.models.task import Task
-from app.core.agent_learning import agent_learning
 
 logger = logging.getLogger(__name__)
 

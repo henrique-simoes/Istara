@@ -13,12 +13,10 @@ their behavior over time without manual prompt engineering.
 
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, String, Text, Integer, Float, DateTime, Boolean
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.database import Base, async_session
@@ -48,12 +46,12 @@ class AgentLearning(Base):
     utility_score: Mapped[float] = mapped_column(Float, default=0.5)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
 
@@ -109,7 +107,7 @@ class AgentLearningManager:
                     existing_record.utility_score = (
                         existing_record.utility_score or 0.5
                     ) * 0.9 + 0.1
-                    existing_record.updated_at = datetime.now(timezone.utc)
+                    existing_record.updated_at = datetime.now(UTC)
                     await db.commit()
                     logger.info(f"Reinforced learning for {agent_id}: {error_message[:60]}")
                 else:
@@ -222,7 +220,7 @@ class AgentLearningManager:
                 record.times_applied = (record.times_applied or 0) + 1
                 if success:
                     record.times_successful = (record.times_successful or 0) + 1
-                record.updated_at = datetime.now(timezone.utc)
+                record.updated_at = datetime.now(UTC)
                 await db.commit()
         except Exception as e:
             logger.warning(f"Failed to update utility for learning {learning_id}: {e}")
@@ -249,7 +247,7 @@ class AgentLearningManager:
                 low_utility = result.scalars().all()
                 for record in low_utility:
                     record.active = False
-                    record.updated_at = datetime.now(timezone.utc)
+                    record.updated_at = datetime.now(UTC)
                     archived += 1
                 if archived:
                     await db.commit()

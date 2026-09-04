@@ -65,12 +65,16 @@ async def test_crash_mid_turn_keeps_inbound_row_committed(monkeypatch):
 
     async with async_session() as db:
         msgs = (
-            await db.execute(
-                select(ChannelMessage).where(
-                    ChannelMessage.channel_instance_id == instance_id
+            (
+                await db.execute(
+                    select(ChannelMessage).where(
+                        ChannelMessage.channel_instance_id == instance_id
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         instance = await db.get(ChannelInstance, instance_id)
 
     assert [m.direction for m in msgs] == ["inbound"]
@@ -104,12 +108,16 @@ async def test_successful_turn_persists_outbound_in_new_session(monkeypatch):
 
     async with async_session() as db:
         msgs = (
-            await db.execute(
-                select(ChannelMessage).where(
-                    ChannelMessage.channel_instance_id == instance_id
+            (
+                await db.execute(
+                    select(ChannelMessage).where(
+                        ChannelMessage.channel_instance_id == instance_id
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         instance = await db.get(ChannelInstance, instance_id)
 
     assert sorted(m.direction for m in msgs) == ["inbound", "outbound"]

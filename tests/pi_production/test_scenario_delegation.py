@@ -49,7 +49,10 @@ async def test_scenario7_pi_delegation_runs_through_orchestrator_dispatch(monkey
         seams,
         "_service",
         faux_service(
-            [tool_call("create_task", {"title": "Delegated analysis"}), final_text("Delegation complete.")],
+            [
+                tool_call("create_task", {"title": "Delegated analysis"}),
+                final_text("Delegation complete."),
+            ],
             sup,
         ),
     )
@@ -79,16 +82,24 @@ async def test_scenario7_pi_delegation_runs_through_orchestrator_dispatch(monkey
 
     # The delegated work executed a real canonical tool under project scope.
     async with async_session() as db:
-        tasks = (await db.execute(select(Task).where(Task.project_id == project_id))).scalars().all()
+        tasks = (
+            (await db.execute(select(Task).where(Task.project_id == project_id)))
+            .scalars()
+            .all()
+        )
         results = (
-            await db.execute(
-                select(A2AMessage).where(
-                    A2AMessage.project_id == project_id,
-                    A2AMessage.from_agent_id == "istara-main",
-                    A2AMessage.message_type == "response",
+            (
+                await db.execute(
+                    select(A2AMessage).where(
+                        A2AMessage.project_id == project_id,
+                        A2AMessage.from_agent_id == "istara-main",
+                        A2AMessage.message_type == "response",
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert [t.title for t in tasks] == ["Delegated analysis"]
     assert len(results) == 1
     assert "Delegation complete." in results[0].content
@@ -120,7 +131,12 @@ async def test_scenario7_non_pi_delegation_runs_no_pi_work(monkeypatch):
         "from_agent_id": "agent-a",
         "message_type": "delegate",
         "content": json.dumps(
-            {"type": "pi_delegate", "project_id": project_id, "task": "no pi", "metadata": {}}
+            {
+                "type": "pi_delegate",
+                "project_id": project_id,
+                "task": "no pi",
+                "metadata": {},
+            }
         ),
     }
     async with async_session() as db:
@@ -129,12 +145,18 @@ async def test_scenario7_non_pi_delegation_runs_no_pi_work(monkeypatch):
 
     assert called["pi"] is False
     async with async_session() as db:
-        tasks = (await db.execute(select(Task).where(Task.project_id == project_id))).scalars().all()
+        tasks = (
+            (await db.execute(select(Task).where(Task.project_id == project_id)))
+            .scalars()
+            .all()
+        )
     assert tasks == []
 
 
 @pytest.mark.asyncio
-async def test_scenario7_public_tasks_send_reaches_governed_pi_inbox_dispatch(monkeypatch):
+async def test_scenario7_public_tasks_send_reaches_governed_pi_inbox_dispatch(
+    monkeypatch,
+):
     """The admitted public A2A shape reaches the Pi dispatcher without a bypass.
 
     This is deliberately route-to-inbox proof, rather than an injected private
@@ -196,7 +218,10 @@ async def test_scenario7_public_tasks_send_reaches_governed_pi_inbox_dispatch(mo
         seams,
         "_service",
         faux_service(
-            [tool_call("create_task", {"title": "Routed Pi delegation"}), final_text("Routed complete.")],
+            [
+                tool_call("create_task", {"title": "Routed Pi delegation"}),
+                final_text("Routed complete."),
+            ],
             sup,
         ),
     )
@@ -209,16 +234,24 @@ async def test_scenario7_public_tasks_send_reaches_governed_pi_inbox_dispatch(mo
         await sup.shutdown()
 
     async with async_session() as db:
-        tasks = (await db.execute(select(Task).where(Task.project_id == project_id))).scalars().all()
+        tasks = (
+            (await db.execute(select(Task).where(Task.project_id == project_id)))
+            .scalars()
+            .all()
+        )
         responses = (
-            await db.execute(
-                select(A2AMessage).where(
-                    A2AMessage.project_id == project_id,
-                    A2AMessage.from_agent_id == "istara-main",
-                    A2AMessage.message_type == "response",
+            (
+                await db.execute(
+                    select(A2AMessage).where(
+                        A2AMessage.project_id == project_id,
+                        A2AMessage.from_agent_id == "istara-main",
+                        A2AMessage.message_type == "response",
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert [task.title for task in tasks] == ["Routed Pi delegation"]
     assert len(responses) == 1
     assert "Routed complete." in responses[0].content

@@ -27,14 +27,16 @@ from app.core.agentic.bridge import stream_chat_turn
 from app.core.agentic.types import TurnParams
 from app.core.content_guard import ContentGuard
 from app.core.context_summarizer import context_summarizer
-from app.core.llm_thinking import ThinkingMode, apply_thinking_control, normalize_thinking_mode
-from app.core.ollama import ollama  # noqa: F401 — W2: transport moved to the dispatcher; tests monkeypatch this handle
+from app.core.llm_thinking import apply_thinking_control, normalize_thinking_mode
+from app.core.ollama import (
+    ollama,  # noqa: F401 — W2: transport moved to the dispatcher; tests monkeypatch this handle
+)
 from app.core.permissions import get_visible_project_or_404, require_project_access
 from app.core.prompt_rag import compose_dynamic_prompt
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.models.database import async_session, get_db
 from app.models.message import Message
-from app.models.session import ChatSession, INFERENCE_PRESETS
+from app.models.session import INFERENCE_PRESETS, ChatSession
 from app.skills.design_tools import (
     OPENAI_DESIGN_TOOLS,
     build_design_tools_prompt,

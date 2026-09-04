@@ -8,14 +8,14 @@ import logging
 import uuid
 from pathlib import Path
 
-from watchfiles import awatch, Change
+from watchfiles import Change, awatch
 
+from app.api.websocket import broadcast_file_processed, broadcast_suggestion
+from app.config import settings
 from app.core.embeddings import embed_chunks
 from app.core.file_encryption import encrypt_file_in_place, protect_document_text, read_file_text
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.rag import VectorStore
-from app.api.websocket import broadcast_file_processed, broadcast_suggestion
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -167,9 +167,10 @@ class FileWatcher:
         if not skill_tasks:
             return 0
 
+        from sqlalchemy import func, select
+
         from app.models.database import async_session
         from app.models.task import Task, TaskStatus
-        from sqlalchemy import select, func
 
         created = 0
         async with async_session() as db:
@@ -241,13 +242,14 @@ class FileWatcher:
             logger.info("Skipping document registration for paused project %s", project_id)
             return
 
+        from sqlalchemy import select
+
         from app.models.database import async_session
         from app.models.document import Document, DocumentSource, DocumentStatus
         from app.services.research_validity_service import (
             persist_document_source_evidence_units,
             record_source_evidence_unit_telemetry,
         )
-        from sqlalchemy import select
 
         async with async_session() as db:
             # Check if already registered

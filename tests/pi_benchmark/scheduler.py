@@ -81,8 +81,12 @@ def build_run_units(
         for seed in seeds:
             for repeat in range(repeats):
                 for engine in ordered_engines(
-                    engines, phase=phase, pack=scenario.pack, scenario_id=scenario.id,
-                    seed=seed, repeat=repeat,
+                    engines,
+                    phase=phase,
+                    pack=scenario.pack,
+                    scenario_id=scenario.id,
+                    seed=seed,
+                    repeat=repeat,
                 ):
                     for moa_mode in moa_modes or (None,):
                         unit_id = (
@@ -124,8 +128,12 @@ def shard_units(units: list[RunUnit], n: int) -> list[list[RunUnit]]:
     group_order: list[str] = []
     for unit in units:
         key = pair_identity(
-            phase=unit.phase, pack=unit.pack, scenario_id=unit.scenario_id,
-            seed=unit.seed, repeat=unit.repeat, moa_mode=unit.moa_mode,
+            phase=unit.phase,
+            pack=unit.pack,
+            scenario_id=unit.scenario_id,
+            seed=unit.seed,
+            repeat=unit.repeat,
+            moa_mode=unit.moa_mode,
         )
         if key not in groups:
             groups[key] = []
@@ -176,7 +184,11 @@ def write_manifest(
     resume, no rewrite). Different hash -> :class:`ManifestConflict`; the existing
     manifest is never silently overwritten.
     """
-    if not isinstance(max_processes, int) or isinstance(max_processes, bool) or max_processes < 1:
+    if (
+        not isinstance(max_processes, int)
+        or isinstance(max_processes, bool)
+        or max_processes < 1
+    ):
         raise ValueError(f"max_processes must be an int >= 1, got {max_processes!r}")
     if max_processes != len(shards):
         raise ValueError(

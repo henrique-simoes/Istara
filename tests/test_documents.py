@@ -43,7 +43,9 @@ async def test_documents_list_returns_list(auth_headers):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/documents?project_id={project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/documents?project_id={project_id}", headers=auth_headers
+        )
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
 
@@ -119,7 +121,9 @@ async def test_documents_sync_returns_response(auth_headers):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post(f"/api/documents/sync/{project_id}", headers=auth_headers)
+        response = await ac.post(
+            f"/api/documents/sync/{project_id}", headers=auth_headers
+        )
 
     assert response.status_code == 200
     assert {"synced", "total"}.issubset(response.json())
@@ -154,7 +158,9 @@ async def test_documents_sync_registers_file_created_in_linked_external_folder(
         assert first.status_code == 200, first.text
         assert first.json()["synced"] >= 1, first.json()
         before_total = first.json()["total"]
-        second = await ac.post(f"/api/documents/sync/{project_id}", headers=auth_headers)
+        second = await ac.post(
+            f"/api/documents/sync/{project_id}", headers=auth_headers
+        )
         assert second.status_code == 200, second.text
         assert second.json()["synced"] == 0, second.json()
         assert second.json()["total"] == before_total, second.json()
@@ -195,14 +201,22 @@ async def test_document_create_registers_raw_source_evidence_units(auth_headers)
 
     async with async_session() as db:
         units = (
-            await db.execute(
-                select(EvidenceUnit).where(EvidenceUnit.source_document_id == payload["id"])
+            (
+                await db.execute(
+                    select(EvidenceUnit).where(
+                        EvidenceUnit.source_document_id == payload["id"]
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
     assert len(units) == payload["research_spine"]["source_evidence_units"]
     assert {unit.unit_type for unit in units} == {"source_span"}
-    assert all(unit.source_id.startswith(f"document:{payload['id']}:v1") for unit in units)
+    assert all(
+        unit.source_id.startswith(f"document:{payload['id']}:v1") for unit in units
+    )
     assert any("Export is hidden" in unit.source_text for unit in units)
 
 
@@ -237,13 +251,21 @@ async def test_documents_sync_dedupes_by_resolved_path_not_filename(
     )
 
     async with async_session() as db:
-        db.add(Project(id=project_id, name="Document Sync Project", watch_folder_path=str(second_dir)))
+        db.add(
+            Project(
+                id=project_id,
+                name="Document Sync Project",
+                watch_folder_path=str(second_dir),
+            )
+        )
         db.add(existing_doc)
         await db.commit()
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post(f"/api/documents/sync/{project_id}", headers=auth_headers)
+        response = await ac.post(
+            f"/api/documents/sync/{project_id}", headers=auth_headers
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -259,7 +281,9 @@ async def test_documents_sync_dedupes_by_resolved_path_not_filename(
         docs = result.scalars().all()
 
     assert len(docs) == 2
-    assert str(second_file.resolve()) in {Path(doc.file_path).resolve().as_posix() for doc in docs}
+    assert str(second_file.resolve()) in {
+        Path(doc.file_path).resolve().as_posix() for doc in docs
+    }
 
 
 @pytest.mark.asyncio
@@ -281,12 +305,20 @@ async def test_documents_sync_registers_raw_source_evidence_units(
     )
 
     async with async_session() as db:
-        db.add(Project(id=project_id, name="Document Sync Spine Project", watch_folder_path=str(watch_dir)))
+        db.add(
+            Project(
+                id=project_id,
+                name="Document Sync Spine Project",
+                watch_folder_path=str(watch_dir),
+            )
+        )
         await db.commit()
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post(f"/api/documents/sync/{project_id}", headers=auth_headers)
+        response = await ac.post(
+            f"/api/documents/sync/{project_id}", headers=auth_headers
+        )
 
     assert response.status_code == 200
     assert response.json()["synced"] == 1
@@ -296,8 +328,16 @@ async def test_documents_sync_registers_raw_source_evidence_units(
             await db.execute(select(Document).where(Document.project_id == project_id))
         ).scalar_one()
         units = (
-            await db.execute(select(EvidenceUnit).where(EvidenceUnit.source_document_id == doc.id))
-        ).scalars().all()
+            (
+                await db.execute(
+                    select(EvidenceUnit).where(
+                        EvidenceUnit.source_document_id == doc.id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
 
     assert len(units) >= 2
     assert all(unit.unit_type == "source_span" for unit in units)
@@ -309,14 +349,18 @@ async def test_documents_stats_returns_dict(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/documents/stats/test-project", headers=auth_headers)
+        response = await ac.get(
+            "/api/documents/stats/test-project", headers=auth_headers
+        )
         assert response.status_code in (200, 404)
         if response.status_code == 200:
             assert isinstance(response.json(), dict)
 
 
 @pytest.mark.asyncio
-async def test_document_content_returns_audio_transcript(auth_headers, tmp_path, monkeypatch):
+async def test_document_content_returns_audio_transcript(
+    auth_headers, tmp_path, monkeypatch
+):
     """Document preview uses stored content_text for audio documents."""
     await init_db()
     project_id = f"doc-audio-project-{uuid.uuid4()}"
@@ -481,7 +525,9 @@ async def test_document_create_rejects_task_from_another_project(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_document_content_refuses_file_path_outside_project_roots(auth_headers, tmp_path, monkeypatch):
+async def test_document_content_refuses_file_path_outside_project_roots(
+    auth_headers, tmp_path, monkeypatch
+):
     """A document row must not become an arbitrary local-file read primitive."""
     await init_db()
     project_id = f"doc-path-project-{uuid.uuid4()}"
@@ -569,8 +615,14 @@ async def test_delete_managed_upload_removes_file_and_prevents_sync_resurrection
     async with async_session() as db:
         assert await db.get(Document, doc_id) is None
         remaining = (
-            await db.execute(select(Document).where(Document.project_id == project_id))
-        ).scalars().all()
+            (
+                await db.execute(
+                    select(Document).where(Document.project_id == project_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
     assert remaining == []
 
 

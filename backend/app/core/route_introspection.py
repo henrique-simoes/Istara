@@ -10,7 +10,7 @@ Use `iter_route_paths(app)` (HTTP + WebSocket paths, prefixes applied).
 
 from __future__ import annotations
 
-from typing import Iterator
+from collections.abc import Iterator
 
 
 def _unwrap(routes, prefix: str = "") -> Iterator[tuple[object, str]]:

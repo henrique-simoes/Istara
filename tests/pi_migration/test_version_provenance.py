@@ -31,7 +31,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PI_PACKAGES = ("@earendil-works/pi-agent-core", "@earendil-works/pi-ai")
 
 # Exact pins approved for this wave (verified upstream 0.84.3/0.84.3).
-EXPECTED_PINS = {"@earendil-works/pi-agent-core": "0.84.3", "@earendil-works/pi-ai": "0.84.3"}
+EXPECTED_PINS = {
+    "@earendil-works/pi-agent-core": "0.84.3",
+    "@earendil-works/pi-ai": "0.84.3",
+}
 
 # lockfileVersion 3 is what `npm install` produces for current npm; treat it
 # as the supported reproducibility format.

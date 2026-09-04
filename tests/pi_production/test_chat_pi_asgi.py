@@ -54,7 +54,13 @@ from app.models.project import Project
 from app.models.session import ChatSession
 from app.models.task import Task
 
-from .harness import error_after_partial, faux_service, final_text, requires_node, tool_call
+from .harness import (
+    error_after_partial,
+    faux_service,
+    final_text,
+    requires_node,
+    tool_call,
+)
 
 _PI_HEADERS = {"x-istara-agent-engine": "pi"}
 
@@ -65,7 +71,7 @@ def _sse_events(body: str) -> list[dict]:
     for block in body.split("\n\n"):
         for line in block.splitlines():
             if line.startswith("data: "):
-                events.append(json.loads(line[len("data: "):]))
+                events.append(json.loads(line[len("data: ") :]))
     return events
 
 
@@ -102,7 +108,9 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
     monkeypatch.setattr(settings, "jwt_secret", "pi-asgi-test-secret")
     _pin_no_network_prompt_seams(monkeypatch)
     monkeypatch.setattr(
-        chat_route, "ensure_pi_deepseek_registered", lambda: (True, "resolved_private_endpoint")
+        chat_route,
+        "ensure_pi_deepseek_registered",
+        lambda: (True, "resolved_private_endpoint"),
     )
 
     project_id = f"pi-asgi-chat-{uuid.uuid4().hex[:8]}"
@@ -129,7 +137,10 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             response = await ac.post(
                 "/api/chat",
-                json={"message": "Please open a task for the accessibility pass.", "project_id": project_id},
+                json={
+                    "message": "Please open a task for the accessibility pass.",
+                    "project_id": project_id,
+                },
                 headers={**_auth_headers(), **_PI_HEADERS},
             )
     finally:
@@ -144,7 +155,14 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
     # receipt before the worker can emit the model's next response.  The receipt
     # intentionally carries no raw tool output, which may include private data.
     for event in events:
-        assert event["type"] in {"chunk", "tool_call", "tool_result", "usage", "done", "error"}
+        assert event["type"] in {
+            "chunk",
+            "tool_call",
+            "tool_result",
+            "usage",
+            "done",
+            "error",
+        }
         assert "type" in event
 
     chunks = [e for e in events if e["type"] == "chunk"]
@@ -178,13 +196,23 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
     # The real canonical tool executed under the authenticated project scope,
     # and the route persisted the assistant message — over real HTTP semantics.
     async with async_session() as db:
-        tasks = (await db.execute(select(Task).where(Task.project_id == project_id))).scalars().all()
+        tasks = (
+            (await db.execute(select(Task).where(Task.project_id == project_id)))
+            .scalars()
+            .all()
+        )
         assert [t.title for t in tasks] == ["Pi ASGI task"]
         assistant = (
-            await db.execute(
-                select(Message).where(Message.project_id == project_id, Message.role == "assistant")
+            (
+                await db.execute(
+                    select(Message).where(
+                        Message.project_id == project_id, Message.role == "assistant"
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert [m.content for m in assistant] == [reply_text]
         assert assistant[0].id == done["message_id"]
 
@@ -194,7 +222,9 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
 @requires_node
 @pytest.mark.asyncio
 @pytest.mark.parametrize("engine", ["pi", "legacy"])
-async def test_chat_two_calls_rehydrate_history_after_worker_restart(monkeypatch, engine):
+async def test_chat_two_calls_rehydrate_history_after_worker_restart(
+    monkeypatch, engine
+):
     """Both selectable engines receive the first call's persisted transcript.
 
     The route opens/closes a worker session per request, so this deliberately
@@ -209,7 +239,9 @@ async def test_chat_two_calls_rehydrate_history_after_worker_restart(monkeypatch
     monkeypatch.setattr(settings, "jwt_secret", "pi-asgi-test-secret")
     _pin_no_network_prompt_seams(monkeypatch)
     monkeypatch.setattr(
-        chat_route, "ensure_pi_deepseek_registered", lambda: (True, "resolved_private_endpoint")
+        chat_route,
+        "ensure_pi_deepseek_registered",
+        lambda: (True, "resolved_private_endpoint"),
     )
 
     project_id = f"{engine}-asgi-two-call-{uuid.uuid4().hex[:8]}"
@@ -217,8 +249,17 @@ async def test_chat_two_calls_rehydrate_history_after_worker_restart(monkeypatch
     task_id = f"{engine}-asgi-task-{uuid.uuid4().hex[:8]}"
     async with async_session() as db:
         db.add(Project(id=project_id, name=f"{engine} ASGI two-call"))
-        db.add(ChatSession(id=session_id, project_id=project_id, title=f"{engine} two-call", message_count=0))
-        db.add(Task(id=task_id, project_id=project_id, title="Two-call research anchor"))
+        db.add(
+            ChatSession(
+                id=session_id,
+                project_id=project_id,
+                title=f"{engine} two-call",
+                message_count=0,
+            )
+        )
+        db.add(
+            Task(id=task_id, project_id=project_id, title="Two-call research anchor")
+        )
         await db.commit()
 
     class RecordingSupervisor(PiRuntimeSupervisor):
@@ -311,26 +352,40 @@ async def test_chat_two_calls_rehydrate_history_after_worker_restart(monkeypatch
             for message in second.provider_messages[0]
             if message.get("role") in {"user", "assistant"}
         ]
-        assert observed_history == [*expected_history, {"role": "user", "content": second_request["message"]}]
+        assert observed_history == [
+            *expected_history,
+            {"role": "user", "content": second_request["message"]},
+        ]
 
     async with async_session() as db:
         messages = (
-            await db.execute(
-                select(Message)
-                .where(Message.project_id == project_id, Message.session_id == session_id)
-                .order_by(Message.created_at.asc())
-            )
-        ).scalars().all()
-        usage_rows = (
-            await db.execute(
-                select(AgenticUsageRow)
-                .where(
-                    AgenticUsageRow.project_id == project_id,
-                    AgenticUsageRow.session_id == session_id,
+            (
+                await db.execute(
+                    select(Message)
+                    .where(
+                        Message.project_id == project_id,
+                        Message.session_id == session_id,
+                    )
+                    .order_by(Message.created_at.asc())
                 )
-                .order_by(AgenticUsageRow.created_at.asc())
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
+        usage_rows = (
+            (
+                await db.execute(
+                    select(AgenticUsageRow)
+                    .where(
+                        AgenticUsageRow.project_id == project_id,
+                        AgenticUsageRow.session_id == session_id,
+                    )
+                    .order_by(AgenticUsageRow.created_at.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
     assert [(message.role, message.content) for message in messages] == [
         ("user", first_request["message"]),
         ("assistant", first_reply),
@@ -384,8 +439,12 @@ async def test_autoresearch_governed_turn_fails_closed_over_real_asgi(monkeypatc
     async def _fake_scope(*args, **kwargs):
         return project_id
 
-    monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", _fake_scope)
-    monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False))
+    monkeypatch.setattr(
+        autoresearch_route, "_require_active_project_scope", _fake_scope
+    )
+    monkeypatch.setattr(
+        autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False)
+    )
 
     sup = PiRuntimeSupervisor()
     monkeypatch.setattr(

@@ -34,7 +34,11 @@ def _require_complete_industry_data() -> None:
 def test_data_status_reports_all_categories():
     status = industry.data_status()
     assert set(status["categories"]) == {
-        "bfcl_simple_python", "bfcl_multiple", "bfcl_live_simple", "tau_airline", "tau_retail",
+        "bfcl_simple_python",
+        "bfcl_multiple",
+        "bfcl_live_simple",
+        "tau_airline",
+        "tau_retail",
     }
     for category, info in status["categories"].items():
         assert info["subset"] > 0, category
@@ -81,7 +85,9 @@ def test_missing_data_yields_no_scenarios(tmp_path, monkeypatch):
     try:
         assert industry.scenarios() == ()
         status = industry.data_status()
-        assert not any(any(c.values()) for c in status["categories"] if isinstance(c, dict))
+        assert not any(
+            any(c.values()) for c in status["categories"] if isinstance(c, dict)
+        )
     finally:
         industry.scenarios.cache_clear()
 
@@ -103,14 +109,23 @@ def test_schema_accepts_industry_pack_records():
         "pack": "industry",
         "scenario": {"id": "industry.bfcl_simple_python.simple_python_0", "seed": 0},
         "provenance": {
-            "git_sha": "a" * 40, "git_dirty": False, "input_sha256": "b" * 64,
-            "model_id": None, "endpoint_fingerprint": None, "ts": "2026-07-31T00:00:00Z",
+            "git_sha": "a" * 40,
+            "git_dirty": False,
+            "input_sha256": "b" * 64,
+            "model_id": None,
+            "endpoint_fingerprint": None,
+            "ts": "2026-07-31T00:00:00Z",
         },
         "status": "not_runnable",
         "not_runnable_reason": "feature_unavailable",
         "usage": {
-            "input_tokens": 0, "output_tokens": 0, "cache_tokens": 0,
-            "total_tokens": 0, "cost_usd": 0, "estimate": False, "estimator": None,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_tokens": 0,
+            "total_tokens": 0,
+            "cost_usd": 0,
+            "estimate": False,
+            "estimator": None,
         },
     }
     schema.validate_record(record)  # must not raise
@@ -119,7 +134,9 @@ def test_schema_accepts_industry_pack_records():
 def test_module_is_t0_import_safe():
     # Re-importing the module must not require backend modules.
     for mod in ("app.core.agentic", "app.core.llm_router"):
-        assert mod not in vars(industry), f"backend reference leaked into industry pack: {mod}"
+        assert mod not in vars(industry), (
+            f"backend reference leaked into industry pack: {mod}"
+        )
 
 
 def test_estimate_scope_lane_counts_only_requested_lane(tmp_path):
@@ -130,10 +147,17 @@ def test_estimate_scope_lane_counts_only_requested_lane(tmp_path):
 
     scenarios = list(load_pack("industry"))[:4]
     base = dict(
-        packs=("industry",), tier="T3", engines=("pi", "legacy"), seeds=(0,),
-        repeats=1, phase="B1", out_dir=tmp_path,
+        packs=("industry",),
+        tier="T3",
+        engines=("pi", "legacy"),
+        seeds=(0,),
+        repeats=1,
+        phase="B1",
+        out_dir=tmp_path,
     )
-    program_total, program_bd = runner._worst_case_program_cost_usd(runner.RunConfig(**base), scenarios)
+    program_total, program_bd = runner._worst_case_program_cost_usd(
+        runner.RunConfig(**base), scenarios
+    )
     lane_total, lane_bd = runner._worst_case_program_cost_usd(
         runner.RunConfig(**base, estimate_scope="lane"), scenarios
     )

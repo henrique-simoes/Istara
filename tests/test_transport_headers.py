@@ -83,7 +83,9 @@ async def test_security_headers_on_protected_endpoint():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        response = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
+        )
         assert response.status_code == 200
         assert response.headers.get("x-frame-options") == "DENY"
         assert response.headers.get("x-content-type-options") == "nosniff"

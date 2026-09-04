@@ -18,11 +18,15 @@ from app.core.auth import create_token
 def reset_settings():
     original_team_mode = settings.team_mode
     original_jwt_secret = settings.jwt_secret
-    original_synthetic_reconciliation = settings.research_validity_synthetic_reconciliation_enabled
+    original_synthetic_reconciliation = (
+        settings.research_validity_synthetic_reconciliation_enabled
+    )
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
-    settings.research_validity_synthetic_reconciliation_enabled = original_synthetic_reconciliation
+    settings.research_validity_synthetic_reconciliation_enabled = (
+        original_synthetic_reconciliation
+    )
 
 
 @pytest.fixture
@@ -64,7 +68,9 @@ async def test_code_apps_list_returns_response(auth_headers):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/code-applications/{project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/code-applications/{project_id}", headers=auth_headers
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -79,9 +85,7 @@ async def test_code_apps_list_can_scope_to_coding_run(auth_headers):
     run_a = f"run-a-{uuid.uuid4().hex[:8]}"
     run_b = f"run-b-{uuid.uuid4().hex[:8]}"
     async with async_session() as db:
-        db.add(
-            Project(id=project_id, name="Code Applications Run Filter")
-        )
+        db.add(Project(id=project_id, name="Code Applications Run Filter"))
         db.add_all(
             [
                 CodeApplication(
@@ -160,7 +164,9 @@ async def test_code_apps_pending_returns_response(auth_headers):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/code-applications/{project_id}/pending", headers=auth_headers)
+        response = await ac.get(
+            f"/api/code-applications/{project_id}/pending", headers=auth_headers
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -264,7 +270,9 @@ async def test_code_apps_review_uses_authenticated_reviewer(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_code_apps_review_rejects_stale_application_ids_from_other_projects(auth_headers):
+async def test_code_apps_review_rejects_stale_application_ids_from_other_projects(
+    auth_headers,
+):
     """Review by-id route must bind the application id to the active project."""
     await init_db()
     settings.team_mode = True
@@ -315,14 +323,19 @@ async def test_synthetic_reconciliation_is_disabled_by_default(auth_headers):
         response = await ac.post(
             f"/api/code-applications/{project_id}/synthetic-reconciliation",
             json={"coding_run_id": "missing", "diagnostic_id": "diag", "decisions": []},
-            headers={**auth_headers, "x-istara-synthetic-reconciliation": "benchmark-v1"},
+            headers={
+                **auth_headers,
+                "x-istara-synthetic-reconciliation": "benchmark-v1",
+            },
         )
     assert response.status_code == 404
     assert response.json()["detail"] == "Synthetic reconciliation is disabled."
 
 
 @pytest.mark.asyncio
-async def test_synthetic_reconciliation_records_provenance_without_human_promotion(auth_headers):
+async def test_synthetic_reconciliation_records_provenance_without_human_promotion(
+    auth_headers,
+):
     await init_db()
     settings.team_mode = True
     settings.research_validity_synthetic_reconciliation_enabled = True
@@ -396,7 +409,9 @@ async def test_synthetic_reconciliation_records_provenance_without_human_promoti
             f"/api/code-applications/{project_id}/synthetic-reconciliation",
             json={
                 **request_payload,
-                "decisions": [{"code_application_id": app_id, "decision_type": "rejected"}],
+                "decisions": [
+                    {"code_application_id": app_id, "decision_type": "rejected"}
+                ],
             },
             headers=headers,
         )
@@ -458,7 +473,9 @@ async def test_synthetic_reconciliation_requires_explicit_header(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_synthetic_reconciliation_requires_complete_run_and_provenance(auth_headers):
+async def test_synthetic_reconciliation_requires_complete_run_and_provenance(
+    auth_headers,
+):
     await init_db()
     settings.research_validity_synthetic_reconciliation_enabled = True
     project_id = f"synthetic-scope-{uuid.uuid4().hex[:8]}"

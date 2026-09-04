@@ -7,15 +7,14 @@ unchanged.
 
 from __future__ import annotations
 
+import json
 import logging
-
+import uuid
 from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Any
-import json
-import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -23,7 +22,6 @@ from app.core.llm_router import llm_router
 from app.core.research_validity import (
     DEFAULT_RELIABILITY_THRESHOLD,
     QUALITATIVE_CODING_PROTOCOL,
-    build_qualitative_coding_prompt,
     evaluate_reliability_gate,
     graph_edge_metadata,
     item_level_promotion_statuses,
@@ -34,63 +32,69 @@ from app.models.research_validity import (
     CodingRun,
     CodingRunCoder,
     EvidenceUnit,
-    ReconciliationDecision,
     ResearchEvidenceEdge,
 )
 
 # Compatibility re-exports (import seam preserved for product code and tests).
-from app.services.research_validity_evidence_units import _chat_model_names  # noqa: F401
-from app.services.research_validity_evidence_units import _coding_messages  # noqa: F401
-from app.services.research_validity_evidence_units import _coding_repair_messages  # noqa: F401
-from app.services.research_validity_evidence_units import _coding_unit_payload  # noqa: F401
-from app.services.research_validity_evidence_units import _compact_source_text_for_coding  # noqa: F401
-from app.services.research_validity_evidence_units import _is_qa_provisional_unit  # noqa: F401
-from app.services.research_validity_evidence_units import _load_codebook  # noqa: F401
-from app.services.research_validity_evidence_units import _load_units  # noqa: F401
-from app.services.research_validity_evidence_units import _node_model_names  # noqa: F401
-from app.services.research_validity_evidence_units import document_research_spine_summary  # noqa: F401
-from app.services.research_validity_evidence_units import document_source_id  # noqa: F401
-from app.services.research_validity_evidence_units import document_source_unit_count_map  # noqa: F401
-from app.services.research_validity_evidence_units import persist_document_source_evidence_units  # noqa: F401
-from app.services.research_validity_evidence_units import persist_task_nugget_evidence_units  # noqa: F401
-from app.services.research_validity_evidence_units import record_source_evidence_unit_telemetry  # noqa: F401
-from app.services.research_validity_reconciliation import _code_application_state  # noqa: F401
-from app.services.research_validity_reconciliation import _is_reconciled_code_application  # noqa: F401
-from app.services.research_validity_reconciliation import _is_unresolved_code_application  # noqa: F401
-from app.services.research_validity_reconciliation import _load_traceability_findings  # noqa: F401
-from app.services.research_validity_reconciliation import _refresh_coding_run_reconciliation_status  # noqa: F401
-from app.services.research_validity_reconciliation import _task_finding_support_diagnostics  # noqa: F401
-from app.services.research_validity_reconciliation import add_agent_initial_code_applications  # noqa: F401
-from app.services.research_validity_reconciliation import assess_task_research_validity  # noqa: F401
-from app.services.research_validity_reconciliation import build_evidence_graph_traceability  # noqa: F401
-from app.services.research_validity_reconciliation import create_reconciliation_decision  # noqa: F401
-from app.services.research_validity_reconciliation import mark_task_provisional_skill_artifacts  # noqa: F401
-from app.services.research_validity_reconciliation import task_validation_payload_with_coding_run  # noqa: F401
-from app.services.research_validity_route_evidence import _fallback_coder  # noqa: F401
-from app.services.research_validity_route_evidence import _is_dashscope_endpoint  # noqa: F401
-from app.services.research_validity_route_evidence import _is_qwen_rate_limit_error  # noqa: F401
-from app.services.research_validity_route_evidence import _merge_coding_route_evidence  # noqa: F401
-from app.services.research_validity_route_evidence import _pi_coder_runner  # noqa: F401
-from app.services.research_validity_route_evidence import _pi_endpoint_identity  # noqa: F401
-from app.services.research_validity_route_evidence import _run_pi_coder_with_qwen_fallback  # noqa: F401
-from app.services.research_validity_route_evidence import _same_dashscope_key  # noqa: F401
-from app.services.research_validity_schemas import ACCEPTED_PROMOTION_STATUSES  # noqa: F401
-from app.services.research_validity_schemas import CODING_CORE_RESPONSE_SCHEMA  # noqa: F401
-from app.services.research_validity_schemas import CODING_RESPONSE_SCHEMA  # noqa: F401
-from app.services.research_validity_schemas import CoderRunner  # noqa: F401
-from app.services.research_validity_schemas import CoderSpec  # noqa: F401
-from app.services.research_validity_schemas import DASHSCOPE_COMPAT_BASE_URL  # noqa: F401
-from app.services.research_validity_schemas import MAX_CODING_SOURCE_TEXT_CHARS  # noqa: F401
-from app.services.research_validity_schemas import QWEN_FALLBACK_ONLY_MODELS  # noqa: F401
-from app.services.research_validity_schemas import QWEN_RATE_LIMIT_FALLBACK_CHAINS  # noqa: F401
-from app.services.research_validity_schemas import QwenRateLimitFallbackError  # noqa: F401
-from app.services.research_validity_schemas import RECONCILED_CODE_APPLICATION_STATUSES  # noqa: F401
-from app.services.research_validity_schemas import _application_items  # noqa: F401
-from app.services.research_validity_schemas import _code_list  # noqa: F401
-from app.services.research_validity_schemas import _confidence  # noqa: F401
-from app.services.research_validity_schemas import _extract_json_payload  # noqa: F401
-from app.services.research_validity_schemas import _json_list_value  # noqa: F401
-
+from app.services.research_validity_evidence_units import (
+    _chat_model_names,  # noqa: F401
+    _coding_messages,  # noqa: F401
+    _coding_repair_messages,  # noqa: F401
+    _coding_unit_payload,  # noqa: F401
+    _compact_source_text_for_coding,  # noqa: F401
+    _is_qa_provisional_unit,  # noqa: F401
+    _load_codebook,  # noqa: F401
+    _load_units,  # noqa: F401
+    _node_model_names,  # noqa: F401
+    document_research_spine_summary,  # noqa: F401
+    document_source_id,  # noqa: F401
+    document_source_unit_count_map,  # noqa: F401
+    persist_document_source_evidence_units,  # noqa: F401
+    persist_task_nugget_evidence_units,  # noqa: F401
+    record_source_evidence_unit_telemetry,  # noqa: F401
+)
+from app.services.research_validity_reconciliation import (
+    _code_application_state,  # noqa: F401
+    _is_reconciled_code_application,  # noqa: F401
+    _is_unresolved_code_application,  # noqa: F401
+    _load_traceability_findings,  # noqa: F401
+    _refresh_coding_run_reconciliation_status,  # noqa: F401
+    _task_finding_support_diagnostics,  # noqa: F401
+    add_agent_initial_code_applications,  # noqa: F401
+    assess_task_research_validity,  # noqa: F401
+    build_evidence_graph_traceability,  # noqa: F401
+    create_reconciliation_decision,  # noqa: F401
+    mark_task_provisional_skill_artifacts,  # noqa: F401
+    task_validation_payload_with_coding_run,  # noqa: F401
+)
+from app.services.research_validity_route_evidence import (
+    _fallback_coder,  # noqa: F401
+    _is_dashscope_endpoint,  # noqa: F401
+    _is_qwen_rate_limit_error,  # noqa: F401
+    _merge_coding_route_evidence,  # noqa: F401
+    _pi_coder_runner,  # noqa: F401
+    _pi_endpoint_identity,  # noqa: F401
+    _run_pi_coder_with_qwen_fallback,  # noqa: F401
+    _same_dashscope_key,  # noqa: F401
+)
+from app.services.research_validity_schemas import (
+    ACCEPTED_PROMOTION_STATUSES,  # noqa: F401
+    CODING_CORE_RESPONSE_SCHEMA,  # noqa: F401
+    CODING_RESPONSE_SCHEMA,  # noqa: F401
+    DASHSCOPE_COMPAT_BASE_URL,  # noqa: F401
+    MAX_CODING_SOURCE_TEXT_CHARS,  # noqa: F401
+    QWEN_FALLBACK_ONLY_MODELS,  # noqa: F401
+    QWEN_RATE_LIMIT_FALLBACK_CHAINS,  # noqa: F401
+    RECONCILED_CODE_APPLICATION_STATUSES,  # noqa: F401
+    CoderRunner,  # noqa: F401
+    CoderSpec,  # noqa: F401
+    QwenRateLimitFallbackError,  # noqa: F401
+    _application_items,  # noqa: F401
+    _code_list,  # noqa: F401
+    _confidence,  # noqa: F401
+    _extract_json_payload,  # noqa: F401
+    _json_list_value,  # noqa: F401
+)
 
 logger = logging.getLogger(__name__)
 

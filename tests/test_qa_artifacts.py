@@ -32,14 +32,18 @@ def test_scan_path_reports_missing_file():
 
 
 def test_scan_run_clean_directory(tmp_path):
-    (tmp_path / "evidence.json").write_text('{"source_sha": "abc", "pass": true}', encoding="utf-8")
+    (tmp_path / "evidence.json").write_text(
+        '{"source_sha": "abc", "pass": true}', encoding="utf-8"
+    )
     report = scan_run(tmp_path)
     assert report["files_scanned"] == 1
     assert report["clean"] is True
 
 
 def test_scan_run_detects_secret(tmp_path):
-    (tmp_path / "log.txt").write_text("token=sk-abcdef1234567890 leaked", encoding="utf-8")
+    (tmp_path / "log.txt").write_text(
+        "token=sk-abcdef1234567890 leaked", encoding="utf-8"
+    )
     report = scan_run(tmp_path)
     assert report["clean"] is False
     assert report["hit_count"] >= 1

@@ -10,22 +10,21 @@ text fallback path working for models without native tool support.
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.orchestrator_runtime import wake_orchestrator
 from app.core.task_contracts import ensure_project_documents, normalize_task_priority
-from app.models.database import async_session
-from app.models.task import Task, TaskStatus
-from app.models.project import Project
-from app.models.document import Document
-from app.models.finding import Nugget, Fact, Insight, Recommendation
 from app.models.agent import Agent
+from app.models.database import async_session
+from app.models.document import Document
+from app.models.finding import Fact, Insight, Nugget, Recommendation
+from app.models.project import Project
+from app.models.task import Task, TaskStatus
 from app.services.finding_validity_service import finding_research_validity_map
 from app.skills.system_web_context_actions import (
     _exec_browse_website,

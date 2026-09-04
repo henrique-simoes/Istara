@@ -16,7 +16,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 import httpx
@@ -147,7 +147,7 @@ class UIAuditAgent:
 
     async def run_audit(self) -> UIAuditReport:
         """Run a complete UI audit cycle."""
-        report = UIAuditReport(timestamp=datetime.now(timezone.utc).isoformat())
+        report = UIAuditReport(timestamp=datetime.now(UTC).isoformat())
         client = await self._get_client()
 
         # 1. Fetch frontend page and analyze HTML

@@ -11,7 +11,7 @@ import json
 import logging
 import re
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import or_, select
@@ -64,7 +64,7 @@ _guard = ContentGuard()
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _clean_text(value: Any, *, max_chars: int = 4000, mark_prompt_risk: bool = True) -> str:
@@ -522,7 +522,7 @@ class ReasoningMemoryService:
             for item in items:
                 created_at = item.created_at
                 if created_at and created_at.tzinfo is None:
-                    created_at = created_at.replace(tzinfo=timezone.utc)
+                    created_at = created_at.replace(tzinfo=UTC)
                 if created_at and created_at >= day_ago:
                     recent.append(item)
 

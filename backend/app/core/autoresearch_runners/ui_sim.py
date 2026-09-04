@@ -9,9 +9,8 @@ for safe file modifications with guaranteed rollback.
 from __future__ import annotations
 
 import logging
-import subprocess
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Awaitable, Callable
 
 from app.core.autoresearch_runners import BaseLoopRunner
 

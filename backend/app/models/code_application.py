@@ -5,8 +5,8 @@ and whether it was human-reviewed. Based on O'Connor & Joffe (2020)
 ICR guidelines and Lincoln & Guba (1985) audit trail requirements.
 """
 
-from datetime import datetime, timezone
 import json
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -48,7 +48,7 @@ class CodeApplication(Base):
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     def to_dict(self) -> dict:

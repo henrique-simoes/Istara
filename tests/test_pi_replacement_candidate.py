@@ -36,19 +36,49 @@ class _FakePiService:
     ``tests/pi_production`` instead.
     """
 
-    def __init__(self, reply: str = "Pi handled the channel message via the real loop."):
+    def __init__(
+        self, reply: str = "Pi handled the channel message via the real loop."
+    ):
         self.reply = reply
         self.channel_calls: list[dict] = []
         self.autoresearch_calls: list[dict] = []
 
-    async def run_channel_turn(self, *, project_id, agent_id, system_prompt, inbound_text,
-                               tool_executor, session_key=None, **_kw):
-        self.channel_calls.append({"project_id": project_id, "inbound_text": inbound_text})
-        return {"text": self.reply, "endpoint_id": "pi-loopback", "status": "success", "tool_calls": []}
+    async def run_channel_turn(
+        self,
+        *,
+        project_id,
+        agent_id,
+        system_prompt,
+        inbound_text,
+        tool_executor,
+        session_key=None,
+        **_kw,
+    ):
+        self.channel_calls.append(
+            {"project_id": project_id, "inbound_text": inbound_text}
+        )
+        return {
+            "text": self.reply,
+            "endpoint_id": "pi-loopback",
+            "status": "success",
+            "tool_calls": [],
+        }
 
-    async def run_autoresearch_turn(self, *, project_id, agent_id, system_prompt, objective,
-                                    tool_executor, loop_type, target, **_kw):
-        self.autoresearch_calls.append({"project_id": project_id, "loop_type": loop_type})
+    async def run_autoresearch_turn(
+        self,
+        *,
+        project_id,
+        agent_id,
+        system_prompt,
+        objective,
+        tool_executor,
+        loop_type,
+        target,
+        **_kw,
+    ):
+        self.autoresearch_calls.append(
+            {"project_id": project_id, "loop_type": loop_type}
+        )
         return {
             "status": "candidate_proposal",
             "loop_type": loop_type,
@@ -62,8 +92,12 @@ class _FakePiService:
                 "report_evidence": False,
                 "promotion": "blocked_pending_human_review",
             },
-            "runtime": {"engine": "pi", "turn_status": "success", "tool_calls": [],
-                        "endpoint_id": "pi-loopback"},
+            "runtime": {
+                "engine": "pi",
+                "turn_status": "success",
+                "tool_calls": [],
+                "endpoint_id": "pi-loopback",
+            },
         }
 
 
@@ -90,7 +124,9 @@ class _ScriptedProviderAuthority:
         }
 
 
-def _bind_provider_authority(monkeypatch, outcomes: list[dict]) -> _ScriptedProviderAuthority:
+def _bind_provider_authority(
+    monkeypatch, outcomes: list[dict]
+) -> _ScriptedProviderAuthority:
     authority = _ScriptedProviderAuthority(outcomes)
     dispatcher = AgenticDispatcher(pi_service=authority)
     monkeypatch.setattr(chat_route, "_get_agentic_dispatcher", lambda: dispatcher)
@@ -155,7 +191,9 @@ async def test_pi_candidate_chat_fails_closed_before_transport_when_registration
 
     assert calls == []
     assert any('"code": "pi_registration_unavailable"' in event for event in events)
-    assert any("selected model has no available credential" in event for event in events)
+    assert any(
+        "selected model has no available credential" in event for event in events
+    )
     assert any('"detail": "missing_keychain_secret"' in event for event in events)
     assert any('"type": "done"' in event for event in events)
 
@@ -207,14 +245,18 @@ async def test_pi_candidate_text_fallback_fails_closed_before_transport_when_reg
 
 
 @pytest.mark.asyncio
-async def test_pi_candidate_registered_text_fallback_uses_the_pinned_deepseek_model(monkeypatch):
+async def test_pi_candidate_registered_text_fallback_uses_the_pinned_deepseek_model(
+    monkeypatch,
+):
     async def fake_record_span(*args, **kwargs):
         return None
 
     authority = _bind_provider_authority(
         monkeypatch, [{"text": "registered candidate response"}]
     )
-    monkeypatch.setattr(chat_route, "ensure_pi_deepseek_registered", lambda: (True, "registered"))
+    monkeypatch.setattr(
+        chat_route, "ensure_pi_deepseek_registered", lambda: (True, "registered")
+    )
     monkeypatch.setattr(
         "app.core.pi_replacement.telemetry_recorder.record_span",
         fake_record_span,
@@ -223,9 +265,15 @@ async def test_pi_candidate_registered_text_fallback_uses_the_pinned_deepseek_mo
     events = [
         event
         async for event in chat_route._generate_text_fallback(
-            [{"role": "user", "content": "hello"}], [], [],
-            SimpleNamespace(project_id="pi-registered-project"), "istara-main", None,
-            0.1, 128, pi_candidate=True,
+            [{"role": "user", "content": "hello"}],
+            [],
+            [],
+            SimpleNamespace(project_id="pi-registered-project"),
+            "istara-main",
+            None,
+            0.1,
+            128,
+            pi_candidate=True,
         )
     ]
 
@@ -238,14 +286,22 @@ async def test_pi_candidate_registered_text_fallback_uses_the_pinned_deepseek_mo
 @pytest.mark.asyncio
 async def test_legacy_chat_generator_forwards_selected_endpoint(monkeypatch):
     """A Settings-selected Pi endpoint survives the legacy chat seam."""
-    authority = _bind_provider_authority(monkeypatch, [{"text": "selected endpoint response"}])
+    authority = _bind_provider_authority(
+        monkeypatch, [{"text": "selected endpoint response"}]
+    )
 
     events = [
         event
         async for event in chat_route._generate_native_tools(
-            [{"role": "user", "content": "hello"}], [], [],
-            SimpleNamespace(project_id="endpoint-project"), "istara-main", "model",
-            0.1, 128, endpoint_id="pi-gemini",
+            [{"role": "user", "content": "hello"}],
+            [],
+            [],
+            SimpleNamespace(project_id="endpoint-project"),
+            "istara-main",
+            "model",
+            0.1,
+            128,
+            endpoint_id="pi-gemini",
         )
     ]
 
@@ -278,14 +334,22 @@ async def test_pi_candidate_text_fallback_finishes_chat_metrics(monkeypatch):
 
     monkeypatch.setattr(chat_route, "PiChatRunMetrics", FakeMetrics)
     _bind_provider_authority(monkeypatch, [{"text": "registered candidate response"}])
-    monkeypatch.setattr(chat_route, "ensure_pi_deepseek_registered", lambda: (True, "registered"))
+    monkeypatch.setattr(
+        chat_route, "ensure_pi_deepseek_registered", lambda: (True, "registered")
+    )
 
     events = [
         event
         async for event in chat_route._generate_text_fallback(
-            [{"role": "user", "content": "hello"}], [], [],
-            SimpleNamespace(project_id="pi-fallback-metrics-project"), "istara-main", None,
-            0.1, 128, pi_candidate=True,
+            [{"role": "user", "content": "hello"}],
+            [],
+            [],
+            SimpleNamespace(project_id="pi-fallback-metrics-project"),
+            "istara-main",
+            None,
+            0.1,
+            128,
+            pi_candidate=True,
         )
     ]
 
@@ -304,14 +368,16 @@ def _sse_chunk_text(events: list[str]) -> str:
         for line in event.splitlines():
             if not line.startswith("data: "):
                 continue
-            payload = json.loads(line[len("data: "):])
+            payload = json.loads(line[len("data: ") :])
             if payload.get("type") == "chunk":
                 wire.append(payload.get("content", ""))
     return "".join(wire)
 
 
 @pytest.mark.asyncio
-async def test_native_tools_persists_tool_result_display_once_in_stream_order(monkeypatch):
+async def test_native_tools_persists_tool_result_display_once_in_stream_order(
+    monkeypatch,
+):
     """Regression (F-W2-R1-1): a tool-using native turn must persist each
     tool-result display line to ``all_text_parts`` EXACTLY ONCE and in stream
     order. The migrated ``_tool_exec`` must rely solely on the queued ``content``
@@ -319,6 +385,7 @@ async def test_native_tools_persists_tool_result_display_once_in_stream_order(mo
     duplicated (and, because the direct append races the async queue drain,
     misordered) every tool-result block in the persisted assistant transcript
     (``"".join(all_text_parts)``), while the SSE wire copy stayed correct."""
+
     async def fake_execute_tool(tool_name, params, project_id, agent_id):
         return {"result": "TOOLRESULT"}
 
@@ -369,10 +436,13 @@ async def test_native_tools_persists_tool_result_display_once_in_stream_order(mo
 
 
 @pytest.mark.asyncio
-async def test_text_fallback_persists_tool_result_display_once_in_stream_order(monkeypatch):
+async def test_text_fallback_persists_tool_result_display_once_in_stream_order(
+    monkeypatch,
+):
     """Regression (F-W2-R1-1): same contract for the text-fallback loop — its
     ``_tool_exec`` must not append the tool-result display directly on top of the
     queued ``content`` event, or the persisted transcript duplicates it."""
+
     async def fake_execute_tool(tool_name, params, project_id, agent_id):
         return {"result": "TOOLRESULT"}
 
@@ -433,15 +503,22 @@ async def test_pi_candidate_chat_route_header_selects_pi_and_persists_done_sse(
 
     monkeypatch.setattr(chat_route.ollama, "chat_stream", fake_chat_stream)
     monkeypatch.setattr(chat_route, "retrieve_context", fake_retrieve_context)
-    monkeypatch.setattr(chat_route, "compose_dynamic_prompt", fake_compose_dynamic_prompt)
+    monkeypatch.setattr(
+        chat_route, "compose_dynamic_prompt", fake_compose_dynamic_prompt
+    )
+
     async def fake_endpoint_preflight(**kwargs):
         assert kwargs["project_id"] == project_id
         assert kwargs["endpoint_id"] is None
         assert kwargs["model"] is None
         return False, "missing_keychain_secret"
 
-    monkeypatch.setattr(chat_route, "_ensure_pi_chat_target_available", fake_endpoint_preflight)
-    monkeypatch.setattr("app.core.pi_replacement.telemetry_recorder.record_span", fake_record_span)
+    monkeypatch.setattr(
+        chat_route, "_ensure_pi_chat_target_available", fake_endpoint_preflight
+    )
+    monkeypatch.setattr(
+        "app.core.pi_replacement.telemetry_recorder.record_span", fake_record_span
+    )
 
     async with async_session() as db:
         project = Project(id=project_id, name="Pi Chat Route Project")
@@ -451,7 +528,9 @@ async def test_pi_candidate_chat_route_header_selects_pi_and_persists_done_sse(
         async def fake_get_visible_project_or_404(*args, **kwargs):
             return project
 
-        monkeypatch.setattr(chat_route, "get_visible_project_or_404", fake_get_visible_project_or_404)
+        monkeypatch.setattr(
+            chat_route, "get_visible_project_or_404", fake_get_visible_project_or_404
+        )
         response = await chat_route.chat(
             chat_route.ChatRequest(project_id=project_id, message="route pi"),
             SimpleNamespace(headers={"x-istara-agent-engine": "pi"}),
@@ -489,7 +568,9 @@ async def test_pi_chat_preflight_resolves_the_selected_endpoint_and_model(monkey
 
         def resolve(self, **kwargs):
             calls.append(kwargs)
-            return SimpleNamespace(endpoint_id=kwargs["endpoint_id"], model=kwargs["model"])
+            return SimpleNamespace(
+                endpoint_id=kwargs["endpoint_id"], model=kwargs["model"]
+            )
 
     monkeypatch.setattr(chat_route, "PiModelManager", FakeManager, raising=False)
 
@@ -545,7 +626,11 @@ async def test_pi_catalog_readiness_excludes_an_uncredentialed_default(monkeypat
                 raise ValueError("missing_keychain_secret")
             return SimpleNamespace(endpoint_id=endpoint_id, model=model)
 
-    configured, default_endpoint_id, default_model = await chat_route._chat_pi_endpoint_projection(
+    (
+        configured,
+        default_endpoint_id,
+        default_model,
+    ) = await chat_route._chat_pi_endpoint_projection(
         FakeManager(),
         project_id="project-readiness",
     )
@@ -590,7 +675,9 @@ async def test_pi_local_channel_adapter_routes_through_inbound_processor(monkeyp
     assert adapter.sent_messages[0].metadata["pi_replacement"] is True
 
     async with async_session() as db:
-        inbound = await db.get(ChannelMessage, adapter.sent_messages[0].metadata["inbound_message_id"])
+        inbound = await db.get(
+            ChannelMessage, adapter.sent_messages[0].metadata["inbound_message_id"]
+        )
         assert inbound is not None
         assert inbound.project_id == project_id
         assert json.loads(inbound.metadata_json)["pi_candidate"] is True
@@ -600,7 +687,9 @@ async def test_pi_local_channel_adapter_routes_through_inbound_processor(monkeyp
 
 
 @pytest.mark.asyncio
-async def test_pi_local_channel_drops_stopped_injection_and_unregisters_ownership(monkeypatch):
+async def test_pi_local_channel_drops_stopped_injection_and_unregisters_ownership(
+    monkeypatch,
+):
     await init_db()
     project_id = f"pi-local-stop-{uuid.uuid4()}"
 
@@ -616,7 +705,9 @@ async def test_pi_local_channel_drops_stopped_injection_and_unregisters_ownershi
             config={"enabled": True},
             project_id=project_id,
         )
-        await channel_service.start_channel_instance(db, instance.id, project_id=project_id)
+        await channel_service.start_channel_instance(
+            db, instance.id, project_id=project_id
+        )
 
     adapter = channel_router.get(instance.id)
     assert isinstance(adapter, PiLocalAdapter)
@@ -631,9 +722,17 @@ async def test_pi_local_channel_drops_stopped_injection_and_unregisters_ownershi
     assert adapter._callback is None
     assert adapter.sent_messages == []
     async with async_session() as db:
-        messages = (await db.execute(
-            select(ChannelMessage).where(ChannelMessage.channel_instance_id == instance.id)
-        )).scalars().all()
+        messages = (
+            (
+                await db.execute(
+                    select(ChannelMessage).where(
+                        ChannelMessage.channel_instance_id == instance.id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
     assert messages == []
 
 
@@ -646,10 +745,12 @@ async def test_pi_local_channel_inbound_cannot_cross_project_boundary(monkeypatc
     monkeypatch.setattr("app.core.pi_runtime.seams._service", _FakePiService())
 
     async with async_session() as db:
-        db.add_all([
-            Project(id=project_a, name="Pi Local Project A"),
-            Project(id=project_b, name="Pi Local Project B"),
-        ])
+        db.add_all(
+            [
+                Project(id=project_a, name="Pi Local Project A"),
+                Project(id=project_b, name="Pi Local Project B"),
+            ]
+        )
         await db.commit()
         instance = await channel_service.create_channel_instance(
             db,
@@ -658,7 +759,9 @@ async def test_pi_local_channel_inbound_cannot_cross_project_boundary(monkeypatc
             config={"enabled": True},
             project_id=project_a,
         )
-        await channel_service.start_channel_instance(db, instance.id, project_id=project_a)
+        await channel_service.start_channel_instance(
+            db, instance.id, project_id=project_a
+        )
 
     adapter = channel_router.get(instance.id)
     assert isinstance(adapter, PiLocalAdapter)
@@ -673,15 +776,33 @@ async def test_pi_local_channel_inbound_cannot_cross_project_boundary(monkeypatc
     assert pi_response.metadata["pi_replacement"] is True
 
     async with async_session() as db:
-        project_a_messages = (await db.execute(
-            select(ChannelMessage).where(ChannelMessage.project_id == project_a)
-        )).scalars().all()
-        project_b_messages = (await db.execute(
-            select(ChannelMessage).where(ChannelMessage.project_id == project_b)
-        )).scalars().all()
-        project_b_spans = (await db.execute(
-            select(TelemetrySpan).where(TelemetrySpan.project_id == project_b)
-        )).scalars().all()
+        project_a_messages = (
+            (
+                await db.execute(
+                    select(ChannelMessage).where(ChannelMessage.project_id == project_a)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        project_b_messages = (
+            (
+                await db.execute(
+                    select(ChannelMessage).where(ChannelMessage.project_id == project_b)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        project_b_spans = (
+            (
+                await db.execute(
+                    select(TelemetrySpan).where(TelemetrySpan.project_id == project_b)
+                )
+            )
+            .scalars()
+            .all()
+        )
         response_inbound = await db.get(
             ChannelMessage,
             pi_response.metadata["inbound_message_id"],
@@ -720,7 +841,9 @@ async def test_pi_exercisers_deleted_have_no_surviving_caller():
 
 
 @pytest.mark.asyncio
-async def test_pi_governed_autoresearch_returns_candidate_only_and_starts_no_loop(monkeypatch):
+async def test_pi_governed_autoresearch_returns_candidate_only_and_starts_no_loop(
+    monkeypatch,
+):
     """The governed Pi autoresearch seam (non-dry-run) yields a candidate
     proposal only: no background loop, no promotion, human governance required
     (AC-5). Replaces the deleted readiness exerciser with a route-level proof."""
@@ -730,12 +853,18 @@ async def test_pi_governed_autoresearch_returns_candidate_only_and_starts_no_loo
         return "pi-governed-autoresearch"
 
     monkeypatch.setattr(settings, "autoresearch_enabled", True)
-    monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", fake_project_scope)
-    monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False))
+    monkeypatch.setattr(
+        autoresearch_route, "_require_active_project_scope", fake_project_scope
+    )
+    monkeypatch.setattr(
+        autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False)
+    )
     monkeypatch.setattr("app.core.pi_runtime.seams._service", _FakePiService())
 
     background_tasks = BackgroundTasks()
-    background_tasks.add_task = lambda fn, *args, **kwargs: added.append((fn, args, kwargs))
+    background_tasks.add_task = lambda fn, *args, **kwargs: added.append(
+        (fn, args, kwargs)
+    )
     result = await autoresearch_route.start_experiment(
         autoresearch_route.StartExperimentRequest(
             loop_type="model_temp",
@@ -793,15 +922,21 @@ async def test_pi_a2a_route_persists_candidate_telemetry(monkeypatch):
     async def fake_body():
         return body
 
-    monkeypatch.setattr("app.api.routes.a2a._authorize_a2a_request", fake_authorize_a2a_request)
-    monkeypatch.setattr("app.api.routes.a2a._authorize_project_scope", fake_authorize_project_scope)
+    monkeypatch.setattr(
+        "app.api.routes.a2a._authorize_a2a_request", fake_authorize_a2a_request
+    )
+    monkeypatch.setattr(
+        "app.api.routes.a2a._authorize_project_scope", fake_authorize_project_scope
+    )
     monkeypatch.setattr("app.api.routes.a2a._record_a2a_event", fake_record_a2a_event)
 
     async with async_session() as db:
         db.add(Project(id=project_id, name="Pi A2A Project"))
         await db.commit()
 
-    result = await __import__("app.api.routes.a2a", fromlist=["a2a_jsonrpc"]).a2a_jsonrpc(
+    result = await __import__(
+        "app.api.routes.a2a", fromlist=["a2a_jsonrpc"]
+    ).a2a_jsonrpc(
         SimpleNamespace(
             headers={"x-istara-agent-engine": "pi", "content-length": str(len(body))},
             body=fake_body,
@@ -830,7 +965,11 @@ async def test_pi_a2a_scope_denial_submits_no_work_or_candidate_telemetry(monkey
     project_id = str(uuid.uuid4())
 
     async def fake_authorize_a2a_request(request):
-        return {"id": "unauthorized-pi-user", "username": "unauthorized", "role": "researcher"}
+        return {
+            "id": "unauthorized-pi-user",
+            "username": "unauthorized",
+            "role": "researcher",
+        }
 
     body = json.dumps(
         {
@@ -852,16 +991,22 @@ async def test_pi_a2a_scope_denial_submits_no_work_or_candidate_telemetry(monkey
         return body
 
     monkeypatch.setattr(settings, "team_mode", True)
-    monkeypatch.setattr("app.api.routes.a2a._authorize_a2a_request", fake_authorize_a2a_request)
+    monkeypatch.setattr(
+        "app.api.routes.a2a._authorize_a2a_request", fake_authorize_a2a_request
+    )
     async with async_session() as db:
         db.add(Project(id=project_id, name="Pi A2A Denied Project"))
         await db.commit()
 
-    result = await __import__("app.api.routes.a2a", fromlist=["a2a_jsonrpc"]).a2a_jsonrpc(
+    result = await __import__(
+        "app.api.routes.a2a", fromlist=["a2a_jsonrpc"]
+    ).a2a_jsonrpc(
         SimpleNamespace(
             headers={"x-istara-agent-engine": "pi", "content-length": str(len(body))},
             body=fake_body,
-            state=SimpleNamespace(user={"id": "unauthorized-pi-user", "role": "researcher"}),
+            state=SimpleNamespace(
+                user={"id": "unauthorized-pi-user", "role": "researcher"}
+            ),
             client=SimpleNamespace(host="127.0.0.1"),
             url=SimpleNamespace(path="/api/a2a"),
         )
@@ -872,15 +1017,27 @@ async def test_pi_a2a_scope_denial_submits_no_work_or_candidate_telemetry(monkey
     assert denial["error"]["code"] == -32043
     assert denial["id"].startswith("pi-a2a-denied-")
     async with async_session() as db:
-        candidate_spans = (await db.execute(
-            select(TelemetrySpan).where(
-                TelemetrySpan.project_id == project_id,
-                TelemetrySpan.operation == "pi_candidate_a2a_tasks_send",
+        candidate_spans = (
+            (
+                await db.execute(
+                    select(TelemetrySpan).where(
+                        TelemetrySpan.project_id == project_id,
+                        TelemetrySpan.operation == "pi_candidate_a2a_tasks_send",
+                    )
+                )
             )
-        )).scalars().all()
-        submitted_work = (await db.execute(
-            select(A2AMessage).where(A2AMessage.project_id == project_id)
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
+        submitted_work = (
+            (
+                await db.execute(
+                    select(A2AMessage).where(A2AMessage.project_id == project_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
     assert candidate_spans == []
     assert submitted_work == []
@@ -897,12 +1054,20 @@ async def test_pi_autoresearch_dry_run_does_not_start_background_loop(monkeypatc
         return None
 
     monkeypatch.setattr(settings, "autoresearch_enabled", True)
-    monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", fake_project_scope)
-    monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False))
-    monkeypatch.setattr("app.core.pi_replacement.telemetry_recorder.record_span", fake_record_span)
+    monkeypatch.setattr(
+        autoresearch_route, "_require_active_project_scope", fake_project_scope
+    )
+    monkeypatch.setattr(
+        autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False)
+    )
+    monkeypatch.setattr(
+        "app.core.pi_replacement.telemetry_recorder.record_span", fake_record_span
+    )
 
     background_tasks = BackgroundTasks()
-    background_tasks.add_task = lambda fn, *args, **kwargs: added.append((fn, args, kwargs))
+    background_tasks.add_task = lambda fn, *args, **kwargs: added.append(
+        (fn, args, kwargs)
+    )
     result = await autoresearch_route.start_experiment(
         autoresearch_route.StartExperimentRequest(
             loop_type="model_temp",
@@ -1008,7 +1173,10 @@ async def test_pi_native_chat_uses_bounded_long_horizon_budget(monkeypatch):
 @pytest.mark.asyncio
 async def test_pi_runtime_error_event_carries_a_user_visible_message(monkeypatch):
     async def fake_stream_chat_turn(_dispatcher, **_kwargs):
-        yield {"type": "error", "error": "configured endpoint credential is unavailable"}
+        yield {
+            "type": "error",
+            "error": "configured endpoint credential is unavailable",
+        }
         yield {"type": "_complete", "result": None}
 
     class FakeMetrics:

@@ -181,12 +181,14 @@ def build_design_tools_prompt() -> str:
 
 
 async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) -> str:
-    from app.services.stitch_service import stitch_service
-    from app.models.design_screen import DesignScreen, DesignDecision
-    from app.config import settings
-    from app.services.design_evidence import build_seeded_prompt, resolve_seed_findings
     from pathlib import Path
+
     import httpx
+
+    from app.config import settings
+    from app.models.design_screen import DesignDecision, DesignScreen
+    from app.services.design_evidence import build_seeded_prompt, resolve_seed_findings
+    from app.services.stitch_service import stitch_service
 
     prompt = params["prompt"]
     device = params.get("device_type", "DESKTOP")
@@ -368,11 +370,13 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
 
 
 async def _exec_edit_screen(params: dict, project_id: str, agent_id: str) -> str:
-    from app.services.stitch_service import stitch_service
-    from app.models.design_screen import DesignScreen
-    from app.config import settings
     from pathlib import Path
+
     import httpx
+
+    from app.config import settings
+    from app.models.design_screen import DesignScreen
+    from app.services.stitch_service import stitch_service
 
     screen_id = params["screen_id"]
     instructions = params["instructions"]
@@ -477,11 +481,13 @@ async def _exec_edit_screen(params: dict, project_id: str, agent_id: str) -> str
 
 
 async def _exec_create_variant(params: dict, project_id: str, agent_id: str) -> str:
-    from app.services.stitch_service import stitch_service
-    from app.models.design_screen import DesignScreen
-    from app.config import settings
     from pathlib import Path
+
     import httpx
+
+    from app.config import settings
+    from app.models.design_screen import DesignScreen
+    from app.services.stitch_service import stitch_service
 
     screen_id = params["screen_id"]
     variant_type = params.get("variant_type", "EXPLORE")
@@ -588,7 +594,7 @@ async def _exec_create_variant(params: dict, project_id: str, agent_id: str) -> 
 
 
 async def _exec_search_findings(params: dict, project_id: str, agent_id: str) -> str:
-    from app.models.finding import Insight, Recommendation, Fact
+    from app.models.finding import Fact, Insight, Recommendation
 
     query = params["query"].lower()
     results: list[str] = []
@@ -608,8 +614,8 @@ async def _exec_search_findings(params: dict, project_id: str, agent_id: str) ->
 
 
 async def _exec_create_brief(params: dict, project_id: str, agent_id: str) -> str:
-    from app.models.finding import Insight, Recommendation
     from app.models.design_screen import DesignBrief
+    from app.models.finding import Insight, Recommendation
 
     async with async_session() as db:
         insight_result = await db.execute(select(Insight).where(Insight.project_id == project_id))

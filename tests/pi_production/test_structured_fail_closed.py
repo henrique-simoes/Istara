@@ -48,7 +48,9 @@ _KWARGS: dict[str, Any] = {
 @pytest.mark.asyncio
 async def test_structured_captures_forced_tool_without_authority_round_trip():
     supervisor = PiRuntimeSupervisor()
-    service = faux_service([tool_call("emit_structured_output", {"accepted": True})], supervisor)
+    service = faux_service(
+        [tool_call("emit_structured_output", {"accepted": True})], supervisor
+    )
     try:
         result = await service.run_structured(schema=_SCHEMA, **_KWARGS)
     finally:
@@ -95,7 +97,9 @@ async def test_second_invalid_object_raises_typed_failure_with_no_partial_artifa
             }
 
     service = InvalidTwiceService()
-    with pytest.raises(PiRuntimeTurnError, match="structured_output_invalid") as excinfo:
+    with pytest.raises(
+        PiRuntimeTurnError, match="structured_output_invalid"
+    ) as excinfo:
         await service.run_structured(schema=_SCHEMA, **_KWARGS)
     # Exactly one bounded repair (two attempts), then the typed failure — and
     # the failure carries no value payload a caller could mistake for output.
@@ -119,7 +123,9 @@ async def test_missing_capture_on_success_frame_is_an_invalid_result():
             }
 
     service = NoCaptureService()
-    with pytest.raises(PiRuntimeTurnError, match="structured_output_invalid:structured_output_missing"):
+    with pytest.raises(
+        PiRuntimeTurnError, match="structured_output_invalid:structured_output_missing"
+    ):
         await service.run_structured(schema=_SCHEMA, **_KWARGS)
 
 
@@ -128,9 +134,12 @@ async def test_unsupported_schema_fails_before_any_model_call():
     supervisor = PiRuntimeSupervisor()
     service = faux_service([], supervisor)
     try:
-        with pytest.raises(PiRuntimeTurnError, match=r"structured_output_schema_unsupported:.*\$ref"):
+        with pytest.raises(
+            PiRuntimeTurnError, match=r"structured_output_schema_unsupported:.*\$ref"
+        ):
             await service.run_structured(
-                schema={"type": "object", "properties": {"a": {"$ref": "#/$defs/x"}}}, **_KWARGS
+                schema={"type": "object", "properties": {"a": {"$ref": "#/$defs/x"}}},
+                **_KWARGS,
             )
         # The precheck fires before the turn driver: no worker was started.
         assert supervisor.is_running is False

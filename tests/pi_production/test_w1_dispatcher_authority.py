@@ -99,7 +99,10 @@ async def test_explicit_pi_aliases_normalize_at_both_dispatcher_boundaries(alias
     dispatcher = AgenticDispatcher()
 
     assert dispatcher.resolve_engine(engine=alias) == "pi"
-    assert await dispatcher._resolve(project_id="project-1", engine=alias, request=None) == "pi"
+    assert (
+        await dispatcher._resolve(project_id="project-1", engine=alias, request=None)
+        == "pi"
+    )
 
 
 @pytest.mark.asyncio
@@ -115,13 +118,26 @@ async def test_project_setting_column_drives_resolution_via_real_db():
         await db.commit()
     try:
         dispatcher = AgenticDispatcher()
-        assert await dispatcher._resolve(project_id=project_id, engine=None, request=None) == "pi"
+        assert (
+            await dispatcher._resolve(project_id=project_id, engine=None, request=None)
+            == "pi"
+        )
         # Header still outranks the project setting.
         request = _Request({settings.pi_replacement_request_header: "legacy"})
-        assert await dispatcher._resolve(project_id=project_id, engine=None, request=request) == "legacy"
+        assert (
+            await dispatcher._resolve(
+                project_id=project_id, engine=None, request=request
+            )
+            == "legacy"
+        )
         # Unknown projects fall through to the default without failing.
-        assert await dispatcher._resolve(project_id="no-such-project", engine=None, request=None) == (
-            "pi" if settings.agentic_engine_default.strip().lower() in {"pi", "pi-candidate", "pi-replacement", "deepseek-pi"} else "legacy"
+        assert await dispatcher._resolve(
+            project_id="no-such-project", engine=None, request=None
+        ) == (
+            "pi"
+            if settings.agentic_engine_default.strip().lower()
+            in {"pi", "pi-candidate", "pi-replacement", "deepseek-pi"}
+            else "legacy"
         )
     finally:
         async with async_session() as db:
@@ -129,7 +145,9 @@ async def test_project_setting_column_drives_resolution_via_real_db():
             # columns on related tables make relationship cascades fail).
             from sqlalchemy import text
 
-            await db.execute(text("DELETE FROM projects WHERE id = :id"), {"id": project_id})
+            await db.execute(
+                text("DELETE FROM projects WHERE id = :id"), {"id": project_id}
+            )
             await db.commit()
 
 
@@ -197,13 +215,21 @@ class _ProviderAuthorityStub:
             "samples": samples,
             "endpoint_ids": [sample["endpoint_id"] for sample in samples],
             "usage": {},
-            "status": "success" if all(sample["status"] == "success" for sample in samples) else "error",
+            "status": "success"
+            if all(sample["status"] == "success" for sample in samples)
+            else "error",
         }
 
 
 class _DistinctLegacyServer:
     def __init__(
-        self, node_id: str, model: str, text: str, *, healthy: bool = True, fail: bool = False
+        self,
+        node_id: str,
+        model: str,
+        text: str,
+        *,
+        healthy: bool = True,
+        fail: bool = False,
     ) -> None:
         self.node_id = node_id
         self.name = node_id
@@ -228,11 +254,24 @@ class _DistinctLegacyServer:
 @pytest.mark.asyncio
 async def test_legacy_completion_preserves_loop_choice_but_uses_pi_provider_authority():
     stub = _ProviderAuthorityStub()
-    params = TurnParams(model="m1", temperature=0.2, max_tokens=64, thinking_mode="low",
-                        min_context=8192, timeout_s=5.0, max_turns=3, require_vision=True)
+    params = TurnParams(
+        model="m1",
+        temperature=0.2,
+        max_tokens=64,
+        thinking_mode="low",
+        min_context=8192,
+        timeout_s=5.0,
+        max_turns=3,
+        require_vision=True,
+    )
     outcome = await legacy_executor(
-        "completion", purpose="p", project_id="proj-1", agent_id="a", system="sys",
-        messages=[{"role": "user", "content": "hi"}], params=params,
+        "completion",
+        purpose="p",
+        project_id="proj-1",
+        agent_id="a",
+        system="sys",
+        messages=[{"role": "user", "content": "hi"}],
+        params=params,
         provider_service=stub,
     )
     method, call = stub.calls[0]
@@ -248,9 +287,14 @@ async def test_legacy_completion_preserves_loop_choice_but_uses_pi_provider_auth
 async def test_legacy_structured_uses_pi_provider_authority():
     stub = _ProviderAuthorityStub()
     outcome = await legacy_executor(
-        "structured", purpose="debate synthesis!", project_id="p", agent_id="a", system=None,
+        "structured",
+        purpose="debate synthesis!",
+        project_id="p",
+        agent_id="a",
+        system=None,
         messages=[{"role": "user", "content": "go"}],
-        schema={"type": "object", "required": ["accepted"]}, params=TurnParams(),
+        schema={"type": "object", "required": ["accepted"]},
+        params=TurnParams(),
         provider_service=stub,
     )
     method, call = stub.calls[0]
@@ -269,8 +313,12 @@ async def test_legacy_embed_uses_pi_managed_gateway():
             return {"embeddings": [[0.1, 0.2]] * len(texts), "status": "success"}
 
     outcome = await legacy_executor(
-        "embed", texts=["a", "b"], project_id="p", params=TurnParams(model="emb"),
-        embeddings_gateway=_Gateway(), provider_service=_ProviderAuthorityStub(),
+        "embed",
+        texts=["a", "b"],
+        project_id="p",
+        params=TurnParams(model="emb"),
+        embeddings_gateway=_Gateway(),
+        provider_service=_ProviderAuthorityStub(),
     )
     assert calls == [{"texts": ["a", "b"], "model": "emb"}]
     assert outcome["embeddings"] == [[0.1, 0.2], [0.1, 0.2]]
@@ -283,10 +331,17 @@ async def test_legacy_unknown_verb_fails_closed():
 
 
 @pytest.mark.asyncio
-async def test_legacy_mode_ensemble_uses_pi_identity_authority_and_preserves_models(monkeypatch):
+async def test_legacy_mode_ensemble_uses_pi_identity_authority_and_preserves_models(
+    monkeypatch,
+):
     samples = [
-        {"text": f"answer-{name}", "status": "success", "usage": {},
-         "endpoint_id": f"pi-{name}", "model": f"model-{name}"}
+        {
+            "text": f"answer-{name}",
+            "status": "success",
+            "usage": {},
+            "endpoint_id": f"pi-{name}",
+            "model": f"model-{name}",
+        }
         for name in ("a", "b", "c")
     ]
     service = _ProviderAuthorityStub(samples)
@@ -297,9 +352,15 @@ async def test_legacy_mode_ensemble_uses_pi_identity_authority_and_preserves_mod
 
     monkeypatch.setattr(dispatcher, "_record_outcome", no_op_record)
     result = await dispatcher.ensemble(
-        purpose="w7.legacy.distinct", project_id="p1",
-        messages=[{"role": "user", "content": "go"}], n=4, minimum_n=3,
-        distinct=True, system="sys", params=TurnParams(), engine="legacy",
+        purpose="w7.legacy.distinct",
+        project_id="p1",
+        messages=[{"role": "user", "content": "go"}],
+        n=4,
+        minimum_n=3,
+        distinct=True,
+        system="sys",
+        params=TurnParams(),
+        engine="legacy",
     )
 
     method, call = service.calls[0]
@@ -307,7 +368,9 @@ async def test_legacy_mode_ensemble_uses_pi_identity_authority_and_preserves_mod
     assert call["n"] == 3 and call["distinct"] is True
     assert result.endpoint_ids == ["pi-a", "pi-b", "pi-c"]
     assert {sample.model for sample in result.samples} == {
-        "model-a", "model-b", "model-c"
+        "model-a",
+        "model-b",
+        "model-c",
     }
 
 
@@ -347,17 +410,28 @@ async def test_legacy_ensemble_rejects_non_positive_widths_before_provider_call(
 async def test_pi_mode_forwards_governed_minimum_width_to_pi_service():
     """Pi receives the minimum width when ``n`` includes a legacy spare."""
     samples = [
-        {"text": f"answer-{name}", "status": "success", "usage": {},
-         "endpoint_id": f"pi-{name}", "model": f"model-{name}"}
+        {
+            "text": f"answer-{name}",
+            "status": "success",
+            "usage": {},
+            "endpoint_id": f"pi-{name}",
+            "model": f"model-{name}",
+        }
         for name in ("a", "b", "c")
     ]
     service = _ProviderAuthorityStub(samples)
     dispatcher = AgenticDispatcher(pi_service=service)
 
     result = await dispatcher.ensemble(
-        purpose="w1.pi.minimum-width", project_id="p1",
-        messages=[{"role": "user", "content": "go"}], n=4, minimum_n=3,
-        distinct=True, system="sys", params=TurnParams(), engine="pi",
+        purpose="w1.pi.minimum-width",
+        project_id="p1",
+        messages=[{"role": "user", "content": "go"}],
+        n=4,
+        minimum_n=3,
+        distinct=True,
+        system="sys",
+        params=TurnParams(),
+        engine="pi",
     )
 
     method, call = service.calls[0]
@@ -371,7 +445,10 @@ async def test_pi_mode_forwards_governed_minimum_width_to_pi_service():
 async def test_chat_turn_pi_streams_and_records_one_row(monkeypatch):
     supervisor = PiRuntimeSupervisor()
     endpoint = faux_endpoint([final_text("streamed answer")])
-    service = PiExecutionService(supervisor=supervisor, model_manager=_isolated(PiModelManager(endpoints=[endpoint])))
+    service = PiExecutionService(
+        supervisor=supervisor,
+        model_manager=_isolated(PiModelManager(endpoints=[endpoint])),
+    )
     recorded = []
 
     async def capture(**kwargs):
@@ -381,16 +458,26 @@ async def test_chat_turn_pi_streams_and_records_one_row(monkeypatch):
     streamed = []
     try:
         result = await AgenticDispatcher(pi_service=service).chat_turn(
-            project_id="p1", agent_id="istara-main", session_key=None, system_prompt="sys",
-            messages=[{"role": "user", "content": "earlier"}], user_text="hello",
-            params=TurnParams(endpoint_id=endpoint.endpoint_id), stream_cb=streamed.append, engine="pi",
+            project_id="p1",
+            agent_id="istara-main",
+            session_key=None,
+            system_prompt="sys",
+            messages=[{"role": "user", "content": "earlier"}],
+            user_text="hello",
+            params=TurnParams(endpoint_id=endpoint.endpoint_id),
+            stream_cb=streamed.append,
+            engine="pi",
         )
     finally:
         await supervisor.shutdown()
     assert result.text == "streamed answer"
     assert result.endpoint_id == endpoint.endpoint_id
     assert any(event["type"] == "content" for event in streamed)
-    assert len(recorded) == 1 and recorded[0]["engine"] == "pi" and recorded[0]["purpose"] == "chat_turn"
+    assert (
+        len(recorded) == 1
+        and recorded[0]["engine"] == "pi"
+        and recorded[0]["purpose"] == "chat_turn"
+    )
 
 
 @pytest.mark.asyncio
@@ -547,14 +634,16 @@ async def test_legacy_chat_tool_loop_uses_pi_manager_and_accumulates_usage(monke
     def _provider_message(call_id: str, title: str) -> dict:
         return {
             "text": "",
-            "tool_calls": [{
-                "id": call_id,
-                "type": "function",
-                "function": {
-                    "name": "create_task",
-                    "arguments": '{"title": "' + title + '"}',
-                },
-            }],
+            "tool_calls": [
+                {
+                    "id": call_id,
+                    "type": "function",
+                    "function": {
+                        "name": "create_task",
+                        "arguments": '{"title": "' + title + '"}',
+                    },
+                }
+            ],
             "status": "success",
             "usage": {"input_tokens": 2, "output_tokens": 1, "total_tokens": 3},
             "stop_reason": "tool_calls",
@@ -584,11 +673,13 @@ async def test_legacy_chat_tool_loop_uses_pi_manager_and_accumulates_usage(monke
                 endpoint_id=kwargs["params"].endpoint_id,
                 project_id=kwargs["project_id"],
             )
-            self.calls.append({
-                "messages": list(kwargs["messages"]),
-                "endpoint_id": resolved.endpoint_id,
-                "model": resolved.model,
-            })
+            self.calls.append(
+                {
+                    "messages": list(kwargs["messages"]),
+                    "endpoint_id": resolved.endpoint_id,
+                    "model": resolved.model,
+                }
+            )
             result = scripted[len(self.calls) - 1]
             return {
                 **result,
@@ -638,7 +729,10 @@ async def test_legacy_chat_tool_loop_uses_pi_manager_and_accumulates_usage(monke
     assert len(service.calls) == 3
     assert service.calls[1]["messages"][-1]["role"] == "tool"
     assert service.calls[2]["messages"][-1]["role"] == "tool"
-    assert [call["tool"] for call in result.tool_calls] == ["create_task", "create_task"]
+    assert [call["tool"] for call in result.tool_calls] == [
+        "create_task",
+        "create_task",
+    ]
     assert len(recorded) == 1
     assert recorded[0]["engine"] == "legacy"
     assert recorded[0]["model"] == endpoint.model
@@ -658,7 +752,10 @@ async def test_legacy_and_pi_structured_choices_share_real_pi_manager(monkeypatc
 
     supervisor = PiRuntimeSupervisor()
     endpoint = replace(
-        faux_endpoint([tool_call("emit_structured_output", {"accepted": True})], endpoint_id="pi-shared-structured"),
+        faux_endpoint(
+            [tool_call("emit_structured_output", {"accepted": True})],
+            endpoint_id="pi-shared-structured",
+        ),
         model="shared-structured-model",
     )
     manager = _isolated(PiModelManager(endpoints=[endpoint], include_local=False))
@@ -763,7 +860,9 @@ async def test_embed_pi_routes_through_gateway_and_never_falls_back(monkeypatch)
                 "status": "success",
             }
 
-    dispatcher = AgenticDispatcher(legacy_executor=legacy_spy, embeddings_gateway=_StubGateway())
+    dispatcher = AgenticDispatcher(
+        legacy_executor=legacy_spy, embeddings_gateway=_StubGateway()
+    )
     # Embeddings have no agent loop: both selections use the one Pi-managed
     # gateway and never reopen the legacy ComputeRegistry provider plane.
     vectors = await dispatcher.embed(texts=["x"], project_id="p1", engine="pi")
@@ -802,17 +901,28 @@ async def test_ensemble_pi_distinct_endpoints_and_fail_closed(monkeypatch):
     monkeypatch.setattr("app.core.agentic.dispatcher.record_agentic_usage", no_op)
     try:
         result = await AgenticDispatcher(pi_service=service).ensemble(
-            purpose="w1.ensemble", project_id="p1",
-            messages=[{"role": "user", "content": "go"}], n=2, distinct=True, engine="pi",
+            purpose="w1.ensemble",
+            project_id="p1",
+            messages=[{"role": "user", "content": "go"}],
+            n=2,
+            distinct=True,
+            engine="pi",
         )
-        assert {sample.endpoint_id for sample in result.samples} == {"pi-faux-a", "pi-faux-b"}
+        assert {sample.endpoint_id for sample in result.samples} == {
+            "pi-faux-a",
+            "pi-faux-b",
+        }
         assert selection_calls[0]["project_id"] == "p1"
         assert {sample.text for sample in result.samples} == {"answer A", "answer B"}
         # Fail-closed: fewer distinct endpoints than requested never reuses one.
         with pytest.raises(PiEndpointResolutionError, match="insufficient_distinct"):
             await AgenticDispatcher(pi_service=service).ensemble(
-                purpose="w1.ensemble", project_id="p1",
-                messages=[{"role": "user", "content": "go"}], n=3, distinct=True, engine="pi",
+                purpose="w1.ensemble",
+                project_id="p1",
+                messages=[{"role": "user", "content": "go"}],
+                n=3,
+                distinct=True,
+                engine="pi",
             )
     finally:
         await supervisor.shutdown()
@@ -831,7 +941,9 @@ async def test_legacy_and_pi_ensemble_choices_share_real_pi_manager(monkeypatch)
     supervisor = PiRuntimeSupervisor()
     endpoints = [
         replace(
-            faux_endpoint([final_text(f"answer-{name}")], endpoint_id=f"pi-shared-{name}"),
+            faux_endpoint(
+                [final_text(f"answer-{name}")], endpoint_id=f"pi-shared-{name}"
+            ),
             model=f"shared-model-{name}",
         )
         for name in ("a", "b", "c")
@@ -884,8 +996,18 @@ def test_catalog_sources_static_and_local_without_registry():
 
 
 def test_capability_filtering_and_admission_fail_closed():
-    vision = _real_endpoint(endpoint_id="pi-vision", model="m-vision", supports_vision=True, context_window=128_000)
-    text_only = _real_endpoint(endpoint_id="pi-text", model="m-text", supports_vision=False, context_window=8_000)
+    vision = _real_endpoint(
+        endpoint_id="pi-vision",
+        model="m-vision",
+        supports_vision=True,
+        context_window=128_000,
+    )
+    text_only = _real_endpoint(
+        endpoint_id="pi-text",
+        model="m-text",
+        supports_vision=False,
+        context_window=8_000,
+    )
     manager = _isolated(PiModelManager(endpoints=[text_only, vision]))
     # require_vision selects the vision-capable endpoint.
     assert manager.resolve(require_vision=True).endpoint_id == "pi-vision"
@@ -924,12 +1046,29 @@ async def test_llm_server_projection_excludes_donor_rows():
     keep_id = f"test-proj-{uuid.uuid4().hex[:8]}"
     relay_id = f"test-relay-{uuid.uuid4().hex[:8]}"
     async with async_session() as db:
-        db.add(LLMServer(id=keep_id, name="Proj", provider_type="openai_compat",
-                         host="https://llm.invalid/v1", api_key=encrypt_field("proj-key"),
-                         is_local=False, is_relay=False, is_healthy=True,
-                         capabilities='{"models": ["proj-model"], "context_window": 64000, "vision": true}'))
-        db.add(LLMServer(id=relay_id, name="Relay", provider_type="openai_compat",
-                         host="https://donor.invalid/v1", is_relay=True, is_healthy=True))
+        db.add(
+            LLMServer(
+                id=keep_id,
+                name="Proj",
+                provider_type="openai_compat",
+                host="https://llm.invalid/v1",
+                api_key=encrypt_field("proj-key"),
+                is_local=False,
+                is_relay=False,
+                is_healthy=True,
+                capabilities='{"models": ["proj-model"], "context_window": 64000, "vision": true}',
+            )
+        )
+        db.add(
+            LLMServer(
+                id=relay_id,
+                name="Relay",
+                provider_type="openai_compat",
+                host="https://donor.invalid/v1",
+                is_relay=True,
+                is_healthy=True,
+            )
+        )
         await db.commit()
     manager = PiModelManager()
     try:
@@ -956,17 +1095,23 @@ async def test_llm_server_projection_excludes_donor_rows():
             from sqlalchemy import text
 
             await db.execute(
-                text("DELETE FROM llm_servers WHERE id IN (:a, :b)"), {"a": keep_id, "b": relay_id}
+                text("DELETE FROM llm_servers WHERE id IN (:a, :b)"),
+                {"a": keep_id, "b": relay_id},
             )
             await db.commit()
 
 
 # ── TurnParams forwarding through the engine ─────────────────────────────
 def test_bind_payload_forwards_turn_params_on_real_endpoint():
-    params = TurnParams(temperature=0.2, max_tokens=64, thinking_mode="low", timeout_s=5.0)
+    params = TurnParams(
+        temperature=0.2, max_tokens=64, thinking_mode="low", timeout_s=5.0
+    )
     payload = _bind_payload(_real_endpoint(), params)
     assert payload["params"] == {
-        "temperature": 0.2, "max_tokens": 64, "thinking_level": "low", "timeout_ms": 5000
+        "temperature": 0.2,
+        "max_tokens": 64,
+        "thinking_level": "low",
+        "timeout_ms": 5000,
     }
     # Pricing identity stays intact on the non-faux path.
     assert payload["pricing"]["input_per_mtok"] == 1.0
@@ -978,7 +1123,10 @@ def test_bind_payload_forwards_turn_params_on_real_endpoint():
 async def test_engine_forwards_params_to_bind_and_turn_frames():
     supervisor = PiRuntimeSupervisor()
     endpoint = faux_endpoint([final_text("ok")])
-    service = PiExecutionService(supervisor=supervisor, model_manager=_isolated(PiModelManager(endpoints=[endpoint])))
+    service = PiExecutionService(
+        supervisor=supervisor,
+        model_manager=_isolated(PiModelManager(endpoints=[endpoint])),
+    )
     sent: list[dict] = []
     original_send = supervisor._send
 
@@ -989,17 +1137,29 @@ async def test_engine_forwards_params_to_bind_and_turn_frames():
     supervisor._send = spy_send  # type: ignore[method-assign]
     try:
         result = await service.run_completion(
-            purpose="w1.params", project_id="p1", agent_id="a", system="sys",
+            purpose="w1.params",
+            project_id="p1",
+            agent_id="a",
+            system="sys",
             messages=[{"role": "user", "content": "hi"}],
-            params=TurnParams(temperature=0.3, max_tokens=32, thinking_mode="minimal",
-                              timeout_s=4.0, max_turns=2, endpoint_id=endpoint.endpoint_id),
+            params=TurnParams(
+                temperature=0.3,
+                max_tokens=32,
+                thinking_mode="minimal",
+                timeout_s=4.0,
+                max_turns=2,
+                endpoint_id=endpoint.endpoint_id,
+            ),
         )
     finally:
         await supervisor.shutdown()
     assert result["status"] == "success"
     bind = next(frame for frame in sent if frame["type"] == "provider.bind")
     assert bind["endpoint"]["params"] == {
-        "temperature": 0.3, "max_tokens": 32, "thinking_level": "minimal", "timeout_ms": 4000
+        "temperature": 0.3,
+        "max_tokens": 32,
+        "thinking_level": "minimal",
+        "timeout_ms": 4000,
     }
     prompt = next(frame for frame in sent if frame["type"] == "turn.prompt")
     assert prompt.get("max_turns") == 2
@@ -1023,11 +1183,13 @@ async def test_engine_provider_turn_returns_raw_tool_call_without_executing_it()
             agent_id="legacy",
             system="sys",
             messages=[{"role": "user", "content": "inspect"}],
-            tools=[{
-                "name": "search_documents",
-                "description": "Search documents",
-                "parameters": {"type": "object", "properties": {}},
-            }],
+            tools=[
+                {
+                    "name": "search_documents",
+                    "description": "Search documents",
+                    "parameters": {"type": "object", "properties": {}},
+                }
+            ],
             params=TurnParams(endpoint_id=endpoint.endpoint_id),
         )
     finally:
@@ -1057,19 +1219,31 @@ async def test_engine_model_and_capability_admission_via_model_manager():
         # so selection falls to the first entry; a mismatch must fail closed).
         with pytest.raises(PiEndpointResolutionError, match="no_matching_pi_endpoint"):
             await service.run_completion(
-                purpose="w1.admit", project_id="p1", agent_id="a", system="sys",
-                messages=[{"role": "user", "content": "hi"}], params=TurnParams(model="absent-model"),
+                purpose="w1.admit",
+                project_id="p1",
+                agent_id="a",
+                system="sys",
+                messages=[{"role": "user", "content": "hi"}],
+                params=TurnParams(model="absent-model"),
             )
         # min_context admission fails closed before any worker frame is sent
         # (no catalog candidate satisfies the filter).
         with pytest.raises(PiEndpointResolutionError, match="no_matching_pi_endpoint"):
             await service.run_completion(
-                purpose="w1.admit", project_id="p1", agent_id="a", system="sys",
-                messages=[{"role": "user", "content": "hi"}], params=TurnParams(min_context=999_999),
+                purpose="w1.admit",
+                project_id="p1",
+                agent_id="a",
+                system="sys",
+                messages=[{"role": "user", "content": "hi"}],
+                params=TurnParams(min_context=999_999),
             )
         result = await service.run_completion(
-            purpose="w1.admit", project_id="p1", agent_id="a", system="sys",
-            messages=[{"role": "user", "content": "hi"}], params=TurnParams(model="stub-model"),
+            purpose="w1.admit",
+            project_id="p1",
+            agent_id="a",
+            system="sys",
+            messages=[{"role": "user", "content": "hi"}],
+            params=TurnParams(model="stub-model"),
         )
         assert result["status"] == "success" and result["text"] == "from A"
     finally:
@@ -1081,7 +1255,10 @@ async def test_react_hard_turn_budget_default(monkeypatch):
     """run_react defaults to an 8-turn budget (legacy MAX_TOOL_ITERATIONS parity)."""
     supervisor = PiRuntimeSupervisor()
     endpoint = faux_endpoint([final_text("done")])
-    service = PiExecutionService(supervisor=supervisor, model_manager=_isolated(PiModelManager(endpoints=[endpoint])))
+    service = PiExecutionService(
+        supervisor=supervisor,
+        model_manager=_isolated(PiModelManager(endpoints=[endpoint])),
+    )
     sent: list[dict] = []
     original_send = supervisor._send
 
@@ -1096,9 +1273,16 @@ async def test_react_hard_turn_budget_default(monkeypatch):
 
     try:
         await service.run_react(
-            purpose="w1.react", project_id="p1", agent_id="a", session_key=None, system="sys",
-            messages=[], user_text="go", tool_executor=tool_executor,
-            tool_names=["search_memory"], params=TurnParams(endpoint_id=endpoint.endpoint_id),
+            purpose="w1.react",
+            project_id="p1",
+            agent_id="a",
+            session_key=None,
+            system="sys",
+            messages=[],
+            user_text="go",
+            tool_executor=tool_executor,
+            tool_names=["search_memory"],
+            params=TurnParams(endpoint_id=endpoint.endpoint_id),
         )
     finally:
         await supervisor.shutdown()

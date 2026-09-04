@@ -36,7 +36,9 @@ def auth_headers():
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _seed_project(name: str = "Tasks Test Project", *, is_paused: bool = False) -> Project:
+async def _seed_project(
+    name: str = "Tasks Test Project", *, is_paused: bool = False
+) -> Project:
     project = Project(
         id=str(uuid.uuid4()),
         name=f"{name} {uuid.uuid4()}",
@@ -119,7 +121,12 @@ async def _seed_document(project_id: str, title: str = "Task Document") -> Docum
 
 
 async def _seed_task(project_id: str, title: str = "Seeded Task") -> Task:
-    task = Task(id=str(uuid.uuid4()), project_id=project_id, title=title, status=TaskStatus.BACKLOG)
+    task = Task(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        title=title,
+        status=TaskStatus.BACKLOG,
+    )
     async with async_session() as db:
         db.add(task)
         await db.commit()
@@ -153,7 +160,9 @@ async def test_tasks_list_returns_list(auth_headers):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/tasks?project_id={project.id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/tasks?project_id={project.id}", headers=auth_headers
+        )
         assert response.status_code == 200
         task_ids = {task["id"] for task in response.json()}
         assert task_ids == {project_task.id}
@@ -182,7 +191,9 @@ async def test_task_by_id_routes_require_active_project_binding(auth_headers):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        missing_scope = await ac.get(f"/api/tasks/{other_task.id}", headers=auth_headers)
+        missing_scope = await ac.get(
+            f"/api/tasks/{other_task.id}", headers=auth_headers
+        )
         stale_read = await ac.get(
             f"/api/tasks/{other_task.id}?project_id={active_project.id}",
             headers=auth_headers,
@@ -418,7 +429,9 @@ async def test_human_approval_moves_review_task_to_done(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_task_review_side_effects_observe_committed_task(auth_headers, monkeypatch):
+async def test_task_review_side_effects_observe_committed_task(
+    auth_headers, monkeypatch
+):
     """Review side effects must run after commit so separate DB sessions never self-lock."""
     await init_db()
     project = await _seed_project("Review Side Effects")
@@ -427,9 +440,13 @@ async def test_task_review_side_effects_observe_committed_task(auth_headers, mon
     async def fake_side_effects(event, score=None):
         async with async_session() as db:
             task = await db.get(Task, event.task_id)
-            observed.append({"status": task.status.value, "review_state": task.review_state})
+            observed.append(
+                {"status": task.status.value, "review_state": task.review_state}
+            )
 
-    monkeypatch.setattr("app.core.task_review.record_review_side_effects", fake_side_effects)
+    monkeypatch.setattr(
+        "app.core.task_review.record_review_side_effects", fake_side_effects
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -439,7 +456,10 @@ async def test_task_review_side_effects_observe_committed_task(auth_headers, mon
             json={"project_id": project.id, "title": "Approve with side effects"},
         )
         task_id = created.json()["id"]
-        await ac.post(f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}", headers=auth_headers)
+        await ac.post(
+            f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}",
+            headers=auth_headers,
+        )
 
         approved = await ac.post(
             f"/api/tasks/{task_id}/review/approve?project_id={project.id}",
@@ -487,7 +507,10 @@ async def test_task_approval_blocks_uncoded_reportable_findings(auth_headers):
         blocked = await ac.post(
             f"/api/tasks/{task_id}/review/approve?project_id={project.id}",
             headers=auth_headers,
-            json={"reviewed_by": "tester", "note": "Trying to approve uncoded evidence."},
+            json={
+                "reviewed_by": "tester",
+                "note": "Trying to approve uncoded evidence.",
+            },
         )
         assert blocked.status_code == 409
         assert "no coded evidence applications" in blocked.json()["detail"]
@@ -519,7 +542,9 @@ async def test_task_approval_blocks_uncoded_reportable_findings(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance(auth_headers):
+async def test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance(
+    auth_headers,
+):
     """One accepted code application must not make every task finding reportable."""
     await init_db()
     project = await _seed_project("Item Level Report Gate")
@@ -593,7 +618,9 @@ async def test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance(aut
 
 
 @pytest.mark.asyncio
-async def test_task_report_gate_blocks_done_task_without_accepted_evidence(auth_headers):
+async def test_task_report_gate_blocks_done_task_without_accepted_evidence(
+    auth_headers,
+):
     """A Done task with only notes cannot become report content."""
     await init_db()
     project = await _seed_project("Empty Report Gate")
@@ -682,8 +709,15 @@ async def test_done_task_revision_returns_to_backlog_with_feedback(auth_headers)
             json={"project_id": project.id, "title": "Reopen wrong work"},
         )
         task_id = created.json()["id"]
-        await ac.post(f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}", headers=auth_headers)
-        await ac.post(f"/api/tasks/{task_id}/review/approve?project_id={project.id}", headers=auth_headers, json={})
+        await ac.post(
+            f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}",
+            headers=auth_headers,
+        )
+        await ac.post(
+            f"/api/tasks/{task_id}/review/approve?project_id={project.id}",
+            headers=auth_headers,
+            json={},
+        )
 
         revised = await ac.post(
             f"/api/tasks/{task_id}/review/request-revision?project_id={project.id}",
@@ -714,7 +748,9 @@ async def test_machine_failure_preserves_human_revision_instruction(auth_headers
     """A later machine failure must not replace the researcher's revision instruction."""
     await init_db()
     project = await _seed_project("Review History Preservation")
-    human_instruction = "Preserve the pricing quotes and rerun the synthesis with source spans."
+    human_instruction = (
+        "Preserve the pricing quotes and rerun the synthesis with source spans."
+    )
     machine_reason = "Agent execution failed after the provider timed out."
     transport = ASGITransport(app=app)
 
@@ -757,10 +793,14 @@ async def test_machine_failure_preserves_human_revision_instruction(auth_headers
         await db.refresh(task)
 
         events = (
-            await db.execute(
-                select(TaskReviewEvent).where(TaskReviewEvent.task_id == task_id)
+            (
+                await db.execute(
+                    select(TaskReviewEvent).where(TaskReviewEvent.task_id == task_id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
     assert task.what_to_review == human_instruction
     assert task.last_review_feedback == machine_reason
@@ -781,7 +821,10 @@ async def test_revision_cannot_send_task_back_to_review(auth_headers):
             json={"project_id": project.id, "title": "Invalid revision target"},
         )
         task_id = created.json()["id"]
-        await ac.post(f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}", headers=auth_headers)
+        await ac.post(
+            f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}",
+            headers=auth_headers,
+        )
         response = await ac.post(
             f"/api/tasks/{task_id}/review/request-revision?project_id={project.id}",
             headers=auth_headers,

@@ -60,7 +60,9 @@ async def test_inbound_message_without_deployment_is_persisted():
         ).scalar_one()
         message = (
             await db.execute(
-                select(ChannelMessage).where(ChannelMessage.channel_instance_id == instance_id)
+                select(ChannelMessage).where(
+                    ChannelMessage.channel_instance_id == instance_id
+                )
             )
         ).scalar_one()
         instance = await db.get(ChannelInstance, instance_id)
@@ -115,7 +117,10 @@ async def test_inbound_message_ignores_unbound_deployment_from_another_project()
             sender_name="Lin",
             text="Hello",
             instance_id=instance_id,
-            metadata={"content_type": "text", "external_message_id": "msg-cross-project"},
+            metadata={
+                "content_type": "text",
+                "external_message_id": "msg-cross-project",
+            },
         )
     )
 
@@ -206,17 +211,26 @@ async def test_inbound_active_deployment_advances_questions_without_repeating():
             )
         ).scalar_one()
         messages = (
-            await db.execute(
-                select(ChannelMessage)
-                .where(ChannelMessage.channel_instance_id == instance_id)
-                .order_by(ChannelMessage.created_at.asc())
+            (
+                await db.execute(
+                    select(ChannelMessage)
+                    .where(ChannelMessage.channel_instance_id == instance_id)
+                    .order_by(ChannelMessage.created_at.asc())
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         instance = await db.get(ChannelInstance, instance_id)
 
     assert conversation.state == "questions"
     assert conversation.current_question_index == 2
-    assert [m.direction for m in messages] == ["inbound", "outbound", "inbound", "outbound"]
+    assert [m.direction for m in messages] == [
+        "inbound",
+        "outbound",
+        "inbound",
+        "outbound",
+    ]
     assert messages[-1].content == "Q2"
     assert instance.message_count == 4
 
@@ -268,17 +282,27 @@ async def test_inbound_message_for_paused_project_is_not_persisted_or_routed():
     assert response is None
     async with async_session() as db:
         messages = (
-            await db.execute(
-                select(ChannelMessage).where(ChannelMessage.channel_instance_id == instance_id)
-            )
-        ).scalars().all()
-        conversations = (
-            await db.execute(
-                select(ChannelConversation).where(
-                    ChannelConversation.channel_instance_id == instance_id
+            (
+                await db.execute(
+                    select(ChannelMessage).where(
+                        ChannelMessage.channel_instance_id == instance_id
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
+        conversations = (
+            (
+                await db.execute(
+                    select(ChannelConversation).where(
+                        ChannelConversation.channel_instance_id == instance_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
         instance = await db.get(ChannelInstance, instance_id)
 
     assert messages == []

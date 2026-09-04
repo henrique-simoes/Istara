@@ -19,7 +19,7 @@ import tarfile
 import tempfile
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 
 from sqlalchemy import delete, select
@@ -214,13 +214,13 @@ class BackupManager:
             )
             last = result.scalar_one_or_none()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         interval_seconds = settings.backup_interval_hours * 3600
 
         if last and last.created_at:
             last_ts = last.created_at
             if last_ts.tzinfo is None:
-                last_ts = last_ts.replace(tzinfo=timezone.utc)
+                last_ts = last_ts.replace(tzinfo=UTC)
             elapsed = (now - last_ts).total_seconds()
             if elapsed < interval_seconds:
                 return  # Not due yet
@@ -252,8 +252,8 @@ class BackupManager:
                 return "full"
             last_full_dt = datetime.fromisoformat(last_full_ts)
             if last_full_dt.tzinfo is None:
-                last_full_dt = last_full_dt.replace(tzinfo=timezone.utc)
-            days_since_full = (datetime.now(timezone.utc) - last_full_dt).total_seconds() / 86400
+                last_full_dt = last_full_dt.replace(tzinfo=UTC)
+            days_since_full = (datetime.now(UTC) - last_full_dt).total_seconds() / 86400
             if days_since_full >= settings.backup_full_interval_days:
                 return "full"
             return "incremental"
@@ -274,7 +274,7 @@ class BackupManager:
         6. Enforce retention
         """
         record_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         timestamp = now.strftime("%Y%m%d_%H%M%S")
         base_filename = f"istara_backup_{timestamp}_{record_id[:8]}.tar.gz"
         encrypted_archive = bool(settings.file_encryption_enabled)
@@ -567,7 +567,7 @@ class BackupManager:
 
             manifest = {
                 "version": "1.0",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "backup_type": backup_type,
                 "parent_backup_id": None,
                 "total_size_bytes": total_size,
@@ -868,7 +868,7 @@ class BackupManager:
         )
 
         # Update record status
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with async_session() as db:
             rec_result = await db.execute(select(BackupRecord).where(BackupRecord.id == backup_id))
             rec = rec_result.scalar_one()

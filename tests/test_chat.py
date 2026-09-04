@@ -477,15 +477,23 @@ async def test_chat_blocked_when_provider_is_contract_stub(monkeypatch):
 
     async with async_session() as verify_db:
         sessions = (
-            await verify_db.execute(
-                select(_ChatSession).where(_ChatSession.project_id == project_id)
+            (
+                await verify_db.execute(
+                    select(_ChatSession).where(_ChatSession.project_id == project_id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         messages = (
-            await verify_db.execute(
-                select(_Message).where(_Message.project_id == project_id)
+            (
+                await verify_db.execute(
+                    select(_Message).where(_Message.project_id == project_id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert sessions == []
     assert messages == []
 
@@ -540,12 +548,16 @@ async def test_chat_stub_guard_exempts_pi_engine(monkeypatch):
         monkeypatch.setattr(chat_route, "retrieve_context", _empty_context)
         monkeypatch.setattr(chat_route, "_generate_pi_runtime", _fake_pi_runtime)
         monkeypatch.setattr(
-            chat_route, "ensure_pi_deepseek_registered", lambda: (True, "test-registration")
+            chat_route,
+            "ensure_pi_deepseek_registered",
+            lambda: (True, "test-registration"),
         )
 
         # Header selects pi -> resolution returns pi -> route must not block.
         resolved = await _resolve_chat_engine(
-            _engine_request_stub({"x-istara-agent-engine": "pi"}), project_id, _engine_db_stub(None)
+            _engine_request_stub({"x-istara-agent-engine": "pi"}),
+            project_id,
+            _engine_db_stub(None),
         )
         assert resolved == "pi"
         assert not (original_stub and resolved != "pi")
@@ -557,7 +569,10 @@ async def test_chat_stub_guard_exempts_pi_engine(monkeypatch):
             response = await ac.post(
                 "/api/chat",
                 json={"message": "hello", "project_id": project_id},
-                headers={"Authorization": f"Bearer {token}", "x-istara-agent-engine": "pi"},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "x-istara-agent-engine": "pi",
+                },
             )
         assert response.status_code == 200
         assert "provider_stub_chat_blocked" not in response.text
@@ -612,7 +627,9 @@ async def test_resolve_chat_engine_precedence():
         db = _engine_db_stub("legacy")
         assert (
             await _resolve_chat_engine(
-                _engine_request_stub({"x-istara-agent-engine": "PI-candidate"}), "p1", db
+                _engine_request_stub({"x-istara-agent-engine": "PI-candidate"}),
+                "p1",
+                db,
             )
             == "pi"
         )
@@ -621,7 +638,9 @@ async def test_resolve_chat_engine_precedence():
         db = _engine_db_stub("pi")
         assert (
             await _resolve_chat_engine(
-                _engine_request_stub({"x-istara-agent-engine": "not-an-engine"}), "p1", db
+                _engine_request_stub({"x-istara-agent-engine": "not-an-engine"}),
+                "p1",
+                db,
             )
             == "legacy"
         )
@@ -632,10 +651,20 @@ async def test_resolve_chat_engine_precedence():
         assert db.scalar_calls == 1
 
         settings.agentic_engine_default = "pi"
-        assert await _resolve_chat_engine(_engine_request_stub(), "p1", _engine_db_stub(None)) == "pi"
+        assert (
+            await _resolve_chat_engine(
+                _engine_request_stub(), "p1", _engine_db_stub(None)
+            )
+            == "pi"
+        )
 
         settings.agentic_engine_default = "legacy"
-        assert await _resolve_chat_engine(_engine_request_stub(), "p1", _engine_db_stub("")) == "legacy"
+        assert (
+            await _resolve_chat_engine(
+                _engine_request_stub(), "p1", _engine_db_stub("")
+            )
+            == "legacy"
+        )
     finally:
         settings.pi_replacement_enabled = original_flag
         settings.agentic_engine_default = original_default

@@ -35,7 +35,9 @@ def auth_headers():
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _seed_session_with_dag() -> tuple[Project, ChatSession, Message, ContextDAGNode]:
+async def _seed_session_with_dag() -> tuple[
+    Project, ChatSession, Message, ContextDAGNode
+]:
     now = datetime.now(timezone.utc)
     project = Project(id=str(uuid.uuid4()), name=f"DAG {uuid.uuid4()}")
     session = ChatSession(
@@ -81,7 +83,9 @@ async def test_context_dag_structure_requires_active_project_id(auth_headers):
     project, session, _, _ = await _seed_session_with_dag()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        missing_project = await ac.get(f"/api/context-dag/{session.id}", headers=auth_headers)
+        missing_project = await ac.get(
+            f"/api/context-dag/{session.id}", headers=auth_headers
+        )
         unknown_session = await ac.get(
             "/api/context-dag/test-session",
             headers=auth_headers,

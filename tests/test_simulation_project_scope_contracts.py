@@ -15,7 +15,9 @@ def read_repo(path: str) -> str:
 def test_simulation_skill_harness_passes_active_project_scope() -> None:
     api_client = read_repo("tests/simulation/lib/api-client.mjs")
     scenario_06 = read_repo("tests/simulation/scenarios/06-skill-execution.mjs")
-    scenario_20 = read_repo("tests/simulation/scenarios/20-all-skills-comprehensive.mjs")
+    scenario_20 = read_repo(
+        "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+    )
     scenario_22 = read_repo("tests/simulation/scenarios/22-architecture-evaluation.mjs")
     scenario_41 = read_repo("tests/simulation/scenarios/41-skill-creation.mjs")
 
@@ -27,11 +29,23 @@ def test_simulation_skill_harness_passes_active_project_scope() -> None:
     assert "creationProposals" in api_client
     assert "all: (projectId, limit = 20)" in api_client
 
-    assert "/api/skills/health/all?project_id=${encodeURIComponent(projectId)}" in scenario_06
+    assert (
+        "/api/skills/health/all?project_id=${encodeURIComponent(projectId)}"
+        in scenario_06
+    )
     assert "[skipped] No active project id; scoped endpoint not called" in scenario_06
-    assert "/api/skills/health/all?project_id=${encodeURIComponent(projectId)}" in scenario_20
-    assert "/api/skills/proposals/all?project_id=${encodeURIComponent(projectId)}" in scenario_20
-    assert "/api/skills/proposals/all?project_id=${encodeURIComponent(evalProjectId)}" in scenario_22
+    assert (
+        "/api/skills/health/all?project_id=${encodeURIComponent(projectId)}"
+        in scenario_20
+    )
+    assert (
+        "/api/skills/proposals/all?project_id=${encodeURIComponent(projectId)}"
+        in scenario_20
+    )
+    assert (
+        "/api/skills/proposals/all?project_id=${encodeURIComponent(evalProjectId)}"
+        in scenario_22
+    )
     assert "`/api/skills/health/all?${projectQuery}`" in scenario_22
 
     assert "No active project id; scoped endpoint not called" in scenario_41
@@ -60,7 +74,9 @@ def test_simulation_agent_and_meta_harnesses_pass_active_project_scope() -> None
         "/api/agents/creation-proposals/nonexistent/reject",
     ):
         assert f'fetchProjectScoped("{path}"' in scenario_44
-    assert 'fetch("http://localhost:8000/api/agents/creation-proposals' not in scenario_44
+    assert (
+        'fetch("http://localhost:8000/api/agents/creation-proposals' not in scenario_44
+    )
 
     assert "No active project id; scoped endpoint not called" in scenario_52
     assert "project_id=${encodeURIComponent(projectId)}" in scenario_52
@@ -78,8 +94,14 @@ def test_simulation_agent_and_meta_harnesses_pass_active_project_scope() -> None
     assert 'api.get("/api/meta-hyperagent/' not in scenario_52
     assert 'api.post("/api/meta-hyperagent/' not in scenario_52
 
-    assert "/api/agents?include_system=true&project_id=${encodeURIComponent(projectId)}" in scenario_73
-    assert "/api/agents/creation-proposals/all?project_id=${encodeURIComponent(projectId)}&limit=5" in scenario_73
+    assert (
+        "/api/agents?include_system=true&project_id=${encodeURIComponent(projectId)}"
+        in scenario_73
+    )
+    assert (
+        "/api/agents/creation-proposals/all?project_id=${encodeURIComponent(projectId)}&limit=5"
+        in scenario_73
+    )
 
 
 def test_simulation_loop_harness_passes_active_project_scope() -> None:
@@ -104,21 +126,30 @@ def test_simulation_loop_harness_passes_active_project_scope() -> None:
     ):
         assert f'apiPostProjectScoped("{path}"' in scenario_49
 
-    assert "apiGetProjectScoped(`/api/loops/agents/${testAgentId}/config`" in scenario_49
-    assert "apiPostProjectScoped(`/api/loops/agents/${testAgentId}/pause`" in scenario_49
-    assert "apiPostProjectScoped(`/api/loops/agents/${testAgentId}/resume`" in scenario_49
-    assert "fetchProjectScoped(url, \"PATCH /api/loops/agents/{id}/config updates interval\"" in scenario_49
+    assert (
+        "apiGetProjectScoped(`/api/loops/agents/${testAgentId}/config`" in scenario_49
+    )
+    assert (
+        "apiPostProjectScoped(`/api/loops/agents/${testAgentId}/pause`" in scenario_49
+    )
+    assert (
+        "apiPostProjectScoped(`/api/loops/agents/${testAgentId}/resume`" in scenario_49
+    )
+    assert (
+        'fetchProjectScoped(url, "PATCH /api/loops/agents/{id}/config updates interval"'
+        in scenario_49
+    )
     assert "fetchProjectScoped(`/api/schedules/${testScheduleId}`" in scenario_49
 
     for path in (
-        "api.get(\"/api/loops",
-        "api.post(\"/api/loops",
-        "api.get(\"/api/schedules",
-        "api.post(\"/api/schedules",
+        'api.get("/api/loops',
+        'api.post("/api/loops',
+        'api.get("/api/schedules',
+        'api.post("/api/schedules',
         "fetch(`http://localhost:8000/api/loops",
-        "fetch(\"http://localhost:8000/api/loops",
+        'fetch("http://localhost:8000/api/loops',
         "fetch(`http://localhost:8000/api/schedules",
-        "fetch(\"http://localhost:8000/api/schedules",
+        'fetch("http://localhost:8000/api/schedules',
     ):
         assert path not in scenario_49
 

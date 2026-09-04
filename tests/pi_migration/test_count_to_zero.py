@@ -48,6 +48,7 @@ EXPECTED_PRODUCT_SITES = 0
 # quoted scalars, ints, full-line comments) so no dependency is required.
 # ---------------------------------------------------------------------------
 
+
 def _parse_scalar(text: str):
     text = text.strip()
     if text.startswith("["):
@@ -127,7 +128,9 @@ def load_allowlist(path: Path = ALLOWLIST_PATH) -> dict:
 
 def run_scanner() -> list[dict]:
     """Run scripts/pi_migration_inventory.py in-process and return its rows."""
-    spec = importlib.util.spec_from_file_location("pi_migration_inventory", SCANNER_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "pi_migration_inventory", SCANNER_PATH
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.scan()
@@ -152,8 +155,7 @@ def check_count_to_zero() -> None:
     if unauthorized:
         problems.append(
             "direct legacy-plane call sites NOT in "
-            "tests/pi_migration/legacy_allowlist.yaml:\n  "
-            + "\n  ".join(unauthorized)
+            "tests/pi_migration/legacy_allowlist.yaml:\n  " + "\n  ".join(unauthorized)
         )
 
     product_entries = allowlist.get("product") or []

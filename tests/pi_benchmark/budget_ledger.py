@@ -229,7 +229,9 @@ class BudgetLedger:
             rows = self._read_rows()
             tally = self._tally(rows)
             if tally["closed"]:
-                raise LedgerClosed(f"ledger {self._path} is closed; no new reservations")
+                raise LedgerClosed(
+                    f"ledger {self._path} is closed; no new reservations"
+                )
             if call_id in tally["reserved_ids"]:
                 raise LedgerStateError(f"call_id {call_id!r} already has a reservation")
             booked = tally["committed_usd"] + sum(tally["outstanding"].values())
@@ -307,7 +309,12 @@ class BudgetLedger:
                     f"call_id {call_id!r} has no outstanding reservation to release"
                 )
             self._append_row(
-                {"type": "release", "call_id": call_id, "ts": _utc_now_iso(), "reason": reason}
+                {
+                    "type": "release",
+                    "call_id": call_id,
+                    "ts": _utc_now_iso(),
+                    "reason": reason,
+                }
             )
 
     def close(self) -> dict:

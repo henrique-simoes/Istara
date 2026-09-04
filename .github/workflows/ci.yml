@@ -178,11 +178,10 @@ jobs:
 
       - name: Lint
         run: ruff check . --statistics
-        continue-on-error: true  # TODO: fix 1159 existing lint errors, then make blocking
+        continue-on-error: true  # 378 backend + related root errors remain (manual classes: E501/E402/UP042/E712/N806/F841; ruff 0.15.12 offers no safe auto-fixes, --unsafe-fixes is forbidden). Drive down manually, then make blocking.
 
       - name: Format check
         run: ruff format --check .
-        continue-on-error: true  # TODO: fix 146 files needing reformat, then make blocking
 
       - name: Test
         run: pytest ../tests/ -v --tb=short -m "not live_llm"

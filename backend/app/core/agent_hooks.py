@@ -14,8 +14,8 @@ import logging
 import time
 import uuid
 from collections import defaultdict
-from datetime import datetime, timezone
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

@@ -32,7 +32,11 @@ async def test_scenario8_pi_local_channel_reply_is_real_loop_and_persists(monkey
         db.add(Project(id=project_id, name="Pi Production Scenario 8"))
         await db.commit()
         instance = await channel_service.create_channel_instance(
-            db, platform="pi_local", name="Pi Local S8", config={"enabled": True}, project_id=project_id
+            db,
+            platform="pi_local",
+            name="Pi Local S8",
+            config={"enabled": True},
+            project_id=project_id,
         )
     instance_id = instance.id
 
@@ -58,17 +62,23 @@ async def test_scenario8_pi_local_channel_reply_is_real_loop_and_persists(monkey
     # The response is the real Pi loop's text — not the deleted canned string.
     assert response is not None
     assert response.text == reply_text
-    assert "recorded the inbound channel message for local benchmark" not in response.text
+    assert (
+        "recorded the inbound channel message for local benchmark" not in response.text
+    )
     assert response.metadata.get("engine") == "pi"
 
     async with async_session() as db:
         msgs = (
-            await db.execute(
-                select(ChannelMessage)
-                .where(ChannelMessage.channel_instance_id == instance_id)
-                .order_by(ChannelMessage.direction)
+            (
+                await db.execute(
+                    select(ChannelMessage)
+                    .where(ChannelMessage.channel_instance_id == instance_id)
+                    .order_by(ChannelMessage.direction)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     directions = sorted(m.direction for m in msgs)
     assert directions == ["inbound", "outbound"]
     outbound = [m for m in msgs if m.direction == "outbound"][0]
@@ -86,7 +96,11 @@ async def test_scenario8_channel_fails_closed_when_runtime_unavailable(monkeypat
         db.add(Project(id=project_id, name="Pi Production Scenario 8 FC"))
         await db.commit()
         instance = await channel_service.create_channel_instance(
-            db, platform="pi_local", name="Pi Local S8 FC", config={"enabled": True}, project_id=project_id
+            db,
+            platform="pi_local",
+            name="Pi Local S8 FC",
+            config={"enabled": True},
+            project_id=project_id,
         )
     instance_id = instance.id
 
@@ -113,9 +127,15 @@ async def test_scenario8_channel_fails_closed_when_runtime_unavailable(monkeypat
     assert response is None  # fail closed
     async with async_session() as db:
         msgs = (
-            await db.execute(
-                select(ChannelMessage).where(ChannelMessage.channel_instance_id == instance_id)
+            (
+                await db.execute(
+                    select(ChannelMessage).where(
+                        ChannelMessage.channel_instance_id == instance_id
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     # Inbound is still recorded; no outbound reply was fabricated.
     assert [m.direction for m in msgs] == ["inbound"]

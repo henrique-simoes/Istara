@@ -309,7 +309,9 @@ def validate_dag_payload(payload: dict[str, Any]) -> tuple[bool, str]:
     return True, "acyclic"
 
 
-def evaluate_checks(text: str, checks: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def evaluate_checks(
+    text: str, checks: dict[str, Any]
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     results: list[dict[str, Any]] = []
     metrics: dict[str, Any] = {}
     parsed: dict[str, Any] | None = None
@@ -317,7 +319,9 @@ def evaluate_checks(text: str, checks: dict[str, Any]) -> tuple[list[dict[str, A
     if checks.get("json_object"):
         parsed, error = extract_json_object(text)
         passed = parsed is not None
-        results.append({"name": "json_object", "passed": passed, "detail": error or "valid"})
+        results.append(
+            {"name": "json_object", "passed": passed, "detail": error or "valid"}
+        )
         metrics["json_validity"] = 1.0 if passed else 0.0
 
     if parsed is not None:
@@ -391,7 +395,9 @@ def _import_all_models() -> None:
     import importlib
     import pathlib
 
-    models_dir = pathlib.Path(__file__).resolve().parents[1] / "backend" / "app" / "models"
+    models_dir = (
+        pathlib.Path(__file__).resolve().parents[1] / "backend" / "app" / "models"
+    )
     for path in sorted(models_dir.glob("*.py")):
         if path.stem != "__init__":
             importlib.import_module(f"app.models.{path.stem}")
@@ -463,7 +469,11 @@ async def _run_live_case_pi(
     metrics["llm_serving_path"] = "agentic_dispatcher.completion:pi"
     usage = getattr(outcome, "usage", None) or {}
     if usage:
-        metrics["usage"] = {k: usage.get(k) for k in ("input_tokens", "output_tokens", "total_tokens") if usage.get(k) is not None}
+        metrics["usage"] = {
+            k: usage.get(k)
+            for k in ("input_tokens", "output_tokens", "total_tokens")
+            if usage.get(k) is not None
+        }
     return {
         "case_id": case["id"],
         "suite": case["suite"],
@@ -499,7 +509,9 @@ async def run_live_case(
     api_key = get_live_llm_api_key()
     if engine == "pi" and profile.base_url and api_key:
         try:
-            return await _run_live_case_pi(case, timeout_seconds=timeout_seconds, started=started)
+            return await _run_live_case_pi(
+                case, timeout_seconds=timeout_seconds, started=started
+            )
         except Exception as exc:
             duration_ms = round((time.perf_counter() - started) * 1000, 2)
             return {
@@ -508,8 +520,17 @@ async def run_live_case(
                 "status": "failed",
                 "score": 0.0,
                 "duration_ms": duration_ms,
-                "checks": [{"name": "live_call_pi", "passed": False, "detail": sanitize_text(type(exc).__name__)}],
-                "metrics": {"latency_ms": duration_ms, "llm_serving_path": "agentic_dispatcher.completion:pi"},
+                "checks": [
+                    {
+                        "name": "live_call_pi",
+                        "passed": False,
+                        "detail": sanitize_text(type(exc).__name__),
+                    }
+                ],
+                "metrics": {
+                    "latency_ms": duration_ms,
+                    "llm_serving_path": "agentic_dispatcher.completion:pi",
+                },
             }
     if not profile.base_url or not api_key:
         status = "failed" if require_live_llm else "blocked"
@@ -557,7 +578,11 @@ async def run_live_case(
         check_results, metrics = evaluate_checks(visible_text, case.get("checks", {}))
         if not check_results:
             check_results = [
-                {"name": "response_nonempty", "passed": bool(visible_text), "detail": ""}
+                {
+                    "name": "response_nonempty",
+                    "passed": bool(visible_text),
+                    "detail": "",
+                }
             ]
         passed = all(item["passed"] for item in check_results)
         metrics["latency_ms"] = duration_ms
@@ -651,14 +676,32 @@ async def eval_rag_keyword_gold(output_dir: Path) -> dict[str, Any]:
         settings.lance_db_path = original_lance_db_path
 
     sources = [item.source for item in context.retrieved]
-    gold_hits = [item for item in context.retrieved if item.source == "gold_checkout.md"]
+    gold_hits = [
+        item for item in context.retrieved if item.source == "gold_checkout.md"
+    ]
     precision_at_1 = 1.0 if sources[:1] == ["gold_checkout.md"] else 0.0
     recall_at_3 = 1.0 if gold_hits else 0.0
     checks = [
-        {"name": "has_context", "passed": context.has_context, "detail": f"{len(context.retrieved)} hits"},
-        {"name": "gold_source_retrieved", "passed": bool(gold_hits), "detail": ", ".join(sources)},
-        {"name": "gold_source_ranked_first", "passed": precision_at_1 == 1.0, "detail": ", ".join(sources[:3])},
-        {"name": "context_is_guard_wrapped", "passed": "gold_checkout.md" in context.context_text, "detail": ""},
+        {
+            "name": "has_context",
+            "passed": context.has_context,
+            "detail": f"{len(context.retrieved)} hits",
+        },
+        {
+            "name": "gold_source_retrieved",
+            "passed": bool(gold_hits),
+            "detail": ", ".join(sources),
+        },
+        {
+            "name": "gold_source_ranked_first",
+            "passed": precision_at_1 == 1.0,
+            "detail": ", ".join(sources[:3]),
+        },
+        {
+            "name": "context_is_guard_wrapped",
+            "passed": "gold_checkout.md" in context.context_text,
+            "detail": "",
+        },
     ]
     passed = all(item["passed"] for item in checks)
     return {
@@ -727,10 +770,26 @@ async def eval_prompt_rag(output_dir: Path) -> dict[str, Any]:
         settings.max_context_tokens = original_context_tokens
 
     checks = [
-        {"name": "identity_anchor_survives", "passed": "You are Eval Agent" in prompt, "detail": ""},
-        {"name": "relevant_section_selected", "passed": "Usability Interview Planning" in prompt, "detail": ""},
-        {"name": "synthesis_section_selected", "passed": "Evidence Synthesis" in prompt, "detail": ""},
-        {"name": "distractor_suppressed", "passed": "Irrelevant Billing Protocol" not in prompt, "detail": ""},
+        {
+            "name": "identity_anchor_survives",
+            "passed": "You are Eval Agent" in prompt,
+            "detail": "",
+        },
+        {
+            "name": "relevant_section_selected",
+            "passed": "Usability Interview Planning" in prompt,
+            "detail": "",
+        },
+        {
+            "name": "synthesis_section_selected",
+            "passed": "Evidence Synthesis" in prompt,
+            "detail": "",
+        },
+        {
+            "name": "distractor_suppressed",
+            "passed": "Irrelevant Billing Protocol" not in prompt,
+            "detail": "",
+        },
     ]
     passed = all(item["passed"] for item in checks)
     return {
@@ -763,13 +822,27 @@ async def eval_llmlingua() -> dict[str, Any]:
             for _ in range(35)
         ]
     )
-    prompt = f"# Identity\nKeep evidence.\n\n## Method\n{protected}\n\n## Notes\n{filler}"
+    prompt = (
+        f"# Identity\nKeep evidence.\n\n## Method\n{protected}\n\n## Notes\n{filler}"
+    )
     compressed = compress_prompt(prompt, max_chars=900)
     ratio = len(compressed) / len(prompt)
     checks = [
-        {"name": "compressed_smaller", "passed": len(compressed) < len(prompt), "detail": f"{len(prompt)} to {len(compressed)} chars"},
-        {"name": "protected_block_survives", "passed": protected in compressed, "detail": ""},
-        {"name": "critical_term_survives", "passed": "CRITICAL_BRAUN_CLARKE_CODEBOOK_ALPHA" in compressed, "detail": ""},
+        {
+            "name": "compressed_smaller",
+            "passed": len(compressed) < len(prompt),
+            "detail": f"{len(prompt)} to {len(compressed)} chars",
+        },
+        {
+            "name": "protected_block_survives",
+            "passed": protected in compressed,
+            "detail": "",
+        },
+        {
+            "name": "critical_term_survives",
+            "passed": "CRITICAL_BRAUN_CLARKE_CODEBOOK_ALPHA" in compressed,
+            "detail": "",
+        },
     ]
     passed = all(item["passed"] for item in checks)
     return {
@@ -779,7 +852,10 @@ async def eval_llmlingua() -> dict[str, Any]:
         "score": 1.0 if passed else 0.0,
         "duration_ms": round((time.perf_counter() - started) * 1000, 2),
         "checks": checks,
-        "metrics": {"compression_ratio": round(ratio, 4), "compressed_chars": len(compressed)},
+        "metrics": {
+            "compression_ratio": round(ratio, 4),
+            "compressed_chars": len(compressed),
+        },
     }
 
 
@@ -790,7 +866,10 @@ async def eval_reasoning_bank() -> dict[str, Any]:
     service = ReasoningMemoryService()
     memories = service.extract_memory_items(
         query="Fix checkout retry failure",
-        trajectory={"step": "called payment_retry", "api_key": "secret-value-should-disappear"},
+        trajectory={
+            "step": "called payment_retry",
+            "api_key": "secret-value-should-disappear",
+        },
         outcome="failure",
         source_kind="tool_calling_react",
         source_id="eval-trace-1",
@@ -802,10 +881,27 @@ async def eval_reasoning_bank() -> dict[str, Any]:
     serialized = json.dumps(memory, default=str)
     checks = [
         {"name": "one_memory_extracted", "passed": len(memories) == 1, "detail": ""},
-        {"name": "failure_outcome_tagged", "passed": memory.get("outcome") == "failure", "detail": ""},
-        {"name": "source_kind_tagged", "passed": "tool_calling_react" in memory.get("tags", []), "detail": ""},
-        {"name": "secret_redacted", "passed": "secret-value-should-disappear" not in serialized and "[REDACTED]" in serialized, "detail": ""},
-        {"name": "confidence_bounded", "passed": 0.0 <= float(memory.get("confidence", -1)) <= 1.0, "detail": str(memory.get("confidence"))},
+        {
+            "name": "failure_outcome_tagged",
+            "passed": memory.get("outcome") == "failure",
+            "detail": "",
+        },
+        {
+            "name": "source_kind_tagged",
+            "passed": "tool_calling_react" in memory.get("tags", []),
+            "detail": "",
+        },
+        {
+            "name": "secret_redacted",
+            "passed": "secret-value-should-disappear" not in serialized
+            and "[REDACTED]" in serialized,
+            "detail": "",
+        },
+        {
+            "name": "confidence_bounded",
+            "passed": 0.0 <= float(memory.get("confidence", -1)) <= 1.0,
+            "detail": str(memory.get("confidence")),
+        },
     ]
     passed = all(item["passed"] for item in checks)
     return {
@@ -827,7 +923,11 @@ async def eval_memento_skills() -> dict[str, Any]:
     from app.skills.skill_manager import SOURCE_SKILLS_DIR, SkillDefinition
 
     started = time.perf_counter()
-    paths = sorted(path for path in SOURCE_SKILLS_DIR.glob("*.json") if not path.name.startswith("_"))
+    paths = sorted(
+        path
+        for path in SOURCE_SKILLS_DIR.glob("*.json")
+        if not path.name.startswith("_")
+    )
     valid = 0
     enabled = 0
     output_schema_count = 0
@@ -842,13 +942,38 @@ async def eval_memento_skills() -> dict[str, Any]:
             output_schema_count += 1 if definition.data.get("output_schema") else 0
         except Exception as exc:
             errors.append(f"{path.name}: {type(exc).__name__}")
-    expected = {"research-synthesis", "thematic-analysis", "survey-generator", "transcribe-audio"}
+    expected = {
+        "research-synthesis",
+        "thematic-analysis",
+        "survey-generator",
+        "transcribe-audio",
+    }
     checks = [
-        {"name": "skill_definitions_present", "passed": len(paths) >= 40, "detail": str(len(paths))},
-        {"name": "skill_definitions_valid", "passed": valid == len(paths), "detail": "; ".join(errors[:5])},
-        {"name": "output_schema_coverage", "passed": output_schema_count == len(paths), "detail": f"{output_schema_count}/{len(paths)}"},
-        {"name": "expected_core_skills_present", "passed": expected <= names, "detail": ", ".join(sorted(expected - names))},
-        {"name": "enabled_skill_coverage", "passed": enabled >= max(1, int(len(paths) * 0.8)), "detail": f"{enabled}/{len(paths)}"},
+        {
+            "name": "skill_definitions_present",
+            "passed": len(paths) >= 40,
+            "detail": str(len(paths)),
+        },
+        {
+            "name": "skill_definitions_valid",
+            "passed": valid == len(paths),
+            "detail": "; ".join(errors[:5]),
+        },
+        {
+            "name": "output_schema_coverage",
+            "passed": output_schema_count == len(paths),
+            "detail": f"{output_schema_count}/{len(paths)}",
+        },
+        {
+            "name": "expected_core_skills_present",
+            "passed": expected <= names,
+            "detail": ", ".join(sorted(expected - names)),
+        },
+        {
+            "name": "enabled_skill_coverage",
+            "passed": enabled >= max(1, int(len(paths) * 0.8)),
+            "detail": f"{enabled}/{len(paths)}",
+        },
     ]
     passed = all(item["passed"] for item in checks)
     return {
@@ -868,7 +993,11 @@ async def eval_memento_skills() -> dict[str, Any]:
 
 
 async def eval_meta_hyperagent() -> dict[str, Any]:
-    from app.core.meta_hyperagent import MAX_ACTIVE_VARIANTS, PARAMETER_BOUNDS, MetaHyperagent
+    from app.core.meta_hyperagent import (
+        MAX_ACTIVE_VARIANTS,
+        PARAMETER_BOUNDS,
+        MetaHyperagent,
+    )
 
     started = time.perf_counter()
     meta = MetaHyperagent()
@@ -885,7 +1014,9 @@ async def eval_meta_hyperagent() -> dict[str, Any]:
         },
         {
             "name": "invalid_bound_rejected",
-            "passed": not meta._validate_bounds("agent.skill_similarity_threshold", 1.5),
+            "passed": not meta._validate_bounds(
+                "agent.skill_similarity_threshold", 1.5
+            ),
             "detail": "",
         },
         {
@@ -911,19 +1042,46 @@ async def eval_meta_hyperagent() -> dict[str, Any]:
 
 async def eval_thinking_output() -> dict[str, Any]:
     from app.core.llm_output import visible_assistant_content
-    from app.core.llm_thinking import apply_thinking_control, normalize_thinking_mode, thinking_marker_registry
+    from app.core.llm_thinking import (
+        apply_thinking_control,
+        normalize_thinking_mode,
+        thinking_marker_registry,
+    )
 
     started = time.perf_counter()
     qwen = visible_assistant_content({"content": "<think>hidden</think>Final answer"})
-    gemma = visible_assistant_content({"content": "<|channel>thought hidden <channel|>Visible"})
+    gemma = visible_assistant_content(
+        {"content": "<|channel>thought hidden <channel|>Visible"}
+    )
     controlled = apply_thinking_control([{"role": "user", "content": "Hi"}], "off")
     registry = thinking_marker_registry()
     checks = [
-        {"name": "invalid_mode_defaults", "passed": normalize_thinking_mode("banana") == "server_default", "detail": ""},
-        {"name": "off_directive_injected", "passed": controlled[0]["role"] == "system" and "thinking mode is OFF" in controlled[0]["content"], "detail": ""},
-        {"name": "qwen_thinking_stripped", "passed": qwen == "Final answer", "detail": qwen},
-        {"name": "gemma_thought_stripped", "passed": gemma == "Visible", "detail": gemma},
-        {"name": "marker_registry_covers_families", "passed": {"qwen", "gemma", "openai", "anthropic"} <= set(registry), "detail": ", ".join(sorted(registry))},
+        {
+            "name": "invalid_mode_defaults",
+            "passed": normalize_thinking_mode("banana") == "server_default",
+            "detail": "",
+        },
+        {
+            "name": "off_directive_injected",
+            "passed": controlled[0]["role"] == "system"
+            and "thinking mode is OFF" in controlled[0]["content"],
+            "detail": "",
+        },
+        {
+            "name": "qwen_thinking_stripped",
+            "passed": qwen == "Final answer",
+            "detail": qwen,
+        },
+        {
+            "name": "gemma_thought_stripped",
+            "passed": gemma == "Visible",
+            "detail": gemma,
+        },
+        {
+            "name": "marker_registry_covers_families",
+            "passed": {"qwen", "gemma", "openai", "anthropic"} <= set(registry),
+            "detail": ", ".join(sorted(registry)),
+        },
     ]
     passed = all(item["passed"] for item in checks)
     return {
@@ -933,12 +1091,19 @@ async def eval_thinking_output() -> dict[str, Any]:
         "score": 1.0 if passed else 0.0,
         "duration_ms": round((time.perf_counter() - started) * 1000, 2),
         "checks": checks,
-        "metrics": {"marker_family_count": len(registry), "visible_output_safety": 1.0 if passed else 0.0},
+        "metrics": {
+            "marker_family_count": len(registry),
+            "visible_output_safety": 1.0 if passed else 0.0,
+        },
     }
 
 
 async def eval_voice_transcription(output_dir: Path) -> dict[str, Any]:
-    from app.core.transcription import _generate_transcription_tags, transcribe_audio, transcription_dependency_status
+    from app.core.transcription import (
+        _generate_transcription_tags,
+        transcribe_audio,
+        transcription_dependency_status,
+    )
 
     started = time.perf_counter()
     missing_path = output_dir / "runtime_data" / "missing-audio.wav"
@@ -948,10 +1113,26 @@ async def eval_voice_transcription(output_dir: Path) -> dict[str, Any]:
     )
     status = transcription_dependency_status()
     checks = [
-        {"name": "dependency_status_shape", "passed": "ffmpeg_available" in status and "whisper_available" in status, "detail": ""},
-        {"name": "missing_file_typed_failure", "passed": result.metadata.get("error_type") == "audio_file_missing", "detail": str(result.metadata)},
-        {"name": "missing_file_needs_review", "passed": result.needs_review is True, "detail": ""},
-        {"name": "spoken_tags_detected", "passed": {"navigation", "accessibility", "spoken-style"} <= set(tags), "detail": ", ".join(tags)},
+        {
+            "name": "dependency_status_shape",
+            "passed": "ffmpeg_available" in status and "whisper_available" in status,
+            "detail": "",
+        },
+        {
+            "name": "missing_file_typed_failure",
+            "passed": result.metadata.get("error_type") == "audio_file_missing",
+            "detail": str(result.metadata),
+        },
+        {
+            "name": "missing_file_needs_review",
+            "passed": result.needs_review is True,
+            "detail": "",
+        },
+        {
+            "name": "spoken_tags_detected",
+            "passed": {"navigation", "accessibility", "spoken-style"} <= set(tags),
+            "detail": ", ".join(tags),
+        },
     ]
     passed = all(item["passed"] for item in checks)
     return {
@@ -1006,7 +1187,8 @@ async def run_eval_suite(config: EvalConfig) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
 
     live_cases = [
-        case for case in cases.get("live_cases", [])
+        case
+        for case in cases.get("live_cases", [])
         if should_run_suite(config.suite, case.get("suite", ""), live=True)
     ]
     if config.max_live_cases is not None:
@@ -1032,7 +1214,13 @@ async def run_eval_suite(config: EvalConfig) -> dict[str, Any]:
                     "suite": case["suite"],
                     "status": "blocked",
                     "score": 0.0,
-                    "checks": [{"name": "static_eval_registered", "passed": False, "detail": "missing function"}],
+                    "checks": [
+                        {
+                            "name": "static_eval_registered",
+                            "passed": False,
+                            "detail": "missing function",
+                        }
+                    ],
                     "metrics": {},
                 }
             )
@@ -1046,8 +1234,15 @@ async def run_eval_suite(config: EvalConfig) -> dict[str, Any]:
         json.dumps(summary, indent=2, default=str) + "\n",
         encoding="utf-8",
     )
-    (output_dir / "report.md").write_text(render_report(summary, results, manifest), encoding="utf-8")
-    return {"manifest": manifest, "summary": summary, "results": results, "output_dir": output_dir}
+    (output_dir / "report.md").write_text(
+        render_report(summary, results, manifest), encoding="utf-8"
+    )
+    return {
+        "manifest": manifest,
+        "summary": summary,
+        "results": results,
+        "output_dir": output_dir,
+    }
 
 
 def summarize_results(
@@ -1057,15 +1252,21 @@ def summarize_results(
     output_dir: Path,
 ) -> dict[str, Any]:
     suite_thresholds = {
-        suite["id"]: suite.get("thresholds", {})
-        for suite in registry.get("suites", [])
+        suite["id"]: suite.get("thresholds", {}) for suite in registry.get("suites", [])
     }
     suites: dict[str, dict[str, Any]] = {}
     for item in results:
         suite_id = item.get("suite", "unknown")
         bucket = suites.setdefault(
             suite_id,
-            {"total": 0, "passed": 0, "failed": 0, "blocked": 0, "score_sum": 0.0, "metrics": {}},
+            {
+                "total": 0,
+                "passed": 0,
+                "failed": 0,
+                "blocked": 0,
+                "score_sum": 0.0,
+                "metrics": {},
+            },
         )
         bucket["total"] += 1
         status = item.get("status")
@@ -1097,7 +1298,10 @@ def summarize_results(
         }
         thresholds = suite_thresholds.get(suite_id, {})
         pass_rate_threshold = thresholds.get("pass_rate")
-        if pass_rate_threshold is not None and bucket["pass_rate"] < pass_rate_threshold:
+        if (
+            pass_rate_threshold is not None
+            and bucket["pass_rate"] < pass_rate_threshold
+        ):
             threshold_violations.append(
                 {
                     "suite": suite_id,
@@ -1162,11 +1366,12 @@ def render_report(
             f"score={item.get('score')} duration_ms={item.get('duration_ms', 0)}"
         )
         failed_checks = [
-            check for check in item.get("checks", [])
-            if not check.get("passed")
+            check for check in item.get("checks", []) if not check.get("passed")
         ]
         for check in failed_checks[:5]:
-            lines.append(f"  - failed check {check.get('name')}: {check.get('detail', '')}")
+            lines.append(
+                f"  - failed check {check.get('name')}: {check.get('detail', '')}"
+            )
     lines.append("")
     return "\n".join(lines)
 
@@ -1184,8 +1389,12 @@ def parse_args(argv: list[str] | None = None) -> EvalConfig:
     parser.add_argument("--require-live-llm", action="store_true")
     parser.add_argument("--max-live-cases", type=int, default=None)
     parser.add_argument("--timeout", type=float, default=90.0)
-    parser.add_argument("--engine", choices=["legacy", "pi"], default="legacy",
-                        help="agentic engine for live cases (CF-341; default legacy = original behavior)")
+    parser.add_argument(
+        "--engine",
+        choices=["legacy", "pi"],
+        default="legacy",
+        help="agentic engine for live cases (CF-341; default legacy = original behavior)",
+    )
     parser.add_argument("--fail-on-threshold", action="store_true")
     parser.add_argument(
         "--allow-unignored-output",

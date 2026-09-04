@@ -55,12 +55,16 @@ async def test_agentic_engine_switch_pi_and_istara(client, monkeypatch):
         assert resp.json()["agentic_engine_default"] == "pi"
         assert settings.agentic_engine_default == "pi"
 
-        resp = await client.post("/api/settings/agentic-engine", json={"engine": "istara"})
+        resp = await client.post(
+            "/api/settings/agentic-engine", json={"engine": "istara"}
+        )
         assert resp.status_code == 200
         assert resp.json()["agentic_engine_default"] == "legacy"
         assert settings.agentic_engine_default == "legacy"
 
-        resp = await client.post("/api/settings/agentic-engine", json={"engine": "bogus"})
+        resp = await client.post(
+            "/api/settings/agentic-engine", json={"engine": "bogus"}
+        )
         assert resp.status_code == 400
     finally:
         settings.agentic_engine_default = original
@@ -113,9 +117,13 @@ async def test_pi_endpoint_crud(client, monkeypatch):
     monkeypatch.setattr(settings, "team_mode", True)
     monkeypatch.setattr(settings_routes, "_persist_env", lambda *_args: None)
     monkeypatch.setattr(
-        settings_routes, "custody_pi_endpoint_credentials", lambda *_args, **_kwargs: None
+        settings_routes,
+        "custody_pi_endpoint_credentials",
+        lambda *_args, **_kwargs: None,
     )
-    monkeypatch.setattr(settings_routes, "pi_endpoint_credential_status", lambda _ep: "ready")
+    monkeypatch.setattr(
+        settings_routes, "pi_endpoint_credential_status", lambda _ep: "ready"
+    )
     original = list(settings.pi_api_endpoints)
     try:
         settings.pi_api_endpoints = []
@@ -123,7 +131,9 @@ async def test_pi_endpoint_crud(client, monkeypatch):
         # mutation.  The endpoint routes must refresh this manager because it
         # is the catalog used by Pi dispatchers, not merely mutate settings.
         manager = PiModelManager(include_local=False)
-        assert {info.endpoint_id for info in manager.catalog()} == {"pi-deepseek-default"}
+        assert {info.endpoint_id for info in manager.catalog()} == {
+            "pi-deepseek-default"
+        }
         payload = {
             "endpoint_id": "pi-test-endpoint",
             "provider_kind": "openai_compat",
@@ -156,20 +166,32 @@ async def test_pi_endpoint_crud(client, monkeypatch):
         assert resp.status_code == 409
 
         # https required
-        resp = await client.post("/api/settings/pi-endpoints", json={
-            **payload, "endpoint_id": "pi-bad", "base_url": "http://insecure.example.com",
-        })
+        resp = await client.post(
+            "/api/settings/pi-endpoints",
+            json={
+                **payload,
+                "endpoint_id": "pi-bad",
+                "base_url": "http://insecure.example.com",
+            },
+        )
         assert resp.status_code == 400
 
         # keychain_service required
-        resp = await client.post("/api/settings/pi-endpoints", json={
-            **payload, "endpoint_id": "pi-bad2", "keychain_service": "",
-        })
+        resp = await client.post(
+            "/api/settings/pi-endpoints",
+            json={
+                **payload,
+                "endpoint_id": "pi-bad2",
+                "keychain_service": "",
+            },
+        )
         assert resp.status_code == 400
 
         # update
-        resp = await client.put("/api/settings/pi-endpoints/pi-test-endpoint",
-                                json={**payload, "model": "test-model-2"})
+        resp = await client.put(
+            "/api/settings/pi-endpoints/pi-test-endpoint",
+            json={**payload, "model": "test-model-2"},
+        )
         assert resp.status_code == 200
         assert settings.pi_api_endpoints[0].model == "test-model-2"
         updated = {info.endpoint_id: info for info in manager.catalog()}
@@ -179,7 +201,9 @@ async def test_pi_endpoint_crud(client, monkeypatch):
         resp = await client.delete("/api/settings/pi-endpoints/pi-test-endpoint")
         assert resp.status_code == 200
         assert settings.pi_api_endpoints == []
-        assert "pi-test-endpoint" not in {info.endpoint_id for info in manager.catalog()}
+        assert "pi-test-endpoint" not in {
+            info.endpoint_id for info in manager.catalog()
+        }
         resp = await client.delete("/api/settings/pi-endpoints/pi-test-endpoint")
         assert resp.status_code == 404
     finally:
@@ -190,6 +214,7 @@ async def test_pi_endpoint_crud(client, monkeypatch):
 async def test_api_key_endpoint_rejects_missing_credential(client, monkeypatch):
     """A connection is never advertised when neither a new nor stored key exists."""
     from app.api.routes import settings as settings_routes
+
     monkeypatch.setattr(settings, "team_mode", True)
     monkeypatch.setattr(settings_routes, "_persist_env", lambda *_args: None)
     original_endpoints = list(settings.pi_api_endpoints)
@@ -215,7 +240,9 @@ async def test_api_key_endpoint_rejects_missing_credential(client, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_api_key_endpoint_reports_ready_without_returning_secret(client, monkeypatch):
+async def test_api_key_endpoint_reports_ready_without_returning_secret(
+    client, monkeypatch
+):
     from app import config as app_config
     from app.api.routes import settings as settings_routes
     from app.core.pi_runtime import endpoint_policy
@@ -255,13 +282,17 @@ async def test_api_key_endpoint_reports_ready_without_returning_secret(client, m
 
 
 @pytest.mark.asyncio
-async def test_research_ensemble_preferences_are_ordered_and_distinct(client, monkeypatch):
+async def test_research_ensemble_preferences_are_ordered_and_distinct(
+    client, monkeypatch
+):
     from app.api.routes import settings as settings_routes
     from app.config import PiApiEndpoint
 
     monkeypatch.setattr(settings, "team_mode", True)
     monkeypatch.setattr(settings_routes, "_persist_env", lambda *_args: None)
-    monkeypatch.setattr(settings_routes, "pi_endpoint_credential_status", lambda _ep: "ready")
+    monkeypatch.setattr(
+        settings_routes, "pi_endpoint_credential_status", lambda _ep: "ready"
+    )
     original_endpoints = list(settings.pi_api_endpoints)
     original_preferences = list(settings.pi_research_endpoint_ids)
     try:
@@ -300,7 +331,9 @@ async def test_research_ensemble_preferences_are_ordered_and_distinct(client, mo
             json={"endpoint_ids": ["ep-a", "ep-a-replica"]},
         )
         assert duplicate_identity.status_code == 400
-        assert duplicate_identity.json()["detail"] == "duplicate_research_model_identity"
+        assert (
+            duplicate_identity.json()["detail"] == "duplicate_research_model_identity"
+        )
         assert settings.pi_research_endpoint_ids == ["ep-b", "ep-a"]
 
         listed = await client.get("/api/settings/pi-endpoints")
@@ -322,9 +355,13 @@ async def test_pi_endpoint_default_is_auto_selected_and_switchable(client, monke
     monkeypatch.setattr(settings, "team_mode", True)
     monkeypatch.setattr(settings_routes, "_persist_env", lambda *_args: None)
     monkeypatch.setattr(
-        settings_routes, "custody_pi_endpoint_credentials", lambda *_args, **_kwargs: None
+        settings_routes,
+        "custody_pi_endpoint_credentials",
+        lambda *_args, **_kwargs: None,
     )
-    monkeypatch.setattr(settings_routes, "pi_endpoint_credential_status", lambda _ep: "ready")
+    monkeypatch.setattr(
+        settings_routes, "pi_endpoint_credential_status", lambda _ep: "ready"
+    )
     original_endpoints = list(settings.pi_api_endpoints)
     original_default = getattr(settings, "pi_default_endpoint_id", "")
     payload = {

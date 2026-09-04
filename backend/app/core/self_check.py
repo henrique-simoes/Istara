@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
-from app.core.rag import VectorStore, retrieve_context
+from app.core.rag import retrieve_context
 
 
 class Confidence(str, Enum):

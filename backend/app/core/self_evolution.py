@@ -26,17 +26,11 @@ Two modes:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, or_
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import or_, select
 
 from app.core.agent_identity import (
-    IDENTITY_FILES,
-    _load_persona_file,
-    save_agent_memory,
-    load_agent_memory,
     runtime_personas_dir,
     writeable_persona_path,
 )
@@ -211,7 +205,7 @@ class SelfEvolutionEngine:
             )
             return []
         th = thresholds or get_effective_promotion_thresholds(scoped_project_id)
-        cutoff = datetime.now(timezone.utc) - timedelta(days=th["max_age_days"])
+        cutoff = datetime.now(UTC) - timedelta(days=th["max_age_days"])
         candidates = []
 
         try:
@@ -703,7 +697,7 @@ def _format_promotion(learning) -> str:
         "performance_note": "Performance Note",
     }
     label = category_labels.get(learning.category, learning.category)
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d")
 
     parts = [f"**[{label}]** ({timestamp}, confidence: {learning.confidence}%)"]
     parts.append(learning.learning[:500])

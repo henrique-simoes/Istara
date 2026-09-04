@@ -5,7 +5,8 @@ from __future__ import annotations
 import math
 from types import SimpleNamespace
 
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from app.core.compute_capacity import compute_capacity_envelope, node_capacity_score
 

@@ -5,7 +5,11 @@ from __future__ import annotations
 import pytest
 
 from tests.pi_benchmark import moa
-from tests.pi_benchmark.moa import MoaEvidence, assess_validation_result, validate_topology
+from tests.pi_benchmark.moa import (
+    MoaEvidence,
+    assess_validation_result,
+    validate_topology,
+)
 
 pytestmark = pytest.mark.benchmark
 
@@ -19,7 +23,9 @@ class _Consensus:
 class _Result:
     """Duck-typed ValidationResult stand-in (method/responses/consensus/metadata)."""
 
-    def __init__(self, method, responses, endpoint_ids, consensus=None, route_evidence=None):
+    def __init__(
+        self, method, responses, endpoint_ids, consensus=None, route_evidence=None
+    ):
         self.method = method
         self.responses = responses
         self.consensus = consensus if consensus is not None else _Consensus()
@@ -43,8 +49,10 @@ class _Result:
 def test_self_moa_clean_pass_single_route_temperature_sweep():
     result = _Result("self_moa", ["r1", "r2", "r3"], ["pi-deepseek-default"] * 3)
     ev = assess_validation_result(
-        requested_mode="self_moa", requested_samples=3,
-        temperatures=(0.3, 0.7, 1.0), result=result,
+        requested_mode="self_moa",
+        requested_samples=3,
+        temperatures=(0.3, 0.7, 1.0),
+        result=result,
     )
     assert ev.served_mode == "self_moa"
     assert ev.distinct_served_routes == 1  # one endpoint, three temperature samples
@@ -61,7 +69,9 @@ def test_self_moa_clean_pass_single_route_temperature_sweep():
 def test_full_ensemble_clean_three_distinct_routes():
     result = _Result("full_ensemble", ["r1", "r2", "r3"], ["ep-a", "ep-b", "ep-c"])
     ev = assess_validation_result(
-        requested_mode="full_ensemble", requested_samples=3, result=result,
+        requested_mode="full_ensemble",
+        requested_samples=3,
+        result=result,
     )
     assert ev.distinct_served_routes == 3
     assert ev.distinct_served_models == 3
@@ -76,12 +86,16 @@ def test_full_ensemble_partial_success_ignores_failed_endpoint_ids():
     # The dispatcher can report all selected endpoints while only one response/route
     # succeeded. Failed endpoint ids are provenance, never proof of served coders.
     result = _Result(
-        "full_ensemble", ["r1"], ["ep-a", "ep-b", "ep-c"],
+        "full_ensemble",
+        ["r1"],
+        ["ep-a", "ep-b", "ep-c"],
         consensus=_Consensus(0.9, "high"),
         route_evidence=[{"endpoint_id": "ep-a"}],
     )
     ev = assess_validation_result(
-        requested_mode="full_ensemble", requested_samples=3, result=result,
+        requested_mode="full_ensemble",
+        requested_samples=3,
+        result=result,
     )
     assert ev.response_count == 1 and ev.coder_count == 1
     assert ev.served_route_ids == ("ep-a",)
@@ -95,12 +109,16 @@ def test_full_ensemble_partial_success_ignores_failed_endpoint_ids():
 
 def test_self_moa_partial_success_does_not_reconcile_from_selected_route_count():
     result = _Result(
-        "self_moa", ["r1"], ["pi-deepseek-default"] * 3,
+        "self_moa",
+        ["r1"],
+        ["pi-deepseek-default"] * 3,
         consensus=_Consensus(0.9, "high"),
         route_evidence=[{"endpoint_id": "pi-deepseek-default"}],
     )
     ev = assess_validation_result(
-        requested_mode="self_moa", requested_samples=3, result=result,
+        requested_mode="self_moa",
+        requested_samples=3,
+        result=result,
     )
     assert ev.response_count == 1 and ev.coder_count == 1
     assert ev.distinct_served_routes == 1
@@ -112,7 +130,9 @@ def test_self_moa_partial_success_does_not_reconcile_from_selected_route_count()
 def test_full_ensemble_downgrade_to_dual_run_is_degraded_and_blocks_the_record():
     result = _Result("dual_run", ["r1", "r2"], ["ep-a", "ep-b"])
     ev = assess_validation_result(
-        requested_mode="full_ensemble", requested_samples=3, result=result,
+        requested_mode="full_ensemble",
+        requested_samples=3,
+        result=result,
     )
     assert ev.downgrade == "full_ensemble->dual_run"
     assert ev.degraded is True
@@ -124,7 +144,9 @@ def test_full_ensemble_downgrade_to_dual_run_is_degraded_and_blocks_the_record()
 def test_full_ensemble_downgrade_to_self_moa_is_degraded():
     result = _Result("self_moa", ["r1", "r2", "r3"], ["ep-a"] * 3)
     ev = assess_validation_result(
-        requested_mode="full_ensemble", requested_samples=3, result=result,
+        requested_mode="full_ensemble",
+        requested_samples=3,
+        result=result,
     )
     assert ev.downgrade == "full_ensemble->self_moa"
     assert ev.degraded is True
@@ -136,7 +158,9 @@ def test_full_ensemble_served_but_diversity_collapsed_is_single_coder():
     # Method held (full_ensemble) but only 2 distinct routes for 3 requested slots.
     result = _Result("full_ensemble", ["r1", "r2", "r3"], ["ep-a", "ep-b", "ep-a"])
     ev = assess_validation_result(
-        requested_mode="full_ensemble", requested_samples=3, result=result,
+        requested_mode="full_ensemble",
+        requested_samples=3,
+        result=result,
     )
     assert ev.served_mode == "full_ensemble"
     assert ev.distinct_served_routes == 2
@@ -158,7 +182,9 @@ def test_full_ensemble_distinct_endpoints_for_one_model_is_not_independent_ensem
         ],
     )
     ev = assess_validation_result(
-        requested_mode="full_ensemble", requested_samples=3, result=result,
+        requested_mode="full_ensemble",
+        requested_samples=3,
+        result=result,
     )
     assert ev.distinct_served_routes == 3
     assert ev.distinct_served_models == 1
@@ -180,7 +206,9 @@ def test_full_ensemble_missing_model_identity_fails_closed():
         ],
     )
     ev = assess_validation_result(
-        requested_mode="full_ensemble", requested_samples=3, result=result,
+        requested_mode="full_ensemble",
+        requested_samples=3,
+        result=result,
     )
     assert ev.distinct_served_routes == 3
     assert ev.served_model_ids == ()
@@ -192,7 +220,9 @@ def test_full_ensemble_missing_model_identity_fails_closed():
 def test_zero_responses_is_blocked():
     result = _Result("full_ensemble", [], [], consensus=_Consensus(0.0, "insufficient"))
     ev = assess_validation_result(
-        requested_mode="full_ensemble", requested_samples=3, result=result,
+        requested_mode="full_ensemble",
+        requested_samples=3,
+        result=result,
     )
     assert ev.response_count == 0
     assert ev.reconciliation_status == "blocked"
@@ -201,10 +231,16 @@ def test_zero_responses_is_blocked():
 
 
 def test_insufficient_consensus_confidence_is_not_reconciled():
-    result = _Result("self_moa", ["r1", "r2", "r3"], ["ep-a"] * 3,
-                     consensus=_Consensus(0.2, "insufficient"))
+    result = _Result(
+        "self_moa",
+        ["r1", "r2", "r3"],
+        ["ep-a"] * 3,
+        consensus=_Consensus(0.2, "insufficient"),
+    )
     ev = assess_validation_result(
-        requested_mode="self_moa", requested_samples=3, result=result,
+        requested_mode="self_moa",
+        requested_samples=3,
+        result=result,
     )
     assert ev.downgrade is None and ev.degraded is False
     assert ev.reconciliation_status == "degraded"  # reconciled requires real confidence
@@ -213,7 +249,9 @@ def test_insufficient_consensus_confidence_is_not_reconciled():
 def test_self_moa_served_on_multiple_routes_is_an_anomaly():
     result = _Result("self_moa", ["r1", "r2", "r3"], ["ep-a", "ep-b", "ep-a"])
     ev = assess_validation_result(
-        requested_mode="self_moa", requested_samples=3, result=result,
+        requested_mode="self_moa",
+        requested_samples=3,
+        result=result,
     )
     assert ev.distinct_served_routes == 2
     assert ev.degraded is True
@@ -236,7 +274,9 @@ class _ExplodesIfCalled:
         (2, 2, "full_ensemble", False, None),
     ],
 )
-def test_validate_topology_matrix(n_ids, requested, expected_mode, expected_degrade, expected_downgrade):
+def test_validate_topology_matrix(
+    n_ids, requested, expected_mode, expected_degrade, expected_downgrade
+):
     ids = [f"ep-{i}" for i in range(n_ids)]
     out = validate_topology(available_endpoint_ids=ids, requested_slots=requested)
     assert out == {
@@ -269,7 +309,7 @@ def test_not_run_evidence_marks_blocked_before_dispatch_units():
 
 def test_requested_slots_mirrors_the_backend_call_shape():
     assert moa.requested_slots("self_moa", 3) == 3
-    assert moa.requested_slots("full_ensemble", 3) == 3   # min_responses=2 -> n=3 slots
-    assert moa.requested_slots("full_ensemble", 5) == 5   # min_responses=4 -> n=5 slots
+    assert moa.requested_slots("full_ensemble", 3) == 3  # min_responses=2 -> n=3 slots
+    assert moa.requested_slots("full_ensemble", 5) == 5  # min_responses=4 -> n=5 slots
     with pytest.raises(ValueError):
         moa.requested_slots("dual_run", 3)

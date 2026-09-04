@@ -26,11 +26,11 @@ Performance: ~5ms for a 10K-character prompt on typical hardware.
 
 from __future__ import annotations
 
+import logging
 import re
 import uuid
-import logging
 
-from app.core.context_policy import get_protected_blocks, PROTECTED_TAGS
+from app.core.context_policy import get_protected_blocks
 
 logger = logging.getLogger(__name__)
 

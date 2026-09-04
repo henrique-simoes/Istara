@@ -13,7 +13,6 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-
 ANTHROPIC_STRUCTURED_TOOL_NAME = "istara_emit_structured_response"
 NORMALIZED_SKILL_OUTPUT_FIELDS = (
     "summary",

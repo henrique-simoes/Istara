@@ -60,18 +60,30 @@ async def test_scenario13_queued_steer_delivered_once_mid_turn():
     try:
         binding = svc.steering_binding(agent_id=agent_id, project_id=project_id)
         async for _ in svc.run_chat_turn(
-            project_id=project_id, agent_id=agent_id, system_prompt=_SYS,
-            history=[], user_text="List tasks.", tool_executor=slow_exec,
-            session_key=f"{project_id}:steer", steering=binding,
+            project_id=project_id,
+            agent_id=agent_id,
+            system_prompt=_SYS,
+            history=[],
+            user_text="List tasks.",
+            tool_executor=slow_exec,
+            session_key=f"{project_id}:steer",
+            steering=binding,
         ):
             pass
     finally:
         await sup.shutdown()
         await steering_manager.abort(agent_id, project_id=project_id)
 
-    assert steer_calls == ["Also confirm the accessibility pass."]  # delivered exactly once
+    assert steer_calls == [
+        "Also confirm the accessibility pass."
+    ]  # delivered exactly once
     # The queue was drained (not left pending).
-    assert steering_manager.get_status(agent_id, project_id=project_id)["steering_queue_count"] == 0
+    assert (
+        steering_manager.get_status(agent_id, project_id=project_id)[
+            "steering_queue_count"
+        ]
+        == 0
+    )
 
 
 @pytest.mark.asyncio
@@ -84,7 +96,9 @@ async def test_scenario13_abort_yields_exactly_one_terminal_event_and_cleanup():
         await db.commit()
 
     sup = PiRuntimeSupervisor()
-    svc = faux_service([tool_call("list_tasks", {}), final_text("should not finish")], sup)
+    svc = faux_service(
+        [tool_call("list_tasks", {}), final_text("should not finish")], sup
+    )
 
     async def abort_mid_turn(name, params, pid, aid):
         # An external abort arrives while the turn is paused on this tool call.
@@ -96,9 +110,14 @@ async def test_scenario13_abort_yields_exactly_one_terminal_event_and_cleanup():
     try:
         binding = svc.steering_binding(agent_id=agent_id, project_id=project_id)
         async for e in svc.run_chat_turn(
-            project_id=project_id, agent_id=agent_id, system_prompt=_SYS,
-            history=[], user_text="List tasks.", tool_executor=abort_mid_turn,
-            session_key=f"{project_id}:abort", steering=binding,
+            project_id=project_id,
+            agent_id=agent_id,
+            system_prompt=_SYS,
+            history=[],
+            user_text="List tasks.",
+            tool_executor=abort_mid_turn,
+            session_key=f"{project_id}:abort",
+            steering=binding,
         ):
             events.append(e)
     finally:
@@ -112,7 +131,9 @@ async def test_scenario13_abort_yields_exactly_one_terminal_event_and_cleanup():
 
 
 @pytest.mark.asyncio
-async def test_scenario13_production_chat_caller_binds_project_scoped_steering(monkeypatch):
+async def test_scenario13_production_chat_caller_binds_project_scoped_steering(
+    monkeypatch,
+):
     """The real Pi chat caller constructs and forwards its steering binding.
 
     This guards the integration boundary that a direct engine test cannot: a
@@ -143,7 +164,11 @@ async def test_scenario13_production_chat_caller_binds_project_scoped_steering(m
     events = [
         event
         async for event in chat_route._generate_pi_runtime(
-            [{"role": "user", "content": "Confirm steering."}], [], [], request, agent_id
+            [{"role": "user", "content": "Confirm steering."}],
+            [],
+            [],
+            request,
+            agent_id,
         )
     ]
 

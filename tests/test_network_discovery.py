@@ -9,7 +9,9 @@ def test_extract_models_requires_openai_model_ids():
 
 
 def test_extract_models_requires_ollama_model_names():
-    assert _extract_models({"models": [{"name": "qwen3:latest"}]}, "ollama") == ["qwen3:latest"]
+    assert _extract_models({"models": [{"name": "qwen3:latest"}]}, "ollama") == [
+        "qwen3:latest"
+    ]
     assert _extract_models({"models": []}, "ollama") == []
     assert _extract_models({"models": [{"id": "not-ollama-shape"}]}, "ollama") == []
     assert _extract_models({"data": [{"id": "wrong-provider-shape"}]}, "ollama") == []

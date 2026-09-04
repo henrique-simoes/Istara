@@ -32,7 +32,9 @@ async def test_scenario10_governed_autoresearch_candidate_only_no_loop(monkeypat
         db.add(Project(id=project_id, name="Pi Production Scenario 10"))
         await db.commit()
 
-    hypothesis = "Lowering extraction temperature to 0.3 should raise coding reliability."
+    hypothesis = (
+        "Lowering extraction temperature to 0.3 should raise coding reliability."
+    )
     sup = PiRuntimeSupervisor()
     monkeypatch.setattr(seams, "_service", faux_service([final_text(hypothesis)], sup))
 
@@ -43,7 +45,9 @@ async def test_scenario10_governed_autoresearch_candidate_only_no_loop(monkeypat
 
     monkeypatch.setattr(settings, "autoresearch_enabled", True)
     monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", fake_scope)
-    monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False))
+    monkeypatch.setattr(
+        autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False)
+    )
 
     background_tasks = BackgroundTasks()
     background_tasks.add_task = lambda fn, *a, **k: added.append((fn, a, k))

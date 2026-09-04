@@ -22,14 +22,18 @@ def reset_settings():
     original_file_encryption_enabled = settings.file_encryption_enabled
     original_file_encryption_key = settings.file_encryption_key
     original_file_encryption_key_file = settings.file_encryption_key_file
-    original_file_encryption_keychain_service = settings.file_encryption_keychain_service
+    original_file_encryption_keychain_service = (
+        settings.file_encryption_keychain_service
+    )
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
     settings.file_encryption_enabled = original_file_encryption_enabled
     settings.file_encryption_key = original_file_encryption_key
     settings.file_encryption_key_file = original_file_encryption_key_file
-    settings.file_encryption_keychain_service = original_file_encryption_keychain_service
+    settings.file_encryption_keychain_service = (
+        original_file_encryption_keychain_service
+    )
 
 
 @pytest.fixture
@@ -99,7 +103,9 @@ def _backup_tar_bytes(members: dict[str, bytes]) -> bytes:
 
 
 @pytest.mark.asyncio
-async def test_upload_restore_accepts_valid_manifest_only_archive(auth_headers, tmp_path, monkeypatch):
+async def test_upload_restore_accepts_valid_manifest_only_archive(
+    auth_headers, tmp_path, monkeypatch
+):
     """Upload restore should call the real restore path and not a missing method."""
     await init_db()
     monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
@@ -124,7 +130,9 @@ async def test_upload_restore_accepts_valid_manifest_only_archive(auth_headers, 
 
 
 @pytest.mark.asyncio
-async def test_upload_restore_rejects_path_traversal_archive(auth_headers, tmp_path, monkeypatch):
+async def test_upload_restore_rejects_path_traversal_archive(
+    auth_headers, tmp_path, monkeypatch
+):
     """Restore must reject archives that try to write outside the extraction dir."""
     await init_db()
     monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
@@ -143,7 +151,9 @@ async def test_upload_restore_rejects_path_traversal_archive(auth_headers, tmp_p
 
 
 @pytest.mark.asyncio
-async def test_upload_restore_accepts_encrypted_backup_archive(auth_headers, tmp_path, monkeypatch):
+async def test_upload_restore_accepts_encrypted_backup_archive(
+    auth_headers, tmp_path, monkeypatch
+):
     """Encrypted .tar.gz.enc archives restore when the configured key is present."""
     from app.core.file_encryption import encrypt_bytes, resolve_file_encryption_key
 
@@ -151,7 +161,9 @@ async def test_upload_restore_accepts_encrypted_backup_archive(auth_headers, tmp
     monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
     monkeypatch.setattr(settings, "file_encryption_enabled", True)
     monkeypatch.setattr(settings, "file_encryption_key", "")
-    monkeypatch.setattr(settings, "file_encryption_key_file", str(tmp_path / "file-encryption.key"))
+    monkeypatch.setattr(
+        settings, "file_encryption_key_file", str(tmp_path / "file-encryption.key")
+    )
     monkeypatch.setattr(settings, "file_encryption_keychain_service", "")
     resolve_file_encryption_key(create=True)
 
@@ -168,7 +180,13 @@ async def test_upload_restore_accepts_encrypted_backup_archive(auth_headers, tmp
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
             "/api/backups/upload-restore",
-            files={"file": ("restore.tar.gz.enc", encrypted_archive, "application/octet-stream")},
+            files={
+                "file": (
+                    "restore.tar.gz.enc",
+                    encrypted_archive,
+                    "application/octet-stream",
+                )
+            },
             headers=auth_headers,
         )
 
@@ -177,7 +195,9 @@ async def test_upload_restore_accepts_encrypted_backup_archive(auth_headers, tmp
 
 
 @pytest.mark.asyncio
-async def test_backup_download_rejects_record_filename_traversal(auth_headers, tmp_path, monkeypatch):
+async def test_backup_download_rejects_record_filename_traversal(
+    auth_headers, tmp_path, monkeypatch
+):
     """A poisoned backup record must not let download escape backup_dir."""
     await init_db()
     monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
@@ -195,7 +215,9 @@ async def test_backup_download_rejects_record_filename_traversal(auth_headers, t
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/backups/{backup_id}/download", headers=auth_headers)
+        response = await ac.get(
+            f"/api/backups/{backup_id}/download", headers=auth_headers
+        )
 
     assert response.status_code == 404
 

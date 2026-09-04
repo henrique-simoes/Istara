@@ -5,50 +5,26 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import math
 import re
 import uuid
-from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
 
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.websocket import (
     broadcast_agent_status,
-    broadcast_agent_thinking,
-    broadcast_finding_created,
-    broadcast_plan_progress,
-    broadcast_suggestion,
-    broadcast_task_progress,
     broadcast_task_queue_update,
 )
-from app.core.agent_hooks import agent_hooks
-from app.core.checkpoint import complete_checkpoint, create_checkpoint, update_checkpoint
-from app.core.context_hierarchy import context_hierarchy
 from app.core.datetime_utils import ensure_utc
-from app.core.embeddings import TextChunk
-from app.core.rag import ingest_chunks, retrieve_context
+from app.core.rag import retrieve_context
 from app.core.resource_governor import governor
-from app.core.self_check import Confidence, verify_claim
 from app.core.steering import steering_manager
-from app.core.telemetry import telemetry_recorder
-from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.agent import Agent, AgentState
 from app.models.database import async_session
 from app.models.project import Project
 from app.models.task import Task, TaskStatus
-from app.skills.base import SkillInput, SkillOutput
-from app.skills.registry import registry
-from app.skills.skill_manager import skill_manager
-
-from app.core.agent_models import (
-    _META_SKILL_SIMILARITY_THRESHOLD,
-    _resolve_project_folder,
-    ResearchPlan,
-    ResearchStep,
-)
+from app.skills.base import SkillOutput
 
 logger = logging.getLogger("app.core.agent")
 

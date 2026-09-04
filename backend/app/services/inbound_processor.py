@@ -5,19 +5,19 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import and_, select
 
 from app.api.websocket import broadcast_channel_status
 from app.channels.base import IncomingMessage, OutgoingMessage
+from app.core.pi_runtime.seams import build_pi_channel_reply
 from app.models.channel_conversation import ChannelConversation
 from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
 from app.models.database import async_session
 from app.models.project import Project
 from app.models.research_deployment import ResearchDeployment
-from app.core.pi_runtime.seams import build_pi_channel_reply
 from app.services.adaptive_interview import get_next_action, update_conversation_metadata
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ async def _get_or_create_conversation(
         deployment_id=deployment_id,
         state="intro" if deployment_id else "active",
         current_question_index=0,
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     db.add(conversation)
     await db.flush()
@@ -145,7 +145,7 @@ async def process_inbound_channel_message(
 
         deployment = await _active_deployment_for_instance(db, instance)
         project_id = deployment.project_id if deployment else instance.project_id
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         conversation = await _get_or_create_conversation(
             db,

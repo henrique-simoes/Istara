@@ -4,8 +4,6 @@ Ensures that critical instructions, methodologies, and thinking blocks
 remain intact during prompt compression (LLMLingua) or RAG augmentation.
 """
 
-from typing import List
-
 # XML tags that must NEVER be removed or compressed by LLMLingua
 PROTECTED_TAGS = [
     "<skill_context>",
@@ -70,7 +68,7 @@ def is_protected(text: str) -> bool:
     return any(tag in text for tag in PROTECTED_TAGS)
 
 
-def get_protected_blocks(text: str) -> List[tuple[int, int, str]]:
+def get_protected_blocks(text: str) -> list[tuple[int, int, str]]:
     """Extract start, end indices and content of protected XML blocks."""
     import re
 

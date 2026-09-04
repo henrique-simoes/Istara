@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -21,6 +21,8 @@ from app.models.database import get_db
 from app.services import agent_service
 from app.services.loop_execution_service import (
     get_execution_stats,
+)
+from app.services.loop_execution_service import (
     list_executions as list_recorded_executions,
 )
 
@@ -89,7 +91,7 @@ def _schedule_loop_status(task: ScheduledTask) -> str:
     if task.last_status == "failure":
         return "error"
     if task.last_run and task.next_run:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         next_utc = ensure_utc(task.next_run)
         if next_utc < now:
             return "behind_schedule"
@@ -134,7 +136,7 @@ def _parse_filter_datetime(value: str | None, *, end_of_day: bool = False) -> da
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=f"Invalid date filter: {raw}") from exc
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     parsed = ensure_utc(parsed)
     if end_of_day and len(raw) == 10:
         parsed = parsed + timedelta(days=1)
@@ -327,7 +329,7 @@ async def loops_overview(
         "stopped": sum(1 for s in all_statuses if s == "stopped"),
         "total": len(all_statuses),
     }
-    since_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+    since_24h = datetime.now(UTC) - timedelta(hours=24)
     source_ids = await _project_loop_source_ids(db, scoped_project_id)
     recent_executions = await list_recorded_executions(
         db,
@@ -443,7 +445,7 @@ async def update_loop_config(
         memory[LOOP_MEMORY_KEY] = loop_config
         agent.memory = json.dumps(memory)
 
-    agent.updated_at = datetime.now(timezone.utc)
+    agent.updated_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(agent)
 
@@ -567,7 +569,7 @@ async def loops_health(
     """Loop health dashboard — unified status for all loop sources."""
     scoped_project_id = await _require_loop_project_scope(db, request, project_id)
     health_items: list[dict] = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Agents
     for a in await _load_loop_agents(db, scoped_project_id):
@@ -590,9 +592,7 @@ async def loops_health(
                 "interval_seconds": interval,
                 "last_execution_at": last_exec.isoformat() if last_exec else None,
                 "next_expected_at": (
-                    datetime.fromtimestamp(
-                        last_exec.timestamp() + interval, tz=timezone.utc
-                    ).isoformat()
+                    datetime.fromtimestamp(last_exec.timestamp() + interval, tz=UTC).isoformat()
                     if last_exec
                     else None
                 ),
@@ -677,7 +677,7 @@ async def create_custom_loop(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     try:
         next_run = CronParser.next_run_after(cron_expr, now)
     except ValueError as exc:

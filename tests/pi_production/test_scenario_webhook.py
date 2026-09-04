@@ -27,14 +27,19 @@ pytestmark = requires_node
 
 
 @pytest.mark.asyncio
-async def test_scenario12_telegram_inbound_uses_real_loop_with_zero_external_traffic(monkeypatch):
+async def test_scenario12_telegram_inbound_uses_real_loop_with_zero_external_traffic(
+    monkeypatch,
+):
     await init_db()
     project_id = f"pi-prod-s12-{uuid.uuid4()}"
     async with async_session() as db:
         db.add(Project(id=project_id, name="Pi Production Scenario 12"))
         await db.commit()
         instance = await channel_service.create_channel_instance(
-            db, platform="telegram", name="Pi Telegram S12", config={"bot_token": "unused"},
+            db,
+            platform="telegram",
+            name="Pi Telegram S12",
+            config={"bot_token": "unused"},
             project_id=project_id,
         )
     instance_id = instance.id
@@ -45,7 +50,9 @@ async def test_scenario12_telegram_inbound_uses_real_loop_with_zero_external_tra
 
     async def _spy_send(self, message):
         sent.append(message)
-        raise AssertionError("external Telegram transport must never be used in-process")
+        raise AssertionError(
+            "external Telegram transport must never be used in-process"
+        )
 
     monkeypatch.setattr(TelegramAdapter, "send", _spy_send)
 
@@ -76,12 +83,20 @@ async def test_scenario12_telegram_inbound_uses_real_loop_with_zero_external_tra
 
     # Lifecycle ordering: inbound then outbound, both persisted under the project.
     async with async_session() as db:
-        msgs = (await db.execute(
-            select(ChannelMessage)
-            .where(ChannelMessage.channel_instance_id == instance_id)
-            .order_by(ChannelMessage.created_at)
-        )).scalars().all()
-        await channel_service.stop_channel_instance(db, instance_id, project_id=project_id)
+        msgs = (
+            (
+                await db.execute(
+                    select(ChannelMessage)
+                    .where(ChannelMessage.channel_instance_id == instance_id)
+                    .order_by(ChannelMessage.created_at)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        await channel_service.stop_channel_instance(
+            db, instance_id, project_id=project_id
+        )
     assert [m.direction for m in msgs] == ["inbound", "outbound"]
     assert msgs[1].content == reply_text
     assert all(m.project_id == project_id for m in msgs)

@@ -6,14 +6,14 @@ import importlib
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.database import async_session
 from app.models.agent_loop_config import AgentLoopConfig
+from app.models.database import async_session
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,7 @@ async def update_loop_config(db: AsyncSession, agent_id: str, data: dict) -> dic
     if "project_filter" in data:
         config.project_filter = data["project_filter"]
 
-    config.updated_at = datetime.now(timezone.utc)
+    config.updated_at = datetime.now(UTC)
     await db.commit()
 
     # Apply to runtime singleton if interval changed
@@ -170,7 +170,7 @@ async def pause_agent_loop(agent_id: str) -> bool:
             config = q.scalar_one_or_none()
             if config:
                 config.paused = True
-                config.updated_at = datetime.now(timezone.utc)
+                config.updated_at = datetime.now(UTC)
                 await db.commit()
 
         return result
@@ -194,7 +194,7 @@ async def resume_agent_loop(agent_id: str) -> bool:
             config = q.scalar_one_or_none()
             if config:
                 config.paused = False
-                config.updated_at = datetime.now(timezone.utc)
+                config.updated_at = datetime.now(UTC)
                 await db.commit()
 
         return result
@@ -217,7 +217,7 @@ async def set_agent_interval(agent_id: str, interval_seconds: int) -> bool:
             config = q.scalar_one_or_none()
             if config:
                 config.loop_interval_seconds = interval_seconds
-                config.updated_at = datetime.now(timezone.utc)
+                config.updated_at = datetime.now(UTC)
                 await db.commit()
             else:
                 # Create config

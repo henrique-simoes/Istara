@@ -14,14 +14,21 @@ from .base import Scenario
 
 # Pinned corpus subset each scenario draws its byte-identical fixtures from. Both engine
 # arms of a pair share the same inputs, so fixture identity holds by construction.
-CORPUS_SUBSET = (
-    "tests/document_corpus/canonical",
-)
+CORPUS_SUBSET = ("tests/document_corpus/canonical",)
 
 _SPINE_SCENARIOS = (
-    ("spine.backlog_to_review", "Backlog task carried through define/develop/deliver to In Review"),
-    ("spine.evidence_grounding", "Evidence units stay source-grounded through reconciliation"),
-    ("spine.provisional_gate", "Provisional atoms cannot be reported until Done gates accept them"),
+    (
+        "spine.backlog_to_review",
+        "Backlog task carried through define/develop/deliver to In Review",
+    ),
+    (
+        "spine.evidence_grounding",
+        "Evidence units stay source-grounded through reconciliation",
+    ),
+    (
+        "spine.provisional_gate",
+        "Provisional atoms cannot be reported until Done gates accept them",
+    ),
     ("spine.report_generation", "Accepted facts/insights flow into a governed report"),
 )
 

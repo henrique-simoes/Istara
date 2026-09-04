@@ -54,8 +54,11 @@ def score_bfcl(ground_truth: Any, output_text: str) -> dict[str, Any]:
     """Strict BFCL prompt-mode score with name/argument subscores."""
     parsed = extract_json_call(output_text)
     result = {
-        "score": 0.0, "name_accuracy": 0.0, "argument_validity": 0.0,
-        "parsed": parsed, "error": None,
+        "score": 0.0,
+        "name_accuracy": 0.0,
+        "argument_validity": 0.0,
+        "parsed": parsed,
+        "error": None,
     }
     if parsed is None:
         result["error"] = "no_json_call_extracted"
@@ -78,7 +81,9 @@ def score_bfcl(ground_truth: Any, output_text: str) -> dict[str, Any]:
         return result
     checks = []
     for arg, allowed in truth_args.items():
-        allowed_set = {_normalise(v) for v in (allowed if isinstance(allowed, list) else [allowed])}
+        allowed_set = {
+            _normalise(v) for v in (allowed if isinstance(allowed, list) else [allowed])
+        }
         checks.append(_normalise(given.get(arg)) in allowed_set)
     if checks and all(checks):
         result["argument_validity"] = 1.0
@@ -105,10 +110,18 @@ def score_tau(expected_actions: list[str], output_text: str) -> dict[str, Any]:
     return result
 
 
-def score_industry_record(scenario_expected: dict[str, Any], output_text: str) -> dict[str, Any] | None:
+def score_industry_record(
+    scenario_expected: dict[str, Any], output_text: str
+) -> dict[str, Any] | None:
     """Route one scenario's expected metadata to the right scorer (None if not scorable)."""
     if "bfcl_ground_truth" in scenario_expected:
-        return {"kind": "bfcl", **score_bfcl(scenario_expected["bfcl_ground_truth"], output_text)}
+        return {
+            "kind": "bfcl",
+            **score_bfcl(scenario_expected["bfcl_ground_truth"], output_text),
+        }
     if "tau_expected_actions" in scenario_expected:
-        return {"kind": "tau", **score_tau(scenario_expected["tau_expected_actions"], output_text)}
+        return {
+            "kind": "tau",
+            **score_tau(scenario_expected["tau_expected_actions"], output_text),
+        }
     return None

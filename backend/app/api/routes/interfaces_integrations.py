@@ -19,8 +19,8 @@ from app.api.routes.interfaces_common import (
     get_or_create_project_interface_config,
     get_project_interface_config,
     get_screen_or_404,
-    require_project_id,
     require_integration_admin,
+    require_project_id,
 )
 from app.core.permissions import require_project_access
 from app.models.database import get_db

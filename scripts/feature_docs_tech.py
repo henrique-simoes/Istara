@@ -8,9 +8,9 @@ TECH_PAGES = {
         "image": "tech_chat.png",
         "code_refs": [
             "backend/app/api/routes/chat.py",
-            "backend/app/services/research_validity_service.py"
+            "backend/app/services/research_validity_service.py",
         ],
-        "content": '''
+        "content": """
 <h2>User & Researcher Perspective</h2>
 <p>Intelligent Grounded Chat enables researchers to interact with primary source repositories (such as video transcripts, survey responses, and session logs) using standard conversational prompts. It operates on a strict evidence backlink model: every assertion or quote rendered in chat is accompanied by clickable trace anchors linking directly to the exact source span, eliminating manual verification overhead.</p>
 <h3>Operational Workflows & Intent</h3>
@@ -44,7 +44,7 @@ TECH_PAGES = {
   <li><strong>Hierarchical Summarization:</strong> <em>Chen et al. (2023)</em> — "Walking Down the Memory Maze: Beyond Context Limit through Interactive Reading" <em>arXiv:2310.05029</em>. MemWalker DAG-based multi-turn reading.</li>
   <li><strong>Prompt Injection Context:</strong> <em>Pan et al. (2024)</em> — "From RAG to Prompt RAG: Revisiting Retrieval-Augmented Generation for Long-Context Language Models" <em>ACL 2024</em>.</li>
 </ul>
-'''
+""",
     },
     "ux-skills": {
         "title": "53+ UX Research Skills",
@@ -53,9 +53,9 @@ TECH_PAGES = {
         "image": "tech_skills.png",
         "code_refs": [
             "backend/app/skills/skill_manager.py",
-            "backend/app/skills/registry.py"
+            "backend/app/skills/registry.py",
         ],
-        "content": '''
+        "content": """
 <h2>User & Researcher Perspective</h2>
 <p>53+ UX Research Skills provides a sandboxed, robust suite of predefined execution workflows structured around the classic Double Diamond product design stages (Discover, Define, Develop, Deliver). Researchers can execute heuristic audits, SUS usability score calculations, card sorting analyses, competitive grids, or thematic transcript tagging through simple commands, receiving structured, audit-ready data tables.</p>
 <h3>Operational Workflows & Intent</h3>
@@ -87,7 +87,7 @@ TECH_PAGES = {
 <ul>
   <li><strong>Design Principles Checklist:</strong> <em>Yablonski, J. (2020)</em> — <em>Laws of UX: Design Principles for Persuasive and Ethical Products</em>. O'Reilly Media. Informs our automated compliance checks and usability auditing.</li>
 </ul>
-'''
+""",
     },
     "evolving-agents": {
         "title": "Self-Evolving Agents & Personas",
@@ -96,9 +96,9 @@ TECH_PAGES = {
         "image": "tech_swarm.png",
         "code_refs": [
             "backend/app/core/agent_factory.py",
-            "backend/app/core/meta_hyperagent.py"
+            "backend/app/core/meta_hyperagent.py",
         ],
-        "content": '''
+        "content": """
 <h2>User & Researcher Perspective</h2>
 <p>Self-Evolving Agents & Personas introduces specialized agent personas (Cleo, Sentinel, Pixel, Sage, Echo) acting as active collaborators. Rather than static entities, these agents dynamically learn from process memory and human feedback. Researchers can inspect an agent's active memory graph, direct its expertise focus, or authorize the creation of custom role personas on the fly.</p>
 <h3>Operational Workflows & Intent</h3>
@@ -132,7 +132,7 @@ TECH_PAGES = {
   <li><strong>Recursive Self-Modification:</strong> <em>Zhang et al. (2026)</em> — "Hyperagents: DGM-H Metacognitive Self-Modification for Cross-Domain Transfer and Recursive Improvement" <em>arXiv:2603.19461</em>.</li>
   <li><strong>Reasoning Memory Scale:</strong> <em>Ouyang et al. (2026)</em> — "ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory" <em>arXiv:2509.25140</em>. Tracks failed and successful loops.</li>
 </ul>
-'''
+""",
     },
     "compute-swarm": {
         "title": "Collaborative Compute Swarm",
@@ -141,9 +141,9 @@ TECH_PAGES = {
         "image": "tech_relay.png",
         "code_refs": [
             "backend/app/core/compute_registry_invocation.py",
-            "backend/app/api/websocket.py"
+            "backend/app/api/websocket.py",
         ],
-        "content": '''
+        "content": """
 <h2>User & Researcher Perspective</h2>
 <p>Collaborative Compute Swarm allows teams to run heavyweight AI models locally by pooling their computers' GPU and CPU power. Instead of sending sensitive qualitative data to third-party cloud servers, researchers contribute their idle hardware resources via a secure network, enabling fast, zero-cost, offline qualitative analysis.</p>
 <h3>Operational Workflows & Intent</h3>
@@ -176,7 +176,7 @@ TECH_PAGES = {
   <li><strong>Collaborative Inference:</strong> <em>Borzunov et al. (2022)</em> — "Petals: Collaborative Inference and Fine-tuning of Large Models" <em>arXiv:2209.01188</em>. Explores peer-to-peer VRAM pooling.</li>
   <li><strong>Internet-Scale Distribution:</strong> <em>Borzunov et al. (2023)</em> — "Distributed Inference and Fine-tuning of Large Language Models Over the Internet" <em>NeurIPS 2023</em>.</li>
 </ul>
-'''
+""",
     },
     "hybrid-rag": {
         "title": "Hybrid RAG + Graph RAG",
@@ -185,9 +185,9 @@ TECH_PAGES = {
         "image": "tech_rag.png",
         "code_refs": [
             "backend/app/core/embedding_cache.py",
-            "backend/app/services/research_validity_service.py"
+            "backend/app/services/research_validity_service.py",
         ],
-        "content": '''
+        "content": """
 <h2>User & Researcher Perspective</h2>
 <p>Hybrid RAG + Graph RAG combines the strengths of deep semantic vector searches and exact word matches to retrieve qualitative research. By traversing a network graph connecting primary sources, extracted codes, nuggets, facts, and tasks, it provides highly cohesive summaries that reconcile divergent research inputs without losing context.</p>
 <h3>Operational Workflows & Intent</h3>
@@ -222,7 +222,7 @@ TECH_PAGES = {
   <li><strong>Ranking Fusion (RRF):</strong> <em>Cormack et al. (2009)</em> — "Reciprocal rank fusion outperforms condorcet and individual rank learning methods" <em>SIGIR 2009</em>.</li>
   <li><strong>Symbolic Search Baseline:</strong> <em>Robertson & Zaragoza (2009)</em> — "The Probabilistic Relevance Framework: BM25 and Beyond" <em>Foundations and Trends in Information Retrieval</em> 3(4).</li>
 </ul>
-'''
+""",
     },
     "multi-model": {
         "title": "Multi-Model Ensemble Health",
@@ -231,9 +231,9 @@ TECH_PAGES = {
         "image": "tech_reliability.png",
         "code_refs": [
             "backend/app/skills/intercoder.py",
-            "backend/app/services/research_validity_service.py"
+            "backend/app/services/research_validity_service.py",
         ],
-        "content": '''
+        "content": """
 <h2>User & Researcher Perspective</h2>
 <p>Multi-Model Ensemble Health mitigates model bias in qualitative coding. Instead of relying on a single AI's interpretation, Istara executes parallel, independent code extractions across multiple models (e.g. Cleo, Sentinel, Pixel) and computes real-time inter-coder agreement. This ensures that only high-agreement, verified qualitative codes are accepted into your research findings.</p>
 <h3>Operational Workflows & Intent</h3>
@@ -269,7 +269,7 @@ TECH_PAGES = {
   <li><strong>Codebook Discipline:</strong> <em>MacQueen et al. (1998)</em> — "Codebook Development for Team-Based Qualitative Analysis" <em>Cultural Anthropology Methods</em> 10(2):31-36.</li>
   <li><strong>Mixture-of-Agents Architectures:</strong> <em>Wang et al. (2024)</em> — "Mixture-of-Agents Enhances Large Language Model Capabilities" <em>arXiv:2406.04692</em> and <em>Li et al. (2025)</em> — "Rethinking Mixture-of-Agents: Is Mixing Different Large Language Models Beneficial?" <em>arXiv:2502.00674</em>.</li>
 </ul>
-'''
+""",
     },
     "distributed-compute": {
         "title": "Distributed Compute & Roles",
@@ -278,9 +278,9 @@ TECH_PAGES = {
         "image": "tech_roles.png",
         "code_refs": [
             "backend/app/api/routes/auth.py",
-            "backend/app/api/agent_project_scope.py"
+            "backend/app/api/agent_project_scope.py",
         ],
-        "content": '''
+        "content": """
 <h2>User & Researcher Perspective</h2>
 <p>Distributed Compute & Roles protects sensitive qualitative research through enterprise-grade cryptographic security. The system utilizes secure biometric passkeys (registered to your hardware keychain) to replace weak passwords, and enforces strict separation between researcher roles (managing coding and transcripts) and administrator roles (managing swarm connections and system diagnostics).</p>
 <h3>Operational Workflows & Intent</h3>
@@ -314,7 +314,7 @@ TECH_PAGES = {
   <li><strong>Hardware Passkeys (WebAuthn):</strong> <em>W3C (2026)</em> — "Web Authentication: An API for accessing Public Key Credentials, Level 3".</li>
   <li><strong>Auth Architectures:</strong> <em>Better Auth (2026)</em> — "Security" Reference on origin validation, CSRF, and secret handling.</li>
 </ul>
-'''
+""",
     },
     "human-kanban": {
         "title": "Human-in-the-Loop Kanban",
@@ -323,9 +323,9 @@ TECH_PAGES = {
         "image": "tech_kanban.png",
         "code_refs": [
             "backend/app/api/routes/meta_hyperagent.py",
-            "backend/app/core/agent_execution.py"
+            "backend/app/core/agent_execution.py",
         ],
-        "content": '''
+        "content": """
 <h2>User & Researcher Perspective</h2>
 <p>Human-in-the-Loop Kanban keeps the researcher in absolute control of all research outputs. While AI swarm agents autonomously process transcripts and tag codes in the background, all results are populated into a provisional 'In Review' queue. Nothing can be published or compiled into a final report without explicit human verification and sign-off.</p>
 <h3>Operational Workflows & Intent</h3>
@@ -358,7 +358,7 @@ TECH_PAGES = {
   <li><strong>Atomic Research Methodology:</strong> <em>Sharon & Gadbaw (2018)</em> — "Atomic Research" WeWork Research Operations. Inspires our source-grounded evidence loops.</li>
   <li><strong>AI Safety Governance:</strong> <em>NIST (2023–2026)</em> — "AI Risk Management Framework 1.0" and GenAI profile resources. Governs human-in-the-loop task boundaries and telemetry tracking.</li>
 </ul>
-'''
+""",
     },
     "stitch-figma": {
         "title": "Stitch & Figma Interfaces",
@@ -367,9 +367,9 @@ TECH_PAGES = {
         "image": "tech_handoff.png",
         "code_refs": [
             "backend/app/services/laws_of_ux_service.py",
-            "backend/app/skills/registry.py"
+            "backend/app/skills/registry.py",
         ],
-        "content": '''
+        "content": """
 <h2>User & Researcher Perspective</h2>
 <p>Stitch & Figma Interfaces bridges the gap between research findings and design layouts. By connecting Figma frame layers directly to accepted qualitative nuggets, it ensures that design decisions are backed by evidence. It also integrates with the Google Stitch Model Context Protocol (MCP) server to generate structural wireframes and design specs directly from verified reports.</p>
 <h3>Operational Workflows & Intent</h3>
@@ -402,7 +402,7 @@ TECH_PAGES = {
   <li><strong>Model Context Protocol:</strong> <em>Model Context Protocol (2025)</em> — "MCP Specification 2025-11-25" modelcontextprotocol.io. The open standard for tool and platform integration.</li>
   <li><strong>Agent-to-Agent Protocols:</strong> <em>Agent2Agent Project (2026)</em> — "Agent2Agent (A2A) Protocol Specification" a2a-protocol.org. Inspires our cross-system interoperability manifests.</li>
 </ul>
-'''
+""",
     },
     "grounded-decisions": {
         "title": "Grounded Decisions & Reports",
@@ -411,9 +411,9 @@ TECH_PAGES = {
         "image": "tech_reports.png",
         "code_refs": [
             "backend/app/services/research_validity_service.py",
-            "backend/app/api/routes/improvement_governance.py"
+            "backend/app/api/routes/improvement_governance.py",
         ],
-        "content": '''
+        "content": """
 <h2>User & Researcher Perspective</h2>
 <p>Grounded Decisions & Reports compiles stakeholder reports and design briefs that are mathematically grounded in raw transcript evidence. The reporting engine crawls the Research Spine, ensuring that every claim is verified and linked back to its source, creating reliable reports that stand up to engineering audits.</p>
 <h3>Operational Workflows & Intent</h3>
@@ -448,6 +448,6 @@ TECH_PAGES = {
   <li><strong>Language Models Evaluation:</strong> <em>Liang et al. (2022)</em> — "Holistic Evaluation of Language Models" Stanford CRFM HELM.</li>
   <li><strong>RAG Faithfulness Evals:</strong> <em>Es et al. (2023)</em> — "RAGAS: Automated Evaluation of Retrieval Augmented Generation" <em>arXiv:2309.15217</em>.</li>
 </ul>
-'''
-    }
+""",
+    },
 }

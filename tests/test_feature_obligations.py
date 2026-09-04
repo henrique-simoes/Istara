@@ -82,7 +82,10 @@ def test_classify_path_zones():
 
 
 def test_path_matches_glob():
-    assert path_matches("backend/app/core/pi_runtime/embeddings_gateway.py", "backend/app/core/pi_runtime/*.py")
+    assert path_matches(
+        "backend/app/core/pi_runtime/embeddings_gateway.py",
+        "backend/app/core/pi_runtime/*.py",
+    )
     assert path_matches("qa/scripts/seed_synthetic.py", "qa/scripts/**")
     assert not path_matches("frontend/src/App.tsx", "backend/**")
 
@@ -159,7 +162,10 @@ def test_capability_surface_triggers_spine_obligation(monkeypatch):
 def test_commands_are_pinned_and_reported(monkeypatch):
     report = _report_for_paths([".github/workflows/ci.yml"], monkeypatch)
     assert "check_feature_obligations" in report["commands"]
-    assert any("check_feature_obligations.py" in c for c in report["commands"]["check_feature_obligations"])
+    assert any(
+        "check_feature_obligations.py" in c
+        for c in report["commands"]["check_feature_obligations"]
+    )
 
 
 def test_required_artifacts_include_scorecard_when_security(monkeypatch):
@@ -179,5 +185,7 @@ def test_optional_lanes_never_satisfy_deterministic(monkeypatch):
     # A live-only obligation name is never promoted into deterministic.
     report = _report_for_paths([".github/workflows/ci.yml"], monkeypatch)
     assert "authorized_live" not in report["obligations"]["deterministic"]
-    assert "authorized_live" in report["obligations"]["skipped_optional_lanes"] or \
-        "authorized_live" in report["obligations"]["live"]
+    assert (
+        "authorized_live" in report["obligations"]["skipped_optional_lanes"]
+        or "authorized_live" in report["obligations"]["live"]
+    )

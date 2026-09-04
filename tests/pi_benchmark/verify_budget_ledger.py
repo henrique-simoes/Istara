@@ -26,6 +26,7 @@ if __package__ in (None, ""):  # pragma: no cover - only hit in script mode
 
 from tests.pi_benchmark.budget_ledger import BudgetLedger
 
+
 def verify_ledger(path: Path, *, cap_usd: float, close: bool = False) -> list[str]:
     """Replay ``path`` and return a list of violations (empty = consistent)."""
     violations: list[str] = []
@@ -44,20 +45,28 @@ def verify_ledger(path: Path, *, cap_usd: float, close: bool = False) -> list[st
                 violations.append(f"row {index}: reserve missing call_id/max_cost_usd")
                 continue
             if call_id in reserved:
-                violations.append(f"row {index}: duplicate reserve for call_id {call_id!r}")
+                violations.append(
+                    f"row {index}: duplicate reserve for call_id {call_id!r}"
+                )
             try:
                 amount = float(row["max_cost_usd"])
             except (TypeError, ValueError):
                 amount = float("nan")
             if not math.isfinite(amount) or amount < 0:
-                violations.append(f"row {index}: reserve has invalid amount {row['max_cost_usd']!r}")
+                violations.append(
+                    f"row {index}: reserve has invalid amount {row['max_cost_usd']!r}"
+                )
             reserved.setdefault(call_id, amount)
         elif row_type in ("commit", "release"):
             call_id = row.get("call_id")
             if call_id not in reserved:
-                violations.append(f"row {index}: {row_type} for unreserved call_id {call_id!r}")
+                violations.append(
+                    f"row {index}: {row_type} for unreserved call_id {call_id!r}"
+                )
             elif call_id in settled:
-                violations.append(f"row {index}: {row_type} for already-settled call_id {call_id!r}")
+                violations.append(
+                    f"row {index}: {row_type} for already-settled call_id {call_id!r}"
+                )
             settled.add(call_id)
             if row_type == "commit":
                 if "actual_cost_usd" not in row:
@@ -94,17 +103,29 @@ def main(argv: list[str] | None = None) -> int:
         description="Replay the shared benchmark budget ledger and prove it is within cap.",
     )
     parser.add_argument("--ledger", default=None, help="path to the budget ledger file")
-    parser.add_argument("--runs", default=None,
-                        help="run directory containing budget-ledger.json (alternative to --ledger)")
+    parser.add_argument(
+        "--runs",
+        default=None,
+        help="run directory containing budget-ledger.json (alternative to --ledger)",
+    )
     parser.add_argument("--cap-usd", type=float, default=1.00)
-    parser.add_argument("--provider", default="deepseek",
-                        help="expected provider identity (reported; enforced by the manifest/runner)")
-    parser.add_argument("--close", action="store_true",
-                        help="seal the ledger before verifying (idempotent)")
+    parser.add_argument(
+        "--provider",
+        default="deepseek",
+        help="expected provider identity (reported; enforced by the manifest/runner)",
+    )
+    parser.add_argument(
+        "--close",
+        action="store_true",
+        help="seal the ledger before verifying (idempotent)",
+    )
     ns = parser.parse_args(argv)
 
     if ns.provider != "deepseek":
-        print(f"[violation] provider {ns.provider!r} is not the approved 'deepseek'", file=sys.stderr)
+        print(
+            f"[violation] provider {ns.provider!r} is not the approved 'deepseek'",
+            file=sys.stderr,
+        )
         return 1
     if ns.ledger:
         ledger_path = Path(ns.ledger)
@@ -118,11 +139,15 @@ def main(argv: list[str] | None = None) -> int:
 
     violations = verify_ledger(ledger_path, cap_usd=ns.cap_usd, close=ns.close)
     ledger = BudgetLedger(ledger_path, cap_usd=ns.cap_usd)
-    tally = ledger.close() if ns.close else {
-        "spent_usd": ledger.spent_usd(),
-        "closed": ledger.closed,
-        "row_count": len(ledger._read_rows()),
-    }
+    tally = (
+        ledger.close()
+        if ns.close
+        else {
+            "spent_usd": ledger.spent_usd(),
+            "closed": ledger.closed,
+            "row_count": len(ledger._read_rows()),
+        }
+    )
     if violations:
         for violation in violations:
             print(f"[violation] {violation}", file=sys.stderr)

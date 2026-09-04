@@ -5,7 +5,7 @@ All actions are fire-and-forget; failures are logged, never propagate.
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -34,7 +34,7 @@ class SelfHealingRules:
         return [timestamp for timestamp in timestamps if timestamp >= cutoff]
 
     def _track_error(self, key: str) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         errors = self._prune(self._error_counts.get(key, []), now)
         errors.append(now)
         self._error_counts[key] = errors
@@ -46,7 +46,7 @@ class SelfHealingRules:
         not errors per minute. Keeping the denominator explicit prevents the
         UI from displaying impossible percentages such as 167%.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         attempts = self._prune(self._attempt_counts.get(key, []), now)
         attempts.append(now)
         self._attempt_counts[key] = attempts
@@ -54,7 +54,7 @@ class SelfHealingRules:
             self._track_error(key)
 
     def _error_rate(self, key: str) -> float:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         attempts = self._prune(self._attempt_counts.get(key, []), now)
         errors = self._prune(self._error_counts.get(key, []), now)
         self._attempt_counts[key] = attempts
@@ -131,9 +131,10 @@ class SelfHealingRules:
         try:
             async with self._get_session() as session:
                 from sqlalchemy import select
+
                 from app.models.telemetry_span import TelemetrySpan
 
-                cutoff = datetime.now(timezone.utc) - timedelta(minutes=_ERROR_RATE_WINDOW_MINUTES)
+                cutoff = datetime.now(UTC) - timedelta(minutes=_ERROR_RATE_WINDOW_MINUTES)
                 result = await session.execute(
                     select(TelemetrySpan).where(
                         TelemetrySpan.project_id == project_id,
@@ -150,7 +151,7 @@ class SelfHealingRules:
 
                 return {
                     "project_id": project_id,
-                    "evaluated_at": datetime.now(timezone.utc).isoformat(),
+                    "evaluated_at": datetime.now(UTC).isoformat(),
                     "window_minutes": _ERROR_RATE_WINDOW_MINUTES,
                     "total_issues": len(all_actions),
                     "by_trigger": {t: len(items) for t, items in by_trigger.items()},
@@ -160,7 +161,7 @@ class SelfHealingRules:
             logger.warning(f"Self-healing evaluation failed: {e}")
             return {
                 "project_id": project_id,
-                "evaluated_at": datetime.now(timezone.utc).isoformat(),
+                "evaluated_at": datetime.now(UTC).isoformat(),
                 "total_issues": 0,
                 "by_trigger": {},
                 "actions": [],

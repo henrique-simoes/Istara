@@ -2,21 +2,20 @@
 
 from __future__ import annotations
 
-import uuid
 import re
-from datetime import datetime, timezone
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import delete, select, func, update
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_project_scope import require_agent_assignable_to_project
-from app.models.database import get_db
-from app.models.session import ChatSession, InferencePreset, INFERENCE_PRESETS
-from app.models.message import Message
-from app.core.permissions import require_project_access
 from app.core.llm_thinking import normalize_model_effort, validate_model_effort
+from app.core.permissions import require_project_access
+from app.models.database import get_db
+from app.models.message import Message
+from app.models.session import INFERENCE_PRESETS, ChatSession, InferencePreset
 
 router = APIRouter()
 

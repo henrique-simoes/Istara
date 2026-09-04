@@ -27,7 +27,11 @@ class BenchmarkFailure(RuntimeError):
 
 def _restart_resume_required() -> bool:
     """Return the explicitly requested Docker restart-resume gate state."""
-    raw = os.environ.get("ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME", "0").strip().lower()
+    raw = (
+        os.environ.get("ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME", "0")
+        .strip()
+        .lower()
+    )
     if raw in {"0", "false", "no"}:
         return False
     if raw in {"1", "true", "yes"}:
@@ -66,13 +70,27 @@ def _restart_disposable_backend() -> tuple[str, str] | None:
         return None
     container_id = os.environ.get("ISTARA_LONG_HORIZON_BACKEND_CONTAINER", "").strip()
     if not container_id:
-        raise BenchmarkFailure("restart-resume requires the selected backend container id")
-    if not (12 <= len(container_id) <= 64 and all(char in "0123456789abcdef" for char in container_id)):
-        raise BenchmarkFailure("restart-resume requires an opaque Docker backend container id")
-    if os.environ.get("ISTARA_BENCHMARK_DOCKER_RUNNER") != "1" or not Path("/.dockerenv").is_file():
-        raise BenchmarkFailure("restart-resume refuses execution outside the disposable Docker runner")
+        raise BenchmarkFailure(
+            "restart-resume requires the selected backend container id"
+        )
+    if not (
+        12 <= len(container_id) <= 64
+        and all(char in "0123456789abcdef" for char in container_id)
+    ):
+        raise BenchmarkFailure(
+            "restart-resume requires an opaque Docker backend container id"
+        )
+    if (
+        os.environ.get("ISTARA_BENCHMARK_DOCKER_RUNNER") != "1"
+        or not Path("/.dockerenv").is_file()
+    ):
+        raise BenchmarkFailure(
+            "restart-resume refuses execution outside the disposable Docker runner"
+        )
     if not Path("/var/run/docker.sock").is_socket():
-        raise BenchmarkFailure("restart-resume requires the disposable runner Docker socket")
+        raise BenchmarkFailure(
+            "restart-resume requires the disposable runner Docker socket"
+        )
 
     before = _backend_started_at(container_id)
     result = subprocess.run(
@@ -86,7 +104,9 @@ def _restart_disposable_backend() -> tuple[str, str] | None:
         raise BenchmarkFailure("unable to restart the selected disposable backend")
     after = _backend_started_at(container_id)
     if after == before:
-        raise BenchmarkFailure("selected backend restart did not produce a new container start state")
+        raise BenchmarkFailure(
+            "selected backend restart did not produce a new container start state"
+        )
     return before, after
 
 
@@ -101,7 +121,9 @@ async def _wait_for_backend_health(client: httpx.AsyncClient) -> None:
         except httpx.HTTPError:
             pass
         await asyncio.sleep(2)
-    raise BenchmarkFailure("restarted disposable backend did not become healthy within 180 seconds")
+    raise BenchmarkFailure(
+        "restarted disposable backend did not become healthy within 180 seconds"
+    )
 
 
 def _require_explicit_engine() -> str:
@@ -163,8 +185,12 @@ def _require_done_tool_contract(
         raise BenchmarkFailure(f"{operation} ended without a terminal done event")
     done = done_events[-1]
     tools_used = done.get("tools_used")
-    if not isinstance(tools_used, list) or any(not isinstance(name, str) or not name.strip() for name in tools_used):
-        raise BenchmarkFailure(f"{operation} terminal done event has no valid tools_used receipt")
+    if not isinstance(tools_used, list) or any(
+        not isinstance(name, str) or not name.strip() for name in tools_used
+    ):
+        raise BenchmarkFailure(
+            f"{operation} terminal done event has no valid tools_used receipt"
+        )
 
     called_tools = [
         event.get("tool")
@@ -210,23 +236,37 @@ def _require_done_tool_contract(
             receipt_indexes.append(matching[0][0])
         final_receipt = max(receipt_indexes)
         if not any(
-            index > final_receipt and event.get("type") == "chunk" and event.get("content")
+            index > final_receipt
+            and event.get("type") == "chunk"
+            and event.get("content")
             for index, event in enumerate(events)
         ):
-            raise BenchmarkFailure(f"{operation} has no model response after tool-result receipt")
+            raise BenchmarkFailure(
+                f"{operation} has no model response after tool-result receipt"
+            )
     return done
 
 
 def _require_persisted_tasks(payload: Any, project_id: str) -> list[dict]:
     """Require at least one non-empty task persisted under the benchmark project."""
-    tasks = payload if isinstance(payload, list) else payload.get("tasks", []) if isinstance(payload, dict) else []
+    tasks = (
+        payload
+        if isinstance(payload, list)
+        else payload.get("tasks", [])
+        if isinstance(payload, dict)
+        else []
+    )
     if not tasks:
-        raise BenchmarkFailure("task queue contains no persisted tasks after create_task")
+        raise BenchmarkFailure(
+            "task queue contains no persisted tasks after create_task"
+        )
     if not all(isinstance(task, dict) for task in tasks):
         raise BenchmarkFailure("task queue contains a non-object task")
     for task in tasks:
         if task.get("project_id") != project_id:
-            raise BenchmarkFailure("task queue returned a task outside the benchmark project")
+            raise BenchmarkFailure(
+                "task queue returned a task outside the benchmark project"
+            )
         if not isinstance(task.get("id"), str) or not task["id"].strip():
             raise BenchmarkFailure("persisted task has no id")
         if not isinstance(task.get("title"), str) or not task["title"].strip():
@@ -261,13 +301,17 @@ def _require_usage_ledger(
             f"(legacy or pi); got {configured!r}"
         )
     if not isinstance(expected_session_id, str) or not expected_session_id.strip():
-        raise BenchmarkFailure("chat usage validation requires the benchmark session id")
+        raise BenchmarkFailure(
+            "chat usage validation requires the benchmark session id"
+        )
     try:
         row_count = int(payload.get("row_count") or 0)
         turns = int(payload.get("turns") or 0)
         total_tokens = int(payload.get("total_tokens") or 0)
     except (TypeError, ValueError) as exc:
-        raise BenchmarkFailure("chat usage endpoint returned non-numeric ledger totals") from exc
+        raise BenchmarkFailure(
+            "chat usage endpoint returned non-numeric ledger totals"
+        ) from exc
     if row_count < min_rows:
         raise BenchmarkFailure(
             f"chat usage ledger contains fewer than {min_rows} recorded row(s): {row_count}"
@@ -288,7 +332,11 @@ def _require_usage_ledger(
         require_route_provenance=require_route_provenance,
     )
     latest = payload.get("latest")
-    if not isinstance(latest, dict) or not isinstance(latest.get("engine"), str) or not latest["engine"].strip():
+    if (
+        not isinstance(latest, dict)
+        or not isinstance(latest.get("engine"), str)
+        or not latest["engine"].strip()
+    ):
         raise BenchmarkFailure("chat usage ledger has no effective engine provenance")
     if latest["engine"].strip().lower() != expected_engine:
         raise BenchmarkFailure(
@@ -356,9 +404,13 @@ def _require_chat_dispatch_rows(
             not isinstance(receipt_id, str) or not receipt_id.strip()
             for receipt_id in receipt_ids
         ):
-            raise BenchmarkFailure("chat usage ledger has a missing dispatch receipt id")
+            raise BenchmarkFailure(
+                "chat usage ledger has a missing dispatch receipt id"
+            )
         if len(set(receipt_ids)) != len(receipt_ids):
-            raise BenchmarkFailure("chat usage ledger does not contain unique receipt ids")
+            raise BenchmarkFailure(
+                "chat usage ledger does not contain unique receipt ids"
+            )
         incomplete = [
             row
             for row in chat_rows
@@ -391,7 +443,12 @@ def _require_history_continuity(history_payload: Any, first: str, second: str) -
     if not all(isinstance(message, dict) for message in messages[-4:]):
         raise BenchmarkFailure("chat history contains a non-object message")
     roles_and_content = [(m.get("role"), m.get("content")) for m in messages[-4:]]
-    expected = [("user", first), ("assistant", None), ("user", second), ("assistant", None)]
+    expected = [
+        ("user", first),
+        ("assistant", None),
+        ("user", second),
+        ("assistant", None),
+    ]
     for index, ((role, content), (expected_role, expected_content)) in enumerate(
         zip(roles_and_content, expected), start=1
     ):
@@ -405,13 +462,17 @@ def _require_history_continuity(history_payload: Any, first: str, second: str) -
         if expected_content is None and (
             not isinstance(content, str) or not content.strip()
         ):
-            raise BenchmarkFailure(f"chat history message {index} has no assistant content")
+            raise BenchmarkFailure(
+                f"chat history message {index} has no assistant content"
+            )
 
 
 async def _consume_chat_stream(response: httpx.Response, operation: str) -> list[dict]:
     """Parse one chat SSE response and require a terminal successful done event."""
     if response.status_code != 200:
-        body = (await response.aread()).decode(errors="replace")[:500].replace("\n", " ")
+        body = (
+            (await response.aread()).decode(errors="replace")[:500].replace("\n", " ")
+        )
         raise BenchmarkFailure(
             f"{operation} failed with HTTP {response.status_code}: {body or '<empty body>'}"
         )
@@ -437,14 +498,16 @@ async def _consume_chat_stream(response: httpx.Response, operation: str) -> list
         raise BenchmarkFailure(f"{operation} emitted terminal error: {detail}")
     done_events = [event for event in events if event.get("type") == "done"]
     if not done_events or not done_events[-1].get("message_id"):
-        raise BenchmarkFailure(f"{operation} ended without a persisted assistant message")
+        raise BenchmarkFailure(
+            f"{operation} ended without a persisted assistant message"
+        )
     return events
 
 
 def _parse_admin_password(raw_line: str) -> str:
     line = raw_line.strip()
     if line.startswith("export "):
-        line = line[len("export "):].strip()
+        line = line[len("export ") :].strip()
     if not line.startswith("ADMIN_PASSWORD="):
         return ""
     value = line.split("=", 1)[1].strip()
@@ -488,15 +551,26 @@ def extract_total_tokens(events: list[dict]) -> int | None:
 
 
 BENCHMARK_DOCUMENTS = (
-    ("interview_p1.txt", "Patient reports difficulty with login sync. 'It takes too long to see my data.'"),
-    ("interview_p2.txt", "Patient Marcus loves the medication tracker but hates the font size."),
-    ("competitor_audit.md", "Competitor HealthSync has 2-tap login and 14pt minimum font."),
+    (
+        "interview_p1.txt",
+        "Patient reports difficulty with login sync. 'It takes too long to see my data.'",
+    ),
+    (
+        "interview_p2.txt",
+        "Patient Marcus loves the medication tracker but hates the font size.",
+    ),
+    (
+        "competitor_audit.md",
+        "Competitor HealthSync has 2-tap login and 14pt minimum font.",
+    ),
     ("survey_results.csv", "user_id,satisfaction,speed\\n101,4,slow\\n102,5,fast"),
     ("internal_spec.pdf", "Our current technical debt prevents sub-1s data hydration."),
 )
 
 
-async def _create_project_and_session(client: httpx.AsyncClient, headers: dict[str, str]) -> tuple[str, str]:
+async def _create_project_and_session(
+    client: httpx.AsyncClient, headers: dict[str, str]
+) -> tuple[str, str]:
     print("📁 Creating Project...")
     project_res = await client.post(
         f"{API_BASE}/api/projects",
@@ -508,7 +582,9 @@ async def _create_project_and_session(client: httpx.AsyncClient, headers: dict[s
     )
     _require_status(project_res, "project creation", 200, 201)
     project_payload = _json_payload(project_res, "project creation")
-    project_id = project_payload.get("id") if isinstance(project_payload, dict) else None
+    project_id = (
+        project_payload.get("id") if isinstance(project_payload, dict) else None
+    )
     if not isinstance(project_id, str) or not project_id.strip():
         raise BenchmarkFailure("project creation returned no project id")
     print(f"✅ Project created: {project_id}")
@@ -520,7 +596,9 @@ async def _create_project_and_session(client: httpx.AsyncClient, headers: dict[s
         headers=headers,
     )
     _require_status(session_res, "chat session creation", 200, 201)
-    session_id = _require_session_id(_json_payload(session_res, "chat session creation"))
+    session_id = _require_session_id(
+        _json_payload(session_res, "chat session creation")
+    )
     print(f"✅ Chat session created: {session_id}")
     return project_id, session_id
 
@@ -602,7 +680,10 @@ async def _run_benchmark() -> None:
 
     async with httpx.AsyncClient(timeout=300) as client:
         print("🔐 Authenticating...")
-        login_res = await client.post(f"{API_BASE}/api/auth/login", json={"username": "admin", "password": admin_pass})
+        login_res = await client.post(
+            f"{API_BASE}/api/auth/login",
+            json={"username": "admin", "password": admin_pass},
+        )
         _require_status(login_res, "admin login")
 
         login_payload = _json_payload(login_res, "admin login")
@@ -629,13 +710,15 @@ async def _run_benchmark() -> None:
             "project_id": project_id,
             "session_id": session_id,
             "task_id": benchmark_task_id,
-            "message": prompt
+            "message": prompt,
         }
 
         chat_headers = dict(headers)
         chat_headers["x-istara-agent-engine"] = engine
 
-        print("⏳ Waiting for SSE stream (this will log all agent actions & tool calls)...")
+        print(
+            "⏳ Waiting for SSE stream (this will log all agent actions & tool calls)..."
+        )
         print("-" * 50)
 
         stream_events: list[dict] = []
@@ -653,7 +736,11 @@ async def _run_benchmark() -> None:
         # Token accounting comes from provider-reported usage (or the usage ledger),
         # never from a streamed-chunk count (benchmark task B0-3).
         total_tokens = extract_total_tokens(stream_events)
-        tokens_label = total_tokens if total_tokens is not None else "n/a (see agentic usage ledger)"
+        tokens_label = (
+            total_tokens
+            if total_tokens is not None
+            else "n/a (see agentic usage ledger)"
+        )
         first_tool_calls = _tool_call_count(stream_events)
         if first_tool_calls < 1:
             raise BenchmarkFailure(
@@ -668,7 +755,9 @@ async def _run_benchmark() -> None:
         restart_receipt = _restart_disposable_backend()
         if restart_receipt is not None:
             await _wait_for_backend_health(client)
-            print("✅ Disposable backend restart boundary completed and became healthy.")
+            print(
+                "✅ Disposable backend restart boundary completed and became healthy."
+            )
 
         print("\n💬 Sending a second turn over the same persisted session...")
         second_message = (
@@ -708,7 +797,9 @@ async def _run_benchmark() -> None:
 
         # 5. Check Orchestrator State (Tasks spawned)
         print("\n📋 Checking Task Queue (DeepPlanning Validation)...")
-        tasks_res = await client.get(f"{API_BASE}/api/tasks?project_id={project_id}", headers=headers)
+        tasks_res = await client.get(
+            f"{API_BASE}/api/tasks?project_id={project_id}", headers=headers
+        )
         _require_status(tasks_res, "task queue inspection")
         tasks_data = _json_payload(tasks_res, "task queue inspection")
         tasks = _require_persisted_tasks(tasks_data, project_id)
@@ -718,7 +809,9 @@ async def _run_benchmark() -> None:
             )
         print(f"Total tasks spawned: {len(tasks)}")
         for t in tasks:
-            print(f"  - [{t.get('status')}] {t.get('title')} (Skill: {t.get('skill_name', 'auto')})")
+            print(
+                f"  - [{t.get('status')}] {t.get('title')} (Skill: {t.get('skill_name', 'auto')})"
+            )
 
         # 6. Check A2A Messages
         print("\n🤖 Checking A2A Inter-Agent Communication...")
@@ -728,20 +821,34 @@ async def _run_benchmark() -> None:
         )
         _require_status(a2a_res, "A2A log inspection")
         a2a_data = _json_payload(a2a_res, "A2A log inspection")
-        messages = a2a_data if isinstance(a2a_data, list) else a2a_data.get("messages", [])
+        messages = (
+            a2a_data if isinstance(a2a_data, list) else a2a_data.get("messages", [])
+        )
         proj_messages = [m for m in messages if m.get("project_id") == project_id]
         print(f"Total A2A messages: {len(proj_messages)}")
         for m in proj_messages:
-            print(f"  - {m.get('from_agent_id')} -> {m.get('to_agent_id')} [{m.get('message_type')}]: {m.get('content')[:100]}...")
+            print(
+                f"  - {m.get('from_agent_id')} -> {m.get('to_agent_id')} [{m.get('message_type')}]: {m.get('content')[:100]}..."
+            )
 
         # 7. Check JSON Parse Metrics
         print("\n📊 Checking JSON Success Metrics...")
-        metrics_res = await client.get(f"{API_BASE}/api/metrics/{project_id}/model-intelligence", headers=headers)
+        metrics_res = await client.get(
+            f"{API_BASE}/api/metrics/{project_id}/model-intelligence", headers=headers
+        )
         _require_status(metrics_res, "model-intelligence metrics inspection")
-        metrics_payload = _json_payload(metrics_res, "model-intelligence metrics inspection")
-        leaderboard = metrics_payload.get("leaderboard", []) if isinstance(metrics_payload, dict) else []
+        metrics_payload = _json_payload(
+            metrics_res, "model-intelligence metrics inspection"
+        )
+        leaderboard = (
+            metrics_payload.get("leaderboard", [])
+            if isinstance(metrics_payload, dict)
+            else []
+        )
         for entry in leaderboard:
-            print(f"  - Model: {entry.get('model_name')} | Skill: {entry.get('skill_name')} | JSON Success: {entry.get('json_parse_success_rate')*100 if entry.get('json_parse_success_rate') is not None else 'N/A'}% | Executions: {entry.get('executions')}")
+            print(
+                f"  - Model: {entry.get('model_name')} | Skill: {entry.get('skill_name')} | JSON Success: {entry.get('json_parse_success_rate') * 100 if entry.get('json_parse_success_rate') is not None else 'N/A'}% | Executions: {entry.get('executions')}"
+            )
 
         usage_res = await client.get(
             f"{API_BASE}/api/chat/usage/{project_id}",

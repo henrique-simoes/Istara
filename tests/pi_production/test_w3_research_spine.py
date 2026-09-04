@@ -39,8 +39,16 @@ from app.models.database import async_session, init_db
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 SPINE_PHASES = {
-    "intent", "context", "plan", "tool_selection", "execution",
-    "recovery", "grounding", "synthesis", "review", "governance",
+    "intent",
+    "context",
+    "plan",
+    "tool_selection",
+    "execution",
+    "recovery",
+    "grounding",
+    "synthesis",
+    "review",
+    "governance",
 }
 
 
@@ -50,8 +58,13 @@ SPINE_PHASES = {
 class _StubAgentic:
     """Recording stand-in for the ``agentic`` dispatcher singleton."""
 
-    def __init__(self, *, structured: StructuredResult | None = None,
-                 completion: TurnResult | None = None, raise_exc: Exception | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        structured: StructuredResult | None = None,
+        completion: TurnResult | None = None,
+        raise_exc: Exception | None = None,
+    ) -> None:
         self.calls: list[tuple[str, dict]] = []
         self._structured = structured
         self._completion = completion
@@ -76,7 +89,12 @@ class _RecordingLegacyExecutor:
 
     async def __call__(self, **kwargs):
         self.calls.append(kwargs)
-        return {"text": "legacy-done", "status": "success", "stop_reason": "stop", "usage": {}}
+        return {
+            "text": "legacy-done",
+            "status": "success",
+            "stop_reason": "stop",
+            "usage": {},
+        }
 
 
 class _StubPiService:
@@ -85,10 +103,17 @@ class _StubPiService:
 
     async def run_react(self, **kwargs):
         self.calls.append(("run_react", kwargs))
-        return {"text": "pi-done", "status": "success", "stop_reason": "stop", "usage": {}}
+        return {
+            "text": "pi-done",
+            "status": "success",
+            "stop_reason": "stop",
+            "usage": {},
+        }
 
     def steering_binding(self, *, agent_id, project_id, session_key=None):
-        return SimpleNamespace(agent_id=agent_id, project_id=project_id, session_key=session_key)
+        return SimpleNamespace(
+            agent_id=agent_id, project_id=project_id, session_key=session_key
+        )
 
 
 @pytest.fixture
@@ -108,14 +133,22 @@ async def usage_db():
 def _function_source(path: Path, function_name: str) -> str:
     tree = ast.parse(path.read_text(encoding="utf-8"))
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        ):
             return ast.get_source_segment(path.read_text(encoding="utf-8"), node) or ""
     raise AssertionError(f"{function_name} not found in {path}")
 
 
 def _direct_legacy_calls(source: str) -> list[str]:
-    banned = ("ollama.chat", "ollama.chat_stream", "llm_router.chat",
-              "compute_registry.chat", ".node.chat")
+    banned = (
+        "ollama.chat",
+        "ollama.chat_stream",
+        "llm_router.chat",
+        "compute_registry.chat",
+        ".node.chat",
+    )
     return [pattern for pattern in banned if pattern in source]
 
 
@@ -123,7 +156,10 @@ def _direct_legacy_calls(source: str) -> list[str]:
 
 
 def test_w3_ratchet_floor_is_53():
-    from tests.pi_migration.test_count_to_zero import EXPECTED_PRODUCT_SITES, check_count_to_zero
+    from tests.pi_migration.test_count_to_zero import (
+        EXPECTED_PRODUCT_SITES,
+        check_count_to_zero,
+    )
 
     assert EXPECTED_PRODUCT_SITES == 0, (
         "W3: 78 − 8 = 70; W8 migrated the 17 embed sites: 70 − 17 = 53; "
@@ -134,8 +170,12 @@ def test_w3_ratchet_floor_is_53():
 
 def test_agent_research_migrated_functions_have_no_direct_legacy_calls():
     path = REPO_ROOT / "backend/app/core/agent_research.py"
-    for fn in ("_execute_general_task", "_create_research_plan",
-               "_execute_single_step", "_self_verify_output"):
+    for fn in (
+        "_execute_general_task",
+        "_create_research_plan",
+        "_execute_single_step",
+        "_self_verify_output",
+    ):
         source = _function_source(path, fn)
         assert not _direct_legacy_calls(source), (
             f"{fn} still calls the legacy plane directly: {_direct_legacy_calls(source)}"
@@ -144,12 +184,17 @@ def test_agent_research_migrated_functions_have_no_direct_legacy_calls():
 
 
 def test_self_check_and_agent_execution_no_longer_import_the_legacy_plane():
-    for rel in ("backend/app/core/self_check.py", "backend/app/core/agent_execution.py"):
+    for rel in (
+        "backend/app/core/self_check.py",
+        "backend/app/core/agent_execution.py",
+    ):
         source = (REPO_ROOT / rel).read_text(encoding="utf-8")
         tree = ast.parse(source)
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
-                assert node.module != "app.core.ollama", f"{rel} still imports the legacy plane"
+                assert node.module != "app.core.ollama", (
+                    f"{rel} still imports the legacy plane"
+                )
 
 
 def test_steering_reply_migrates_but_w4_a2a_sites_stay_allowlisted():
@@ -174,40 +219,73 @@ def test_steering_reply_migrates_but_w4_a2a_sites_stay_allowlisted():
 def test_extra_tools_merge_into_catalog_and_honor_allowlist():
     from app.core.pi_runtime.tools import build_tool_catalog, catalog_tool_names
 
-    dynamic = [{
-        "name": "run_skill",
-        "description": "Run a ranked research skill.",
-        "parameters": {"type": "object", "properties": {"skill_name": {"type": "string"}}},
-    }]
+    dynamic = [
+        {
+            "name": "run_skill",
+            "description": "Run a ranked research skill.",
+            "parameters": {
+                "type": "object",
+                "properties": {"skill_name": {"type": "string"}},
+            },
+        }
+    ]
     names = catalog_tool_names(["search_documents", "run_skill"], extra_tools=dynamic)
     assert "run_skill" in names and "search_documents" in names
     # A dynamic tool outside the run allowlist is never exported — the
     # session catalog and the Python-side allowlist stay identical.
-    assert "run_skill" not in catalog_tool_names(["search_documents"], extra_tools=dynamic)
+    assert "run_skill" not in catalog_tool_names(
+        ["search_documents"], extra_tools=dynamic
+    )
     catalog = build_tool_catalog(["run_skill"], extra_tools=dynamic)
     assert catalog[0]["parameters"]["properties"]["skill_name"]["type"] == "string"
 
 
 async def test_react_forwards_tool_schemas_to_legacy_and_extra_tools_to_pi(usage_db):
     tools = [{"type": "function", "function": {"name": "search_documents"}}]
-    extra = [{"name": "run_skill", "description": "d", "parameters": {"type": "object"}}]
+    extra = [
+        {"name": "run_skill", "description": "d", "parameters": {"type": "object"}}
+    ]
 
     legacy = _RecordingLegacyExecutor()
     dispatcher = AgenticDispatcher(pi_service=_StubPiService(), legacy_executor=legacy)
-    await dispatcher.react(purpose="w3.react.legacy", project_id="p1", agent_id="a1",
-                           session_key="task:t1", system="s", messages=[], user_text="go",
-                           tool_executor=None, tool_names=["search_documents", "run_skill"],
-                           tools=tools, extra_tools=extra, params=TurnParams(max_turns=5),
-                           engine="legacy")
-    assert legacy.calls[0]["tools"] is tools, "the legacy executor needs the full OpenAI schemas"
+    await dispatcher.react(
+        purpose="w3.react.legacy",
+        project_id="p1",
+        agent_id="a1",
+        session_key="task:t1",
+        system="s",
+        messages=[],
+        user_text="go",
+        tool_executor=None,
+        tool_names=["search_documents", "run_skill"],
+        tools=tools,
+        extra_tools=extra,
+        params=TurnParams(max_turns=5),
+        engine="legacy",
+    )
+    assert legacy.calls[0]["tools"] is tools, (
+        "the legacy executor needs the full OpenAI schemas"
+    )
 
     service = _StubPiService()
-    dispatcher = AgenticDispatcher(pi_service=service, legacy_executor=_RecordingLegacyExecutor())
-    await dispatcher.react(purpose="w3.react.pi", project_id="p1", agent_id="a1",
-                           session_key="task:t1", system="s", messages=[], user_text="go",
-                           tool_executor=None, tool_names=["search_documents", "run_skill"],
-                           tools=tools, extra_tools=extra, params=TurnParams(max_turns=5),
-                           engine="pi")
+    dispatcher = AgenticDispatcher(
+        pi_service=service, legacy_executor=_RecordingLegacyExecutor()
+    )
+    await dispatcher.react(
+        purpose="w3.react.pi",
+        project_id="p1",
+        agent_id="a1",
+        session_key="task:t1",
+        system="s",
+        messages=[],
+        user_text="go",
+        tool_executor=None,
+        tool_names=["search_documents", "run_skill"],
+        tools=tools,
+        extra_tools=extra,
+        params=TurnParams(max_turns=5),
+        engine="pi",
+    )
     _, kwargs = service.calls[0]
     assert kwargs["extra_tools"] is extra, (
         "run_skill rides the Pi session catalog as a dynamic tool"
@@ -231,17 +309,29 @@ async def test_engine_run_react_forwards_extra_tools_to_the_turn_driver():
             captured.append(kwargs)
             return {"text": "", "status": "success", "usage": {}}
 
-    extra = [{"name": "run_skill", "description": "d", "parameters": {"type": "object"}}]
-    await _Capturing().run_react(purpose="w3.plumbing", project_id="p1", agent_id="a1",
-                                 session_key="task:t1", system="s", messages=[], user_text="go",
-                                 tool_executor=None, tool_names=["run_skill"], params=TurnParams(),
-                                 extra_tools=extra)
+    extra = [
+        {"name": "run_skill", "description": "d", "parameters": {"type": "object"}}
+    ]
+    await _Capturing().run_react(
+        purpose="w3.plumbing",
+        project_id="p1",
+        agent_id="a1",
+        session_key="task:t1",
+        system="s",
+        messages=[],
+        user_text="go",
+        tool_executor=None,
+        tool_names=["run_skill"],
+        params=TurnParams(),
+        extra_tools=extra,
+    )
     assert captured[0]["extra_tools"] is extra
 
 
 def test_dispatcher_exposes_steering_binding_helper_for_l10():
     dispatcher = AgenticDispatcher(
-        pi_service=_StubPiService(), legacy_executor=_RecordingLegacyExecutor())
+        pi_service=_StubPiService(), legacy_executor=_RecordingLegacyExecutor()
+    )
     binding = dispatcher.steering_binding(agent_id="a1", project_id="p1")
     assert binding.agent_id == "a1" and binding.project_id == "p1"
 
@@ -263,15 +353,18 @@ async def _fake_retrieve_context(*args, **kwargs):
 async def test_verify_claim_maps_structured_outcome(monkeypatch):
     import app.core.self_check as self_check
 
-    stub = _StubAgentic(structured=StructuredResult(
-        text="", status="success",
-        value={
-            "confidence": "HIGH",
-            "supporting": ["transcript A"],
-            "contradicting": [],
-            "notes": "Directly supported.",
-        },
-    ))
+    stub = _StubAgentic(
+        structured=StructuredResult(
+            text="",
+            status="success",
+            value={
+                "confidence": "HIGH",
+                "supporting": ["transcript A"],
+                "contradicting": [],
+                "notes": "Directly supported.",
+            },
+        )
+    )
     monkeypatch.setattr(self_check, "retrieve_context", _fake_retrieve_context)
     monkeypatch.setattr("app.core.agentic.agentic", stub)
 
@@ -287,7 +380,11 @@ async def test_verify_claim_maps_structured_outcome(monkeypatch):
     assert kwargs["spine_phase"] in SPINE_PHASES
     assert kwargs["params"].temperature == 0.1
     assert kwargs["schema"]["properties"]["confidence"]["enum"] == [
-        "HIGH", "MEDIUM", "LOW", "UNVERIFIED"]
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "UNVERIFIED",
+    ]
 
 
 async def test_verify_claim_unparsed_legacy_outcome_is_unverified(monkeypatch):
@@ -295,7 +392,9 @@ async def test_verify_claim_unparsed_legacy_outcome_is_unverified(monkeypatch):
     UNVERIFIED — exactly what garbage line-format text produced before W3."""
     import app.core.self_check as self_check
 
-    stub = _StubAgentic(structured=StructuredResult(text="garbage", status="error", value={}))
+    stub = _StubAgentic(
+        structured=StructuredResult(text="garbage", status="error", value={})
+    )
     monkeypatch.setattr(self_check, "retrieve_context", _fake_retrieve_context)
     monkeypatch.setattr("app.core.agentic.agentic", stub)
 
@@ -322,23 +421,36 @@ async def test_verify_claim_engine_failure_propagates_like_before(monkeypatch):
 
 def _task():
     return SimpleNamespace(
-        id="t1", project_id="p1", title="Task", description="d", instructions=None)
+        id="t1", project_id="p1", title="Task", description="d", instructions=None
+    )
 
 
 def _output():
     return SimpleNamespace(
-        success=True, errors=[], summary="A long enough summary of the produced research output.",
-        nuggets=[{"text": "n"}], facts=[], insights=[], recommendations=[],
+        success=True,
+        errors=[],
+        summary="A long enough summary of the produced research output.",
+        nuggets=[{"text": "n"}],
+        facts=[],
+        insights=[],
+        recommendations=[],
     )
 
 
 async def test_self_verify_uses_structured_value(monkeypatch):
     from app.core.agent_research import AgentResearchMixin
 
-    stub = _StubAgentic(structured=StructuredResult(
-        text="", status="success",
-        value={"verified": False, "confidence": 0.4, "reason": "Unsupported claim found."},
-    ))
+    stub = _StubAgentic(
+        structured=StructuredResult(
+            text="",
+            status="success",
+            value={
+                "verified": False,
+                "confidence": 0.4,
+                "reason": "Unsupported claim found.",
+            },
+        )
+    )
     monkeypatch.setattr("app.core.agentic.agentic", stub)
 
     mixin = AgentResearchMixin.__new__(AgentResearchMixin)
@@ -351,7 +463,9 @@ async def test_self_verify_uses_structured_value(monkeypatch):
 async def test_self_verify_error_status_falls_back_to_heuristic(monkeypatch):
     from app.core.agent_research import AgentResearchMixin
 
-    stub = _StubAgentic(structured=StructuredResult(text="not json", status="error", value={}))
+    stub = _StubAgentic(
+        structured=StructuredResult(text="not json", status="error", value={})
+    )
     monkeypatch.setattr("app.core.agentic.agentic", stub)
 
     mixin = AgentResearchMixin.__new__(AgentResearchMixin)
@@ -376,15 +490,26 @@ async def test_self_verify_engine_failure_falls_back_to_heuristic(monkeypatch):
 async def test_spine_phase_tag_lands_in_the_usage_ledger(usage_db):
     purpose = f"w3.spine.{uuid.uuid4().hex[:8]}"
     dispatcher = AgenticDispatcher(
-        pi_service=_StubPiService(), legacy_executor=_RecordingLegacyExecutor())
-    await dispatcher.completion(purpose=purpose, project_id="p1", system=None,
-                                messages=[{"role": "user", "content": "hi"}],
-                                params=TurnParams(temperature=0.3), engine="legacy",
-                                task_id="t1", spine_phase="plan")
+        pi_service=_StubPiService(), legacy_executor=_RecordingLegacyExecutor()
+    )
+    await dispatcher.completion(
+        purpose=purpose,
+        project_id="p1",
+        system=None,
+        messages=[{"role": "user", "content": "hi"}],
+        params=TurnParams(temperature=0.3),
+        engine="legacy",
+        task_id="t1",
+        spine_phase="plan",
+    )
     async with async_session() as session:
-        rows = list((await session.execute(
-            select(AgenticUsageRow).where(AgenticUsageRow.purpose == purpose)
-        )).scalars())
+        rows = list(
+            (
+                await session.execute(
+                    select(AgenticUsageRow).where(AgenticUsageRow.purpose == purpose)
+                )
+            ).scalars()
+        )
     assert len(rows) == 1
     assert rows[0].spine_phase == "plan"
     assert rows[0].task_id == "t1"

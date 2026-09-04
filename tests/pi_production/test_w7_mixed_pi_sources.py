@@ -4,7 +4,9 @@ import app.core.agentic  # noqa: F401  # initialize the dispatcher import plane
 import pytest
 
 
-def _coding_applications(unit_ids: list[str], source_quotes: dict[str, str]) -> list[dict]:
+def _coding_applications(
+    unit_ids: list[str], source_quotes: dict[str, str]
+) -> list[dict]:
     return [
         {
             "evidence_unit_id": unit_id,
@@ -215,7 +217,9 @@ async def test_coding_run_mixes_provider_and_petals_routes_under_one_pi_catalog(
         )
 
     assert result["promotion_status"] == "accepted"
-    assert result["reliability_method"] == "fleiss_kappa_with_krippendorff_alpha_companion"
+    assert (
+        result["reliability_method"] == "fleiss_kappa_with_krippendorff_alpha_companion"
+    )
     assert result["distinct_model_count"] == result["rater_count"] == 3
     assert {route["endpoint_id"] for route in result["route_evidence"]} == {
         "pi-provider-a",

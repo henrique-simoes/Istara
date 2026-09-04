@@ -16,14 +16,19 @@ from typing import Any
 
 
 CHAT_MODEL = os.environ.get("QA_CONTRACT_CHAT_MODEL", "istara-qa-contract-chat:latest")
-EMBED_MODEL = os.environ.get("QA_CONTRACT_EMBED_MODEL", "istara-qa-contract-embed:latest")
+EMBED_MODEL = os.environ.get(
+    "QA_CONTRACT_EMBED_MODEL", "istara-qa-contract-embed:latest"
+)
 EMBEDDING_DIMENSION = 8
 
 
 def embedding_for_text(text: str) -> list[float]:
     """Return a stable, finite contract-only vector for one source string."""
     digest = hashlib.sha256(text.encode("utf-8")).digest()
-    return [round((digest[index] - 127.5) / 127.5, 8) for index in range(EMBEDDING_DIMENSION)]
+    return [
+        round((digest[index] - 127.5) / 127.5, 8)
+        for index in range(EMBEDDING_DIMENSION)
+    ]
 
 
 def embeddings_for_input(value: Any) -> list[list[float]]:
@@ -37,7 +42,11 @@ def embeddings_for_input(value: Any) -> list[list[float]]:
 def model_records() -> list[dict[str, Any]]:
     return [
         {"name": CHAT_MODEL, "model": CHAT_MODEL, "details": {"family": "qa-contract"}},
-        {"name": EMBED_MODEL, "model": EMBED_MODEL, "details": {"family": "qa-contract"}},
+        {
+            "name": EMBED_MODEL,
+            "model": EMBED_MODEL,
+            "details": {"family": "qa-contract"},
+        },
     ]
 
 
@@ -97,7 +106,13 @@ class ProviderStubHandler(BaseHTTPRequestHandler):
         # Do not emit request paths or payload-derived values into QA logs.
         return
 
-    def _send_json(self, status: int, payload: dict[str, Any], *, content_type: str = "application/json") -> None:
+    def _send_json(
+        self,
+        status: int,
+        payload: dict[str, Any],
+        *,
+        content_type: str = "application/json",
+    ) -> None:
         body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", content_type)
@@ -130,16 +145,29 @@ class ProviderStubHandler(BaseHTTPRequestHandler):
             payload = self._read_json()
             if self.path == "/api/embed":
                 vectors = embeddings_for_input(payload.get("input"))
-                self._send_json(200, {"model": payload.get("model") or EMBED_MODEL, "embeddings": vectors})
+                self._send_json(
+                    200,
+                    {
+                        "model": payload.get("model") or EMBED_MODEL,
+                        "embeddings": vectors,
+                    },
+                )
                 return
             if self.path == "/api/chat":
                 response = chat_response(payload.get("model"))
                 if payload.get("stream"):
                     lines = [
-                        {"model": response["model"], "message": response["message"], "done": False},
+                        {
+                            "model": response["model"],
+                            "message": response["message"],
+                            "done": False,
+                        },
                         response,
                     ]
-                    body = b"".join(json.dumps(line, separators=(",", ":")).encode() + b"\n" for line in lines)
+                    body = b"".join(
+                        json.dumps(line, separators=(",", ":")).encode() + b"\n"
+                        for line in lines
+                    )
                     self.send_response(200)
                     self.send_header("Content-Type", "application/x-ndjson")
                     self.send_header("Content-Length", str(len(body)))
@@ -150,7 +178,14 @@ class ProviderStubHandler(BaseHTTPRequestHandler):
                     self._send_json(200, response)
                 return
             if self.path == "/api/generate":
-                self._send_json(200, {"model": payload.get("model") or CHAT_MODEL, "response": "qa-contract-response", "done": True})
+                self._send_json(
+                    200,
+                    {
+                        "model": payload.get("model") or CHAT_MODEL,
+                        "response": "qa-contract-response",
+                        "done": True,
+                    },
+                )
                 return
             if self.path == "/api/show":
                 self._send_json(200, {"details": {"family": "qa-contract"}})
@@ -162,21 +197,27 @@ class ProviderStubHandler(BaseHTTPRequestHandler):
                     {
                         "object": "list",
                         "model": payload.get("model") or EMBED_MODEL,
-                        "data": [{"object": "embedding", "index": index, "embedding": vector} for index, vector in enumerate(vectors)],
+                        "data": [
+                            {"object": "embedding", "index": index, "embedding": vector}
+                            for index, vector in enumerate(vectors)
+                        ],
                     },
                 )
                 return
             if self.path == "/v1/chat/completions":
                 response = chat_response(payload.get("model"))
                 if payload.get("stream"):
-                    body = b"".join(
-                        (
-                            "data: "
-                            + json.dumps(chunk, separators=(",", ":"))
-                            + "\n\n"
-                        ).encode("utf-8")
-                        for chunk in openai_chat_stream(payload.get("model"))
-                    ) + b"data: [DONE]\n\n"
+                    body = (
+                        b"".join(
+                            (
+                                "data: "
+                                + json.dumps(chunk, separators=(",", ":"))
+                                + "\n\n"
+                            ).encode("utf-8")
+                            for chunk in openai_chat_stream(payload.get("model"))
+                        )
+                        + b"data: [DONE]\n\n"
+                    )
                     self.send_response(200)
                     self.send_header("Content-Type", "text/event-stream")
                     self.send_header("Cache-Control", "no-cache")
@@ -191,7 +232,13 @@ class ProviderStubHandler(BaseHTTPRequestHandler):
                         "id": "qa-contract-chat",
                         "object": "chat.completion",
                         "model": response["model"],
-                        "choices": [{"index": 0, "message": response["message"], "finish_reason": "stop"}],
+                        "choices": [
+                            {
+                                "index": 0,
+                                "message": response["message"],
+                                "finish_reason": "stop",
+                            }
+                        ],
                     },
                 )
                 return

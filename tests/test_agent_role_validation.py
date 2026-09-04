@@ -65,4 +65,6 @@ async def test_agent_create_rejects_unknown_role_with_validation_error(auth_head
         )
 
     assert response.status_code == 422
-    assert any(error.get("loc", [None])[-1] == "role" for error in response.json()["detail"])
+    assert any(
+        error.get("loc", [None])[-1] == "role" for error in response.json()["detail"]
+    )

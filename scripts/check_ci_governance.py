@@ -131,7 +131,7 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "spine touch rule": "spine_touch",
     },
     "qa/runtime_capabilities.json": {
-        "capability schema version": "\"version\": 1",
+        "capability schema version": '"version": 1',
         "provider embedding surface": "provider.embedding",
         "research spine surface": "research.spine",
     },

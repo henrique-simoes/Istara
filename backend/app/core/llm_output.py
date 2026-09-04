@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-
 THINK_OPEN = "<think>"
 THINK_CLOSE = "</think>"
 GEMMA_THOUGHT_OPEN = "<|channel>thought"

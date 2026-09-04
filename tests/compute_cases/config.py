@@ -1,5 +1,6 @@
 from tests.compute_cases.common import *
 
+
 def test_configured_local_lmstudio_node_preserves_api_key_and_model(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "lmstudio")
     monkeypatch.setattr(
@@ -47,7 +48,9 @@ async def test_lmstudio_model_probe_uses_configured_openai_model(monkeypatch):
 
     monkeypatch.setattr(client, "_get_client", get_client)
 
-    assert await client.detect_loaded_model(force=True) == "gemini-3.1-flash-lite-preview"
+    assert (
+        await client.detect_loaded_model(force=True) == "gemini-3.1-flash-lite-preview"
+    )
     assert fake.payload["model"] == "gemini-3.1-flash-lite-preview"
 
 

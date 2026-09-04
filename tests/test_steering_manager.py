@@ -39,6 +39,7 @@ from app.api.websocket import (
 # Fixtures
 # ============================================================
 
+
 @pytest.fixture
 def manager():
     """Fresh SteeringManager for each test."""
@@ -62,6 +63,7 @@ def configure_settings():
 def auth_headers():
     """Generate a valid JWT token for test requests."""
     from app.core.auth import create_token
+
     token = create_token("local", "test-user", "admin")
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
@@ -69,6 +71,7 @@ def auth_headers():
 # ============================================================
 # Unit Tests: SteeringQueue
 # ============================================================
+
 
 class TestSteeringManager:
     """Tests for the global SteeringManager singleton."""
@@ -125,7 +128,9 @@ class TestSteeringManager:
         assert manager.is_working(agent_id) is False
 
     @pytest.mark.asyncio
-    async def test_wait_for_idle_returns_true_when_already_idle(self, manager, agent_id):
+    async def test_wait_for_idle_returns_true_when_already_idle(
+        self, manager, agent_id
+    ):
         await manager.mark_idle(agent_id)
         result = await manager.wait_for_idle(agent_id, timeout=1.0)
         assert result is True
@@ -189,13 +194,17 @@ class TestSteeringManager:
 
     @pytest.mark.asyncio
     async def test_steer_with_metadata(self, manager, agent_id):
-        await manager.steer(agent_id, "test", source="extension", metadata={"ext": "mcp"})
+        await manager.steer(
+            agent_id, "test", source="extension", metadata={"ext": "mcp"}
+        )
         msgs = await manager.get_steering(agent_id)
         assert msgs[0].source == "extension"
         assert msgs[0].metadata == {"ext": "mcp"}
 
     @pytest.mark.asyncio
-    async def test_project_scoped_messages_do_not_drain_globally(self, manager, agent_id):
+    async def test_project_scoped_messages_do_not_drain_globally(
+        self, manager, agent_id
+    ):
         await manager.steer(agent_id, "project a", project_id="project-a")
         await manager.steer(agent_id, "project b", project_id="project-b")
 
@@ -208,7 +217,9 @@ class TestSteeringManager:
         assert [msg.message for msg in remaining["steering"]] == ["project b"]
 
     @pytest.mark.asyncio
-    async def test_project_scoped_clear_preserves_other_projects(self, manager, agent_id):
+    async def test_project_scoped_clear_preserves_other_projects(
+        self, manager, agent_id
+    ):
         await manager.steer(agent_id, "project a", project_id="project-a")
         await manager.follow_up(agent_id, "project a follow", project_id="project-a")
         await manager.steer(agent_id, "project b", project_id="project-b")
@@ -223,7 +234,9 @@ class TestSteeringManager:
         assert status_b["follow_up_queue_count"] == 1
 
     @pytest.mark.asyncio
-    async def test_project_scoped_status_and_working_state_are_project_bound(self, manager, agent_id):
+    async def test_project_scoped_status_and_working_state_are_project_bound(
+        self, manager, agent_id
+    ):
         await manager.steer(agent_id, "project a", project_id="project-a")
         await manager.follow_up(agent_id, "project b follow", project_id="project-b")
         await manager.mark_working(agent_id, project_id="project-a")
@@ -239,7 +252,9 @@ class TestSteeringManager:
         assert status_b["follow_up_queue_count"] == 1
 
     @pytest.mark.asyncio
-    async def test_project_ids_with_queued_steering_only_returns_scoped_projects(self, manager, agent_id):
+    async def test_project_ids_with_queued_steering_only_returns_scoped_projects(
+        self, manager, agent_id
+    ):
         await manager.steer(agent_id, "legacy")
         await manager.steer(agent_id, "project a", project_id="project-a")
         await manager.steer(agent_id, "project b", project_id="project-b")

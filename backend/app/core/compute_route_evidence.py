@@ -7,7 +7,6 @@ import importlib
 import uuid
 from typing import Any
 
-
 _telemetry_tasks: set[asyncio.Task[None]] = set()
 
 

@@ -26,8 +26,10 @@ class _FakeEndpointInfo:
 class _FakeManager:
     def __init__(self, endpoints: list[tuple[str, str]], secret: str = "sk-test"):
         self._endpoints = [
-            (*e, "openai_compat", "remote") if len(e) == 2
-            else (*e, "remote") if len(e) == 3
+            (*e, "openai_compat", "remote")
+            if len(e) == 2
+            else (*e, "remote")
+            if len(e) == 3
             else e
             for e in endpoints
         ]
@@ -84,19 +86,25 @@ def test_package_and_module_dispatcher_singletons_are_one_authority():
 async def test_explicit_model_resolves_to_pi_managed(monkeypatch):
     from app.core.agentic import model_source as ms
 
-    monkeypatch.setattr(ms, "_pi_manager", lambda: _FakeManager([("ep1", "deepseek-v4-pro")]))
+    monkeypatch.setattr(
+        ms, "_pi_manager", lambda: _FakeManager([("ep1", "deepseek-v4-pro")])
+    )
     source = await ms.resolve_model_source("deepseek-v4-pro")
     assert source is not None and source.plane == "pi-managed"
     assert source.endpoint_id == "ep1" and source.api_key  # executable secret present
 
 
 @pytest.mark.asyncio
-async def test_legacy_loop_source_loads_persisted_pi_catalog_before_selection(monkeypatch):
+async def test_legacy_loop_source_loads_persisted_pi_catalog_before_selection(
+    monkeypatch,
+):
     from app.core.agentic import model_source as ms
 
     class _ProjectedManager(_FakeManager):
         async def ensure_db_projection(self):
-            self._endpoints.append(("pi-llm-persisted", "persisted-model", "openai_compat"))
+            self._endpoints.append(
+                ("pi-llm-persisted", "persisted-model", "openai_compat")
+            )
 
     monkeypatch.setattr(ms, "_pi_manager", lambda: _ProjectedManager([]))
     source = await ms.resolve_model_source("persisted-model")
@@ -191,7 +199,9 @@ async def test_stub_marked_stack_falls_back_to_pi_managed_default(monkeypatch):
 async def test_unknown_explicit_model_leaves_donation_path_untouched(monkeypatch):
     from app.core.agentic import model_source as ms
 
-    monkeypatch.setattr(ms, "_pi_manager", lambda: _FakeManager([("ep1", "deepseek-v4-pro")]))
+    monkeypatch.setattr(
+        ms, "_pi_manager", lambda: _FakeManager([("ep1", "deepseek-v4-pro")])
+    )
     assert await ms.resolve_model_source("some-donated-model") is None
 
 
@@ -236,11 +246,22 @@ async def test_bridge_streams_content_and_exact_usage():
 
     sse = _sse_lines(
         [
-            {"choices": [{"delta": {"role": "assistant", "content": "PO"}, "finish_reason": None}]},
+            {
+                "choices": [
+                    {
+                        "delta": {"role": "assistant", "content": "PO"},
+                        "finish_reason": None,
+                    }
+                ]
+            },
             {"choices": [{"delta": {"content": "NG"}, "finish_reason": None}]},
             {
                 "choices": [{"delta": {}, "finish_reason": "stop"}],
-                "usage": {"prompt_tokens": 11, "completion_tokens": 2, "total_tokens": 13},
+                "usage": {
+                    "prompt_tokens": 11,
+                    "completion_tokens": 2,
+                    "total_tokens": 13,
+                },
             },
         ]
     )
@@ -248,8 +269,10 @@ async def test_bridge_streams_content_and_exact_usage():
     forwarded: list[str] = []
     message = await stream_openai_chat(
         source=ModelSource(
-            plane="pi-managed", endpoint_id="ep1",
-            base_url="https://provider.test", api_key="sk-live",
+            plane="pi-managed",
+            endpoint_id="ep1",
+            base_url="https://provider.test",
+            api_key="sk-live",
             model="deepseek-v4-pro",
         ),
         history=[{"role": "user", "content": "hi"}],
@@ -262,7 +285,11 @@ async def test_bridge_streams_content_and_exact_usage():
 
     req = build_bridge_request(
         base_url="https://provider.test",
-        payload={"model": "deepseek-v4-pro", "messages": [{"role": "system", "content": "sys"}], "stream": True},
+        payload={
+            "model": "deepseek-v4-pro",
+            "messages": [{"role": "system", "content": "sys"}],
+            "stream": True,
+        },
         api_key="sk-live",
     )
     assert req.full_url.endswith("/v1/chat/completions")
@@ -294,7 +321,10 @@ async def test_bridge_surfaces_tool_calls():
                                 {
                                     "index": 0,
                                     "id": "call_1",
-                                    "function": {"name": "search", "arguments": '{"query":'},
+                                    "function": {
+                                        "name": "search",
+                                        "arguments": '{"query":',
+                                    },
                                 }
                             ]
                         }
@@ -305,7 +335,9 @@ async def test_bridge_surfaces_tool_calls():
                 "choices": [
                     {
                         "delta": {
-                            "tool_calls": [{"index": 0, "function": {"arguments": '"cats"}'}}]
+                            "tool_calls": [
+                                {"index": 0, "function": {"arguments": '"cats"}'}}
+                            ]
                         },
                         "finish_reason": "tool_calls",
                     }
@@ -314,11 +346,15 @@ async def test_bridge_surfaces_tool_calls():
         ]
     )
     source = ModelSource(
-        plane="pi-managed", endpoint_id="ep1", base_url="https://p.test", api_key="k",
+        plane="pi-managed",
+        endpoint_id="ep1",
+        base_url="https://p.test",
+        api_key="k",
         model="m",
     )
     message = await stream_openai_chat(
-        source=source, history=[{"role": "user", "content": "q"}],
+        source=source,
+        history=[{"role": "user", "content": "q"}],
         line_iter=lambda: iter(sse),
     )
     calls = message["tool_calls"]
@@ -334,17 +370,27 @@ async def test_codex_family_excluded_from_istara_bridge(monkeypatch):
     next compatible pi-managed endpoint."""
     from app.core.agentic import model_source as ms
 
-    monkeypatch.setattr(ms, "_pi_manager", lambda: _FakeManager([
-        ("pi-codex-luna", "gpt-5.6-luna", "openai_codex"),
-        ("ep-deepseek", "deepseek-v4-flash"),
-    ]))
-    settings.llm_provider_contract_stub = True  # hide the local plane so the pi fallback is exercised
+    monkeypatch.setattr(
+        ms,
+        "_pi_manager",
+        lambda: _FakeManager(
+            [
+                ("pi-codex-luna", "gpt-5.6-luna", "openai_codex"),
+                ("ep-deepseek", "deepseek-v4-flash"),
+            ]
+        ),
+    )
+    settings.llm_provider_contract_stub = (
+        True  # hide the local plane so the pi fallback is exercised
+    )
     source = await ms.resolve_model_source(None)
     assert source is not None and source.endpoint_id == "ep-deepseek"
 
 
 @pytest.mark.asyncio
-async def test_pi_source_resolution_skips_unauthorized_petals_and_passes_project_scope(monkeypatch):
+async def test_pi_source_resolution_skips_unauthorized_petals_and_passes_project_scope(
+    monkeypatch,
+):
     """Legacy preflight must use the requested project's governed donor view.
 
     Petals projections are intentionally visible in the manager catalog, but
@@ -358,10 +404,12 @@ async def test_pi_source_resolution_skips_unauthorized_petals_and_passes_project
 
     class _ProjectScopedManager(_FakeManager):
         def __init__(self):
-            super().__init__([
-                ("pi-petals-other", "shared-model"),
-                ("pi-petals-project-a", "shared-model"),
-            ])
+            super().__init__(
+                [
+                    ("pi-petals-other", "shared-model"),
+                    ("pi-petals-project-a", "shared-model"),
+                ]
+            )
             self.project_ids: list[str | None] = []
 
         def resolve(self, *, endpoint_id=None, model=None, project_id=None, **kwargs):

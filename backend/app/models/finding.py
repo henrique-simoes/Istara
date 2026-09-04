@@ -5,7 +5,7 @@ Research Spine links them to accepted/reconciled evidence and a human-approved
 Done task.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -33,7 +33,7 @@ class Nugget(Base):
     phase: Mapped[str] = mapped_column(String(20), default="discover")
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     # Relationships
@@ -58,7 +58,7 @@ class Fact(Base):
     phase: Mapped[str] = mapped_column(String(20), default="discover")
     confidence: Mapped[float] = mapped_column(Float, default=0.5)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     # Relationships
@@ -84,7 +84,7 @@ class Insight(Base):
     confidence: Mapped[float] = mapped_column(Float, default=0.5)
     impact: Mapped[str] = mapped_column(String(20), default="medium")  # low/medium/high/critical
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     # Relationships
@@ -113,7 +113,7 @@ class Recommendation(Base):
         String(20), default="proposed"
     )  # proposed/accepted/rejected/implemented
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     # Relationships

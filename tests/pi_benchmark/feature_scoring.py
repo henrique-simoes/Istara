@@ -61,51 +61,70 @@ def _api_ref_exists(api_ref: str) -> bool:
     # bare filename fallbacks (e.g. "projects.py")
     name = ref.rsplit("/", 1)[-1]
     return bool(name) and any(
-        candidate.name == name
-        for candidate in _ROUTES_DIR.glob("*.py")
+        candidate.name == name for candidate in _ROUTES_DIR.glob("*.py")
     )
 
 
 def _is_llm_touching(feature: dict[str, Any]) -> bool:
-    haystack = " ".join(str(feature.get(key, "")) for key in ("code_refs", "api_refs", "summary", "title"))
+    haystack = " ".join(
+        str(feature.get(key, ""))
+        for key in ("code_refs", "api_refs", "summary", "title")
+    )
     return bool(_LLM_SIGNAL.search(haystack))
 
 
-def score_features(*, measured_engine_behavior: dict[str, float] | None = None) -> dict[str, Any]:
+def score_features(
+    *, measured_engine_behavior: dict[str, float] | None = None
+) -> dict[str, Any]:
     """Score every compiled feature; returns per-feature metrics blocks + summary."""
     declared = _route_paths()
     measured = measured_engine_behavior or {"pi": 1.0, "legacy": 1.0}
     blocks: dict[str, dict[str, Any]] = {}
     engine_scores: dict[str, list[float]] = {"pi": [], "legacy": []}
-    summary = {"total": 0, "auto": 0, "manual": 0, "llm_touching": 0,
-               "criteria_pass_rates": {name: [] for name in CRITERIA}}
+    summary = {
+        "total": 0,
+        "auto": 0,
+        "manual": 0,
+        "llm_touching": 0,
+        "criteria_pass_rates": {name: [] for name in CRITERIA},
+    }
     for fc in compile_features():
         feature = _feature_by_id(fc.feature_id)
         api_refs = [str(r) for r in (feature.get("api_refs") or [])]
         test_refs = [str(r) for r in (feature.get("test_refs") or [])]
         llm = _is_llm_touching(feature)
         scores: dict[str, Any] = {}
-        routes_present = all(_api_ref_exists(ref) for ref in api_refs) if api_refs else None
+        routes_present = (
+            all(_api_ref_exists(ref) for ref in api_refs) if api_refs else None
+        )
         for criterion in CRITERIA:
             if not fc.derivable.get(criterion, False):
                 scores[criterion] = None  # manual: counted, never fabricated
                 continue
             if criterion == "evidence_emitted":
-                scores[criterion] = 1.0 if any((_REPO_ROOT / ref).exists() for ref in test_refs) else 0.0
+                scores[criterion] = (
+                    1.0
+                    if any((_REPO_ROOT / ref).exists() for ref in test_refs)
+                    else 0.0
+                )
             elif criterion == "engine_behavior":
                 if llm:
                     scores[criterion] = None  # filled per-engine below
                 else:
                     scores[criterion] = 1.0  # ratchet-proven engine independence
             else:
-                scores[criterion] = (1.0 if routes_present else 0.0) if routes_present is not None else None
+                scores[criterion] = (
+                    (1.0 if routes_present else 0.0)
+                    if routes_present is not None
+                    else None
+                )
         block = fc.to_metrics_block()
         block["criteria_scores"] = scores
         block["llm_touching"] = llm
         block["basis"] = (
             "routes+tests verified statically; engine independence via W9 ratchet"
-            if not llm else
-            "routes+tests verified statically; engine_behavior from measured paired axes"
+            if not llm
+            else "routes+tests verified statically; engine_behavior from measured paired axes"
         )
         blocks[fc.feature_id] = block
         summary["total"] += 1
@@ -124,7 +143,11 @@ def score_features(*, measured_engine_behavior: dict[str, float] | None = None) 
     for engine in ("pi", "legacy"):
         per_feature = []
         for block in blocks.values():
-            scores = [v for k, v in block["criteria_scores"].items() if v is not None and k != "engine_behavior"]
+            scores = [
+                v
+                for k, v in block["criteria_scores"].items()
+                if v is not None and k != "engine_behavior"
+            ]
             if block["llm_touching"]:
                 scores.append(measured[engine])
             per_feature.append(sum(scores) / len(scores) if scores else 1.0)
@@ -140,7 +163,9 @@ def _feature_by_id(feature_id: str) -> dict[str, Any]:
     from .feature_criteria import _inventory
 
     inventory = _inventory()
-    features = inventory.get("features", inventory if isinstance(inventory, list) else [])
+    features = inventory.get(
+        "features", inventory if isinstance(inventory, list) else []
+    )
     for feature in features:
         if feature.get("id") == feature_id:
             return feature

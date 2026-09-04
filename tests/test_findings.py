@@ -91,13 +91,16 @@ def _add_accepted_nugget_support(
 # Nuggets
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_nuggets_list_returns_list(auth_headers):
     """GET /api/findings/nuggets returns a list."""
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/findings/nuggets?project_id=test-project", headers=auth_headers)
+        response = await ac.get(
+            "/api/findings/nuggets?project_id=test-project", headers=auth_headers
+        )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -143,23 +146,31 @@ async def test_nugget_creation_normalizes_integrity_fields(auth_headers):
 
     async with async_session() as db:
         units = (
-            await db.execute(
-                select(EvidenceUnit).where(
-                    EvidenceUnit.project_id == project_id,
-                    EvidenceUnit.source_id == f"nugget:{payload['id']}",
+            (
+                await db.execute(
+                    select(EvidenceUnit).where(
+                        EvidenceUnit.project_id == project_id,
+                        EvidenceUnit.source_id == f"nugget:{payload['id']}",
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         edges = (
-            await db.execute(
-                select(ResearchEvidenceEdge).where(
-                    ResearchEvidenceEdge.project_id == project_id,
-                    ResearchEvidenceEdge.source_type == "nugget",
-                    ResearchEvidenceEdge.source_id == payload["id"],
-                    ResearchEvidenceEdge.relation == "grounded_in",
+            (
+                await db.execute(
+                    select(ResearchEvidenceEdge).where(
+                        ResearchEvidenceEdge.project_id == project_id,
+                        ResearchEvidenceEdge.source_type == "nugget",
+                        ResearchEvidenceEdge.source_id == payload["id"],
+                        ResearchEvidenceEdge.relation == "grounded_in",
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
     assert len(units) == 1
     assert units[0].source_text == "Participants want clearer onboarding."
@@ -194,7 +205,9 @@ async def test_manual_atomic_chain_creation_rejects_cross_project_links(auth_hea
                 source="foreign",
             )
         )
-        db.add(Fact(id=foreign_fact_id, project_id=foreign_project_id, text="Foreign fact"))
+        db.add(
+            Fact(id=foreign_fact_id, project_id=foreign_project_id, text="Foreign fact")
+        )
         db.add(
             Insight(
                 id=foreign_insight_id,
@@ -223,17 +236,29 @@ async def test_manual_atomic_chain_creation_rejects_cross_project_links(auth_hea
     cases = [
         (
             "/api/findings/facts",
-            {"project_id": project_id, "text": "Fact", "nugget_ids": [foreign_nugget_id]},
+            {
+                "project_id": project_id,
+                "text": "Fact",
+                "nugget_ids": [foreign_nugget_id],
+            },
             "nugget_ids",
         ),
         (
             "/api/findings/insights",
-            {"project_id": project_id, "text": "Insight", "fact_ids": [foreign_fact_id]},
+            {
+                "project_id": project_id,
+                "text": "Insight",
+                "fact_ids": [foreign_fact_id],
+            },
             "fact_ids",
         ),
         (
             "/api/findings/recommendations",
-            {"project_id": project_id, "text": "Recommendation", "insight_ids": [foreign_insight_id]},
+            {
+                "project_id": project_id,
+                "text": "Recommendation",
+                "insight_ids": [foreign_insight_id],
+            },
             "insight_ids",
         ),
         (
@@ -260,13 +285,16 @@ async def test_manual_atomic_chain_creation_rejects_cross_project_links(auth_hea
 # Facts
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_facts_list_returns_list(auth_headers):
     """GET /api/findings/facts returns a list."""
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/findings/facts?project_id=test-project", headers=auth_headers)
+        response = await ac.get(
+            "/api/findings/facts?project_id=test-project", headers=auth_headers
+        )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -283,7 +311,9 @@ async def test_facts_requires_auth():
 
 
 @pytest.mark.asyncio
-async def test_project_findings_search_includes_manual_findings(auth_headers, monkeypatch):
+async def test_project_findings_search_includes_manual_findings(
+    auth_headers, monkeypatch
+):
     """Project search must find manual findings even when document RAG is empty."""
     await init_db()
     project_id = f"findings-search-project-{uuid.uuid4()}"
@@ -318,13 +348,16 @@ async def test_project_findings_search_includes_manual_findings(auth_headers, mo
 # Insights
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_insights_list_returns_list(auth_headers):
     """GET /api/findings/insights returns a list."""
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/findings/insights?project_id=test-project", headers=auth_headers)
+        response = await ac.get(
+            "/api/findings/insights?project_id=test-project", headers=auth_headers
+        )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -333,13 +366,17 @@ async def test_insights_list_returns_list(auth_headers):
 # Recommendations
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_recommendations_list_returns_list(auth_headers):
     """GET /api/findings/recommendations returns a list."""
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/findings/recommendations?project_id=test-project", headers=auth_headers)
+        response = await ac.get(
+            "/api/findings/recommendations?project_id=test-project",
+            headers=auth_headers,
+        )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -367,13 +404,16 @@ async def test_findings_list_routes_require_project_id_even_for_admin(auth_heade
 # Summary
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_findings_summary_returns_dict(auth_headers):
     """GET /api/findings/summary/{project_id} returns a dict."""
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/findings/summary/test-project", headers=auth_headers)
+        response = await ac.get(
+            "/api/findings/summary/test-project", headers=auth_headers
+        )
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
 
@@ -381,6 +421,7 @@ async def test_findings_summary_returns_dict(auth_headers):
 # ---------------------------------------------------------------------------
 # Evidence Chain
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_evidence_chain_returns_list(auth_headers):
@@ -543,7 +584,10 @@ async def test_findings_by_id_routes_require_matching_active_project(auth_header
         assert query_correct_scope.status_code == 200
         assert extended_wrong_scope.status_code == 404
         assert extended_correct_scope.status_code == 200
-        assert extended_correct_scope.json()["chain"]["design_decision"][0]["id"] == design_decision_id
+        assert (
+            extended_correct_scope.json()["chain"]["design_decision"][0]["id"]
+            == design_decision_id
+        )
         assert link_missing_scope.status_code == 422
         assert link_wrong_scope.status_code == 404
         assert link_correct_scope.status_code == 200
@@ -578,28 +622,30 @@ async def test_evidence_chain_filters_linked_findings_to_project(auth_headers):
     fact_id = str(uuid.uuid4())
 
     async with async_session() as db:
-        db.add_all([
-            Project(id=project_id, name="Evidence Project"),
-            Project(id=other_project_id, name="Other Evidence Project"),
-            Nugget(
-                id=in_scope_nugget_id,
-                project_id=project_id,
-                text="In-scope evidence",
-                source="interview-a",
-            ),
-            Nugget(
-                id=out_of_scope_nugget_id,
-                project_id=other_project_id,
-                text="Out-of-scope evidence",
-                source="interview-b",
-            ),
-            Fact(
-                id=fact_id,
-                project_id=project_id,
-                text="Only the in-scope nugget should be returned.",
-                nugget_ids=json.dumps([in_scope_nugget_id, out_of_scope_nugget_id]),
-            ),
-        ])
+        db.add_all(
+            [
+                Project(id=project_id, name="Evidence Project"),
+                Project(id=other_project_id, name="Other Evidence Project"),
+                Nugget(
+                    id=in_scope_nugget_id,
+                    project_id=project_id,
+                    text="In-scope evidence",
+                    source="interview-a",
+                ),
+                Nugget(
+                    id=out_of_scope_nugget_id,
+                    project_id=other_project_id,
+                    text="Out-of-scope evidence",
+                    source="interview-b",
+                ),
+                Fact(
+                    id=fact_id,
+                    project_id=project_id,
+                    text="Only the in-scope nugget should be returned.",
+                    nugget_ids=json.dumps([in_scope_nugget_id, out_of_scope_nugget_id]),
+                ),
+            ]
+        )
         await db.commit()
 
     transport = ASGITransport(app=app)
@@ -665,7 +711,10 @@ async def test_evidence_chain_includes_research_validity_gate(auth_headers):
     diagnostics = blocked.json()["diagnostics"]["research_validity"]
     assert diagnostics["task_ids"] == [task_id]
     assert diagnostics["report_allowed"] is False
-    assert "no coded evidence applications" in diagnostics["task_gates"][task_id]["report_block_reason"]
+    assert (
+        "no coded evidence applications"
+        in diagnostics["task_gates"][task_id]["report_block_reason"]
+    )
 
     async with async_session() as db:
         _add_accepted_nugget_support(
@@ -686,7 +735,10 @@ async def test_evidence_chain_includes_research_validity_gate(auth_headers):
     assert still_blocked.status_code == 200
     still_blocked_gate = still_blocked.json()["diagnostics"]["research_validity"]
     assert still_blocked_gate["report_allowed"] is False
-    assert still_blocked_gate["task_gates"][task_id]["report_block_reason"] == "Task is not a human-approved Done task."
+    assert (
+        still_blocked_gate["task_gates"][task_id]["report_block_reason"]
+        == "Task is not a human-approved Done task."
+    )
 
     async with async_session() as db:
         task = await db.get(Task, task_id)
@@ -748,7 +800,9 @@ async def test_evidence_chain_blocks_taskless_legacy_findings(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_finding_lists_surface_provisional_validity_until_reportable(auth_headers):
+async def test_finding_lists_surface_provisional_validity_until_reportable(
+    auth_headers,
+):
     """Finding lists must not make agent/task outputs look accepted before gates pass."""
     await init_db()
     project_id = f"finding-validity-list-project-{uuid.uuid4()}"
@@ -812,7 +866,9 @@ async def test_finding_lists_surface_provisional_validity_until_reportable(auth_
         )
 
     assert accepted.status_code == 200
-    accepted_gate = next(row["research_validity"] for row in accepted.json() if row["id"] == nugget_id)
+    accepted_gate = next(
+        row["research_validity"] for row in accepted.json() if row["id"] == nugget_id
+    )
     assert accepted_gate["status"] == "accepted"
     assert accepted_gate["report_allowed"] is True
     assert accepted_gate["done_approved"] is True
@@ -820,7 +876,9 @@ async def test_finding_lists_surface_provisional_validity_until_reportable(auth_
 
 
 @pytest.mark.asyncio
-async def test_design_decisions_remain_provisional_until_source_findings_are_reportable(auth_headers):
+async def test_design_decisions_remain_provisional_until_source_findings_are_reportable(
+    auth_headers,
+):
     """Design decisions cannot look accepted while linked source findings are provisional."""
     await init_db()
     project_id = f"design-provisional-{uuid.uuid4()}"
@@ -854,12 +912,16 @@ async def test_design_decisions_remain_provisional_until_source_findings_are_rep
         )
 
     assert response.status_code == 200
-    gate = next(row["research_validity"] for row in response.json() if row["id"] == decision_id)
+    gate = next(
+        row["research_validity"] for row in response.json() if row["id"] == decision_id
+    )
     assert gate["status"] == "provisional"
     assert gate["report_allowed"] is False
     assert gate["source_finding_ids"] == [rec_id]
     assert gate["blocked_source_ids"] == [rec_id]
-    assert gate["policy"] == "design_decision_visibility_requires_accepted_spine_sources"
+    assert (
+        gate["policy"] == "design_decision_visibility_requires_accepted_spine_sources"
+    )
 
 
 @pytest.mark.asyncio
@@ -945,7 +1007,9 @@ async def test_design_decisions_accept_only_from_done_source_findings(auth_heade
         )
 
     assert response.status_code == 200
-    gate = next(row["research_validity"] for row in response.json() if row["id"] == decision_id)
+    gate = next(
+        row["research_validity"] for row in response.json() if row["id"] == decision_id
+    )
     assert gate["status"] == "accepted"
     assert gate["report_allowed"] is True
     assert gate["accepted_source_ids"] == [rec_id]

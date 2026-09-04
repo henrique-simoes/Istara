@@ -12,6 +12,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.field_encryption import safe_decrypt_field
 from app.core.permissions import (
     get_project_role,
     get_subject,
@@ -21,7 +22,6 @@ from app.core.permissions import (
     require_global_admin,
     require_project_access,
 )
-from app.core.field_encryption import safe_decrypt_field
 from app.core.versioning import ProjectVersioning
 from app.models.database import get_db
 from app.models.project import Project, ProjectPhase
@@ -553,8 +553,8 @@ async def delete_project(project_id: str, request: Request, db: AsyncSession = D
     # Clean up entities that lack FK cascade (no ForeignKey constraint)
     from app.core.scheduler import ScheduledTask
     from app.models.context_dag import ContextDAGNode
-    from app.models.session import ChatSession
     from app.models.project_member import ProjectMember
+    from app.models.session import ChatSession
 
     # Delete orphaned scheduled tasks for this project
     await db.execute(delete(ScheduledTask).where(ScheduledTask.project_id == project_id))

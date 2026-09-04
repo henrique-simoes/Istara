@@ -5,29 +5,20 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import time
 from collections.abc import AsyncGenerator
-from typing import Any
-
-import httpx
 
 from app.config import settings
 from app.core.compute_capacity import compute_capacity_envelope
 from app.core.compute_node import ComputeNode
-from app.core.compute_route_evidence import attach_route_evidence
 from app.core.compute_registry_helpers import (
-    TRANSIENT_CHAT_BASE_DELAY_S,
     TRANSIENT_CHAT_MAX_ATTEMPTS,
-    TRANSIENT_CHAT_MAX_DELAY_S,
-    TRANSIENT_HTTP_STATUS_CODES,
     _hydrate_local_resources,
     _looks_like_context_length_error,
     _looks_like_model_availability_error,
-    _positive_number,
-    _redacted_endpoint_for_log,
     _server_endpoint_identity,
     _unique_model_names,
 )
+from app.core.compute_route_evidence import attach_route_evidence
 from app.core.llm_output import (
     ThinkingContentFilter,
     visible_assistant_content,
@@ -35,7 +26,6 @@ from app.core.llm_output import (
 )
 from app.core.llm_schema_adapter import provider_response_format_fields
 from app.core.llm_thinking import apply_thinking_control
-from app.core.token_counter import count_tokens
 
 logger = logging.getLogger("app.core.compute_registry")
 

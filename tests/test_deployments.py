@@ -100,7 +100,9 @@ def _message(
 
 
 @pytest.mark.asyncio
-async def test_deployment_project_lists_require_active_project_scope(admin_auth_headers):
+async def test_deployment_project_lists_require_active_project_scope(
+    admin_auth_headers,
+):
     await init_db()
 
     transport = ASGITransport(app=app)
@@ -115,14 +117,20 @@ async def test_deployment_project_lists_require_active_project_scope(admin_auth_
 
 
 @pytest.mark.asyncio
-async def test_deployment_create_requires_existing_active_project_for_admin(admin_auth_headers):
+async def test_deployment_create_requires_existing_active_project_for_admin(
+    admin_auth_headers,
+):
     await init_db()
     missing_project_id = _id("missing-deployment-project")
     paused_project_id = _id("paused-deployment-create-project")
     transport = ASGITransport(app=app)
 
     async with async_session() as db:
-        db.add(Project(id=paused_project_id, name="Paused Deployment Create", is_paused=True))
+        db.add(
+            Project(
+                id=paused_project_id, name="Paused Deployment Create", is_paused=True
+            )
+        )
         await db.commit()
 
     payload = {
@@ -151,14 +159,18 @@ async def test_deployment_create_requires_existing_active_project_for_admin(admi
     async with async_session() as db:
         result = await db.execute(
             select(ResearchDeployment).where(
-                ResearchDeployment.project_id.in_([missing_project_id, paused_project_id])
+                ResearchDeployment.project_id.in_(
+                    [missing_project_id, paused_project_id]
+                )
             )
         )
         assert result.scalars().all() == []
 
 
 @pytest.mark.asyncio
-async def test_deployment_create_rejects_channel_from_another_project(admin_auth_headers):
+async def test_deployment_create_rejects_channel_from_another_project(
+    admin_auth_headers,
+):
     await init_db()
     project_a = _id("project-a")
     project_b = _id("project-b")
@@ -227,7 +239,9 @@ async def test_deployment_create_rejects_channel_from_another_project(admin_auth
 
 
 @pytest.mark.asyncio
-async def test_deployment_overview_counts_only_active_project_conversations(admin_auth_headers):
+async def test_deployment_overview_counts_only_active_project_conversations(
+    admin_auth_headers,
+):
     await init_db()
     project_a = _id("project-a")
     project_b = _id("project-b")
@@ -282,7 +296,9 @@ async def test_deployment_overview_counts_only_active_project_conversations(admi
 
 
 @pytest.mark.asyncio
-async def test_deployment_detail_requires_matching_active_project_for_admin(admin_auth_headers):
+async def test_deployment_detail_requires_matching_active_project_for_admin(
+    admin_auth_headers,
+):
     await init_db()
     project_a = _id("project-a")
     project_b = _id("project-b")
@@ -398,7 +414,9 @@ async def test_deployment_delete_requires_project_scope_and_removes_owned_conver
 
 
 @pytest.mark.asyncio
-async def test_deployment_detail_actions_require_matching_active_project_scope(admin_auth_headers):
+async def test_deployment_detail_actions_require_matching_active_project_scope(
+    admin_auth_headers,
+):
     await init_db()
     project_a = _id("project-a")
     project_b = _id("project-b")
@@ -440,7 +458,10 @@ async def test_deployment_detail_actions_require_matching_active_project_scope(a
         ("post", f"/api/deployments/{deployment_a.id}/pause"),
         ("post", f"/api/deployments/{deployment_a.id}/complete"),
         ("get", f"/api/deployments/{deployment_a.id}/conversations"),
-        ("get", f"/api/deployments/{deployment_a.id}/conversations/{conversation_a.id}"),
+        (
+            "get",
+            f"/api/deployments/{deployment_a.id}/conversations/{conversation_a.id}",
+        ),
         (
             "get",
             f"/api/deployments/{deployment_a.id}/conversations/{conversation_a.id}/transcript",
@@ -496,7 +517,9 @@ async def test_deployment_detail_actions_require_matching_active_project_scope(a
 
 
 @pytest.mark.asyncio
-async def test_deployment_response_rejects_cross_project_conversation(admin_auth_headers):
+async def test_deployment_response_rejects_cross_project_conversation(
+    admin_auth_headers,
+):
     await init_db()
     project_a = _id("project-a")
     project_b = _id("project-b")
@@ -653,40 +676,60 @@ async def test_deployment_service_helpers_require_project_scope():
     )
 
     async with async_session() as db:
-        db.add_all([channel_a, deployment_a, conversation_a, message_a, cross_project_message])
+        db.add_all(
+            [channel_a, deployment_a, conversation_a, message_a, cross_project_message]
+        )
         await db.commit()
 
-        assert await deployment_service.get_deployment(
-            db,
-            deployment_a.id,
-            project_id=project_b,
-        ) is None
-        assert await deployment_service.list_deployments(
-            db,
-            project_id=project_b,
-        ) == []
-        assert await deployment_service.get_deployment_analytics(
-            db,
-            deployment_a.id,
-            project_id=project_b,
-        ) == {}
-        assert await deployment_service.list_conversations(
-            db,
-            deployment_a.id,
-            project_id=project_b,
-        ) == []
-        assert await deployment_service.get_conversation(
-            db,
-            conversation_a.id,
-            deployment_id=deployment_a.id,
-            project_id=project_b,
-        ) is None
-        assert await deployment_service.get_conversation_transcript(
-            db,
-            conversation_a.id,
-            deployment_id=deployment_a.id,
-            project_id=project_b,
-        ) == []
+        assert (
+            await deployment_service.get_deployment(
+                db,
+                deployment_a.id,
+                project_id=project_b,
+            )
+            is None
+        )
+        assert (
+            await deployment_service.list_deployments(
+                db,
+                project_id=project_b,
+            )
+            == []
+        )
+        assert (
+            await deployment_service.get_deployment_analytics(
+                db,
+                deployment_a.id,
+                project_id=project_b,
+            )
+            == {}
+        )
+        assert (
+            await deployment_service.list_conversations(
+                db,
+                deployment_a.id,
+                project_id=project_b,
+            )
+            == []
+        )
+        assert (
+            await deployment_service.get_conversation(
+                db,
+                conversation_a.id,
+                deployment_id=deployment_a.id,
+                project_id=project_b,
+            )
+            is None
+        )
+        assert (
+            await deployment_service.get_conversation_transcript(
+                db,
+                conversation_a.id,
+                deployment_id=deployment_a.id,
+                project_id=project_b,
+            )
+            == []
+        )
 
         with pytest.raises(ValueError, match="Deployment .* not found"):
             await deployment_service.activate_deployment(
@@ -695,11 +738,14 @@ async def test_deployment_service_helpers_require_project_scope():
                 project_id=project_b,
             )
 
-        assert await deployment_service.get_deployment(
-            db,
-            deployment_a.id,
-            project_id=project_a,
-        ) is not None
+        assert (
+            await deployment_service.get_deployment(
+                db,
+                deployment_a.id,
+                project_id=project_a,
+            )
+            is not None
+        )
         transcript = await deployment_service.get_conversation_transcript(
             db,
             conversation_a.id,

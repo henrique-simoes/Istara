@@ -30,8 +30,13 @@ pytestmark = pytest.mark.benchmark
 
 def _canonical_t0(**overrides) -> RunConfig:
     base = dict(
-        packs=("canonical",), tier="T0", engines=("pi", "legacy"), seeds=(0,),
-        repeats=1, phase="B1", out_dir=Path("/tmp/pi-benchmark-unused"),
+        packs=("canonical",),
+        tier="T0",
+        engines=("pi", "legacy"),
+        seeds=(0,),
+        repeats=1,
+        phase="B1",
+        out_dir=Path("/tmp/pi-benchmark-unused"),
     )
     base.update(overrides)
     return RunConfig(**base)
@@ -57,7 +62,10 @@ def test_pairing_and_order_control():
     # Each pair has exactly the two engine arms sharing one input hash.
     for arms in by_pair.values():
         assert {a["engine"] for a in arms} == {"pi", "legacy"}
-        assert arms[0]["provenance"]["input_sha256"] == arms[1]["provenance"]["input_sha256"]
+        assert (
+            arms[0]["provenance"]["input_sha256"]
+            == arms[1]["provenance"]["input_sha256"]
+        )
         assert arms[0]["scenario"]["order"] == arms[1]["scenario"]["order"]
     # Order alternates across pairs (both order classes appear).
     orders = {arms[0]["scenario"]["order"] for arms in by_pair.values()}
@@ -112,20 +120,38 @@ def test_t2_with_gate_but_without_live_consent_is_refused(tmp_path):
 
 
 def test_cli_t2_without_gate_exits_3(tmp_path):
-    code = runner.main([
-        "--pack", "canonical", "--tier", "T2", "--engine", "pi",
-        "--out", str(tmp_path / "out"),
-    ])
+    code = runner.main(
+        [
+            "--pack",
+            "canonical",
+            "--tier",
+            "T2",
+            "--engine",
+            "pi",
+            "--out",
+            str(tmp_path / "out"),
+        ]
+    )
     assert code == 3
 
 
 def test_cli_t2_with_gate_but_no_live_prints_plan_and_exits_0(tmp_path, capsys):
     gate = tmp_path / "gate.json"
     gate.write_text("{}", encoding="utf-8")
-    code = runner.main([
-        "--pack", "canonical", "--tier", "T2", "--engine", "pi",
-        "--out", str(tmp_path / "out"), "--owner-gate", str(gate),
-    ])
+    code = runner.main(
+        [
+            "--pack",
+            "canonical",
+            "--tier",
+            "T2",
+            "--engine",
+            "pi",
+            "--out",
+            str(tmp_path / "out"),
+            "--owner-gate",
+            str(gate),
+        ]
+    )
     assert code == 0
     out = capsys.readouterr().out
     assert "[plan]" in out and "no --live" in out
@@ -134,19 +160,39 @@ def test_cli_t2_with_gate_but_no_live_prints_plan_and_exits_0(tmp_path, capsys):
 
 def test_cli_rejects_non_deepseek_provider(tmp_path):
     with pytest.raises(SystemExit) as excinfo:
-        build_config_from_args([
-            "--pack", "canonical", "--tier", "T3", "--engine", "pi",
-            "--out", str(tmp_path), "--provider", "claude",
-        ])
+        build_config_from_args(
+            [
+                "--pack",
+                "canonical",
+                "--tier",
+                "T3",
+                "--engine",
+                "pi",
+                "--out",
+                str(tmp_path),
+                "--provider",
+                "claude",
+            ]
+        )
     assert excinfo.value.code == 2
 
 
 def test_cli_rejects_non_deepseek_model(tmp_path):
     with pytest.raises(SystemExit) as excinfo:
-        build_config_from_args([
-            "--pack", "canonical", "--tier", "T3", "--engine", "pi",
-            "--out", str(tmp_path), "--model", "gpt-5.6-luna",
-        ])
+        build_config_from_args(
+            [
+                "--pack",
+                "canonical",
+                "--tier",
+                "T3",
+                "--engine",
+                "pi",
+                "--out",
+                str(tmp_path),
+                "--model",
+                "gpt-5.6-luna",
+            ]
+        )
     assert excinfo.value.code == 2
 
 
@@ -201,7 +247,9 @@ def _fake_lane_a_modules():
         def __init__(self, *, provider, model, **kwargs):
             self.provider, self.model = provider, model
 
-        def estimate_cost(self, input_tokens, output_tokens, cache_read_tokens=0, cache_write_tokens=0):
+        def estimate_cost(
+            self, input_tokens, output_tokens, cache_read_tokens=0, cache_write_tokens=0
+        ):
             return (input_tokens * 0.55 + output_tokens * 2.19) / 1e6
 
         def endpoint_fingerprint(self):
@@ -218,9 +266,18 @@ def _wave_config(tmp_path, wave=1):
     gate = tmp_path / "gate.json"
     gate.write_text("{}", encoding="utf-8")
     return RunConfig(
-        packs=("canonical",), tier="T3", engines=("pi",), seeds=(0,), repeats=1,
-        phase="B2", out_dir=tmp_path / "out", owner_gate=gate, live=True,
-        wave=wave, max_processes=1, manifest=tmp_path / "manifest.json",
+        packs=("canonical",),
+        tier="T3",
+        engines=("pi",),
+        seeds=(0,),
+        repeats=1,
+        phase="B2",
+        out_dir=tmp_path / "out",
+        owner_gate=gate,
+        live=True,
+        wave=wave,
+        max_processes=1,
+        manifest=tmp_path / "manifest.json",
         budget_ledger=tmp_path / "ledger.json",
     )
 
@@ -229,23 +286,41 @@ def test_wave_mode_executes_shard_then_resume_skips_completed(monkeypatch, tmp_p
     global _FAKE_MANIFEST
     scenario_id = load_pack("canonical")[0].id
     unit = {
-        "unit_id": f"B2-T3-canonical-{scenario_id}-seed0-r1-pi", "pack": "canonical",
-        "scenario_id": scenario_id, "seed": 0, "repeat": 1, "engine": "pi",
-        "phase": "B2", "moa_mode": None,
+        "unit_id": f"B2-T3-canonical-{scenario_id}-seed0-r1-pi",
+        "pack": "canonical",
+        "scenario_id": scenario_id,
+        "seed": 0,
+        "repeat": 1,
+        "engine": "pi",
+        "phase": "B2",
+        "moa_mode": None,
     }
-    _FAKE_MANIFEST = {"shards": [[unit]], "budget_cap_usd": 1.0, "moa_n": 3, "repeats": 1}
+    _FAKE_MANIFEST = {
+        "shards": [[unit]],
+        "budget_cap_usd": 1.0,
+        "moa_n": 3,
+        "repeats": 1,
+    }
     scheduler, ledger_mod, provider_mod = _fake_lane_a_modules()
     monkeypatch.setitem(sys.modules, "tests.pi_benchmark.scheduler", scheduler)
     monkeypatch.setitem(sys.modules, "tests.pi_benchmark.budget_ledger", ledger_mod)
-    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod)
+    monkeypatch.setitem(
+        sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod
+    )
 
     capture = LiveCapture(
-        text="wave output", usage={
-            "input_tokens": 40, "output_tokens": 12, "cache_read_tokens": 0,
-            "cache_write_tokens": 0, "total_tokens": 52,
+        text="wave output",
+        usage={
+            "input_tokens": 40,
+            "output_tokens": 12,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "total_tokens": 52,
         },
-        estimate=False, endpoint_ids=("pi-deepseek-default",),
-        route_evidence=({"endpoint_id": "pi-deepseek-default"},), raw_method=None,
+        estimate=False,
+        endpoint_ids=("pi-deepseek-default",),
+        route_evidence=({"endpoint_id": "pi-deepseek-default"},),
+        raw_method=None,
     )
 
     async def dispatch(**kwargs):
@@ -268,15 +343,22 @@ def test_wave_mode_executes_shard_then_resume_skips_completed(monkeypatch, tmp_p
     assert code == 0 and records == []
 
 
-def test_wave_mode_dispatches_all_pending_units_on_one_event_loop(monkeypatch, tmp_path):
+def test_wave_mode_dispatches_all_pending_units_on_one_event_loop(
+    monkeypatch, tmp_path
+):
     """A wave must not bind the singleton Pi supervisor to one loop per unit."""
     global _FAKE_MANIFEST
     scenario_id = load_pack("canonical")[0].id
     units = [
         {
             "unit_id": f"B1-T3-canonical-{scenario_id}-seed0-r{repeat}-pi",
-            "pack": "canonical", "scenario_id": scenario_id, "seed": 0,
-            "repeat": repeat, "engine": "pi", "phase": "B1", "moa_mode": None,
+            "pack": "canonical",
+            "scenario_id": scenario_id,
+            "seed": 0,
+            "repeat": repeat,
+            "engine": "pi",
+            "phase": "B1",
+            "moa_mode": None,
         }
         for repeat in (1, 2)
     ]
@@ -284,14 +366,23 @@ def test_wave_mode_dispatches_all_pending_units_on_one_event_loop(monkeypatch, t
     scheduler, ledger_mod, provider_mod = _fake_lane_a_modules()
     monkeypatch.setitem(sys.modules, "tests.pi_benchmark.scheduler", scheduler)
     monkeypatch.setitem(sys.modules, "tests.pi_benchmark.budget_ledger", ledger_mod)
-    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod)
+    monkeypatch.setitem(
+        sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod
+    )
 
     capture = LiveCapture(
-        text="wave output", usage={
-            "input_tokens": 40, "output_tokens": 12, "cache_read_tokens": 0,
-            "cache_write_tokens": 0, "total_tokens": 52,
-        }, estimate=False, endpoint_ids=("pi-deepseek-default",),
-        route_evidence=({"endpoint_id": "pi-deepseek-default"},), raw_method=None,
+        text="wave output",
+        usage={
+            "input_tokens": 40,
+            "output_tokens": 12,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "total_tokens": 52,
+        },
+        estimate=False,
+        endpoint_ids=("pi-deepseek-default",),
+        route_evidence=({"endpoint_id": "pi-deepseek-default"},),
+        raw_method=None,
     )
     loops = []
 
@@ -311,27 +402,47 @@ def test_wave_mode_executes_manifest_written_by_scheduler(monkeypatch, tmp_path)
     scenario_id = load_pack("canonical")[0].id
     unit = scheduler.RunUnit(
         unit_id=f"B1-T3-canonical-{scenario_id}-seed0-r0-pi",
-        pack="canonical", scenario_id=scenario_id, seed=0, repeat=0,
-        engine="pi", phase="B1", moa_mode=None,
+        pack="canonical",
+        scenario_id=scenario_id,
+        seed=0,
+        repeat=0,
+        engine="pi",
+        phase="B1",
+        moa_mode=None,
     )
     manifest_path = tmp_path / "manifest.json"
     scheduler.write_manifest(
-        manifest_path, max_processes=1, provider="deepseek", model="deepseek-v4-pro",
-        budget_cap_usd=1.0, moa_n=3, repeats=1, tier="T3", shards=[[unit]],
+        manifest_path,
+        max_processes=1,
+        provider="deepseek",
+        model="deepseek-v4-pro",
+        budget_cap_usd=1.0,
+        moa_n=3,
+        repeats=1,
+        tier="T3",
+        shards=[[unit]],
     )
 
     _, ledger_mod, provider_mod = _fake_lane_a_modules()
     monkeypatch.setitem(sys.modules, "tests.pi_benchmark.scheduler", scheduler)
     monkeypatch.setitem(sys.modules, "tests.pi_benchmark.budget_ledger", ledger_mod)
-    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod)
+    monkeypatch.setitem(
+        sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod
+    )
 
     capture = LiveCapture(
-        text="manifest output", usage={
-            "input_tokens": 40, "output_tokens": 12, "cache_read_tokens": 0,
-            "cache_write_tokens": 0, "total_tokens": 52,
+        text="manifest output",
+        usage={
+            "input_tokens": 40,
+            "output_tokens": 12,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "total_tokens": 52,
         },
-        estimate=False, endpoint_ids=("pi-deepseek-default",),
-        route_evidence=({"endpoint_id": "pi-deepseek-default"},), raw_method=None,
+        estimate=False,
+        endpoint_ids=("pi-deepseek-default",),
+        route_evidence=({"endpoint_id": "pi-deepseek-default"},),
+        raw_method=None,
     )
 
     async def dispatch(**kwargs):
@@ -350,7 +461,9 @@ def test_wave_out_of_range_exits_2(monkeypatch, tmp_path):
     scheduler, ledger_mod, provider_mod = _fake_lane_a_modules()
     monkeypatch.setitem(sys.modules, "tests.pi_benchmark.scheduler", scheduler)
     monkeypatch.setitem(sys.modules, "tests.pi_benchmark.budget_ledger", ledger_mod)
-    monkeypatch.setitem(sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod)
+    monkeypatch.setitem(
+        sys.modules, "tests.pi_benchmark.deepseek_provider", provider_mod
+    )
     code, records = runner.run_wave(_wave_config(tmp_path, wave=2))
     assert code == 2 and records == []
 
@@ -369,8 +482,20 @@ def test_write_run_round_trips_and_revalidates(tmp_path):
 
 def test_cli_arg_parsing():
     config = build_config_from_args(
-        ["--pack", "all", "--tier", "T1", "--engine", "both", "--seeds", "0,1",
-         "--repeats", "2", "--out", "/tmp/x"]
+        [
+            "--pack",
+            "all",
+            "--tier",
+            "T1",
+            "--engine",
+            "both",
+            "--seeds",
+            "0,1",
+            "--repeats",
+            "2",
+            "--out",
+            "/tmp/x",
+        ]
     )
     assert config.packs == runner.STATIC_PACKS
     assert config.tier == "T1"
@@ -381,7 +506,9 @@ def test_cli_arg_parsing():
 
 def test_cli_rejects_unknown_pack():
     with pytest.raises(SystemExit):
-        build_config_from_args(["--pack", "bogus", "--tier", "T0", "--engine", "pi", "--out", "/tmp/x"])
+        build_config_from_args(
+            ["--pack", "bogus", "--tier", "T0", "--engine", "pi", "--out", "/tmp/x"]
+        )
 
 
 # ── B0 plan-only scheduling (offline manifest gate) ─────────────────────────
@@ -389,18 +516,36 @@ def test_cli_rejects_unknown_pack():
 
 def _plan_only_args(tmp_path, *extra):
     return [
-        "--pack", "canonical", "--tier", "T3", "--engine", "pi",
-        "--out", str(tmp_path / "b0"), "--max-processes", "2",
-        "--plan-only", *extra,
+        "--pack",
+        "canonical",
+        "--tier",
+        "T3",
+        "--engine",
+        "pi",
+        "--out",
+        str(tmp_path / "b0"),
+        "--max-processes",
+        "2",
+        "--plan-only",
+        *extra,
     ]
 
 
 def test_plan_only_requires_max_processes(tmp_path):
     with pytest.raises(SystemExit) as excinfo:
-        build_config_from_args([
-            "--pack", "canonical", "--tier", "T3", "--engine", "pi",
-            "--out", str(tmp_path), "--plan-only",
-        ])
+        build_config_from_args(
+            [
+                "--pack",
+                "canonical",
+                "--tier",
+                "T3",
+                "--engine",
+                "pi",
+                "--out",
+                str(tmp_path),
+                "--plan-only",
+            ]
+        )
     assert excinfo.value.code == 2
 
 
@@ -437,7 +582,9 @@ def test_plan_only_refuses_a_conflicting_manifest(tmp_path):
 def test_plan_only_moa_mode_is_baked_into_units(tmp_path):
     code = runner.main(_plan_only_args(tmp_path, "--moa-mode", "self_moa"))
     assert code == 0
-    manifest = json.loads((tmp_path / "b0" / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads(
+        (tmp_path / "b0" / "manifest.json").read_text(encoding="utf-8")
+    )
     modes = {unit["moa_mode"] for unit in manifest["units"].values()}
     assert modes == {"self_moa"}
     assert manifest["moa_n"] == 3
@@ -450,9 +597,22 @@ def test_plan_only_moa_mode_is_baked_into_units(tmp_path):
 
 def _full_retake_plan_args(tmp_path, *extra):
     return [
-        "--pack", "canonical,spine,a2a", "--tier", "T3", "--engine", "both",
-        "--seeds", "0", "--repeats", "1", "--out", str(tmp_path / "b0"),
-        "--max-processes", "4", "--plan-only", *extra,
+        "--pack",
+        "canonical,spine,a2a",
+        "--tier",
+        "T3",
+        "--engine",
+        "both",
+        "--seeds",
+        "0",
+        "--repeats",
+        "1",
+        "--out",
+        str(tmp_path / "b0"),
+        "--max-processes",
+        "4",
+        "--plan-only",
+        *extra,
     ]
 
 
@@ -464,7 +624,9 @@ def test_plan_only_prints_estimate_and_writes_manifest_within_cap(tmp_path, caps
     assert code == 0
     out = capsys.readouterr().out
     assert "worst-case program estimate:" in out
-    manifest = json.loads((tmp_path / "b0" / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads(
+        (tmp_path / "b0" / "manifest.json").read_text(encoding="utf-8")
+    )
     assert manifest["max_processes"] == 4
 
 
@@ -487,11 +649,15 @@ def test_worst_case_estimate_arithmetic_is_deterministic():
     total, breakdown = runner._worst_case_program_cost_usd(config, scenarios)
     # none(1) + self_moa(moa_n=3) + full_ensemble(max(3, moa_n)=3) = 7 model-calls/unit.
     assert breakdown["lane_model_calls"] == 7
-    assert breakdown["units_per_lane"] == len(scenarios) * 2  # 1 seed × 1 repeat × 2 engines
+    assert (
+        breakdown["units_per_lane"] == len(scenarios) * 2
+    )  # 1 seed × 1 repeat × 2 engines
     # Smoke prompts are tiny, so the reservation floors at MIN_RESERVE_INPUT_TOKENS.
     assert breakdown["reserve_input_tokens"] == live_driver.MIN_RESERVE_INPUT_TOKENS
     provider = DeepSeekProvider(provider="deepseek", model="deepseek-v4-pro")
-    per_call = provider.estimate_cost(live_driver.MIN_RESERVE_INPUT_TOKENS, live_driver.DEFAULT_MAX_TOKENS)
+    per_call = provider.estimate_cost(
+        live_driver.MIN_RESERVE_INPUT_TOKENS, live_driver.DEFAULT_MAX_TOKENS
+    )
     preflight = provider.estimate_cost(live_driver.MIN_RESERVE_INPUT_TOKENS, 1)
     expected = round(breakdown["units_per_lane"] * 7 * per_call + preflight, 7)
     assert total == pytest.approx(expected)

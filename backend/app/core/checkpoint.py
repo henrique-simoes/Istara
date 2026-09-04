@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import String, Text, DateTime, select, delete
+from sqlalchemy import DateTime, String, Text, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.database import Base
 from app.models.agent import AgentState
+from app.models.database import Base
 
 logger = logging.getLogger(__name__)
 
@@ -43,12 +43,12 @@ class TaskCheckpoint(Base):
     # timezone=True MUST match the UTC-aware defaults below: asyncpg rejects
     # aware datetimes for TIMESTAMP WITHOUT TIME ZONE columns (F-P1).
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     def to_dict(self) -> dict:
@@ -89,7 +89,7 @@ async def create_checkpoint(
         existing.phase = phase
         existing.checkpoint_data = json.dumps(data or {})
         existing.agent_state = agent_state.value
-        existing.updated_at = datetime.now(timezone.utc)
+        existing.updated_at = datetime.now(UTC)
     else:
         cp = TaskCheckpoint(
             task_id=task_id,
@@ -119,7 +119,7 @@ async def update_checkpoint(
             existing.agent_state = agent_state.value
         elif agent_state is not None:
             existing.agent_state = agent_state
-        existing.updated_at = datetime.now(timezone.utc)
+        existing.updated_at = datetime.now(UTC)
         await db.commit()
 
 

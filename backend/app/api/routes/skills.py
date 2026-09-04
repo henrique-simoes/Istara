@@ -6,8 +6,8 @@ import asyncio
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.agent import agent
@@ -20,9 +20,8 @@ from app.core.permissions import (
     require_project_access,
 )
 from app.models.database import get_db
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.skills.skill_manager import skill_manager
 from app.skills.registry import registry
+from app.skills.skill_manager import skill_manager
 
 router = APIRouter()
 
@@ -286,7 +285,7 @@ async def approve_creation_proposal(
     # Register the new skill in the runtime registry
     try:
         registry.register_from_definition(result["name"])
-    except Exception as e:
+    except Exception:
         # Skill file was written but runtime registration failed — not fatal
         pass
     try:
@@ -603,7 +602,7 @@ async def execute_skill(
             ),
             timeout=timeout_seconds,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         raise HTTPException(
             status_code=504,
             detail=f"Skill execution timed out after {timeout_seconds:.3g}s",
@@ -672,7 +671,7 @@ async def plan_skill(
             ),
             timeout=timeout_seconds,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         raise HTTPException(
             status_code=504,
             detail=f"Skill plan timed out after {timeout_seconds:.3g}s",

@@ -80,7 +80,10 @@ async def test_settings_status_returns_response(auth_headers):
 async def test_security_integrity_is_admin_only_and_never_exposes_key(
     auth_headers, researcher_headers
 ):
-    from app.core.field_encryption import decrypt_field, reset_encryption_health_for_tests
+    from app.core.field_encryption import (
+        decrypt_field,
+        reset_encryption_health_for_tests,
+    )
     from app.core.telemetry import telemetry_recorder
 
     # The admin-only enforcement contract holds in team mode; local desktop
@@ -91,8 +94,12 @@ async def test_security_integrity_is_admin_only_and_never_exposes_key(
     decrypt_field("ENC:tampered")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        denied = await ac.get("/api/settings/security-integrity", headers=researcher_headers)
-        response = await ac.get("/api/settings/security-integrity", headers=auth_headers)
+        denied = await ac.get(
+            "/api/settings/security-integrity", headers=researcher_headers
+        )
+        response = await ac.get(
+            "/api/settings/security-integrity", headers=auth_headers
+        )
     assert denied.status_code == 403
     assert response.status_code == 200
     payload = response.json()["field_encryption"]
@@ -170,7 +177,9 @@ async def test_settings_status_never_calls_contract_stub_chat_ready(monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_strict_routing_toggle_updates_runtime_and_persists(auth_headers, monkeypatch):
+async def test_strict_routing_toggle_updates_runtime_and_persists(
+    auth_headers, monkeypatch
+):
     """POST /api/settings/strict-routing persists the compute routing mode."""
     await init_db()
     persisted: dict[str, str] = {}
@@ -225,7 +234,9 @@ async def test_telemetry_toggle_keeps_runtime_state_when_env_is_read_only(
 
 
 @pytest.mark.asyncio
-async def test_model_management_migration_status_admin_plan_shape_no_secrets(auth_headers):
+async def test_model_management_migration_status_admin_plan_shape_no_secrets(
+    auth_headers,
+):
     """GET /api/settings/model-management/migration-status: dry-run plan shape,
     counts, rollback readiness, and never any secret material."""
     import json
@@ -241,18 +252,26 @@ async def test_model_management_migration_status_admin_plan_shape_no_secrets(aut
     async with async_session() as db:
         # The settings test DB file persists across runs; sweep stale rows from
         # earlier runs so ordering and counts stay deterministic.
-        stale = list((await db.execute(select(LLMServer).where(LLMServer.id.like("mig-shape-%")))).scalars())
+        stale = list(
+            (
+                await db.execute(
+                    select(LLMServer).where(LLMServer.id.like("mig-shape-%"))
+                )
+            ).scalars()
+        )
         for row in stale:
             await db.delete(row)
-        db.add(LLMServer(
-            id=row_id,
-            name="Compat shape",
-            provider_type="openai_compat",
-            host="https://llm.invalid/v1",
-            api_key=encrypt_field("super-secret-key-value"),
-            is_local=False,
-            is_relay=False,
-        ))
+        db.add(
+            LLMServer(
+                id=row_id,
+                name="Compat shape",
+                provider_type="openai_compat",
+                host="https://llm.invalid/v1",
+                api_key=encrypt_field("super-secret-key-value"),
+                is_local=False,
+                is_relay=False,
+            )
+        )
         await db.commit()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -359,7 +378,9 @@ async def test_classical_model_mutations_fail_closed_as_deprecated_adapters(
     original_provider = settings.llm_provider
 
     async def forbidden_list_models():
-        raise AssertionError("deprecated write must not inspect or pull classical models")
+        raise AssertionError(
+            "deprecated write must not inspect or pull classical models"
+        )
 
     monkeypatch.setattr(settings_routes.ollama, "list_models", forbidden_list_models)
     monkeypatch.setattr(
@@ -426,7 +447,9 @@ async def test_settings_data_integrity_returns_response(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/settings/data-integrity", headers=auth_headers)
     assert response.status_code == 200
-    assert {"status", "checks", "orphans", "invalid_files", "warnings"}.issubset(response.json())
+    assert {"status", "checks", "orphans", "invalid_files", "warnings"}.issubset(
+        response.json()
+    )
 
 
 @pytest.mark.asyncio
@@ -516,7 +539,9 @@ async def test_settings_audio_model_unconfigured_fails_closed(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_settings_audio_model_valid_profile_is_secret_free(auth_headers, monkeypatch):
+async def test_settings_audio_model_valid_profile_is_secret_free(
+    auth_headers, monkeypatch
+):
     """Configured local profile -> 200 with runtime-grounded capabilities, no secrets."""
     await init_db()
     settings.audio_model_provider = "local_whisper"
@@ -546,7 +571,9 @@ async def test_settings_audio_model_valid_profile_is_secret_free(auth_headers, m
     assert profile["has_credential"] is True
     assert profile["dispatch_available"] is True
     assert profile["capabilities"] == {
-        "interview_audio": True, "microphone_chat": True, "channel_audio": True,
+        "interview_audio": True,
+        "microphone_chat": True,
+        "channel_audio": True,
     }
     # Secret-free projection: credential references and URLs never surface.
     assert "credential_ref" not in body
@@ -555,7 +582,9 @@ async def test_settings_audio_model_valid_profile_is_secret_free(auth_headers, m
 
 
 @pytest.mark.asyncio
-async def test_settings_audio_model_capabilities_reflect_runtime(auth_headers, monkeypatch):
+async def test_settings_audio_model_capabilities_reflect_runtime(
+    auth_headers, monkeypatch
+):
     """Whisper unavailable at runtime -> local profile advertises no capabilities."""
     await init_db()
     settings.audio_model_provider = "local_whisper"
@@ -564,7 +593,11 @@ async def test_settings_audio_model_capabilities_reflect_runtime(auth_headers, m
     settings.audio_model_mode = "local"
     monkeypatch.setattr(
         "app.core.transcription.transcription_dependency_status",
-        lambda: {"whisper_available": False, "ffmpeg_available": False, "ffmpeg_path": None},
+        lambda: {
+            "whisper_available": False,
+            "ffmpeg_available": False,
+            "ffmpeg_path": None,
+        },
     )
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -574,7 +607,9 @@ async def test_settings_audio_model_capabilities_reflect_runtime(auth_headers, m
     assert body["configured"] is True
     assert body["profile"]["dispatch_available"] is True
     assert body["profile"]["capabilities"] == {
-        "interview_audio": False, "microphone_chat": False, "channel_audio": False,
+        "interview_audio": False,
+        "microphone_chat": False,
+        "channel_audio": False,
     }
 
 
@@ -591,7 +626,10 @@ async def test_settings_audio_model_unsupported_provider_fails_closed(auth_heade
     assert body["configured"] is False
     assert body["profile"] is None
     assert body["fallback"] == "unavailable"
-    assert body["error"] == {"type": "audio_profile_invalid", "reason": "unsupported_provider"}
+    assert body["error"] == {
+        "type": "audio_profile_invalid",
+        "reason": "unsupported_provider",
+    }
     assert body["research_data_status"] == "provisional_until_review"
 
 
@@ -609,4 +647,7 @@ async def test_settings_audio_model_invalid_mode_fails_closed(auth_headers):
     assert response.status_code == 503
     body = response.json()
     assert body["configured"] is False
-    assert body["error"] == {"type": "audio_profile_invalid", "reason": "local_whisper_remote_mode"}
+    assert body["error"] == {
+        "type": "audio_profile_invalid",
+        "reason": "local_whisper_remote_mode",
+    }

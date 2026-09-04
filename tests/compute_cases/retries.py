@@ -1,5 +1,6 @@
 from tests.compute_cases.common import *
 
+
 class _FailingChatClient:
     def __init__(self, status_code: int):
         self.status_code = status_code
@@ -13,7 +14,9 @@ class _FailingChatClient:
             request=request,
             json={"error": {"message": "provider overloaded"}},
         )
-        raise httpx.HTTPStatusError("provider overloaded", request=request, response=response)
+        raise httpx.HTTPStatusError(
+            "provider overloaded", request=request, response=response
+        )
 
 
 class _SuccessfulChatClient:
@@ -38,6 +41,7 @@ class _SuccessfulChatClient:
                 ]
             },
         )
+
 
 async def test_chat_retries_transient_errors_before_fallback(monkeypatch):
     registry = ComputeRegistry()
@@ -86,7 +90,9 @@ async def test_chat_retries_transient_errors_before_fallback(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_chat_can_rescue_registered_unhealthy_fallback_after_primary_failure(monkeypatch):
+async def test_chat_can_rescue_registered_unhealthy_fallback_after_primary_failure(
+    monkeypatch,
+):
     registry = ComputeRegistry()
     primary_client = _FailingChatClient(status_code=503)
     fallback_client = _SuccessfulChatClient()
@@ -130,6 +136,7 @@ async def test_chat_can_rescue_registered_unhealthy_fallback_after_primary_failu
     assert primary_client.calls == 5
     assert fallback_client.calls == 1
     assert fallback.is_healthy is True
+
 
 class _MislabelledOpenAIHealthClient:
     def __init__(self):
@@ -285,7 +292,9 @@ async def test_embedding_failure_does_not_cooldown_chat_node(monkeypatch):
     monkeypatch.setattr(node, "_get_client", node_get_client)
     registry.register_node(node)
 
-    with pytest.raises(RuntimeError, match="No compute nodes available for batch embedding"):
+    with pytest.raises(
+        RuntimeError, match="No compute nodes available for batch embedding"
+    ):
         await registry.embed_batch(["quota-limited text"])
 
     assert embedding_client.calls == 1

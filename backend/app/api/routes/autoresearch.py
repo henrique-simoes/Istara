@@ -6,8 +6,7 @@ Inspired by Karpathy's autoresearch (MIT) — https://github.com/karpathy/autore
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, field_validator
@@ -15,16 +14,16 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.pi_replacement import pi_replacement_requested, record_pi_span
 from app.core.permissions import (
     get_active_project_or_404,
     require_global_admin,
     require_global_role,
     require_project_access,
 )
-from app.models.database import get_db
+from app.core.pi_replacement import pi_replacement_requested, record_pi_span
 from app.models.agent import Agent, AgentState, HeartbeatStatus
 from app.models.code_application import CodeApplication
+from app.models.database import get_db
 from app.models.document import Document, DocumentStatus
 from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.method_metric import MethodMetric
@@ -60,11 +59,11 @@ class StartExperimentRequest(BaseModel):
     dry_run: bool = False
     # Per-experiment engine selection threaded into the runner loop; None
     # defaults from settings.agentic_core (W6, master plan §8).
-    engine: Optional[str] = None  # "pi" | "legacy"
+    engine: str | None = None  # "pi" | "legacy"
 
     @field_validator("engine")
     @classmethod
-    def _validate_engine(cls, value: Optional[str]) -> Optional[str]:
+    def _validate_engine(cls, value: str | None) -> str | None:
         """Reject any engine other than pi|legacy at the experiment boundary."""
         if value is None:
             return None
@@ -393,7 +392,7 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
         )
     ) or 0
 
-    recent_cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+    recent_cutoff = datetime.now(UTC) - timedelta(days=1)
     total_spans = (
         await db.scalar(
             select(func.count(TelemetrySpan.id)).where(TelemetrySpan.project_id == project_id)
@@ -696,8 +695,8 @@ async def autoresearch_status(
 @router.get("/experiments")
 async def list_experiments(
     request: Request,
-    loop_type: Optional[str] = None,
-    kept: Optional[bool] = None,
+    loop_type: str | None = None,
+    kept: bool | None = None,
     limit: int = 50,
     offset: int = 0,
     project_id: str = Query(...),

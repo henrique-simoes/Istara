@@ -2,9 +2,10 @@
 
 import json
 import logging
+from pathlib import Path
+
 from app.core.file_processor import process_file
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

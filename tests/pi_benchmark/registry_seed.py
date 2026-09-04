@@ -50,7 +50,10 @@ def ensure_benchmark_legacy_node(*, api_key: str) -> Any:
         existing.api_key = api_key
         existing.is_healthy = True
         if DEEPSEEK_MODEL not in list(getattr(existing, "loaded_models", []) or []):
-            existing.loaded_models = [*list(getattr(existing, "loaded_models", []) or []), DEEPSEEK_MODEL]
+            existing.loaded_models = [
+                *list(getattr(existing, "loaded_models", []) or []),
+                DEEPSEEK_MODEL,
+            ]
         return BENCHMARK_NODE_ID
 
     entry = LLMServerEntry(

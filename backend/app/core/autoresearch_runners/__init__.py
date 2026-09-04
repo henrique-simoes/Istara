@@ -2,7 +2,8 @@
 """Base runner interface for autoresearch optimization loops."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 # The engine for a loop is chosen once at the experiment boundary
 # (``StartExperimentRequest.engine``) and threaded into the runner via

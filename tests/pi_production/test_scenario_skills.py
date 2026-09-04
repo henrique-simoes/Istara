@@ -77,8 +77,12 @@ async def test_scenario6_three_skills_run_in_order_with_protected_blocks_intact(
 
     try:
         async for _ in svc.run_chat_turn(
-            project_id=project_id, agent_id="istara-main", system_prompt=_SYS,
-            history=[], user_text="Run the three skills.", tool_executor=ordered_exec,
+            project_id=project_id,
+            agent_id="istara-main",
+            system_prompt=_SYS,
+            history=[],
+            user_text="Run the three skills.",
+            tool_executor=ordered_exec,
             session_key=f"{project_id}:skills",
         ):
             pass
@@ -95,6 +99,10 @@ async def test_scenario6_three_skills_run_in_order_with_protected_blocks_intact(
 
     # The first skill's real canonical tool persisted a task under project scope.
     async with async_session() as db:
-        tasks = (await db.execute(select(Task).where(Task.project_id == project_id))).scalars().all()
+        tasks = (
+            (await db.execute(select(Task).where(Task.project_id == project_id)))
+            .scalars()
+            .all()
+        )
     assert [t.title for t in tasks] == ["Skill one output"]
     assert sup.is_running is False

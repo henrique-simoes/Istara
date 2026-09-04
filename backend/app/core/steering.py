@@ -48,7 +48,6 @@ from app.core.steering_types import (
     AgentSteeringState,
     SteeringMessage,
     SteeringMode,
-    SteeringQueue,
 )
 
 logger = logging.getLogger(__name__)
@@ -378,7 +377,7 @@ class SteeringManager:
         try:
             await asyncio.wait_for(state.work_complete_event.wait(), timeout=timeout)
             return True
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(f"wait_for_idle timed out for {agent_id} after {timeout}s")
             return False
 

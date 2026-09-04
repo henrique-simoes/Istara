@@ -91,7 +91,11 @@ def test_corpora_manifest_valid():
     manifest = load_corpora_manifest(CORPORA)
     assert manifest["version"] == 1
     slice_ids = {s["slice_id"] for s in manifest["slices"]}
-    assert {"coding-reliability", "graph-synthesis", "low-consensus-review"} <= slice_ids
+    assert {
+        "coding-reliability",
+        "graph-synthesis",
+        "low-consensus-review",
+    } <= slice_ids
 
 
 def test_seed_plan_is_provisional_and_blocks_promotion(tmp_path):
@@ -107,7 +111,11 @@ def test_seed_plan_is_provisional_and_blocks_promotion(tmp_path):
     assert plan["span_count"] >= 1
     for span in plan["spans"]:
         assert span["span_sha256"] == span_hash(
-            [s["text"] for s in manifest["slices"][0]["sources"] if s["id"] == span["source_id"]][0]
+            [
+                s["text"]
+                for s in manifest["slices"][0]["sources"]
+                if s["id"] == span["source_id"]
+            ][0]
         )
         assert span["kind"] == "synthetic_qa"
 

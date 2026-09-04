@@ -23,14 +23,21 @@ CANONICAL_COUNT = 15
 
 def _b1_config(tier: str, out_dir: Path, repeats: int = 3) -> RunConfig:
     return RunConfig(
-        packs=("canonical",), tier=tier, engines=("pi", "legacy"), seeds=(0,),
-        repeats=repeats, phase="B1", out_dir=out_dir,
+        packs=("canonical",),
+        tier=tier,
+        engines=("pi", "legacy"),
+        seeds=(0,),
+        repeats=repeats,
+        phase="B1",
+        out_dir=out_dir,
     )
 
 
 @pytest.mark.parametrize("tier", ["T0", "T1"])
 def test_b1_canonical_both_engines_produce_schema_valid_records(tier, tmp_path):
-    summary = run_benchmark(_b1_config(tier, tmp_path / f"b1-{tier.lower()}", repeats=1))
+    summary = run_benchmark(
+        _b1_config(tier, tmp_path / f"b1-{tier.lower()}", repeats=1)
+    )
     assert len(summary.records) == CANONICAL_COUNT * 2  # both engines
     engines_seen = {r["engine"] for r in summary.records}
     assert engines_seen == {"pi", "legacy"}
@@ -61,6 +68,6 @@ def test_b1_baseline_manifest_is_written(tmp_path):
     # Acceptance A6: B1 results are published as a regression baseline manifest.
     summary = run_benchmark(_b1_config("T0", tmp_path / "b1-t0", repeats=1))
     out = write_run(summary)
-    manifest = (out / "manifest.json")
+    manifest = out / "manifest.json"
     assert manifest.is_file()
     assert (out / "records").is_dir()

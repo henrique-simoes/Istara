@@ -18,7 +18,9 @@ pytestmark = pytest.mark.benchmark
 
 def test_module_import_is_t0_safe():
     """Importing registry_seed must not drag in backend modules."""
-    assert "app.core.llm_router" not in sys.modules or True  # backend may pre-exist from other tests
+    assert (
+        "app.core.llm_router" not in sys.modules or True
+    )  # backend may pre-exist from other tests
     # Direct check: the module itself holds no backend references at rest.
     assert not hasattr(registry_seed, "llm_router")
     assert not hasattr(registry_seed, "LLMServerEntry")
@@ -73,6 +75,8 @@ def test_remove_benchmark_legacy_node(clean_seed):
 
 def test_benchmark_route_admission():
     assert registry_seed.is_benchmark_route(registry_seed.BENCHMARK_NODE_ID)
-    assert registry_seed.is_benchmark_route(None, {"node_id": registry_seed.BENCHMARK_NODE_ID})
+    assert registry_seed.is_benchmark_route(
+        None, {"node_id": registry_seed.BENCHMARK_NODE_ID}
+    )
     assert not registry_seed.is_benchmark_route("pi-deepseek-default")
     assert not registry_seed.is_benchmark_route(None, {"node_id": "other"})

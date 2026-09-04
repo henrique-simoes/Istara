@@ -155,7 +155,9 @@ def test_research_validity_coder_selection_uses_distinct_project_donors(monkeypa
     assert [coder.model_name for coder in coders] == ["base-a:2", "model-b", "model-c"]
 
 
-def test_research_validity_coder_selection_collapses_case_variant_model_ids(monkeypatch):
+def test_research_validity_coder_selection_collapses_case_variant_model_ids(
+    monkeypatch,
+):
     """Donor aliases differing only by case must not fabricate a rater."""
     nodes = [
         SimpleNamespace(

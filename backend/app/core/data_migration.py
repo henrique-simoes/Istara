@@ -7,13 +7,11 @@ remain connected to their database records after migration.
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import select, text, inspect
+from sqlalchemy import inspect, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -29,15 +27,13 @@ async def export_full_database(db: AsyncSession) -> dict:
     - tables: { table_name: [row_dicts, ...] }
     - filesystem_refs: { lance_db_projects, keyword_index_projects, upload_dirs, persona_dirs }
     """
+    from app.models.agent import A2AMessage, Agent
     from app.models.project import Project
     from app.models.task import Task
-    from app.models.message import Message
-    from app.models.finding import Nugget, Fact, Insight, Recommendation
-    from app.models.agent import Agent, A2AMessage
 
     export_data = {
         "metadata": {
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "source_db": "sqlite" if "sqlite" in settings.database_url else "postgresql",
             "version": "1.0",
         },

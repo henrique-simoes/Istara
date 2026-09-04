@@ -13,7 +13,9 @@ import json
 import os
 import tempfile
 
-os.environ.setdefault("DATABASE_URL", f"sqlite+aiosqlite:///{tempfile.mktemp(suffix='.db')}")
+os.environ.setdefault(
+    "DATABASE_URL", f"sqlite+aiosqlite:///{tempfile.mktemp(suffix='.db')}"
+)
 os.environ.setdefault("DATA_DIR", tempfile.mkdtemp())
 os.environ.setdefault("LLM_PROVIDER", "ollama")
 os.environ.setdefault("OLLAMA_HOST", "http://127.0.0.1:9")
@@ -81,10 +83,14 @@ _DASHSCOPE_QWEN_RATE_LIMIT_FALLBACK = (
 
 def _fake_codex_access_token(account_id: str = "test-account") -> str:
     """Create a structurally valid (unsigned) Codex JWT for contract tests."""
+
     def encode(value: object) -> str:
-        return base64.urlsafe_b64encode(
-            json.dumps(value, separators=(",", ":")).encode()
-        ).rstrip(b"=").decode()
+        return (
+            base64.urlsafe_b64encode(json.dumps(value, separators=(",", ":")).encode())
+            .rstrip(b"=")
+            .decode()
+        )
+
     return ".".join(
         (
             encode({"alg": "none", "typ": "JWT"}),
@@ -100,9 +106,13 @@ def client(monkeypatch):
     from app.config import settings
 
     original_endpoints = list(settings.pi_api_endpoints)
-    monkeypatch.setattr(settings_routes, "require_global_role", lambda request, role: None)
+    monkeypatch.setattr(
+        settings_routes, "require_global_role", lambda request, role: None
+    )
     monkeypatch.setattr(settings_routes, "_persist_pi_endpoints", lambda: None)
-    monkeypatch.setattr(app_config, "_write_macos_keychain_secret", lambda *args, **kwargs: True)
+    monkeypatch.setattr(
+        app_config, "_write_macos_keychain_secret", lambda *args, **kwargs: True
+    )
     app = FastAPI()
     app.include_router(settings_routes.router, prefix="/api")
     with TestClient(app) as test_client:
@@ -119,7 +129,18 @@ def test_catalog_exposes_all_pi_providers_and_models(client):
     assert len(providers) >= 30
     assert data["total_models"] > 1000
     ids = {p["id"] for p in providers}
-    for expected in ("deepseek", "dashscope", "openai", "anthropic", "google", "openai-codex", "openrouter", "github-copilot", "mistral", "groq"):
+    for expected in (
+        "deepseek",
+        "dashscope",
+        "openai",
+        "anthropic",
+        "google",
+        "openai-codex",
+        "openrouter",
+        "github-copilot",
+        "mistral",
+        "groq",
+    ):
         assert expected in ids, f"catalog missing provider {expected}"
 
 
@@ -131,10 +152,19 @@ def test_catalog_provider_auth_hints(client):
     assert providers["deepseek"]["env_var"] == "DEEPSEEK_API_KEY"
     assert "api_key" in providers["dashscope"]["login_methods"]
     assert providers["dashscope"]["env_var"] == "DASHSCOPE_API_KEY"
-    assert providers["dashscope"]["base_url"] == "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
-    assert {m["id"] for m in providers["dashscope"]["models"]} >= {"qwen3.7-plus", "qwen3.7-flash"}
+    assert (
+        providers["dashscope"]["base_url"]
+        == "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    )
+    assert {m["id"] for m in providers["dashscope"]["models"]} >= {
+        "qwen3.7-plus",
+        "qwen3.7-flash",
+    }
     dashscope_model_ids = {m["id"] for m in providers["dashscope"]["models"]}
-    assert all(model_id in dashscope_model_ids for model_id in _DASHSCOPE_QWEN_RATE_LIMIT_FALLBACK)
+    assert all(
+        model_id in dashscope_model_ids
+        for model_id in _DASHSCOPE_QWEN_RATE_LIMIT_FALLBACK
+    )
     # OAuth/subscription provider
     assert "oauth" in providers["openai-codex"]["login_methods"]
     assert providers["openai-codex"]["oauth_flow"] == "openai_codex"
@@ -158,7 +188,9 @@ def test_regular_dashscope_catalog_matches_pi_singapore_contract(client):
     """
     resp = client.get("/api/settings/pi-catalog")
     assert resp.status_code == 200
-    provider = next(item for item in resp.json()["providers"] if item["id"] == "dashscope")
+    provider = next(
+        item for item in resp.json()["providers"] if item["id"] == "dashscope"
+    )
     models = {item["id"]: item for item in provider["models"]}
     assert set(models) == _DASHSCOPE_SINGAPORE_MODEL_IDS
     assert all(item["api"] == "openai-completions" for item in models.values())
@@ -220,12 +252,15 @@ def test_add_endpoint_via_catalog_no_manual_url(client):
     assert ep["cost_input_per_mtok"] >= 0
 
 
-@pytest.mark.parametrize("model_id", [
-    "qwen3.7-plus",
-    "qwen3.7-plus-2026-05-26",
-    "qwen3.7-flash",
-    "qwen3.7-flash-2026-07-15",
-])
+@pytest.mark.parametrize(
+    "model_id",
+    [
+        "qwen3.7-plus",
+        "qwen3.7-plus-2026-05-26",
+        "qwen3.7-flash",
+        "qwen3.7-flash-2026-07-15",
+    ],
+)
 def test_add_regular_dashscope_qwen_endpoint_via_catalog(client, model_id):
     """The supplied Pi custom-provider contract must be resolvable by the manager."""
     resp = client.post(
@@ -240,13 +275,16 @@ def test_add_regular_dashscope_qwen_endpoint_via_catalog(client, model_id):
     )
     assert resp.status_code == 200, resp.text
     endpoint = next(
-        item for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
+        item
+        for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
         if item["endpoint_id"] == f"dashscope-{model_id}"
     )
     assert endpoint["pi_provider"] == "dashscope"
     assert endpoint["model"] == model_id
     assert endpoint["provider_kind"] == "openai_compat"
-    assert endpoint["base_url"] == "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    assert (
+        endpoint["base_url"] == "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    )
     assert endpoint["context_window"] == 1_000_000
     assert endpoint["max_tokens"] == 65_536
 
@@ -276,7 +314,9 @@ def test_update_endpoint_reuses_catalog_and_keychain_custody(client, monkeypatch
     monkeypatch.setattr(
         app_config,
         "_write_macos_keychain_secret",
-        lambda service, account, secret: writes.append((service, account, secret)) or True,
+        lambda service, account, secret: (
+            writes.append((service, account, secret)) or True
+        ),
     )
     endpoint_id = "update-deepseek"
     created = client.post(
@@ -305,7 +345,8 @@ def test_update_endpoint_reuses_catalog_and_keychain_custody(client, monkeypatch
     )
     assert updated.status_code == 200, updated.text
     endpoint = next(
-        item for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
+        item
+        for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
         if item["endpoint_id"] == endpoint_id
     )
     assert endpoint["model"] == "deepseek-v4-flash"
@@ -327,14 +368,17 @@ def test_update_endpoint_reuses_catalog_and_keychain_custody(client, monkeypatch
     )
     assert rejected.status_code == 400
     after_rejection = next(
-        item for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
+        item
+        for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
         if item["endpoint_id"] == endpoint_id
     )
     assert after_rejection["model"] == "deepseek-v4-flash"
 
 
 @pytest.mark.parametrize("endpoint_id", ["pi-petals-legacy", "pi-deepseek-default"])
-def test_endpoint_mutations_cannot_claim_reserved_or_builtin_identity(client, endpoint_id):
+def test_endpoint_mutations_cannot_claim_reserved_or_builtin_identity(
+    client, endpoint_id
+):
     """PUT/DELETE must preserve the same identity boundary as POST.
 
     The fixture injects rows directly to model a stale or malformed persisted
@@ -372,7 +416,9 @@ def test_oauth_flows_endpoints(client):
     assert resp.status_code == 400
 
     # cancel of an unknown flow -> 404-safe (returns cancelled for missing)
-    resp = client.post("/api/settings/pi-oauth/cancel", json={"provider": "github-copilot"})
+    resp = client.post(
+        "/api/settings/pi-oauth/cancel", json={"provider": "github-copilot"}
+    )
     assert resp.status_code == 200
 
 
@@ -383,15 +429,19 @@ def test_oauth_start_github_copilot_device_code(client, monkeypatch):
     monkeypatch.setattr(
         oauth,
         "start_device_flow",
-        lambda provider: oauth._store_flow(oauth.OAuthFlowState(
-            provider=provider,
-            flow_type="device_code",
-            status="pending",
-            user_code="ABCD-EFGH",
-            verification_uri="https://github.com/login/device",
-        )),
+        lambda provider: oauth._store_flow(
+            oauth.OAuthFlowState(
+                provider=provider,
+                flow_type="device_code",
+                status="pending",
+                user_code="ABCD-EFGH",
+                verification_uri="https://github.com/login/device",
+            )
+        ),
     )
-    resp = client.post("/api/settings/pi-oauth/start", json={"provider": "github-copilot"})
+    resp = client.post(
+        "/api/settings/pi-oauth/start", json={"provider": "github-copilot"}
+    )
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["flow_type"] == "device_code"
@@ -399,7 +449,9 @@ def test_oauth_start_github_copilot_device_code(client, monkeypatch):
     assert "github.com" in (body["verification_uri"] or "")
     # status view shows the pending flow
     flows = client.get("/api/settings/pi-oauth/flows").json()["flows"]
-    assert any(f["provider"] == "github-copilot" and f["status"] == "pending" for f in flows)
+    assert any(
+        f["provider"] == "github-copilot" and f["status"] == "pending" for f in flows
+    )
 
 
 def test_pkce_openrouter_flow_shape(client, monkeypatch):
@@ -409,15 +461,20 @@ def test_pkce_openrouter_flow_shape(client, monkeypatch):
     monkeypatch.setattr(
         oauth,
         "start_pkce_flow",
-        lambda redirect_uri: oauth._store_flow(oauth.OAuthFlowState(
-            provider="openrouter",
-            flow_type="pkce",
-            method="browser",
-            status="pending",
-            auth_url="https://openrouter.ai/auth?state=test",
-        )),
+        lambda redirect_uri: oauth._store_flow(
+            oauth.OAuthFlowState(
+                provider="openrouter",
+                flow_type="pkce",
+                method="browser",
+                status="pending",
+                auth_url="https://openrouter.ai/auth?state=test",
+            )
+        ),
     )
-    resp = client.post("/api/settings/pi-oauth/start", json={"provider": "openrouter", "method": "browser"})
+    resp = client.post(
+        "/api/settings/pi-oauth/start",
+        json={"provider": "openrouter", "method": "browser"},
+    )
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["flow_type"] == "pkce"
@@ -433,9 +490,16 @@ def test_openai_codex_exposes_browser_and_headless_methods(monkeypatch):
     def fake_request(url, payload=None, **kwargs):
         calls.append((url, payload, kwargs))
         if url.endswith("/usercode"):
-            return {"device_auth_id": "device-1", "user_code": "ABCD-EFGH", "interval": 2}
+            return {
+                "device_auth_id": "device-1",
+                "user_code": "ABCD-EFGH",
+                "interval": 2,
+            }
         if url.endswith("/deviceauth/token"):
-            return {"authorization_code": "auth-code", "code_verifier": "device-verifier"}
+            return {
+                "authorization_code": "auth-code",
+                "code_verifier": "device-verifier",
+            }
         if url.endswith("/oauth/token"):
             return {
                 "access_token": _fake_codex_access_token(),
@@ -445,7 +509,9 @@ def test_openai_codex_exposes_browser_and_headless_methods(monkeypatch):
         raise AssertionError(url)
 
     monkeypatch.setattr(oauth, "_http_request", fake_request)
-    browser = oauth.start_openai_browser_flow("https://istara.example/api/settings/pi-oauth/openai/callback")
+    browser = oauth.start_openai_browser_flow(
+        "https://istara.example/api/settings/pi-oauth/openai/callback"
+    )
     assert browser.method == "browser"
     assert browser.flow_id
     assert "auth.openai.com/oauth/authorize" in browser.auth_url
@@ -473,13 +539,15 @@ def test_openai_codex_rejects_incomplete_or_unbound_token(monkeypatch):
     monkeypatch.setattr(
         oauth,
         "_http_request",
-        lambda url, payload=None, **kwargs: {
-            "access_token": "not-a-jwt",
-            "refresh_token": "refresh",
-            "expires_in": 3600,
-        }
-        if url.endswith("/oauth/token")
-        else {},
+        lambda url, payload=None, **kwargs: (
+            {
+                "access_token": "not-a-jwt",
+                "refresh_token": "refresh",
+                "expires_in": 3600,
+            }
+            if url.endswith("/oauth/token")
+            else {}
+        ),
     )
     flow = oauth.start_openai_browser_flow("https://istara.example/callback")
     with pytest.raises(ValueError, match="openai_token_response_invalid"):
@@ -494,16 +562,18 @@ def test_add_openai_codex_luna_via_catalog_uses_oauth_transport(client):
     from app.config import settings
     from app.core.pi_runtime import oauth
 
-    flow = oauth._store_flow(oauth.OAuthFlowState(
-        provider="openai-codex",
-        oauth_provider="openai-codex",
-        flow_type="device_code",
-        method="device_code",
-        status="approved",
-        access_token=_fake_codex_access_token("luna-account"),
-        refresh_token="refresh.jwt",
-        credential_expires_at=9_999_999_999,
-    ))
+    flow = oauth._store_flow(
+        oauth.OAuthFlowState(
+            provider="openai-codex",
+            oauth_provider="openai-codex",
+            flow_type="device_code",
+            method="device_code",
+            status="approved",
+            access_token=_fake_codex_access_token("luna-account"),
+            refresh_token="refresh.jwt",
+            credential_expires_at=9_999_999_999,
+        )
+    )
     endpoint_id = "openai-codex-gpt-5-6-luna-oauth-device-code"
     response = client.post(
         "/api/settings/pi-endpoints",
@@ -518,7 +588,9 @@ def test_add_openai_codex_luna_via_catalog_uses_oauth_transport(client):
         },
     )
     assert response.status_code == 200, response.text
-    endpoint = next(item for item in settings.pi_api_endpoints if item.endpoint_id == endpoint_id)
+    endpoint = next(
+        item for item in settings.pi_api_endpoints if item.endpoint_id == endpoint_id
+    )
     assert endpoint.provider_kind == "openai_codex"
     assert endpoint.base_url == "https://chatgpt.com/backend-api"
     assert endpoint.model == "gpt-5.6-luna"
@@ -526,7 +598,9 @@ def test_add_openai_codex_luna_via_catalog_uses_oauth_transport(client):
     assert endpoint.max_tokens == 128_000
     assert endpoint.supports_vision is True
     assert endpoint.supports_reasoning is True
-    settings.pi_api_endpoints = [item for item in settings.pi_api_endpoints if item.endpoint_id != endpoint_id]
+    settings.pi_api_endpoints = [
+        item for item in settings.pi_api_endpoints if item.endpoint_id != endpoint_id
+    ]
     oauth._FLOWS.clear()
 
 
@@ -534,15 +608,17 @@ def test_oauth_credential_is_consumed_into_endpoint_custody(client, monkeypatch)
     from app.config import settings
     from app.core.pi_runtime import oauth
 
-    flow = oauth._store_flow(oauth.OAuthFlowState(
-        provider="openai-codex",
-        oauth_provider="openai-codex",
-        flow_type="device_code",
-        method="device_code",
-        status="approved",
-        access_token="access.jwt",
-        refresh_token="refresh.jwt",
-    ))
+    flow = oauth._store_flow(
+        oauth.OAuthFlowState(
+            provider="openai-codex",
+            oauth_provider="openai-codex",
+            flow_type="device_code",
+            method="device_code",
+            status="approved",
+            access_token="access.jwt",
+            refresh_token="refresh.jwt",
+        )
+    )
     endpoint_id = "codex-oauth-custody-test"
     response = client.post(
         "/api/settings/pi-endpoints",
@@ -561,7 +637,9 @@ def test_oauth_credential_is_consumed_into_endpoint_custody(client, monkeypatch)
     endpoint = next(item for item in listed if item["endpoint_id"] == endpoint_id)
     assert "oauth_credential_encrypted" not in endpoint
     assert endpoint["auth_method"] == "oauth_device_code"
-    settings.pi_api_endpoints = [item for item in settings.pi_api_endpoints if item.endpoint_id != endpoint_id]
+    settings.pi_api_endpoints = [
+        item for item in settings.pi_api_endpoints if item.endpoint_id != endpoint_id
+    ]
     with pytest.raises(ValueError, match="oauth_credential_not_ready"):
         oauth.consume_oauth_credential("openai-codex")
     oauth._FLOWS.clear()
@@ -572,15 +650,17 @@ def test_oauth_endpoint_sparse_update_preserves_existing_custody(client):
     from app.config import settings
     from app.core.pi_runtime import oauth
 
-    flow = oauth._store_flow(oauth.OAuthFlowState(
-        provider="openai-codex",
-        oauth_provider="openai-codex",
-        flow_type="device_code",
-        method="device_code",
-        status="approved",
-        access_token="access.jwt",
-        refresh_token="refresh.jwt",
-    ))
+    flow = oauth._store_flow(
+        oauth.OAuthFlowState(
+            provider="openai-codex",
+            oauth_provider="openai-codex",
+            flow_type="device_code",
+            method="device_code",
+            status="approved",
+            access_token="access.jwt",
+            refresh_token="refresh.jwt",
+        )
+    )
     endpoint_id = "codex-oauth-sparse-update"
     created = client.post(
         "/api/settings/pi-endpoints",
@@ -603,7 +683,11 @@ def test_oauth_endpoint_sparse_update_preserves_existing_custody(client):
 
     updated = client.put(
         f"/api/settings/pi-endpoints/{endpoint_id}",
-        json={"endpoint_id": endpoint_id, "pi_provider": "openai-codex", "pi_model": "gpt-5.4"},
+        json={
+            "endpoint_id": endpoint_id,
+            "pi_provider": "openai-codex",
+            "pi_model": "gpt-5.4",
+        },
     )
     assert updated.status_code == 200, updated.text
     replacement = next(

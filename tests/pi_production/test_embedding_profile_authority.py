@@ -17,7 +17,10 @@ from app.core.pi_runtime.embedding_profile import (
     public_embedding_profile,
     reset_embedding_profile_cache,
 )
-from app.core.pi_runtime.embeddings_gateway import EmbeddingsGateway, default_embed_model
+from app.core.pi_runtime.embeddings_gateway import (
+    EmbeddingsGateway,
+    default_embed_model,
+)
 from app.core.pi_runtime.endpoints import PiEndpointResolutionError, ResolvedPiEndpoint
 from app.core.pi_runtime.model_manager import PiModelManager
 from app.core.embeddings import EmbeddedChunk, TextChunk
@@ -56,7 +59,9 @@ def _profile(endpoint_id: str, model: str) -> ActiveEmbeddingProfile:
 
 
 @pytest.mark.asyncio
-async def test_profile_bootstraps_once_and_classical_provider_cannot_mutate_it(monkeypatch):
+async def test_profile_bootstraps_once_and_classical_provider_cannot_mutate_it(
+    monkeypatch,
+):
     await init_db()
     async with async_session() as db:
         await db.execute(delete(EmbeddingProfile))
@@ -165,7 +170,9 @@ async def test_gateway_uses_profile_model_and_exact_endpoint(monkeypatch):
         raising=False,
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        result = await EmbeddingsGateway(manager=manager, client=client).embed(["evidence"])
+        result = await EmbeddingsGateway(manager=manager, client=client).embed(
+            ["evidence"]
+        )
 
     assert result["model"] == "shared-embed"
     assert result["endpoint_id"] == "embed-shadow"

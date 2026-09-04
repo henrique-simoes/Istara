@@ -25,7 +25,9 @@ SENTINEL_KEY = "sk-SENTINEL-SECRET-9f8e7d6c5b"  # fake; asserted absent from all
 
 
 def _provider(**overrides) -> DeepSeekProvider:
-    base = dict(provider="deepseek", model="deepseek-v4-pro", key_loader=lambda: SENTINEL_KEY)
+    base = dict(
+        provider="deepseek", model="deepseek-v4-pro", key_loader=lambda: SENTINEL_KEY
+    )
     base.update(overrides)
     return DeepSeekProvider(**base)
 
@@ -66,10 +68,14 @@ def test_chat_happy_path_commits_actual_cost(tmp_path):
     # Realistic usage within the reservation margin: the worst-case reservation for this
     # tiny prompt floors at estimate_cost(MIN_RESERVE_INPUT_TOKENS=256, 512) ≈ $0.00126,
     # and a provider-reported cost below that commits cleanly.
-    provider = _provider(http_post=lambda url, headers, body, timeout: _usage_payload(
-        prompt_tokens=120, completion_tokens=90,
-        prompt_cache_hit_tokens=20, prompt_cache_miss_tokens=100,
-    ))
+    provider = _provider(
+        http_post=lambda url, headers, body, timeout: _usage_payload(
+            prompt_tokens=120,
+            completion_tokens=90,
+            prompt_cache_hit_tokens=20,
+            prompt_cache_miss_tokens=100,
+        )
+    )
     text, usage = provider.chat(
         messages=[{"role": "user", "content": "judge this"}],
         max_tokens=512,
@@ -112,7 +118,9 @@ def test_unknown_usage_fails_closed_and_keeps_reservation(tmp_path):
         )
     # Fail closed: the worst-case reservation is NOT released.
     assert list(ledger.outstanding()) == ["judge-unknown"]
-    assert [json.loads(line)["type"] for line in ledger.path.read_text().splitlines()] == ["reserve"]
+    assert [
+        json.loads(line)["type"] for line in ledger.path.read_text().splitlines()
+    ] == ["reserve"]
 
 
 def test_over_reservation_commit_fails_closed_and_retains_reservation(tmp_path):
@@ -120,10 +128,14 @@ def test_over_reservation_commit_fails_closed_and_retains_reservation(tmp_path):
     # the ledger refuses the commit, and the provider fails closed with a typed error and
     # the reservation still booked (rather than letting the LedgerStateError escape).
     ledger = BudgetLedger(tmp_path / "ledger.jsonl", cap_usd=1.00)
-    provider = _provider(http_post=lambda url, headers, body, timeout: _usage_payload(
-        prompt_tokens=1_000_000, completion_tokens=1_000_000,
-        prompt_cache_hit_tokens=0, prompt_cache_miss_tokens=0,
-    ))
+    provider = _provider(
+        http_post=lambda url, headers, body, timeout: _usage_payload(
+            prompt_tokens=1_000_000,
+            completion_tokens=1_000_000,
+            prompt_cache_hit_tokens=0,
+            prompt_cache_miss_tokens=0,
+        )
+    )
     with pytest.raises(ProviderCallFailed, match="over_reservation_fail_closed"):
         provider.chat(
             messages=[{"role": "user", "content": "judge this"}],
@@ -133,7 +145,9 @@ def test_over_reservation_commit_fails_closed_and_retains_reservation(tmp_path):
         )
     # Fail closed: only the reserve row was written; the reservation stays outstanding.
     assert list(ledger.outstanding()) == ["judge-over"]
-    assert [json.loads(line)["type"] for line in ledger.path.read_text().splitlines()] == ["reserve"]
+    assert [
+        json.loads(line)["type"] for line in ledger.path.read_text().splitlines()
+    ] == ["reserve"]
 
 
 def test_missing_key_is_pre_dispatch_and_releases(tmp_path):
@@ -150,7 +164,9 @@ def test_missing_key_is_pre_dispatch_and_releases(tmp_path):
             call_id="judge-no-key",
         )
     assert ledger.outstanding() == {}
-    assert [json.loads(line)["type"] for line in ledger.path.read_text().splitlines()] == [
+    assert [
+        json.loads(line)["type"] for line in ledger.path.read_text().splitlines()
+    ] == [
         "reserve",
         "release",
     ]
@@ -159,7 +175,9 @@ def test_missing_key_is_pre_dispatch_and_releases(tmp_path):
 def test_budget_exceeded_propagates_and_never_dispatches(tmp_path):
     ledger = BudgetLedger(tmp_path / "ledger.jsonl", cap_usd=0.0001)
     provider = _provider(
-        http_post=lambda *args: pytest.fail("http_post must not run when the cap is blown"),
+        http_post=lambda *args: pytest.fail(
+            "http_post must not run when the cap is blown"
+        ),
     )
     with pytest.raises(BudgetExceeded):
         provider.chat(
@@ -203,7 +221,10 @@ def test_endpoint_fingerprint_is_redacted():
     fingerprint = provider.endpoint_fingerprint()
     expected = "deepseek:" + hashlib.sha256(DEEPSEEK_BASE_URL.encode()).hexdigest()[:12]
     assert fingerprint == expected
-    assert fingerprint.startswith("deepseek:") and len(fingerprint) == len("deepseek:") + 12
+    assert (
+        fingerprint.startswith("deepseek:")
+        and len(fingerprint) == len("deepseek:") + 12
+    )
     assert DEEPSEEK_BASE_URL not in fingerprint
     assert SENTINEL_KEY not in fingerprint
 
@@ -216,8 +237,10 @@ def test_preflight_is_a_minimal_ledgered_call(tmp_path):
         seen["body"] = body
         # A one-token ping reports minimal usage — well within the reservation floor.
         return _usage_payload(
-            prompt_tokens=2, completion_tokens=1,
-            prompt_cache_hit_tokens=0, prompt_cache_miss_tokens=2,
+            prompt_tokens=2,
+            completion_tokens=1,
+            prompt_cache_hit_tokens=0,
+            prompt_cache_miss_tokens=2,
         )
 
     provider = _provider(http_post=fake_post)

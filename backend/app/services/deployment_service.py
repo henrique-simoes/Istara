@@ -3,7 +3,7 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
@@ -312,7 +312,7 @@ async def handle_response(
 
     # Advance question index
     conversation.current_question_index += 1
-    conversation.last_message_at = datetime.now(timezone.utc)
+    conversation.last_message_at = datetime.now(UTC)
 
     # Check if all scripted questions have been answered
     if conversation.current_question_index >= len(questions):
@@ -327,7 +327,7 @@ async def handle_response(
 
         # Mark completed
         conversation.state = "completed"
-        conversation.completed_at = datetime.now(timezone.utc)
+        conversation.completed_at = datetime.now(UTC)
         deployment.current_responses += 1
         await db.commit()
         return {
@@ -495,7 +495,7 @@ async def get_deployment_overview(db: AsyncSession, project_id: str) -> dict:
     active = [d for d in deployments if d.state == "active"]
 
     # Count conversations in last 24h
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    cutoff = datetime.now(UTC) - timedelta(hours=24)
     conv_result = await db.execute(
         select(func.count(ChannelConversation.id))
         .join(

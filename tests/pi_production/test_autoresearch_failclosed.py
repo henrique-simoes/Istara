@@ -59,7 +59,9 @@ async def test_autoresearch_route_returns_typed_503_on_worker_failure(monkeypatc
     monkeypatch.setattr(seams, "_service", _FailingAutoresearchService(exc))
     monkeypatch.setattr(settings, "autoresearch_enabled", True)
     monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", fake_scope)
-    monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False))
+    monkeypatch.setattr(
+        autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False)
+    )
 
     added: list[object] = []
     background_tasks = BackgroundTasks()
@@ -127,11 +129,17 @@ async def _run_pi_chat(monkeypatch, project_id: str, events: list[dict]) -> str:
         return None
 
     monkeypatch.setattr(chat_route, "retrieve_context", fake_retrieve_context)
-    monkeypatch.setattr(chat_route, "compose_dynamic_prompt", fake_compose_dynamic_prompt)
-    monkeypatch.setattr(chat_route, "ensure_pi_deepseek_registered", lambda: (True, "registered"))
+    monkeypatch.setattr(
+        chat_route, "compose_dynamic_prompt", fake_compose_dynamic_prompt
+    )
+    monkeypatch.setattr(
+        chat_route, "ensure_pi_deepseek_registered", lambda: (True, "registered")
+    )
     monkeypatch.setattr(chat_route, "PiChatRunMetrics", _FakeMetrics)
     monkeypatch.setattr(chat_route, "_pi_execution_service", _StubPiChatService(events))
-    monkeypatch.setattr("app.core.pi_replacement.telemetry_recorder.record_span", fake_record_span)
+    monkeypatch.setattr(
+        "app.core.pi_replacement.telemetry_recorder.record_span", fake_record_span
+    )
     # Keep the post-save DAG compaction task out of the deterministic stream.
     monkeypatch.setattr(chat_route.settings, "dag_enabled", False)
 
@@ -143,7 +151,9 @@ async def _run_pi_chat(monkeypatch, project_id: str, events: list[dict]) -> str:
         async def fake_get_visible_project_or_404(*args, **kwargs):
             return project
 
-        monkeypatch.setattr(chat_route, "get_visible_project_or_404", fake_get_visible_project_or_404)
+        monkeypatch.setattr(
+            chat_route, "get_visible_project_or_404", fake_get_visible_project_or_404
+        )
         response = await chat_route.chat(
             chat_route.ChatRequest(project_id=project_id, message="hello pi"),
             SimpleNamespace(headers={"x-istara-agent-engine": "pi"}),
@@ -159,13 +169,17 @@ async def _run_pi_chat(monkeypatch, project_id: str, events: list[dict]) -> str:
 async def _assistant_messages(project_id: str) -> list[Message]:
     async with async_session() as db:
         return (
-            await db.execute(
-                select(Message).where(
-                    Message.project_id == project_id,
-                    Message.role == "assistant",
+            (
+                await db.execute(
+                    select(Message).where(
+                        Message.project_id == project_id,
+                        Message.role == "assistant",
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
 
 @pytest.mark.asyncio

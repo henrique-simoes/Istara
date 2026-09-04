@@ -12,16 +12,14 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import case, select, or_
+from sqlalchemy import case, or_, select
 
+from app.core.datetime_utils import ensure_utc
 from app.models.database import async_session
 from app.models.project import Project
 from app.models.task import Task, TaskStatus
-from app.models.agent import Agent, AgentState
-from app.api.websocket import broadcast_agent_status, broadcast_task_progress
-from app.core.datetime_utils import ensure_utc
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +51,7 @@ class SubAgentWorker:
         """Check if a task is still within its retry backoff window."""
         if task.last_retry_at and (task.retry_count or 0) > 0:
             backoff = min(5 * (3 ** (task.retry_count - 1)), 120)
-            elapsed = (datetime.now(timezone.utc) - ensure_utc(task.last_retry_at)).total_seconds()
+            elapsed = (datetime.now(UTC) - ensure_utc(task.last_retry_at)).total_seconds()
             if elapsed < backoff:
                 return True
         return False
@@ -160,7 +158,7 @@ class SubAgentWorker:
         except Exception as e:
             logger.error(f"SubAgent {self._agent_id} task execution failed: {e}")
             task.retry_count = (task.retry_count or 0) + 1
-            task.last_retry_at = datetime.now(timezone.utc)
+            task.last_retry_at = datetime.now(UTC)
             task.agent_notes = f"Execution failed: {str(e)[:200]}"
 
             event = None

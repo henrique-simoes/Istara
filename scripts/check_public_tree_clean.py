@@ -57,14 +57,18 @@ BLOCKED_EXACT = {
 
 
 def run_git(args: list[str]) -> str:
-    result = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True)
+    result = subprocess.run(
+        ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True
+    )
     return result.stdout
 
 
 def staged_files() -> list[str]:
     return [
         line.strip()
-        for line in run_git(["diff", "--cached", "--name-only", "--diff-filter=ACMR"]).splitlines()
+        for line in run_git(
+            ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]
+        ).splitlines()
         if line.strip()
     ]
 
@@ -72,7 +76,9 @@ def staged_files() -> list[str]:
 def changed_files(base: str, head: str) -> list[str]:
     return [
         line.strip()
-        for line in run_git(["diff", "--name-only", "--diff-filter=ACMR", f"{base}..{head}"]).splitlines()
+        for line in run_git(
+            ["diff", "--name-only", "--diff-filter=ACMR", f"{base}..{head}"]
+        ).splitlines()
         if line.strip()
     ]
 
@@ -113,7 +119,9 @@ def main() -> int:
         print("Public-tree cleanliness check failed:\n")
         for issue in issues:
             print(f"- {issue}")
-        print("\nMove personal/runtime artifacts outside the public repo or keep them ignored.")
+        print(
+            "\nMove personal/runtime artifacts outside the public repo or keep them ignored."
+        )
         return 1
 
     print("Public-tree cleanliness check passed.")

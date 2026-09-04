@@ -26,7 +26,6 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
-from pathlib import Path
 
 from app.config import settings
 from app.core.agent_identity import IDENTITY_FILES, persona_file_path

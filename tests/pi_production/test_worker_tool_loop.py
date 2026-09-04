@@ -64,7 +64,10 @@ async def test_pi_worker_owns_tool_loop_and_persists_task():
                         "tool_calls": [
                             {
                                 "name": "create_task",
-                                "arguments": {"title": "Pi runtime scenario task", "priority": "high"},
+                                "arguments": {
+                                    "title": "Pi runtime scenario task",
+                                    "priority": "high",
+                                },
                             }
                         ],
                         "stop_reason": "toolUse",
@@ -103,15 +106,19 @@ async def test_pi_worker_owns_tool_loop_and_persists_task():
     assert "run.started" in observed
     assert "tool.call" in observed
     assert "run.completed" in observed
-    assert executed_tools == [("create_task", {"title": "Pi runtime scenario task", "priority": "high"})]
+    assert executed_tools == [
+        ("create_task", {"title": "Pi runtime scenario task", "priority": "high"})
+    ]
     assert "".join(final_text).strip()
     assert "after observing the authority result" in "".join(final_text)
 
     # Istara persisted the task via the real canonical tool — not a lab facade.
     async with async_session() as db:
         tasks = (
-            await db.execute(select(Task).where(Task.project_id == project_id))
-        ).scalars().all()
+            (await db.execute(select(Task).where(Task.project_id == project_id)))
+            .scalars()
+            .all()
+        )
     assert len(tasks) == 1
     assert tasks[0].title == "Pi runtime scenario task"
 
@@ -182,7 +189,10 @@ async def test_pi_worker_completes_long_horizon_tool_chain_with_cumulative_turns
             {
                 "endpoint_id": "faux-long-horizon",
                 "provider_kind": "faux",
-                "faux_responses": [*calls, final_text("Completed all seven research steps.")],
+                "faux_responses": [
+                    *calls,
+                    final_text("Completed all seven research steps."),
+                ],
                 "model": "stub-model",
                 "api_key": "faux",
                 "timeout_ms": 30000,
@@ -193,9 +203,15 @@ async def test_pi_worker_completes_long_horizon_tool_chain_with_cumulative_turns
         async def tool_handler(name: str, args: dict) -> dict:
             executed.append((name, args))
             result = await execute_tool(name, args, project_id, agent_id="istara-main")
-            return {"ok": bool(result.get("success")), "result": result.get("result"), "error": result.get("error")}
+            return {
+                "ok": bool(result.get("success")),
+                "result": result.get("result"),
+                "error": result.get("error"),
+            }
 
-        async for frame in sup.run_turn(session_key, "Execute the full research plan.", tool_handler):
+        async for frame in sup.run_turn(
+            session_key, "Execute the full research plan.", tool_handler
+        ):
             observed.append(frame)
         await sup.close_session(session_key)
     finally:
@@ -212,8 +228,10 @@ async def test_pi_worker_completes_long_horizon_tool_chain_with_cumulative_turns
 
     async with async_session() as db:
         tasks = (
-            await db.execute(select(Task).where(Task.project_id == project_id))
-        ).scalars().all()
+            (await db.execute(select(Task).where(Task.project_id == project_id)))
+            .scalars()
+            .all()
+        )
     assert sorted(task.title for task in tasks) == [
         f"Long-horizon step {index}" for index in range(1, 8)
     ]

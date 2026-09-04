@@ -126,7 +126,9 @@ def test_select_candidates_hard_filters_vision_requirement():
 def test_sanitize_messages_preserves_openai_multimodal_content():
     image_content = _image_content()
 
-    sanitized = ComputeRegistry._sanitize_messages([{"role": "user", "content": image_content}])
+    sanitized = ComputeRegistry._sanitize_messages(
+        [{"role": "user", "content": image_content}]
+    )
 
     assert sanitized == [{"role": "user", "content": image_content}]
     assert ComputeRegistry._messages_require_vision(sanitized) is True
@@ -177,7 +179,12 @@ async def test_list_models_includes_capability_metadata_for_relay_nodes():
             "quantization": "Q5_K_XL",
             "is_loaded": True,
             "endpoint_family": None,
-            "capabilities": {"tools": True, "vision": True, "audio": False, "json": False},
+            "capabilities": {
+                "tools": True,
+                "vision": True,
+                "audio": False,
+                "json": False,
+            },
         }
     ]
 
@@ -196,7 +203,9 @@ async def test_chat_routes_image_payload_to_vision_node(monkeypatch):
         is_healthy=True,
         priority=0,
         loaded_models=["text-model"],
-        model_capabilities={"text-model": {"supports_vision": False, "is_loaded": True}},
+        model_capabilities={
+            "text-model": {"supports_vision": False, "is_loaded": True}
+        },
     )
     vision_node = ComputeNode(
         node_id="vision",
@@ -207,7 +216,9 @@ async def test_chat_routes_image_payload_to_vision_node(monkeypatch):
         is_healthy=True,
         priority=10,
         loaded_models=["vision-model"],
-        model_capabilities={"vision-model": {"supports_vision": True, "is_loaded": True}},
+        model_capabilities={
+            "vision-model": {"supports_vision": True, "is_loaded": True}
+        },
     )
 
     async def text_get_client():
@@ -258,7 +269,10 @@ async def test_chat_loads_available_lmstudio_vision_model_for_image_task(monkeyp
     response = await registry.chat([{"role": "user", "content": image_content}])
 
     assert response["message"]["content"] == "vision answered"
-    assert [path for path, _ in client.calls] == ["api/v1/models/load", "v1/chat/completions"]
+    assert [path for path, _ in client.calls] == [
+        "api/v1/models/load",
+        "v1/chat/completions",
+    ]
     assert client.calls[0][1]["model"] == "vision-model"
     assert client.calls[1][1]["model"] == "vision-model"
     assert client.calls[1][1]["messages"][0]["content"] == image_content
@@ -277,7 +291,9 @@ async def test_chat_rejects_image_task_without_vision_capability(monkeypatch):
         provider_type="lmstudio",
         is_healthy=True,
         loaded_models=["text-model"],
-        model_capabilities={"text-model": {"supports_vision": False, "is_loaded": True}},
+        model_capabilities={
+            "text-model": {"supports_vision": False, "is_loaded": True}
+        },
     )
 
     async def get_client():

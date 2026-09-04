@@ -8,7 +8,9 @@ from app.config import settings
 
 
 @pytest.mark.asyncio
-async def test_settings_models_exposes_pi_catalog_and_normalized_global_engine(monkeypatch):
+async def test_settings_models_exposes_pi_catalog_and_normalized_global_engine(
+    monkeypatch,
+):
     class StubOllama:
         async def health(self):
             return True
@@ -41,14 +43,27 @@ async def test_project_response_exposes_normalized_global_engine(monkeypatch):
         "ProjectStub",
         (),
         dict(
-            id="project-1", name="Project", description="", phase="discover",
-            company_context="", project_context="", guardrails="", is_paused=False,
-            owner_id="owner", watch_folder_path=None, agentic_engine=None,
-            created_at=None, updated_at=None,
+            id="project-1",
+            name="Project",
+            description="",
+            phase="discover",
+            company_context="",
+            project_context="",
+            guardrails="",
+            is_paused=False,
+            owner_id="owner",
+            watch_folder_path=None,
+            agentic_engine=None,
+            created_at=None,
+            updated_at=None,
         ),
     )()
-    monkeypatch.setattr(settings, "agentic_engine_default", "pi-replacement", raising=False)
-    monkeypatch.setattr(project_routes, "get_subject", lambda _r: type("S", (), {"id": "u"})())
+    monkeypatch.setattr(
+        settings, "agentic_engine_default", "pi-replacement", raising=False
+    )
+    monkeypatch.setattr(
+        project_routes, "get_subject", lambda _r: type("S", (), {"id": "u"})()
+    )
     monkeypatch.setattr(project_routes, "is_global_admin", lambda _s: True)
 
     response = await project_routes._project_response(project, object(), object())
@@ -64,10 +79,19 @@ async def test_project_response_exposes_embed_model_as_safe_metadata(monkeypatch
         "ProjectStub",
         (),
         dict(
-            id="project-1", name="Project", description="", phase="discover",
-            company_context="", project_context="", guardrails="", is_paused=False,
-            owner_id="owner", watch_folder_path=None, agentic_engine=None,
-            created_at=None, updated_at=None,
+            id="project-1",
+            name="Project",
+            description="",
+            phase="discover",
+            company_context="",
+            project_context="",
+            guardrails="",
+            is_paused=False,
+            owner_id="owner",
+            watch_folder_path=None,
+            agentic_engine=None,
+            created_at=None,
+            updated_at=None,
         ),
     )()
     from app.core.pi_runtime import embedding_profile as profile_module
@@ -90,7 +114,9 @@ async def test_project_response_exposes_embed_model_as_safe_metadata(monkeypatch
             migration_source="test",
         ),
     )
-    monkeypatch.setattr(project_routes, "get_subject", lambda _r: type("S", (), {"id": "u"})())
+    monkeypatch.setattr(
+        project_routes, "get_subject", lambda _r: type("S", (), {"id": "u"})()
+    )
     monkeypatch.setattr(project_routes, "is_global_admin", lambda _s: True)
 
     response = await project_routes._project_response(project, object(), object())

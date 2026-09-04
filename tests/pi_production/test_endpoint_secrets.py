@@ -69,7 +69,9 @@ def test_keychain_secret_cached_per_endpoint_with_ttl(monkeypatch):
 def test_missing_secret_fails_closed(monkeypatch):
     """No env secret and no Keychain item → typed resolution error, never a key."""
     monkeypatch.delenv("ISTARA_PI_SECRET_PI_TEST", raising=False)
-    monkeypatch.setattr(endpoints_module, "_read_macos_keychain_secret", lambda *a, **k: "")
+    monkeypatch.setattr(
+        endpoints_module, "_read_macos_keychain_secret", lambda *a, **k: ""
+    )
 
     with pytest.raises(PiEndpointResolutionError, match="missing_keychain_secret"):
         PiEndpointResolver([_endpoint()]).resolve("pi-test")
@@ -84,7 +86,9 @@ def test_api_key_custody_persists_endpoint_env_secret_in_linux_docker(monkeypatc
     monkeypatch.setattr(
         app_config,
         "_write_macos_keychain_secret",
-        lambda *args, **kwargs: pytest.fail("Linux Docker must not attempt macOS Keychain custody"),
+        lambda *args, **kwargs: pytest.fail(
+            "Linux Docker must not attempt macOS Keychain custody"
+        ),
     )
     persisted: list[tuple[str, str]] = []
     monkeypatch.setattr(

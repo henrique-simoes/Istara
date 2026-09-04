@@ -41,7 +41,10 @@ def _function_source(path: Path, function_name: str) -> str:
     text = path.read_text(encoding="utf-8")
     tree = ast.parse(text)
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        ):
             return ast.get_source_segment(text, node) or ""
     raise AssertionError(f"{function_name} not found in {path}")
 
@@ -65,7 +68,9 @@ def _agentic_core_on(monkeypatch):
 
 def _deployment(**overrides) -> SimpleNamespace:
     deployment = SimpleNamespace(
-        config_json=json.dumps({"max_followups": 3, "research_goals": "Understand onboarding"}),
+        config_json=json.dumps(
+            {"max_followups": 3, "research_goals": "Understand onboarding"}
+        ),
         questions_json=json.dumps([{"text": "How was onboarding?"}]),
         deployment_type="interview",
         project_id="p1",
@@ -128,7 +133,9 @@ async def test_generate_clarification_flag_on_none_sentinel_unchanged(
     assert result is None, "dispatcher NONE reply must hit the same sentinel check"
 
 
-async def test_generate_clarification_flag_on_empty_project_scope(monkeypatch, _agentic_core_on):
+async def test_generate_clarification_flag_on_empty_project_scope(
+    monkeypatch, _agentic_core_on
+):
     dispatcher_stub = _StubAgentic(text="follow-up?")
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
@@ -141,7 +148,9 @@ async def test_generate_clarification_flag_on_empty_project_scope(monkeypatch, _
 # ── behavior: _is_saturated (channel.saturation) ─────────────────────────
 
 
-async def test_is_saturated_flag_on_dispatches_channel_saturation(monkeypatch, _agentic_core_on):
+async def test_is_saturated_flag_on_dispatches_channel_saturation(
+    monkeypatch, _agentic_core_on
+):
     # NB: the check is the substring test ``"SATURATED" in content``,
     # which also matches "NOT_SATURATED" — use a reply without the substring
     # to exercise the not-saturated path.
@@ -149,7 +158,9 @@ async def test_is_saturated_flag_on_dispatches_channel_saturation(monkeypatch, _
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     config = {"saturation_check_llm": True}
-    result = await adaptive_interview._is_saturated("new detail here", config, project_id="p1")
+    result = await adaptive_interview._is_saturated(
+        "new detail here", config, project_id="p1"
+    )
 
     assert result is False, "a reply without the SATURATED substring is not saturated"
     method, kwargs = dispatcher_stub.calls[0]
@@ -159,12 +170,16 @@ async def test_is_saturated_flag_on_dispatches_channel_saturation(monkeypatch, _
     assert "new detail here" in kwargs["messages"][0]["content"]
 
 
-async def test_is_saturated_flag_on_saturated_sentinel_unchanged(monkeypatch, _agentic_core_on):
+async def test_is_saturated_flag_on_saturated_sentinel_unchanged(
+    monkeypatch, _agentic_core_on
+):
     dispatcher_stub = _StubAgentic(text="SATURATED")
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
     config = {"saturation_check_llm": True}
-    result = await adaptive_interview._is_saturated("repeating myself", config, project_id="p1")
+    result = await adaptive_interview._is_saturated(
+        "repeating myself", config, project_id="p1"
+    )
 
     assert result is True, "dispatcher SATURATED reply must hit the same sentinel check"
 
@@ -192,7 +207,9 @@ async def test_adaptive_followup_flag_on_dispatches_channel_followup(
     assert "it was confusing" in kwargs["messages"][0]["content"]
 
 
-async def test_adaptive_followup_flag_on_none_sentinel_unchanged(monkeypatch, _agentic_core_on):
+async def test_adaptive_followup_flag_on_none_sentinel_unchanged(
+    monkeypatch, _agentic_core_on
+):
     dispatcher_stub = _StubAgentic(text="NONE")
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 
@@ -204,7 +221,9 @@ async def test_adaptive_followup_flag_on_none_sentinel_unchanged(monkeypatch, _a
     assert result is None, "dispatcher NONE reply must hit the same sentinel check"
 
 
-async def test_adaptive_followup_max_followups_cap_precedes_llm(monkeypatch, _agentic_core_on):
+async def test_adaptive_followup_max_followups_cap_precedes_llm(
+    monkeypatch, _agentic_core_on
+):
     dispatcher_stub = _StubAgentic()
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 

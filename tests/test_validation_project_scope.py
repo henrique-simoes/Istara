@@ -81,15 +81,21 @@ async def test_validation_helpers_forward_project_id_to_llm_and_embeddings(monke
         project_id="project-a",
     )
     self_moa = await validation.self_moa("Validate this", n=2, project_id="project-a")
-    debate = await validation.debate_rounds("Debate this", rounds=1, project_id="project-a")
+    debate = await validation.debate_rounds(
+        "Debate this", rounds=1, project_id="project-a"
+    )
     dual = await validation.dual_run("Compare this", project_id="project-a")
-    ensemble = await validation.full_ensemble("Ensemble this", min_responses=2, project_id="project-a")
+    ensemble = await validation.full_ensemble(
+        "Ensemble this", min_responses=2, project_id="project-a"
+    )
 
     # 3 completions (adversarial + debate initial/round) + 3 ensembles
     # (self_moa, dual_run, full_ensemble) — every dispatch project-scoped.
     assert stub.project_calls == ["project-a"] * 6
     assert stub.embed_project_calls == ["project-a"] * 5
-    assert adversarial.metadata["route_evidence"][0]["route_kind"] == "agentic_completion"
+    assert (
+        adversarial.metadata["route_evidence"][0]["route_kind"] == "agentic_completion"
+    )
     assert adversarial.metadata["route_evidence"][0]["endpoint_id"] == "ep-stub"
     assert self_moa.metadata["assurance"] == "single_model_temperature_variation"
     assert debate.metadata["route_evidence"][0]["route_kind"] == "agentic_completion"
@@ -203,9 +209,13 @@ async def test_debate_and_adversarial_review_emit_coded_evidence_telemetry(monke
     operations = [call.kwargs["operation"] for call in record_event.await_args_list]
     assert operations == ["adversarial.review", "debate.review"]
     assert record_event.await_args_list[0].kwargs["coding_run_id"] == "coding-run-a"
-    assert record_event.await_args_list[0].kwargs["evidence_unit_id"] == "evidence-unit-a"
+    assert (
+        record_event.await_args_list[0].kwargs["evidence_unit_id"] == "evidence-unit-a"
+    )
     assert record_event.await_args_list[1].kwargs["coding_run_id"] == "coding-run-b"
-    assert record_event.await_args_list[1].kwargs["evidence_unit_id"] == "evidence-unit-b"
+    assert (
+        record_event.await_args_list[1].kwargs["evidence_unit_id"] == "evidence-unit-b"
+    )
 
 
 def test_task_ensemble_validation_passes_active_project_scope() -> None:

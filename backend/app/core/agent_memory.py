@@ -5,9 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional
 
-from app.config import settings
 from app.core.content_guard import ContentGuard
 
 logger = logging.getLogger(__name__)
@@ -31,8 +29,8 @@ class AgentMemoryManager:
         self, agent_id: str, project_id: str, note: str, tags: list[str] | None = None
     ) -> None:
         """Agent writes a private note to its memory."""
-        from app.core.rag import ingest_chunks
         from app.core.embeddings import TextChunk
+        from app.core.rag import ingest_chunks
 
         # Content Guard: scan note before storage
         scan = _guard.scan_text(note)
@@ -52,11 +50,11 @@ class AgentMemoryManager:
         logger.info(f"Agent {agent_id} stored note in project {project_id}")
 
     async def read_notes(
-        self, agent_id: str, project_id: str, query: Optional[str] = None, limit: int = 10
+        self, agent_id: str, project_id: str, query: str | None = None, limit: int = 10
     ) -> list[dict]:
         """Read agent's private notes, optionally filtered by semantic query."""
-        from app.core.rag import VectorStore
         from app.core.embeddings import embed_text
+        from app.core.rag import VectorStore
 
         store = VectorStore(project_id)
 
@@ -94,7 +92,7 @@ class AgentMemoryManager:
         """Agent deliberately stores a note in shared project memory with provenance."""
         await self.write_note(agent_id, project_id, note, tags)
 
-    async def get_all_notes(self, project_id: str, agent_id: Optional[str] = None) -> list[dict]:
+    async def get_all_notes(self, project_id: str, agent_id: str | None = None) -> list[dict]:
         """Get all notes, optionally filtered by agent. For the Memory UI."""
         from app.core.rag import VectorStore
 

@@ -14,21 +14,25 @@ from app.core.compute_registry_invocation import ChatTruncatedEmptyResponse
 
 
 def test_normalize_chat_maps_finish_reason_length():
-    outcome = _normalize_chat({
-        "message": {"role": "assistant", "content": "partial answer"},
-        "finish_reason": "length",
-        "truncated": True,
-    })
+    outcome = _normalize_chat(
+        {
+            "message": {"role": "assistant", "content": "partial answer"},
+            "finish_reason": "length",
+            "truncated": True,
+        }
+    )
     assert outcome["stop_reason"] == "length"
     assert outcome["truncated"] is True
     assert outcome["status"] == "success"  # partial answer delivered, but flagged
 
 
 def test_normalize_chat_normal_stop_unchanged():
-    outcome = _normalize_chat({
-        "message": {"role": "assistant", "content": "full answer"},
-        "finish_reason": "stop",
-    })
+    outcome = _normalize_chat(
+        {
+            "message": {"role": "assistant", "content": "full answer"},
+            "finish_reason": "stop",
+        }
+    )
     assert outcome["stop_reason"] == "stop"
     assert "truncated" not in outcome
 
@@ -41,6 +45,7 @@ def test_truncated_empty_error_is_typed():
 
 def test_openai_branch_logic_empty_vs_partial():
     """Mirror the branch's own rule without network: empty visible + length = error."""
+
     def branch(visible: str, finish: str):
         if finish == "length" and not visible.strip():
             raise ChatTruncatedEmptyResponse("empty after reasoning")

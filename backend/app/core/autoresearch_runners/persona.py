@@ -10,8 +10,7 @@ making concurrent modifications.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from app.core.agent_identity import persona_file_path, writeable_persona_path
 from app.core.autoresearch_runners import BaseLoopRunner
@@ -171,8 +170,6 @@ class PersonaRunner(BaseLoopRunner):
     def _invalidate_prompt_cache(self, agent_id: str) -> None:
         """Invalidate prompt_rag caches after persona file changes."""
         try:
-            from app.core.prompt_rag import index_agent_sections
-
             # index_agent_sections is not cached (no lru_cache), so the next
             # call will automatically read fresh files.  If caching is added
             # later, clear it here.

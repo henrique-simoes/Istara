@@ -21,14 +21,14 @@ This is the single most important quality control mechanism in Istara.
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, String, Text, Integer, DateTime, Boolean
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.content_guard import ContentGuard
-from app.models.database import Base, async_session
+from app.models.database import Base
 
 _guard = ContentGuard()
 
@@ -56,12 +56,12 @@ class ContextDocument(Base):
     )  # Higher = more important, overrides lower
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
 

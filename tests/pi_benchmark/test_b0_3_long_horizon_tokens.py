@@ -35,7 +35,10 @@ def test_content_chunks_are_not_counted_as_tokens():
 def test_provider_reported_usage_is_read():
     events = [
         {"type": "chunk", "content": "Hi"},
-        {"type": "usage", "usage": {"input_tokens": 128, "output_tokens": 64, "total_tokens": 192}},
+        {
+            "type": "usage",
+            "usage": {"input_tokens": 128, "output_tokens": 64, "total_tokens": 192},
+        },
     ]
     assert extract_total_tokens(events) == 192
 
@@ -54,7 +57,10 @@ def test_restart_resume_oracle_refuses_host_execution(monkeypatch):
     monkeypatch.setenv("ISTARA_LONG_HORIZON_BACKEND_CONTAINER", "a" * 12)
     monkeypatch.delenv("ISTARA_BENCHMARK_DOCKER_RUNNER", raising=False)
 
-    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="outside the disposable Docker runner"):
+    with pytest.raises(
+        long_horizon_runner.BenchmarkFailure,
+        match="outside the disposable Docker runner",
+    ):
         long_horizon_runner._restart_disposable_backend()
 
 
@@ -95,7 +101,9 @@ def test_restart_resume_oracle_rejects_non_container_targets(monkeypatch):
     monkeypatch.setenv("ISTARA_LONG_HORIZON_REQUIRE_RESTART_RESUME", "1")
     monkeypatch.setenv("ISTARA_LONG_HORIZON_BACKEND_CONTAINER", "backend; rm -rf /")
 
-    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="opaque Docker backend container id"):
+    with pytest.raises(
+        long_horizon_runner.BenchmarkFailure, match="opaque Docker backend container id"
+    ):
         long_horizon_runner._restart_disposable_backend()
 
 
@@ -111,7 +119,12 @@ def test_tool_call_oracle_counts_canonical_events_only():
 def test_done_oracle_requires_executed_tools_to_be_reported():
     events = [
         {"type": "tool_call", "tool": "create_task", "tool_call_id": "call-1"},
-        {"type": "tool_result", "tool": "create_task", "tool_call_id": "call-1", "ok": True},
+        {
+            "type": "tool_result",
+            "tool": "create_task",
+            "tool_call_id": "call-1",
+            "ok": True,
+        },
         {"type": "chunk", "content": "The task was created."},
         {"type": "done", "message_id": "msg-1", "tools_used": ["create_task"]},
     ]
@@ -124,11 +137,18 @@ def test_done_oracle_requires_executed_tools_to_be_reported():
 def test_done_oracle_rejects_tool_calls_missing_from_terminal_event():
     events = [
         {"type": "tool_call", "tool": "create_task", "tool_call_id": "call-1"},
-        {"type": "tool_result", "tool": "create_task", "tool_call_id": "call-1", "ok": True},
+        {
+            "type": "tool_result",
+            "tool": "create_task",
+            "tool_call_id": "call-1",
+            "ok": True,
+        },
         {"type": "chunk", "content": "The task was created."},
         {"type": "done", "message_id": "msg-1", "tools_used": []},
     ]
-    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="does not report executed tool"):
+    with pytest.raises(
+        long_horizon_runner.BenchmarkFailure, match="does not report executed tool"
+    ):
         long_horizon_runner._require_done_tool_contract(
             events, "first turn", require_tool_result=True
         )
@@ -140,7 +160,9 @@ def test_done_oracle_rejects_missing_tool_execution_receipt():
         {"type": "chunk", "content": "The task was created."},
         {"type": "done", "message_id": "msg-1", "tools_used": ["create_task"]},
     ]
-    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="no matching tool-result receipt"):
+    with pytest.raises(
+        long_horizon_runner.BenchmarkFailure, match="no matching tool-result receipt"
+    ):
         long_horizon_runner._require_done_tool_contract(
             events, "first turn", require_tool_result=True
         )
@@ -149,23 +171,35 @@ def test_done_oracle_rejects_missing_tool_execution_receipt():
 def test_done_oracle_rejects_tool_receipt_without_a_later_model_response():
     events = [
         {"type": "tool_call", "tool": "create_task", "tool_call_id": "call-1"},
-        {"type": "tool_result", "tool": "create_task", "tool_call_id": "call-1", "ok": True},
+        {
+            "type": "tool_result",
+            "tool": "create_task",
+            "tool_call_id": "call-1",
+            "ok": True,
+        },
         {"type": "done", "message_id": "msg-1", "tools_used": ["create_task"]},
     ]
-    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="no model response after tool-result"):
+    with pytest.raises(
+        long_horizon_runner.BenchmarkFailure,
+        match="no model response after tool-result",
+    ):
         long_horizon_runner._require_done_tool_contract(
             events, "first turn", require_tool_result=True
         )
 
 
 def test_task_queue_oracle_requires_project_scoped_persisted_task():
-    payload = [{"id": "task-1", "project_id": "project-1", "title": "Thematic Analysis"}]
+    payload = [
+        {"id": "task-1", "project_id": "project-1", "title": "Thematic Analysis"}
+    ]
     tasks = long_horizon_runner._require_persisted_tasks(payload, "project-1")
     assert tasks[0]["id"] == "task-1"
 
 
 def test_task_queue_oracle_rejects_empty_queue():
-    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="no persisted tasks"):
+    with pytest.raises(
+        long_horizon_runner.BenchmarkFailure, match="no persisted tasks"
+    ):
         long_horizon_runner._require_persisted_tasks([], "project-1")
 
 
@@ -177,8 +211,18 @@ def test_usage_oracle_requires_two_recorded_turns_and_engine():
         "total_tokens": 200,
         "estimated": False,
         "rows": [
-            {"id": "row-1", "session_id": session_id, "purpose": "chat_turn", "engine": "pi"},
-            {"id": "row-2", "session_id": session_id, "purpose": "chat_turn", "engine": "pi"},
+            {
+                "id": "row-1",
+                "session_id": session_id,
+                "purpose": "chat_turn",
+                "engine": "pi",
+            },
+            {
+                "id": "row-2",
+                "session_id": session_id,
+                "purpose": "chat_turn",
+                "engine": "pi",
+            },
         ],
         "latest": {"engine": "pi", "total_tokens": 100},
     }
@@ -197,14 +241,24 @@ def test_usage_oracle_can_require_successful_task_linked_route_receipts():
         "total_tokens": 200,
         "rows": [
             {
-                "id": "row-1", "session_id": session_id, "purpose": "chat_turn",
-                "engine": "pi", "model": "model-a", "endpoint_id": "endpoint-a",
-                "outcome": "success", "task_id": task_id,
+                "id": "row-1",
+                "session_id": session_id,
+                "purpose": "chat_turn",
+                "engine": "pi",
+                "model": "model-a",
+                "endpoint_id": "endpoint-a",
+                "outcome": "success",
+                "task_id": task_id,
             },
             {
-                "id": "row-2", "session_id": session_id, "purpose": "chat_turn",
-                "engine": "pi", "model": "model-a", "endpoint_id": "endpoint-a",
-                "outcome": "success", "task_id": task_id,
+                "id": "row-2",
+                "session_id": session_id,
+                "purpose": "chat_turn",
+                "engine": "pi",
+                "model": "model-a",
+                "endpoint_id": "endpoint-a",
+                "outcome": "success",
+                "task_id": task_id,
             },
         ],
         "latest": {"engine": "pi"},
@@ -227,14 +281,24 @@ def test_usage_oracle_rejects_duplicate_or_unprovenanced_receipts():
         "total_tokens": 200,
         "rows": [
             {
-                "id": "same-row", "session_id": session_id, "purpose": "chat_turn",
-                "engine": "pi", "model": "model-a", "endpoint_id": "endpoint-a",
-                "outcome": "success", "task_id": "task-1",
+                "id": "same-row",
+                "session_id": session_id,
+                "purpose": "chat_turn",
+                "engine": "pi",
+                "model": "model-a",
+                "endpoint_id": "endpoint-a",
+                "outcome": "success",
+                "task_id": "task-1",
             },
             {
-                "id": "same-row", "session_id": session_id, "purpose": "chat_turn",
-                "engine": "pi", "model": "model-b", "endpoint_id": "endpoint-b",
-                "outcome": "success", "task_id": "task-1",
+                "id": "same-row",
+                "session_id": session_id,
+                "purpose": "chat_turn",
+                "engine": "pi",
+                "model": "model-b",
+                "endpoint_id": "endpoint-b",
+                "outcome": "success",
+                "task_id": "task-1",
             },
         ],
         "latest": {"engine": "pi"},
@@ -257,19 +321,31 @@ def test_usage_oracle_rejects_task_mismatch_and_failed_turn():
         "total_tokens": 200,
         "rows": [
             {
-                "id": "row-1", "session_id": session_id, "purpose": "chat_turn",
-                "engine": "pi", "model": "model-a", "endpoint_id": "endpoint-a",
-                "outcome": "success", "task_id": "task-1",
+                "id": "row-1",
+                "session_id": session_id,
+                "purpose": "chat_turn",
+                "engine": "pi",
+                "model": "model-a",
+                "endpoint_id": "endpoint-a",
+                "outcome": "success",
+                "task_id": "task-1",
             },
             {
-                "id": "row-2", "session_id": session_id, "purpose": "chat_turn",
-                "engine": "pi", "model": "model-a", "endpoint_id": "endpoint-a",
-                "outcome": "error", "task_id": "task-2",
+                "id": "row-2",
+                "session_id": session_id,
+                "purpose": "chat_turn",
+                "engine": "pi",
+                "model": "model-a",
+                "endpoint_id": "endpoint-a",
+                "outcome": "error",
+                "task_id": "task-2",
             },
         ],
         "latest": {"engine": "pi"},
     }
-    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="task id|successful"):
+    with pytest.raises(
+        long_horizon_runner.BenchmarkFailure, match="task id|successful"
+    ):
         long_horizon_runner._require_usage_ledger(
             payload,
             expected_engine="pi",
@@ -295,8 +371,18 @@ def test_usage_oracle_rejects_mixed_chat_engines():
         "turns": 2,
         "total_tokens": 200,
         "rows": [
-            {"id": "row-1", "session_id": session_id, "purpose": "chat_turn", "engine": "pi"},
-            {"id": "row-2", "session_id": session_id, "purpose": "chat_turn", "engine": "legacy"},
+            {
+                "id": "row-1",
+                "session_id": session_id,
+                "purpose": "chat_turn",
+                "engine": "pi",
+            },
+            {
+                "id": "row-2",
+                "session_id": session_id,
+                "purpose": "chat_turn",
+                "engine": "legacy",
+            },
         ],
         "latest": {"engine": "legacy"},
     }
@@ -312,8 +398,18 @@ def test_usage_oracle_rejects_cross_session_chat_rows():
         "turns": 2,
         "total_tokens": 200,
         "rows": [
-            {"id": "row-1", "session_id": "session-1", "purpose": "chat_turn", "engine": "pi"},
-            {"id": "row-2", "session_id": "session-2", "purpose": "chat_turn", "engine": "pi"},
+            {
+                "id": "row-1",
+                "session_id": "session-1",
+                "purpose": "chat_turn",
+                "engine": "pi",
+            },
+            {
+                "id": "row-2",
+                "session_id": "session-2",
+                "purpose": "chat_turn",
+                "engine": "pi",
+            },
         ],
         "latest": {"engine": "pi"},
     }
@@ -329,8 +425,18 @@ def test_usage_oracle_requires_explicit_session_id():
         "turns": 2,
         "total_tokens": 200,
         "rows": [
-            {"id": "row-1", "session_id": "session-1", "purpose": "chat_turn", "engine": "pi"},
-            {"id": "row-2", "session_id": "session-1", "purpose": "chat_turn", "engine": "pi"},
+            {
+                "id": "row-1",
+                "session_id": "session-1",
+                "purpose": "chat_turn",
+                "engine": "pi",
+            },
+            {
+                "id": "row-2",
+                "session_id": "session-1",
+                "purpose": "chat_turn",
+                "engine": "pi",
+            },
         ],
         "latest": {"engine": "pi"},
     }
@@ -340,7 +446,10 @@ def test_usage_oracle_requires_explicit_session_id():
 
 def test_engine_oracle_rejects_unset_or_unsupported(monkeypatch):
     monkeypatch.setattr(long_horizon_runner, "ENGINE", None)
-    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="requires ISTARA_LONG_HORIZON_ENGINE"):
+    with pytest.raises(
+        long_horizon_runner.BenchmarkFailure,
+        match="requires ISTARA_LONG_HORIZON_ENGINE",
+    ):
         long_horizon_runner._require_explicit_engine()
     monkeypatch.setattr(long_horizon_runner, "ENGINE", "unknown")
     with pytest.raises(long_horizon_runner.BenchmarkFailure, match="legacy or pi"):
@@ -360,7 +469,9 @@ def test_history_oracle_requires_two_complete_turns():
 
 
 def test_history_oracle_rejects_missing_assistant_output():
-    with pytest.raises(long_horizon_runner.BenchmarkFailure, match="no assistant content"):
+    with pytest.raises(
+        long_horizon_runner.BenchmarkFailure, match="no assistant content"
+    ):
         long_horizon_runner._require_history_continuity(
             [
                 {"role": "user", "content": "first"},

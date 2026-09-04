@@ -123,15 +123,21 @@ class LiveCapture:
     """What one live dispatch actually returned (text + truthful usage provenance)."""
 
     text: str
-    usage: dict[str, int] | None  # input/output/cache_read/cache_write/total tokens, or None (unknown)
-    estimate: bool                # True when usage came from the chars4 estimator
+    usage: (
+        dict[str, int] | None
+    )  # input/output/cache_read/cache_write/total tokens, or None (unknown)
+    estimate: bool  # True when usage came from the chars4 estimator
     endpoint_ids: tuple[str, ...]
     route_evidence: tuple[dict, ...]
-    raw_method: str | None        # validation method served, for MoA units
+    raw_method: str | None  # validation method served, for MoA units
     consensus_score: float | None = None
     consensus_confidence: str = ""
-    samples: tuple[dict, ...] = ()   # per-sample {text, usage, stop_reason, tool_calls} for raw capture
-    capture_errors: tuple[str, ...] = ()  # raw-capture write failures (fail-soft, surfaced in extensions)
+    samples: tuple[
+        dict, ...
+    ] = ()  # per-sample {text, usage, stop_reason, tool_calls} for raw capture
+    capture_errors: tuple[
+        str, ...
+    ] = ()  # raw-capture write failures (fail-soft, surfaced in extensions)
 
 
 # ── token estimation / usage normalisation ──────────────────────────────────
@@ -142,7 +148,9 @@ def _chars4(text: str) -> int:
     return -(-len(text) // 4)
 
 
-def _estimate_usage(*, prompt: str, system: str, output_texts: list[str]) -> dict[str, int]:
+def _estimate_usage(
+    *, prompt: str, system: str, output_texts: list[str]
+) -> dict[str, int]:
     input_tokens = _chars4(system + prompt)
     output_tokens = sum(_chars4(t) for t in output_texts)
     return {
@@ -154,7 +162,13 @@ def _estimate_usage(*, prompt: str, system: str, output_texts: list[str]) -> dic
     }
 
 
-_USAGE_KEYS = ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "total_tokens")
+_USAGE_KEYS = (
+    "input_tokens",
+    "output_tokens",
+    "cache_read_tokens",
+    "cache_write_tokens",
+    "total_tokens",
+)
 
 
 def _normalize_usage(raw: Any) -> dict[str, int] | None:
@@ -166,7 +180,11 @@ def _normalize_usage(raw: Any) -> dict[str, int] | None:
     """
     if raw is None:
         return None
-    getter = raw.get if isinstance(raw, dict) else lambda key, default=None: getattr(raw, key, default)
+    getter = (
+        raw.get
+        if isinstance(raw, dict)
+        else lambda key, default=None: getattr(raw, key, default)
+    )
     values = {key: getter(key) for key in _USAGE_KEYS}
     if values["input_tokens"] is None or values["output_tokens"] is None:
         return None
@@ -186,7 +204,9 @@ def _normalize_usage(raw: Any) -> dict[str, int] | None:
 
 def _sum_sample_usage(samples: list[Any]) -> dict[str, int] | None:
     """Sum usable per-sample usage blocks; None when no sample exposes usage."""
-    blocks = [b for b in (_normalize_usage(getattr(s, "usage", None)) for s in samples) if b]
+    blocks = [
+        b for b in (_normalize_usage(getattr(s, "usage", None)) for s in samples) if b
+    ]
     if not blocks:
         return None
     return {key: sum(block[key] for block in blocks) for key in _USAGE_KEYS}
@@ -241,25 +261,34 @@ def _sample_served_model(sample: Any) -> str:
 
 def _capture_from_outcome(outcome: Any, *, prompt: str, system: str) -> LiveCapture:
     samples = list(getattr(outcome, "samples", None) or [])
-    ok_samples = [s for s in samples if getattr(s, "status", None) == "success" and getattr(s, "text", "")]
+    ok_samples = [
+        s
+        for s in samples
+        if getattr(s, "status", None) == "success" and getattr(s, "text", "")
+    ]
     endpoint_ids = tuple(str(e) for e in (getattr(outcome, "endpoint_ids", None) or ()))
     if not endpoint_ids:
         endpoint_ids = tuple(_sample_route_node_id(s) for s in samples)
     route_evidence = []
     for index, sample in enumerate(samples):
-        if getattr(sample, "status", None) != "success" or not getattr(sample, "text", ""):
+        if getattr(sample, "status", None) != "success" or not getattr(
+            sample, "text", ""
+        ):
             continue
-        endpoint_id = (
-            _sample_route_node_id(sample)
-            or (endpoint_ids[index] if index < len(endpoint_ids) else "")
+        endpoint_id = _sample_route_node_id(sample) or (
+            endpoint_ids[index] if index < len(endpoint_ids) else ""
         )
-        route_evidence.append({
-            "endpoint_id": endpoint_id,
-            "model": _sample_served_model(sample),
-            "route_kind": "agentic_ensemble",
-        })
+        route_evidence.append(
+            {
+                "endpoint_id": endpoint_id,
+                "model": _sample_served_model(sample),
+                "route_kind": "agentic_ensemble",
+            }
+        )
     text = str(getattr(ok_samples[0], "text", "")) if ok_samples else ""
-    usage = _normalize_usage(getattr(outcome, "usage", None)) or _sum_sample_usage(samples)
+    usage = _normalize_usage(getattr(outcome, "usage", None)) or _sum_sample_usage(
+        samples
+    )
     estimate = False
     if usage is None and text:
         usage = _estimate_usage(prompt=prompt, system=system, output_texts=[text])
@@ -293,18 +322,22 @@ def _is_approved_route(engine: str, endpoint_id: str) -> bool:
     only accepted benchmark routes for both ``pi`` and ``legacy``. Anything else is
     rejected rather than silently accepted.
     """
-    return endpoint_id in APPROVED_DEEPSEEK_ENDPOINT_IDS or endpoint_id.startswith("pi-petals-")
+    return endpoint_id in APPROVED_DEEPSEEK_ENDPOINT_IDS or endpoint_id.startswith(
+        "pi-petals-"
+    )
 
 
 def _benchmark_route_evidence(
-    *, samples: list[Any], endpoint_ids: tuple[str, ...], engine: str,
+    *,
+    samples: list[Any],
+    endpoint_ids: tuple[str, ...],
+    engine: str,
 ) -> tuple[dict, ...]:
     """Validate and redact the route identity returned by the benchmark dispatcher."""
     evidence: list[dict] = []
     for index, sample in enumerate(samples):
-        endpoint_id = (
-            _sample_route_node_id(sample)
-            or (endpoint_ids[index] if index < len(endpoint_ids) else "")
+        endpoint_id = _sample_route_node_id(sample) or (
+            endpoint_ids[index] if index < len(endpoint_ids) else ""
         )
         if not endpoint_id:
             raise RouteAdmissionError(
@@ -340,8 +373,9 @@ def _benchmark_route_evidence(
                     "admission": "rejected",
                 },
             )
-        if (not is_petals and (provider != DEEPSEEK_PROVIDER or model != DEEPSEEK_MODEL)) \
-                or (is_petals and provider != "petals"):
+        if (
+            not is_petals and (provider != DEEPSEEK_PROVIDER or model != DEEPSEEK_MODEL)
+        ) or (is_petals and provider != "petals"):
             raise RouteAdmissionError(
                 "benchmark sample provider/model is not DeepSeek-approved",
                 route={
@@ -352,20 +386,29 @@ def _benchmark_route_evidence(
                     "admission": "rejected",
                 },
             )
-        if getattr(sample, "status", None) != "success" or not getattr(sample, "text", ""):
+        if getattr(sample, "status", None) != "success" or not getattr(
+            sample, "text", ""
+        ):
             continue
-        evidence.append({
-            "endpoint_id": endpoint_id,
-            "provider": provider,
-            "model": model,
-            "engine": engine,
-            "route_kind": "agentic_ensemble",
-        })
+        evidence.append(
+            {
+                "endpoint_id": endpoint_id,
+                "provider": provider,
+                "model": model,
+                "engine": engine,
+                "route_kind": "agentic_ensemble",
+            }
+        )
     return tuple(evidence)
 
 
 def _benchmark_moa_capture(
-    outcome: Any, *, prompt: str, system: str, engine: str, served_method: str,
+    outcome: Any,
+    *,
+    prompt: str,
+    system: str,
+    engine: str,
+    served_method: str,
 ) -> LiveCapture:
     """Capture MoA directly from the dispatcher without validation/embedding side effects."""
     samples = list(getattr(outcome, "samples", None) or [])
@@ -373,14 +416,18 @@ def _benchmark_moa_capture(
     if not endpoint_ids:
         endpoint_ids = tuple(_sample_route_node_id(s) for s in samples)
     route_evidence = _benchmark_route_evidence(
-        samples=samples, endpoint_ids=endpoint_ids, engine=engine,
+        samples=samples,
+        endpoint_ids=endpoint_ids,
+        engine=engine,
     )
     responses = [
         str(getattr(sample, "text", ""))
         for sample in samples
         if getattr(sample, "status", None) == "success" and getattr(sample, "text", "")
     ]
-    usage = _normalize_usage(getattr(outcome, "usage", None)) or _sum_sample_usage(samples)
+    usage = _normalize_usage(getattr(outcome, "usage", None)) or _sum_sample_usage(
+        samples
+    )
     estimate = False
     if usage is None and responses:
         usage = _estimate_usage(prompt=prompt, system=system, output_texts=responses)
@@ -417,7 +464,6 @@ def _benchmark_moa_capture(
         consensus_confidence=consensus_confidence,
         samples=sample_dicts,
     )
-
 
 
 async def dispatch_unit(
@@ -467,7 +513,9 @@ async def dispatch_unit(
         for index in range(slots):
             settings = {
                 "max_tokens": max_tokens,
-                "temperature": temperatures[index] if index < len(temperatures) else None,
+                "temperature": temperatures[index]
+                if index < len(temperatures)
+                else None,
                 "thinking": "off",
                 "timeout_s": 60,
                 "retry_policy": "transient_registry_retry",
@@ -493,7 +541,13 @@ async def dispatch_unit(
             return
         engine_path = ENGINE_PATHS[engine]
         samples = cap.samples or (
-            {"text": cap.text, "usage": cap.usage, "stop_reason": None, "tool_calls": [], "status": "success"},
+            {
+                "text": cap.text,
+                "usage": cap.usage,
+                "stop_reason": None,
+                "tool_calls": [],
+                "status": "success",
+            },
         )
         for index, sample in enumerate(samples):
             usage = sample.get("usage")
@@ -518,7 +572,9 @@ async def dispatch_unit(
                     content=str(sample.get("text") or ""),
                     tool_calls=list(sample.get("tool_calls") or []),
                     stop_reason=sample.get("stop_reason"),
-                    error=None if sample.get("status") == "success" else str(sample.get("status") or "error"),
+                    error=None
+                    if sample.get("status") == "success"
+                    else str(sample.get("status") or "error"),
                     latency_s=round(latency_s, 4),
                     usage=usage,
                     cost_usd=cost,
@@ -530,14 +586,19 @@ async def dispatch_unit(
     if moa_mode in moa.MOA_MODES:
         if agentic_module is None:
             await _init_db_best_effort()
-            from app.core.agentic import agentic as agentic_module  # lazy (live path only)
+            from app.core.agentic import (
+                agentic as agentic_module,
+            )  # lazy (live path only)
         from app.core.agentic.types import TurnParams
 
         slots = moa.requested_slots(moa_mode, moa_n)
-        temperatures = list(moa.self_moa_temperatures(moa_n)) if moa_mode == "self_moa" else []
+        temperatures = (
+            list(moa.self_moa_temperatures(moa_n)) if moa_mode == "self_moa" else []
+        )
         params = TurnParams(
             endpoint_id=DEEPSEEK_ENDPOINT_ID,
-            model=DEEPSEEK_MODEL, max_tokens=max_tokens,
+            model=DEEPSEEK_MODEL,
+            max_tokens=max_tokens,
         )
         _record_prompts(slots, temperatures)
         started = time.perf_counter()
@@ -565,7 +626,11 @@ async def dispatch_unit(
         # ``distinct=False`` is intentional for self-MoA: every slot uses the one
         # approved endpoint. Full ensembles request true distinct resolution above.
         cap = _benchmark_moa_capture(
-            outcome, prompt=prompt, system=system, engine=unit.engine, served_method=moa_mode,
+            outcome,
+            prompt=prompt,
+            system=system,
+            engine=unit.engine,
+            served_method=moa_mode,
         )
         _record_outputs(cap, elapsed)
         return dc_replace(cap, capture_errors=tuple(capture_errors))
@@ -595,16 +660,23 @@ async def dispatch_unit(
         from app.core.agentic import agentic  # lazy backend import (live path only)
         from app.core.agentic.types import TurnParams
 
-        outcome = await agentic.ensemble(params=TurnParams(**params_payload), **call_kwargs)
+        outcome = await agentic.ensemble(
+            params=TurnParams(**params_payload), **call_kwargs
+        )
     elapsed = time.perf_counter() - started
     cap = _capture_from_outcome(outcome, prompt=prompt, system=system)
     # Plain units are still live route tests. Apply the same approved-route and
     # provider-served-identity admission used by MoA units before recording success.
     samples = list(getattr(outcome, "samples", None) or [])
     endpoint_ids = tuple(str(e) for e in (getattr(outcome, "endpoint_ids", None) or ()))
-    cap = dc_replace(cap, route_evidence=_benchmark_route_evidence(
-        samples=samples, endpoint_ids=endpoint_ids, engine=engine,
-    ))
+    cap = dc_replace(
+        cap,
+        route_evidence=_benchmark_route_evidence(
+            samples=samples,
+            endpoint_ids=endpoint_ids,
+            engine=engine,
+        ),
+    )
     _record_outputs(cap, elapsed)
     return dc_replace(cap, capture_errors=tuple(capture_errors))
 
@@ -653,7 +725,9 @@ def _is_ledger_state_error(exc: BaseException) -> bool:
     return isinstance(exc, LedgerStateError) or type(exc).__name__ == "LedgerStateError"
 
 
-def _moa_evidence_from_capture(*, moa_mode: str, moa_n: int, capture: LiveCapture) -> moa.MoaEvidence:
+def _moa_evidence_from_capture(
+    *, moa_mode: str, moa_n: int, capture: LiveCapture
+) -> moa.MoaEvidence:
     """Assess a MoA unit from its LiveCapture via a ValidationResult-shaped shim.
 
     The dispatcher’s route evidence carries one entry per successful response, while the
@@ -683,8 +757,12 @@ def _moa_evidence_from_capture(*, moa_mode: str, moa_n: int, capture: LiveCaptur
 
 def _build_unit_record(
     *,
-    unit: Any, scenario: Any, config: Any, status: str,
-    not_runnable_reason: str | None = None, usage: dict[str, Any] | None = None,
+    unit: Any,
+    scenario: Any,
+    config: Any,
+    status: str,
+    not_runnable_reason: str | None = None,
+    usage: dict[str, Any] | None = None,
     extensions: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble + validate one record via the shared schema helpers."""
@@ -734,7 +812,9 @@ def _build_unit_record(
 
 
 def _stamp_live_provenance(
-    record: dict[str, Any], provider: Any, capture: LiveCapture | None = None,
+    record: dict[str, Any],
+    provider: Any,
+    capture: LiveCapture | None = None,
 ) -> dict[str, Any]:
     """Stamp only the route actually returned by the dispatcher.
 
@@ -765,12 +845,18 @@ def _stamp_live_provenance(
             for route in normalized_routes
         ]
         encoded = json.dumps(safe_routes, sort_keys=True, separators=(",", ":"))
-        providers = {route.get("provider") for route in normalized_routes if route.get("provider")}
+        providers = {
+            route.get("provider")
+            for route in normalized_routes
+            if route.get("provider")
+        }
         label = "deepseek-route" if providers <= {DEEPSEEK_PROVIDER} else "mixed-route"
         record["provenance"]["endpoint_fingerprint"] = (
             f"{label}:{hashlib.sha256(encoded.encode()).hexdigest()[:12]}"
         )
-        models = {route.get("model") for route in normalized_routes if route.get("model")}
+        models = {
+            route.get("model") for route in normalized_routes if route.get("model")
+        }
         record["provenance"]["model_id"] = models.pop() if len(models) == 1 else None
     else:
         record["provenance"]["model_id"] = None
@@ -798,7 +884,11 @@ async def run_live_unit(
     is silently dropped and no exception for an expected failure mode escapes.
     """
     records_dir = Path(records_dir)
-    if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
+    if (
+        isinstance(max_tokens, bool)
+        or not isinstance(max_tokens, int)
+        or max_tokens <= 0
+    ):
         raise ValueError("max_tokens must be a positive integer")
     final_path = records_dir / f"{unit.unit_id}.json"
     if final_path.is_file():
@@ -829,23 +919,35 @@ async def run_live_unit(
     ) * _model_calls(unit, moa_n)
     try:
         ledger.reserve(
-            unit.unit_id, worst_case, kind="benchmark",
+            unit.unit_id,
+            worst_case,
+            kind="benchmark",
             meta={"tier": config.tier, "phase": config.phase, "moa_mode": moa_mode},
         )
     except Exception as exc:
         if _is_budget_exceeded(exc):
             extensions["detail"] = {"reason": f"reservation refused: {exc}"}
             if moa_mode in moa.MOA_MODES:
-                extensions["moa"] = asdict(moa.not_run_evidence(
-                    requested_mode=moa_mode,
-                    requested_samples=moa.requested_slots(moa_mode, moa_n),
-                    temperatures=moa.self_moa_temperatures(moa_n) if moa_mode == "self_moa" else (),
-                ))
+                extensions["moa"] = asdict(
+                    moa.not_run_evidence(
+                        requested_mode=moa_mode,
+                        requested_samples=moa.requested_slots(moa_mode, moa_n),
+                        temperatures=moa.self_moa_temperatures(moa_n)
+                        if moa_mode == "self_moa"
+                        else (),
+                    )
+                )
             record = _build_unit_record(
-                unit=unit, scenario=scenario, config=config, status="not_runnable",
-                not_runnable_reason="budget_exceeded", extensions=extensions,
+                unit=unit,
+                scenario=scenario,
+                config=config,
+                status="not_runnable",
+                not_runnable_reason="budget_exceeded",
+                extensions=extensions,
             )
-            schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+            schema.write_record_atomic(
+                records_dir, unit.unit_id, _stamp_live_provenance(record, provider)
+            )
             return record
         if _is_ledger_state_error(exc):
             # Resume after a crash that reserved this unit but never wrote its record: the
@@ -855,24 +957,38 @@ async def run_live_unit(
             # outstanding reservation and crash again.
             extensions["detail"] = "interrupted_unknown_usage"
             if moa_mode in moa.MOA_MODES:
-                extensions["moa"] = asdict(moa.not_run_evidence(
-                    requested_mode=moa_mode,
-                    requested_samples=moa.requested_slots(moa_mode, moa_n),
-                    temperatures=moa.self_moa_temperatures(moa_n) if moa_mode == "self_moa" else (),
-                ))
+                extensions["moa"] = asdict(
+                    moa.not_run_evidence(
+                        requested_mode=moa_mode,
+                        requested_samples=moa.requested_slots(moa_mode, moa_n),
+                        temperatures=moa.self_moa_temperatures(moa_n)
+                        if moa_mode == "self_moa"
+                        else (),
+                    )
+                )
             record = _build_unit_record(
-                unit=unit, scenario=scenario, config=config, status="not_runnable",
-                not_runnable_reason="other", extensions=extensions,
+                unit=unit,
+                scenario=scenario,
+                config=config,
+                status="not_runnable",
+                not_runnable_reason="other",
+                extensions=extensions,
             )
-            schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+            schema.write_record_atomic(
+                records_dir, unit.unit_id, _stamp_live_provenance(record, provider)
+            )
             return record
         raise  # config/programming failure (e.g. LedgerClosed): stop the wave loudly
 
     # 3. Dispatch; map failures onto typed not_runnable records.
     try:
         dispatch_kwargs = dict(
-            unit=unit, tier=config.tier, prompt=prompt, system=system,
-            moa_n=moa_n, max_tokens=max_tokens,
+            unit=unit,
+            tier=config.tier,
+            prompt=prompt,
+            system=system,
+            moa_n=moa_n,
+            max_tokens=max_tokens,
         )
         # The default benchmark dispatcher uses the provider opened by the runner.
         # Custom test/integration dispatchers retain their existing narrow contract.
@@ -892,44 +1008,76 @@ async def run_live_unit(
         ledger.release(unit.unit_id, reason=f"pre_dispatch:{exc}")
         extensions["detail"] = {"reason": f"pre-dispatch failure: {exc}"}
         record = _build_unit_record(
-            unit=unit, scenario=scenario, config=config, status="not_runnable",
-            not_runnable_reason="startup_failure", extensions=extensions,
+            unit=unit,
+            scenario=scenario,
+            config=config,
+            status="not_runnable",
+            not_runnable_reason="startup_failure",
+            extensions=extensions,
         )
-        schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        schema.write_record_atomic(
+            records_dir, unit.unit_id, _stamp_live_provenance(record, provider)
+        )
         return record
     except (TimeoutError, asyncio.TimeoutError) as exc:
         # Retain the reservation: the request may still be in flight and billable.
-        extensions["detail"] = {"reason": f"dispatch timeout (reservation retained): {exc}"}
+        extensions["detail"] = {
+            "reason": f"dispatch timeout (reservation retained): {exc}"
+        }
         record = _build_unit_record(
-            unit=unit, scenario=scenario, config=config, status="not_runnable",
-            not_runnable_reason="timeout", extensions=extensions,
+            unit=unit,
+            scenario=scenario,
+            config=config,
+            status="not_runnable",
+            not_runnable_reason="timeout",
+            extensions=extensions,
         )
-        schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        schema.write_record_atomic(
+            records_dir, unit.unit_id, _stamp_live_provenance(record, provider)
+        )
         return record
     except Exception as exc:
         if isinstance(exc, RouteAdmissionError):
             extensions["detail"] = {"reason": "route_admission_failed"}
             if exc.route:
                 extensions["route_evidence"] = [
-                    {key: str(value) for key, value in exc.route.items() if value is not None}
+                    {
+                        key: str(value)
+                        for key, value in exc.route.items()
+                        if value is not None
+                    }
                 ]
         else:
-            extensions["detail"] = {"reason": f"dispatch failure (reservation retained): {exc}"}
+            extensions["detail"] = {
+                "reason": f"dispatch failure (reservation retained): {exc}"
+            }
         record = _build_unit_record(
-            unit=unit, scenario=scenario, config=config, status="not_runnable",
-            not_runnable_reason="startup_failure", extensions=extensions,
+            unit=unit,
+            scenario=scenario,
+            config=config,
+            status="not_runnable",
+            not_runnable_reason="startup_failure",
+            extensions=extensions,
         )
-        schema.write_record_atomic(records_dir, unit.unit_id, _stamp_live_provenance(record, provider))
+        schema.write_record_atomic(
+            records_dir, unit.unit_id, _stamp_live_provenance(record, provider)
+        )
         return record
 
     # 4. Successful-looking dispatch with neither usage nor text: fail closed.
     if capture.usage is None:
         extensions["detail"] = "unknown_usage_fail_closed"
         if capture.route_evidence:
-            extensions["route_evidence"] = [dict(route) for route in capture.route_evidence]
+            extensions["route_evidence"] = [
+                dict(route) for route in capture.route_evidence
+            ]
         record = _build_unit_record(
-            unit=unit, scenario=scenario, config=config, status="not_runnable",
-            not_runnable_reason="other", extensions=extensions,
+            unit=unit,
+            scenario=scenario,
+            config=config,
+            status="not_runnable",
+            not_runnable_reason="other",
+            extensions=extensions,
         )
         schema.write_record_atomic(
             records_dir, unit.unit_id, _stamp_live_provenance(record, provider, capture)
@@ -940,14 +1088,22 @@ async def run_live_unit(
     if capture.route_evidence:
         extensions["route_evidence"] = [dict(route) for route in capture.route_evidence]
     usage = capture.usage
-    actual_cost = round(provider.estimate_cost(
-        input_tokens=usage["input_tokens"],
-        output_tokens=usage["output_tokens"],
-        cache_read_tokens=usage.get("cache_read_tokens", 0),
-        cache_write_tokens=usage.get("cache_write_tokens", 0),
-    ), 7)
+    actual_cost = round(
+        provider.estimate_cost(
+            input_tokens=usage["input_tokens"],
+            output_tokens=usage["output_tokens"],
+            cache_read_tokens=usage.get("cache_read_tokens", 0),
+            cache_write_tokens=usage.get("cache_write_tokens", 0),
+        ),
+        7,
+    )
     try:
-        ledger.commit(unit.unit_id, actual_cost, usage=dict(usage), meta={"estimate": capture.estimate})
+        ledger.commit(
+            unit.unit_id,
+            actual_cost,
+            usage=dict(usage),
+            meta={"estimate": capture.estimate},
+        )
     except Exception as exc:
         if not _is_ledger_state_error(exc):
             raise  # config/programming failure (e.g. LedgerClosed): stop the wave loudly
@@ -957,8 +1113,12 @@ async def run_live_unit(
         # return. Never crash the wave here — a crash would leave no record and wedge resume.
         extensions["detail"] = "accounting_fail_closed"
         record = _build_unit_record(
-            unit=unit, scenario=scenario, config=config, status="not_runnable",
-            not_runnable_reason="other", extensions=extensions,
+            unit=unit,
+            scenario=scenario,
+            config=config,
+            status="not_runnable",
+            not_runnable_reason="other",
+            extensions=extensions,
         )
         schema.write_record_atomic(
             records_dir, unit.unit_id, _stamp_live_provenance(record, provider, capture)
@@ -969,24 +1129,34 @@ async def run_live_unit(
     moa_mode = getattr(unit, "moa_mode", None)
     status, reason = "ok", None
     if moa_mode in moa.MOA_MODES:
-        evidence = _moa_evidence_from_capture(moa_mode=moa_mode, moa_n=moa_n, capture=capture)
+        evidence = _moa_evidence_from_capture(
+            moa_mode=moa_mode, moa_n=moa_n, capture=capture
+        )
         extensions["moa"] = asdict(evidence)
         status, reason = moa.record_status_for(evidence)
         if status != "ok":
             extensions["detail"] = "moa_downgrade_fail_closed"
-    extensions.setdefault("detail", "live capture through the Istara dispatcher (deepseek-v4-pro)")
+    extensions.setdefault(
+        "detail", "live capture through the Istara dispatcher (deepseek-v4-pro)"
+    )
     usage_block = {
         "input_tokens": usage["input_tokens"],
         "output_tokens": usage["output_tokens"],
-        "cache_tokens": usage.get("cache_read_tokens", 0) + usage.get("cache_write_tokens", 0),
+        "cache_tokens": usage.get("cache_read_tokens", 0)
+        + usage.get("cache_write_tokens", 0),
         "total_tokens": usage["total_tokens"],
         "cost_usd": actual_cost,
         "estimate": capture.estimate,
         "estimator": ESTIMATOR_CHARS4 if capture.estimate else None,
     }
     record = _build_unit_record(
-        unit=unit, scenario=scenario, config=config, status=status,
-        not_runnable_reason=reason, usage=usage_block, extensions=extensions,
+        unit=unit,
+        scenario=scenario,
+        config=config,
+        status=status,
+        not_runnable_reason=reason,
+        usage=usage_block,
+        extensions=extensions,
     )
     schema.write_record_atomic(
         records_dir, unit.unit_id, _stamp_live_provenance(record, provider, capture)

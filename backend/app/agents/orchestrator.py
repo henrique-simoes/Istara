@@ -22,12 +22,11 @@ import asyncio
 import json
 import logging
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import Enum
 
 from app.core.resource_governor import governor
-from app.api.websocket import broadcast_agent_status
 
 logger = logging.getLogger(__name__)
 
@@ -256,8 +255,8 @@ class MetaOrchestrator:
         try:
             from app.agents.devops_agent import devops_agent
             from app.agents.ui_audit_agent import ui_audit_agent
-            from app.agents.ux_eval_agent import ux_eval_agent
             from app.agents.user_sim_agent import user_sim_agent
+            from app.agents.ux_eval_agent import ux_eval_agent
 
             agent_map = {
                 "istara-devops": devops_agent,
@@ -286,7 +285,7 @@ class MetaOrchestrator:
                     new_count = len(reports)
                     if new_count > managed.executions:
                         managed.executions = new_count
-                        managed.last_active = datetime.now(timezone.utc)
+                        managed.last_active = datetime.now(UTC)
 
                         # Get latest report summary
                         if reports:
@@ -308,12 +307,13 @@ class MetaOrchestrator:
     async def _distribute_pending_tasks(self) -> None:
         """Route unassigned tasks to the best agent based on specialties."""
         try:
+            from sqlalchemy import select
+
+            from app.core.task_router import route_task
             from app.models.database import async_session
             from app.models.project import Project
             from app.models.task import Task, TaskStatus
-            from app.core.task_router import route_task
             from app.services.a2a import send_message
-            from sqlalchemy import select
 
             async with async_session() as db:
                 result = await db.execute(
@@ -417,6 +417,7 @@ class MetaOrchestrator:
                                 )
                                 try:
                                     from dataclasses import asdict
+
                                     from app.core.improvement_governance import (
                                         improvement_governance,
                                     )
@@ -490,7 +491,7 @@ class MetaOrchestrator:
     def _log_action(self, agent_id: str, action: str, details: str) -> None:
         """Log an orchestrator action for audit trail."""
         entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "agent_id": agent_id,
             "action": action,
             "details": details,

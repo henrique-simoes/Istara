@@ -11,7 +11,7 @@ Prevents runaway loops by capping:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +37,7 @@ async def check_experiment_limit(
     Returns (allowed, reason).
     """
     lim = limits or DEFAULT_LIMITS
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     day_ago = now - timedelta(hours=24)
 
     from app.models.autoresearch_experiment import AutoresearchExperiment
@@ -80,7 +80,7 @@ async def check_learning_limit(
 ) -> tuple[bool, str]:
     """Check if agent learnings are within hourly rate limit."""
     lim = limits or DEFAULT_LIMITS
-    hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    hour_ago = datetime.now(UTC) - timedelta(hours=1)
 
     from app.core.agent_learning import AgentLearning
 

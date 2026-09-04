@@ -176,7 +176,9 @@ class TestParticipantSimulationModule:
             scenario_type="prisoners_dilemma",
             payoffs=prisoner_dilemma_payoffs(),
         )
-        assert choose_action(p, scenario, opponent_last_action="cooperate") == "cooperate"
+        assert (
+            choose_action(p, scenario, opponent_last_action="cooperate") == "cooperate"
+        )
         assert choose_action(p, scenario, opponent_last_action="defect") == "defect"
 
     def test_run_simulation_round(self):
