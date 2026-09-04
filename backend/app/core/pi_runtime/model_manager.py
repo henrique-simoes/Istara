@@ -590,6 +590,8 @@ class PiModelManager:
                     raise PiEndpointResolutionError("petals_endpoint_namespace_conflict")
             entry = self._entries.get(endpoint_id)
             if entry is None:
+                if self._explicit_catalog:
+                    raise PiEndpointResolutionError("unknown_pi_endpoint")
                 # Settings-configured endpoints remain exactly resolvable.
                 endpoint = self._resolver.resolve(endpoint_id, model=model)
                 self._admit(

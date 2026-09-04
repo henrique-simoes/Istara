@@ -214,6 +214,7 @@ class TelemetryRecorder:
         tool_name: str,
         duration_ms: float,
         success: bool,
+        model_name: str = "",
         project_id: str = "",
         agent_id: str = "",
         task_id: str | None = None,
@@ -233,6 +234,7 @@ class TelemetryRecorder:
             tool_success=success,
             tool_duration_ms=duration_ms,
             duration_ms=duration_ms,
+            model_name=model_name,
             status="success" if success else "error",
             agent_id=agent_id,
             project_id=project_id,
@@ -381,14 +383,68 @@ class TelemetryRecorder:
                         "project_id": r.project_id,
                         "skill_name": r.skill_name,
                         "model_name": r.model_name,
+                        "model": r.model_name,
                         "temperature": r.temperature,
                         "quality_ema": round(r.quality_ema or 0, 3),
                         "best_quality": round(r.best_quality or 0, 3),
                         "executions": r.executions,
+                        "total_calls": r.executions,
                         "source": r.source,
                     }
                     for r in rows
                 ]
+
+                # Model activity across all telemetry spans (OpenTelemetry GenAI conventions)
+                model_activity_stmt = (
+                    select(TelemetrySpan)
+                    .where(
+                        TelemetrySpan.project_id == project_id,
+                        TelemetrySpan.model_name != "",
+                    )
+                    .order_by(TelemetrySpan.created_at.desc())
+                    .limit(500)
+                )
+                model_spans_res = await session.execute(model_activity_stmt)
+                spans_by_model: dict[str, list[TelemetrySpan]] = {}
+                for sp in model_spans_res.scalars().all():
+                    spans_by_model.setdefault(sp.model_name, []).append(sp)
+
+                should_synthesize_leaderboard = not leaderboard
+                model_activity: list[dict] = []
+                for mn, mspans in spans_by_model.items():
+                    m_total = len(mspans)
+                    m_success = sum(1 for sp in mspans if sp.status == "success")
+                    m_durs = [sp.duration_ms for sp in mspans if sp.duration_ms > 0]
+                    m_qualities = [sp.quality_score for sp in mspans if sp.quality_score is not None]
+                    m_ops = sorted({sp.operation for sp in mspans if sp.operation})
+                    m_qual = (sum(m_qualities) / len(m_qualities)) if m_qualities else round(m_success / max(m_total, 1), 3)
+                    model_activity.append(
+                        {
+                            "model": mn,
+                            "model_name": mn,
+                            "total_calls": m_total,
+                            "success_count": m_success,
+                            "success_rate": round(m_success / max(m_total, 1), 3),
+                            "avg_duration_ms": round(sum(m_durs) / max(len(m_durs), 1), 1) if m_durs else 0.0,
+                            "quality_ema": round(m_qual, 3),
+                            "operations": m_ops,
+                        }
+                    )
+                    if should_synthesize_leaderboard:
+                        leaderboard.append(
+                            {
+                                "project_id": project_id,
+                                "skill_name": mspans[0].skill_name or "research_validity",
+                                "model_name": mn,
+                                "model": mn,
+                                "temperature": mspans[0].temperature or 0.2,
+                                "quality_ema": round(m_qual, 3),
+                                "best_quality": round(max(m_qualities) if m_qualities else m_qual, 3),
+                                "executions": m_total,
+                                "total_calls": m_total,
+                                "source": "spans_aggregated",
+                            }
+                        )
 
                 error_stmt = (
                     select(TelemetrySpan)
@@ -436,6 +492,8 @@ class TelemetryRecorder:
                             "success": 0,
                             "errors": {},
                             "durations": [],
+                            "agents": set(),
+                            "models": set(),
                         }
                     tool_stats[tname]["total"] += 1
                     if s.tool_success:
@@ -446,15 +504,25 @@ class TelemetryRecorder:
                         )
                     if s.tool_duration_ms is not None and s.tool_duration_ms >= 0:
                         tool_stats[tname]["durations"].append(s.tool_duration_ms)
+                    if s.agent_id:
+                        tool_stats[tname]["agents"].add(s.agent_id)
+                    if s.model_name:
+                        tool_stats[tname]["models"].add(s.model_name)
 
                 total_tool_calls = sum(st["total"] for st in tool_stats.values())
                 total_tool_success = sum(st["success"] for st in tool_stats.values())
+                all_tool_durations = [d for st in tool_stats.values() for d in st["durations"]]
+                all_tool_errors = sorted({e for st in tool_stats.values() for e in st["errors"]})
                 tool_summary = {
                     "total_calls": total_tool_calls,
                     "overall_success_rate": round(total_tool_success / max(total_tool_calls, 1), 3)
                     if total_tool_calls
                     else 0.0,
                     "distinct_tools": len(tool_stats),
+                    "avg_duration_ms": round(sum(all_tool_durations) / max(len(all_tool_durations), 1), 1)
+                    if all_tool_durations
+                    else 0.0,
+                    "error_types_observed": all_tool_errors,
                 }
 
                 tool_success_rates = []
@@ -463,6 +531,7 @@ class TelemetryRecorder:
                     p50 = durations[len(durations) // 2] if durations else 0
                     p90 = durations[int(len(durations) * 0.9)] if len(durations) > 1 else p50
                     p95 = durations[int(len(durations) * 0.95)] if len(durations) > 1 else p90
+                    p99 = durations[int(len(durations) * 0.99)] if len(durations) > 10 else p95
                     min_d = durations[0] if durations else 0
                     max_d = durations[-1] if durations else 0
                     tool_success_rates.append(
@@ -476,9 +545,12 @@ class TelemetryRecorder:
                             "p50_duration_ms": round(p50, 1),
                             "p90_duration_ms": round(p90, 1),
                             "p95_duration_ms": round(p95, 1),
+                            "p99_duration_ms": round(p99, 1),
                             "min_duration_ms": round(min_d, 1),
                             "max_duration_ms": round(max_d, 1),
                             "error_types": stats["errors"],
+                            "agents": sorted(stats["agents"]),
+                            "models": sorted(stats["models"]),
                         }
                     )
 
@@ -579,6 +651,7 @@ class TelemetryRecorder:
                 return {
                     "project_id": project_id,
                     "leaderboard": leaderboard,
+                    "model_activity": model_activity,
                     "error_taxonomy": error_taxonomy,
                     "tool_success_rates": tool_success_rates,
                     "tool_summary": tool_summary,
@@ -592,6 +665,7 @@ class TelemetryRecorder:
             return {
                 "project_id": project_id,
                 "leaderboard": [],
+                "model_activity": [],
                 "error_taxonomy": {},
                 "tool_success_rates": [],
                 "tool_summary": {"total_calls": 0, "overall_success_rate": 0.0, "distinct_tools": 0},

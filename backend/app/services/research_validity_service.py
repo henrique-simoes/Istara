@@ -314,11 +314,15 @@ async def _select_pi_coders(
     # it never connects to a server or loads a model.
     await manager.ensure_db_projection()
     requested_count = max(1, max_coders)
-    preferred_ids = [
-        str(endpoint_id).strip()
-        for endpoint_id in getattr(settings, "pi_research_endpoint_ids", [])
-        if str(endpoint_id).strip()
-    ]
+    preferred_ids = (
+        [
+            str(endpoint_id).strip()
+            for endpoint_id in getattr(settings, "pi_research_endpoint_ids", [])
+            if str(endpoint_id).strip()
+        ]
+        if not getattr(manager, "_explicit_catalog", False)
+        else []
+    )
     endpoints = []
     seen_models: set[str] = set()
     attempted_ids: list[str] = []

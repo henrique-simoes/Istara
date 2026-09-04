@@ -99,4 +99,5 @@ def _no_live_llm_env(request, monkeypatch):
         )
     if request.node.get_closest_marker("live_llm") is None:
         monkeypatch.setenv("ISTARA_TEST_BLOCK_EXTERNAL_LLM", "1")
+    monkeypatch.setattr("app.config.settings.pi_research_endpoint_ids", [])
     yield

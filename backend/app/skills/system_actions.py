@@ -795,6 +795,7 @@ async def execute_tool(
     trace_id: str | None = None,
     task_id: str | None = None,
     parent_id: str | None = None,
+    model_name: str = "",
     session: AsyncSession | None = None,
 ) -> dict[str, Any]:
     """Execute a system action tool and return the result.
@@ -807,6 +808,7 @@ async def execute_tool(
     start_perf = time.perf_counter()
     resolved_trace_id = trace_id or params.get("_trace_id") or uuid.uuid4().hex[:36]
     resolved_task_id = task_id or params.get("task_id") or params.get("target_task_id")
+    resolved_model_name = model_name or str(params.get("_model_name") or "")
     if resolved_task_id is not None:
         resolved_task_id = str(resolved_task_id)[:36]
 
@@ -819,6 +821,7 @@ async def execute_tool(
                 tool_name=tool_name,
                 duration_ms=duration_ms,
                 success=False,
+                model_name=resolved_model_name,
                 project_id=project_id,
                 agent_id=agent_id,
                 task_id=resolved_task_id,
@@ -882,6 +885,7 @@ async def execute_tool(
                 tool_name=tool_name,
                 duration_ms=duration_ms,
                 success=is_success,
+                model_name=resolved_model_name,
                 project_id=project_id,
                 agent_id=agent_id,
                 task_id=resolved_task_id,
@@ -908,6 +912,7 @@ async def execute_tool(
                 tool_name=tool_name,
                 duration_ms=duration_ms,
                 success=False,
+                model_name=resolved_model_name,
                 project_id=project_id,
                 agent_id=agent_id,
                 task_id=resolved_task_id,

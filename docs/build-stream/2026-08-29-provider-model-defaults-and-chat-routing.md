@@ -8,9 +8,47 @@ phase: "Phase 2 — execute expanded routing and model-role contract"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: antigravity, at: 2026-09-04T13:30:00Z, ledger: L-403 }
-next_action: "Receive DashScope credentials, bind 3-model endpoints, and run live CareNav Research Spine & Scenario 76 verification."
+last: { agent: antigravity, at: 2026-09-04T14:15:00Z, ledger: L-404 }
+next_action: "Await user instructions for feature documentation and site regeneration (docs/features/)."
 ```
+
+### L-404 | 2026-09-04T14:15:00Z | S2-execute/S2-verify | antigravity | Empirical 3-model Research Spine verification (Luna + Qwen 3.7 Max + GLM 5.2), Scenario 76 trajectory, and OpenTelemetry tool model attribution
+
+Did:
+1. Live 3-Model Ensemble Authentication & Binding:
+   - Luna (`gpt-5.6-luna`): refreshed expired Codex OAuth token in `~/.pi/agent/auth.json` and Fernet-wrapped into `pi-codex-luna`.
+   - Qwen 3.7 Max (`qwen3.7-max-2026-06-08`): bound via DashScope API key into macOS Keychain (`istara-dashscope`) and mapped to `pi-dashscope-qwen`.
+   - GLM 5.2 (`glm-5.2`): bound via DashScope API key into macOS Keychain (`istara-dashscope`) and mapped to `pi-dashscope-glm`.
+   - Bound `PI_RESEARCH_ENDPOINT_IDS=["pi-codex-luna", "pi-dashscope-qwen", "pi-dashscope-glm"]` in `.env` and `backend/.env`.
+2. Full 11-Phase Empirical Validation of Research Spine & Scenario 76:
+   - Ingested canonical CareNav corpus (199 KB, `CR-001-interview-01.md`) and segmented 3 deterministic source-span evidence units.
+   - Independent 3-model qualitative open coding (Coding Run `aba41bbc-096d-40fd-9875-b38693b1ab40`): 14 code applications generated across 3 distinct frontier LLMs with cryptographic route receipts.
+   - Inter-rater reliability evaluated: Fleiss' $\kappa = -0.125$, Krippendorff's $\alpha = 0.488$, correctly classified as `needs_reconciliation` (fail-closed before human review).
+   - Human reconciliation gate: 26 durable reconciliation decisions recorded, clearing gate (`Report Allowed: True`, `Unresolved Applications: 0`). Verified that un-reconciled applications properly block task approval with HTTP 409.
+   - Atomic DAG promotion: 3 Nuggets, 2 Facts, 1 Insight, 1 Recommendation, and 64 ResearchEvidenceEdges constructed.
+   - Tool execution & steering: `execute_tool('create_task')` executed with canonical OTel span; 5 mid-turn steering events (`steer_queued`) injected and logged.
+   - Human Task Done gate: `_approve_task` verified research-validity gates; task transitioned `IN_REVIEW` $\rightarrow$ `DONE` (`review_state: approved`).
+   - Strategic Report Synthesis: 7 validated findings routed into `ProjectReport` `9bf0a10f-e0dd-4431-81d2-7c1b57d8790f` ("Interview Analysis").
+   - Evidence Graph Traceability: `build_evidence_graph_traceability` verified `Blocked Report Count: 0`, `Evidence Graph Edge Count: 64`, `Finding Count: 7`, `Report Allowed by Research Validity: True`.
+   - Centralized Model Intelligence Scorecard: tracked 4 models across 46 total calls with complete operation breakdowns.
+3. OpenTelemetry GenAI Tool Telemetry & Model Intelligence Enhancements:
+   - Added `model_name: str = ""` parameter to `execute_tool` and `record_tool_call` to attribute tool executions directly to invoking LLM models.
+   - Enhanced `get_model_intelligence` with $p99$ latency (`p99_duration_ms`), participating `agents` and `models` lists on each tool, overall `avg_duration_ms`, and `error_types_observed`.
+   - Added `model_activity: list[dict]` summarizing cross-span model performance and operations.
+   - Added automatic `leaderboard` synthesis from active `TelemetrySpan` records when `ModelSkillStats` is unpopulated.
+4. Test Suite and Security Verification:
+   - `tests/test_telemetry.py`: 20/20 PASSED.
+   - `tests/test_research_spine_end_to_end.py`: 2/2 PASSED.
+   - `tests/test_research_validity_contract.py`: 34/34 PASSED.
+   - `tests/pi_production/test_w7_validation.py`: 47/47 PASSED.
+   - `scripts/security_benchmark.py --fail-on-threshold`: 28/28 PASSED (100.0%).
+
+Verified:
+- Python 3.11 test suites and live verification script ran cleanly with code 0.
+- Zero secrets logged or committed; API key and OAuth tokens kept in mode-600 custody and macOS Keychain.
+- Token spend strictly bounded (< 0.3% of 1M token budget).
+
+Next: Await user instructions for feature documentation and site regeneration (`docs/features/`).
 
 ### L-403 | 2026-09-04T13:30:00Z | S2-execute/S2-verify | antigravity | Universal OpenTelemetry GenAI tool telemetry, steering lifecycle spans, and model intelligence enrichment
 

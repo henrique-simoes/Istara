@@ -189,6 +189,7 @@ async def init_db() -> None:
             "ALTER TABLE agents ADD COLUMN scope VARCHAR(10) NOT NULL DEFAULT 'universal'",
             "ALTER TABLE agents ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
             "ALTER TABLE projects ADD COLUMN watch_folder_path VARCHAR(1000)",
+            "ALTER TABLE projects ADD COLUMN agentic_engine VARCHAR(32)",
             "ALTER TABLE chat_sessions ADD COLUMN thinking_mode VARCHAR(20) "
             "NOT NULL DEFAULT 'server_default'",
             "ALTER TABLE chat_sessions ADD COLUMN endpoint_override VARCHAR(120)",

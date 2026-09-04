@@ -545,3 +545,73 @@ class TestEnhancedToolAndSteeringTelemetry:
         assert tool_rates[0]["p50_duration_ms"] == 20.0
         assert tool_rates[0]["min_duration_ms"] == 10.0
         assert tool_rates[0]["max_duration_ms"] == 30.0
+
+    @pytest.mark.asyncio
+    async def test_tool_telemetry_industry_standards_and_model_attribution(self):
+        from app.core.telemetry import telemetry_recorder
+        from app.skills.system_actions import execute_tool
+        from app.models.database import async_session, init_db
+        from app.models.telemetry_span import TelemetrySpan
+        from sqlalchemy import select
+
+        await init_db()
+        project_id = f"proj-industry-{uuid.uuid4().hex[:8]}"
+
+        # Execute tool passing calling model name
+        res = await execute_tool(
+            "search_documents",
+            {"query": "elderly accessibility constraints"},
+            project_id=project_id,
+            agent_id="cleo-orchestrator",
+            model_name="gpt-5.6-luna",
+        )
+        assert res["success"] is True
+
+        # Directly record a tool call for another model
+        await telemetry_recorder.record_tool_call(
+            tool_name="create_task",
+            duration_ms=45.0,
+            success=True,
+            model_name="qwen3.7-max-2026-06-08",
+            agent_id="sage-agent",
+            project_id=project_id,
+        )
+
+        async with async_session() as session:
+            stmt = select(TelemetrySpan).where(
+                TelemetrySpan.project_id == project_id,
+                TelemetrySpan.operation == "tool_call",
+            ).order_by(TelemetrySpan.created_at.asc())
+            spans = (await session.execute(stmt)).scalars().all()
+            assert len(spans) == 2
+            assert spans[0].model_name == "gpt-5.6-luna"
+            assert spans[0].agent_id == "cleo-orchestrator"
+            assert spans[1].model_name == "qwen3.7-max-2026-06-08"
+            assert spans[1].agent_id == "sage-agent"
+
+        intel = await telemetry_recorder.get_model_intelligence(project_id)
+
+        # Check tool summary enrichments
+        assert "tool_summary" in intel
+        assert intel["tool_summary"]["total_calls"] == 2
+        assert intel["tool_summary"]["distinct_tools"] == 2
+        assert "avg_duration_ms" in intel["tool_summary"]
+
+        # Check tool success rates enrichments
+        rates = {r["tool"]: r for r in intel["tool_success_rates"]}
+        assert "search_documents" in rates
+        assert "gpt-5.6-luna" in rates["search_documents"]["models"]
+        assert "cleo-orchestrator" in rates["search_documents"]["agents"]
+        assert "p99_duration_ms" in rates["search_documents"]
+
+        # Check model activity summary
+        assert "model_activity" in intel
+        activity_models = {m["model_name"] for m in intel["model_activity"]}
+        assert "gpt-5.6-luna" in activity_models
+        assert "qwen3.7-max-2026-06-08" in activity_models
+
+        # Check leaderboard synthesis from spans
+        assert len(intel["leaderboard"]) >= 2
+        leaderboard_models = {entry["model"] for entry in intel["leaderboard"]}
+        assert "gpt-5.6-luna" in leaderboard_models
+        assert "qwen3.7-max-2026-06-08" in leaderboard_models
