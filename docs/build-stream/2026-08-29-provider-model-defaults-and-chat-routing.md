@@ -8,9 +8,33 @@ phase: "Phase 2 — execute expanded routing and model-role contract"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: antigravity, at: 2026-09-04T14:15:00Z, ledger: L-404 }
+last: { agent: antigravity, at: 2026-09-04T15:40:00Z, ledger: L-405 }
 next_action: "Await user instructions for feature documentation and site regeneration (docs/features/)."
 ```
+
+### L-405 | 2026-09-04T15:40:00Z | S2-execute/S2-verify | antigravity | Public scientific audit publication, SteeringQueue test fix, and candidate path mapping
+
+Did:
+1. Public Scientific & Qualitative Audit Publication:
+   - Authored and published `docs/scientific_audit/three-model-research-spine-audit.md` providing a comprehensive forensic analysis of the frontier 3-model Research Spine run (Luna, Qwen 3.7 Max, GLM 5.2).
+   - Sanitized all paths and content: zero machine identifiers, local usernames, home directories, private endpoints, or credentials included.
+   - Evaluated nominal inter-rater reliability metrics (Fleiss' $\kappa = -0.125$, Krippendorff's $\alpha = 0.488$), open coding vocabulary divergence, thematic depth, inclusion/exclusion rules, Tomer Sharon atomic DAG progression, and Barbara Minto SCQA report synthesis.
+   - Updated `docs/scientific_audit/README.md` and `testing/TEST_HISTORY.md` with curated 2026-09-04 baseline entries.
+2. Steering Test Suite Collection Unblocked:
+   - Re-exported `SteeringQueue` from `backend/app/core/steering.py` (imported from `steering_types.py`), defining explicit `__all__` exports.
+   - Verified that `tests/test_steering_api.py`, `tests/test_steering_manager.py`, `tests/test_steering_queue.py`, and `tests/test_steering_websocket.py` collect cleanly and pass 42/42 tests (100%).
+3. Backend Code Formatting Cleaned:
+   - Applied `ruff format` to touched telemetry and steering files; verified `ruff format --check backend` is 100% clean (345 files already formatted).
+4. Committed and Pushed to Origin:
+   - Committed changes as `a2c1ddfa` and pushed cleanly to `origin/testing`.
+
+Verified:
+- `pytest tests/test_steering_*.py -q`: 42 passed in 14.99s.
+- `ruff format --check backend`: clean (345 files formatted).
+- `python scripts/check_integrity.py && python scripts/check_ci_governance.py && python scripts/check_test_harness.py && python scripts/security_release_readiness.py && python scripts/security_benchmark.py --fail-on-threshold`: all passed (28/28 security controls, 100%).
+- Working tree clean, synced with `origin/testing` at `a2c1ddfa`.
+
+Next: Proceed with candidate promotion prerequisites for `origin/main` (feature coverage mapping, feature docs/site regeneration when authorized, and human-gated promotion workflow).
 
 ### L-404 | 2026-09-04T14:15:00Z | S2-execute/S2-verify | antigravity | Empirical 3-model Research Spine verification (Luna + Qwen 3.7 Max + GLM 5.2), Scenario 76 trajectory, and OpenTelemetry tool model attribution
 
