@@ -415,9 +415,15 @@ class TelemetryRecorder:
                     m_total = len(mspans)
                     m_success = sum(1 for sp in mspans if sp.status == "success")
                     m_durs = [sp.duration_ms for sp in mspans if sp.duration_ms > 0]
-                    m_qualities = [sp.quality_score for sp in mspans if sp.quality_score is not None]
+                    m_qualities = [
+                        sp.quality_score for sp in mspans if sp.quality_score is not None
+                    ]
                     m_ops = sorted({sp.operation for sp in mspans if sp.operation})
-                    m_qual = (sum(m_qualities) / len(m_qualities)) if m_qualities else round(m_success / max(m_total, 1), 3)
+                    m_qual = (
+                        (sum(m_qualities) / len(m_qualities))
+                        if m_qualities
+                        else round(m_success / max(m_total, 1), 3)
+                    )
                     model_activity.append(
                         {
                             "model": mn,
@@ -425,7 +431,9 @@ class TelemetryRecorder:
                             "total_calls": m_total,
                             "success_count": m_success,
                             "success_rate": round(m_success / max(m_total, 1), 3),
-                            "avg_duration_ms": round(sum(m_durs) / max(len(m_durs), 1), 1) if m_durs else 0.0,
+                            "avg_duration_ms": round(sum(m_durs) / max(len(m_durs), 1), 1)
+                            if m_durs
+                            else 0.0,
                             "quality_ema": round(m_qual, 3),
                             "operations": m_ops,
                         }
@@ -439,7 +447,9 @@ class TelemetryRecorder:
                                 "model": mn,
                                 "temperature": mspans[0].temperature or 0.2,
                                 "quality_ema": round(m_qual, 3),
-                                "best_quality": round(max(m_qualities) if m_qualities else m_qual, 3),
+                                "best_quality": round(
+                                    max(m_qualities) if m_qualities else m_qual, 3
+                                ),
                                 "executions": m_total,
                                 "total_calls": m_total,
                                 "source": "spans_aggregated",
@@ -519,7 +529,9 @@ class TelemetryRecorder:
                     if total_tool_calls
                     else 0.0,
                     "distinct_tools": len(tool_stats),
-                    "avg_duration_ms": round(sum(all_tool_durations) / max(len(all_tool_durations), 1), 1)
+                    "avg_duration_ms": round(
+                        sum(all_tool_durations) / max(len(all_tool_durations), 1), 1
+                    )
                     if all_tool_durations
                     else 0.0,
                     "error_types_observed": all_tool_errors,
@@ -668,7 +680,11 @@ class TelemetryRecorder:
                 "model_activity": [],
                 "error_taxonomy": {},
                 "tool_success_rates": [],
-                "tool_summary": {"total_calls": 0, "overall_success_rate": 0.0, "distinct_tools": 0},
+                "tool_summary": {
+                    "total_calls": 0,
+                    "overall_success_rate": 0.0,
+                    "distinct_tools": 0,
+                },
                 "steering_summary": {"total_events": 0, "action_counts": {}},
                 "json_parse_success_rates": [],
                 "latency_percentiles": [],

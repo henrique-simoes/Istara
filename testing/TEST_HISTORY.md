@@ -6,6 +6,20 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-04 - Empirical Three-Model Research Spine Baseline
+
+Scope: end-to-end live validation of Istara's Research Spine and Scenario 76 long-horizon trajectory using three frontier models: Luna (`gpt-5.6-luna`), Qwen 3.7 Max (`qwen3.7-max-2026-06-08`), and GLM 5.2 (`glm-5.2`). Ingested canonical CareNav transcript, performed independent qualitative coding, Fleiss' Kappa / Krippendorff's Alpha reliability evaluation, human reconciliation, atomic DAG promotion, task execution, steering injection, Done approval gate, and Minto SCQA report synthesis.
+
+| Area | Result |
+| --- | --- |
+| Research Spine multi-model coding | 14 code applications generated across 3 distinct frontier LLMs with cryptographic route receipts |
+| Reliability evaluation | Nominal Fleiss' $\kappa = -0.125$, Krippendorff's $\alpha = 0.488$; correctly triggered fail-closed `needs_reconciliation` gate |
+| Human reconciliation gate | 26 durable reconciliation decisions recorded; un-reconciled applications verified to block task Done approval with HTTP 409 |
+| Atomic Research DAG | 3 Nuggets, 2 Facts, 1 Insight, 1 Recommendation, 64 evidence edges constructed |
+| Strategic report synthesis | Generated Barbara Minto SCQA executive summary with 100% MECE categories and full backward traceability |
+| Tool execution telemetry | OpenTelemetry GenAI-compliant tool call spans with model attribution and steering queue event logging |
+| Detailed scientific audit | `docs/scientific_audit/three-model-research-spine-audit.md` |
+
 ## 2026-05-20 - Testing Suite Governance Refresh
 
 Scope: deterministic testing-suite alignment after project-isolation hardening,

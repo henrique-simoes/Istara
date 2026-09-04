@@ -48,9 +48,19 @@ from app.core.steering_types import (
     AgentSteeringState,
     SteeringMessage,
     SteeringMode,
+    SteeringQueue,
 )
 
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "AgentSteeringState",
+    "SteeringManager",
+    "SteeringMessage",
+    "SteeringMode",
+    "SteeringQueue",
+    "steering_manager",
+]
 
 # ---------------------------------------------------------------------------
 # Steering Manager — global registry of per-agent steering state

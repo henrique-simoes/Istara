@@ -763,7 +763,12 @@ def _classify_tool_error(err_str: str) -> str:
         return "unknown_tool"
     if "not found" in lower or "missing" in lower:
         return "not_found"
-    if "permission" in lower or "denied" in lower or "not available" in lower or "not active" in lower:
+    if (
+        "permission" in lower
+        or "denied" in lower
+        or "not available" in lower
+        or "not active" in lower
+    ):
         return "permission_denied"
     if "timeout" in lower or "timed out" in lower:
         return "timeout"
