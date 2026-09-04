@@ -54,44 +54,77 @@ def _is_safe_context(text: str, match: re.Match[str]) -> bool:
 # Threat pattern categories
 # ---------------------------------------------------------------------------
 
+
 def _build_patterns() -> dict[str, list[re.Pattern[str]]]:
     """Compile threat-detection regex patterns, grouped by category."""
     return {
         "instruction_override": [
-            re.compile(r"\bignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|prompts?|rules?|context)\b", re.I),
+            re.compile(
+                r"\bignore\s+(?:all\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|prompts?|rules?|context)\b",
+                re.I,
+            ),
             re.compile(r"\bdisregard\s+(?:all\s+)?(?:above|previous|prior|earlier|the)\b", re.I),
-            re.compile(r"\byou\s+are\s+now\s+(?:a\s+)?(?!(?:participant|user|respondent|customer)\b)\w+", re.I),
+            re.compile(
+                r"\byou\s+are\s+now\s+(?:a\s+)?(?!(?:participant|user|respondent|customer)\b)\w+",
+                re.I,
+            ),
             re.compile(r"\bnew\s+instructions?\s*:", re.I),
             re.compile(r"^\s*system\s*:", re.I | re.M),
             re.compile(r"^\s*ADMIN\s*:", re.I | re.M),
             re.compile(r"\bforget\s+(?:all\s+)?(?:everything|previous|prior|your)\b", re.I),
             re.compile(r"\boverride\s+(?:all\s+)?(?:previous|prior|system|safety)\b", re.I),
-            re.compile(r"\bdo\s+not\s+follow\s+(?:any\s+)?(?:previous|prior|above|earlier)\b", re.I),
-            re.compile(r"\b(?:start|begin)\s+(?:a\s+)?new\s+(?:conversation|session|context)\b", re.I),
+            re.compile(
+                r"\bdo\s+not\s+follow\s+(?:any\s+)?(?:previous|prior|above|earlier)\b", re.I
+            ),
+            re.compile(
+                r"\b(?:start|begin)\s+(?:a\s+)?new\s+(?:conversation|session|context)\b", re.I
+            ),
         ],
         "role_impersonation": [
             re.compile(r"\bas an AI (?:assistant|language model|model)\b", re.I),
             re.compile(r"\byou\s+must\s+now\b", re.I),
             re.compile(r"\byour\s+new\s+role\b", re.I),
             # "act as" but NOT "act as a participant/user/respondent/tester"
-            re.compile(r"\bact\s+as\s+(?:a\s+)?(?!(?:participant|user|respondent|tester|customer|shopper)\b)(?:an?\s+)?\w+", re.I),
+            re.compile(
+                r"\bact\s+as\s+(?:a\s+)?(?!(?:participant|user|respondent|tester|customer|shopper)\b)(?:an?\s+)?\w+",
+                re.I,
+            ),
             # "pretend you are" but NOT "pretend you are a customer/user/participant"
-            re.compile(r"\bpretend\s+you\s+are\s+(?:a\s+)?(?!(?:customer|user|participant|shopper|respondent)\b)\w+", re.I),
-            re.compile(r"\byou\s+are\s+(?:a\s+)?(?:DAN|jailbroken|unrestricted|unfiltered)\b", re.I),
+            re.compile(
+                r"\bpretend\s+you\s+are\s+(?:a\s+)?(?!(?:customer|user|participant|shopper|respondent)\b)\w+",
+                re.I,
+            ),
+            re.compile(
+                r"\byou\s+are\s+(?:a\s+)?(?:DAN|jailbroken|unrestricted|unfiltered)\b", re.I
+            ),
             re.compile(r"\bswitch\s+to\s+(?:developer|god|admin|root)\s+mode\b", re.I),
             re.compile(r"\benable\s+(?:developer|god|admin|DAN)\s+mode\b", re.I),
         ],
         "credential_exfiltration": [
-            re.compile(r"\b(?:reveal|show|tell|give|leak|output|print|display)\s+(?:me\s+)?(?:your\s+)?(?:API|secret|private)\s*(?:key|token)s?\b", re.I),
-            re.compile(r"\b(?:what|show|reveal|tell)\s+(?:is|me|are)\s+(?:your|the)\s+(?:password|credentials?|secret|token|API.?key)\b", re.I),
+            re.compile(
+                r"\b(?:reveal|show|tell|give|leak|output|print|display)\s+(?:me\s+)?(?:your\s+)?(?:API|secret|private)\s*(?:key|token)s?\b",
+                re.I,
+            ),
+            re.compile(
+                r"\b(?:what|show|reveal|tell)\s+(?:is|me|are)\s+(?:your|the)\s+(?:password|credentials?|secret|token|API.?key)\b",
+                re.I,
+            ),
             re.compile(r"\bexfiltrate\b", re.I),
-            re.compile(r"\bsend\s+(?:the\s+)?(?:data|info|content|secrets?|keys?|tokens?)\s+to\b", re.I),
+            re.compile(
+                r"\bsend\s+(?:the\s+)?(?:data|info|content|secrets?|keys?|tokens?)\s+to\b", re.I
+            ),
             re.compile(r"\b(?:curl|wget|fetch)\s+https?://", re.I),
-            re.compile(r"\bwrite\s+(?:the\s+)?(?:system\s+prompt|instructions?|rules?)\s+(?:to|into|in)\b", re.I),
+            re.compile(
+                r"\bwrite\s+(?:the\s+)?(?:system\s+prompt|instructions?|rules?)\s+(?:to|into|in)\b",
+                re.I,
+            ),
         ],
         "hidden_markup": [
             # HTML comments containing instruction-like keywords
-            re.compile(r"<!--\s*(?:.*?(?:ignore|override|forget|system|admin|instruction).*?)\s*-->", re.I | re.S),
+            re.compile(
+                r"<!--\s*(?:.*?(?:ignore|override|forget|system|admin|instruction).*?)\s*-->",
+                re.I | re.S,
+            ),
             # CSS-based hiding: display:none, visibility:hidden, font-size:0
             re.compile(r"(?:display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0)", re.I),
             # Base64-encoded blocks longer than 200 chars (potential payload)
@@ -110,6 +143,7 @@ _THREAT_PATTERNS: dict[str, list[re.Pattern[str]]] = _build_patterns()
 # ---------------------------------------------------------------------------
 # Invisible Unicode ranges for stripping
 # ---------------------------------------------------------------------------
+
 
 @lru_cache(maxsize=1)
 def _invisible_categories() -> frozenset[int]:

@@ -1,6 +1,7 @@
 """Project CRUD API routes."""
 
 import logging
+import shutil
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,6 +21,7 @@ from app.core.permissions import (
     require_global_admin,
     require_project_access,
 )
+from app.core.field_encryption import safe_decrypt_field
 from app.core.versioning import ProjectVersioning
 from app.models.database import get_db
 from app.models.project import Project, ProjectPhase
@@ -73,6 +75,102 @@ def _validate_watch_folder(folder_path: str) -> Path:
         pass
 
     return resolved
+
+
+def _resolve_export_directory(export_path: str | None, safe_name: str) -> Path:
+    """Resolve an export destination, with a writable Docker-safe default.
+
+    Host installs traditionally use ``~/Istara-Projects``. In a non-root
+    container that home directory may be inaccessible; only the implicit
+    default is allowed to fall back to the configured application data dir.
+    Explicit user paths remain explicit and return a clear client error when
+    they cannot be created.
+    """
+    requested = Path(export_path) if export_path else Path.home() / "Istara-Projects" / safe_name
+    try:
+        requested.mkdir(parents=True, exist_ok=True)
+        return requested
+    except OSError as exc:
+        if export_path:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Export path is not writable: {export_path}",
+            ) from exc
+
+    fallback = Path(settings.data_dir) / "exports" / safe_name
+    try:
+        fallback.mkdir(parents=True, exist_ok=True)
+    except OSError as fallback_exc:
+        logger.error("Unable to create default export destination: %s", fallback_exc)
+        raise HTTPException(
+            status_code=500,
+            detail="No writable export destination is available",
+        ) from fallback_exc
+
+    logger.warning(
+        "Default export destination %s is unavailable; using %s",
+        requested,
+        fallback,
+    )
+    return fallback
+
+
+def _remove_managed_project_artifacts(project_id: str) -> None:
+    """Remove only runtime paths owned by a deleted project.
+
+    Project deletion is allowed to remove Istara-managed uploads, vector and
+    keyword indexes, and the per-project version repository.  Linked external
+    watch folders are deliberately not included.  The path-shape and
+    containment checks keep a malformed project id from widening deletion to
+    a configured data root.
+    """
+    normalized_id = str(project_id or "").strip()
+    if not normalized_id or Path(normalized_id).name != normalized_id:
+        logger.warning("Skipping runtime cleanup for unsafe project id %r", project_id)
+        return
+
+    roots_and_paths = (
+        (Path(settings.upload_dir), Path(settings.upload_dir) / normalized_id, "uploads"),
+        (Path(settings.lance_db_path), Path(settings.lance_db_path) / normalized_id, "lance_db"),
+        (
+            Path(settings.projects_dir),
+            Path(settings.projects_dir) / normalized_id,
+            "project_versions",
+        ),
+        (
+            Path(settings.data_dir) / "keyword_index",
+            Path(settings.data_dir) / "keyword_index" / f"{normalized_id}.db",
+            "keyword_index",
+        ),
+    )
+    for root, candidate, kind in roots_and_paths:
+        try:
+            root_resolved = root.expanduser().resolve()
+            candidate_resolved = candidate.expanduser().resolve()
+            if candidate_resolved.parent != root_resolved:
+                logger.warning("Skipping runtime cleanup outside %s root: %s", kind, candidate)
+                continue
+            if candidate.is_symlink():
+                candidate.unlink()
+            elif candidate.is_dir():
+                shutil.rmtree(candidate)
+            elif candidate.exists():
+                candidate.unlink()
+        except OSError:
+            logger.warning(
+                "Unable to clean %s artifact for project %s", kind, normalized_id, exc_info=True
+            )
+
+
+def _copy_project_uploads(project_id: str, export_dir: Path) -> None:
+    """Copy managed uploads into an export without following external links."""
+    uploads_src = Path(settings.upload_dir) / project_id
+    if not uploads_src.exists():
+        return
+    uploads_dest = export_dir / "files"
+    if uploads_dest.exists():
+        shutil.rmtree(uploads_dest)
+    shutil.copytree(uploads_src, uploads_dest)
 
 
 async def _stop_project_background_work(project_id: str, db: AsyncSession) -> dict:
@@ -437,13 +535,32 @@ async def delete_project(project_id: str, request: Request, db: AsyncSession = D
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    # Stop filesystem watchers before deleting the managed upload directory.
+    # External linked folders remain on disk, but their watcher registration is
+    # no longer valid once the owning project is gone.
+    file_watcher = getattr(request.app.state, "file_watcher", None)
+    if file_watcher:
+        managed_upload_dir = Path(settings.upload_dir) / project_id
+        try:
+            file_watcher.remove_watch(str(managed_upload_dir))
+            if project.watch_folder_path:
+                file_watcher.remove_watch(project.watch_folder_path)
+        except Exception:
+            logger.warning(
+                "Unable to remove file watches for deleted project %s", project_id, exc_info=True
+            )
+
     # Clean up entities that lack FK cascade (no ForeignKey constraint)
     from app.core.scheduler import ScheduledTask
     from app.models.context_dag import ContextDAGNode
     from app.models.session import ChatSession
+    from app.models.project_member import ProjectMember
 
     # Delete orphaned scheduled tasks for this project
     await db.execute(delete(ScheduledTask).where(ScheduledTask.project_id == project_id))
+    # SQLite deployments do not always enforce the database-level cascade, so
+    # remove memberships explicitly to keep Admin access free of stale rows.
+    await db.execute(delete(ProjectMember).where(ProjectMember.project_id == project_id))
     # Delete orphaned DAG nodes for sessions belonging to this project
     session_ids_result = await db.execute(
         select(ChatSession.id).where(ChatSession.project_id == project_id)
@@ -454,6 +571,11 @@ async def delete_project(project_id: str, request: Request, db: AsyncSession = D
 
     await db.delete(project)
     await db.commit()
+
+    # The database cascade cannot remove filesystem-backed runtime state.  Do
+    # this only after the transaction commits so a failed delete never loses
+    # user files, and keep the cleanup bounded to configured managed roots.
+    _remove_managed_project_artifacts(project_id)
 
 
 @router.get("/projects/{project_id}/versions")
@@ -488,18 +610,12 @@ async def export_project(
     If export_path is not provided, exports to ~/Istara-Projects/{project_name}/
     """
     import json
-    import shutil
-    from pathlib import Path
 
     project = await get_visible_project_or_404(db, request, project_id, min_role="project_admin")
 
     # Determine export path
     safe_name = "".join(c if c.isalnum() or c in "-_ " else "" for c in project.name).strip()
-    if not export_path:
-        export_path = str(Path.home() / "Istara-Projects" / safe_name)
-
-    export_dir = Path(export_path)
-    export_dir.mkdir(parents=True, exist_ok=True)
+    export_dir = _resolve_export_directory(export_path, safe_name)
 
     # Export project metadata
     project_data = {
@@ -614,12 +730,7 @@ async def export_project(
     (export_dir / "codebooks.json").write_text(json.dumps(codebooks_data, indent=2))
 
     # Copy uploaded files
-    uploads_src = Path(settings.upload_dir) / project_id
-    if uploads_src.exists():
-        uploads_dest = export_dir / "files"
-        if uploads_dest.exists():
-            shutil.rmtree(uploads_dest)
-        shutil.copytree(uploads_src, uploads_dest)
+    _copy_project_uploads(project_id, export_dir)
 
     # Create a README
     readme = f"""# {project.name}
@@ -685,7 +796,9 @@ async def list_project_members(
                 "username": users_by_id[m.user_id].username
                 if m.user_id in users_by_id
                 else "unknown",
-                "email": users_by_id[m.user_id].email if m.user_id in users_by_id else "",
+                "email": safe_decrypt_field(users_by_id[m.user_id].email)
+                if m.user_id in users_by_id
+                else "",
                 "display_name": getattr(users_by_id.get(m.user_id), "display_name", "") or "",
             }
             for m in members

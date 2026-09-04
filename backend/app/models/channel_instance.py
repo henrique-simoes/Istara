@@ -18,20 +18,27 @@ class ChannelInstance(Base):
     __tablename__ = "channel_instances"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    platform: Mapped[str] = mapped_column(String(20), nullable=False)  # telegram|slack|whatsapp|google_chat
+    platform: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # telegram|slack|whatsapp|google_chat
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     config_json: Mapped[str] = mapped_column(Text, default="{}")  # encrypted credentials
-    project_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # optional project binding
+    project_id: Mapped[str | None] = mapped_column(
+        String(36), nullable=True
+    )  # optional project binding
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
-    health_status: Mapped[str] = mapped_column(String(20), default="unknown")  # healthy|unhealthy|unknown
+    health_status: Mapped[str] = mapped_column(
+        String(20), default="unknown"
+    )  # healthy|unhealthy|unknown
     last_health_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     message_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     def to_dict(self) -> dict:

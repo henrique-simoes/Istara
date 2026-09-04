@@ -28,6 +28,13 @@ from app.models.project import Project
 
 logger = logging.getLogger(__name__)
 
+# Health checks may receive provider/network exception text that includes
+# private URLs, tokens, or implementation details. Keep that detail in local
+# logs only and expose a stable, actionable message to API consumers.
+PUBLIC_HEALTH_ERROR = (
+    "Connection check failed. Verify the credentials and network access, then retry."
+)
+
 PLATFORM_ADAPTERS: dict[str, type[ChannelAdapter]] = {
     "telegram": TelegramAdapter,
     "slack": SlackAdapter,
@@ -102,6 +109,7 @@ def normalize_channel_config(platform: str, config: dict | None) -> dict:
 # Instance CRUD
 # ---------------------------------------------------------------------------
 
+
 async def create_channel_instance(
     db: AsyncSession,
     platform: str,
@@ -111,9 +119,7 @@ async def create_channel_instance(
 ) -> ChannelInstance:
     """Create a new channel instance record."""
     if platform not in PLATFORM_ADAPTERS:
-        raise ValueError(
-            f"Unknown platform '{platform}'. Supported: {list(PLATFORM_ADAPTERS)}"
-        )
+        raise ValueError(f"Unknown platform '{platform}'. Supported: {list(PLATFORM_ADAPTERS)}")
     normalized_config = normalize_channel_config(platform, config)
 
     instance = ChannelInstance(
@@ -201,9 +207,7 @@ async def delete_channel_instance(
 
 async def get_channel_instance(db: AsyncSession, instance_id: str) -> ChannelInstance | None:
     """Get a single channel instance by ID."""
-    result = await db.execute(
-        select(ChannelInstance).where(ChannelInstance.id == instance_id)
-    )
+    result = await db.execute(select(ChannelInstance).where(ChannelInstance.id == instance_id))
     return result.scalar_one_or_none()
 
 
@@ -229,6 +233,7 @@ async def list_channel_instances(
 # ---------------------------------------------------------------------------
 # Adapter lifecycle
 # ---------------------------------------------------------------------------
+
 
 def _instantiate_adapter(instance: ChannelInstance) -> ChannelAdapter:
     """Create an adapter instance from a ChannelInstance record."""
@@ -284,13 +289,21 @@ async def start_channel_instance(
 
     try:
         await channel_router.start_adapter(instance_id)
-    except Exception as exc:
+    except Exception:
+        # Adapter startup may surface provider/network details (including
+        # private URLs or credentials). Keep those details in server logs and
+        # expose the same stable actionable message used by health checks.
+        logger.exception(
+            "Channel adapter start raised for instance %s (%s)",
+            instance_id,
+            instance.platform,
+        )
         channel_router.unregister(instance_id)
         instance.is_active = False
         instance.health_status = "unhealthy"
         instance.last_health_at = datetime.now(timezone.utc)
         await db.commit()
-        raise RuntimeError(str(exc)) from exc
+        raise RuntimeError(PUBLIC_HEALTH_ERROR)
 
     # Update DB status
     instance.is_active = True
@@ -396,7 +409,27 @@ async def health_check_instance(
         else:
             health = {"status": "stopped", "platform": instance.platform}
     else:
-        health = await adapter.health_check()
+        try:
+            health = await adapter.health_check()
+        except Exception:
+            # Adapters should normally return a structured unhealthy result,
+            # but a defensive boundary here prevents a provider exception from
+            # becoming a 500/raw traceback in the integration wizard.
+            logger.exception(
+                "Channel health check raised for instance %s (%s)",
+                instance_id,
+                instance.platform,
+            )
+            health = {
+                "status": "unhealthy",
+                "platform": instance.platform,
+                "error": PUBLIC_HEALTH_ERROR,
+            }
+
+    if health.get("status") == "unhealthy":
+        # Adapter error strings are intentionally not API-facing: HTTP/client
+        # details can contain credentials or internal topology.
+        health = {**health, "error": PUBLIC_HEALTH_ERROR}
 
     # Persist health status
     instance.health_status = health.get("status", "unknown")
@@ -409,6 +442,7 @@ async def health_check_instance(
 # ---------------------------------------------------------------------------
 # Message operations
 # ---------------------------------------------------------------------------
+
 
 async def get_message_history(
     db: AsyncSession,
@@ -510,9 +544,7 @@ async def record_message(
     project_id: str | None = None,
 ) -> ChannelMessage:
     """Persist a message to the database and increment instance message_count."""
-    result = await db.execute(
-        select(ChannelInstance).where(ChannelInstance.id == instance_id)
-    )
+    result = await db.execute(select(ChannelInstance).where(ChannelInstance.id == instance_id))
     instance = result.scalar_one_or_none()
     if instance is None:
         raise KeyError(f"Channel instance '{instance_id}' not found")
@@ -549,6 +581,7 @@ async def record_message(
 # ---------------------------------------------------------------------------
 # Startup loader
 # ---------------------------------------------------------------------------
+
 
 async def load_active_instances(db: AsyncSession) -> int:
     """Load all active channel instances from DB, instantiate adapters, and start them.

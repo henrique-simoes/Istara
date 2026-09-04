@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 
 # Ports to probe for LLM servers
 DISCOVERY_PORTS = [
-    (1234, "lmstudio", "/v1/models"),       # LM Studio
-    (11434, "ollama", "/api/tags"),           # Ollama
-    (8080, "openai_compat", "/v1/models"),   # Common OpenAI-compat
+    (1234, "lmstudio", "/v1/models"),  # LM Studio
+    (11434, "ollama", "/api/tags"),  # Ollama
+    (8080, "openai_compat", "/v1/models"),  # Common OpenAI-compat
 ]
 
 # Timeout for each probe (seconds)
@@ -110,7 +110,9 @@ def _get_local_ips() -> set[str]:
     return local
 
 
-async def _probe_host(client: httpx.AsyncClient, ip: str, port: int, provider_type: str, endpoint: str) -> dict | None:
+async def _probe_host(
+    client: httpx.AsyncClient, ip: str, port: int, provider_type: str, endpoint: str
+) -> dict | None:
     """Probe a single host:port for an LLM server. Returns server info or None."""
     url = f"http://{ip}:{port}{endpoint}"
     try:
@@ -185,6 +187,7 @@ async def discover_network_servers(
     start = time.time()
 
     async with httpx.AsyncClient() as client:
+
         async def limited_probe(ip, port, ptype, endpoint):
             async with semaphore:
                 return await _probe_host(client, ip, port, ptype, endpoint)
@@ -223,6 +226,7 @@ async def discover_and_register() -> list[dict]:
         # Skip if a relay node already covers this host (relay is
         # preferred since it has a live WebSocket connection).
         from urllib.parse import urlparse
+
         disc_host = server_info.get("host", "")
         disc_parsed = urlparse(disc_host)
         relay_covers = False
@@ -250,7 +254,9 @@ async def discover_and_register() -> list[dict]:
 
         llm_router.register_server(entry)
         newly_registered.append(server_info)
-        logger.info(f"Auto-discovered LLM server: {server_info['name']} with models: {server_info['models']}")
+        logger.info(
+            f"Auto-discovered LLM server: {server_info['name']} with models: {server_info['models']}"
+        )
 
     # Persist discovered servers to database
     if newly_registered:
@@ -262,6 +268,7 @@ async def discover_and_register() -> list[dict]:
 
             async with async_session() as db:
                 from sqlalchemy import select
+
                 for info in newly_registered:
                     # Check if already in DB
                     result = await db.execute(
@@ -278,11 +285,13 @@ async def discover_and_register() -> list[dict]:
                         is_local=False,
                         is_healthy=True,
                         priority=10,
-                        capabilities=json.dumps({
-                            "discovered": True,
-                            "models": info["models"],
-                            "discovery_method": "network_scan",
-                        }),
+                        capabilities=json.dumps(
+                            {
+                                "discovered": True,
+                                "models": info["models"],
+                                "discovery_method": "network_scan",
+                            }
+                        ),
                     )
                     db.add(server)
                 await db.commit()

@@ -9,7 +9,7 @@ related_glossary: ["rag", "mcp"]
 code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py"]
 api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "frontend/src/lib/chatApi.ts", "frontend/src/lib/sessionsApi.ts"]
 test_references: ["tests/test_chat.py", "tests/test_sessions.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
+last_verified: 2026-09-01
 compass: CF-SPEC-102 / CF-1295
 ---
 
@@ -37,6 +37,7 @@ Chat Workspace exists so the work represented by Chat has a stable, discoverable
 - Agent selection is project-bound: project-owned agents can only be attached to sessions in their own project, while universal Istara system agents remain available.
 - Voice input is submitted only for the active project and requires researcher-level project access before audio transcription starts.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- If the selected Istara/local chat transport is not ready, the composer stays disabled and explains that a connected model must be configured in Settings; this prevents a typed draft or attachment from appearing sendable when the backend would reject it.
 
 ## Supported Workflows
 

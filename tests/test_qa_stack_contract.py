@@ -66,6 +66,31 @@ def test_qa_compose_builds_qa_image_from_repo_root():
     assert (ROOT / "qa" / "Dockerfile").exists()
 
 
+def test_qa_frontend_websocket_setting_is_a_base_url():
+    """Frontend clients append their own route to NEXT_PUBLIC_WS_URL."""
+    text = QA_COMPOSE.read_text(encoding="utf-8")
+    configured_urls = re.findall(
+        r"NEXT_PUBLIC_WS_URL=\$\{NEXT_PUBLIC_WS_URL:-([^}]+)\}", text
+    )
+
+    assert len(configured_urls) == 2, "Both QA frontend services must configure a websocket base URL"
+    assert all(not url.rstrip("/").endswith("/ws") for url in configured_urls)
+
+
+def test_qa_frontend_uses_the_published_loopback_host_for_api_and_websocket():
+    """The canonical 127.0.0.1 UI must not cross over to localhost at login."""
+    text = QA_COMPOSE.read_text(encoding="utf-8")
+
+    assert text.count(
+        "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://127.0.0.1:8000}"
+    ) == 2
+    assert text.count(
+        "NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://127.0.0.1:8000}"
+    ) == 2
+    assert "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}" not in text
+    assert "NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://localhost:8000}" not in text
+
+
 def test_contract_stub_is_non_model_and_in_network():
     text = QA_COMPOSE.read_text(encoding="utf-8")
     stub = text[text.index("  qa-provider-stub:"):text.index("  # Synthetic corpus seeder")]
@@ -190,6 +215,47 @@ def test_qa_backend_has_bounded_ephemeral_data_surface():
     backend = text[text.index("  qa-backend:"):text.index("  qa-frontend:")]
     assert "read_only: true" in text
     assert "/app/data:rw,nosuid,nodev,uid=999,gid=999,mode=0750,size=2G" in backend
+
+
+def test_qa_ui_profile_uses_loopback_api_proxy_and_keeps_backend_unpublished():
+    """The host-facing API must be a scoped proxy, not the internal backend."""
+    text = QA_COMPOSE.read_text(encoding="utf-8")
+    backend = text[text.index("  qa-backend:"):text.index("\n  # The Browser runs on the Mac host")]
+    proxy = text[text.index("  qa-api-proxy:"):text.index("  qa-frontend:")]
+
+    assert "ports:" not in backend
+    assert "profiles:\n      - ui" in proxy
+    assert '127.0.0.1:${QA_API_PORT:-8000}:8000' in proxy
+    assert "./qa/Caddyfile:/etc/caddy/Caddyfile:ro" in proxy
+    assert "qa-frontend-net" in proxy
+    assert "qa-backend-net" in proxy
+    assert "NET_BIND_SERVICE" in proxy
+    assert "condition: service_healthy" in proxy
+
+
+def test_qa_api_proxy_caddyfile_targets_backend_service():
+    caddyfile = ROOT / "qa" / "Caddyfile"
+    assert caddyfile.exists()
+    text = caddyfile.read_text(encoding="utf-8")
+    assert ":8000" in text
+    assert "reverse_proxy qa-backend:8000" in text
+
+
+def test_qa_backend_uses_stable_qa_only_data_encryption_key():
+    # QA may recreate the backend while preserving a disposable database.
+    # Encrypted fields must remain decryptable with a stable QA-only key,
+    # while the production/base compose must not inherit the fallback secret.
+    qa_text = QA_COMPOSE.read_text(encoding="utf-8")
+    backend = qa_text[qa_text.index("  qa-backend:"):qa_text.index("  qa-frontend:")]
+    base_text = BASE_COMPOSE.read_text(encoding="utf-8")
+
+    marker = (
+        "DATA_ENCRYPTION_KEY: ${QA_DATA_ENCRYPTION_KEY:-"
+        "istara-qa-only-field-encryption-key-rotate-on-real-data}"
+    )
+    assert marker in backend
+    assert "QA_DATA_ENCRYPTION_KEY" in backend
+    assert "istara-qa-only-field-encryption-key-rotate-on-real-data" not in base_text
 
 
 def test_qa_compose_forbids_host_docker_socket_and_host_mounts():

@@ -108,9 +108,7 @@ class VectorStore:
         active = self._active_profile_binding()
         if not self._profile_manifest.exists():
             if self._ensure_table() and active["version"] != 1:
-                raise VectorProfileMismatchError(
-                    "unbound_vector_store_requires_v1_migration"
-                )
+                raise VectorProfileMismatchError("unbound_vector_store_requires_v1_migration")
             try:
                 with self._profile_manifest.open("x", encoding="utf-8") as handle:
                     json.dump(active, handle, sort_keys=True)
@@ -175,8 +173,7 @@ class VectorStore:
             )
 
         return [
-            {key: value for key, value in record.items() if key in columns}
-            for record in records
+            {key: value for key, value in record.items() if key in columns} for record in records
         ]
 
     async def add_chunks(
@@ -322,6 +319,7 @@ class VectorStore:
             ):
                 continue
             if score >= threshold:
+
                 def _optional_int(column: str) -> int | None:
                     if column not in row.index:
                         return None
@@ -458,9 +456,7 @@ def _keyword_retrieval_result(kr, *, score: float = 0.0) -> RetrievalResult:
         start_offset=_optional_int(kr.start_offset),
         end_offset=_optional_int(kr.end_offset),
     )
-    review_status = kr.review_status or (
-        "non_promotional" if not kr.evidence_unit_id else ""
-    )
+    review_status = kr.review_status or ("non_promotional" if not kr.evidence_unit_id else "")
     reliability_status = kr.reliability_status or (
         "missing_provenance" if not kr.evidence_unit_id else ""
     )
@@ -497,9 +493,7 @@ async def _record_retrieval_telemetry(
             (
                 result
                 for result in results
-                if result.evidence_unit_id
-                or result.coding_run_id
-                or result.codebook_version_id
+                if result.evidence_unit_id or result.coding_run_id or result.codebook_version_id
             ),
             results[0] if results else None,
         )
@@ -627,9 +621,7 @@ async def _keyword_only_search(
 
     results: list[RetrievalResult] = []
     for rank, kr in enumerate(keyword_results[:k], 1):
-        results.append(
-            _keyword_retrieval_result(kr, score=1.0 / rank)
-        )
+        results.append(_keyword_retrieval_result(kr, score=1.0 / rank))
     return results
 
 

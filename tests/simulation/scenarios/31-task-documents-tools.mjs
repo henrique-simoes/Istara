@@ -18,7 +18,8 @@ export const name = "Task-Document Linking & System Tools";
 export const id = "31-task-documents-tools";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = join(__dirname, "..", "..", "..");
+const configuredRepoRoot = String(process.env.ISTARA_SIM_REPO_ROOT || "").trim();
+const REPO_ROOT = configuredRepoRoot || join(__dirname, "..", "..", "..");
 
 export async function run(ctx) {
   const { api, page } = ctx;
@@ -166,8 +167,19 @@ export async function run(ctx) {
   // ── 9. System tools endpoint (via settings health proxy) ────
   try {
     const health = await api.get("/api/settings/status");
-    check(9, "Backend healthy with system tools loaded", health.status === "ok" || health.status === "healthy" || health.healthy === true,
-      JSON.stringify(health).slice(0, 80));
+    // Contract-mode QA intentionally has a reachable provider stub without a
+    // chat-ready model. The backend is operational in that state and reports
+    // `degraded`; only accept it when the readiness payload confirms the
+    // bounded capability gap, so a real outage still fails this check.
+    const contractModeDegraded = health.status === "degraded"
+      && health.services?.llm === "connected"
+      && health.llm_readiness?.chat_ready === false;
+    const operational = health.status === "ok"
+      || health.status === "healthy"
+      || health.healthy === true
+      || contractModeDegraded;
+    check(9, "Backend healthy with system tools loaded", operational,
+      JSON.stringify(health).slice(0, 160));
   } catch (e) {
     check(9, "Backend healthy with system tools loaded", false, e.message);
   }

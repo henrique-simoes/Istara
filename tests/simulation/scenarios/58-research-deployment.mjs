@@ -273,10 +273,36 @@ export async function run(ctx) {
 
   // ── Cleanup ──
   for (const id of cleanup.deploymentIds) {
-    try { await api.delete(deploymentPath(id)); } catch (_) {}
+    try {
+      await api.delete(deploymentPath(id));
+      checks.push({
+        name: `Cleanup deployment ${id}`,
+        passed: true,
+        detail: "DELETE returned 204",
+      });
+    } catch (e) {
+      checks.push({
+        name: `Cleanup deployment ${id}`,
+        passed: false,
+        detail: e.message,
+      });
+    }
   }
   for (const id of cleanup.channelIds) {
-    try { await api.delete(`/api/channels/${id}?project_id=${projectQuery}`); } catch (_) {}
+    try {
+      await api.delete(`/api/channels/${id}?project_id=${projectQuery}`);
+      checks.push({
+        name: `Cleanup channel ${id}`,
+        passed: true,
+        detail: "DELETE returned 200",
+      });
+    } catch (e) {
+      checks.push({
+        name: `Cleanup channel ${id}`,
+        passed: false,
+        detail: e.message,
+      });
+    }
   }
 
   return checks;

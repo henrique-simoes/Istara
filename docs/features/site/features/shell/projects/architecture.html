@@ -265,6 +265,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/layout/Sidebar.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Deleting a project removes only its managed upload, vector, keyword-index, and versioning paths after the database transaction commits; linked external watch folders are retained while their watcher registrations are removed.</li>
+<li>Deleting a project explicitly removes its project memberships before commit so SQLite deployments cannot leave stale rows in Admin &gt; Access when database-level cascades are unavailable.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

@@ -139,6 +139,7 @@ def _require_project_id(project_id: Optional[str]) -> str:
 # Persist notification
 # ---------------------------------------------------------------------------
 
+
 async def persist_notification(event_type: str, data: dict) -> Optional[Notification]:
     """Map an event type + data to a Notification record and persist it.
 
@@ -201,6 +202,7 @@ async def persist_notification(event_type: str, data: dict) -> Optional[Notifica
 # Query helpers
 # ---------------------------------------------------------------------------
 
+
 async def list_notifications(
     db: AsyncSession,
     *,
@@ -233,9 +235,7 @@ async def list_notifications(
         q = q.where(Notification.read == read)
     if search:
         pattern = f"%{search}%"
-        q = q.where(
-            Notification.title.ilike(pattern) | Notification.message.ilike(pattern)
-        )
+        q = q.where(Notification.title.ilike(pattern) | Notification.message.ilike(pattern))
     if date_from:
         q = q.where(Notification.created_at >= date_from)
     if date_to:
@@ -331,6 +331,7 @@ async def get_unread_count(db: AsyncSession, project_id: Optional[str] = None) -
 # ---------------------------------------------------------------------------
 # Preferences
 # ---------------------------------------------------------------------------
+
 
 async def get_preferences(db: AsyncSession) -> list[dict]:
     """Return all notification preferences."""

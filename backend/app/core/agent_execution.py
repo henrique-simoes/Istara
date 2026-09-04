@@ -54,6 +54,7 @@ from app.core.agent_models import (
 
 logger = logging.getLogger("app.core.agent")
 
+
 class AgentExecutionMixin:
     async def _execute_task(self, db: AsyncSession, task: Task, project: Project) -> None:
         """Execute a task using the appropriate skill."""
@@ -69,8 +70,12 @@ class AgentExecutionMixin:
             task.progress = 0.0
             task.agent_notes = "Project is paused; agent execution deferred."
             await db.commit()
-            await broadcast_agent_status("paused", f"Project paused: {project.name}", project_id=project.id)
-            await broadcast_task_progress(task.id, 0.0, "Project paused; task deferred.")
+            await broadcast_agent_status(
+                "paused", f"Project paused: {project.name}", project_id=project.id
+            )
+            await broadcast_task_progress(
+                task.id, 0.0, "Project paused; task deferred.", project_id=task.project_id
+            )
             return
 
         # Checkpoint: started
@@ -81,8 +86,10 @@ class AgentExecutionMixin:
         task.progress = 0.1
         await db.commit()
         await self._persist_agent_state(AgentState.WORKING, task.title)
-        await broadcast_agent_status("working", f"Working on: {task.title}", project_id=task.project_id)
-        await broadcast_task_progress(task.id, 0.1, "Starting task...")
+        await broadcast_agent_status(
+            "working", f"Working on: {task.title}", project_id=task.project_id
+        )
+        await broadcast_task_progress(task.id, 0.1, "Starting task...", project_id=task.project_id)
 
         # Retrieve RAG context before skill selection (gives skills document awareness)
         rag_context = await retrieve_context(
@@ -154,7 +161,9 @@ class AgentExecutionMixin:
                 in {".txt", ".md", ".pdf", ".docx", ".csv", ".mp3", ".wav", ".m4a", ".ogg"}
             ]
 
-        await broadcast_task_progress(task.id, 0.3, f"Running {skill.display_name}...")
+        await broadcast_task_progress(
+            task.id, 0.3, f"Running {skill.display_name}...", project_id=task.project_id
+        )
 
         trace_id = __import__("uuid").uuid4().hex[:36]
 
@@ -219,7 +228,12 @@ class AgentExecutionMixin:
                 method = await selector.select_method(project.id, skill.name, self.agent_id)
 
                 if method and method != "skip" and output.summary:
-                    await broadcast_task_progress(task.id, 0.5, f"Validating ({method})...")
+                    await broadcast_task_progress(
+                        task.id,
+                        0.5,
+                        f"Validating ({method})...",
+                        project_id=task.project_id,
+                    )
                     validation_fns = {
                         "self_moa": self_moa,
                         "adversarial_review": adversarial_review,
@@ -338,7 +352,9 @@ class AgentExecutionMixin:
 
             # Store findings in the database
             await self._store_findings(db, project.id, output, task)
-            await broadcast_task_progress(task.id, 0.7, "Storing findings...")
+            await broadcast_task_progress(
+                task.id, 0.7, "Storing findings...", project_id=task.project_id
+            )
 
             # Checkpoint: findings_stored
             await update_checkpoint(db, task.id, "findings_stored")
@@ -364,7 +380,9 @@ class AgentExecutionMixin:
 
             # Self-check key insights
             if output.insights:
-                await broadcast_task_progress(task.id, 0.8, "Verifying findings...")
+                await broadcast_task_progress(
+                    task.id, 0.8, "Verifying findings...", project_id=task.project_id
+                )
                 await self._verify_findings(db, project.id, output)
 
             # Self-verify output quality (LLM reflection with heuristic fallback)
@@ -408,9 +426,17 @@ class AgentExecutionMixin:
                     },
                 )
 
-                await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
+                await broadcast_task_progress(
+                    task.id,
+                    1.0,
+                    "Complete — ready for review.",
+                    outcome="ready_for_review",
+                    project_id=task.project_id,
+                )
                 await self._persist_agent_state(AgentState.IDLE)
-                await broadcast_agent_status("idle", f"Completed: {task.title}", project_id=task.project_id)
+                await broadcast_agent_status(
+                    "idle", f"Completed: {task.title}", project_id=task.project_id
+                )
             else:
                 # Verification failed — surface it for human review and feedback.
                 task.agent_notes = f"[Verification failed] {verify_reason}\n\n{output.summary}"
@@ -422,7 +448,13 @@ class AgentExecutionMixin:
                 )
                 await db.commit()
 
-                await broadcast_task_progress(task.id, 1.0, f"Verification failed: {verify_reason}")
+                await broadcast_task_progress(
+                    task.id,
+                    1.0,
+                    f"Verification failed: {verify_reason}",
+                    outcome="verification_failed",
+                    project_id=task.project_id,
+                )
                 await self._persist_agent_state(AgentState.IDLE)
                 await broadcast_agent_status(
                     "warning",
@@ -446,11 +478,7 @@ class AgentExecutionMixin:
                         task_id=task.id,
                         skill_name=skill.name,
                         agent_id=self.agent_id,
-                        status=(
-                            "success"
-                            if health.get("health_score", 0) >= 0.5
-                            else "degraded"
-                        ),
+                        status=("success" if health.get("health_score", 0) >= 0.5 else "degraded"),
                         quality_score=health.get("health_score"),
                         error_type=(
                             None

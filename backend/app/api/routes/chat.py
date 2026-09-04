@@ -37,7 +37,11 @@ from app.core.agentic.types import TurnParams
 from app.core.content_guard import ContentGuard
 from app.core.prompt_rag import compose_dynamic_prompt, compose_keyword_prompt
 from app.core.context_summarizer import context_summarizer
-from app.core.llm_thinking import apply_thinking_control, normalize_thinking_mode, validate_model_effort
+from app.core.llm_thinking import (
+    apply_thinking_control,
+    normalize_thinking_mode,
+    validate_model_effort,
+)
 from app.core.ollama import ollama  # noqa: F401 — W2: transport moved to the dispatcher; tests monkeypatch this handle
 from app.core.permissions import get_visible_project_or_404, require_project_access
 from app.core.pi_replacement import (
@@ -48,10 +52,12 @@ from app.core.pi_replacement import (
     record_pi_span,
 )
 from app.core.pi_runtime import PiExecutionService
+from app.core.pi_runtime.model_manager import PiModelManager
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.research_validity import RESEARCH_VALIDITY_CONTRACT, protected_block
 from app.core.token_counter import context_guard
 from app.models.database import get_db, async_session
+
 _guard = ContentGuard()
 from app.models.message import Message
 from app.models.project import Project
@@ -86,6 +92,142 @@ MAX_TOOL_ITERATIONS = 8
 PI_MODEL_TURN_BUDGET = MAX_TOOL_ITERATIONS * 3
 
 
+def _is_chat_capable_legacy_model(model: object) -> bool:
+    """Keep embedding-only compute models out of the chat model picker.
+
+    Legacy compute discovery predates separate chat/embedding inventories and
+    therefore returns names for both transports.  Embedding models are not
+    callable through the chat API; exposing them as selectable choices makes a
+    normal user action persist an unusable session override.  Prefer explicit
+    capability metadata when available and retain a conservative name guard
+    for Ollama/contract inventories that only expose a model name.
+    """
+    if isinstance(model, dict):
+        capabilities = model.get("capabilities")
+        if isinstance(capabilities, dict):
+            if capabilities.get("chat") is False or capabilities.get("text") is False:
+                return False
+            if capabilities.get("embedding") is True and not capabilities.get("chat"):
+                return False
+        name = model.get("name") or model.get("model") or model.get("id")
+    else:
+        name = model
+    normalized = str(name or "").strip().lower()
+    if not normalized:
+        return False
+    return not bool(re.search(r"(?:^|[-_:/])embed(?:ding)?(?:[-_:/]|$)", normalized))
+
+
+def _pi_unavailable_message(registration_status: str) -> str:
+    """Translate internal endpoint failures into safe, actionable chat copy."""
+    if registration_status == "missing_keychain_secret":
+        return (
+            "Pi cannot start this chat because the selected model has no available credential. "
+            "Add or reconnect it in Settings > Providers, models, and sign-in."
+        )
+    if registration_status == "contract_stub_pi_endpoint":
+        return (
+            "Pi cannot start this chat because the selected model is only a contract-test "
+            "endpoint. Choose a connected model in the chat toolbar."
+        )
+    if registration_status in {
+        "unknown_pi_endpoint",
+        "no_matching_pi_endpoint",
+        "pi_endpoint_model_mismatch",
+    }:
+        return (
+            "Pi cannot start this chat because the selected model is no longer available. "
+            "Choose another connected model in the chat toolbar."
+        )
+    return (
+        "Pi cannot start this chat because the selected model is unavailable. "
+        "Review it in Settings > Providers, models, and sign-in."
+    )
+
+
+async def _resolve_pi_endpoint_readiness(
+    manager: PiModelManager,
+    *,
+    project_id: str,
+    endpoint_id: str | None,
+    model: str | None,
+) -> tuple[bool, str]:
+    """Passively resolve one exact target without contacting its provider."""
+    try:
+        await asyncio.to_thread(
+            manager.resolve,
+            endpoint_id=endpoint_id,
+            model=model,
+            project_id=project_id,
+        )
+    except Exception as exc:
+        return False, str(exc) or exc.__class__.__name__
+    return True, "resolved_selected_endpoint"
+
+
+async def _ensure_pi_chat_target_available(
+    *, project_id: str, endpoint_id: str | None, model: str | None
+) -> tuple[bool, str]:
+    """Validate the selected/default Pi target before the runtime owns the turn."""
+    manager = PiModelManager()
+    try:
+        await manager.ensure_db_projection()
+    except Exception as exc:
+        return False, str(exc) or exc.__class__.__name__
+    return await _resolve_pi_endpoint_readiness(
+        manager,
+        project_id=project_id,
+        endpoint_id=endpoint_id,
+        model=model,
+    )
+
+
+async def _chat_pi_endpoint_projection(
+    manager: PiModelManager, *, project_id: str
+) -> tuple[list[dict], str | None, str | None]:
+    """Return identity-only endpoints annotated with fail-closed readiness."""
+    from dataclasses import asdict, is_dataclass
+
+    configured: list[dict] = []
+    for info in manager.catalog(project_id=project_id):
+        item = asdict(info) if is_dataclass(info) else dict(vars(info))
+        ready, reason = await _resolve_pi_endpoint_readiness(
+            manager,
+            project_id=project_id,
+            endpoint_id=item["endpoint_id"],
+            model=item["model"],
+        )
+        item["credential_status"] = (
+            "ready"
+            if ready
+            else "missing"
+            if "missing" in reason.lower() or "credential" in reason.lower()
+            else "unavailable"
+        )
+        item["availability_reason"] = None if ready else reason
+        configured.append(item)
+
+    preferred_endpoint_id = manager.default_endpoint_id(project_id=project_id)
+    default_item = next(
+        (
+            item
+            for item in configured
+            if item["endpoint_id"] == preferred_endpoint_id and item["credential_status"] == "ready"
+        ),
+        None,
+    )
+    if default_item is None:
+        default_item = next(
+            (item for item in configured if item["credential_status"] == "ready"),
+            None,
+        )
+    return (
+        configured,
+        default_item["endpoint_id"] if default_item else None,
+        default_item["model"] if default_item else None,
+    )
+
+
 async def _pi_registration_failure_events(
     *, project_id: str, agent_id: str | None, registration_status: str
 ):
@@ -97,17 +239,24 @@ async def _pi_registration_failure_events(
         status="error",
         error_message=registration_status,
     )
-    yield "data: " + json.dumps(
-        {
-            "type": "error",
-            "code": "pi_registration_unavailable",
-            "error": "pi_transport_unavailable",
-            "detail": registration_status,
-        }
-    ) + "\n\n"
-    yield "data: " + json.dumps(
-        {"type": "done", "message_id": None, "sources": [], "tools_used": []}
-    ) + "\n\n"
+    yield (
+        "data: "
+        + json.dumps(
+            {
+                "type": "error",
+                "code": "pi_registration_unavailable",
+                "error": "pi_transport_unavailable",
+                "message": _pi_unavailable_message(registration_status),
+                "detail": registration_status,
+            }
+        )
+        + "\n\n"
+    )
+    yield (
+        "data: "
+        + json.dumps({"type": "done", "message_id": None, "sources": [], "tools_used": []})
+        + "\n\n"
+    )
 
 
 _pi_execution_service: PiExecutionService | None = None
@@ -265,7 +414,9 @@ async def _generate_pi_runtime(
                 max_tokens=max_tokens,
                 # Pi's worker receives the provider's exact effort level. The
                 # legacy server_default sentinel must not be sent as a level.
-                thinking_mode=(thinking_mode if thinking_mode not in {None, "", "server_default"} else None),
+                thinking_mode=(
+                    thinking_mode if thinking_mode not in {None, "", "server_default"} else None
+                ),
                 endpoint_id=endpoint_id,
                 max_turns=PI_MODEL_TURN_BUDGET,
             ),
@@ -281,48 +432,67 @@ async def _generate_pi_runtime(
                     metrics.observe_chunk(text)
                     yield "data: " + json.dumps({"type": "chunk", "content": text}) + "\n\n"
             elif etype == "tool_call":
-                yield "data: " + json.dumps(
-                    {
-                        "type": "tool_call",
-                        "tool": event.get("tool"),
-                        "params": event.get("params", {}),
-                        "tool_call_id": event.get("tool_call_id"),
-                    }
-                ) + "\n\n"
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {
+                            "type": "tool_call",
+                            "tool": event.get("tool"),
+                            "params": event.get("params", {}),
+                            "tool_call_id": event.get("tool_call_id"),
+                        }
+                    )
+                    + "\n\n"
+                )
             elif etype == "tool_result":
                 # Public SSE observes authority execution without exposing its
                 # raw result/error.  That lets the client and benchmark prove
                 # the causal tool round-trip while retaining project privacy.
-                yield "data: " + json.dumps(
-                    {
-                        "type": "tool_result",
-                        "tool": event.get("tool"),
-                        "tool_call_id": event.get("tool_call_id"),
-                        "ok": bool(event.get("ok")),
-                    }
-                ) + "\n\n"
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {
+                            "type": "tool_result",
+                            "tool": event.get("tool"),
+                            "tool_call_id": event.get("tool_call_id"),
+                            "ok": bool(event.get("ok")),
+                        }
+                    )
+                    + "\n\n"
+                )
             elif etype == "error":
                 status = "error"
                 error_message = event.get("error")
-                yield "data: " + json.dumps(
-                    {
-                        "type": "error",
-                        "code": "pi_runtime_error",
-                        "error": "pi_runtime_error",
-                        "detail": str(error_message),
-                    }
-                ) + "\n\n"
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {
+                            "type": "error",
+                            "code": "pi_runtime_error",
+                            "error": "pi_runtime_error",
+                            "message": str(error_message),
+                            "detail": str(error_message),
+                        }
+                    )
+                    + "\n\n"
+                )
             elif etype == "_complete":
                 result = event.get("result")
                 if result is not None:
-                    yield "data: " + json.dumps({
-                        "type": "usage",
-                        "usage": result.usage or {},
-                        "model": result.model or model or "",
-                        "endpoint_id": result.endpoint_id,
-                        "stop_reason": result.stop_reason,
-                        "effort": thinking_mode or "server_default",
-                    }) + "\n\n"
+                    yield (
+                        "data: "
+                        + json.dumps(
+                            {
+                                "type": "usage",
+                                "usage": result.usage or {},
+                                "model": result.model or model or "",
+                                "endpoint_id": result.endpoint_id,
+                                "stop_reason": result.stop_reason,
+                                "effort": thinking_mode or "server_default",
+                            }
+                        )
+                        + "\n\n"
+                    )
                 if result is not None and result.status != "success" and status == "success":
                     # Terminal abort/error without a streamed error event still
                     # fails closed (H-9): no assistant message is persisted.
@@ -332,14 +502,19 @@ async def _generate_pi_runtime(
         status = "error"
         error_message = str(exc)
         _chat_log.warning("Pi runtime chat turn failed: %s", exc)
-        yield "data: " + json.dumps(
-            {
-                "type": "error",
-                "code": "pi_registration_unavailable",
-                "error": "pi_transport_unavailable",
-                "detail": str(exc),
-            }
-        ) + "\n\n"
+        yield (
+            "data: "
+            + json.dumps(
+                {
+                    "type": "error",
+                    "code": "pi_registration_unavailable",
+                    "error": "pi_transport_unavailable",
+                    "message": str(exc),
+                    "detail": str(exc),
+                }
+            )
+            + "\n\n"
+        )
     finally:
         if turn_status is not None:
             turn_status["status"] = status
@@ -412,6 +587,7 @@ async def _generate_native_tools(
     llm_max_tokens: int | None,
     *,
     pi_candidate: bool = False,
+    endpoint_id: str | None = None,
 ):
     """Native tool-calling loop via the AgenticDispatcher (W2).
 
@@ -421,10 +597,14 @@ async def _generate_native_tools(
     existing SSE envelope. Provider chunks stream per token, so the wire
     content is unchanged while chunking is finer than the old per-turn chunk.
     """
-    pi_metrics = PiChatRunMetrics(
-        project_id=request.project_id,
-        agent_id=session_agent_id,
-    ) if pi_candidate else None
+    pi_metrics = (
+        PiChatRunMetrics(
+            project_id=request.project_id,
+            agent_id=session_agent_id,
+        )
+        if pi_candidate
+        else None
+    )
     effective_model = llm_model
     if pi_candidate:
         registered, registration_status = ensure_pi_deepseek_registered()
@@ -449,9 +629,7 @@ async def _generate_native_tools(
         if pi_metrics:
             pi_metrics.observe_tool_call()
         if pi_candidate:
-            tool_duration_ms = (
-                datetime.now(timezone.utc) - tool_started
-            ).total_seconds() * 1000
+            tool_duration_ms = (datetime.now(timezone.utc) - tool_started).total_seconds() * 1000
             await record_pi_span(
                 operation="pi_candidate_tool_call",
                 project_id=request.project_id,
@@ -497,6 +675,7 @@ async def _generate_native_tools(
                 max_turns=MAX_TOOL_ITERATIONS,
                 stream_tokens=True,
                 strict_model_routing=True if pi_candidate else None,
+                endpoint_id=endpoint_id,
             ),
             engine="legacy",
         ):
@@ -514,14 +693,20 @@ async def _generate_native_tools(
             elif etype == "_complete":
                 result = event.get("result")
                 if result is not None:
-                    yield "data: " + json.dumps({
-                        "type": "usage",
-                        "usage": result.usage or {},
-                        "model": effective_model or "",
-                        "endpoint_id": result.endpoint_id,
-                        "stop_reason": result.stop_reason,
-                        "effort": "server_default",
-                    }) + "\n\n"
+                    yield (
+                        "data: "
+                        + json.dumps(
+                            {
+                                "type": "usage",
+                                "usage": result.usage or {},
+                                "model": effective_model or "",
+                                "endpoint_id": result.endpoint_id,
+                                "stop_reason": result.stop_reason,
+                                "effort": "server_default",
+                            }
+                        )
+                        + "\n\n"
+                    )
     except Exception as exc:
         if pi_metrics:
             await pi_metrics.finish(status="error", error_message=str(exc))
@@ -542,6 +727,7 @@ async def _generate_text_fallback(
     llm_max_tokens: int | None,
     *,
     pi_candidate: bool = False,
+    endpoint_id: str | None = None,
 ):
     """Legacy text-based tool parsing loop via the AgenticDispatcher (W2).
 
@@ -551,10 +737,14 @@ async def _generate_text_fallback(
     SSE envelope. Raw tokens never stream per token here — a turn's text may
     carry the machine-readable tool block, so text events arrive per turn.
     """
-    pi_metrics = PiChatRunMetrics(
-        project_id=request.project_id,
-        agent_id=session_agent_id,
-    ) if pi_candidate else None
+    pi_metrics = (
+        PiChatRunMetrics(
+            project_id=request.project_id,
+            agent_id=session_agent_id,
+        )
+        if pi_candidate
+        else None
+    )
     if pi_candidate:
         registered, registration_status = ensure_pi_deepseek_registered()
         if pi_metrics:
@@ -609,6 +799,7 @@ async def _generate_text_fallback(
                 text_fallback=True,
                 strict_model_routing=True if pi_candidate else None,
                 tool_call_extractor=_extract_tool_call,
+                endpoint_id=endpoint_id,
             ),
             engine="legacy",
         ):
@@ -624,14 +815,21 @@ async def _generate_text_fallback(
             elif etype == "_complete":
                 result = event.get("result")
                 if result is not None:
-                    yield "data: " + json.dumps({
-                        "type": "usage",
-                        "usage": result.usage or {},
-                        "model": (pi_chat_model(llm_model) if pi_candidate else llm_model) or "",
-                        "endpoint_id": result.endpoint_id,
-                        "stop_reason": result.stop_reason,
-                        "effort": "server_default",
-                    }) + "\n\n"
+                    yield (
+                        "data: "
+                        + json.dumps(
+                            {
+                                "type": "usage",
+                                "usage": result.usage or {},
+                                "model": (pi_chat_model(llm_model) if pi_candidate else llm_model)
+                                or "",
+                                "endpoint_id": result.endpoint_id,
+                                "stop_reason": result.stop_reason,
+                                "effort": "server_default",
+                            }
+                        )
+                        + "\n\n"
+                    )
     except Exception as exc:
         if pi_metrics:
             await pi_metrics.finish(status="error", error_message=str(exc))
@@ -1033,7 +1231,11 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
             # A missing Keychain registration is terminal: falling back would silently
             # route a Pi-selected request through the default provider.
             if pi_candidate:
-                registered, registration_status = ensure_pi_deepseek_registered()
+                registered, registration_status = await _ensure_pi_chat_target_available(
+                    project_id=request.project_id,
+                    endpoint_id=llm_endpoint_id,
+                    model=llm_model,
+                )
                 if not registered:
                     async for event in _pi_registration_failure_events(
                         project_id=request.project_id,
@@ -1073,6 +1275,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                         llm_temperature,
                         llm_max_tokens,
                         pi_candidate=pi_candidate,
+                        endpoint_id=llm_endpoint_id,
                     ):
                         yield event
                 except Exception as native_err:
@@ -1131,6 +1334,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                     llm_temperature,
                     llm_max_tokens,
                     pi_candidate=pi_candidate,
+                    endpoint_id=llm_endpoint_id,
                 ):
                     yield event
 
@@ -1144,9 +1348,13 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                     "Pi chat turn failed (%s) — no assistant message persisted",
                     pi_turn_status.get("status"),
                 )
-                yield "data: " + json.dumps(
-                    {"type": "done", "message_id": None, "sources": [], "tools_used": []}
-                ) + "\n\n"
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {"type": "done", "message_id": None, "sources": [], "tools_used": []}
+                    )
+                    + "\n\n"
+                )
                 return
             async with async_session() as save_db:
                 assistant_content = "".join(all_text_parts)
@@ -1177,9 +1385,8 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                 if settings.dag_enabled and request.session_id:
                     try:
                         from app.core.context_dag import context_dag
-                        import asyncio as _asyncio
 
-                        _asyncio.create_task(context_dag.compact_if_needed(request.session_id))
+                        context_dag.schedule_compaction(request.session_id)
                     except Exception:
                         pass
 
@@ -1225,9 +1432,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                             )
                             saved_session = session_result.scalar_one_or_none()
                             if saved_session:
-                                saved_session.message_count = (
-                                    saved_session.message_count or 0
-                                ) + 1
+                                saved_session.message_count = (saved_session.message_count or 0) + 1
                                 saved_session.last_message_at = interrupted_created_at
                         await save_db.commit()
                 except Exception:
@@ -1269,31 +1474,40 @@ async def get_chat_model_catalog(
     disabled so users understand what Settings must enable.
     """
     await require_project_access(db, request, project_id, min_role="viewer")
-    from dataclasses import asdict
-
     from app.core.pi_runtime.catalog import pi_catalog_json
-    from app.core.pi_runtime.model_manager import PiModelManager
 
     configured: list[dict] = []
+    default_endpoint_id: str | None = None
+    default_model: str | None = None
     try:
         manager = PiModelManager()
         await manager.ensure_db_projection()
-        configured = [asdict(info) for info in manager.catalog(project_id=project_id)]
+        configured, default_endpoint_id, default_model = await _chat_pi_endpoint_projection(
+            manager,
+            project_id=project_id,
+        )
     except Exception:
         _chat_log.debug("chat model catalog configured projection unavailable", exc_info=True)
     legacy_models: list[str] = []
     try:
         from app.core.compute_registry import compute_registry
 
-        legacy_models = sorted({
-            str(item.get("name") or item.get("model") or "").strip()
-            for item in await compute_registry.list_models()
-            if str(item.get("name") or item.get("model") or "").strip()
-        })
+        legacy_models = sorted(
+            {
+                str(item.get("name") or item.get("model") or "").strip()
+                for item in await compute_registry.list_models()
+                if _is_chat_capable_legacy_model(item)
+            }
+        )
     except Exception:
         _chat_log.debug("chat legacy model inventory unavailable", exc_info=True)
     for configured_model in (settings.ollama_model, settings.lmstudio_model):
-        if configured_model and configured_model != "default" and configured_model not in legacy_models:
+        if (
+            configured_model
+            and configured_model != "default"
+            and _is_chat_capable_legacy_model(configured_model)
+            and configured_model not in legacy_models
+        ):
             legacy_models.append(configured_model)
     catalog = pi_catalog_json()
     # Keep the picker indicator on the exact same precedence chain as POST /chat:
@@ -1301,12 +1515,27 @@ async def get_chat_model_catalog(
     # only the project/default here made the UI advertise a different engine when
     # an operator flag or per-request override selected the other plane.
     engine = await _resolve_chat_engine(request, project_id, db)
+    # Keep the composer fail-closed when the legacy transport is not ready. This
+    # is a passive cache read only; Pi readiness remains endpoint-specific and is
+    # enforced by the dispatcher at send time.
+    chat_ready: bool | None = None
+    if engine == "legacy":
+        try:
+            from app.api.routes.settings import _cached_llm_readiness
+
+            _, chat_ready = _cached_llm_readiness()
+        except Exception:
+            _chat_log.debug("chat readiness cache unavailable", exc_info=True)
+            chat_ready = False
     return {
         "providers": catalog,
         "total_models": sum(len(provider["models"]) for provider in catalog),
         "configured": configured,
         "legacy_models": legacy_models,
         "engine": engine,
+        "chat_ready": chat_ready,
+        "default_endpoint_id": default_endpoint_id,
+        "default_model": default_model,
     }
 
 
@@ -1375,7 +1604,9 @@ async def get_chat_usage(
             "cost_usd": latest.cost_usd,
             "estimate": bool(latest.estimate),
             "created_at": latest.created_at.isoformat() if latest.created_at else None,
-        } if latest else None,
+        }
+        if latest
+        else None,
     }
 
 
@@ -1476,7 +1707,9 @@ class VoiceTranscribeRequest(BaseModel):
 
 
 @router.post("/chat/voice-transcribe")
-async def voice_transcribe(request: VoiceTranscribeRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
+async def voice_transcribe(
+    request: VoiceTranscribeRequest, http_request: Request, db: AsyncSession = Depends(get_db)
+):
     """Voice transcription endpoint (Phase Alpha)."""
     await get_visible_project_or_404(db, http_request, request.project_id, min_role="researcher")
     if request.dummy:

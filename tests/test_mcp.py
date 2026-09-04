@@ -1,5 +1,6 @@
 """Tests for MCP API routes — server status/toggle/policy, clients CRUD, tools, call."""
 
+import asyncio
 import json
 import uuid
 from types import SimpleNamespace
@@ -111,6 +112,30 @@ async def test_mcp_server_status_returns_response(auth_headers):
         assert body["configured_enabled"] is settings.mcp_server_enabled
         assert body["serving"] is False
         assert body["lifecycle_state"] in ("disabled", "restart_required")
+
+
+@pytest.mark.asyncio
+async def test_mcp_policy_update_can_repeat_without_sqlite_deadlock(auth_headers):
+    """Repeated policy saves must not deadlock on nested reasoning evidence writes."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        first = await ac.patch(
+            "/api/mcp/server/policy",
+            headers=auth_headers,
+            json={},
+        )
+        assert first.status_code == 200
+
+        second = await asyncio.wait_for(
+            ac.patch(
+                "/api/mcp/server/policy",
+                headers=auth_headers,
+                json={},
+            ),
+            timeout=1.0,
+        )
+        assert second.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -352,7 +377,53 @@ async def test_mcp_project_admin_can_discover_project_client(auth_headers, monke
 
     assert created.status_code == 201
     assert response.status_code == 400
-    assert "MCP client library not installed" in response.json()["detail"]
+    assert response.json()["detail"] == "MCP client library not installed. Run: pip install mcp"
+
+
+@pytest.mark.asyncio
+async def test_mcp_health_sanitizes_transport_exception(auth_headers, monkeypatch):
+    """MCP health checks must not expose transport exception details to users."""
+    await init_db()
+    project = await _seed_project()
+    async with async_session() as db:
+        server = await register_server(
+            db,
+            name="unreachable MCP",
+            url="http://127.0.0.1:9/private-token",
+            transport="http",
+            project_id=project.id,
+        )
+        server_id = server.id
+
+    class BrokenTransport:
+        async def __aenter__(self):
+            raise RuntimeError("private-token https://internal.example/secret")
+
+        async def __aexit__(self, *args):
+            return False
+
+    def fail_transport(*args, **kwargs):
+        return BrokenTransport()
+
+    monkeypatch.setattr(
+        "app.services.mcp_client_manager.streamablehttp_client",
+        fail_transport,
+    )
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/mcp/clients/{server_id}/health?project_id={project.id}",
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["healthy"] is False
+    assert body["error"] == (
+        "Connection check failed. Verify the credentials and network access, then retry."
+    )
+    assert "private-token" not in response.text
+    assert "internal.example" not in response.text
 
 
 @pytest.mark.asyncio

@@ -41,8 +41,7 @@ class ValidationResult:
 class ValidationExecutor:
     """Executes multi-pass validation methods on skill outputs."""
 
-    async def validate(self, method: str, output, input_data,
-                       skill_name: str) -> ValidationResult:
+    async def validate(self, method: str, output, input_data, skill_name: str) -> ValidationResult:
         match method:
             case "adversarial_review":
                 return await self._adversarial_review(output, input_data)
@@ -116,9 +115,7 @@ class ValidationExecutor:
                 spine_phase="review",
             )
         except Exception as e:
-            logger.warning(
-                "Adversarial review judge unavailable, failing closed: %s", e
-            )
+            logger.warning("Adversarial review judge unavailable, failing closed: %s", e)
             return ValidationResult(
                 passed=False,
                 method="adversarial_review",
@@ -136,8 +133,7 @@ class ValidationExecutor:
             or "overall" not in scores
         ):
             logger.warning(
-                "Adversarial review judge returned no usable verdict, "
-                "failing closed: %r",
+                "Adversarial review judge returned no usable verdict, failing closed: %r",
                 scores,
             )
             return ValidationResult(
@@ -196,6 +192,7 @@ class ValidationExecutor:
                 continue
             try:
                 from app.core.rag import retrieve_context
+
                 ctx = await retrieve_context(project_id, text, top_k=3)
                 if ctx and hasattr(ctx, "has_context") and ctx.has_context:
                     verified += 1

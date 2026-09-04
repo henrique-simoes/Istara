@@ -81,9 +81,7 @@ class SkillPromptRunner(BaseLoopRunner):
             discarded = [h for h in history[-8:] if not h.get("kept")]
             if kept:
                 history_ctx += "Improvements that WORKED:\n"
-                history_ctx += "\n".join(
-                    f"  - {h.get('hypothesis', '?')[:80]}" for h in kept[-4:]
-                )
+                history_ctx += "\n".join(f"  - {h.get('hypothesis', '?')[:80]}" for h in kept[-4:])
                 history_ctx += "\n"
             if discarded:
                 history_ctx += "Changes that did NOT help:\n"
@@ -193,9 +191,7 @@ class SkillPromptRunner(BaseLoopRunner):
         }
         return hypothesis, mutation
 
-    async def apply_mutation(
-        self, target: str, mutation: dict
-    ) -> Callable[[], Awaitable[None]]:
+    async def apply_mutation(self, target: str, mutation: dict) -> Callable[[], Awaitable[None]]:
         """Update the skill's execute_prompt.  Returns a revert function."""
         from app.skills.skill_manager import skill_manager
 

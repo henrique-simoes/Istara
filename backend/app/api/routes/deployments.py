@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -112,9 +112,7 @@ class DeploymentResponse(BaseModel):
             questions=json.loads(d.questions_json) if d.questions_json else [],
             config=json.loads(d.config_json) if d.config_json else {},
             channel_instance_ids=(
-                json.loads(d.channel_instance_ids_json)
-                if d.channel_instance_ids_json
-                else []
+                json.loads(d.channel_instance_ids_json) if d.channel_instance_ids_json else []
             ),
             state=d.state,
             target_responses=d.target_responses,
@@ -142,9 +140,7 @@ async def create_deployment(
 ):
     """Create a new research deployment."""
     scoped_project_id = _require_project_id(data.project_id)
-    await get_active_project_or_404(
-        db, request, scoped_project_id, min_role="researcher"
-    )
+    await get_active_project_or_404(db, request, scoped_project_id, min_role="researcher")
 
     questions = [q.model_dump() for q in data.questions]
     try:
@@ -203,6 +199,27 @@ async def get_deployment(
     return DeploymentResponse.from_model(deployment)
 
 
+@router.delete("/deployments/{deployment_id}", status_code=204)
+async def delete_deployment(
+    deployment_id: str,
+    request: Request,
+    project_id: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a deployment and its project-owned conversation history."""
+    deployment = await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="researcher"
+    )
+    deleted = await deployment_service.delete_deployment(
+        db,
+        deployment_id,
+        project_id=deployment.project_id,
+    )
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    return Response(status_code=204)
+
+
 # ---------------------------------------------------------------------------
 # Analytics
 # ---------------------------------------------------------------------------
@@ -246,9 +263,7 @@ async def activate_deployment(
     deployment = await _get_active_project_deployment_or_404(
         db, request, deployment_id, project_id, min_role="researcher"
     )
-    await get_active_project_or_404(
-        db, request, deployment.project_id, min_role="researcher"
-    )
+    await get_active_project_or_404(db, request, deployment.project_id, min_role="researcher")
 
     try:
         result = await deployment_service.activate_deployment(
@@ -357,12 +372,8 @@ async def handle_response(
     deployment = await _get_active_project_deployment_or_404(
         db, request, deployment_id, project_id, min_role="researcher"
     )
-    await get_active_project_or_404(
-        db, request, deployment.project_id, min_role="researcher"
-    )
-    await _get_project_deployment_conversation_or_404(
-        db, deployment, data.conversation_id
-    )
+    await get_active_project_or_404(db, request, deployment.project_id, min_role="researcher")
+    await _get_project_deployment_conversation_or_404(db, deployment, data.conversation_id)
 
     result = await deployment_service.handle_response(
         db=db,
@@ -450,9 +461,7 @@ async def get_conversation(
     return conversation.to_dict()
 
 
-@router.get(
-    "/deployments/{deployment_id}/conversations/{conversation_id}/transcript"
-)
+@router.get("/deployments/{deployment_id}/conversations/{conversation_id}/transcript")
 async def get_conversation_transcript(
     deployment_id: str,
     conversation_id: str,

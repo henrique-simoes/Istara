@@ -28,6 +28,7 @@ class PermanentScheduleError(RuntimeError):
 # SQLAlchemy model
 # ---------------------------------------------------------------------------
 
+
 class ScheduledTask(Base):
     """A user-configurable scheduled task."""
 
@@ -64,20 +65,21 @@ class ScheduledTask(Base):
             "project_id": self.project_id,
             "enabled": self.enabled,
             "is_running": self.is_running,
-            "last_run": self.last_run.isoformat() if self.last_run else None,
-            "next_run": self.next_run.isoformat() if self.next_run else None,
+            "last_run": ensure_utc(self.last_run).isoformat() if self.last_run else None,
+            "next_run": ensure_utc(self.next_run).isoformat() if self.next_run else None,
             "agent_id": self.agent_id,
             "loop_type": self.loop_type,
             "interval_seconds": self.interval_seconds,
             "execution_count": self.execution_count,
             "last_status": self.last_status,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": ensure_utc(self.created_at).isoformat() if self.created_at else None,
         }
 
 
 # ---------------------------------------------------------------------------
 # Cron parser
 # ---------------------------------------------------------------------------
+
 
 class CronParser:
     """Parse basic cron expressions and compute the next run time.
@@ -87,11 +89,11 @@ class CronParser:
     """
 
     FIELD_RANGES = [
-        (0, 59),   # minute
-        (0, 23),   # hour
-        (1, 31),   # day of month
-        (1, 12),   # month
-        (0, 6),    # day of week (0=Sun, 1=Mon … 6=Sat — standard cron)
+        (0, 59),  # minute
+        (0, 23),  # hour
+        (1, 31),  # day of month
+        (1, 12),  # month
+        (0, 6),  # day of week (0=Sun, 1=Mon … 6=Sat — standard cron)
     ]
 
     @classmethod
@@ -141,11 +143,10 @@ class CronParser:
         """Return list of expanded sets for [minute, hour, dom, month, dow]."""
         tokens = expression.strip().split()
         if len(tokens) != 5:
-            raise ValueError(f"Cron expression must have 5 fields, got {len(tokens)}: {expression!r}")
-        return [
-            cls._expand_field(tok, lo, hi)
-            for tok, (lo, hi) in zip(tokens, cls.FIELD_RANGES)
-        ]
+            raise ValueError(
+                f"Cron expression must have 5 fields, got {len(tokens)}: {expression!r}"
+            )
+        return [cls._expand_field(tok, lo, hi) for tok, (lo, hi) in zip(tokens, cls.FIELD_RANGES)]
 
     @classmethod
     def next_run_after(cls, expression: str, after: datetime) -> datetime:
@@ -170,7 +171,9 @@ class CronParser:
                 and candidate.hour in hours
                 and candidate.day in doms
                 and candidate.month in months
-                and ((candidate.isoweekday() % 7) in dows)  # isoweekday: Mon=1..Sun=7 → %7 → Sun=0,Mon=1..Sat=6
+                and (
+                    (candidate.isoweekday() % 7) in dows
+                )  # isoweekday: Mon=1..Sun=7 → %7 → Sun=0,Mon=1..Sat=6
             ):
                 return candidate
             candidate += td_minute
@@ -181,6 +184,7 @@ class CronParser:
 # ---------------------------------------------------------------------------
 # Scheduler
 # ---------------------------------------------------------------------------
+
 
 class Scheduler:
     """Async scheduler that checks the DB every 60 s for due tasks."""
@@ -226,10 +230,7 @@ class Scheduler:
                 )
             )
             all_enabled = result.scalars().all()
-            due_tasks = [
-                t for t in all_enabled
-                if t.next_run and ensure_utc(t.next_run) <= now
-            ]
+            due_tasks = [t for t in all_enabled if t.next_run and ensure_utc(t.next_run) <= now]
 
             for task in due_tasks:
                 # Mark as running before execution
@@ -267,6 +268,7 @@ class Scheduler:
                     task.last_status = exec_status
                     try:
                         from app.services.loop_execution_service import record_execution
+
                         await record_execution(
                             source_type="custom" if task.loop_type == "custom" else "schedule",
                             source_id=task.id,

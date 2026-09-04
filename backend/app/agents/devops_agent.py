@@ -44,6 +44,7 @@ class DevOpsAuditAgent:
         self._audit_log: list[dict] = []
         # Task execution worker
         from app.core.sub_agent_worker import SubAgentWorker
+
         self._worker = SubAgentWorker("istara-devops", check_interval=30)
         self._worker_task: asyncio.Task | None = None
 
@@ -64,9 +65,7 @@ class DevOpsAuditAgent:
 
         while self._running:
             try:
-                await broadcast_agent_status(
-                    "working", "DevOps Audit: running integrity checks..."
-                )
+                await broadcast_agent_status("working", "DevOps Audit: running integrity checks...")
                 report = await self.run_audit_cycle()
                 self._audit_log.append(report)
 
@@ -86,7 +85,8 @@ class DevOpsAuditAgent:
                     logger.warning(f"Audit found {len(report['issues'])} issues.")
                 else:
                     await broadcast_agent_status(
-                        "idle", f"DevOps Audit: all {len(report.get('checks_passed', []))} checks passed"
+                        "idle",
+                        f"DevOps Audit: all {len(report.get('checks_passed', []))} checks passed",
                     )
                     logger.info("Audit cycle clean.")
 
@@ -95,12 +95,12 @@ class DevOpsAuditAgent:
                 logger.error(f"Audit cycle error: {error_msg}")
                 await broadcast_agent_status(
                     "warning",
-                    f"DevOps Audit: recovered from error ({error_msg[:80]}), "
-                    f"will retry next cycle"
+                    f"DevOps Audit: recovered from error ({error_msg[:80]}), will retry next cycle",
                 )
                 # Record error learning for future reference
                 try:
                     from app.core.agent_learning import agent_learning
+
                     await agent_learning.record_error_learning(
                         agent_id="istara-devops",
                         error_message=error_msg,
@@ -223,14 +223,18 @@ class DevOpsAuditAgent:
             tasks = task_count.scalar() or 0
 
             if msgs == 0 and nugs == 0 and tasks == 0:
-                age_hours = (datetime.now(timezone.utc) - ensure_utc(project.created_at)).total_seconds() / 3600
+                age_hours = (
+                    datetime.now(timezone.utc) - ensure_utc(project.created_at)
+                ).total_seconds() / 3600
                 if age_hours > 24:
-                    issues.append({
-                        "type": "stale_project",
-                        "severity": "low",
-                        "project_id": project.id,
-                        "message": f"Project '{project.name}' has no data after {age_hours:.0f} hours.",
-                    })
+                    issues.append(
+                        {
+                            "type": "stale_project",
+                            "severity": "low",
+                            "project_id": project.id,
+                            "message": f"Project '{project.name}' has no data after {age_hours:.0f} hours.",
+                        }
+                    )
 
         return issues
 
@@ -249,20 +253,24 @@ class DevOpsAuditAgent:
                     for nid in nugget_ids:
                         nug_result = await db.execute(select(Nugget).where(Nugget.id == nid))
                         if not nug_result.scalar_one_or_none():
-                            issues.append({
-                                "type": "orphaned_reference",
-                                "severity": "medium",
-                                "finding_type": "fact",
-                                "finding_id": fact.id,
-                                "message": f"Fact references non-existent nugget: {nid}",
-                            })
+                            issues.append(
+                                {
+                                    "type": "orphaned_reference",
+                                    "severity": "medium",
+                                    "finding_type": "fact",
+                                    "finding_id": fact.id,
+                                    "message": f"Fact references non-existent nugget: {nid}",
+                                }
+                            )
                 except json.JSONDecodeError:
-                    issues.append({
-                        "type": "corrupt_data",
-                        "severity": "high",
-                        "finding_id": fact.id,
-                        "message": f"Fact has corrupt nugget_ids JSON.",
-                    })
+                    issues.append(
+                        {
+                            "type": "corrupt_data",
+                            "severity": "high",
+                            "finding_id": fact.id,
+                            "message": f"Fact has corrupt nugget_ids JSON.",
+                        }
+                    )
 
         return issues
 
@@ -271,32 +279,32 @@ class DevOpsAuditAgent:
         issues = []
 
         # Check for nuggets without sources
-        result = await db.execute(
-            select(Nugget).where(Nugget.source == "").limit(10)
-        )
+        result = await db.execute(select(Nugget).where(Nugget.source == "").limit(10))
         sourceless = result.scalars().all()
         for nugget in sourceless:
-            issues.append({
-                "type": "missing_source",
-                "severity": "medium",
-                "finding_type": "nugget",
-                "finding_id": nugget.id,
-                "message": f"Nugget has no source: '{nugget.text[:50]}...'",
-            })
+            issues.append(
+                {
+                    "type": "missing_source",
+                    "severity": "medium",
+                    "finding_type": "nugget",
+                    "finding_id": nugget.id,
+                    "message": f"Nugget has no source: '{nugget.text[:50]}...'",
+                }
+            )
 
         # Check for very short insights (likely incomplete)
-        result = await db.execute(
-            select(Insight).where(func.length(Insight.text) < 20).limit(10)
-        )
+        result = await db.execute(select(Insight).where(func.length(Insight.text) < 20).limit(10))
         short_insights = result.scalars().all()
         for insight in short_insights:
-            issues.append({
-                "type": "low_quality",
-                "severity": "low",
-                "finding_type": "insight",
-                "finding_id": insight.id,
-                "message": f"Insight suspiciously short ({len(insight.text)} chars): '{insight.text}'",
-            })
+            issues.append(
+                {
+                    "type": "low_quality",
+                    "severity": "low",
+                    "finding_type": "insight",
+                    "finding_id": insight.id,
+                    "message": f"Insight suspiciously short ({len(insight.text)} chars): '{insight.text}'",
+                }
+            )
 
         return issues
 
@@ -309,26 +317,30 @@ class DevOpsAuditAgent:
             select(Task).where(Task.status == TaskStatus.DONE, Task.progress < 0.5)
         )
         for task in result.scalars().all():
-            issues.append({
-                "type": "state_inconsistency",
-                "severity": "low",
-                "task_id": task.id,
-                "message": f"Task '{task.title}' is DONE but progress is {task.progress:.0%}.",
-            })
+            issues.append(
+                {
+                    "type": "state_inconsistency",
+                    "severity": "low",
+                    "task_id": task.id,
+                    "message": f"Task '{task.title}' is DONE but progress is {task.progress:.0%}.",
+                }
+            )
 
         # Tasks in_progress for too long without progress update
-        result = await db.execute(
-            select(Task).where(Task.status == TaskStatus.IN_PROGRESS)
-        )
+        result = await db.execute(select(Task).where(Task.status == TaskStatus.IN_PROGRESS))
         for task in result.scalars().all():
-            hours_stale = (datetime.now(timezone.utc) - ensure_utc(task.updated_at)).total_seconds() / 3600
+            hours_stale = (
+                datetime.now(timezone.utc) - ensure_utc(task.updated_at)
+            ).total_seconds() / 3600
             if hours_stale > 24:
-                issues.append({
-                    "type": "stale_task",
-                    "severity": "medium",
-                    "task_id": task.id,
-                    "message": f"Task '{task.title}' in_progress for {hours_stale:.0f}h without update.",
-                })
+                issues.append(
+                    {
+                        "type": "stale_task",
+                        "severity": "medium",
+                        "task_id": task.id,
+                        "message": f"Task '{task.title}' in_progress for {hours_stale:.0f}h without update.",
+                    }
+                )
 
         return issues
 
@@ -343,12 +355,14 @@ class DevOpsAuditAgent:
                 count = await store.count()
                 # No issues — just monitoring
             except Exception as e:
-                issues.append({
-                    "type": "vector_store_error",
-                    "severity": "high",
-                    "project_id": project.id,
-                    "message": f"Vector store error for '{project.name}': {e}",
-                })
+                issues.append(
+                    {
+                        "type": "vector_store_error",
+                        "severity": "high",
+                        "project_id": project.id,
+                        "message": f"Vector store error for '{project.name}': {e}",
+                    }
+                )
 
         return issues
 
@@ -358,32 +372,39 @@ class DevOpsAuditAgent:
 
         try:
             import psutil
+
             mem = psutil.virtual_memory()
             if mem.percent > 90:
-                issues.append({
-                    "type": "resource_warning",
-                    "severity": "high",
-                    "message": f"RAM usage at {mem.percent}% — consider reducing model size or closing apps.",
-                })
+                issues.append(
+                    {
+                        "type": "resource_warning",
+                        "severity": "high",
+                        "message": f"RAM usage at {mem.percent}% — consider reducing model size or closing apps.",
+                    }
+                )
 
             disk = psutil.disk_usage("/")
             if disk.percent > 90:
-                issues.append({
-                    "type": "resource_warning",
-                    "severity": "high",
-                    "message": f"Disk usage at {disk.percent}% — running low on space.",
-                })
+                issues.append(
+                    {
+                        "type": "resource_warning",
+                        "severity": "high",
+                        "message": f"Disk usage at {disk.percent}% — running low on space.",
+                    }
+                )
         except ImportError:
             pass  # psutil not available in container
 
         # Check Ollama health
         healthy = await ollama.health()
         if not healthy:
-            issues.append({
-                "type": "service_down",
-                "severity": "critical",
-                "message": "Ollama is not responding. Model inference will fail.",
-            })
+            issues.append(
+                {
+                    "type": "service_down",
+                    "severity": "critical",
+                    "message": "Ollama is not responding. Model inference will fail.",
+                }
+            )
 
         return issues
 

@@ -4,12 +4,13 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import get_active_project_or_404, require_project_access
 from app.core.scheduler import CronParser, ScheduledTask
+from app.core.datetime_utils import ensure_utc
 from app.models.database import get_db
 
 router = APIRouter()
@@ -47,6 +48,7 @@ async def _get_project_schedule_or_404(
 # ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
+
 
 class ScheduleCreate(BaseModel):
     """Request body for creating a scheduled task."""
@@ -89,13 +91,22 @@ class ScheduleResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_serializer("last_run", "next_run", "created_at")
+    def serialize_utc_datetime(self, value: datetime | None) -> str | None:
+        """Keep SQLite-naive UTC values unambiguous for browser clients."""
+        normalized = ensure_utc(value)
+        return normalized.isoformat() if normalized else None
+
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
+
 @router.post("/schedules", response_model=ScheduleResponse, status_code=201)
-async def create_schedule(data: ScheduleCreate, request: Request, db: AsyncSession = Depends(get_db)):
+async def create_schedule(
+    data: ScheduleCreate, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Create a new scheduled task."""
     name = data.name.strip()
     project_id = data.project_id.strip()

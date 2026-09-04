@@ -37,6 +37,7 @@ Agent Loops connects recurring work with configured agents and their automated r
 
 - `backend/app/api/routes/loops.py`
 - Agent-loop configs are visible or mutable only when the agent belongs to the active project or has an explicit loop project filter for that project.
+- The Agent Loops tab joins the project-scoped loop response with the general agent registry by `agent_id`. Universal system agents that are included for registry visibility but have no active-project loop config are shown nowhere in this mutable loop list, so they cannot surface controls that would return a project-scope `404`.
 - Resuming a paused agent loop requires the requested project to be active and unpaused; pausing remains allowed so work can be stopped without reactivating a project.
 - Startup keeps project-scoped task workers available for assigned active-project work, but DevOps/UI/UX/User Simulation quality loops are disabled by default and run only when `autonomous_quality_agents_enabled` is explicitly enabled.
 - Simulation scenario 49 passes the active simulation `project_id` to agent-loop listing, config, pause, resume, and restore calls rather than exercising agent-loop routes globally by omission.

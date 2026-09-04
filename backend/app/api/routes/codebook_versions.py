@@ -67,7 +67,9 @@ async def _derived_codebook(project_id: str, db: AsyncSession) -> dict | None:
         if not code_id:
             continue
         counts[code_id] = counts.get(code_id, 0) + int(count or 0)
-        confidence_by_code[code_id] = round(float(confidence), 3) if confidence is not None else None
+        confidence_by_code[code_id] = (
+            round(float(confidence), 3) if confidence is not None else None
+        )
 
     if not counts:
         return None
@@ -110,9 +112,9 @@ async def get_codebook_versions(
     await require_project_access(db, request, project_id, min_role="viewer")
 
     result = await db.execute(
-        select(CodebookVersion).where(
-            CodebookVersion.project_id == project_id
-        ).order_by(CodebookVersion.created_at.desc())
+        select(CodebookVersion)
+        .where(CodebookVersion.project_id == project_id)
+        .order_by(CodebookVersion.created_at.desc())
     )
     versions = [cv.to_dict() for cv in result.scalars().all()]
     derived = await _derived_codebook(project_id, db)
@@ -131,9 +133,10 @@ async def get_latest_codebook(
     await require_project_access(db, request, project_id, min_role="viewer")
 
     result = await db.execute(
-        select(CodebookVersion).where(
-            CodebookVersion.project_id == project_id
-        ).order_by(CodebookVersion.created_at.desc()).limit(1)
+        select(CodebookVersion)
+        .where(CodebookVersion.project_id == project_id)
+        .order_by(CodebookVersion.created_at.desc())
+        .limit(1)
     )
     cv = result.scalar_one_or_none()
     if not cv:
@@ -184,9 +187,7 @@ async def get_codebook_version_detail(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific codebook version by ID."""
-    result = await db.execute(
-        select(CodebookVersion).where(CodebookVersion.id == version_id)
-    )
+    result = await db.execute(select(CodebookVersion).where(CodebookVersion.id == version_id))
     cv = result.scalar_one_or_none()
     if not cv:
         raise HTTPException(status_code=404, detail="Codebook version not found")

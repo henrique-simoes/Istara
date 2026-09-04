@@ -9,7 +9,7 @@ related_glossary: ["rag"]
 code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/ChatModelControls.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "frontend/src/lib/modelCatalog.ts", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/chatApi.ts", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/api/routes/settings.py", "backend/app/main.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/agentic/legacy.py", "backend/app/core/agentic/usage_ledger.py", "backend/app/core/pi_runtime/engine.py", "backend/app/core/pi_runtime/oauth.py"]
 api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/core/agentic/usage_ledger.py"]
 test_references: ["frontend/src/lib/modelCatalog.test.ts", "frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_migration/test_model_management_migration.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/pi_production/test_w1_agentic_contract.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_legacy_long_horizon.py", "tests/pi_production/test_chat_pi_asgi.py", "tests/benchmarks/long_horizon_runner.py", "tests/simulation/scenarios/10-settings-models.mjs", "tests/simulation/scenarios/26-model-session-persistence.mjs"]
-last_verified: 2026-08-28
+last_verified: 2026-09-01
 compass: CF-SPEC-77 / CF-986; CF-SPEC-8
 ---
 
@@ -17,7 +17,7 @@ compass: CF-SPEC-77 / CF-986; CF-SPEC-8
 
 ## Implementation Summary
 
-Chat exposes a workbench-style model and effort menu so users can choose the provider/model and the exact provider-native effort levels supported by that model. A usage menu reports input, output, total, cache-read, cache-write, cost, context used, turns, engine, stop reason, and whether the values are exact or estimated.
+Chat exposes a workbench-style model and effort menu so users can choose the provider/model and the exact provider-native effort levels supported by that model. A connected provider model becomes the global chat default automatically when no default exists; admins can change that default in Settings, while each chat can still override it. A usage menu reports input, output, total, cache-read, cache-write, cost, context used, turns, engine, stop reason, and whether the values are exact or estimated.
 
 ## Frontend Surface
 
@@ -38,9 +38,22 @@ Chat exposes a workbench-style model and effort menu so users can choose the pro
 - `backend/app/api/routes/settings.py`
 - `backend/app/core/pi_runtime/model_manager.py`
 
-`ChatModelControls` is visible in Chat for project viewers with a selected session. It has one browseable, searchable model menu (chevron opens the list; typing filters it), an exact effort select populated from Pi `thinkingLevels`, and a usage popover. Pi catalog entries that are not configured are visible but disabled with an explanation; legacy engine mode exposes the safe local/server model inventory instead. Choosing a configured Pi entry persists both `model_override` and `endpoint_override`, so two providers exposing the same model id cannot silently collide.
+`ChatModelControls` is visible in Chat for project viewers with a selected session. It has one browseable, searchable model menu (chevron opens the list; typing filters it), an exact effort select populated from Pi `thinkingLevels`, and a usage popover. Pi catalog entries that are not configured are visible but disabled with an explanation; configured provider entries are selectable in both Pi and Istara modes because both cores use the Pi endpoint authority. The menu initially reflects the global default endpoint, while an explicit session override remains authoritative. Choosing a configured Pi entry persists both `model_override` and `endpoint_override`, so two providers exposing the same model id cannot silently collide.
 
 `GET /api/chat/model-catalog` is project-scoped and secret-free. Its configured Pi entries are filtered through the same project-admission predicate used by resolution, so an unauthorized Petals donor is not presented as selectable and then rejected only after dispatch; the global settings catalog remains unscoped. `GET /api/chat/usage/{project_id}` is project/session-scoped and returns content-free ledger aggregates plus per-dispatch identity rows (`session_id`, `purpose`, engine, model, endpoint/node handles, task binding, outcome, and accounting flags), so a bounded client can prove that every chat turn belongs to the requested session, authorized task, and requested engine rather than trusting only the latest row or the query filter. `POST /api/chat` accepts an optional project-scoped `task_id` and emits an additive `usage` SSE event after each governed turn. On the Pi loop, every `tool_call` has a later redacted `tool_result` execution receipt (`tool`, `tool_call_id`, `ok`) before the next model content; it deliberately excludes raw tool output and detailed errors. Existing transcript/session payloads remain backward compatible.
+
+For the legacy/Istara engine, the catalog also returns `chat_ready` from the
+cached Settings readiness snapshot. The Chat composer treats this as a
+positive readiness gate: it disables typed/file/document/voice sends and
+pending-prefill auto-sends until the cache reports ready, and displays an
+actionable Settings message. This is deliberately passive and never probes or
+loads a provider from the catalog route. Pi remains selectable here because its
+credential and endpoint readiness is resolved at dispatch time.
+
+The legacy inventory is also filtered to chat-capable models. Embedding-only
+entries (including Ollama/contract names containing `embed` or `embedding`) are
+kept out of the model picker so a user cannot persist an unusable chat-session
+override.
 
 ### Agentic Dispatcher And Engine Selection (Pi Replacement W1)
 

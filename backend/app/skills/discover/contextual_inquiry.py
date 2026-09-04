@@ -95,21 +95,29 @@ CONTEXTUAL_INQUIRY_SCHEMA = {
 
 class ContextualInquirySkill(BaseSkill):
     @property
-    def name(self) -> str: return "contextual-inquiry"
+    def name(self) -> str:
+        return "contextual-inquiry"
+
     @property
-    def display_name(self) -> str: return "Contextual Inquiry"
+    def display_name(self) -> str:
+        return "Contextual Inquiry"
+
     @property
     def description(self) -> str:
         return "Structure and analyze contextual inquiry observations — studying users in their natural work environment."
+
     @property
-    def phase(self) -> SkillPhase: return SkillPhase.DISCOVER
+    def phase(self) -> SkillPhase:
+        return SkillPhase.DISCOVER
+
     @property
-    def skill_type(self) -> SkillType: return SkillType.QUALITATIVE
+    def skill_type(self) -> SkillType:
+        return SkillType.QUALITATIVE
 
     async def plan(self, skill_input: SkillInput) -> dict:
         prompt = f"""Create a contextual inquiry observation plan for UX research.
-Context: {skill_input.project_context or 'General UX research'}
-User context: {skill_input.user_context or 'Not specified'}
+Context: {skill_input.project_context or "General UX research"}
+User context: {skill_input.user_context or "Not specified"}
 
 Include:
 1. Observation objectives (what to look for)
@@ -142,7 +150,7 @@ Format as Markdown."""
         from pathlib import Path
 
         all_text = []
-        for f in (skill_input.files or []):
+        for f in skill_input.files or []:
             result = process_file(Path(f))
             if not result.error and result.chunks:
                 all_text.append("\n".join(c.text for c in result.chunks))
@@ -152,11 +160,15 @@ Format as Markdown."""
             all_text.append(skill_input.user_context)
 
         if not all_text:
-            return SkillOutput(success=False, summary="No observation notes provided.", errors=["Provide observation note files."])
+            return SkillOutput(
+                success=False,
+                summary="No observation notes provided.",
+                errors=["Provide observation note files."],
+            )
 
         prompt = f"""Analyze these contextual inquiry observation notes for UX research.
 
-Project context: {skill_input.project_context or 'Not specified'}
+Project context: {skill_input.project_context or "Not specified"}
 
 Observation notes:
 {chr(10).join(all_text)[:8000]}
@@ -205,12 +217,16 @@ Respond in JSON:
             logger.warning("Contextual inquiry raised; degrading to empty analysis: %s", e)
             data = {}
 
-        nuggets = [{"text": n["text"], "source": "contextual-inquiry", "tags": n.get("tags", [])}
-                   for n in data.get("nuggets", [])]
+        nuggets = [
+            {"text": n["text"], "source": "contextual-inquiry", "tags": n.get("tags", [])}
+            for n in data.get("nuggets", [])
+        ]
 
         return SkillOutput(
             success=True,
-            summary=data.get("summary", f"Analyzed contextual inquiry notes. Found {len(nuggets)} nuggets."),
+            summary=data.get(
+                "summary", f"Analyzed contextual inquiry notes. Found {len(nuggets)} nuggets."
+            ),
             nuggets=nuggets,
             artifacts={"analysis.json": json.dumps(data, indent=2)},
         )

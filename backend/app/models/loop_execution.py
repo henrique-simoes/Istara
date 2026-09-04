@@ -17,9 +17,7 @@ class LoopExecution(Base):
 
     __tablename__ = "loop_executions"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     source_type: Mapped[str] = mapped_column(String(50))  # "scheduled_task" | "agent_loop"
     source_id: Mapped[str] = mapped_column(String(100))
     source_name: Mapped[str] = mapped_column(String(255), default="")
@@ -30,9 +28,7 @@ class LoopExecution(Base):
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-    finished_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_message: Mapped[str] = mapped_column(Text, default="")
     findings_count: Mapped[int] = mapped_column(Integer, default=0)

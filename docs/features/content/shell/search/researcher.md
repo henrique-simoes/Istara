@@ -9,7 +9,7 @@ related_glossary: ["wcag"]
 code_references: ["frontend/src/components/layout/HomeClient.tsx", "frontend/src/components/common/SearchModal.tsx", "frontend/src/lib/api.ts"]
 api_references: ["backend/app/api/routes/findings.py"]
 test_references: ["tests/test_project_scope_contracts.py", "tests/test_findings.py"]
-last_verified: 2026-05-19
+last_verified: 2026-09-02
 compass: CF-SPEC-60 / CF-772
 ---
 
@@ -48,7 +48,7 @@ Project Search exists so the work represented by Shell > Search has a stable, di
 
 ## Caveats
 
-- Search results are limited to the active project. Cross-project findings search is reserved for explicit admin reporting surfaces.
+- Search results are limited to the active project. The project search route combines document-RAG matches with exact text matches for manual nuggets, facts, insights, and recommendations; these remain provisional and are never promoted by searching. Cross-project findings search is reserved for explicit admin reporting surfaces.
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
 - Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
 

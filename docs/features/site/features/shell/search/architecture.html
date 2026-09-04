@@ -266,6 +266,7 @@
 <li>The feature is mounted through <code>frontend/src/components/layout/HomeClient.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Findings search does not fall back to global lists when no active project is selected. The modal waits for <code>activeProjectId</code>, then calls project-scoped findings list clients.</li>
 <li>Cross-project findings search remains available only through the explicit admin-only global findings search route used by admin/reporting surfaces.</li>
+<li>Project-scoped findings search combines document-RAG results with exact text matches from manual nuggets, facts, insights, and recommendations so manually-created artifacts remain discoverable when they are not embedded. Search does not alter their provisional research-validity state.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

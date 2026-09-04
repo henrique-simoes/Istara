@@ -62,9 +62,7 @@ def normalized_service_url(raw_url: str, policy: EndpointPolicy) -> str:
         if host_scope == "private" and policy.allow_http_private:
             return value
         if policy.require_https_for_public:
-            raise ValueError(
-                f"{policy.service_name} URL must use HTTPS for non-local endpoints"
-            )
+            raise ValueError(f"{policy.service_name} URL must use HTTPS for non-local endpoints")
     return value
 
 

@@ -8,6 +8,7 @@ the active project id.
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -78,7 +79,6 @@ def test_interfaces_status_screens_and_handoff_require_active_project_scope() ->
     assert "DesignBrief.project_id == scoped_project_id" in integrations_route
     assert "DesignScreen.project_id == scoped_project_id" in integrations_route
     assert "scope\": \"project\"" in integrations_route
-
 
 def test_interfaces_configuration_credentials_are_project_owned() -> None:
     api = read_repo("frontend/src/lib/api.ts")
@@ -335,8 +335,13 @@ def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
     assert "project_id: projectId" in setup
     assert "mcpApi.clients.discover(server.id, projectId)" in setup
     assert "mcpApi.clients.delete(serverId, projectId)" in setup
-    assert "disabled={!url.trim() || !projectId || testing}" in setup
-    assert "disabled={!url.trim() || !projectId || saving}" in setup
+    assert "const urlValid = isValidMcpServerUrl(url);" in setup
+    assert "disabled={!urlValid || !projectId || testing}" in setup
+    assert "disabled={!urlValid || !projectId || saving}" in setup
+    assert re.search(
+        r"const handleSave = async \(\) => \{[\s\S]*?catch \(e: any\) \{[\s\S]*?setTestError\(e\.message\);[\s\S]*?setTestResult\(\"error\"\)",
+        setup,
+    )
 
     assert "async def _get_project_client_or_404" in route
     assert "server.project_id != scoped_project_id" in route

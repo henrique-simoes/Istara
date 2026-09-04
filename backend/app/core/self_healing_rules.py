@@ -25,34 +25,51 @@ class SelfHealingRules:
 
     def __init__(self) -> None:
         self._error_counts: dict[str, list[datetime]] = {}
+        self._attempt_counts: dict[str, list[datetime]] = {}
         self._circuit_open: dict[str, bool] = {}
         self._last_resource_warn: dict[str, datetime] = {}
 
+    def _prune(self, timestamps: list[datetime], now: datetime) -> list[datetime]:
+        cutoff = now - timedelta(minutes=_ERROR_RATE_WINDOW_MINUTES)
+        return [timestamp for timestamp in timestamps if timestamp >= cutoff]
+
     def _track_error(self, key: str) -> None:
         now = datetime.now(timezone.utc)
-        if key not in self._error_counts:
-            self._error_counts[key] = []
-        self._error_counts[key] = [
-            t
-            for t in self._error_counts[key]
-            if (now - t).total_seconds() < _ERROR_RATE_WINDOW_MINUTES * 60
-        ]
-        self._error_counts[key].append(now)
+        errors = self._prune(self._error_counts.get(key, []), now)
+        errors.append(now)
+        self._error_counts[key] = errors
+
+    def _track_attempt(self, key: str, *, failed: bool) -> None:
+        """Track one attempt and, when applicable, its failure.
+
+        Error rates are fractions of observed attempts in the rolling window,
+        not errors per minute. Keeping the denominator explicit prevents the
+        UI from displaying impossible percentages such as 167%.
+        """
+        now = datetime.now(timezone.utc)
+        attempts = self._prune(self._attempt_counts.get(key, []), now)
+        attempts.append(now)
+        self._attempt_counts[key] = attempts
+        if failed:
+            self._track_error(key)
 
     def _error_rate(self, key: str) -> float:
         now = datetime.now(timezone.utc)
-        cutoff = now - timedelta(minutes=_ERROR_RATE_WINDOW_MINUTES)
-        recent = [t for t in self._error_counts.get(key, []) if t >= cutoff]
-        window_seconds = _ERROR_RATE_WINDOW_MINUTES * 60
-        return len(recent) / (window_seconds / 60.0)
+        attempts = self._prune(self._attempt_counts.get(key, []), now)
+        errors = self._prune(self._error_counts.get(key, []), now)
+        self._attempt_counts[key] = attempts
+        self._error_counts[key] = errors
+        if not attempts:
+            return 0.0
+        return min(len(errors) / len(attempts), 1.0)
 
     async def evaluate_span(self, span: "TelemetrySpan") -> list[dict]:
         """Evaluate a telemetry span and return any triggered self-healing actions."""
         actions = []
         key = f"{span.project_id}:{span.skill_name}:{span.model_name}"
+        self._track_attempt(key, failed=span.status == "error")
 
         if span.status == "error":
-            self._track_error(key)
             rate = self._error_rate(key)
 
             if rate > _ERROR_RATE_HIGH_THRESHOLD:
@@ -89,7 +106,7 @@ class SelfHealingRules:
 
         if span.operation == "tool_call" and span.tool_success is False:
             tool_key = f"tool:{span.tool_name}"
-            self._track_error(tool_key)
+            self._track_attempt(tool_key, failed=True)
             rate = self._error_rate(tool_key)
             if rate > _ERROR_RATE_HIGH_THRESHOLD:
                 actions.append(
@@ -103,6 +120,9 @@ class SelfHealingRules:
                         "auto_action": "none",
                     }
                 )
+
+        elif span.operation == "tool_call" and span.tool_success is True:
+            self._track_attempt(f"tool:{span.tool_name}", failed=False)
 
         return actions
 

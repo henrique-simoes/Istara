@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Copy, KeyRound, RefreshCw, Save, ShieldAlert, UserRound } from "lucide-react";
 
 import { useAuthStore } from "@/stores/authStore";
+import { buildProfileUpdatePayload } from "@/lib/profileUpdatePayload";
+import { needsProfileHydration, profileFormValues } from "@/lib/profileFormState";
 
 export default function AccountSecurityManager() {
-  const { user, updateProfile, changePassword, generateRecoveryCodes } = useAuthStore();
+  const { user, fetchMe, updateProfile, changePassword, generateRecoveryCodes } = useAuthStore();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -18,12 +20,28 @@ export default function AccountSecurityManager() {
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const profileHydrationRequested = useRef(false);
 
   useEffect(() => {
-    setUsername(user?.username || "");
-    setEmail(user?.email || "");
-    setDisplayName(user?.display_name || user?.username || "");
-  }, [user]);
+    let disposed = false;
+    const applyProfileValues = (identity: typeof user) => {
+      const values = profileFormValues(identity);
+      setUsername(values.username);
+      setEmail(values.email);
+      setDisplayName(values.displayName);
+    };
+
+    applyProfileValues(user);
+    if (needsProfileHydration(user) && !profileHydrationRequested.current) {
+      profileHydrationRequested.current = true;
+      void fetchMe().then(() => {
+        if (!disposed) applyProfileValues(useAuthStore.getState().user);
+      });
+    }
+    return () => {
+      disposed = true;
+    };
+  }, [fetchMe, user]);
 
   if (!user || user.id === "local") return null;
 
@@ -96,12 +114,12 @@ export default function AccountSecurityManager() {
             disabled={busy === "profile"}
             onClick={() =>
               run("profile", async () => {
-                await updateProfile({
-                  current_password: profilePassword,
+                await updateProfile(buildProfileUpdatePayload({
+                  currentPassword: profilePassword,
                   username,
                   email,
-                  display_name: displayName,
-                });
+                  displayName,
+                }));
                 setProfilePassword("");
                 setMessage("Profile updated.");
               })

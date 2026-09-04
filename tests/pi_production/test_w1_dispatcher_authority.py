@@ -904,6 +904,15 @@ def test_capability_filtering_and_admission_fail_closed():
         manager.resolve_distinct(2, require_vision=True)
 
 
+def test_global_default_endpoint_is_used_for_unqualified_chat_resolution(monkeypatch):
+    first = _real_endpoint(endpoint_id="pi-first", model="model-first")
+    second = _real_endpoint(endpoint_id="pi-second", model="model-second")
+    monkeypatch.setattr(settings, "pi_default_endpoint_id", "pi-second", raising=False)
+    manager = _isolated(PiModelManager(endpoints=[first, second], include_local=False))
+
+    assert manager.resolve().endpoint_id == "pi-second"
+
+
 @pytest.mark.asyncio
 async def test_llm_server_projection_excludes_donor_rows():
     """Persisted LLMServer rows project read-only; relay donors never do."""

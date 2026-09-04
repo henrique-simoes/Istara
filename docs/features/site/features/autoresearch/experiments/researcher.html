@@ -271,6 +271,7 @@
 <li>Project-scoped experiment history and runtime actions associated with the active project.</li>
 <li>Generated experiment records, reasoning memories, and improvement proposals keep the project id that authorized the run.</li>
 <li>Question-bank experiments can only evaluate or rewrite deployments that belong to the active project; stale deployment ids from another project are treated as not found before LLM evaluation or mutation.</li>
+<li>Dry-run starts remain mutation-free but use the same six-runner <code>loop_type</code> validation as live starts; unsupported loop names return a clear client error instead of a misleading proposal.</li>
 </ul>
 <h2 id="model-routing-and-engine-selection">Model Routing And Engine Selection</h2>
 <ul>

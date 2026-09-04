@@ -36,7 +36,7 @@ from .embedding_profile import (
     EmbeddingProfileError,
     get_active_embedding_profile,
 )
-from .endpoints import ResolvedPiEndpoint
+from .endpoints import ResolvedPiEndpoint, enforce_test_provider_network_policy
 from .model_manager import PiModelManager
 
 logger = logging.getLogger(__name__)
@@ -75,9 +75,7 @@ async def assert_vector_space_invariant(*, dimension_probe: Any) -> str:
     continue with unsafe engine switching.
     """
     model = default_embed_model()
-    legacy = await dimension_probe(
-        engine="legacy", model=model, check_stored=False
-    )
+    legacy = await dimension_probe(engine="legacy", model=model, check_stored=False)
     pi = await dimension_probe(engine="pi", model=model, check_stored=False)
     for engine, result in (("legacy", legacy), ("pi", pi)):
         if result.get("status") != "ok":
@@ -96,9 +94,13 @@ async def assert_vector_space_invariant(*, dimension_probe: Any) -> str:
 class EmbeddingsGateway:
     """Resolve an embed endpoint from the PiModelManager and call it directly."""
 
-    def __init__(self, manager: PiModelManager | None = None,
-                 *, client: httpx.AsyncClient | None = None,
-                 profile: ActiveEmbeddingProfile | None = None) -> None:
+    def __init__(
+        self,
+        manager: PiModelManager | None = None,
+        *,
+        client: httpx.AsyncClient | None = None,
+        profile: ActiveEmbeddingProfile | None = None,
+    ) -> None:
         self._manager = manager
         self._client = client
         self._profile = profile
@@ -133,20 +135,26 @@ class EmbeddingsGateway:
             input_tokens = count_tokens("\n".join(texts))
             estimate = True
         else:
-            input_tokens = int(usage.get(
-                "input_tokens", usage.get("prompt_tokens", usage.get("input", 0))
-            ) or 0)
+            input_tokens = int(
+                usage.get("input_tokens", usage.get("prompt_tokens", usage.get("input", 0))) or 0
+            )
             estimate = bool(usage.get("estimate", False))
-        output_tokens = int((usage or {}).get(
-            "output_tokens", (usage or {}).get("completion_tokens", (usage or {}).get("output", 0))
-        ) or 0)
+        output_tokens = int(
+            (usage or {}).get(
+                "output_tokens",
+                (usage or {}).get("completion_tokens", (usage or {}).get("output", 0)),
+            )
+            or 0
+        )
         cache_read = int((usage or {}).get("cache_read", (usage or {}).get("cacheRead", 0)) or 0)
         cache_write = int((usage or {}).get("cache_write", (usage or {}).get("cacheWrite", 0)) or 0)
-        total_tokens = int((usage or {}).get(
-            "total_tokens", (usage or {}).get(
-                "total", input_tokens + output_tokens + cache_read + cache_write
+        total_tokens = int(
+            (usage or {}).get(
+                "total_tokens",
+                (usage or {}).get("total", input_tokens + output_tokens + cache_read + cache_write),
             )
-        ) or 0)
+            or 0
+        )
 
         cost_raw = (usage or {}).get("cost")
         if isinstance(cost_raw, dict):
@@ -172,8 +180,9 @@ class EmbeddingsGateway:
             "estimate": estimate,
         }
 
-    async def _call_native_ollama(self, endpoint: ResolvedPiEndpoint, model: str,
-                                  texts: list[str]) -> tuple[list[list[float]], dict[str, Any]]:
+    async def _call_native_ollama(
+        self, endpoint: ResolvedPiEndpoint, model: str, texts: list[str]
+    ) -> tuple[list[list[float]], dict[str, Any]]:
         base = endpoint.base_url.rstrip("/")
         host = base[:-3] if base.endswith("/v1") else base
         client = await self._get_client(endpoint.timeout_ms)
@@ -187,13 +196,15 @@ class EmbeddingsGateway:
             texts,
         )
 
-    async def _call_openai_compatible(self, endpoint: ResolvedPiEndpoint, model: str,
-                                      texts: list[str]) -> tuple[list[list[float]], dict[str, Any]]:
+    async def _call_openai_compatible(
+        self, endpoint: ResolvedPiEndpoint, model: str, texts: list[str]
+    ) -> tuple[list[list[float]], dict[str, Any]]:
         base = endpoint.base_url.rstrip("/")
         headers = {"Authorization": f"Bearer {endpoint.api_key}"} if endpoint.api_key else {}
         client = await self._get_client(endpoint.timeout_ms)
-        resp = await client.post(f"{base}/embeddings", json={"model": model, "input": texts},
-                                 headers=headers)
+        resp = await client.post(
+            f"{base}/embeddings", json={"model": model, "input": texts}, headers=headers
+        )
         resp.raise_for_status()
         payload = resp.json()
         data = payload.get("data") if isinstance(payload, dict) else None
@@ -227,6 +238,7 @@ class EmbeddingsGateway:
         manager = self.manager()
         await manager.ensure_db_projection()
         endpoint = manager.resolve_embed(model, endpoint_id=profile.endpoint_id)
+        enforce_test_provider_network_policy(endpoint)
         if self._is_native_ollama(endpoint):
             vectors, usage = await self._call_native_ollama(endpoint, model, texts)
         else:

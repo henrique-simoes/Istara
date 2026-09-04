@@ -88,6 +88,84 @@ export const ENGINE_COMPARATIVE_SUMMARIES: EngineComparativeSummary[] = [
 export const ENGINE_SELECTOR_OPTIONS = ["pi", "legacy"] as const;
 
 /**
+ * Pi endpoints are chat-selectable only after the backend has resolved their
+ * non-secret credential state. Missing/unknown status stays fail-closed so an
+ * older or partial response can never make an unverified endpoint look ready.
+ */
+export function isPiEndpointReady(endpoint: { credential_status?: string }): boolean {
+  return endpoint.credential_status === "ready";
+}
+
+/**
+ * A persisted chat-session override is usable only when the backend still
+ * resolves the exact endpoint/model pair as credential-ready. This prevents a
+ * stale session from turning a disabled catalog row back into a selectable
+ * model after credentials are removed or an endpoint disappears.
+ */
+export function isPiSessionOverrideReady(
+  configured: Array<{
+    endpoint_id?: string;
+    model?: string;
+    credential_status?: string;
+  }>,
+  modelOverride?: string | null,
+  endpointOverride?: string | null,
+): boolean {
+  if (!modelOverride) return false;
+  return configured.some((endpoint) =>
+    endpoint.model === modelOverride
+    && (!endpointOverride || endpoint.endpoint_id === endpointOverride)
+    && isPiEndpointReady(endpoint)
+  );
+}
+
+/** Settings status must preserve the difference between transport and chat readiness. */
+export function settingsLlmReadiness(
+  readiness?: { reachable?: boolean; chat_ready?: boolean } | null,
+): "disconnected" | "not_ready" | "ready" {
+  if (!readiness?.reachable) return "disconnected";
+  return readiness.chat_ready ? "ready" : "not_ready";
+}
+
+/**
+ * The legacy/Istara chat plane is sendable only after the backend has
+ * positively confirmed a ready transport. Pi performs its own credential and
+ * endpoint checks at dispatch time, so the catalog must not disable Pi sends
+ * based on the legacy readiness cache.
+ */
+export function isChatSendReady(
+  engine: "pi" | "legacy",
+  chatReady?: boolean | null,
+): boolean {
+  return engine === "pi" || chatReady === true;
+}
+
+/**
+ * Return only the model that is authoritative for the selected agentic engine.
+ * A local transport model is not a Pi default and must never fill an empty Pi
+ * provider selection in Settings.
+ */
+export function settingsDefaultChatModel(
+  models?: {
+    agentic_engine_default?: string | null;
+    default_model?: string | null;
+    active_model?: string | null;
+  } | null,
+  systemStatus?: {
+    agentic_engine_default?: string | null;
+    llm_readiness?: { reachable?: boolean; chat_ready?: boolean } | null;
+  } | null,
+): string | null {
+  const engine = models?.agentic_engine_default || systemStatus?.agentic_engine_default;
+  const model = engine === "pi"
+    ? models?.default_model
+    : systemStatus?.llm_readiness?.chat_ready
+      ? models?.active_model
+      : null;
+  return typeof model === "string" && model.trim() ? model.trim() : null;
+}
+
+/**
  * Present both routing planes in the existing Settings model inventory.
  * Every entry is identity-only: Pi Model Management is the sole write
  * authority, so this compatibility inventory never advertises the retired

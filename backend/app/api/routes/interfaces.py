@@ -214,7 +214,9 @@ use the design tools below. For general design conversation and critique, respon
 
 
 @router.get("/interfaces/design-chat/{project_id}/history")
-async def design_chat_history(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def design_chat_history(
+    project_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Get message history for the design chat session.
 
     Finds the design-scoped session for this project and returns its messages.
@@ -254,7 +256,9 @@ async def design_chat_history(project_id: str, request: Request, db: AsyncSessio
 
 
 @router.post("/interfaces/design-chat")
-async def design_chat(request: DesignChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
+async def design_chat(
+    request: DesignChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)
+):
     """Send a message to the Design Lead and get a streaming response with design tools.
 
     The response is streamed as Server-Sent Events (SSE) with a ReAct tool loop.
@@ -552,7 +556,9 @@ async def design_chat(request: DesignChatRequest, http_request: Request, db: Asy
                 if conversation and conversation[0]["role"] == "system":
                     conversation[0]["content"] += "\n\n" + build_design_tools_prompt()
                 else:
-                    conversation.insert(0, {"role": "system", "content": build_design_tools_prompt()})
+                    conversation.insert(
+                        0, {"role": "system", "content": build_design_tools_prompt()}
+                    )
 
                 # Text-fallback loop via the AgenticDispatcher (W2). The
                 # regex-parsed ReAct loop (this module's ``_extract_tool_call``
@@ -678,6 +684,7 @@ async def design_chat(request: DesignChatRequest, http_request: Request, db: Asy
             "X-Accel-Buffering": "no",
         },
     )
+
 
 # -- Composed Interfaces Subrouters -----------------------------------------
 

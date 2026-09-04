@@ -70,7 +70,12 @@ class SkillUsageMixin:
             self._update_usage_stats(scoped_stats, success, quality_score)
 
         self._save_stats()
-        if scoped_project_id and scoped_stats and scoped_stats["executions"] >= 10 and scoped_stats["utility_score"] < 0.3:
+        if (
+            scoped_project_id
+            and scoped_stats
+            and scoped_stats["executions"] >= 10
+            and scoped_stats["utility_score"] < 0.3
+        ):
             self._notify_low_utility_skill(
                 skill_name,
                 scoped_stats,
@@ -181,10 +186,7 @@ class SkillUsageMixin:
                     for p in self._proposals
                     if p.skill_name == name
                     and p.status == "pending"
-                    and (
-                        not scoped_project_id
-                        or getattr(p, "project_id", "") == scoped_project_id
-                    )
+                    and (not scoped_project_id or getattr(p, "project_id", "") == scoped_project_id)
                 ]
             ),
         }

@@ -44,8 +44,14 @@ export async function run(ctx) {
       name: "Configured endpoints are identity-only",
       passed:
         Array.isArray(catalog.configured) &&
-        !JSON.stringify(catalog.configured).toLowerCase().includes('"api_key"'),
-      detail: `configured=${catalog.configured?.length}`,
+        catalog.configured.every((entry) =>
+          ["api_key", "base_url", "host", "secret", "token"].every(
+            (key) => !Object.prototype.hasOwnProperty.call(entry || {}, key)
+          )
+        ),
+      detail: `configured=${catalog.configured?.length}, fields=${JSON.stringify(
+        Object.keys(catalog.configured?.[0] || {})
+      )}`,
     });
   } catch (e) {
     checks.push({ name: "Model catalog", passed: false, detail: e.message });

@@ -43,9 +43,7 @@ def _history_event(actor_id: str, actor_username: str, event: str, note: str = "
 
 
 async def _get_permission_request(db: AsyncSession, request_id: str) -> PermissionRequest:
-    result = await db.execute(
-        select(PermissionRequest).where(PermissionRequest.id == request_id)
-    )
+    result = await db.execute(select(PermissionRequest).where(PermissionRequest.id == request_id))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Permission request not found")

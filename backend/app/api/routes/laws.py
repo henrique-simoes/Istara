@@ -27,7 +27,9 @@ async def get_laws_for_heuristic(heuristic_id: str):
 
 
 @router.get("/match")
-async def match_laws(query: str = Query(..., min_length=1), top_k: int = Query(default=5, ge=1, le=30)):
+async def match_laws(
+    query: str = Query(..., min_length=1), top_k: int = Query(default=5, ge=1, le=30)
+):
     """Find relevant laws for a text query using keyword matching."""
     matches = laws_service.match_text(query, top_k=top_k)
     return [
@@ -45,9 +47,7 @@ async def get_compliance(
     """Compute UX Law compliance profile for a project from tagged findings."""
     await require_project_access(db, request, project_id, min_role="viewer")
 
-    result = await db.execute(
-        select(Nugget).where(Nugget.project_id == project_id)
-    )
+    result = await db.execute(select(Nugget).where(Nugget.project_id == project_id))
     nuggets = result.scalars().all()
     nugget_dicts = [{"id": n.id, "tags": n.tags, "text": n.text} for n in nuggets]
     profile = laws_service.compute_compliance_profile(nugget_dicts)
@@ -63,9 +63,7 @@ async def get_radar(
     """Get radar chart data for the compliance profile."""
     await require_project_access(db, request, project_id, min_role="viewer")
 
-    result = await db.execute(
-        select(Nugget).where(Nugget.project_id == project_id)
-    )
+    result = await db.execute(select(Nugget).where(Nugget.project_id == project_id))
     nuggets = result.scalars().all()
     nugget_dicts = [{"id": n.id, "tags": n.tags, "text": n.text} for n in nuggets]
     profile = laws_service.compute_compliance_profile(nugget_dicts)

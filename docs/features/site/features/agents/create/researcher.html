@@ -272,6 +272,7 @@
 <li>Imported agent configs are recreated as project-scoped agents for the active project.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 <li>Missing active project context prevents creation or import rather than creating a global agent.</li>
+<li>The role selector only submits supported agent roles. If a stale client submits another value, the API returns a validation error (422) and does not create an agent.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>

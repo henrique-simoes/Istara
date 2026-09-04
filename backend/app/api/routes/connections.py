@@ -25,7 +25,7 @@ from app.core.connection_string import (
     preview_connection_string,
 )
 from app.core.env_persistence import persist_env_value
-from app.core.field_encryption import hash_field
+from app.core.field_encryption import hash_field, safe_decrypt_field
 from app.core.recovery_codes import replace_recovery_codes
 from app.core.security_middleware import require_admin_from_request
 from app.models.connection_string import ConnectionString
@@ -256,7 +256,9 @@ async def generate_compute_donation_string(
 
         result = await db.execute(select(Project.id).where(Project.id.in_(allowed_project_ids)))
         existing_ids = {str(project_id) for project_id in result.scalars().all()}
-        unknown_ids = [project_id for project_id in allowed_project_ids if project_id not in existing_ids]
+        unknown_ids = [
+            project_id for project_id in allowed_project_ids if project_id not in existing_ids
+        ]
         if unknown_ids:
             raise HTTPException(status_code=404, detail="One or more projects were not found")
     elif not allowed_project_ids:
@@ -534,7 +536,7 @@ async def redeem_connection_string(
         "user": {
             "id": user.id,
             "username": user.username,
-            "email": user.email,
+            "email": safe_decrypt_field(user.email),
             "role": user.role.value,
             "display_name": user.display_name,
         },

@@ -36,10 +36,14 @@ def cohen_kappa(coder_a: list[list[str]], coder_b: list[list[str]], all_codes: l
     n_items = len(coder_a)
     if n_items == 0 or not all_codes:
         return {
-            "kappa": 0.0, "interpretation": "poor",
-            "observed_agreement": 0.0, "expected_agreement": 0.0,
-            "n_items_coded": 0, "n_codes_used": 0,
-            "per_code_kappa": [], "low_agreement_codes": [],
+            "kappa": 0.0,
+            "interpretation": "poor",
+            "observed_agreement": 0.0,
+            "expected_agreement": 0.0,
+            "n_items_coded": 0,
+            "n_codes_used": 0,
+            "per_code_kappa": [],
+            "low_agreement_codes": [],
         }
 
     per_code_results = []
@@ -69,19 +73,25 @@ def cohen_kappa(coder_a: list[list[str]], coder_b: list[list[str]], all_codes: l
         else:
             code_kappa = (po - pe) / (1 - pe)
 
-        per_code_results.append({
-            "code": code,
-            "agreement_pct": round(po * 100, 1),
-            "kappa": round(code_kappa, 3),
-            "frequency_a": tp + fn,
-            "frequency_b": tp + fp,
-        })
+        per_code_results.append(
+            {
+                "code": code,
+                "agreement_pct": round(po * 100, 1),
+                "kappa": round(code_kappa, 3),
+                "frequency_a": tp + fn,
+                "frequency_b": tp + fp,
+            }
+        )
 
         total_agree += po
         total_items_checked += 1
 
     # Overall kappa = average of per-code kappas (macro average)
-    overall_kappa = sum(r["kappa"] for r in per_code_results) / len(per_code_results) if per_code_results else 0.0
+    overall_kappa = (
+        sum(r["kappa"] for r in per_code_results) / len(per_code_results)
+        if per_code_results
+        else 0.0
+    )
     overall_agreement = total_agree / total_items_checked if total_items_checked > 0 else 0.0
 
     # Landis & Koch interpretation
@@ -109,8 +119,12 @@ def cohen_kappa(coder_a: list[list[str]], coder_b: list[list[str]], all_codes: l
         "n_codes_used": len(all_codes),
         "per_code_kappa": per_code_results,
         "low_agreement_codes": [
-            {"code": r["code"], "kappa": r["kappa"], "issue": "Low inter-coder agreement",
-             "resolution": "Review code definition for ambiguity"}
+            {
+                "code": r["code"],
+                "kappa": r["kappa"],
+                "issue": "Low inter-coder agreement",
+                "resolution": "Review code definition for ambiguity",
+            }
             for r in low_agreement
         ],
     }
@@ -139,18 +153,26 @@ def krippendorff_alpha(coders: list[list[list[str]]], all_codes: list[str]) -> d
     n_coders = len(coders)
     if n_coders == 0 or not all_codes:
         return {
-            "alpha": 0.0, "interpretation": "unreliable",
-            "n_coders": 0, "n_items": 0, "n_codes": 0,
-            "per_code_alpha": [], "unreliable_codes": [],
+            "alpha": 0.0,
+            "interpretation": "unreliable",
+            "n_coders": 0,
+            "n_items": 0,
+            "n_codes": 0,
+            "per_code_alpha": [],
+            "unreliable_codes": [],
         }
 
     # All coders must have the same number of items; use the minimum if they differ
     n_items = min(len(c) for c in coders) if coders else 0
     if n_items == 0:
         return {
-            "alpha": 0.0, "interpretation": "unreliable",
-            "n_coders": n_coders, "n_items": 0, "n_codes": len(all_codes),
-            "per_code_alpha": [], "unreliable_codes": [],
+            "alpha": 0.0,
+            "interpretation": "unreliable",
+            "n_coders": n_coders,
+            "n_items": 0,
+            "n_codes": len(all_codes),
+            "per_code_alpha": [],
+            "unreliable_codes": [],
         }
 
     per_code_results = []
@@ -189,9 +211,12 @@ def krippendorff_alpha(coders: list[list[list[str]]], all_codes: list[str]) -> d
             total_do_numerator += disagreements / (m_u - 1)
 
         if total_pairable == 0:
-            per_code_results.append({
-                "code": code, "alpha": 0.0,
-            })
+            per_code_results.append(
+                {
+                    "code": code,
+                    "alpha": 0.0,
+                }
+            )
             continue
 
         do = total_do_numerator / total_pairable  # observed disagreement (normalized)
@@ -209,9 +234,12 @@ def krippendorff_alpha(coders: list[list[list[str]]], all_codes: list[str]) -> d
                         n_zeros += 1
         n_total = n_ones + n_zeros
         if n_total < 2:
-            per_code_results.append({
-                "code": code, "alpha": 0.0,
-            })
+            per_code_results.append(
+                {
+                    "code": code,
+                    "alpha": 0.0,
+                }
+            )
             continue
 
         # For nominal metric: De = (n_ones * n_zeros) / (n_total * (n_total - 1) / 2)
@@ -223,10 +251,12 @@ def krippendorff_alpha(coders: list[list[list[str]]], all_codes: list[str]) -> d
         else:
             code_alpha = 1.0 - (do / de)
 
-        per_code_results.append({
-            "code": code,
-            "alpha": round(code_alpha, 3),
-        })
+        per_code_results.append(
+            {
+                "code": code,
+                "alpha": round(code_alpha, 3),
+            }
+        )
 
     # Overall alpha = average of per-code alphas (macro average)
     if per_code_results:
@@ -245,9 +275,14 @@ def krippendorff_alpha(coders: list[list[list[str]]], all_codes: list[str]) -> d
         interpretation = "unreliable"
 
     unreliable_codes = [
-        {"code": r["code"], "alpha": r["alpha"], "issue": "Below reliability threshold",
-         "resolution": "Review code definition and coder training"}
-        for r in per_code_results if r["alpha"] < 0.667
+        {
+            "code": r["code"],
+            "alpha": r["alpha"],
+            "issue": "Below reliability threshold",
+            "resolution": "Review code definition and coder training",
+        }
+        for r in per_code_results
+        if r["alpha"] < 0.667
     ]
 
     return {
@@ -508,15 +543,25 @@ class KappaIntercoderSkill(BaseSkill):
     async def execute(self, skill_input: SkillInput) -> SkillOutput:
         content = _extract_text_from_files(skill_input.files) if skill_input.files else ""
         if not content and not skill_input.user_context:
-            return SkillOutput(success=False, summary="No input provided.", errors=["Provide files or context."])
+            return SkillOutput(
+                success=False, summary="No input provided.", errors=["Provide files or context."]
+            )
 
         from pathlib import Path
+
         file_sources = [Path(f).name for f in skill_input.files] if skill_input.files else []
         source_label = ", ".join(file_sources[:3]) if file_sources else self.name
 
-        ctx = "\n".join(filter(None, [
-            skill_input.company_context, skill_input.project_context, skill_input.user_context
-        ]))
+        ctx = "\n".join(
+            filter(
+                None,
+                [
+                    skill_input.company_context,
+                    skill_input.project_context,
+                    skill_input.user_context,
+                ],
+            )
+        )
 
         # --- Step 1: Coder A — open coding ---
         prompt_a = CODER_A_PROMPT.format(
@@ -553,7 +598,8 @@ class KappaIntercoderSkill(BaseSkill):
 
         if not coding_a:
             return SkillOutput(
-                success=False, summary="Coder A produced no coding results.",
+                success=False,
+                summary="Coder A produced no coding results.",
                 errors=["First coding pass returned empty results."],
             )
 
@@ -613,15 +659,17 @@ class KappaIntercoderSkill(BaseSkill):
             coder_b_codes.append(b_codes)
 
             agreed = set(a_codes) == set(b_codes)
-            combined_results.append({
-                "item_id": item_id,
-                "text": item.get("text", ""),
-                "source": item.get("source", source_label),
-                "coder_a": a_codes,
-                "coder_b": b_codes,
-                "final": list(set(a_codes) | set(b_codes)),  # union until reconciliation
-                "agreed": agreed,
-            })
+            combined_results.append(
+                {
+                    "item_id": item_id,
+                    "text": item.get("text", ""),
+                    "source": item.get("source", source_label),
+                    "coder_a": a_codes,
+                    "coder_b": b_codes,
+                    "final": list(set(a_codes) | set(b_codes)),  # union until reconciliation
+                    "agreed": agreed,
+                }
+            )
 
         all_codes = sorted(all_codes_set)
         reliability = cohen_kappa(coder_a_codes, coder_b_codes, all_codes)
@@ -636,9 +684,15 @@ class KappaIntercoderSkill(BaseSkill):
 
         if disagreements:
             disagree_text = json.dumps(
-                [{"item_id": d["item_id"], "text": d["text"],
-                  "coder_a": d["coder_a"], "coder_b": d["coder_b"]}
-                 for d in disagreements],
+                [
+                    {
+                        "item_id": d["item_id"],
+                        "text": d["text"],
+                        "coder_a": d["coder_a"],
+                        "coder_b": d["coder_b"],
+                    }
+                    for d in disagreements
+                ],
                 indent=2,
             )
             prompt_r = RECONCILIATION_PROMPT.format(
@@ -674,7 +728,9 @@ class KappaIntercoderSkill(BaseSkill):
             reconciled_by_id = {r["item_id"]: r for r in data_r.get("reconciled", [])}
             for item in combined_results:
                 if item["item_id"] in reconciled_by_id:
-                    item["final"] = reconciled_by_id[item["item_id"]].get("final_codes", item["final"])
+                    item["final"] = reconciled_by_id[item["item_id"]].get(
+                        "final_codes", item["final"]
+                    )
 
             themes = data_r.get("themes", [])
             codebook_refinements = data_r.get("codebook_refinements", [])
@@ -716,23 +772,28 @@ class KappaIntercoderSkill(BaseSkill):
 
         # --- Build output ---
         nuggets = [
-            {"text": r["text"], "source": r.get("source", source_label),
-             "tags": r["final"]}
+            {"text": r["text"], "source": r.get("source", source_label), "tags": r["final"]}
             for r in combined_results
         ]
         insights = [
-            {"text": f"Cohen's Kappa = {reliability['kappa']} ({reliability['interpretation']}), "
-                     f"Krippendorff's Alpha = {alpha_result['alpha']} ({alpha_result['interpretation']}). "
-                     f"{len(disagreements)} of {len(combined_results)} segments had disagreements.",
-             "confidence": "high" if reliability["kappa"] >= 0.60 and alpha_result["alpha"] >= 0.667 else "medium"}
+            {
+                "text": f"Cohen's Kappa = {reliability['kappa']} ({reliability['interpretation']}), "
+                f"Krippendorff's Alpha = {alpha_result['alpha']} ({alpha_result['interpretation']}). "
+                f"{len(disagreements)} of {len(combined_results)} segments had disagreements.",
+                "confidence": "high"
+                if reliability["kappa"] >= 0.60 and alpha_result["alpha"] >= 0.667
+                else "medium",
+            }
         ]
 
         # Add theme-based insights
         for theme in themes:
-            insights.append({
-                "text": f"Theme: {theme.get('name', 'Unnamed')} — {theme.get('description', '')}",
-                "confidence": "medium",
-            })
+            insights.append(
+                {
+                    "text": f"Theme: {theme.get('name', 'Unnamed')} — {theme.get('description', '')}",
+                    "confidence": "medium",
+                }
+            )
 
         full_artifact = {
             "codebook": codebook_entries,

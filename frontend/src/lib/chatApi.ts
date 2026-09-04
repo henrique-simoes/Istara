@@ -82,7 +82,7 @@ export const chat = {
   history: (projectId: string, limit = 50) =>
     json<any[]>(`/api/chat/history/${projectId}?limit=${limit}`),
   modelCatalog: (projectId: string) =>
-    json<{ providers: PiCatalogProvider[]; total_models: number; configured: PiEndpointInfo[]; legacy_models: string[]; engine: string }>(
+    json<{ providers: PiCatalogProvider[]; total_models: number; configured: PiEndpointInfo[]; legacy_models: string[]; engine: string; chat_ready?: boolean | null; default_endpoint_id: string | null; default_model: string | null }>(
       `/api/chat/model-catalog?project_id=${encodeURIComponent(projectId)}`
     ),
   usage: (projectId: string, sessionId?: string) =>

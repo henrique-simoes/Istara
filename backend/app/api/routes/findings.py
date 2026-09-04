@@ -29,7 +29,9 @@ from app.services.research_validity_service import persist_task_nugget_evidence_
 router = APIRouter()
 
 
-async def _require_project_scope(db: AsyncSession, request: Request, project_id: str | None, min_role: str = "viewer") -> str:
+async def _require_project_scope(
+    db: AsyncSession, request: Request, project_id: str | None, min_role: str = "viewer"
+) -> str:
     scoped_project_id = (project_id or "").strip()
     if not scoped_project_id:
         raise HTTPException(status_code=422, detail="project_id is required")
@@ -38,10 +40,19 @@ async def _require_project_scope(db: AsyncSession, request: Request, project_id:
 
 
 async def _get_project_record_or_404(
-    db: AsyncSession, request: Request, model, record_id: str, not_found_detail: str, project_id: str | None, *, min_role: str
+    db: AsyncSession,
+    request: Request,
+    model,
+    record_id: str,
+    not_found_detail: str,
+    project_id: str | None,
+    *,
+    min_role: str,
 ):
     scoped_project_id = await _require_project_scope(db, request, project_id, min_role=min_role)
-    result = await db.execute(select(model).where(model.id == record_id, model.project_id == scoped_project_id))
+    result = await db.execute(
+        select(model).where(model.id == record_id, model.project_id == scoped_project_id)
+    )
     record = result.scalar_one_or_none()
     if not record:
         raise HTTPException(status_code=404, detail=not_found_detail)
@@ -81,6 +92,7 @@ async def _get_project_finding_or_404(
 
 
 # --- Schemas ---
+
 
 class NuggetCreate(BaseModel):
     project_id: str
@@ -157,9 +169,15 @@ class FactResponse(BaseModel):
     ) -> "FactResponse":
         nugget_ids = _parse_json_list(fact.nugget_ids)
         return cls(
-            id=fact.id, project_id=fact.project_id, task_id=fact.task_id, text=fact.text,
-            nugget_ids=nugget_ids, phase=fact.phase, confidence=fact.confidence,
-            created_at=fact.created_at, research_validity=research_validity,
+            id=fact.id,
+            project_id=fact.project_id,
+            task_id=fact.task_id,
+            text=fact.text,
+            nugget_ids=nugget_ids,
+            phase=fact.phase,
+            confidence=fact.confidence,
+            created_at=fact.created_at,
+            research_validity=research_validity,
         )
 
 
@@ -193,9 +211,15 @@ class InsightResponse(BaseModel):
     ) -> "InsightResponse":
         fact_ids = _parse_json_list(insight.fact_ids)
         return cls(
-            id=insight.id, project_id=insight.project_id, task_id=insight.task_id, text=insight.text,
-            fact_ids=fact_ids, phase=insight.phase, confidence=insight.confidence,
-            impact=insight.impact, created_at=insight.created_at,
+            id=insight.id,
+            project_id=insight.project_id,
+            task_id=insight.task_id,
+            text=insight.text,
+            fact_ids=fact_ids,
+            phase=insight.phase,
+            confidence=insight.confidence,
+            impact=insight.impact,
+            created_at=insight.created_at,
             research_validity=research_validity,
         )
 
@@ -232,14 +256,22 @@ class RecommendationResponse(BaseModel):
     ) -> "RecommendationResponse":
         insight_ids = _parse_json_list(rec.insight_ids)
         return cls(
-            id=rec.id, project_id=rec.project_id, task_id=rec.task_id, text=rec.text,
-            insight_ids=insight_ids, phase=rec.phase, priority=rec.priority,
-            effort=rec.effort, status=rec.status, created_at=rec.created_at,
+            id=rec.id,
+            project_id=rec.project_id,
+            task_id=rec.task_id,
+            text=rec.text,
+            insight_ids=insight_ids,
+            phase=rec.phase,
+            priority=rec.priority,
+            effort=rec.effort,
+            status=rec.status,
+            created_at=rec.created_at,
             research_validity=research_validity,
         )
 
 
 # --- Nugget Routes ---
+
 
 @router.get("/findings/nuggets", response_model=list[NuggetResponse])
 async def list_nuggets(
@@ -249,7 +281,11 @@ async def list_nuggets(
     db: AsyncSession = Depends(get_db),
 ):
     scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
-    query = select(Nugget).where(Nugget.project_id == scoped_project_id).order_by(Nugget.created_at.desc())
+    query = (
+        select(Nugget)
+        .where(Nugget.project_id == scoped_project_id)
+        .order_by(Nugget.created_at.desc())
+    )
     if phase:
         query = query.where(Nugget.phase == phase)
     result = await db.execute(query)
@@ -315,6 +351,7 @@ async def delete_nugget(
 
 # --- Fact Routes ---
 
+
 @router.get("/findings/facts", response_model=list[FactResponse])
 async def list_facts(
     request: Request,
@@ -323,7 +360,9 @@ async def list_facts(
     db: AsyncSession = Depends(get_db),
 ):
     scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
-    query = select(Fact).where(Fact.project_id == scoped_project_id).order_by(Fact.created_at.desc())
+    query = (
+        select(Fact).where(Fact.project_id == scoped_project_id).order_by(Fact.created_at.desc())
+    )
     if phase:
         query = query.where(Fact.phase == phase)
     result = await db.execute(query)
@@ -381,6 +420,7 @@ async def delete_fact(
 
 # --- Insight Routes ---
 
+
 @router.get("/findings/insights", response_model=list[InsightResponse])
 async def list_insights(
     request: Request,
@@ -389,7 +429,11 @@ async def list_insights(
     db: AsyncSession = Depends(get_db),
 ):
     scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
-    query = select(Insight).where(Insight.project_id == scoped_project_id).order_by(Insight.created_at.desc())
+    query = (
+        select(Insight)
+        .where(Insight.project_id == scoped_project_id)
+        .order_by(Insight.created_at.desc())
+    )
     if phase:
         query = query.where(Insight.phase == phase)
     result = await db.execute(query)
@@ -448,6 +492,7 @@ async def delete_insight(
 
 # --- Recommendation Routes ---
 
+
 @router.get("/findings/recommendations", response_model=list[RecommendationResponse])
 async def list_recommendations(
     request: Request,
@@ -456,7 +501,11 @@ async def list_recommendations(
     db: AsyncSession = Depends(get_db),
 ):
     scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
-    query = select(Recommendation).where(Recommendation.project_id == scoped_project_id).order_by(Recommendation.created_at.desc())
+    query = (
+        select(Recommendation)
+        .where(Recommendation.project_id == scoped_project_id)
+        .order_by(Recommendation.created_at.desc())
+    )
     if phase:
         query = query.where(Recommendation.phase == phase)
     result = await db.execute(query)
@@ -470,7 +519,9 @@ async def list_recommendations(
 
 
 @router.post("/findings/recommendations", response_model=RecommendationResponse, status_code=201)
-async def create_recommendation(data: RecommendationCreate, request: Request, db: AsyncSession = Depends(get_db)):
+async def create_recommendation(
+    data: RecommendationCreate, request: Request, db: AsyncSession = Depends(get_db)
+):
     await require_project_access(db, request, data.project_id, min_role="researcher")
     insight_ids = await ensure_project_link_ids(
         db,
@@ -516,6 +567,7 @@ async def delete_recommendation(
 
 # --- Aggregated Findings View ---
 
+
 @router.get("/findings/search/global")
 async def search_all_findings(
     request: Request,
@@ -532,18 +584,23 @@ async def search_all_findings(
     q = f"%{query}%"
     results = []
 
-    for model, ftype in [(Nugget, "nugget"), (Fact, "fact"), (Insight, "insight"), (Recommendation, "recommendation")]:
-        rows = await db.execute(
-            select(model).where(model.text.ilike(q)).limit(limit // 4)
-        )
+    for model, ftype in [
+        (Nugget, "nugget"),
+        (Fact, "fact"),
+        (Insight, "insight"),
+        (Recommendation, "recommendation"),
+    ]:
+        rows = await db.execute(select(model).where(model.text.ilike(q)).limit(limit // 4))
         for item in rows.scalars().all():
-            results.append({
-                "type": ftype,
-                "text": item.text,
-                "project_id": item.project_id,
-                "phase": getattr(item, "phase", ""),
-                "confidence": getattr(item, "confidence", None),
-            })
+            results.append(
+                {
+                    "type": ftype,
+                    "text": item.text,
+                    "project_id": item.project_id,
+                    "phase": getattr(item, "phase", ""),
+                    "confidence": getattr(item, "confidence", None),
+                }
+            )
 
     return {"query": query, "results": results[:limit], "count": len(results)}
 
@@ -562,21 +619,15 @@ async def search_findings(
         return {"results": [], "query": ""}
 
     from app.core.rag import retrieve_context
+    from app.services.finding_search import search_project_findings
 
     rag_context = await retrieve_context(project_id, query, top_k=top_k)
+    results = await search_project_findings(db, project_id, query, top_k, rag_context.retrieved)
 
     return {
         "query": query,
-        "results": [
-            {
-                "text": r.text,
-                "source": r.source,
-                "page": r.page,
-                "score": round(r.score, 3),
-            }
-            for r in rag_context.retrieved
-        ],
-        "count": len(rag_context.retrieved),
+        "results": results,
+        "count": len(results),
     }
 
 
@@ -597,130 +648,20 @@ async def get_evidence_chain(
         project_id,
         min_role="viewer",
     )
+    from app.services.finding_chain import collect_evidence_chain
 
-    chain = {"recommendation": [], "insight": [], "fact": [], "nugget": []}
-
-    def parse_ids(raw):
-        return _parse_json_list(raw)
-
+    records = await collect_evidence_chain(db, finding_type, finding, finding_id, scoped_project_id)
+    chain = {
+        "recommendation": [
+            RecommendationResponse.from_orm_with_ids(item) for item in records["recommendation"]
+        ],
+        "insight": [InsightResponse.from_orm_with_ids(item) for item in records["insight"]],
+        "fact": [FactResponse.from_orm_with_ids(item) for item in records["fact"]],
+        "nugget": [NuggetResponse.from_orm_with_tags(item) for item in records["nugget"]],
+    }
     project_id = scoped_project_id
 
-    if finding_type == "recommendation":
-        # Drill down: rec → insights → facts → nuggets
-        chain["recommendation"] = [RecommendationResponse.from_orm_with_ids(finding)]
-        insight_ids = parse_ids(finding.insight_ids)
-        if insight_ids:
-            rows = await db.execute(
-                select(Insight).where(
-                    Insight.id.in_(insight_ids),
-                    Insight.project_id == project_id,
-                )
-            )
-            linked_insights = rows.scalars().all()
-            chain["insight"] = [InsightResponse.from_orm_with_ids(i) for i in linked_insights]
-            fact_ids = []
-            for i in linked_insights:
-                fact_ids.extend(parse_ids(i.fact_ids))
-            if fact_ids:
-                rows = await db.execute(
-                    select(Fact).where(
-                        Fact.id.in_(list(set(fact_ids))),
-                        Fact.project_id == project_id,
-                    )
-                )
-                linked_facts = rows.scalars().all()
-                chain["fact"] = [FactResponse.from_orm_with_ids(f) for f in linked_facts]
-                nugget_ids = []
-                for f in linked_facts:
-                    nugget_ids.extend(parse_ids(f.nugget_ids))
-                if nugget_ids:
-                    rows = await db.execute(
-                        select(Nugget).where(
-                            Nugget.id.in_(list(set(nugget_ids))),
-                            Nugget.project_id == project_id,
-                        )
-                    )
-                    chain["nugget"] = [NuggetResponse.from_orm_with_tags(n) for n in rows.scalars().all()]
-
-    elif finding_type == "insight":
-        chain["insight"] = [InsightResponse.from_orm_with_ids(finding)]
-        # Down: facts → nuggets
-        fact_ids = parse_ids(finding.fact_ids)
-        if fact_ids:
-            rows = await db.execute(
-                select(Fact).where(
-                    Fact.id.in_(fact_ids),
-                    Fact.project_id == project_id,
-                )
-            )
-            linked_facts = rows.scalars().all()
-            chain["fact"] = [FactResponse.from_orm_with_ids(f) for f in linked_facts]
-            nugget_ids = []
-            for f in linked_facts:
-                nugget_ids.extend(parse_ids(f.nugget_ids))
-            if nugget_ids:
-                rows = await db.execute(
-                    select(Nugget).where(
-                        Nugget.id.in_(list(set(nugget_ids))),
-                        Nugget.project_id == project_id,
-                    )
-                )
-                chain["nugget"] = [NuggetResponse.from_orm_with_tags(n) for n in rows.scalars().all()]
-        # Up: recommendations that link to this insight
-        rows = await db.execute(select(Recommendation).where(Recommendation.project_id == project_id))
-        for rec in rows.scalars().all():
-            if finding_id in parse_ids(rec.insight_ids):
-                chain["recommendation"].append(RecommendationResponse.from_orm_with_ids(rec))
-
-    elif finding_type == "fact":
-        chain["fact"] = [FactResponse.from_orm_with_ids(finding)]
-        # Down: nuggets
-        nugget_ids = parse_ids(finding.nugget_ids)
-        if nugget_ids:
-            rows = await db.execute(
-                select(Nugget).where(
-                    Nugget.id.in_(nugget_ids),
-                    Nugget.project_id == project_id,
-                )
-            )
-            chain["nugget"] = [NuggetResponse.from_orm_with_tags(n) for n in rows.scalars().all()]
-        # Up: insights → recommendations
-        rows = await db.execute(select(Insight).where(Insight.project_id == project_id))
-        for insight in rows.scalars().all():
-            if finding_id in parse_ids(insight.fact_ids):
-                chain["insight"].append(InsightResponse.from_orm_with_ids(insight))
-        if chain["insight"]:
-            insight_id_set = {i.id for i in chain["insight"]}
-            rows = await db.execute(select(Recommendation).where(Recommendation.project_id == project_id))
-            for rec in rows.scalars().all():
-                if any(iid in insight_id_set for iid in parse_ids(rec.insight_ids)):
-                    chain["recommendation"].append(RecommendationResponse.from_orm_with_ids(rec))
-
-    elif finding_type == "nugget":
-        chain["nugget"] = [NuggetResponse.from_orm_with_tags(finding)]
-        # Up: facts → insights → recommendations
-        rows = await db.execute(select(Fact).where(Fact.project_id == project_id))
-        for fact in rows.scalars().all():
-            if finding_id in parse_ids(fact.nugget_ids):
-                chain["fact"].append(FactResponse.from_orm_with_ids(fact))
-        if chain["fact"]:
-            fact_id_set = {f.id for f in chain["fact"]}
-            rows = await db.execute(select(Insight).where(Insight.project_id == project_id))
-            for insight in rows.scalars().all():
-                if any(fid in fact_id_set for fid in parse_ids(insight.fact_ids)):
-                    chain["insight"].append(InsightResponse.from_orm_with_ids(insight))
-        if chain["insight"]:
-            insight_id_set = {i.id for i in chain["insight"]}
-            rows = await db.execute(select(Recommendation).where(Recommendation.project_id == project_id))
-            for rec in rows.scalars().all():
-                if any(iid in insight_id_set for iid in parse_ids(rec.insight_ids)):
-                    chain["recommendation"].append(RecommendationResponse.from_orm_with_ids(rec))
-
-    supporting_counts = {
-        key: len(value)
-        for key, value in chain.items()
-        if key != finding_type
-    }
+    supporting_counts = {key: len(value) for key, value in chain.items() if key != finding_type}
     missing_links: list[str] = []
     if finding_type == "recommendation":
         if not chain["insight"]:
@@ -800,7 +741,10 @@ async def link_evidence(
     - recommendation + link_type=insight -> adds to recommendation.insight_ids
     """
     type_map = {
-        "nugget": Nugget, "fact": Fact, "insight": Insight, "recommendation": Recommendation,
+        "nugget": Nugget,
+        "fact": Fact,
+        "insight": Insight,
+        "recommendation": Recommendation,
     }
 
     # Validate the finding being modified
@@ -842,7 +786,7 @@ async def link_evidence(
         raise HTTPException(
             status_code=400,
             detail=f"Cannot link {data.link_type} to {finding_type}. "
-                   f"Valid: insight+fact, fact+nugget, recommendation+insight.",
+            f"Valid: insight+fact, fact+nugget, recommendation+insight.",
         )
 
     # Parse existing ids, add new one, and save
@@ -873,7 +817,9 @@ async def link_evidence(
 
 
 @router.get("/findings/summary/{project_id}")
-async def get_findings_summary(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def get_findings_summary(
+    project_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Get a summary of all findings for a project, organized by phase."""
     await require_project_access(db, request, project_id, min_role="viewer")
     nuggets = await db.execute(select(Nugget).where(Nugget.project_id == project_id))
@@ -976,7 +922,11 @@ async def list_design_decisions(
 ):
     """List design decisions for an authorized project."""
     scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
-    query = select(DesignDecision).where(DesignDecision.project_id == scoped_project_id).order_by(DesignDecision.created_at.desc())
+    query = (
+        select(DesignDecision)
+        .where(DesignDecision.project_id == scoped_project_id)
+        .order_by(DesignDecision.created_at.desc())
+    )
     result = await db.execute(query)
     decisions = list(result.scalars().all())
     validity = await design_decision_research_validity_map(
@@ -984,7 +934,9 @@ async def list_design_decisions(
         project_id=scoped_project_id,
         decisions=decisions,
     )
-    return [DesignDecisionResponse.from_orm_with_ids(dd, validity.get(str(dd.id))) for dd in decisions]
+    return [
+        DesignDecisionResponse.from_orm_with_ids(dd, validity.get(str(dd.id))) for dd in decisions
+    ]
 
 
 @router.post("/findings/design-decisions", response_model=DesignDecisionResponse, status_code=201)
@@ -1078,8 +1030,12 @@ async def get_evidence_chain_extended(
     )
 
     chain: dict[str, list] = {
-        "recommendation": [], "insight": [], "fact": [], "nugget": [],
-        "design_decision": [], "design_screen": [],
+        "recommendation": [],
+        "insight": [],
+        "fact": [],
+        "nugget": [],
+        "design_decision": [],
+        "design_screen": [],
     }
 
     def parse_ids(raw: str | None) -> list[str]:

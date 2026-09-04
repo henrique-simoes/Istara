@@ -403,8 +403,8 @@ class ChannelResearchDeploymentSkill(BaseSkill):
             for i in candidate_insights
         ]
 
-        candidate_recommendations = (
-            analysis.get("candidate_recommendations") or analysis.get("recommendations", [])
+        candidate_recommendations = analysis.get("candidate_recommendations") or analysis.get(
+            "recommendations", []
         )
         recommendations = [
             {

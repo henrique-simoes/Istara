@@ -275,6 +275,7 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/loops/SchedulesTab.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li><code>CronBuilder</code> previews five future occurrences for sparse daily, weekly, and monthly expressions with a bounded multi-year search guard; impossible expressions resolve to an explicit unavailable state instead of a partial &quot;Next 5 runs&quot; list.</li>
 <li>Pausing a project prevents scheduled skills and reminders from mutating task state, broadcasting project suggestions, or consuming model resources for that project.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>

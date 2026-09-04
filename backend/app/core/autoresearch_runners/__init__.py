@@ -22,9 +22,7 @@ def normalize_engine(engine: str | None) -> str:
     """
     value = str(engine or "").strip().lower()
     if value not in AUTORESEARCH_ENGINES:
-        raise ValueError(
-            f"engine must be one of {AUTORESEARCH_ENGINES}; got {engine!r}"
-        )
+        raise ValueError(f"engine must be one of {AUTORESEARCH_ENGINES}; got {engine!r}")
     return value
 
 
@@ -102,9 +100,7 @@ class BaseLoopRunner(ABC):
         ...
 
     @abstractmethod
-    async def apply_mutation(
-        self, target: str, mutation: dict
-    ) -> Callable[[], Awaitable[None]]:
+    async def apply_mutation(self, target: str, mutation: dict) -> Callable[[], Awaitable[None]]:
         """Apply a mutation and return an async revert function.
 
         The revert function restores the state to before the mutation.

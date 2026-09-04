@@ -6,9 +6,9 @@ audience: researcher
 status: needs-verification
 related_features: ["quality.dashboard", "compute.pool"]
 related_glossary: ["fleiss-kappa"]
-code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py"]
-api_references: ["backend/app/api/routes/metrics.py"]
-test_references: ["tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_w7_validation.py", "tests/test_validation_project_scope.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py"]
+code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/core/self_healing_rules.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py"]
+api_references: ["backend/app/api/routes/metrics.py", "backend/app/api/routes/settings.py"]
+test_references: ["tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_w7_validation.py", "tests/test_validation_project_scope.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py", "tests/test_self_healing_rules.py"]
 last_verified: 2026-07-22
 compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-53 / CF-657
 ---
@@ -48,6 +48,7 @@ Ensemble Health exists so the work represented by Ensemble Health has a stable, 
 - “Different models” means distinct model identities for independent validation, not merely different endpoint IDs. Replicas may improve availability but cannot provide independent raters; the system does not invent diversity when the required model identities are unavailable.
 - When distinct endpoints cannot be selected, validation degrades to the documented lower-assurance path or reports unavailable/blocked. A failed judge is not a pass. These outcomes keep unvalidated work out of accepted research evidence and reports.
 - W8 now routes embedding-based comparison through `agentic.embed`: Pi uses the `EmbeddingsGateway`, while legacy keeps the unchanged `ollama.embed*` plane. This preserves the vector-space and fail-closed boundaries for both engines.
+- Self-healing signals in Ensemble Health express a bounded failed-attempt fraction over the rolling 15-minute window. A displayed percentage is never allowed to exceed 100%, even when the panel is reopened or refreshed repeatedly.
 
 ## Rollback
 

@@ -109,7 +109,9 @@ class Recommendation(Base):
     phase: Mapped[str] = mapped_column(String(20), default="deliver")
     priority: Mapped[str] = mapped_column(String(20), default="medium")  # low/medium/high/critical
     effort: Mapped[str] = mapped_column(String(20), default="medium")  # low/medium/high
-    status: Mapped[str] = mapped_column(String(20), default="proposed")  # proposed/accepted/rejected/implemented
+    status: Mapped[str] = mapped_column(
+        String(20), default="proposed"
+    )  # proposed/accepted/rejected/implemented
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

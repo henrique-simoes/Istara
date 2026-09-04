@@ -10,7 +10,13 @@ interface TaskStore {
   error: string | null;
 
   fetchTasks: (projectId: string) => Promise<void>;
-  createTask: (projectId: string, title: string, description?: string) => Promise<Task>;
+  refreshTasks: (projectId: string) => Promise<void>;
+  createTask: (
+    projectId: string,
+    title: string,
+    description?: string,
+    options?: { lockForEdit?: boolean }
+  ) => Promise<Task>;
   moveTask: (taskId: string, status: TaskStatus, projectId: string) => Promise<void>;
   updateTask: (taskId: string, data: Record<string, unknown>, projectId: string) => Promise<void>;
   approveTask: (taskId: string, projectId: string, note?: string) => Promise<void>;
@@ -53,8 +59,26 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     }
   },
 
-  createTask: async (projectId, title, description) => {
-    const task = await tasksApi.create({ project_id: projectId, title, description });
+  refreshTasks: async (projectId) => {
+    if (!projectId) return;
+    try {
+      const data = await tasksApi.list(projectId);
+      set({
+        tasks: data.filter((task) => task.project_id === projectId),
+        error: null,
+      });
+    } catch (e: any) {
+      set({ error: e.message });
+    }
+  },
+
+  createTask: async (projectId, title, description, options) => {
+    const task = await tasksApi.create({
+      project_id: projectId,
+      title,
+      description,
+      lock_for_edit: options?.lockForEdit,
+    });
     set((s) => ({ tasks: [...s.tasks, task] }));
     return task;
   },

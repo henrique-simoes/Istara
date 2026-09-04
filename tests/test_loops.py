@@ -497,6 +497,7 @@ async def test_custom_loop_persists_as_custom_health_item(auth_headers):
         custom = created.json()
         assert custom["loop_type"] == "custom"
         assert custom["interval_seconds"] == 300
+        assert custom["next_run"].endswith("+00:00")
 
         health = await ac.get(f"/api/loops/health?project_id={project_id}", headers=auth_headers)
         assert health.status_code == 200
@@ -547,10 +548,12 @@ async def test_schedule_crud_and_cron_validation(auth_headers):
         assert schedule["project_id"] == project_id
         assert schedule["loop_type"] == "cron"
         assert schedule["enabled"] is True
+        assert schedule["next_run"].endswith("+00:00")
 
         listed = await ac.get(f"/api/schedules?project_id={project_id}", headers=auth_headers)
         assert listed.status_code == 200
-        assert any(item["id"] == schedule["id"] for item in listed.json())
+        listed_match = next(item for item in listed.json() if item["id"] == schedule["id"])
+        assert listed_match["next_run"].endswith("+00:00")
 
         paused = await ac.patch(
             f"/api/schedules/{schedule['id']}?project_id={project_id}",

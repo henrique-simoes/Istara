@@ -28,12 +28,11 @@ import asyncio
 import hashlib
 import json
 import logging
-import os
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, replace
 from typing import Any
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 from app.core.telemetry import telemetry_recorder
 
@@ -43,6 +42,7 @@ from .endpoints import (
     PiEndpointResolver,
     PiRuntimeTurnError,
     ResolvedPiEndpoint,
+    enforce_test_provider_network_policy,
 )
 from .idempotency import execute_with_idempotency
 from .model_manager import PiModelManager
@@ -172,26 +172,8 @@ def _bind_payload(
 
 
 def _enforce_test_provider_network_policy(endpoint: ResolvedPiEndpoint) -> None:
-    """Fail closed before worker startup when unit tests resolve a real public host.
-
-    The explicit live-LLM suite does not set this switch. Ordinary pytest runs
-    do, preventing a stale mock from silently spending tokens through the Node
-    worker. Loopback, Docker service names, faux providers, and RFC-reserved
-    test domains remain available to deterministic integration tests.
-    """
-    if os.environ.get("ISTARA_TEST_BLOCK_EXTERNAL_LLM") != "1":
-        return
-    if endpoint.provider_kind == "faux":
-        return
-    host = (urlparse(endpoint.base_url).hostname or "").lower()
-    if (
-        not host
-        or host in {"localhost", "127.0.0.1", "::1"}
-        or "." not in host
-        or host.endswith((".invalid", ".example", ".test"))
-    ):
-        return
-    raise PiEndpointResolutionError(f"external_provider_blocked_in_test:{endpoint.endpoint_id}")
+    """Compatibility seam for the shared endpoint-boundary test guard."""
+    enforce_test_provider_network_policy(endpoint)
 
 
 def _turn_bind_params(params: Any, endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
@@ -298,8 +280,6 @@ class PiExecutionService:
         """
         manager = self._manager()
         await manager.ensure_db_projection()
-        if endpoint_id is None and model is None and min_context <= 0 and not require_vision:
-            endpoint_id = DEFAULT_ENDPOINT_ID
         endpoint = manager.resolve(
             endpoint_id=endpoint_id,
             model=model,
@@ -488,7 +468,7 @@ class PiExecutionService:
         user_text: str,
         tool_executor: ToolExecutor,
         session_key: str | None = None,
-        endpoint_id: str = DEFAULT_ENDPOINT_ID,
+        endpoint_id: str | None = None,
         allowed_tools: list[str] | None = None,
         steering: SteeringBinding | None = None,
         params: Any = None,
@@ -586,8 +566,6 @@ class PiExecutionService:
         model = getattr(params, "model", None)
         min_context = getattr(params, "min_context", 0) or 0
         require_vision = bool(getattr(params, "require_vision", False))
-        if endpoint_id is None and model is None and min_context <= 0 and not require_vision:
-            endpoint_id = DEFAULT_ENDPOINT_ID
         endpoint = manager.resolve(
             endpoint_id=endpoint_id,
             model=model,
@@ -827,9 +805,7 @@ class PiExecutionService:
         if not isinstance(n, int) or isinstance(n, bool) or n < 1:
             raise PiEndpointResolutionError("ensemble_width_must_be_positive")
         if minimum_n is not None and (
-            not isinstance(minimum_n, int)
-            or isinstance(minimum_n, bool)
-            or minimum_n < 1
+            not isinstance(minimum_n, int) or isinstance(minimum_n, bool) or minimum_n < 1
         ):
             raise PiEndpointResolutionError("ensemble_minimum_width_must_be_positive")
         manager = self._manager()
@@ -1150,8 +1126,7 @@ def _map_frame(frame: dict[str, Any], endpoint: ResolvedPiEndpoint) -> dict[str,
         # is metadata, not a second identity source; accepting a contradictory
         # value here would let downstream consumers observe a false model.
         if served_model and any(
-            str(route.get(field) or "").strip()
-            and str(route.get(field)).strip() != served_model
+            str(route.get(field) or "").strip() and str(route.get(field)).strip() != served_model
             for field in ("model", "served_model")
         ):
             return {"type": "error", "error": "pi_provider_route_identity_mismatch"}

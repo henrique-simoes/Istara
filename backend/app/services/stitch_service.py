@@ -34,9 +34,7 @@ class StitchService:
     def _ensure_configured(self, api_key: str | None = None) -> str:
         resolved_key = self._resolve_api_key(api_key)
         if not resolved_key:
-            raise ValueError(
-                "Stitch API key not configured for this project."
-            )
+            raise ValueError("Stitch API key not configured for this project.")
         return resolved_key
 
     async def _call_tool(
@@ -66,7 +64,10 @@ class StitchService:
                         except (json.JSONDecodeError, ValueError):
                             return {"text": content.text}
                     if hasattr(content, "data") and content.data:
-                        return {"image_data": content.data, "mime_type": getattr(content, "mimeType", "image/png")}
+                        return {
+                            "image_data": content.data,
+                            "mime_type": getattr(content, "mimeType", "image/png"),
+                        }
                 return {}
 
     # ------------------------------------------------------------------
@@ -141,11 +142,15 @@ class StitchService:
     ) -> dict:
         """Get screen details. Use full resource name format."""
         name = f"projects/{project_id}/screens/{screen_id}"
-        data = await self._call_tool("get_screen", {
-            "name": name,
-            "projectId": project_id,
-            "screenId": screen_id,
-        }, api_key=api_key)
+        data = await self._call_tool(
+            "get_screen",
+            {
+                "name": name,
+                "projectId": project_id,
+                "screenId": screen_id,
+            },
+            api_key=api_key,
+        )
         return data
 
     async def get_screen_html(
@@ -164,6 +169,7 @@ class StitchService:
 
         if html_url:
             import httpx
+
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.get(html_url)
                 resp.raise_for_status()
@@ -190,14 +196,19 @@ class StitchService:
         """Get screenshot image as bytes. Returns None if unavailable."""
         name = f"projects/{project_id}/screens/{screen_id}"
         try:
-            data = await self._call_tool("get_screen", {
-                "name": name,
-                "projectId": project_id,
-                "screenId": screen_id,
-            }, api_key=api_key)
+            data = await self._call_tool(
+                "get_screen",
+                {
+                    "name": name,
+                    "projectId": project_id,
+                    "screenId": screen_id,
+                },
+                api_key=api_key,
+            )
             image_url = data.get("imageUrl") or data.get("image_url", "")
             if image_url:
                 import httpx
+
                 async with httpx.AsyncClient(timeout=30) as client:
                     resp = await client.get(image_url)
                     resp.raise_for_status()
@@ -205,6 +216,7 @@ class StitchService:
             # Check for inline base64 image
             if data.get("image_data"):
                 import base64
+
                 return base64.b64decode(data["image_data"])
         except Exception as exc:
             logger.warning("Failed to get screen image: %s", exc)
@@ -327,11 +339,15 @@ class StitchService:
         api_key: str | None = None,
     ) -> dict:
         """Apply a design system to screens."""
-        return await self._call_tool("apply_design_system", {
-            "projectId": project_id,
-            "designSystemName": design_system_name,
-            "screenIds": screen_ids,
-        }, api_key=api_key)
+        return await self._call_tool(
+            "apply_design_system",
+            {
+                "projectId": project_id,
+                "designSystemName": design_system_name,
+                "screenIds": screen_ids,
+            },
+            api_key=api_key,
+        )
 
 
 stitch_service = StitchService()

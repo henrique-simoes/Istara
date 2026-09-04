@@ -38,6 +38,7 @@ def normalize_model_effort(value: str | None) -> str:
         return "server_default"
     return effort
 
+
 THINKING_MARKER_REGISTRY: dict[str, dict[str, Any]] = {
     "qwen": {"inline_blocks": [("<think>", "</think>")]},
     "deepseek": {"inline_blocks": [("<think>", "</think>")]},

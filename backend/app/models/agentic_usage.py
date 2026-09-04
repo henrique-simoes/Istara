@@ -33,7 +33,9 @@ class AgenticUsageRow(Base):
     project_id: Mapped[str] = mapped_column(String(36), default="", index=True)
     # Chat surfaces attach a session so the usage menu can show exact totals
     # for the open conversation without mixing other project work.
-    session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None, index=True)
+    session_id: Mapped[str | None] = mapped_column(
+        String(36), nullable=True, default=None, index=True
+    )
     agent_id: Mapped[str] = mapped_column(String(36), default="")
     task_id: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None, index=True)
     spine_phase: Mapped[str] = mapped_column(String(40), default="")

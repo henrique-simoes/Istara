@@ -155,6 +155,8 @@ async def test_pi_candidate_chat_fails_closed_before_transport_when_registration
 
     assert calls == []
     assert any('"code": "pi_registration_unavailable"' in event for event in events)
+    assert any("selected model has no available credential" in event for event in events)
+    assert any('"detail": "missing_keychain_secret"' in event for event in events)
     assert any('"type": "done"' in event for event in events)
 
 
@@ -231,6 +233,24 @@ async def test_pi_candidate_registered_text_fallback_uses_the_pinned_deepseek_mo
     assert authority.calls[0]["params"].model == settings.pi_replacement_deepseek_model
     assert authority.calls[0]["params"].strict_model_routing is True
     assert any("registered candidate response" in event for event in events)
+
+
+@pytest.mark.asyncio
+async def test_legacy_chat_generator_forwards_selected_endpoint(monkeypatch):
+    """A Settings-selected Pi endpoint survives the legacy chat seam."""
+    authority = _bind_provider_authority(monkeypatch, [{"text": "selected endpoint response"}])
+
+    events = [
+        event
+        async for event in chat_route._generate_native_tools(
+            [{"role": "user", "content": "hello"}], [], [],
+            SimpleNamespace(project_id="endpoint-project"), "istara-main", "model",
+            0.1, 128, endpoint_id="pi-gemini",
+        )
+    ]
+
+    assert authority.calls[0]["params"].endpoint_id == "pi-gemini"
+    assert any("selected endpoint response" in event for event in events)
 
 
 @pytest.mark.asyncio
@@ -414,7 +434,13 @@ async def test_pi_candidate_chat_route_header_selects_pi_and_persists_done_sse(
     monkeypatch.setattr(chat_route.ollama, "chat_stream", fake_chat_stream)
     monkeypatch.setattr(chat_route, "retrieve_context", fake_retrieve_context)
     monkeypatch.setattr(chat_route, "compose_dynamic_prompt", fake_compose_dynamic_prompt)
-    monkeypatch.setattr(chat_route, "ensure_pi_deepseek_registered", lambda: (False, "missing_keychain_secret"))
+    async def fake_endpoint_preflight(**kwargs):
+        assert kwargs["project_id"] == project_id
+        assert kwargs["endpoint_id"] is None
+        assert kwargs["model"] is None
+        return False, "missing_keychain_secret"
+
+    monkeypatch.setattr(chat_route, "_ensure_pi_chat_target_available", fake_endpoint_preflight)
     monkeypatch.setattr("app.core.pi_replacement.telemetry_recorder.record_span", fake_record_span)
 
     async with async_session() as db:
@@ -439,6 +465,7 @@ async def test_pi_candidate_chat_route_header_selects_pi_and_persists_done_sse(
 
     assert calls == []
     assert '"code": "pi_registration_unavailable"' in raw
+    assert "selected model has no available credential" in raw
     assert '"type": "done"' in raw
 
     async with async_session() as db:
@@ -450,6 +477,83 @@ async def test_pi_candidate_chat_route_header_selects_pi_and_persists_done_sse(
             )
         )
         assert assistant is None
+
+
+@pytest.mark.asyncio
+async def test_pi_chat_preflight_resolves_the_selected_endpoint_and_model(monkeypatch):
+    calls: list[dict] = []
+
+    class FakeManager:
+        async def ensure_db_projection(self):
+            calls.append({"projection": True})
+
+        def resolve(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(endpoint_id=kwargs["endpoint_id"], model=kwargs["model"])
+
+    monkeypatch.setattr(chat_route, "PiModelManager", FakeManager, raising=False)
+
+    available, status = await chat_route._ensure_pi_chat_target_available(
+        project_id="project-selected-endpoint",
+        endpoint_id="pi-connected-provider",
+        model="connected-model",
+    )
+
+    assert available is True
+    assert status == "resolved_selected_endpoint"
+    assert calls == [
+        {"projection": True},
+        {
+            "endpoint_id": "pi-connected-provider",
+            "model": "connected-model",
+            "project_id": "project-selected-endpoint",
+        },
+    ]
+
+
+@pytest.mark.asyncio
+async def test_pi_catalog_readiness_excludes_an_uncredentialed_default(monkeypatch):
+    class FakeInfo:
+        def __init__(self, endpoint_id: str, model: str):
+            self.endpoint_id = endpoint_id
+            self.model = model
+            self.provider_kind = "openai"
+            self.context_window = 128_000
+            self.max_tokens = 8_192
+            self.supports_tools = True
+            self.supports_vision = False
+            self.supports_reasoning = True
+            self.kind = "remote"
+            self.pi_provider = "test-provider"
+            self.auth_method = "api_key"
+
+    class FakeManager:
+        def catalog(self, *, project_id):
+            assert project_id == "project-readiness"
+            return [
+                FakeInfo("pi-missing", "model-missing"),
+                FakeInfo("pi-ready", "model-ready"),
+            ]
+
+        def default_endpoint_id(self, *, project_id):
+            assert project_id == "project-readiness"
+            return "pi-missing"
+
+        def resolve(self, *, endpoint_id, model, project_id):
+            assert project_id == "project-readiness"
+            if endpoint_id == "pi-missing":
+                raise ValueError("missing_keychain_secret")
+            return SimpleNamespace(endpoint_id=endpoint_id, model=model)
+
+    configured, default_endpoint_id, default_model = await chat_route._chat_pi_endpoint_projection(
+        FakeManager(),
+        project_id="project-readiness",
+    )
+
+    assert [item["credential_status"] for item in configured] == ["missing", "ready"]
+    assert configured[0]["availability_reason"] == "missing_keychain_secret"
+    assert default_endpoint_id == "pi-ready"
+    assert default_model == "model-ready"
 
 
 @pytest.mark.asyncio
@@ -899,3 +1003,44 @@ async def test_pi_native_chat_uses_bounded_long_horizon_budget(monkeypatch):
     assert len(captured) == 1
     assert captured[0].max_turns == chat_route.MAX_TOOL_ITERATIONS * 3
     assert captured[0].max_turns == chat_route.PI_MODEL_TURN_BUDGET
+
+
+@pytest.mark.asyncio
+async def test_pi_runtime_error_event_carries_a_user_visible_message(monkeypatch):
+    async def fake_stream_chat_turn(_dispatcher, **_kwargs):
+        yield {"type": "error", "error": "configured endpoint credential is unavailable"}
+        yield {"type": "_complete", "result": None}
+
+    class FakeMetrics:
+        def __init__(self, **_kwargs):
+            pass
+
+        def observe_input(self, _messages):
+            pass
+
+        async def finish(self, **_kwargs):
+            pass
+
+    monkeypatch.setattr(chat_route, "stream_chat_turn", fake_stream_chat_turn)
+    monkeypatch.setattr(chat_route, "PiChatRunMetrics", FakeMetrics)
+    monkeypatch.setattr(
+        chat_route,
+        "_get_pi_execution_service",
+        lambda: SimpleNamespace(steering_binding=lambda **_kwargs: None),
+    )
+
+    events = [
+        event
+        async for event in chat_route._generate_pi_runtime(
+            [{"role": "user", "content": "run"}],
+            [],
+            [],
+            SimpleNamespace(project_id="pi-error-message", session_id="session-a"),
+            "istara-main",
+        )
+    ]
+
+    assert any(
+        '"message": "configured endpoint credential is unavailable"' in event
+        for event in events
+    )

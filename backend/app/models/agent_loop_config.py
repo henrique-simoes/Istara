@@ -17,17 +17,13 @@ class AgentLoopConfig(Base):
 
     __tablename__ = "agent_loop_configs"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     agent_id: Mapped[str] = mapped_column(String(36), unique=True)
     loop_interval_seconds: Mapped[int] = mapped_column(Integer, default=60)
     paused: Mapped[bool] = mapped_column(Boolean, default=False)
     skills_to_run: Mapped[str] = mapped_column(Text, default="[]")  # JSON list
     project_filter: Mapped[str] = mapped_column(String(36), default="")
-    last_cycle_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_cycle_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cycle_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

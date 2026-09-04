@@ -49,6 +49,7 @@ Schedules configure recurring loop timing, including cron-style recurrence contr
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/loops/SchedulesTab.tsx` and the UI navigation path recorded in the inventory.
+- `CronBuilder` previews five future occurrences for sparse daily, weekly, and monthly expressions with a bounded multi-year search guard; impossible expressions resolve to an explicit unavailable state instead of a partial "Next 5 runs" list.
 - Pausing a project prevents scheduled skills and reminders from mutating task state, broadcasting project suggestions, or consuming model resources for that project.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.

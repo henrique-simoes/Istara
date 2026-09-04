@@ -3,12 +3,14 @@
 import pytest
 import uuid
 from httpx import AsyncClient, ASGITransport
+from sqlalchemy import select
 from app.main import app
 from app.config import settings
 from app.models.database import init_db
 from app.core.auth import create_token
 from app.models.database import async_session
 from app.models.project import Project
+from app.models.project_member import ProjectMember
 
 
 @pytest.fixture(autouse=True)
@@ -88,6 +90,81 @@ async def test_project_resume_nonexistent_returns_404(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post("/api/projects/non-existent-id/resume", headers=auth_headers)
         assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_project_cleans_managed_runtime_artifacts_but_keeps_external_watch_folder(
+    auth_headers, monkeypatch, tmp_path
+):
+    """Project deletion removes Istara-owned files without touching linked folders."""
+    await init_db()
+    data_root = tmp_path / "data"
+    upload_root = data_root / "uploads"
+    lance_root = data_root / "lance_db"
+    projects_root = data_root / "projects"
+    keyword_root = data_root / "keyword_index"
+    for root in (upload_root, lance_root, projects_root, keyword_root):
+        root.mkdir(parents=True)
+    monkeypatch.setattr(settings, "data_dir", str(data_root))
+    monkeypatch.setattr(settings, "upload_dir", str(upload_root))
+    monkeypatch.setattr(settings, "lance_db_path", str(lance_root))
+    monkeypatch.setattr(settings, "projects_dir", str(projects_root))
+
+    project_id = f"delete-cleanup-{uuid.uuid4().hex[:8]}"
+    external_watch = tmp_path / "external-watch"
+    external_watch.mkdir()
+    (external_watch / "keep.txt").write_text("keep")
+    managed_paths = (
+        upload_root / project_id,
+        lance_root / project_id,
+        projects_root / project_id,
+        keyword_root / f"{project_id}.db",
+    )
+    for path in managed_paths[:3]:
+        path.mkdir(parents=True)
+    managed_paths[3].write_text("keyword index")
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Delete cleanup", watch_folder_path=str(external_watch)))
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.delete(f"/api/projects/{project_id}", headers=auth_headers)
+
+    assert response.status_code == 204
+    assert all(not path.exists() for path in managed_paths)
+    assert (external_watch / "keep.txt").read_text() == "keep"
+
+
+@pytest.mark.asyncio
+async def test_delete_project_removes_project_memberships(auth_headers):
+    """Deleting a project must not leave stale Admin access rows behind."""
+    await init_db()
+    project_id = f"delete-members-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Delete memberships"))
+        db.add(
+            ProjectMember(
+                id=f"membership-{uuid.uuid4().hex[:8]}",
+                project_id=project_id,
+                user_id="user1",
+                role="project_admin",
+                added_by="user1",
+            )
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.delete(f"/api/projects/{project_id}", headers=auth_headers)
+
+    assert response.status_code == 204
+    async with async_session() as db:
+        remaining = await db.execute(
+            select(ProjectMember).where(ProjectMember.project_id == project_id)
+        )
+        assert remaining.scalars().all() == []
 
 
 @pytest.mark.asyncio
@@ -209,3 +286,23 @@ async def test_link_folder_persists_resolved_directory(auth_headers, tmp_path):
 
     assert response.status_code == 200
     assert response.json()["watch_folder_path"] == str(linked_dir.resolve())
+
+
+def test_export_directory_falls_back_to_writable_data_dir(monkeypatch, tmp_path):
+    """Default exports must work when a non-root container cannot write HOME."""
+    from app.api.routes import projects as project_routes
+
+    blocked_home = tmp_path / "home-file"
+    blocked_home.write_text("not a directory")
+    fallback_root = tmp_path / "data"
+    monkeypatch.setattr(
+        project_routes.Path,
+        "home",
+        classmethod(lambda _cls: blocked_home),
+    )
+    monkeypatch.setattr(settings, "data_dir", str(fallback_root))
+
+    export_dir = project_routes._resolve_export_directory(None, "Export Project")
+
+    assert export_dir == fallback_root / "exports" / "Export Project"
+    assert export_dir.is_dir()

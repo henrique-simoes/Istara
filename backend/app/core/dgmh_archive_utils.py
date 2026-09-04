@@ -144,7 +144,9 @@ def mutation_kind(source_system: str, proposed_change: dict) -> str:
         "skill_evolution": "skill_design",
         "self_evolution": "persona_promotion",
     }
-    return mapping.get(source_system, normalize_token(proposed_change.get("mutation_kind", "proposal")))
+    return mapping.get(
+        source_system, normalize_token(proposed_change.get("mutation_kind", "proposal"))
+    )
 
 
 def status_from_governance(status: str) -> str:

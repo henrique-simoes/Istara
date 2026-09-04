@@ -33,9 +33,7 @@ async def _pi_model_identities(project_id: str | None) -> set[str]:
                 await result
         identities = manager.available_model_identities(project_id=project_id)
         return {
-            str(identity).strip().casefold()
-            for identity in identities
-            if str(identity).strip()
+            str(identity).strip().casefold() for identity in identities if str(identity).strip()
         }
     except Exception as exc:
         logger.debug("Adaptive validation Pi catalog lookup failed: %s", exc)
@@ -63,6 +61,7 @@ async def _compute_aware_default_method(project_id: str | None) -> str:
 def _recency_weight(last_used: datetime) -> float:
     """Exponential decay weight based on recency (half-life = 30 days)."""
     from app.core.datetime_utils import ensure_utc
+
     days_ago = (datetime.now(UTC) - ensure_utc(last_used)).total_seconds() / 86400
     return math.exp(-0.693 * days_ago / HALF_LIFE_DAYS)
 
@@ -77,9 +76,7 @@ def _sample_confidence_weight(total_runs: int) -> float:
 class AdaptiveSelector:
     """Selects the best validation method based on historical performance."""
 
-    async def select_method(
-        self, project_id: str, skill_name: str = "", agent_id: str = ""
-    ) -> str:
+    async def select_method(self, project_id: str, skill_name: str = "", agent_id: str = "") -> str:
         """Select the best validation method for the given context."""
         compute_default = await _compute_aware_default_method(project_id)
         if compute_default != DEFAULT_METHOD:
@@ -189,9 +186,8 @@ class AdaptiveSelector:
                         metric.fail_count += 1
                     # Running average of consensus score
                     metric.avg_consensus_score = (
-                        (metric.avg_consensus_score * (metric.total_runs - 1) + consensus_score)
-                        / metric.total_runs
-                    )
+                        metric.avg_consensus_score * (metric.total_runs - 1) + consensus_score
+                    ) / metric.total_runs
                     metric.last_used = datetime.now(UTC)
                 else:
                     # Create new

@@ -101,9 +101,7 @@ async def get_next_action(
         )
 
     if current_state == ConversationState.PROBING:
-        return await _handle_probing(
-            conversation, deployment, config, metadata, last_message
-        )
+        return await _handle_probing(conversation, deployment, config, metadata, last_message)
 
     if current_state == ConversationState.WRAP_UP:
         return _handle_wrap_up(config, metadata)
@@ -398,8 +396,6 @@ def _parse_metadata(conversation: ChannelConversation) -> dict:
         return {}
 
 
-def update_conversation_metadata(
-    conversation: ChannelConversation, metadata: dict
-) -> None:
+def update_conversation_metadata(conversation: ChannelConversation, metadata: dict) -> None:
     """Update the conversation's metadata_json field in-place."""
     conversation.metadata_json = json.dumps(metadata)

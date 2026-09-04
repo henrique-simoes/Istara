@@ -8,8 +8,8 @@ related_features: ["settings.users", "settings.connection-strings"]
 related_glossary: ["wcag"]
 code_references: ["frontend/src/components/admin/AdminDashboard.tsx", "backend/app/api/routes/admin.py", "backend/app/api/routes/permission_requests.py"]
 api_references: ["backend/app/api/routes/admin.py", "backend/app/api/routes/permission_requests.py"]
-test_references: ["tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
+test_references: ["tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/test_projects.py::test_delete_project_removes_project_memberships"]
+last_verified: 2026-09-01
 compass: CF-SPEC-60 / CF-754; CF-SPEC-72 / CF-927
 ---
 
@@ -36,6 +36,8 @@ Admin Dashboard exists so the work represented by Admin has a stable, discoverab
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 - Select a project when creating a compute donation string so the donated machine can only process content for that project.
 - Treat the global pending-permission queue as admin-only; project-facing settings views still review requests inside the active project.
+- Review project memberships in the Access section; entries are shown newest-added first with project and user labels when those records exist.
+- Deleted projects no longer leave membership entries in this review list.
 
 ## Supported Workflows
 

@@ -140,6 +140,7 @@ def _load_whisper_model(model_size: str = "base"):
 
     try:
         import whisper
+
         model = whisper.load_model(model_size)
         _WHISPER_AVAILABLE = True
 
@@ -157,7 +158,7 @@ def _load_whisper_model(model_size: str = "base"):
         )
     except Exception as e:
         logger.warning(f"Failed to load Whisper model '{model_size}': {e}")
-    
+
     return None
 
 
@@ -278,6 +279,7 @@ def transcribe_audio(
 # Inter-Coder Reliability for Transcriptions
 # ---------------------------------------------------------------------------
 
+
 def _compute_transcription_icr(text: str, audio_path: str, language: str | None = None):
     """Compute a compatibility agreement signal for transcription quality.
 
@@ -316,6 +318,7 @@ def _compute_transcription_icr(text: str, audio_path: str, language: str | None 
 # Auto-Tagging for Transcriptions
 # ---------------------------------------------------------------------------
 
+
 def _generate_transcription_tags(text: str) -> list[str]:
     """Generate tags for transcribed content based on content analysis.
 
@@ -327,11 +330,46 @@ def _generate_transcription_tags(text: str) -> list[str]:
 
     # Research-relevant categories
     category_keywords = {
-        "pain-point": ["frustrating", "difficult", "confusing", "broken", "annoying", "hate", "terrible", "worst"],
-        "feature-request": ["would be nice", "wish", "could have", "should have", "need", "want", "add"],
+        "pain-point": [
+            "frustrating",
+            "difficult",
+            "confusing",
+            "broken",
+            "annoying",
+            "hate",
+            "terrible",
+            "worst",
+        ],
+        "feature-request": [
+            "would be nice",
+            "wish",
+            "could have",
+            "should have",
+            "need",
+            "want",
+            "add",
+        ],
         "usability": ["easy", "intuitive", "simple", "clear", "straightforward", "user-friendly"],
-        "positive": ["great", "excellent", "love", "amazing", "perfect", "wonderful", "fantastic", "good"],
-        "negative": ["bad", "poor", "terrible", "awful", "horrible", "disappointing", "frustrating", "confusing"],
+        "positive": [
+            "great",
+            "excellent",
+            "love",
+            "amazing",
+            "perfect",
+            "wonderful",
+            "fantastic",
+            "good",
+        ],
+        "negative": [
+            "bad",
+            "poor",
+            "terrible",
+            "awful",
+            "horrible",
+            "disappointing",
+            "frustrating",
+            "confusing",
+        ],
         "navigation": ["menu", "button", "click", "scroll", "page", "screen", "find"],
         "accessibility": ["screen reader", "font size", "color contrast", "keyboard", "alt text"],
         "performance": ["slow", "fast", "lag", "load", "crash", "freeze", "timeout"],
@@ -360,6 +398,7 @@ def _generate_transcription_tags(text: str) -> list[str]:
 # Audio format conversion helpers
 # ---------------------------------------------------------------------------
 
+
 def convert_audio_to_wav(audio_path: str) -> str:
     """Convert audio file to WAV format for Whisper compatibility.
 
@@ -371,6 +410,7 @@ def convert_audio_to_wav(audio_path: str) -> str:
 
     try:
         import subprocess
+
         output_path = path.with_suffix(".wav")
 
         # Try ffmpeg first
@@ -387,6 +427,7 @@ def convert_audio_to_wav(audio_path: str) -> str:
         # Fallback: pydub
         try:
             from pydub import AudioSegment
+
             audio = AudioSegment.from_file(str(path))
             audio = audio.set_frame_rate(16000).set_channels(1)
             audio.export(str(output_path), format="wav")

@@ -47,6 +47,46 @@ class TestSelfHealingRules:
         assert "high_error_rate" in triggers
 
     @pytest.mark.asyncio
+    async def test_error_rate_is_a_bounded_fraction_of_attempts(self):
+        from app.core.self_healing_rules import SelfHealingRules
+
+        rules = SelfHealingRules()
+        error = MockSpan(status="error")
+        success = MockSpan(status="success")
+
+        for _ in range(20):
+            await rules.evaluate_span(error)
+        assert rules._error_rate("proj-123:thematic-analysis:llama-3.1-70b") == 1.0
+
+        rules = SelfHealingRules()
+        for _ in range(20):
+            await rules.evaluate_span(success)
+        for _ in range(5):
+            await rules.evaluate_span(error)
+        rate = rules._error_rate("proj-123:thematic-analysis:llama-3.1-70b")
+        assert rate == 0.2
+        assert 0.0 <= rate <= 1.0
+
+    @pytest.mark.asyncio
+    async def test_tool_failure_rate_uses_successful_attempts_as_denominator(self):
+        from app.core.self_healing_rules import SelfHealingRules
+
+        rules = SelfHealingRules()
+        failed = MockSpan(
+            status="success", operation="tool_call", tool_success=False, tool_name="mcp_search"
+        )
+        successful = MockSpan(
+            status="success", operation="tool_call", tool_success=True, tool_name="mcp_search"
+        )
+        for _ in range(3):
+            await rules.evaluate_span(successful)
+        for _ in range(1):
+            actions = await rules.evaluate_span(failed)
+        rate = rules._error_rate("tool:mcp_search")
+        assert rate == 0.25
+        assert all(a["error_rate"] <= 1.0 for a in actions if "error_rate" in a)
+
+    @pytest.mark.asyncio
     async def test_slow_execution_triggers_action(self):
         from app.core.self_healing_rules import SelfHealingRules
 

@@ -57,6 +57,7 @@ logger = logging.getLogger(__name__)
 # Steering Manager — global registry of per-agent steering state
 # ---------------------------------------------------------------------------
 
+
 class SteeringManager:
     """Global manager for agent steering queues.
 
@@ -411,7 +412,9 @@ class SteeringManager:
 
     def get_all_status(self, project_id: str | None = None) -> dict[str, dict[str, Any]]:
         """Get steering status for all agents."""
-        statuses = {agent_id: self.get_status(agent_id, project_id=project_id) for agent_id in self._agents}
+        statuses = {
+            agent_id: self.get_status(agent_id, project_id=project_id) for agent_id in self._agents
+        }
         if self._normalize_project_id(project_id) is None:
             return statuses
         return {
@@ -451,8 +454,12 @@ class SteeringManager:
             if not state.is_working:
                 state.work_complete_event.set()
             res = {
-                "steering": self._clear_matching(state.steering_queue, project_id=scoped_project_id),
-                "follow_up": self._clear_matching(state.follow_up_queue, project_id=scoped_project_id),
+                "steering": self._clear_matching(
+                    state.steering_queue, project_id=scoped_project_id
+                ),
+                "follow_up": self._clear_matching(
+                    state.follow_up_queue, project_id=scoped_project_id
+                ),
             }
             return res
 

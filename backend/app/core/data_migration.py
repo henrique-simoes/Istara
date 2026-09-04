@@ -58,8 +58,7 @@ async def export_full_database(db: AsyncSession) -> dict:
             result = await db.execute(select(model))
             rows = result.scalars().all()
             export_data["tables"][table_name] = [
-                row.to_dict() if hasattr(row, 'to_dict') else _row_to_dict(row)
-                for row in rows
+                row.to_dict() if hasattr(row, "to_dict") else _row_to_dict(row) for row in rows
             ]
             logger.info(f"Exported {len(rows)} rows from {table_name}")
         except Exception as e:
@@ -67,9 +66,21 @@ async def export_full_database(db: AsyncSession) -> dict:
             export_data["tables"][table_name] = []
 
     # Export tables that don't have to_dict (use raw SQL)
-    raw_tables = ["messages", "chat_sessions", "nuggets", "facts", "insights",
-                  "recommendations", "documents", "codebooks", "codes",
-                  "context_dag_nodes", "users", "llm_servers", "method_metrics"]
+    raw_tables = [
+        "messages",
+        "chat_sessions",
+        "nuggets",
+        "facts",
+        "insights",
+        "recommendations",
+        "documents",
+        "codebooks",
+        "codes",
+        "context_dag_nodes",
+        "users",
+        "llm_servers",
+        "method_metrics",
+    ]
 
     for table_name in raw_tables:
         try:
@@ -77,8 +88,7 @@ async def export_full_database(db: AsyncSession) -> dict:
             columns = result.keys()
             rows = result.fetchall()
             export_data["tables"][table_name] = [
-                {col: _serialize_value(row[i]) for i, col in enumerate(columns)}
-                for row in rows
+                {col: _serialize_value(row[i]) for i, col in enumerate(columns)} for row in rows
             ]
             logger.info(f"Exported {len(rows)} rows from {table_name}")
         except Exception as e:
@@ -92,10 +102,18 @@ async def export_full_database(db: AsyncSession) -> dict:
     persona_path = Path(__file__).parent.parent / "agents" / "personas"
 
     export_data["filesystem_refs"] = {
-        "lance_db_projects": [d.name for d in lance_path.iterdir() if d.is_dir()] if lance_path.exists() else [],
-        "keyword_index_projects": [f.stem for f in keyword_path.glob("*.db")] if keyword_path.exists() else [],
-        "upload_dirs": [d.name for d in upload_path.iterdir() if d.is_dir()] if upload_path.exists() else [],
-        "persona_dirs": [d.name for d in persona_path.iterdir() if d.is_dir()] if persona_path.exists() else [],
+        "lance_db_projects": [d.name for d in lance_path.iterdir() if d.is_dir()]
+        if lance_path.exists()
+        else [],
+        "keyword_index_projects": [f.stem for f in keyword_path.glob("*.db")]
+        if keyword_path.exists()
+        else [],
+        "upload_dirs": [d.name for d in upload_path.iterdir() if d.is_dir()]
+        if upload_path.exists()
+        else [],
+        "persona_dirs": [d.name for d in persona_path.iterdir() if d.is_dir()]
+        if persona_path.exists()
+        else [],
     }
 
     return export_data
@@ -111,10 +129,23 @@ async def import_full_database(db: AsyncSession, data: dict) -> dict:
 
     # Import order matters (foreign keys)
     import_order = [
-        "users", "projects", "agents", "chat_sessions", "tasks",
-        "messages", "nuggets", "facts", "insights", "recommendations",
-        "documents", "codebooks", "codes", "context_dag_nodes",
-        "a2a_messages", "llm_servers", "method_metrics",
+        "users",
+        "projects",
+        "agents",
+        "chat_sessions",
+        "tasks",
+        "messages",
+        "nuggets",
+        "facts",
+        "insights",
+        "recommendations",
+        "documents",
+        "codebooks",
+        "codes",
+        "context_dag_nodes",
+        "a2a_messages",
+        "llm_servers",
+        "method_metrics",
     ]
 
     for table_name in import_order:

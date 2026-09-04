@@ -17,7 +17,15 @@ from app.core.research_validity import (
     item_level_promotion_statuses,
 )
 
-from app.services.research_validity_schemas import CODING_CORE_RESPONSE_SCHEMA, CODING_RESPONSE_SCHEMA, CoderRunner, CoderSpec, DASHSCOPE_COMPAT_BASE_URL, QWEN_RATE_LIMIT_FALLBACK_CHAINS, QwenRateLimitFallbackError
+from app.services.research_validity_schemas import (
+    CODING_CORE_RESPONSE_SCHEMA,
+    CODING_RESPONSE_SCHEMA,
+    CoderRunner,
+    CoderSpec,
+    DASHSCOPE_COMPAT_BASE_URL,
+    QWEN_RATE_LIMIT_FALLBACK_CHAINS,
+    QwenRateLimitFallbackError,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -56,8 +64,7 @@ def _is_qwen_rate_limit_error(exc: BaseException) -> bool:
 def _is_dashscope_endpoint(endpoint: Any) -> bool:
     """Return true only for the regular Singapore DashScope OpenAI wire path."""
     return (
-        str(getattr(endpoint, "provider_kind", "") or "").strip().lower()
-        == "openai_compat"
+        str(getattr(endpoint, "provider_kind", "") or "").strip().lower() == "openai_compat"
         and str(getattr(endpoint, "pi_provider", "") or "").strip().lower() == "dashscope"
         and str(getattr(endpoint, "base_url", "") or "").strip().rstrip("/")
         == DASHSCOPE_COMPAT_BASE_URL
@@ -70,8 +77,7 @@ def _same_dashscope_key(original: Any, fallback: Any) -> bool:
         _is_dashscope_endpoint(original)
         and _is_dashscope_endpoint(fallback)
         and str(getattr(original, "api_key", "") or "")
-        and str(getattr(original, "api_key", ""))
-        == str(getattr(fallback, "api_key", ""))
+        and str(getattr(original, "api_key", "")) == str(getattr(fallback, "api_key", ""))
     )
 
 
@@ -95,9 +101,7 @@ def _fallback_coder(coder: CoderSpec, endpoint: Any) -> CoderSpec:
     )
 
 
-def _merge_coding_route_evidence(
-    previous_response: dict, replacement_response: dict
-) -> dict:
+def _merge_coding_route_evidence(previous_response: dict, replacement_response: dict) -> dict:
     """Keep fallback provenance when a bounded coding repair replaces output.
 
     A repair is a second provider call for the same coder slot.  Its response
@@ -118,9 +122,7 @@ def _merge_coding_route_evidence(
     merged_route = {**previous_route, **replacement_route}
     merged_route["fallback_attempts"] = [*previous_attempts, *replacement_attempts]
     merged_route["initial_requested_model"] = previous_route.get("requested_model", "")
-    merged_route["initial_requested_coder_id"] = previous_route.get(
-        "requested_coder_id", ""
-    )
+    merged_route["initial_requested_coder_id"] = previous_route.get("requested_coder_id", "")
     history = [
         {
             "requested_model": previous_route.get("requested_model", ""),
@@ -244,9 +246,7 @@ async def _run_pi_coder_with_qwen_fallback(
                 ) from exc
             continue
 
-        attempts.append(
-            {"model": candidate_model, "endpoint_id": endpoint_id, "outcome": "served"}
-        )
+        attempts.append({"model": candidate_model, "endpoint_id": endpoint_id, "outcome": "served"})
         if len(attempts) > 1:
             route = dict(response.get("_istara_route", {}) or {})
             route.update(
@@ -394,8 +394,7 @@ async def _pi_coder_runner(
     route_served_model = str(route.get("served_model") or "").strip()
     if route_model and route_model != served_model:
         raise ValueError(
-            "Pi coder route model mismatch: route "
-            f"{route_model!r}, served {served_model!r}"
+            f"Pi coder route model mismatch: route {route_model!r}, served {served_model!r}"
         )
     if route_served_model and route_served_model != served_model:
         raise ValueError(
@@ -429,9 +428,7 @@ async def _pi_coder_runner(
             "decoding_profile": route.get("decoding_profile") or {"temperature": 0.2},
             "protocol_version": route.get("protocol_version")
             or QUALITATIVE_CODING_PROTOCOL["version"],
-            "conversation_scope": route.get("conversation_scope")
-            or "fresh_session_per_coder_call",
-            "cache_scope": route.get("cache_scope")
-            or "provider_prefix_cache_no_response_reuse",
+            "conversation_scope": route.get("conversation_scope") or "fresh_session_per_coder_call",
+            "cache_scope": route.get("cache_scope") or "provider_prefix_cache_no_response_reuse",
         },
     }

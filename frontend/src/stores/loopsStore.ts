@@ -50,7 +50,7 @@ interface LoopsStore {
     project_id: string;
     cron_expression: string;
     description?: string;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   updateSchedule: (scheduleId: string, data: Record<string, unknown>, projectId?: string | null) => Promise<void>;
   deleteSchedule: (scheduleId: string, projectId?: string | null) => Promise<void>;
   fetchAgentLoops: (projectId?: string | null) => Promise<void>;
@@ -68,7 +68,7 @@ interface LoopsStore {
     cron_expression?: string;
     interval_seconds?: number;
     description?: string;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   setExecutionFilter: (key: string, value: string) => void;
 }
 
@@ -129,8 +129,10 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
       set({ loading: false });
       await get().fetchSchedules(data.project_id);
       await get().fetchHealth(data.project_id);
+      return true;
     } catch (e: any) {
       set({ error: e.message, loading: false });
+      return false;
     }
   },
 
@@ -275,8 +277,10 @@ export const useLoopsStore = create<LoopsStore>((set, get) => ({
       set({ loading: false });
       await get().fetchHealth(data.project_id);
       await get().fetchSchedules(data.project_id);
+      return true;
     } catch (e: any) {
       set({ error: e.message, loading: false });
+      return false;
     }
   },
 

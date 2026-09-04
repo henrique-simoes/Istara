@@ -395,7 +395,7 @@ class UserInterviewsSkill(BaseSkill):
         # If files provided, process them; otherwise use inline user_context as transcript
         transcripts_to_analyze = []
 
-        for file_path_str in (skill_input.files or []):
+        for file_path_str in skill_input.files or []:
             file_path = Path(file_path_str)
             if not file_path.exists():
                 all_errors.append(f"File not found: {file_path_str}")
@@ -415,13 +415,15 @@ class UserInterviewsSkill(BaseSkill):
 
         # Track source names for each transcript
         transcript_sources = []
-        for file_path_str in (skill_input.files or []):
+        for file_path_str in skill_input.files or []:
             transcript_sources.append(Path(file_path_str).name)
         if not transcript_sources and skill_input.user_context:
             transcript_sources.append("inline-context")
 
         for idx, transcript in enumerate(transcripts_to_analyze):
-            source_name = transcript_sources[idx] if idx < len(transcript_sources) else f"transcript-{idx}"
+            source_name = (
+                transcript_sources[idx] if idx < len(transcript_sources) else f"transcript-{idx}"
+            )
 
             # Analyze the transcript
             prompt = TRANSCRIPT_ANALYSIS_PROMPT.format(
@@ -461,12 +463,14 @@ class UserInterviewsSkill(BaseSkill):
 
             # Extract nuggets
             for nugget_data in analysis.get("nuggets", []):
-                all_nuggets.append({
-                    "text": nugget_data.get("text", ""),
-                    "source": source_name,
-                    "source_location": nugget_data.get("location", ""),
-                    "tags": nugget_data.get("tags", []),
-                })
+                all_nuggets.append(
+                    {
+                        "text": nugget_data.get("text", ""),
+                        "source": source_name,
+                        "source_location": nugget_data.get("location", ""),
+                        "tags": nugget_data.get("tags", []),
+                    }
+                )
 
         # If multiple transcripts, synthesize across them
         synthesis = None

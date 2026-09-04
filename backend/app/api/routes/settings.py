@@ -15,6 +15,7 @@ from app.core.ollama import ollama
 from app.core.permissions import require_global_role, require_project_access
 from app.core.pi_runtime.endpoint_policy import (
     custody_pi_endpoint_credentials,
+    pi_endpoint_credential_status,
     prepare_pi_endpoint_payload,
 )
 from app.core.runtime_freshness import detect_runtime_freshness
@@ -77,9 +78,24 @@ class FileEncryptionRotateRequest(BaseModel):
     confirm_rotation: bool = False
 
 
-def _persist_env(key: str, value: str) -> None:
-    """Backward-compatible wrapper for settings persistence."""
-    persist_env_value(key, value)
+def _persist_env(key: str, value: str) -> bool:
+    """Persist a runtime setting when storage is writable.
+
+    Read-only deployments are valid (and common for the QA/release image), so
+    an OS-level write failure must not turn an otherwise valid in-memory
+    settings change into a 500. Unexpected exceptions still propagate so real
+    persistence bugs remain visible.
+    """
+    try:
+        persist_env_value(key, value)
+    except OSError as exc:
+        logger.warning(
+            "Runtime setting %s changed in memory but could not be persisted: %s",
+            key,
+            exc,
+        )
+        return False
+    return True
 
 
 def _active_model() -> str:
@@ -128,6 +144,57 @@ async def _pi_catalog_info() -> list[dict]:
                 "message": "Pi model catalog is unavailable.",
             },
         ) from exc
+
+
+def _pi_default_info(catalog: list[dict]) -> tuple[str | None, str | None]:
+    """Return the effective credential-ready provider default without secrets."""
+    from app.core.pi_runtime.endpoints import DEFAULT_ENDPOINT_ID, PiEndpointResolver
+
+    by_id = {str(item.get("endpoint_id") or ""): item for item in catalog}
+    configured = {endpoint.endpoint_id: endpoint for endpoint in PiEndpointResolver().configured()}
+
+    def is_ready(item: dict | None) -> bool:
+        if item is None:
+            return False
+        status = str(item.get("credential_status") or "").strip().lower()
+        if not status:
+            endpoint = configured.get(str(item.get("endpoint_id") or ""))
+            if endpoint is None:
+                return False
+            try:
+                status = pi_endpoint_credential_status(endpoint)
+            except Exception:
+                logger.warning(
+                    "pi default credential state unavailable for %s",
+                    endpoint.endpoint_id,
+                    exc_info=True,
+                )
+                return False
+        return status in {"ready", "stored"}
+
+    requested = str(getattr(settings, "pi_default_endpoint_id", "") or "").strip()
+    if requested and requested in by_id:
+        item = by_id[requested]
+        if not (settings.llm_provider_contract_stub and item.get("kind") == "local") and is_ready(
+            item
+        ):
+            return requested, str(item.get("model") or "") or None
+    for endpoint in settings.pi_api_endpoints:
+        item = by_id.get(endpoint.endpoint_id)
+        if (
+            item is not None
+            and not (settings.llm_provider_contract_stub and item.get("kind") == "local")
+            and is_ready(item)
+        ):
+            return endpoint.endpoint_id, str(item.get("model") or "") or None
+    fallback = by_id.get(DEFAULT_ENDPOINT_ID)
+    if (
+        fallback is not None
+        and not (settings.llm_provider_contract_stub and fallback.get("kind") == "local")
+        and is_ready(fallback)
+    ):
+        return DEFAULT_ENDPOINT_ID, str(fallback.get("model") or "") or None
+    return None, None
 
 
 def _pi_model_management_required() -> JSONResponse:
@@ -190,6 +257,11 @@ def _cached_llm_readiness() -> tuple[bool, bool]:
             continue
         reachable = reachable or bool(snapshot.get("is_reachable"))
         chat_ready = chat_ready or bool(snapshot.get("is_ready"))
+    if settings.llm_provider_contract_stub:
+        # The deterministic QA transport validates wiring and embeddings only.
+        # It is deliberately invisible to every chat/model-source resolver and
+        # must not become user-visible chat readiness through cached node state.
+        chat_ready = False
     return reachable, chat_ready
 
 
@@ -322,6 +394,8 @@ async def get_models(request: Request):
     healthy = await ollama.health()
     registry_models = await compute_registry.list_models()
     if not healthy and not registry_models:
+        pi_catalog = await _pi_catalog_info()
+        default_endpoint_id, default_model = _pi_default_info(pi_catalog)
         return {
             "status": "offline",
             "provider": settings.llm_provider,
@@ -329,7 +403,9 @@ async def get_models(request: Request):
             "active_model": _active_model(),
             "embed_model": _embed_model(),
             "agentic_engine_default": _global_agentic_engine(),
-            "pi_catalog": await _pi_catalog_info(),
+            "pi_catalog": pi_catalog,
+            "default_endpoint_id": default_endpoint_id,
+            "default_model": default_model,
         }
 
     models = registry_models or await ollama.list_models()
@@ -382,6 +458,8 @@ async def get_models(request: Request):
         m["provider_type"] = provider_type or settings.llm_provider
         enriched.append(m)
 
+    pi_catalog = await _pi_catalog_info()
+    default_endpoint_id, default_model = _pi_default_info(pi_catalog)
     return {
         "status": "online",
         "provider": settings.llm_provider,
@@ -389,7 +467,9 @@ async def get_models(request: Request):
         "active_model": active,
         "embed_model": _embed_model(),
         "agentic_engine_default": _global_agentic_engine(),
-        "pi_catalog": await _pi_catalog_info(),
+        "pi_catalog": pi_catalog,
+        "default_endpoint_id": default_endpoint_id,
+        "default_model": default_model,
     }
 
 
@@ -489,8 +569,7 @@ async def toggle_strict_routing(data: StrictRoutingRequest, request: Request):
     enabled = data.enabled
     settings.strict_auto_routing = enabled
     try:
-        _persist_env("STRICT_AUTO_ROUTING", str(enabled).lower())
-        persisted = True
+        persisted = _persist_env("STRICT_AUTO_ROUTING", str(enabled).lower())
     except Exception as exc:
         logger.warning("Could not persist STRICT_AUTO_ROUTING: %s", exc)
         persisted = False
@@ -684,10 +763,13 @@ async def toggle_telemetry(request: Request, enabled: bool):
     """Toggle telemetry recording on/off. Admin only."""
     require_admin_from_request(request)
     settings.telemetry_enabled = enabled
-    _persist_env("TELEMETRY_ENABLED", str(enabled).lower())
+    persisted = _persist_env("TELEMETRY_ENABLED", str(enabled).lower())
+    message = f"Telemetry {'enabled' if enabled else 'disabled'}."
+    if not persisted:
+        message += " The runtime value is active for this process; persistence is unavailable."
     return {
         "telemetry_enabled": enabled,
-        "message": f"Telemetry {'enabled' if enabled else 'disabled'}.",
+        "message": message,
     }
 
 
@@ -786,11 +868,51 @@ class PiEndpointRequest(BaseModel):
     oauth_flow_id: str = ""
 
 
+class PiDefaultEndpointRequest(BaseModel):
+    endpoint_id: str
+
+
+class PiResearchEnsembleRequest(BaseModel):
+    endpoint_ids: list[str] = Field(default_factory=list)
+
+
 def _persist_pi_endpoints() -> None:
     import json as _json
 
     payload = [endpoint.model_dump() for endpoint in settings.pi_api_endpoints]
     _persist_env("PI_API_ENDPOINTS", _json.dumps(payload))
+
+
+def _persist_pi_default_endpoint() -> None:
+    _persist_env("PI_DEFAULT_ENDPOINT_ID", settings.pi_default_endpoint_id)
+
+
+def _persist_pi_research_endpoints() -> None:
+    import json as _json
+
+    _persist_env("PI_RESEARCH_ENDPOINT_IDS", _json.dumps(settings.pi_research_endpoint_ids))
+
+
+def _validated_research_endpoint_ids(endpoint_ids: list[str]) -> list[str]:
+    normalized = [str(endpoint_id).strip() for endpoint_id in endpoint_ids]
+    if any(not endpoint_id for endpoint_id in normalized):
+        raise HTTPException(status_code=400, detail="empty_research_endpoint_id")
+    if len(set(normalized)) != len(normalized):
+        raise HTTPException(status_code=400, detail="duplicate_research_endpoint_id")
+
+    configured = {endpoint.endpoint_id: endpoint for endpoint in settings.pi_api_endpoints}
+    seen_models: set[str] = set()
+    for endpoint_id in normalized:
+        endpoint = configured.get(endpoint_id)
+        if endpoint is None:
+            raise HTTPException(status_code=400, detail="unknown_research_endpoint_id")
+        if pi_endpoint_credential_status(endpoint) == "missing":
+            raise HTTPException(status_code=400, detail="research_endpoint_credential_missing")
+        model_identity = endpoint.model.strip().casefold()
+        if model_identity in seen_models:
+            raise HTTPException(status_code=400, detail="duplicate_research_model_identity")
+        seen_models.add(model_identity)
+    return normalized
 
 
 @router.post("/settings/agentic-engine")
@@ -810,8 +932,7 @@ async def set_agentic_engine(data: AgenticEngineRequest, request: Request):
         raise HTTPException(status_code=400, detail="engine must be 'pi' or 'istara'")
     settings.agentic_engine_default = value
     try:
-        _persist_env("AGENTIC_ENGINE_DEFAULT", value)
-        persisted = True
+        persisted = _persist_env("AGENTIC_ENGINE_DEFAULT", value)
     except Exception as exc:  # pragma: no cover
         logger.warning("Could not persist AGENTIC_ENGINE_DEFAULT: %s", exc)
         persisted = False
@@ -1026,9 +1147,17 @@ async def list_pi_endpoints(request: Request):
     for endpoint in settings.pi_api_endpoints:
         view = endpoint.model_dump()
         view.pop("oauth_credential_encrypted", None)
+        view["credential_status"] = pi_endpoint_credential_status(endpoint)
         public_endpoints.append(view)
+    default_endpoint_id, default_model = _pi_default_info(public_endpoints)
     return {
         "endpoints": public_endpoints,
+        "default_endpoint_id": default_endpoint_id,
+        "default_model": default_model,
+        "research_endpoint_ids": list(settings.pi_research_endpoint_ids),
+        "research_selection_mode": (
+            "preferred_then_automatic" if settings.pi_research_endpoint_ids else "automatic"
+        ),
         "retirement_note": (
             "Cloud/API endpoints are managed here (Pi model management). The legacy "
             "LLM-server section manages local serving and donated compute only."
@@ -1070,13 +1199,24 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
 
     payload = prepare_pi_endpoint_payload(data)
     custody_pi_endpoint_credentials(data, payload)
+    existing_default = str(getattr(settings, "pi_default_endpoint_id", "") or "").strip()
+    existing_ids = {endpoint.endpoint_id for endpoint in settings.pi_api_endpoints}
+    if existing_default not in existing_ids:
+        existing_default = (
+            settings.pi_api_endpoints[0].endpoint_id if settings.pi_api_endpoints else ""
+        )
+        if existing_default:
+            settings.pi_default_endpoint_id = existing_default
 
     try:
         settings.pi_api_endpoints.append(PiApiEndpoint(**payload))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     try:
+        if not existing_default:
+            settings.pi_default_endpoint_id = endpoint_id
         _persist_pi_endpoints()
+        _persist_pi_default_endpoint()
         persisted = True
     except Exception as exc:  # pragma: no cover
         logger.warning("Could not persist PI_API_ENDPOINTS: %s", exc)
@@ -1084,11 +1224,72 @@ async def add_pi_endpoint(data: PiEndpointRequest, request: Request):
     from app.core.pi_runtime.model_manager import reset_live_settings_catalogs
 
     reset_live_settings_catalogs()
+    added_endpoint = next(
+        endpoint for endpoint in settings.pi_api_endpoints if endpoint.endpoint_id == endpoint_id
+    )
     return {
         "status": "added",
         "endpoint_id": endpoint_id,
         "persisted": persisted,
         "auth_method": payload.get("auth_method", "api_key"),
+        "credential_status": pi_endpoint_credential_status(added_endpoint),
+        "default_endpoint_id": settings.pi_default_endpoint_id or None,
+        "default_model": next(
+            (
+                endpoint.model
+                for endpoint in settings.pi_api_endpoints
+                if endpoint.endpoint_id == settings.pi_default_endpoint_id
+            ),
+            None,
+        ),
+    }
+
+
+@router.post("/settings/pi-default")
+async def set_pi_default_endpoint(data: PiDefaultEndpointRequest, request: Request):
+    require_global_role(request, "admin")
+    endpoint_id = data.endpoint_id.strip()
+    endpoint = next(
+        (item for item in settings.pi_api_endpoints if item.endpoint_id == endpoint_id),
+        None,
+    )
+    if endpoint is None:
+        raise HTTPException(status_code=404, detail=f"endpoint {endpoint_id!r} not found")
+    settings.pi_default_endpoint_id = endpoint_id
+    try:
+        _persist_pi_default_endpoint()
+        persisted = True
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Could not persist PI_DEFAULT_ENDPOINT_ID: %s", exc)
+        persisted = False
+    from app.core.pi_runtime.model_manager import reset_live_settings_catalogs
+
+    reset_live_settings_catalogs()
+    return {
+        "status": "switched",
+        "default_endpoint_id": endpoint_id,
+        "default_model": endpoint.model,
+        "persisted": persisted,
+    }
+
+
+@router.put("/settings/pi-research-ensemble")
+async def set_pi_research_ensemble(data: PiResearchEnsembleRequest, request: Request):
+    """Persist ordered coder preferences without replacing healthy donor fallback."""
+    require_global_role(request, "admin")
+    endpoint_ids = _validated_research_endpoint_ids(data.endpoint_ids)
+    settings.pi_research_endpoint_ids = endpoint_ids
+    try:
+        _persist_pi_research_endpoints()
+        persisted = True
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Could not persist PI_RESEARCH_ENDPOINT_IDS: %s", exc)
+        persisted = False
+    return {
+        "status": "updated",
+        "endpoint_ids": endpoint_ids,
+        "selection_mode": "preferred_then_automatic" if endpoint_ids else "automatic",
+        "persisted": persisted,
     }
 
 
@@ -1107,6 +1308,7 @@ async def update_pi_endpoint(endpoint_id: str, data: PiEndpointRequest, request:
             settings.pi_api_endpoints[index] = replacement
             try:
                 _persist_pi_endpoints()
+                _persist_pi_default_endpoint()
                 persisted = True
             except Exception as exc:  # pragma: no cover
                 logger.warning("Could not persist PI_API_ENDPOINTS: %s", exc)
@@ -1128,8 +1330,17 @@ async def delete_pi_endpoint(endpoint_id: str, request: Request):
     ]
     if len(settings.pi_api_endpoints) == before:
         raise HTTPException(status_code=404, detail=f"endpoint {endpoint_id!r} not found")
+    if getattr(settings, "pi_default_endpoint_id", "") == endpoint_id:
+        settings.pi_default_endpoint_id = (
+            settings.pi_api_endpoints[0].endpoint_id if settings.pi_api_endpoints else ""
+        )
+    settings.pi_research_endpoint_ids = [
+        item for item in settings.pi_research_endpoint_ids if item != endpoint_id
+    ]
     try:
         _persist_pi_endpoints()
+        _persist_pi_default_endpoint()
+        _persist_pi_research_endpoints()
         persisted = True
     except Exception as exc:  # pragma: no cover
         logger.warning("Could not persist PI_API_ENDPOINTS: %s", exc)
@@ -1137,4 +1348,14 @@ async def delete_pi_endpoint(endpoint_id: str, request: Request):
     from app.core.pi_runtime.model_manager import reset_live_settings_catalogs
 
     reset_live_settings_catalogs()
-    return {"status": "deleted", "endpoint_id": endpoint_id, "persisted": persisted}
+    default_endpoint_id, default_model = _pi_default_info(
+        [endpoint.model_dump() for endpoint in settings.pi_api_endpoints]
+    )
+    return {
+        "status": "deleted",
+        "endpoint_id": endpoint_id,
+        "persisted": persisted,
+        "default_endpoint_id": default_endpoint_id,
+        "default_model": default_model,
+        "research_endpoint_ids": list(settings.pi_research_endpoint_ids),
+    }

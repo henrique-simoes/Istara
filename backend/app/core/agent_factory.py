@@ -201,8 +201,7 @@ class AgentFactory:
             return True
         scoped_project_id = str(project_id or "").strip()
         return (
-            bool(scoped_project_id)
-            and str(proposal.get("project_id") or "") == scoped_project_id
+            bool(scoped_project_id) and str(proposal.get("project_id") or "") == scoped_project_id
         )
 
     def get_pending_proposals(self, project_id: str | None = None) -> list[dict]:
@@ -226,9 +225,7 @@ class AgentFactory:
                 and self._matches_project(p, project_id)
             ):
                 p["status"] = "approved"
-                p["reviewed_at"] = time.strftime(
-                    "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
-                )
+                p["reviewed_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                 self._save()
                 return p
         return None
@@ -247,9 +244,7 @@ class AgentFactory:
                 and self._matches_project(p, project_id)
             ):
                 p["status"] = "rejected"
-                p["reviewed_at"] = time.strftime(
-                    "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
-                )
+                p["reviewed_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                 if reason:
                     p["reject_reason"] = reason
                 self._save()

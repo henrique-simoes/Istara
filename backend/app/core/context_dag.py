@@ -10,8 +10,10 @@ Architecture:
 - Fresh tail: The 32 most recent messages are kept verbatim
 - DAG depth grows logarithmically with conversation length
 """
+
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -30,6 +32,67 @@ logger = logging.getLogger(__name__)
 
 class ContextDAG:
     """Manages hierarchical context summarization for chat sessions."""
+
+    def __init__(self) -> None:
+        # Chat schedules compaction as a non-blocking operation. Keep ownership
+        # here so duplicate requests for one session cannot race to create
+        # duplicate nodes and application/tests can drain work before closing
+        # the event loop or database engine.
+        self._compaction_tasks: dict[str, asyncio.Task[None]] = {}
+
+    def _finish_compaction_task(self, session_id: str, task: asyncio.Task[None]) -> None:
+        """Forget a completed task and surface unexpected failures."""
+        if self._compaction_tasks.get(session_id) is task:
+            self._compaction_tasks.pop(session_id, None)
+        if task.cancelled():
+            return
+        try:
+            error = task.exception()
+        except (asyncio.CancelledError, RuntimeError):
+            return
+        if error is not None:
+            logger.warning("DAG compaction failed for session %s: %s", session_id, error)
+
+    def schedule_compaction(self, session_id: str) -> asyncio.Task[None]:
+        """Schedule one compaction task per session and retain its lifecycle."""
+        existing = self._compaction_tasks.get(session_id)
+        if existing is not None and not existing.done():
+            return existing
+
+        task = asyncio.create_task(
+            self.compact_if_needed(session_id),
+            name=f"context-dag-compaction:{session_id}",
+        )
+        self._compaction_tasks[session_id] = task
+        task.add_done_callback(
+            lambda completed: self._finish_compaction_task(session_id, completed)
+        )
+        return task
+
+    async def drain_compaction_tasks(self) -> None:
+        """Wait for current-loop work and cancel stale cross-loop tasks."""
+        current_loop = asyncio.get_running_loop()
+        pending: list[asyncio.Task[None]] = []
+        for session_id, task in tuple(self._compaction_tasks.items()):
+            if task.done():
+                self._finish_compaction_task(session_id, task)
+                continue
+            if task.get_loop() is current_loop:
+                pending.append(task)
+                continue
+
+            # The singleton survives short-lived async test loops and reload
+            # paths. A task owned by a closed/foreign loop cannot be gathered
+            # here; cancel and forget it so it cannot leak into the next loop.
+            try:
+                task.cancel()
+            except RuntimeError:
+                pass
+            if self._compaction_tasks.get(session_id) is task:
+                self._compaction_tasks.pop(session_id, None)
+
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
 
     @property
     def fresh_tail_size(self) -> int:
@@ -74,8 +137,7 @@ class ContextDAG:
 
             # Get all depth-0 DAG nodes and collect their covered message IDs
             node_result = await db.execute(
-                select(ContextDAGNode)
-                .where(
+                select(ContextDAGNode).where(
                     ContextDAGNode.session_id == session_id,
                     ContextDAGNode.depth == 0,
                 )
@@ -194,13 +256,12 @@ class ContextDAG:
 
             dag_summary_messages = []
             for node in top_nodes:
-                dag_summary_messages.append({
-                    "role": "system",
-                    "content": (
-                        f"[Context Summary — DAG:{node.id}] "
-                        f"{node.summary_text}"
-                    ),
-                })
+                dag_summary_messages.append(
+                    {
+                        "role": "system",
+                        "content": (f"[Context Summary — DAG:{node.id}] {node.summary_text}"),
+                    }
+                )
 
             return dag_summary_messages, fresh_tail_messages
 
@@ -214,9 +275,7 @@ class ContextDAG:
             node_query = select(ContextDAGNode).where(ContextDAGNode.id == node_id)
             if session_id:
                 node_query = node_query.where(ContextDAGNode.session_id == session_id)
-            result = await db.execute(
-                node_query
-            )
+            result = await db.execute(node_query)
             node = result.scalar_one_or_none()
             if not node:
                 return [{"error": f"Node {node_id} not found"}]
@@ -293,8 +352,12 @@ class ContextDAG:
                         "summary": c.summary_text,
                         "content": c.summary_text,
                         "message_count": c.message_count,
-                        "time_range_start": c.time_range_start.isoformat() if c.time_range_start else None,
-                        "time_range_end": c.time_range_end.isoformat() if c.time_range_end else None,
+                        "time_range_start": c.time_range_start.isoformat()
+                        if c.time_range_start
+                        else None,
+                        "time_range_end": c.time_range_end.isoformat()
+                        if c.time_range_end
+                        else None,
                     }
                     for c in children
                 ]
@@ -327,8 +390,7 @@ class ContextDAG:
 
             # Build a lookup: message_id -> dag_node_id for depth-0 nodes
             node_result = await db.execute(
-                select(ContextDAGNode)
-                .where(
+                select(ContextDAGNode).where(
                     ContextDAGNode.session_id == session_id,
                     ContextDAGNode.depth == 0,
                 )
@@ -362,13 +424,15 @@ class ContextDAG:
                 else:
                     excerpt = content[:200]
 
-                results.append({
-                    "message_id": m.id,
-                    "role": m.role,
-                    "content_excerpt": excerpt,
-                    "created_at": m.created_at.isoformat() if m.created_at else "",
-                    "dag_node_id": msg_to_node.get(m.id),
-                })
+                results.append(
+                    {
+                        "message_id": m.id,
+                        "role": m.role,
+                        "content_excerpt": excerpt,
+                        "created_at": m.created_at.isoformat() if m.created_at else "",
+                        "dag_node_id": msg_to_node.get(m.id),
+                    }
+                )
 
             return results
 
@@ -378,9 +442,7 @@ class ContextDAG:
             node_query = select(ContextDAGNode).where(ContextDAGNode.id == node_id)
             if session_id:
                 node_query = node_query.where(ContextDAGNode.session_id == session_id)
-            result = await db.execute(
-                node_query
-            )
+            result = await db.execute(node_query)
             node = result.scalar_one_or_none()
             if not node:
                 return {"error": f"Node {node_id} not found"}
@@ -409,7 +471,9 @@ class ContextDAG:
                 "compression_ratio": (
                     round(node.original_token_count / max(node.token_count, 1), 2)
                 ),
-                "time_range_start": node.time_range_start.isoformat() if node.time_range_start else None,
+                "time_range_start": node.time_range_start.isoformat()
+                if node.time_range_start
+                else None,
                 "time_range_end": node.time_range_end.isoformat() if node.time_range_end else None,
                 "created_at": node.created_at.isoformat() if node.created_at else None,
             }
@@ -463,8 +527,12 @@ class ContextDAG:
                     "token_count": node.token_count,
                     "original_token_count": node.original_token_count,
                     "child_node_ids": child_node_ids,
-                    "time_range_start": node.time_range_start.isoformat() if node.time_range_start else None,
-                    "time_range_end": node.time_range_end.isoformat() if node.time_range_end else None,
+                    "time_range_start": node.time_range_start.isoformat()
+                    if node.time_range_start
+                    else None,
+                    "time_range_end": node.time_range_end.isoformat()
+                    if node.time_range_end
+                    else None,
                     "created_at": node.created_at.isoformat() if node.created_at else None,
                 }
                 nodes_by_depth[depth].append(node_info)
@@ -490,9 +558,7 @@ class ContextDAG:
                     "total_nodes": len(all_nodes),
                     "max_depth": max_depth,
                     "dag_depth": max_depth,
-                    "nodes_by_depth": {
-                        str(d): len(nodes) for d, nodes in nodes_by_depth.items()
-                    },
+                    "nodes_by_depth": {str(d): len(nodes) for d, nodes in nodes_by_depth.items()},
                     "total_messages_covered": total_messages,
                     "total_original_tokens": total_orig_tokens,
                     "total_summary_tokens": total_sum_tokens,
@@ -510,17 +576,13 @@ class ContextDAG:
         async with async_session() as db:
             # Total messages
             msg_count_result = await db.execute(
-                select(func.count(Message.id)).where(
-                    Message.session_id == session_id
-                )
+                select(func.count(Message.id)).where(Message.session_id == session_id)
             )
             total_messages = msg_count_result.scalar() or 0
 
             # All DAG nodes
             node_result = await db.execute(
-                select(ContextDAGNode).where(
-                    ContextDAGNode.session_id == session_id
-                )
+                select(ContextDAGNode).where(ContextDAGNode.session_id == session_id)
             )
             all_nodes = node_result.scalars().all()
 
@@ -564,9 +626,7 @@ class ContextDAG:
                 "compacted_messages": len(compacted_ids),
                 "dag_depth": max_depth,
                 "max_depth": max_depth,
-                "fresh_tail_size": min(
-                    total_messages, self.fresh_tail_size
-                ),
+                "fresh_tail_size": min(total_messages, self.fresh_tail_size),
                 "compression_ratio": (
                     round(total_orig / max(total_sum, 1), 2) if total_orig > 0 else 1.0
                 ),
@@ -636,10 +696,7 @@ class ContextDAG:
 
         role_str = ", ".join(f"{r}: {c}" for r, c in sorted(roles.items()))
         topic_str = "; ".join(topics[:5])
-        return (
-            f"[Fallback summary of {len(messages)} messages ({role_str}). "
-            f"Topics: {topic_str}]"
-        )
+        return f"[Fallback summary of {len(messages)} messages ({role_str}). Topics: {topic_str}]"
 
     async def _roll_up(self, session_id: str, depth: int) -> None:
         """Roll up orphan nodes at ``depth`` into a parent node at ``depth+1``.

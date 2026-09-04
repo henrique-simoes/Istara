@@ -245,7 +245,7 @@
   <p class="concept-line"><strong>Concepts:</strong> atomic-research</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Codebook tab surfaces qualitative coding structures and codebook versions associated with project findings. Project-facing codebook and code by-id routes require the active project id and load records by both record id and project id before returning or mutating data.</p>
+<p>The Codebook tab surfaces qualitative coding structures and codebook versions associated with project findings. Project-facing codebook and code by-id routes require the active project id and load records by both record id and project id before returning or mutating data. Create and update responses explicitly eager-load the codes relationship before serialization, so an empty codebook returns <code>201</code>/<code>200</code> instead of triggering an async lazy-load <code>500</code>.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/findings/FindingsView.tsx</code></li>

@@ -4,7 +4,12 @@ import {
   ENGINE_COMPARATIVE_SUMMARIES,
   ENGINE_SELECTOR_OPTIONS,
   SHARED_EMBEDDING_IDENTITY_LABEL,
+  isPiEndpointReady,
+  isPiSessionOverrideReady,
   mergeModelCatalogs,
+  settingsDefaultChatModel,
+  settingsLlmReadiness,
+  isChatSendReady,
 } from "./modelCatalog";
 import { agentEngineLabel } from "./utils";
 
@@ -52,6 +57,78 @@ describe("engine comparative summaries (W3 selector slice)", () => {
 });
 
 describe("merged model catalog", () => {
+  it("keeps chat send fail-closed until the selected legacy transport is ready", () => {
+    expect(isChatSendReady("legacy", false)).toBe(false);
+    expect(isChatSendReady("legacy", undefined)).toBe(false);
+    expect(isChatSendReady("legacy", true)).toBe(true);
+    expect(isChatSendReady("pi", false)).toBe(true);
+  });
+
+  it("distinguishes transport reachability from chat readiness in Settings", () => {
+    expect(settingsLlmReadiness({ reachable: false, chat_ready: false })).toBe("disconnected");
+    expect(settingsLlmReadiness({ reachable: true, chat_ready: false })).toBe("not_ready");
+    expect(settingsLlmReadiness({ reachable: true, chat_ready: true })).toBe("ready");
+  });
+
+  it("does not present the local transport model as the Pi chat default", () => {
+    expect(
+      settingsDefaultChatModel(
+        {
+          agentic_engine_default: "pi",
+          default_model: null,
+          active_model: "contract-stub-model",
+        },
+        { agentic_engine_default: "pi" },
+      ),
+    ).toBeNull();
+    expect(
+      settingsDefaultChatModel(
+        { agentic_engine_default: "legacy", active_model: "contract-stub-model" },
+        {
+          agentic_engine_default: "legacy",
+          llm_readiness: { reachable: true, chat_ready: false },
+        },
+      ),
+    ).toBeNull();
+    expect(
+      settingsDefaultChatModel(
+        { agentic_engine_default: "legacy", active_model: "local-ready-model" },
+        {
+          agentic_engine_default: "legacy",
+          llm_readiness: { reachable: true, chat_ready: true },
+        },
+      ),
+    ).toBe("local-ready-model");
+  });
+
+  it("enables only endpoints the server has resolved as credential-ready", () => {
+    expect(isPiEndpointReady({ credential_status: "ready" })).toBe(true);
+    expect(isPiEndpointReady({ credential_status: "missing" })).toBe(false);
+    expect(isPiEndpointReady({ credential_status: "unavailable" })).toBe(false);
+    expect(isPiEndpointReady({})).toBe(false);
+  });
+
+  it("does not let a stale session override re-enable an unavailable Pi endpoint", () => {
+    const configured = [
+      {
+        endpoint_id: "pi-deepseek-default",
+        model: "deepseek-v4-pro",
+        credential_status: "missing",
+      },
+      {
+        endpoint_id: "pi-ready",
+        model: "ready-model",
+        credential_status: "ready",
+      },
+    ];
+
+    expect(
+      isPiSessionOverrideReady(configured, "deepseek-v4-pro", "pi-deepseek-default"),
+    ).toBe(false);
+    expect(isPiSessionOverrideReady(configured, "ready-model", "pi-ready")).toBe(true);
+    expect(isPiSessionOverrideReady(configured, "ready-model", "missing-endpoint")).toBe(false);
+  });
+
   it("keeps every compatibility inventory row non-switchable under Pi authority", () => {
     const entries = mergeModelCatalogs(
       [{ name: "classical-row", provider_type: "ollama" }],

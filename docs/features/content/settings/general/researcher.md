@@ -47,6 +47,8 @@ System Status And Models exists so the work represented by Settings > System Sta
 - Global Agentic Core and Pi endpoint configuration updates for authorized administrators.
 - A visible, searchable provider/model list with API-key and Pi OAuth choices.
 - Legacy backend compatibility data remains preserved but is not a competing normal Settings catalog.
+- Toggling Local Telemetry applies immediately in the running process. On a read-only deployment, the control remains usable and the response explains that the value cannot survive a restart until writable runtime persistence is configured.
+- Changing the Agentic Core or strict-routing setting applies immediately in the running process. On a read-only deployment, the response explicitly reports `persisted: false`; the value is not represented as restart-safe until writable runtime persistence is configured.
 - Editing an existing Pi connection uses the same catalog, URL, Keychain-custody,
   and OAuth-preservation rules as adding one; sparse edits keep the endpoint's
   derived capabilities and secret reference, while invalid edits are rejected.

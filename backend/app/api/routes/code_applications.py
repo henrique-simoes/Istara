@@ -59,9 +59,7 @@ async def get_project_code_applications(
     """Get project code applications, optionally scoped to one coding run."""
     await require_project_access(db, request, project_id, min_role="viewer")
 
-    query = select(CodeApplication).where(
-        CodeApplication.project_id == project_id
-    )
+    query = select(CodeApplication).where(CodeApplication.project_id == project_id)
     if status:
         query = query.where(CodeApplication.review_status == status)
     if task_id:
@@ -84,10 +82,12 @@ async def get_pending_reviews(
     await require_project_access(db, request, project_id, min_role="viewer")
 
     result = await db.execute(
-        select(CodeApplication).where(
+        select(CodeApplication)
+        .where(
             CodeApplication.project_id == project_id,
             CodeApplication.review_status == "pending",
-        ).order_by(CodeApplication.confidence.asc())  # Lowest confidence first
+        )
+        .order_by(CodeApplication.confidence.asc())  # Lowest confidence first
     )
     return [ca.to_dict() for ca in result.scalars().all()]
 
@@ -150,7 +150,9 @@ async def synthetic_reconciliation(
     if not settings.research_validity_synthetic_reconciliation_enabled:
         raise HTTPException(status_code=404, detail="Synthetic reconciliation is disabled.")
     if request.headers.get("x-istara-synthetic-reconciliation") != "benchmark-v1":
-        raise HTTPException(status_code=403, detail="Synthetic benchmark opt-in header is required.")
+        raise HTTPException(
+            status_code=403, detail="Synthetic benchmark opt-in header is required."
+        )
     try:
         decisions = await create_synthetic_reconciliation_decisions(
             db,

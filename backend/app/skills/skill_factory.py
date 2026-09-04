@@ -49,7 +49,9 @@ def _looks_like_json_schema(schema: dict[str, Any]) -> bool:
     return False
 
 
-def _truncate_to_token_budget(text: str, token_budget: int, *, suffix: str = "\n...[truncated]") -> str:
+def _truncate_to_token_budget(
+    text: str, token_budget: int, *, suffix: str = "\n...[truncated]"
+) -> str:
     """Approximate token-budget truncation without adding a heavy tokenizer dependency."""
     if token_budget <= 0 or count_tokens(text) <= token_budget:
         return text
@@ -59,11 +61,11 @@ def _truncate_to_token_budget(text: str, token_budget: int, *, suffix: str = "\n
 
 def _make_schema_strict(schema: Any) -> dict:
     """Transform JSON Schema (or example object) to strict mode for local LLMs.
-    
+
     If the input is already a JSON Schema (has 'type'), it adds 'additionalProperties': False
     and 'required' arrays to every object.
-    
-    If the input is an example object (e.g. {"key": "value"}), it recursively 
+
+    If the input is an example object (e.g. {"key": "value"}), it recursively
     translates it into a valid JSON Schema with strict constraints.
     """
     if not isinstance(schema, (dict, list)):
@@ -80,17 +82,11 @@ def _make_schema_strict(schema: Any) -> dict:
         # Example array or Schema array
         if len(schema) > 0 and isinstance(schema[0], dict) and "type" in schema[0]:
             # It's a schema array
-            return {
-                "type": "array",
-                "items": _make_schema_strict(schema[0])
-            }
+            return {"type": "array", "items": _make_schema_strict(schema[0])}
         else:
             # It's an example array
             item_example = schema[0] if len(schema) > 0 else "..."
-            return {
-                "type": "array",
-                "items": _make_schema_strict(item_example)
-            }
+            return {"type": "array", "items": _make_schema_strict(item_example)}
 
     if isinstance(schema, dict):
         # Check if it's already a JSON Schema
@@ -100,47 +96,60 @@ def _make_schema_strict(schema: Any) -> dict:
                 new_schema["additionalProperties"] = False
                 properties = new_schema.get("properties", {})
                 required = new_schema.get("required", [])
-                
+
                 new_required = list(properties.keys())
                 new_properties = {}
-                
+
                 for prop_name, prop_schema in properties.items():
                     prop_schema_strict = _make_schema_strict(prop_schema)
                     # Handle optional fields (if they weren't in the original required list)
                     if prop_name not in required:
-                        if "type" in prop_schema_strict and isinstance(prop_schema_strict["type"], str):
+                        if "type" in prop_schema_strict and isinstance(
+                            prop_schema_strict["type"], str
+                        ):
                             original_type = prop_schema_strict.pop("type")
-                            prop_schema_strict["anyOf"] = [{"type": original_type}, {"type": "null"}]
+                            prop_schema_strict["anyOf"] = [
+                                {"type": original_type},
+                                {"type": "null"},
+                            ]
                     new_properties[prop_name] = prop_schema_strict
-                
+
                 new_schema["properties"] = new_properties
                 new_schema["required"] = new_required
             elif new_schema["type"] == "array":
                 if "items" in new_schema:
                     new_schema["items"] = _make_schema_strict(new_schema["items"])
             return new_schema
-        
+
         # It's an example object — translate to Schema
         new_properties = {}
         new_required = []
         for k, v in schema.items():
             new_properties[k] = _make_schema_strict(v)
             new_required.append(k)
-            
+
         return {
             "type": "object",
             "properties": new_properties,
             "required": new_required,
-            "additionalProperties": False
+            "additionalProperties": False,
         }
-    
+
     return {"type": "string"}
 
 
-_PI_SCHEMA_KEYS = frozenset({
-    "type", "properties", "required", "items", "enum", "const",
-    "additionalProperties", "description",
-})
+_PI_SCHEMA_KEYS = frozenset(
+    {
+        "type",
+        "properties",
+        "required",
+        "items",
+        "enum",
+        "const",
+        "additionalProperties",
+        "description",
+    }
+)
 
 
 def _pi_dispatch_schema(schema: Any) -> dict:
@@ -259,7 +268,8 @@ def _normalize_generated_findings(
     nuggets = [
         {
             "text": _compact_text(as_dict(n).get("text", str(n))),
-            "source": _compact_text(as_dict(n).get("source", source_label), limit=120) or source_label,
+            "source": _compact_text(as_dict(n).get("source", source_label), limit=120)
+            or source_label,
             "tags": as_dict(n).get("tags", []),
         }
         for n in _list_items(data.get("nuggets"))
@@ -271,7 +281,8 @@ def _normalize_generated_findings(
     insights = [
         {
             "text": _compact_text(as_dict(i).get("text", str(i))),
-            "confidence": _compact_text(as_dict(i).get("confidence", "medium"), limit=40) or "medium",
+            "confidence": _compact_text(as_dict(i).get("confidence", "medium"), limit=40)
+            or "medium",
         }
         for i in _list_items(data.get("insights"))
     ]
@@ -289,19 +300,25 @@ def _normalize_generated_findings(
             for evidence in _list_items(item.get("evidence"))[:item_limit]:
                 text = _compact_text(evidence)
                 if text:
-                    nuggets.append({"text": text, "source": source_label, "tags": ["source-insight"]})
+                    nuggets.append(
+                        {"text": text, "source": source_label, "tags": ["source-insight"]}
+                    )
         for metric in _list_items(data.get("metrics")):
             item = as_dict(metric)
             points = _list_items(item.get("data_points"))
             if points:
                 sample = ", ".join(_compact_text(point, limit=80) for point in points[:2])
-                metric_name = _compact_text(item.get("metric_name") or item.get("metric_id"), limit=120)
+                metric_name = _compact_text(
+                    item.get("metric_name") or item.get("metric_id"), limit=120
+                )
                 if sample:
-                    nuggets.append({
-                        "text": f"{metric_name or 'Metric'} observed data points: {sample}",
-                        "source": source_label,
-                        "tags": ["metric-data"],
-                    })
+                    nuggets.append(
+                        {
+                            "text": f"{metric_name or 'Metric'} observed data points: {sample}",
+                            "source": source_label,
+                            "tags": ["metric-data"],
+                        }
+                    )
 
     if not facts:
         for insight in _list_items(data.get("source_insights")):
@@ -319,48 +336,59 @@ def _normalize_generated_findings(
                 trend = _compact_text(metric.get("trend"), limit=40)
                 health = _compact_text(metric.get("health"), limit=40)
                 if metric_name or trend or health:
-                    facts.append({
-                        "text": (
-                            f"HEART {category} tracks {metric_name or 'a primary metric'}"
-                            f" with trend={trend or 'unknown'} and health={health or 'unknown'}."
-                        )
-                    })
+                    facts.append(
+                        {
+                            "text": (
+                                f"HEART {category} tracks {metric_name or 'a primary metric'}"
+                                f" with trend={trend or 'unknown'} and health={health or 'unknown'}."
+                            )
+                        }
+                    )
         for metric in _list_items(data.get("metrics")):
             item = as_dict(metric)
             metric_name = _compact_text(item.get("metric_name") or item.get("metric_id"), limit=120)
             trend = as_dict(item.get("trend", {}))
             direction = _compact_text(trend.get("direction"), limit=40)
             if metric_name or direction:
-                facts.append({"text": f"{metric_name or 'Metric'} trend is {direction or 'reported'}."})
+                facts.append(
+                    {"text": f"{metric_name or 'Metric'} trend is {direction or 'reported'}."}
+                )
 
     if not insights:
         for insight in _list_items(data.get("source_insights")):
             item = as_dict(insight)
             text = _compact_text(item.get("text") or item.get("finding"))
             if text:
-                insights.append({
-                    "text": text,
-                    "confidence": _compact_text(item.get("confidence"), limit=40) or "medium",
-                })
+                insights.append(
+                    {
+                        "text": text,
+                        "confidence": _compact_text(item.get("confidence"), limit=40) or "medium",
+                    }
+                )
         for hmw in _list_items(data.get("hmw_statements"))[:item_limit]:
             item = as_dict(hmw)
             statement = _compact_text(item.get("statement") or item.get("text"))
             cluster = _compact_text(item.get("cluster"), limit=120)
             if statement:
-                insights.append({
-                    "text": f"{statement}" + (f" Opportunity cluster: {cluster}." if cluster else ""),
-                    "confidence": "medium",
-                })
+                insights.append(
+                    {
+                        "text": f"{statement}"
+                        + (f" Opportunity cluster: {cluster}." if cluster else ""),
+                        "confidence": "medium",
+                    }
+                )
         for regression in _list_items(data.get("regressions")):
             item = as_dict(regression)
             metric = _compact_text(item.get("metric"), limit=120)
             severity = _compact_text(item.get("severity"), limit=40)
             magnitude = _compact_text(item.get("magnitude_pct"), limit=40)
             if metric or severity:
-                insights.append({
-                    "text": f"{metric or 'Metric'} regression severity={severity or 'reported'}, magnitude={magnitude or 'n/a'}.",
-                    "confidence": "medium",
-                })
+                insights.append(
+                    {
+                        "text": f"{metric or 'Metric'} regression severity={severity or 'reported'}, magnitude={magnitude or 'n/a'}.",
+                        "confidence": "medium",
+                    }
+                )
         for key in ("findings", "opportunities", "pain_points", "themes", "patterns"):
             for item in _list_items(data.get(key)):
                 entry = as_dict(item)
@@ -376,19 +404,25 @@ def _normalize_generated_findings(
             statement = _compact_text(item.get("statement") or item.get("hmw_id"))
             rationale = _compact_text(item.get("rationale"))
             if statement:
-                recommendations.append({
-                    "text": f"Use this HMW for ideation: {statement}" + (f" Rationale: {rationale}" if rationale else ""),
-                    "priority": "high",
-                })
+                recommendations.append(
+                    {
+                        "text": f"Use this HMW for ideation: {statement}"
+                        + (f" Rationale: {rationale}" if rationale else ""),
+                        "priority": "high",
+                    }
+                )
         for regression in _list_items(data.get("regressions")):
             item = as_dict(regression)
             metric = _compact_text(item.get("metric"), limit=120)
             status = _compact_text(item.get("investigation_status"), limit=80)
             if metric:
-                recommendations.append({
-                    "text": f"Investigate the {metric} regression" + (f" ({status})." if status else "."),
-                    "priority": _compact_text(item.get("severity"), limit=40) or "medium",
-                })
+                recommendations.append(
+                    {
+                        "text": f"Investigate the {metric} regression"
+                        + (f" ({status})." if status else "."),
+                        "priority": _compact_text(item.get("severity"), limit=40) or "medium",
+                    }
+                )
 
     return (
         [item for item in nuggets if item.get("text")][:item_limit],
@@ -434,7 +468,9 @@ def _deterministic_findings_from_research_data(
             }
         )
     else:
-        facts.append({"text": f"Input for {display} contains {len(lines)} non-empty evidence line(s)."})
+        facts.append(
+            {"text": f"Input for {display} contains {len(lines)} non-empty evidence line(s)."}
+        )
 
     has_date_column = any(col.lower() in {"date", "timestamp", "week", "month"} for col in columns)
     if has_date_column and len(rows) < 6:
@@ -451,11 +487,18 @@ def _deterministic_findings_from_research_data(
             f"{display} has usable input evidence, but the model returned no normalized findings; "
             "the fallback preserved the available evidence for review."
         )
-        recommendation_text = "Review the source data and rerun the skill if deeper model synthesis is required."
+        recommendation_text = (
+            "Review the source data and rerun the skill if deeper model synthesis is required."
+        )
 
     insights = [{"text": insight_text, "confidence": "low"}]
     recommendations = [{"text": recommendation_text, "priority": "medium"}]
-    return nuggets[:item_limit], facts[:item_limit], insights[:item_limit], recommendations[:item_limit]
+    return (
+        nuggets[:item_limit],
+        facts[:item_limit],
+        insights[:item_limit],
+        recommendations[:item_limit],
+    )
 
 
 def _fallback_plan(
@@ -717,9 +760,7 @@ def create_skill(
 
             static_prompt = _build_full_prompt("", methodology)
             schema_tokens = (
-                count_tokens(json.dumps(schema_dict, ensure_ascii=False))
-                if schema_dict
-                else 0
+                count_tokens(json.dumps(schema_dict, ensure_ascii=False)) if schema_dict else 0
             )
             static_tokens = (
                 count_tokens(static_prompt)
@@ -803,10 +844,10 @@ def create_skill(
                 )
                 raw_content = ""
                 data = None
-            
+
             # Remove thinking tags from JSON parsing if model included them outside JSON
             clean_content = strip_thinking_markers(raw_content)
-            
+
             json_success = False
             repaired_from_non_json = False
             repaired_content = ""
@@ -861,27 +902,27 @@ def create_skill(
                         spine_phase="recovery",
                     )
                     repaired_content = repair_outcome.text
-                    data = (
-                        repair_outcome.value
-                        if repair_outcome.status == "success"
-                        else None
-                    )
+                    data = repair_outcome.value if repair_outcome.status == "success" else None
                     clean_repaired_content = strip_thinking_markers(repaired_content)
                     data = data or _parse_json_response(clean_repaired_content)
                     repaired_from_non_json = bool(data)
                     json_success = bool(data)
                     if repaired_from_non_json:
-                        logger.info("Skill %s repaired non-JSON LLM output into structured JSON.", self.name)
+                        logger.info(
+                            "Skill %s repaired non-JSON LLM output into structured JSON.", self.name
+                        )
                 except Exception as e:
-                    logger.warning("Skill %s JSON repair failed after non-JSON output: %s", self.name, e)
+                    logger.warning(
+                        "Skill %s JSON repair failed after non-JSON output: %s", self.name, e
+                    )
 
             if not data:
                 plain_repair_prompt = (
                     "You are converting a UX research skill result into Istara JSON.\n"
                     "Return one valid JSON object only. No markdown, no commentary, no hidden reasoning.\n"
-                        "The object must contain provisional candidate summary, nuggets, facts, insights, recommendations, and suggestions.\n"
-                        "Atomic Research artifacts are not trusted at this stage; use exact source spans where available.\n"
-                        "Use empty arrays when evidence is missing.\n\n"
+                    "The object must contain provisional candidate summary, nuggets, facts, insights, recommendations, and suggestions.\n"
+                    "Atomic Research artifacts are not trusted at this stage; use exact source spans where available.\n"
+                    "Use empty arrays when evidence is missing.\n\n"
                     f"Skill: {self.name}\n"
                     f"Display name: {display}\n"
                     f"Research data sample:\n{data_content[:2500]}\n\n"
@@ -895,9 +936,7 @@ def create_skill(
                     from app.core.agentic import agentic
                     from app.core.agentic.types import TurnParams
 
-                    plain_system = (
-                        "Return exactly one syntactically valid JSON object for Istara."
-                    )
+                    plain_system = "Return exactly one syntactically valid JSON object for Istara."
                     plain_outcome = await agentic.completion(
                         purpose="skill.repair_plain",
                         project_id=skill_input.project_id,
@@ -920,7 +959,10 @@ def create_skill(
                     repaired_from_non_json = bool(data)
                     json_success = bool(data)
                     if data:
-                        logger.info("Skill %s recovered structured JSON through plain repair fallback.", self.name)
+                        logger.info(
+                            "Skill %s recovered structured JSON through plain repair fallback.",
+                            self.name,
+                        )
                 except Exception as e:
                     logger.warning("Skill %s plain JSON repair fallback failed: %s", self.name, e)
 
@@ -932,7 +974,9 @@ def create_skill(
                     errors=["LLM returned non-JSON or empty JSON output."],
                     artifacts={
                         f"{skill_name}_raw_response.txt": raw_content[:4000],
-                        f"{skill_name}_repair_response.txt": (repaired_content or plain_repair_content)[:4000],
+                        f"{skill_name}_repair_response.txt": (
+                            repaired_content or plain_repair_content
+                        )[:4000],
                         f"{skill_name}_schema_budget.json": json.dumps(
                             schema_budget.to_dict(),
                             indent=2,
@@ -975,8 +1019,7 @@ def create_skill(
                     from app.core.agentic.types import TurnParams
 
                     findings_system = (
-                        "Return exactly one valid JSON object "
-                        "with non-empty Istara findings."
+                        "Return exactly one valid JSON object with non-empty Istara findings."
                     )
                     empty_outcome = await agentic.completion(
                         purpose="skill.repair_findings",
@@ -996,7 +1039,9 @@ def create_skill(
                         spine_phase="recovery",
                     )
                     empty_findings_repair_content = empty_outcome.text
-                    repaired_data = _parse_json_response(strip_thinking_markers(empty_findings_repair_content))
+                    repaired_data = _parse_json_response(
+                        strip_thinking_markers(empty_findings_repair_content)
+                    )
                     if repaired_data:
                         repaired = _normalize_generated_findings(
                             repaired_data,
@@ -1007,7 +1052,9 @@ def create_skill(
                             data = repaired_data
                             nuggets, facts, insights, recommendations = repaired
                             repaired_from_empty_findings = True
-                            logger.info("Skill %s repaired valid JSON with empty findings.", self.name)
+                            logger.info(
+                                "Skill %s repaired valid JSON with empty findings.", self.name
+                            )
                 except Exception as e:
                     logger.warning("Skill %s empty-finding repair failed: %s", self.name, e)
 
@@ -1027,7 +1074,10 @@ def create_skill(
                         or f"{display} completed with deterministic evidence fallback.",
                         "deterministic_findings_fallback": True,
                     }
-                    logger.info("Skill %s used deterministic evidence fallback after empty model findings.", self.name)
+                    logger.info(
+                        "Skill %s used deterministic evidence fallback after empty model findings.",
+                        self.name,
+                    )
 
             if finding_count() == 0:
                 logger.warning("Skill %s returned structured JSON without findings.", self.name)
@@ -1037,7 +1087,9 @@ def create_skill(
                     errors=["LLM returned structured JSON without findings."],
                     artifacts={
                         f"{skill_name}_analysis.json": json.dumps(data, indent=2),
-                        f"{skill_name}_empty_findings_repair.txt": empty_findings_repair_content[:4000],
+                        f"{skill_name}_empty_findings_repair.txt": empty_findings_repair_content[
+                            :4000
+                        ],
                         f"{skill_name}_schema_budget.json": json.dumps(
                             schema_budget.to_dict(),
                             indent=2,
@@ -1065,7 +1117,11 @@ def create_skill(
                         else {}
                     ),
                     **(
-                        {f"{skill_name}_empty_findings_repair.txt": empty_findings_repair_content[:4000]}
+                        {
+                            f"{skill_name}_empty_findings_repair.txt": empty_findings_repair_content[
+                                :4000
+                            ]
+                        }
                         if repaired_from_empty_findings and empty_findings_repair_content
                         else {}
                     ),

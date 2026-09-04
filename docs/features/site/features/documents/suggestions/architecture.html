@@ -245,24 +245,47 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Interactive suggestions surface possible next actions or edits for document-centered workflows.</p>
+<p>Interactive suggestions create a project-scoped chat session and stream</p>
+<p>provisional organization guidance for the current document library. The panel</p>
+<p>shows immediate loading state, displays server-provided SSE failures, and</p>
+<p>allows an active request to be cancelled through its request signal.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/InteractiveSuggestionBox.tsx</code></li>
 <li><code>frontend/src/components/documents/DocumentsView.tsx</code></li>
+<li><code>frontend/src/lib/suggestionStream.ts</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
 <ul>
-<li>None recorded.</li>
+<li>Local component state owns the suggestion session, message stream, visible</li>
 </ul>
+<p>error, and active <code>AbortController</code>.</p>
 <h3 id="api-and-backend">API And Backend</h3>
 <ul>
-<li><code>backend/app/api/routes/documents.py</code></li>
+<li><code>backend/app/api/routes/sessions.py</code> creates the project-scoped suggestion</li>
 </ul>
+<p>session.</p>
+<ul>
+<li><code>backend/app/api/routes/chat.py</code> streams suggestion events through the same</li>
+</ul>
+<p>governed chat route used by Chat.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/common/InteractiveSuggestionBox.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Stream <code>error</code> events are terminal visible failures, including the</li>
+</ul>
+<p>credential/readiness guidance supplied by the server. They must never leave</p>
+<p>an empty assistant row or an apparently idle blank panel.</p>
+<ul>
+<li>The Stop control passes an <code>AbortSignal</code> into the active chat request. It is</li>
+</ul>
+<p>not a cosmetic streaming-state toggle.</p>
+<ul>
+<li>Suggestions remain provisional conversation output. Opening this panel does</li>
+</ul>
+<p>not mutate, rename, move, validate, or make a document reportable.</p>
+<ul>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -272,8 +295,13 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>frontend/src/lib/suggestionStream.test.ts</code> covers ordered chunk accumulation,</li>
 </ul>
+<p>terminal SSE error propagation, and forwarding of the active abort signal.</p>
+<ul>
+<li>Published-UI verification covers the unavailable-model state: loading is</li>
+</ul>
+<p>visible and the server guidance replaces the prior empty panel.</p>
 <h2 id="related-features">Related Features</h2>
 <ul>
 <li><a href="../preview/architecture.html">documents.preview</a></li>

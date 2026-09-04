@@ -18,7 +18,8 @@ export const name = "Event Wiring Audit";
 export const id = "30-event-wiring-audit";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = join(__dirname, "..", "..", "..");
+const configuredRepoRoot = String(process.env.ISTARA_SIM_REPO_ROOT || "").trim();
+const REPO_ROOT = configuredRepoRoot || join(__dirname, "..", "..", "..");
 
 export async function run(ctx) {
   const { api, page } = ctx;
@@ -61,8 +62,19 @@ export async function run(ctx) {
   // Verify via settings/status that backend is healthy (proxy for all modules loaded)
   try {
     const health = await api.get("/api/settings/status");
-    check(2, "Backend healthy (all modules loaded)", health.status === "healthy" || health.status === "ok",
-      JSON.stringify(health).slice(0, 100));
+    // Contract-mode QA intentionally has a reachable provider stub without a
+    // chat-ready model. The backend is operational in that state and reports
+    // `degraded`; only accept it when the readiness payload confirms the
+    // bounded capability gap, so a real outage still fails this check.
+    const contractModeDegraded = health.status === "degraded"
+      && health.services?.llm === "connected"
+      && health.llm_readiness?.chat_ready === false;
+    const operational = health.status === "ok"
+      || health.status === "healthy"
+      || health.healthy === true
+      || contractModeDegraded;
+    check(2, "Backend healthy (all modules loaded)", operational,
+      JSON.stringify(health).slice(0, 160));
   } catch (e) {
     check(2, "Backend healthy (all modules loaded)", false, e.message);
   }

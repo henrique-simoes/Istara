@@ -72,9 +72,7 @@ def _sha256_file(path: str | Path) -> str:
 def _redact_env_content(content: str) -> str:
     """Replace API key / secret values in .env content with [REDACTED]."""
     redacted_lines: list[str] = []
-    sensitive_patterns = re.compile(
-        r"(key|secret|token|password|credential)", re.IGNORECASE
-    )
+    sensitive_patterns = re.compile(r"(key|secret|token|password|credential)", re.IGNORECASE)
     for line in content.splitlines(keepends=True):
         stripped = line.strip()
         if stripped and not stripped.startswith("#") and "=" in stripped:
@@ -282,7 +280,9 @@ class BackupManager:
         encrypted_archive = bool(settings.file_encryption_enabled)
         filename = f"{base_filename}.enc" if encrypted_archive else base_filename
         archive_path = _safe_backup_path(filename)
-        build_archive_path = archive_path.with_name(base_filename) if encrypted_archive else archive_path
+        build_archive_path = (
+            archive_path.with_name(base_filename) if encrypted_archive else archive_path
+        )
 
         # Create DB record (in_progress)
         async with async_session() as db:
@@ -360,15 +360,22 @@ class BackupManager:
             # Enforce retention
             await self.enforce_retention()
 
-            await self._broadcast("backup_completed", record_id, {
-                "backup_type": backup_type,
-                "size_bytes": total_size,
-                "file_count": file_count,
-            })
+            await self._broadcast(
+                "backup_completed",
+                record_id,
+                {
+                    "backup_type": backup_type,
+                    "size_bytes": total_size,
+                    "file_count": file_count,
+                },
+            )
 
             logger.info(
                 "Backup completed: %s (%s, %d bytes, %d files)",
-                filename, backup_type, total_size, file_count,
+                filename,
+                backup_type,
+                total_size,
+                file_count,
             )
 
             return {
@@ -443,7 +450,14 @@ class BackupManager:
             lance_src = "./data/lance_db"
             if Path(lance_src).is_dir():
                 lance_dest = tmp / "data" / "lance_db"
-                self._copy_dir(lance_src, str(lance_dest), "data/lance_db", checksums, backup_type, previous_checksums)
+                self._copy_dir(
+                    lance_src,
+                    str(lance_dest),
+                    "data/lance_db",
+                    checksums,
+                    backup_type,
+                    previous_checksums,
+                )
                 stores = _count_subdirs(lance_dest) if lance_dest.exists() else 0
                 components["lance_db"] = {"stores": stores}
 
@@ -451,7 +465,14 @@ class BackupManager:
             kw_src = "./data/keyword_index"
             if Path(kw_src).is_dir():
                 kw_dest = tmp / "data" / "keyword_index"
-                self._copy_dir(kw_src, str(kw_dest), "data/keyword_index", checksums, backup_type, previous_checksums)
+                self._copy_dir(
+                    kw_src,
+                    str(kw_dest),
+                    "data/keyword_index",
+                    checksums,
+                    backup_type,
+                    previous_checksums,
+                )
                 kw_files = _dir_file_count(kw_dest) if kw_dest.exists() else 0
                 components["keyword_index"] = {"files": kw_files}
 
@@ -459,7 +480,14 @@ class BackupManager:
             uploads_src = settings.upload_dir
             if Path(uploads_src).is_dir():
                 uploads_dest = tmp / "data" / "uploads"
-                self._copy_dir(uploads_src, str(uploads_dest), "data/uploads", checksums, backup_type, previous_checksums)
+                self._copy_dir(
+                    uploads_src,
+                    str(uploads_dest),
+                    "data/uploads",
+                    checksums,
+                    backup_type,
+                    previous_checksums,
+                )
                 upload_dirs = _count_subdirs(uploads_dest) if uploads_dest.exists() else 0
                 components["uploads"] = {"dirs": upload_dirs}
 
@@ -467,7 +495,14 @@ class BackupManager:
             projects_src = settings.projects_dir
             if Path(projects_src).is_dir():
                 projects_dest = tmp / "data" / "projects"
-                self._copy_dir(projects_src, str(projects_dest), "data/projects", checksums, backup_type, previous_checksums)
+                self._copy_dir(
+                    projects_src,
+                    str(projects_dest),
+                    "data/projects",
+                    checksums,
+                    backup_type,
+                    previous_checksums,
+                )
                 proj_count = _count_subdirs(projects_dest) if projects_dest.exists() else 0
                 components["projects"] = {"count": proj_count}
 
@@ -483,7 +518,14 @@ class BackupManager:
             personas_src = "./backend/app/agents/personas"
             if Path(personas_src).is_dir():
                 personas_dest = tmp / "backend" / "app" / "agents" / "personas"
-                self._copy_dir(personas_src, str(personas_dest), "backend/app/agents/personas", checksums, backup_type, previous_checksums)
+                self._copy_dir(
+                    personas_src,
+                    str(personas_dest),
+                    "backend/app/agents/personas",
+                    checksums,
+                    backup_type,
+                    previous_checksums,
+                )
                 persona_count = sum(1 for f in Path(personas_src).rglob("*.md"))
                 components["personas"] = {"count": persona_count}
 
@@ -491,7 +533,14 @@ class BackupManager:
             skills_src = "./backend/app/skills/definitions"
             if Path(skills_src).is_dir():
                 skills_dest = tmp / "backend" / "app" / "skills" / "definitions"
-                self._copy_dir(skills_src, str(skills_dest), "backend/app/skills/definitions", checksums, backup_type, previous_checksums)
+                self._copy_dir(
+                    skills_src,
+                    str(skills_dest),
+                    "backend/app/skills/definitions",
+                    checksums,
+                    backup_type,
+                    previous_checksums,
+                )
                 skill_count = sum(1 for f in Path(skills_src).rglob("*.json"))
                 components["skills"] = {"count": skill_count}
 
@@ -513,9 +562,7 @@ class BackupManager:
                 checksums["backend/.env"] = _sha256_file(dest)
 
             # ── Build manifest ──
-            total_size = sum(
-                f.stat().st_size for f in Path(tmp).rglob("*") if f.is_file()
-            )
+            total_size = sum(f.stat().st_size for f in Path(tmp).rglob("*") if f.is_file())
             file_count = sum(1 for f in Path(tmp).rglob("*") if f.is_file())
 
             manifest = {
@@ -556,7 +603,9 @@ class BackupManager:
                 "archive_checksum": archive_checksum,
             }
 
-    def _encrypt_archive_sync(self, plain_archive: str, encrypted_archive: str, result: dict) -> dict:
+    def _encrypt_archive_sync(
+        self, plain_archive: str, encrypted_archive: str, result: dict
+    ) -> dict:
         """Encrypt a freshly built backup archive and remove the plaintext copy."""
         encrypt_file_to_path(plain_archive, encrypted_archive, force=True)
         try:
@@ -596,7 +645,10 @@ class BackupManager:
 
                 if backup_type == "incremental":
                     current_hash = _sha256_file(item)
-                    if archive_key in previous_checksums and previous_checksums[archive_key] == current_hash:
+                    if (
+                        archive_key in previous_checksums
+                        and previous_checksums[archive_key] == current_hash
+                    ):
                         continue  # Unchanged, skip
 
                 target = dest_path / relative_path
@@ -657,9 +709,7 @@ class BackupManager:
     async def restore_from_backup(self, backup_id: str) -> dict:
         """Extract archive, verify checksums, restore DB and filesystem dirs."""
         async with async_session() as db:
-            result = await db.execute(
-                select(BackupRecord).where(BackupRecord.id == backup_id)
-            )
+            result = await db.execute(select(BackupRecord).where(BackupRecord.id == backup_id))
             record = result.scalar_one_or_none()
             if not record:
                 raise ValueError(f"Backup record not found: {backup_id}")
@@ -741,7 +791,9 @@ class BackupManager:
                 if actual_hash != expected_hash:
                     mismatches.append(f"mismatch: {rel_path}")
             if mismatches:
-                raise ValueError(f"Backup checksum verification failed: {', '.join(mismatches[:5])}")
+                raise ValueError(
+                    f"Backup checksum verification failed: {', '.join(mismatches[:5])}"
+                )
 
             # Restore database
             db_src = tmp / "data" / "istara.db"
@@ -799,9 +851,7 @@ class BackupManager:
     async def verify_backup(self, backup_id: str) -> dict:
         """Extract archive and verify all SHA-256 checksums match manifest."""
         async with async_session() as db:
-            result = await db.execute(
-                select(BackupRecord).where(BackupRecord.id == backup_id)
-            )
+            result = await db.execute(select(BackupRecord).where(BackupRecord.id == backup_id))
             record = result.scalar_one_or_none()
             if not record:
                 raise ValueError(f"Backup record not found: {backup_id}")
@@ -820,9 +870,7 @@ class BackupManager:
         # Update record status
         now = datetime.now(timezone.utc)
         async with async_session() as db:
-            rec_result = await db.execute(
-                select(BackupRecord).where(BackupRecord.id == backup_id)
-            )
+            rec_result = await db.execute(select(BackupRecord).where(BackupRecord.id == backup_id))
             rec = rec_result.scalar_one()
             rec.verified_at = now
             if verify_result["valid"]:
@@ -896,7 +944,7 @@ class BackupManager:
             if len(all_records) <= settings.backup_retention_count:
                 return 0
 
-            to_delete = all_records[settings.backup_retention_count:]
+            to_delete = all_records[settings.backup_retention_count :]
             deleted = 0
 
             for record in to_delete:
@@ -908,9 +956,7 @@ class BackupManager:
                 except (OSError, ValueError):
                     logger.warning("Could not delete backup file for record: %s", record.id)
 
-                await db.execute(
-                    delete(BackupRecord).where(BackupRecord.id == record.id)
-                )
+                await db.execute(delete(BackupRecord).where(BackupRecord.id == record.id))
                 deleted += 1
 
             await db.commit()
@@ -963,9 +1009,7 @@ class BackupManager:
     async def list_backups(self) -> list[dict]:
         """Return all BackupRecord dicts ordered by creation date desc."""
         async with async_session() as db:
-            result = await db.execute(
-                select(BackupRecord).order_by(BackupRecord.created_at.desc())
-            )
+            result = await db.execute(select(BackupRecord).order_by(BackupRecord.created_at.desc()))
             return [r.to_dict() for r in result.scalars().all()]
 
     # -- Delete --------------------------------------------------------------
@@ -973,9 +1017,7 @@ class BackupManager:
     async def delete_backup(self, backup_id: str) -> bool:
         """Delete a single backup record and its archive file."""
         async with async_session() as db:
-            result = await db.execute(
-                select(BackupRecord).where(BackupRecord.id == backup_id)
-            )
+            result = await db.execute(select(BackupRecord).where(BackupRecord.id == backup_id))
             record = result.scalar_one_or_none()
             if not record:
                 return False
@@ -988,9 +1030,7 @@ class BackupManager:
             except (OSError, ValueError):
                 logger.warning("Backup record has invalid archive filename: %s", record.id)
 
-            await db.execute(
-                delete(BackupRecord).where(BackupRecord.id == record.id)
-            )
+            await db.execute(delete(BackupRecord).where(BackupRecord.id == record.id))
             await db.commit()
             return True
 
@@ -999,9 +1039,7 @@ class BackupManager:
     async def get_archive_path(self, backup_id: str) -> Path | None:
         """Return the archive file path for a backup, or None."""
         async with async_session() as db:
-            result = await db.execute(
-                select(BackupRecord).where(BackupRecord.id == backup_id)
-            )
+            result = await db.execute(select(BackupRecord).where(BackupRecord.id == backup_id))
             record = result.scalar_one_or_none()
             if not record:
                 return None
@@ -1018,6 +1056,7 @@ class BackupManager:
         """Broadcast a backup event via WebSocket."""
         try:
             from app.api.websocket import broadcast_backup_event
+
             await broadcast_backup_event(event, backup_id, details)
         except Exception:
             logger.debug("Could not broadcast backup event: %s", event, exc_info=True)

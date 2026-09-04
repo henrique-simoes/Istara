@@ -245,11 +245,13 @@
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>User management supports team member visibility and administrative user operations through <code>/auth/users</code>.</p>
+<p>User management supports team member visibility and administrative user operations through <code>/auth/users</code>. User email is encrypted at rest and the API must fail closed if an encrypted email cannot be decrypted: Settings may show an unavailable/blank value, but it must never receive or render raw <code>ENC:</code> ciphertext.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/UserManagement.tsx</code></li>
 <li><code>backend/app/api/routes/auth.py</code></li>
+<li><code>backend/app/core/field_encryption.py</code></li>
+<li><code>docker-compose.qa.yml</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -263,6 +265,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/common/UserManagement.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li><code>/api/auth/users</code> serializes <code>User.email</code> only after SQLAlchemy field decryption. Unreadable encrypted field values return an unavailable empty string and increment value-free encryption health counters; ciphertext, keys, and encrypted blobs are never returned to the browser.</li>
+<li>The QA stack sets a stable test-only <code>DATA_ENCRYPTION_KEY</code> for <code>qa-backend</code>, overridable with <code>QA_DATA_ENCRYPTION_KEY</code>, so backend recreation does not break encrypted user PII in disposable QA databases. The fallback is QA-only and must not be copied into the base compose.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -273,6 +277,9 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_auth_security.py</code></li>
+<li><code>tests/test_auth_encrypted_pii.py</code></li>
+<li><code>tests/test_field_encryption.py</code></li>
+<li><code>tests/test_qa_stack_contract.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

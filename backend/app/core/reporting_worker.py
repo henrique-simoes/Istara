@@ -11,13 +11,14 @@ from app.core.report_manager import report_manager
 
 logger = logging.getLogger(__name__)
 
+
 async def spawn_report_drafting(project_id: str, task_id: str):
     """Background task to draft reports after task completion."""
     logger.info(f"Triggering autonomous report drafting for project {project_id} (task {task_id})")
-    
+
     # Wait a moment for any last-minute DB flushes/finding migrations
     await asyncio.sleep(2)
-    
+
     async with async_session() as db:
         try:
             # ReportManager already has check_synthesis_trigger which handles L3/L4

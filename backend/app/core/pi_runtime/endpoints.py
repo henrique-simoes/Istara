@@ -8,10 +8,12 @@ Pi API endpoint there would allow a same-model donor collision.
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from dataclasses import dataclass
 from hashlib import sha256
 from typing import Any
+from urllib.parse import urlparse
 
 from app.config import (
     PiApiEndpoint,
@@ -78,6 +80,29 @@ def _read_endpoint_secret(endpoint: PiApiEndpoint) -> str:
 
 class PiEndpointResolutionError(ValueError):
     """A selected Pi request has no usable, exact endpoint binding."""
+
+
+def enforce_test_provider_network_policy(endpoint: "ResolvedPiEndpoint") -> None:
+    """Fail closed before ordinary tests can contact a public provider.
+
+    Keep this guard at the shared Pi endpoint boundary so both worker-backed
+    chat and Python-direct embeddings obey ``ISTARA_TEST_BLOCK_EXTERNAL_LLM``.
+    Loopback, Docker service names, faux providers, local ``.local`` hosts,
+    and reserved test domains remain available to deterministic contract tests.
+    """
+    if os.environ.get("ISTARA_TEST_BLOCK_EXTERNAL_LLM") != "1":
+        return
+    if endpoint.provider_kind == "faux":
+        return
+    host = (urlparse(endpoint.base_url).hostname or "").lower()
+    if (
+        not host
+        or host in {"localhost", "127.0.0.1", "::1"}
+        or "." not in host
+        or host.endswith((".invalid", ".example", ".test", ".local"))
+    ):
+        return
+    raise PiEndpointResolutionError(f"external_provider_blocked_in_test:{endpoint.endpoint_id}")
 
 
 class PiRuntimeTurnError(RuntimeError):

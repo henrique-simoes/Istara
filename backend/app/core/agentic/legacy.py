@@ -519,9 +519,7 @@ async def _ensemble(kwargs: dict[str, Any]) -> dict[str, Any]:
         raise PiEndpointResolutionError("ensemble_width_must_be_positive")
     raw_minimum_n = kwargs.get("minimum_n")
     if raw_minimum_n is not None and (
-        not isinstance(raw_minimum_n, int)
-        or isinstance(raw_minimum_n, bool)
-        or raw_minimum_n < 1
+        not isinstance(raw_minimum_n, int) or isinstance(raw_minimum_n, bool) or raw_minimum_n < 1
     ):
         raise PiEndpointResolutionError("ensemble_minimum_width_must_be_positive")
     n = raw_n

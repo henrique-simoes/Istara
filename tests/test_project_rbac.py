@@ -146,6 +146,29 @@ async def test_admin_sees_all_projects_researcher_only_invited_projects():
 
 
 @pytest.mark.asyncio
+async def test_global_admin_access_review_returns_project_memberships():
+    """The admin access review must load memberships instead of returning a 500."""
+    await init_db()
+    project = await _seed_project(f"Admin Access {uuid.uuid4()}")
+    member_id = f"admin-access-member-{uuid.uuid4()}"
+    await _seed_member(project.id, member_id, "researcher")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            "/api/admin/access",
+            headers=_headers("admin-user", "admin", "admin"),
+        )
+
+    assert response.status_code == 200
+    memberships = response.json()["memberships"]
+    membership = next(item for item in memberships if item["id"])
+    assert membership["project_id"] == project.id
+    assert membership["user_id"] == member_id
+    assert membership["role"] == "researcher"
+
+
+@pytest.mark.asyncio
 async def test_uninvited_project_detail_is_concealed_as_404():
     await init_db()
     project = await _seed_project(f"Concealed {uuid.uuid4()}")

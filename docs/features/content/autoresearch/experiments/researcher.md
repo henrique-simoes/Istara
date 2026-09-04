@@ -9,7 +9,7 @@ related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_engine.py", "backend/app/core/autoresearch_runners/model_temp.py", "backend/app/core/autoresearch_runners/question_bank.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
 test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w6_autoresearch_runners.py"]
-last_verified: 2026-07-22
+last_verified: 2026-09-02
 compass: CF-SPEC-60 / CF-754; CF-SPEC-96 / CF-1226; CF-SPEC-8
 ---
 
@@ -46,6 +46,7 @@ Autoresearch Experiments exists so the work represented by Autoresearch > Experi
 - Project-scoped experiment history and runtime actions associated with the active project.
 - Generated experiment records, reasoning memories, and improvement proposals keep the project id that authorized the run.
 - Question-bank experiments can only evaluate or rewrite deployments that belong to the active project; stale deployment ids from another project are treated as not found before LLM evaluation or mutation.
+- Dry-run starts remain mutation-free but use the same six-runner `loop_type` validation as live starts; unsupported loop names return a clear client error instead of a misleading proposal.
 
 ## Model Routing And Engine Selection
 

@@ -9,7 +9,7 @@ related_glossary: ["a2a"]
 code_references: ["frontend/src/components/agents/AgentsView.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py", "backend/app/agents/custom_worker.py", "backend/app/core/agent_identity.py", "backend/app/core/agent_learning.py", "backend/app/core/self_evolution.py", "backend/app/core/agent_memory.py", "backend/app/core/permissions.py"]
 api_references: ["backend/app/api/routes/agents.py", "backend/app/api/agent_project_scope.py"]
 test_references: ["tests/test_agents.py", "tests/test_agent_mutation_scope.py", "tests/test_agent_scope_contracts.py", "tests/test_agent_learning_scope.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-08-25
+last_verified: 2026-09-01
 compass: CF-SPEC-60 / CF-776; CF-SPEC-68 / CF-870; CF-SPEC-83 / CF-1075; CF-SPEC-89 / CF-1125; CF-SPEC-129
 ---
 
@@ -48,6 +48,7 @@ Selected agent details expose overview, identity, memory, and permission informa
 - Structured agent learnings are stored and retrieved only with an explicit project id. Project task failures or review feedback must not append private project content into universal persona MEMORY overlays.
 - Agent-run and manually-run skill outputs are stored as candidate/provisional Research Spine artifacts unless exact source spans are available for governed coding and later reliability/reconciliation gates accept them. Agent detail and work history must not imply those artifacts are reportable before Done-task approval.
 - Custom workers never write `TaskStatus.DONE`. Successful agent execution ends in the normal In Review flow, while a task whose project cannot be resolved is marked `IN_REVIEW` with `needs_revision` and an explicit human-facing failure reason. Only the human approval route may create approved Done state.
+- Custom-worker execution failures persist `retry_count` and `last_retry_at`, respect bounded exponential backoff before another pickup, and return retryable failures to Backlog with a terminal realtime `retry_scheduled` outcome. Once `max_retries` is reached, the worker creates a `system_failed` review event, moves the task to `IN_REVIEW`, preserves any existing human `what_to_review` instruction, and emits an explicit terminal error outcome for the live Kanban/status UI.
 - Self-evolution candidate scans, auto-evolution, and promotion mutations require an explicit active project id. The route and engine reject paused or missing projects before returning candidates or writing persona-file promotions, so one project's evidence cannot mature or mutate another project's agent behavior.
 - Agent promotion review notifications are persisted with the selected agent's owning project id and project metadata. Review queues must not create global notification records from project-owned agent improvement activity.
 - Universal agent runtime memory is not exposed in project detail panels for non-admin users; project-specific notes should be read through the project-scoped memory APIs.
@@ -61,6 +62,7 @@ Selected agent details expose overview, identity, memory, and permission informa
 ## Tests And Verification
 
 - `tests/test_agents.py` verifies active-project guards for detail, identity, memory, recent logs, promotion requests, A2A messages, and that custom-worker orphan failures cannot bypass human-only Done.
+- `tests/test_task_review_history.py` verifies timezone-safe custom-worker retry backoff, bounded retry escalation, preserved human review context, and terminal realtime failure events.
 - `tests/test_agent_mutation_scope.py` verifies detail-panel mutation routes reject missing, stale cross-project, and universal/system agent ids.
 - `tests/test_agent_scope_contracts.py` verifies that detail-panel mutation calls keep active-project scope in the frontend API, store, view, and backend route layer.
 - `tests/test_agent_learning_scope.py` verifies that structured learnings, resolution lookup, self-evolution promotion candidates, and paused-project self-evolution guards do not cross project boundaries.

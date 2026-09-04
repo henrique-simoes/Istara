@@ -173,9 +173,7 @@ async def _stream_openai(
     remaining = content_filter.flush()
     if remaining:
         yield remaining
-    if accumulated_tool_calls and any(
-        tc["function"]["name"] for tc in accumulated_tool_calls
-    ):
+    if accumulated_tool_calls and any(tc["function"]["name"] for tc in accumulated_tool_calls):
         yield {"tool_calls": accumulated_tool_calls, "finish_reason": "tool_calls"}
 
 

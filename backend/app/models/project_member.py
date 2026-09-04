@@ -27,9 +27,7 @@ class ProjectMember(Base):
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-    last_active: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_active: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def to_dict(self) -> dict:
         return {

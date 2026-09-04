@@ -74,9 +74,7 @@ async def _configured_pi_endpoint(model: str | None, project_id: str | None = No
             )
         ]
         if model:
-            candidates = [
-                info for info in candidates if str(getattr(info, "model", "")) == model
-            ]
+            candidates = [info for info in candidates if str(getattr(info, "model", "")) == model]
         for target in candidates:
             try:
                 return manager.resolve(

@@ -250,8 +250,11 @@
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/kanban/KanbanBoard.tsx</code></li>
+<li><code>frontend/src/components/common/ToastNotification.tsx</code></li>
+<li><code>frontend/src/lib/taskProgressToast.ts</code></li>
 <li><code>frontend/src/stores/taskStore.ts</code></li>
 <li><code>backend/app/api/routes/tasks.py</code></li>
+<li><code>backend/app/api/websocket.py</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -269,7 +272,12 @@
 <li><code>frontend/src/stores/taskStore.ts</code> clears stale cards when there is no active project or when a scoped fetch fails, then filters returned rows back to the active project id as a frontend defense-in-depth check.</li>
 <li>Task detail and mutation actions also carry the active project id. By-id reads, updates, moves, locking, review transitions, attachment changes, report creation, and deletion load tasks by both <code>Task.id</code> and <code>Task.project_id</code>, so a stale task id from another authorized project resolves as not found in the current board.</li>
 <li>Kanban cards, assignment menus, priority menus, and drag/drop moves pass <code>activeProjectId</code> through the task store instead of relying on globally unique task ids.</li>
+<li>Quick-create uses <code>lock_for_edit</code> so the backend persists the new task and its authenticated user editing lock in one transaction. The card opens in Task Editor immediately, and assigned or fallback workers skip the task until a successful editor save releases that lock.</li>
+<li>Existing cards acquire the same project-scoped lock before opening. A conflicting editor receives an explicit warning instead of opening a form that cannot safely own the task.</li>
+<li>Agent terminal progress now includes <code>project_id</code>. The board debounces terminal <code>task_progress</code> and <code>task_queue_update</code> events into a non-destructive scoped refresh, so a card moves to In Review or another terminal column without temporarily clearing the whole board.</li>
 <li>Cross-project task aggregation belongs on explicit admin reporting surfaces, not on the project-facing Kanban route or store.</li>
+<li>Realtime terminal progress carries an explicit <code>outcome</code> separate from numeric progress. Verified work uses <code>ready_for_review</code>; failed self-verification uses <code>verification_failed</code>. The toast layer renders those as <code>Ready for Review</code> and <code>Task Needs Attention</code> respectively, and never infers successful completion from an unclassified 100% event.</li>
+<li>Legacy verification-failure messages are also classified as warnings, and backend <code>agent_status: warning</code> events remain visible as <code>Agent Needs Attention</code> instead of being dropped.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -281,6 +289,10 @@
 <ul>
 <li><code>tests/test_tasks.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_websocket.py</code></li>
+<li><code>frontend/src/lib/taskProgressToast.test.ts</code></li>
+<li><code>frontend/src/lib/taskRealtime.test.ts</code></li>
+<li><code>frontend/src/stores/taskStore.test.ts</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

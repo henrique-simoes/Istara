@@ -133,7 +133,9 @@ def _detect_apple_gpu() -> GpuInfo | None:
                 text=True,
                 timeout=5,
             )
-            chip_name = chip_result.stdout.strip() if chip_result.returncode == 0 else "Apple Silicon"
+            chip_name = (
+                chip_result.stdout.strip() if chip_result.returncode == 0 else "Apple Silicon"
+            )
             return GpuInfo(vendor="Apple", name=chip_name, vram_mb=vram_mb)
     except (subprocess.TimeoutExpired, ValueError):
         pass

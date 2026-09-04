@@ -63,6 +63,7 @@ class ResourceGovernor:
 
         try:
             import psutil
+
             mem = psutil.virtual_memory()
             cpu_pct = psutil.cpu_percent(interval=0.1)
             disk = psutil.disk_usage("/")
@@ -79,9 +80,13 @@ class ResourceGovernor:
         except ImportError:
             # psutil not available — use conservative defaults
             self._cached_resources = SystemResources(
-                ram_total_gb=8.0, ram_available_gb=4.0, ram_used_pct=50.0,
-                cpu_count=os.cpu_count() or 4, cpu_load_pct=50.0,
-                disk_free_gb=50.0, disk_used_pct=50.0,
+                ram_total_gb=8.0,
+                ram_available_gb=4.0,
+                ram_used_pct=50.0,
+                cpu_count=os.cpu_count() or 4,
+                cpu_load_pct=50.0,
+                disk_free_gb=50.0,
+                disk_used_pct=50.0,
             )
 
         self._last_check = now
@@ -167,6 +172,7 @@ class ResourceGovernor:
         # Boost capacity if relay nodes are available
         try:
             from app.core.compute_pool import compute_pool
+
             remote_nodes = compute_pool.total_capacity()
             if remote_nodes > 0:
                 max_agents = min(max_agents + remote_nodes, 10)
@@ -200,10 +206,16 @@ class ResourceGovernor:
         budget = self.compute_budget()
 
         if budget.paused:
-            return False, "System resources critical — all agents paused. Close other applications to free memory."
+            return (
+                False,
+                "System resources critical — all agents paused. Close other applications to free memory.",
+            )
 
         if len(self._active_agents) >= budget.max_concurrent_agents:
-            return False, f"Max concurrent agents reached ({budget.max_concurrent_agents}). Wait for a running agent to finish."
+            return (
+                False,
+                f"Max concurrent agents reached ({budget.max_concurrent_agents}). Wait for a running agent to finish.",
+            )
 
         return True, "OK"
 

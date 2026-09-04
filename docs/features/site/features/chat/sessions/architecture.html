@@ -272,6 +272,7 @@
 <li><code>sessionsApi.get</code>, <code>update</code>, <code>delete</code>, and <code>star</code> all include <code>project_id</code>; the backend verifies access to that active project and then looks up the chat session with both <code>ChatSession.id</code> and <code>ChatSession.project_id</code>.</li>
 <li>Session detail responses load messages with both <code>Message.session_id</code> and <code>Message.project_id</code>, and a cross-project active scope returns 404 instead of revealing that another project&#x27;s session exists.</li>
 <li>Session create and update validate <code>agent_id</code> against the same active project before storing it. Universal system agents are allowed; project-owned agents from another project, inactive agents, and orphaned project-scoped agents are rejected.</li>
+<li>Session create and update also reject embedding-only model names at the persistence boundary, so a stale or direct API override cannot route an embedding transport through chat.</li>
 <li>The sidebar derives <code>scopedSessions</code> from the active project before rendering rows, counts, and actions.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>

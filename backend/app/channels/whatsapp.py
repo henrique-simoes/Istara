@@ -63,9 +63,9 @@ class WhatsAppAdapter(ChannelAdapter):
 
     def __init__(self, instance_id: str = "", config: dict | None = None) -> None:
         super().__init__(instance_id, config)
-        self._phone_number_id: str = self.config.get(
-            "phone_number_id", ""
-        ) or os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+        self._phone_number_id: str = self.config.get("phone_number_id", "") or os.getenv(
+            "WHATSAPP_PHONE_NUMBER_ID", ""
+        )
         self._access_token: str = self.config.get("access_token", "") or os.getenv(
             "WHATSAPP_ACCESS_TOKEN", ""
         )
@@ -97,7 +97,7 @@ class WhatsAppAdapter(ChannelAdapter):
     def _clean_path_component(value: str | None, default: str = "file") -> str:
         """Return a filesystem-safe single path component."""
         cleaned = _SAFE_NAME_RE.sub("_", value or "").strip("._-")
-        return (cleaned[:120] if cleaned else default)
+        return cleaned[:120] if cleaned else default
 
     @staticmethod
     def _safe_suffix(suffix: str | None, default: str = ".bin") -> str:
@@ -301,11 +301,14 @@ class WhatsAppAdapter(ChannelAdapter):
         if not signature_header.startswith("sha256="):
             return False
 
-        expected = "sha256=" + hmac.new(
-            self._app_secret.encode("utf-8"),
-            raw_body,
-            hashlib.sha256,
-        ).hexdigest()
+        expected = (
+            "sha256="
+            + hmac.new(
+                self._app_secret.encode("utf-8"),
+                raw_body,
+                hashlib.sha256,
+            ).hexdigest()
+        )
         return hmac.compare_digest(signature_header, expected)
 
     async def handle_webhook(self, data: dict) -> None:
@@ -333,9 +336,7 @@ class WhatsAppAdapter(ChannelAdapter):
         except Exception:
             logger.exception("Error processing WhatsApp webhook on %s", self.name)
 
-    async def _process_webhook_message(
-        self, wa_msg: dict, contact_map: dict[str, str]
-    ) -> None:
+    async def _process_webhook_message(self, wa_msg: dict, contact_map: dict[str, str]) -> None:
         """Process a single WhatsApp message from webhook payload.
 
         Idempotent: duplicate deliveries (same external_message_id) are ignored.
@@ -397,11 +398,14 @@ class WhatsAppAdapter(ChannelAdapter):
                         "needs_review": result.needs_review,
                         "tags": result.tags,
                         "media_id": media_id,
-                        "media_mime_type": media_metadata.get("mime_type") or audio.get("mime_type"),
+                        "media_mime_type": media_metadata.get("mime_type")
+                        or audio.get("mime_type"),
                         "engine_metadata": result.metadata,
                     }
                 except Exception as exc:
-                    logger.exception("WhatsApp audio download/transcription failed on %s", self.name)
+                    logger.exception(
+                        "WhatsApp audio download/transcription failed on %s", self.name
+                    )
                     attachments.append(f"whatsapp:media:{media_id}")
                     transcription_metadata = {
                         "status": "error",
@@ -439,7 +443,11 @@ class WhatsAppAdapter(ChannelAdapter):
                 "external_message_id": msg_id,
                 "message_type": msg_type,
                 **({"transcription": transcription_metadata} if msg_type == "audio" else {}),
-                **({"transcription_tags": transcription_metadata.get("tags", [])} if msg_type == "audio" else {}),
+                **(
+                    {"transcription_tags": transcription_metadata.get("tags", [])}
+                    if msg_type == "audio"
+                    else {}
+                ),
                 **({"original_text": "[audio message]"} if msg_type == "audio" else {}),
             },
         )

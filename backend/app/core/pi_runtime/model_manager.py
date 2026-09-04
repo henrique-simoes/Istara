@@ -67,6 +67,7 @@ def _is_contract_stub_chat_entry(entry: _CatalogEntry) -> bool:
     """
     return bool(settings.llm_provider_contract_stub and entry.kind == "local")
 
+
 # Live managers, so LLMServer CRUD / network discovery can invalidate the
 # DB projection on every in-process manager (W8 UX parity) without changing
 # how managers are constructed or shared.
@@ -515,6 +516,62 @@ class PiModelManager:
             kind=entry.kind,
         )
 
+    def default_endpoint_id(self, *, project_id: str | None = None) -> str:
+        """Return the global chat default without changing capability selection."""
+        requested = str(getattr(settings, "pi_default_endpoint_id", "") or "").strip()
+        if requested:
+            entry = self._entries.get(requested)
+            if (
+                entry is not None
+                and not _is_contract_stub_chat_entry(entry)
+                and self._matches(
+                    entry,
+                    model=None,
+                    require_vision=False,
+                    min_context=0,
+                    project_id=project_id,
+                )
+            ):
+                return requested
+
+        for entry in self._entries.values():
+            if (
+                entry.source == "settings"
+                and entry.endpoint_id != DEFAULT_ENDPOINT_ID
+                and not _is_contract_stub_chat_entry(entry)
+                and self._matches(
+                    entry,
+                    model=None,
+                    require_vision=False,
+                    min_context=0,
+                    project_id=project_id,
+                )
+            ):
+                return entry.endpoint_id
+
+        # Explicit catalogs (the injected authority used by deterministic
+        # harnesses and isolated callers) do not have a settings-sourced
+        # default or a resolver-backed built-in.  Selecting the resolver's
+        # global default here would silently discard the injected catalog and
+        # route an unqualified self-MoA turn to an unrelated endpoint.  Keep
+        # insertion order as the catalog's deliberate priority and apply the
+        # same project/capability admission checks used by normal resolution.
+        if self._explicit_catalog:
+            for entry in self._entries.values():
+                if not _is_contract_stub_chat_entry(entry) and self._matches(
+                    entry,
+                    model=None,
+                    require_vision=False,
+                    min_context=0,
+                    project_id=project_id,
+                ):
+                    return entry.endpoint_id
+
+        built_in = self._entries.get(DEFAULT_ENDPOINT_ID)
+        if built_in is not None and not _is_contract_stub_chat_entry(built_in):
+            return built_in.endpoint_id
+        return DEFAULT_ENDPOINT_ID
+
     def resolve(
         self,
         *,
@@ -524,6 +581,8 @@ class PiModelManager:
         min_context: int = 0,
         project_id: str | None = None,
     ) -> ResolvedPiEndpoint:
+        if endpoint_id is None and model is None and not require_vision and min_context <= 0:
+            endpoint_id = self.default_endpoint_id(project_id=project_id)
         if endpoint_id:
             if is_reserved_petals_endpoint_id(endpoint_id):
                 configured = self._entries.get(endpoint_id)
@@ -695,8 +754,7 @@ class PiModelManager:
             for entry in self._entries.values()
             if entry.provider_kind == "openai_compat"
             and not (
-                is_reserved_petals_endpoint_id(entry.endpoint_id)
-                and not _is_petals_entry(entry)
+                is_reserved_petals_endpoint_id(entry.endpoint_id) and not _is_petals_entry(entry)
             )
         ]
         if not candidates:

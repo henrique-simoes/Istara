@@ -58,8 +58,7 @@ class GoogleChatAdapter(ChannelAdapter):
             raise RuntimeError("httpx is not installed. Install with: pip install httpx")
         if not self._webhook_url and not self._service_account_json:
             raise RuntimeError(
-                "GoogleChatAdapter is not enabled "
-                "(missing webhook_url or service_account_json)"
+                "GoogleChatAdapter is not enabled (missing webhook_url or service_account_json)"
             )
         self._http = httpx.AsyncClient(timeout=30.0)
         self._running = True
@@ -111,9 +110,7 @@ class GoogleChatAdapter(ChannelAdapter):
             resp = await self._http.post(target_url, json=payload)
             resp.raise_for_status()
         except Exception:
-            logger.exception(
-                "Failed to send Google Chat message to %s", target_url[:80]
-            )
+            logger.exception("Failed to send Google Chat message to %s", target_url[:80])
 
     async def health_check(self) -> dict:
         """Basic health check for Google Chat adapter."""
@@ -132,7 +129,9 @@ class GoogleChatAdapter(ChannelAdapter):
 
     def verify_webhook_token(self, token: str | None) -> bool:
         """Verify the shared inbound webhook token."""
-        return bool(self._webhook_token and token and hmac.compare_digest(token, self._webhook_token))
+        return bool(
+            self._webhook_token and token and hmac.compare_digest(token, self._webhook_token)
+        )
 
     async def handle_webhook(self, data: dict) -> None:
         """Parse an incoming Google Chat event and dispatch."""
@@ -144,9 +143,7 @@ class GoogleChatAdapter(ChannelAdapter):
 
             # Only process MESSAGE events
             if event_type not in ("MESSAGE", "ADDED_TO_SPACE"):
-                logger.debug(
-                    "GoogleChat ignoring event type: %s on %s", event_type, self.name
-                )
+                logger.debug("GoogleChat ignoring event type: %s on %s", event_type, self.name)
                 return
 
             message_data = data.get("message", {})

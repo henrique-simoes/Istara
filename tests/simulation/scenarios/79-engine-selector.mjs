@@ -82,26 +82,32 @@ export async function run(ctx) {
       await page.waitForTimeout(300);
     }
     await page.locator('button[aria-label="Project Settings"]').first().click();
-    const group = page.locator('[role="radiogroup"][aria-label="Agent engine"]').first();
+    const group = page.locator('[role="radiogroup"][aria-labelledby="agentic-core-project-title"]').first();
     await group.waitFor({ state: "visible", timeout: 10000 });
-    const piRadio = page.locator('input[type="radio"][name="agent-engine"][value="pi"]').first();
+    const piRadio = page.locator('input[type="radio"][name="agentic-core-choice"][value="pi"]').first();
     checks.push({
       name: "Project settings engine radiogroup",
       passed: await piRadio.isChecked().catch(() => false),
       detail: `pi checked=${await piRadio.isChecked().catch(() => false)}`,
     });
     // W3 deliverable: evidence-backed comparative summary + provisional badge.
-    const provisionalBadge = page.getByText("Provisional", { exact: true }).first();
+    const provisionalBadge = page.getByText("Provisional benchmark", { exact: true }).first();
     checks.push({
       name: "Engine comparative summary present with provisional badge",
       passed: await provisionalBadge.isVisible({ timeout: 3000 }).catch(() => false),
       detail: "",
     });
-    const evidenceNote = page.getByText(/Evidence: comparison-Istara-pi\/reports\//).first();
+    // The UI intentionally renders a short, readable filename while the
+    // anchor href carries the complete repository-relative provenance path.
+    // Assert both surfaces instead of requiring hidden path text to be
+    // duplicated into the visible copy.
+    const evidenceLink = page.locator('a[href*="/reports/"]').first();
+    const evidenceHref = await evidenceLink.getAttribute("href").catch(() => "");
     checks.push({
       name: "Comparative summary cites evidence provenance",
-      passed: await evidenceNote.isVisible({ timeout: 3000 }).catch(() => false),
-      detail: "",
+      passed: await evidenceLink.isVisible({ timeout: 3000 }).catch(() => false)
+        && /\/comparison-Istara-pi\/reports\//.test(evidenceHref || ""),
+      detail: `href=${evidenceHref || "missing"}`,
     });
     await screenshot("79-project-settings-engine-selector");
   } catch (e) {
@@ -111,11 +117,13 @@ export async function run(ctx) {
   // 5b. Behavioral: one bounded chat turn per engine, asserting the usage
   // ledger records the selected core. This is the end-to-end routing proof:
   // config surface alone cannot show the loop actually executed per engine.
-  if (!ctx.llmConnected) {
+  if (!ctx.llmConnected || ctx.llmReadiness?.chat_ready === false) {
     checks.push({
       name: "Behavioral per-engine chat turns",
       passed: true,
-      detail: "Skipped: LLM not connected — routing evidence requires a configured provider",
+      detail: !ctx.llmConnected
+        ? "Skipped: LLM not connected — routing evidence requires a configured provider"
+        : "Skipped: provider is reachable but chat_ready=false — routing evidence requires a live chat model",
     });
   } else {
     for (const engine of ["legacy", "pi"]) {

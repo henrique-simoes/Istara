@@ -115,13 +115,20 @@ def _store_flow(flow: OAuthFlowState) -> OAuthFlowState:
 
 def _find_flow(provider: str, flow_id: str | None = None) -> OAuthFlowState | None:
     if flow_id:
-        return _FLOWS.get(flow_id) if flow_id in _FLOWS and _FLOWS[flow_id].provider == provider else None
+        return (
+            _FLOWS.get(flow_id)
+            if flow_id in _FLOWS and _FLOWS[flow_id].provider == provider
+            else None
+        )
     candidates = [flow for flow in _FLOWS.values() if flow.provider == provider]
     return candidates[-1] if candidates else None
 
 
 def _find_flow_by_state(provider: str, state: str) -> OAuthFlowState | None:
-    return next((flow for flow in _FLOWS.values() if flow.provider == provider and flow.state == state), None)
+    return next(
+        (flow for flow in _FLOWS.values() if flow.provider == provider and flow.state == state),
+        None,
+    )
 
 
 def _mask_token(token: str) -> str:
@@ -180,7 +187,11 @@ def _http_request(
         # reflected authorization input.  The UI receives a bounded generic code.
         return {"error": f"http_{exc.code}"}
     except Exception as exc:  # pragma: no cover - network guard
-        logger.warning("pi oauth request failed for %s: %s", urllib.parse.urlsplit(url).netloc, type(exc).__name__)
+        logger.warning(
+            "pi oauth request failed for %s: %s",
+            urllib.parse.urlsplit(url).netloc,
+            type(exc).__name__,
+        )
         return {"error": "network"}
 
 
@@ -296,7 +307,11 @@ def _parse_authorization_input(value: str) -> tuple[str, str | None]:
 
 def _pkce_pair() -> tuple[str, str]:
     verifier = base64.urlsafe_b64encode(secrets.token_bytes(48)).rstrip(b"=").decode("ascii")
-    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest()).rstrip(b"=").decode("ascii")
+    challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest())
+        .rstrip(b"=")
+        .decode("ascii")
+    )
     return verifier, challenge
 
 
@@ -345,7 +360,11 @@ def _exchange_openai_code(code: str, verifier: str, redirect_uri: str) -> dict[s
 
 
 def finish_openai_browser_flow(code: str, state: str, flow_id: str | None = None) -> OAuthFlowState:
-    flow = _find_flow_by_state("openai-codex", state) if not flow_id else _find_flow("openai-codex", flow_id)
+    flow = (
+        _find_flow_by_state("openai-codex", state)
+        if not flow_id
+        else _find_flow("openai-codex", flow_id)
+    )
     if not flow or flow.method != "browser":
         raise ValueError("no_active_openai_browser_flow")
     if time.time() > flow.expires_at:
@@ -409,7 +428,12 @@ def poll_openai_device_flow(flow: OAuthFlowState) -> OAuthFlowState:
             return flow
         return _complete_codex_flow(flow, exchanged)
     error = str(response.get("error") or "")
-    if error in {"authorization_pending", "deviceauth_authorization_pending", "http_403", "http_404"}:
+    if error in {
+        "authorization_pending",
+        "deviceauth_authorization_pending",
+        "http_403",
+        "http_404",
+    }:
         return flow
     if error == "slow_down":
         flow.interval_seconds = min(flow.interval_seconds + 5, 60)
@@ -435,21 +459,42 @@ def refresh_oauth_credential(provider: str, refresh_token: str) -> dict[str, Any
     if provider == "openai-codex":
         response = _http_request(
             _OPENAI_TOKEN_URL,
-            {"grant_type": "refresh_token", "refresh_token": refresh_token, "client_id": _OPENAI_CLIENT_ID},
+            {
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "client_id": _OPENAI_CLIENT_ID,
+            },
             form=True,
         )
     elif provider == "anthropic":
-        response = _http_json(_ANTHROPIC_TOKEN_URL, {
-            "grant_type": "refresh_token", "client_id": _ANTHROPIC_CLIENT_ID, "refresh_token": refresh_token,
-        })
+        response = _http_json(
+            _ANTHROPIC_TOKEN_URL,
+            {
+                "grant_type": "refresh_token",
+                "client_id": _ANTHROPIC_CLIENT_ID,
+                "refresh_token": refresh_token,
+            },
+        )
     elif provider == "xai":
-        response = _http_request("https://auth.x.ai/oauth2/token", {
-            "grant_type": "refresh_token", "client_id": "b1a00492-073a-47ea-816f-4c329264a828", "refresh_token": refresh_token,
-        }, form=True)
+        response = _http_request(
+            "https://auth.x.ai/oauth2/token",
+            {
+                "grant_type": "refresh_token",
+                "client_id": "b1a00492-073a-47ea-816f-4c329264a828",
+                "refresh_token": refresh_token,
+            },
+            form=True,
+        )
     elif provider == "kimi-coding":
-        response = _http_request("https://auth.kimi.com/api/oauth/token", {
-            "grant_type": "refresh_token", "client_id": "17e5f671-d194-4dfb-9706-5516cb48c098", "refresh_token": refresh_token,
-        }, form=True)
+        response = _http_request(
+            "https://auth.kimi.com/api/oauth/token",
+            {
+                "grant_type": "refresh_token",
+                "client_id": "17e5f671-d194-4dfb-9706-5516cb48c098",
+                "refresh_token": refresh_token,
+            },
+            form=True,
+        )
     else:
         raise ValueError("oauth_refresh_not_supported")
     if provider == "openai-codex":
@@ -557,7 +602,12 @@ def poll_device_flow(provider: str, flow_id: str | None = None) -> OAuthFlowStat
     if response.get("access_token"):
         return _complete_flow(flow, response)
     error = str(response.get("error") or "")
-    if error in {"authorization_pending", "deviceauth_authorization_pending", "http_403", "http_404"}:
+    if error in {
+        "authorization_pending",
+        "deviceauth_authorization_pending",
+        "http_403",
+        "http_404",
+    }:
         return flow
     if error == "slow_down":
         flow.interval_seconds = min(flow.interval_seconds + 5, 60)
@@ -628,8 +678,12 @@ def start_anthropic_browser_flow(callback_url: str) -> OAuthFlowState:
     return _store_flow(flow)
 
 
-def finish_anthropic_browser_flow(code: str, state: str, flow_id: str | None = None) -> OAuthFlowState:
-    flow = _find_flow_by_state("anthropic", state) if not flow_id else _find_flow("anthropic", flow_id)
+def finish_anthropic_browser_flow(
+    code: str, state: str, flow_id: str | None = None
+) -> OAuthFlowState:
+    flow = (
+        _find_flow_by_state("anthropic", state) if not flow_id else _find_flow("anthropic", flow_id)
+    )
     if not flow or flow.method != "browser":
         raise ValueError("no_active_anthropic_browser_flow")
     if time.time() > flow.expires_at:
@@ -657,8 +711,14 @@ def finish_anthropic_browser_flow(code: str, state: str, flow_id: str | None = N
     return _complete_flow(flow, response)
 
 
-def finish_pkce_flow(code: str, state: str | None = None, flow_id: str | None = None) -> OAuthFlowState:
-    flow = (_find_flow_by_state("openrouter", state) if state and not flow_id else _find_flow("openrouter", flow_id))
+def finish_pkce_flow(
+    code: str, state: str | None = None, flow_id: str | None = None
+) -> OAuthFlowState:
+    flow = (
+        _find_flow_by_state("openrouter", state)
+        if state and not flow_id
+        else _find_flow("openrouter", flow_id)
+    )
     if not flow:
         raise ValueError("no_active_flow")
     if time.time() > flow.expires_at:
@@ -683,7 +743,9 @@ def finish_pkce_flow(code: str, state: str | None = None, flow_id: str | None = 
     return _complete_flow(flow, {"access_token": token})
 
 
-def finish_browser_flow(provider: str, code: str, state: str, flow_id: str | None = None) -> OAuthFlowState:
+def finish_browser_flow(
+    provider: str, code: str, state: str, flow_id: str | None = None
+) -> OAuthFlowState:
     if provider == "openai-codex":
         return finish_openai_browser_flow(code, state, flow_id)
     if provider == "anthropic":
@@ -693,7 +755,9 @@ def finish_browser_flow(provider: str, code: str, state: str, flow_id: str | Non
     raise ValueError("unsupported_browser_oauth_provider")
 
 
-def complete_browser_flow(provider: str, authorization_input: str, flow_id: str | None = None) -> OAuthFlowState:
+def complete_browser_flow(
+    provider: str, authorization_input: str, flow_id: str | None = None
+) -> OAuthFlowState:
     code, state = _parse_authorization_input(authorization_input)
     flow = _find_flow(provider, flow_id)
     if not flow or flow.method != "browser":
@@ -735,7 +799,7 @@ def browser_callback_page(success: bool, message: str) -> str:
     tone = "#166534" if success else "#b91c1c"
     return f"""<!doctype html><meta charset='utf-8'><title>Istara sign-in</title>
 <body style='font:16px system-ui;max-width:36rem;margin:15vh auto;padding:2rem;color:{tone}'>
-<h1>{'Authentication complete' if success else 'Authentication failed'}</h1><p>{safe}</p>
+<h1>{"Authentication complete" if success else "Authentication failed"}</h1><p>{safe}</p>
 <p>You can close this window and return to Istara.</p></body>"""
 
 

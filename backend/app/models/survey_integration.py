@@ -14,7 +14,9 @@ class SurveyIntegration(Base):
     __tablename__ = "survey_integrations"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    platform: Mapped[str] = mapped_column(String(20), nullable=False)  # surveymonkey|google_forms|typeform
+    platform: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # surveymonkey|google_forms|typeform
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     config_json: Mapped[str] = mapped_column(Text, default="{}")  # API keys, OAuth tokens
     project_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
@@ -50,7 +52,9 @@ class SurveyLink(Base):
     external_survey_name: Mapped[str] = mapped_column(String(300), default="")
     webhook_secret: Mapped[str] = mapped_column(String(200), default="")
     response_count: Mapped[int] = mapped_column(Integer, default=0)
-    last_response_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_response_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -63,6 +67,8 @@ class SurveyLink(Base):
             "external_survey_id": self.external_survey_id,
             "external_survey_name": self.external_survey_name,
             "response_count": self.response_count,
-            "last_response_at": self.last_response_at.isoformat() if self.last_response_at else None,
+            "last_response_at": self.last_response_at.isoformat()
+            if self.last_response_at
+            else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

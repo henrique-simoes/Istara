@@ -18,6 +18,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.llm_router import llm_router
 from app.core.research_validity import (
     DEFAULT_RELIABILITY_THRESHOLD,
@@ -308,11 +309,63 @@ async def _select_pi_coders(
     # Read-only DB projection of persisted LLMServer endpoint identities;
     # it never connects to a server or loads a model.
     await manager.ensure_db_projection()
-    endpoints = manager.resolve_distinct(
-        max(1, max_coders),
-        project_id=project_id,
-        exclude_models=QWEN_FALLBACK_ONLY_MODELS,
-    )
+    requested_count = max(1, max_coders)
+    preferred_ids = [
+        str(endpoint_id).strip()
+        for endpoint_id in getattr(settings, "pi_research_endpoint_ids", [])
+        if str(endpoint_id).strip()
+    ]
+    endpoints = []
+    seen_models: set[str] = set()
+    attempted_ids: list[str] = []
+    if preferred_ids:
+        from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+        excluded_models = {str(model).strip().casefold() for model in QWEN_FALLBACK_ONLY_MODELS}
+        for endpoint_id in preferred_ids:
+            if len(endpoints) >= requested_count:
+                break
+            attempted_ids.append(endpoint_id)
+            try:
+                endpoint = manager.resolve(
+                    endpoint_id=endpoint_id,
+                    model=None,
+                    project_id=project_id,
+                )
+            except PiEndpointResolutionError as exc:
+                logger.warning(
+                    "Preferred Research Spine endpoint %s unavailable; using healthy catalog fallback: %s",
+                    endpoint_id,
+                    exc,
+                )
+                continue
+            model_identity = str(endpoint.model or "").strip().casefold()
+            if (
+                not model_identity
+                or model_identity in excluded_models
+                or model_identity in seen_models
+            ):
+                continue
+            seen_models.add(model_identity)
+            endpoints.append(endpoint)
+
+        remaining = requested_count - len(endpoints)
+        if remaining:
+            endpoints.extend(
+                manager.resolve_distinct(
+                    remaining,
+                    project_id=project_id,
+                    exclude=tuple(attempted_ids),
+                    exclude_models=tuple(QWEN_FALLBACK_ONLY_MODELS) + tuple(seen_models),
+                )
+            )
+    else:
+        # No user preference: preserve healthy donor/catalog selection exactly.
+        endpoints = manager.resolve_distinct(
+            requested_count,
+            project_id=project_id,
+            exclude_models=QWEN_FALLBACK_ONLY_MODELS,
+        )
     return [
         CoderSpec(
             node=SimpleNamespace(
@@ -435,9 +488,7 @@ async def run_independent_coding_run(
                     manager=manager_accessor(),
                 )
             else:
-                coders = await _select_pi_coders(
-                    max_coders=max_coders, project_id=project_id
-                )
+                coders = await _select_pi_coders(max_coders=max_coders, project_id=project_id)
             use_pi_qwen_fallback = True
         except Exception as exc:
             # Fail-closed: fewer distinct Pi models than requested coders (or

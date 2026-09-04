@@ -86,10 +86,7 @@ class AgentMemoryManager:
         from app.core.rag import retrieve_context
 
         context = await retrieve_context(project_id, query, top_k=top_k)
-        return [
-            {"text": r.text, "source": r.source, "score": r.score}
-            for r in context.retrieved
-        ]
+        return [{"text": r.text, "source": r.source, "score": r.score} for r in context.retrieved]
 
     async def memory_store(
         self, agent_id: str, project_id: str, note: str, tags: list[str] | None = None
@@ -117,10 +114,12 @@ class AgentMemoryManager:
 
                 results = []
                 for _, row in notes_df.iterrows():
-                    results.append({
-                        "text": str(row.get("text", "")),
-                        "source": str(row.get("source", "")),
-                    })
+                    results.append(
+                        {
+                            "text": str(row.get("text", "")),
+                            "source": str(row.get("source", "")),
+                        }
+                    )
                 return results
         except Exception as e:
             logger.warning(f"Failed to get agent notes: {e}")

@@ -313,8 +313,7 @@ async def get_exposure_summary(db: AsyncSession) -> dict:
         "requests_last_24h": total_24h,
         "denied_last_24h": denied_24h,
         "warning": (
-            "SENSITIVE or HIGH-risk tools are enabled. External agents can "
-            "access research data."
+            "SENSITIVE or HIGH-risk tools are enabled. External agents can access research data."
         )
         if enabled_by_risk.get("sensitive") or enabled_by_risk.get("high")
         else None,
@@ -351,10 +350,7 @@ async def get_audit_log(
         return [_audit_entry_to_dict(entry) for entry in entries[offset : offset + limit]]
 
     result = await db.execute(
-        select(MCPAuditEntry)
-        .order_by(MCPAuditEntry.timestamp.desc())
-        .offset(offset)
-        .limit(limit)
+        select(MCPAuditEntry).order_by(MCPAuditEntry.timestamp.desc()).offset(offset).limit(limit)
     )
     entries = result.scalars().all()
     return [_audit_entry_to_dict(e) for e in entries]

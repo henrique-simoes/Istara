@@ -66,8 +66,6 @@ async def ensure_endpoint_model(endpoint: ResolvedPiEndpoint, model: str) -> boo
                 f"provision_lmstudio_failed:{endpoint.endpoint_id}"
             ) from exc
         if not loaded:
-            raise PiEndpointResolutionError(
-                f"provision_lmstudio_failed:{endpoint.endpoint_id}"
-            )
+            raise PiEndpointResolutionError(f"provision_lmstudio_failed:{endpoint.endpoint_id}")
         return True
     raise PiEndpointResolutionError(f"provision_unsupported_local_endpoint:{endpoint.endpoint_id}")

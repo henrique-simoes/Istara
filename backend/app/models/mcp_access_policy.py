@@ -52,7 +52,9 @@ class MCPAccessPolicy(Base):
     allow_skills_resource: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Scope limits
-    allowed_project_ids_json: Mapped[str] = mapped_column(Text, default="[]")  # empty = none, ["*"] = all
+    allowed_project_ids_json: Mapped[str] = mapped_column(
+        Text, default="[]"
+    )  # empty = none, ["*"] = all
     max_findings_per_request: Mapped[int] = mapped_column(Integer, default=50)
     max_skill_executions_per_hour: Mapped[int] = mapped_column(Integer, default=5)
 
@@ -60,12 +62,14 @@ class MCPAccessPolicy(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     def to_dict(self) -> dict:
         import json
+
         return {
             "id": self.id,
             "name": self.name,
@@ -74,7 +78,10 @@ class MCPAccessPolicy(Base):
             "tools": {
                 "list_skills": {"allowed": self.allow_list_skills, "risk": "low"},
                 "list_projects": {"allowed": self.allow_list_projects, "risk": "low"},
-                "get_deployment_status": {"allowed": self.allow_get_deployment_status, "risk": "low"},
+                "get_deployment_status": {
+                    "allowed": self.allow_get_deployment_status,
+                    "risk": "low",
+                },
                 "get_findings": {"allowed": self.allow_get_findings, "risk": "sensitive"},
                 "search_memory": {"allowed": self.allow_search_memory, "risk": "sensitive"},
                 "execute_skill": {"allowed": self.allow_execute_skill, "risk": "high"},
@@ -87,7 +94,9 @@ class MCPAccessPolicy(Base):
                 "skills": {"allowed": self.allow_skills_resource, "risk": "low"},
             },
             "limits": {
-                "allowed_project_ids": json.loads(self.allowed_project_ids_json) if self.allowed_project_ids_json else [],
+                "allowed_project_ids": json.loads(self.allowed_project_ids_json)
+                if self.allowed_project_ids_json
+                else [],
                 "max_findings_per_request": self.max_findings_per_request,
                 "max_skill_executions_per_hour": self.max_skill_executions_per_hour,
             },

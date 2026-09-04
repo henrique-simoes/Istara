@@ -22,6 +22,7 @@ from app.core.auth_cookies import get_auth_cookie_token, set_auth_cookie
 from app.core.auth_origins import webauthn_expected_origins
 from app.core.auth_sessions import issue_auth_session_token, validate_auth_session
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
+from app.core.field_encryption import safe_decrypt_field
 from app.core.security_middleware import browser_origin_denial
 from app.models.database import get_db
 from app.models.user import User
@@ -563,7 +564,7 @@ async def webauthn_authenticate_finish(
             "user": {
                 "id": user.id,
                 "username": user.username,
-                "email": user.email,
+                "email": safe_decrypt_field(user.email),
                 "role": user.role.value if hasattr(user.role, "value") else user.role,
                 "display_name": user.display_name,
                 "totp_enabled": user.totp_enabled,

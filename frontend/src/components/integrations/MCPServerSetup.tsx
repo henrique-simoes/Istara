@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { X, CheckCircle2, AlertCircle, Server, RefreshCw } from "lucide-react";
 import { mcp as mcpApi } from "@/lib/api";
+import { isValidMcpServerUrl, mcpServerUrlError } from "@/lib/mcpUrl";
 
 interface MCPServerSetupProps {
   projectId: string | null;
   onClose: () => void;
 }
-
 export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupProps) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -20,6 +20,7 @@ export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupPro
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [createdServerId, setCreatedServerId] = useState<string | null>(null);
+  const urlValid = isValidMcpServerUrl(url);
 
   const handleTest = async () => {
     if (!projectId) return;
@@ -96,6 +97,7 @@ export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupPro
       setSaved(true);
     } catch (e: any) {
       setTestError(e.message);
+      setTestResult("error");
     } finally {
       setSaving(false);
     }
@@ -144,17 +146,7 @@ export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupPro
             />
           </div>
 
-          {/* URL */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Server URL</label>
-            <input
-              type="text"
-              placeholder="http://localhost:3001/mcp"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
-            />
-          </div>
+          <MCPServerUrlField url={url} onChange={setUrl} />
 
           {/* Transport */}
           <div>
@@ -199,7 +191,7 @@ export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupPro
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200 dark:border-slate-800">
           <button
             onClick={handleTest}
-            disabled={!url.trim() || !projectId || testing}
+            disabled={!urlValid || !projectId || testing}
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
           >
             <RefreshCw size={14} className={testing ? "animate-spin" : ""} />
@@ -207,13 +199,36 @@ export default function MCPServerSetup({ projectId, onClose }: MCPServerSetupPro
           </button>
           <button
             onClick={handleSave}
-            disabled={!url.trim() || !projectId || saving}
+            disabled={!urlValid || !projectId || saving}
             className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:opacity-50 transition-colors"
           >
             {saving ? "Saving..." : "Save Server"}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MCPServerUrlField({ url, onChange }: { url: string; onChange: (value: string) => void }) {
+  const urlError = mcpServerUrlError(url);
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Server URL</label>
+      <input
+        type="text"
+        placeholder="http://localhost:3001/mcp"
+        value={url}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={Boolean(urlError)}
+        aria-describedby={urlError ? "mcp-server-url-error" : undefined}
+        className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
+      />
+      {urlError && (
+        <p id="mcp-server-url-error" role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">
+          {urlError}
+        </p>
+      )}
     </div>
   );
 }

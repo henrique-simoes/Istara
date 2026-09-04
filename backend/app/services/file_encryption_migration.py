@@ -68,7 +68,9 @@ async def rotate_existing_project_content(db) -> dict[str, int | str]:
     for doc in docs:
         changed = False
         if doc.content_text:
-            doc.content_text = rewrite_encrypted_text(doc.content_text, old_key=old_key, new_key=new_key)
+            doc.content_text = rewrite_encrypted_text(
+                doc.content_text, old_key=old_key, new_key=new_key
+            )
             changed = True
         if doc.content_preview:
             doc.content_preview = rewrite_encrypted_text(

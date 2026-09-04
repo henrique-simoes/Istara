@@ -156,8 +156,8 @@ def _schedule_to_dict(task: ScheduledTask) -> dict:
         "project_id": task.project_id,
         "enabled": task.enabled,
         "is_running": task.is_running,
-        "last_run": task.last_run.isoformat() if task.last_run else None,
-        "next_run": task.next_run.isoformat() if task.next_run else None,
+        "last_run": ensure_utc(task.last_run).isoformat() if task.last_run else None,
+        "next_run": ensure_utc(task.next_run).isoformat() if task.next_run else None,
         "loop_status": _schedule_loop_status(task),
         "source_type": source_type,
         "source_id": task.id,
@@ -166,7 +166,7 @@ def _schedule_to_dict(task: ScheduledTask) -> dict:
         "interval_seconds": task.interval_seconds,
         "execution_count": task.execution_count or 0,
         "last_status": task.last_status or "",
-        "created_at": task.created_at.isoformat() if task.created_at else None,
+        "created_at": ensure_utc(task.created_at).isoformat() if task.created_at else None,
     }
 
 
@@ -191,7 +191,9 @@ def _loop_config_for_agent(agent: Agent) -> dict:
         "project_filter": project_filter if isinstance(project_filter, str) else "",
         "last_cycle_at": agent.last_heartbeat_at.isoformat() if agent.last_heartbeat_at else None,
         "cycle_count": agent.executions or 0,
-        "last_heartbeat_at": agent.last_heartbeat_at.isoformat() if agent.last_heartbeat_at else None,
+        "last_heartbeat_at": agent.last_heartbeat_at.isoformat()
+        if agent.last_heartbeat_at
+        else None,
         "executions": agent.executions or 0,
         "error_count": agent.error_count or 0,
     }
@@ -316,9 +318,7 @@ async def loops_overview(
     sched_dicts = [_schedule_to_dict(s) for s in schedules]
 
     # Health summary
-    all_statuses = [d["loop_status"] for d in agent_dicts] + [
-        d["loop_status"] for d in sched_dicts
-    ]
+    all_statuses = [d["loop_status"] for d in agent_dicts] + [d["loop_status"] for d in sched_dicts]
     health_summary = {
         "active": sum(1 for s in all_statuses if s == "active"),
         "paused": sum(1 for s in all_statuses if s == "paused"),
@@ -432,9 +432,13 @@ async def update_loop_config(
             if scoped_project_id:
                 owns_agent = (agent.project_id or "") == scoped_project_id
                 if next_project_filter and next_project_filter != scoped_project_id:
-                    raise HTTPException(status_code=403, detail="Cannot move loop outside active project")
+                    raise HTTPException(
+                        status_code=403, detail="Cannot move loop outside active project"
+                    )
                 if not owns_agent and next_project_filter != scoped_project_id:
-                    raise HTTPException(status_code=403, detail="Cannot clear project filter for shared agent loop")
+                    raise HTTPException(
+                        status_code=403, detail="Cannot clear project filter for shared agent loop"
+                    )
             loop_config["project_filter"] = next_project_filter
         memory[LOOP_MEMORY_KEY] = loop_config
         agent.memory = json.dumps(memory)
@@ -576,21 +580,26 @@ async def loops_health(
             if now.timestamp() > expected_next:
                 behind_by = round(now.timestamp() - expected_next, 1)
 
-        health_items.append({
-            "source_type": "agent",
-            "source_id": a.id,
-            "source_name": a.name,
-            "project_id": a.project_id or "",
-            "status": _agent_loop_status(a),
-            "interval_seconds": interval,
-            "last_execution_at": last_exec.isoformat() if last_exec else None,
-            "next_expected_at": (
-                datetime.fromtimestamp(last_exec.timestamp() + interval, tz=timezone.utc).isoformat()
-                if last_exec else None
-            ),
-            "behind_by_seconds": behind_by,
-            "last_status": "failure" if a.error_count else "",
-        })
+        health_items.append(
+            {
+                "source_type": "agent",
+                "source_id": a.id,
+                "source_name": a.name,
+                "project_id": a.project_id or "",
+                "status": _agent_loop_status(a),
+                "interval_seconds": interval,
+                "last_execution_at": last_exec.isoformat() if last_exec else None,
+                "next_expected_at": (
+                    datetime.fromtimestamp(
+                        last_exec.timestamp() + interval, tz=timezone.utc
+                    ).isoformat()
+                    if last_exec
+                    else None
+                ),
+                "behind_by_seconds": behind_by,
+                "last_status": "failure" if a.error_count else "",
+            }
+        )
 
     # Schedules
     sched_result = await db.execute(_schedule_query_for_project(scoped_project_id))
@@ -602,21 +611,23 @@ async def loops_health(
         if next_run and next_run < now:
             behind_by = round((now - next_run).total_seconds(), 1)
 
-        health_items.append({
-            "source_type": _schedule_source_type(s),
-            "source_id": s.id,
-            "source_name": s.name,
-            "project_id": s.project_id,
-            "status": _schedule_loop_status(s),
-            "interval_seconds": s.interval_seconds,
-            "last_execution_at": last_exec.isoformat() if last_exec else None,
-            "next_expected_at": next_run.isoformat() if next_run else None,
-            "behind_by_seconds": behind_by,
-            "cron_expression": s.cron_expression,
-            "skill_name": s.skill_name,
-            "last_status": s.last_status or "",
-            "execution_count": s.execution_count or 0,
-        })
+        health_items.append(
+            {
+                "source_type": _schedule_source_type(s),
+                "source_id": s.id,
+                "source_name": s.name,
+                "project_id": s.project_id,
+                "status": _schedule_loop_status(s),
+                "interval_seconds": s.interval_seconds,
+                "last_execution_at": last_exec.isoformat() if last_exec else None,
+                "next_expected_at": next_run.isoformat() if next_run else None,
+                "behind_by_seconds": behind_by,
+                "cron_expression": s.cron_expression,
+                "skill_name": s.skill_name,
+                "last_status": s.last_status or "",
+                "execution_count": s.execution_count or 0,
+            }
+        )
 
     return {"health": health_items}
 
@@ -698,6 +709,6 @@ async def create_custom_loop(
         "enabled": task.enabled,
         "loop_type": task.loop_type,
         "interval_seconds": task.interval_seconds,
-        "next_run": task.next_run.isoformat() if task.next_run else None,
-        "created_at": task.created_at.isoformat() if task.created_at else None,
+        "next_run": ensure_utc(task.next_run).isoformat() if task.next_run else None,
+        "created_at": ensure_utc(task.created_at).isoformat() if task.created_at else None,
     }

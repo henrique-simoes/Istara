@@ -1,5 +1,7 @@
 /** Scenario 72 — Circuit Breaker & LLM Health: verify LLM availability detection and user notification. */
 
+import { authHeaders, getApiBase } from "../lib/api-client.mjs";
+
 export const name = "Circuit Breaker & LLM Health";
 export const id = "72-circuit-breaker-health";
 
@@ -7,83 +9,41 @@ export async function run(ctx) {
   const { api, page } = ctx;
   const checks = [];
 
-  // 1. Verify /api/llm-servers returns server list with health info
+  // 1. The old /api/llm-servers CRUD plane was retired in favor of the
+  // unified Pi/configured-provider plane. Keep the retirement explicit so a
+  // missing route is not mistaken for a broken health implementation.
   try {
-    const data = await api.get("/api/llm-servers");
-    const servers = data.servers || [];
+    const res = await fetch(`${getApiBase()}/api/llm-servers`, { headers: authHeaders() });
+    const retired = res.status === 404 || res.status === 405;
     checks.push({
-      name: "LLM servers list",
-      passed: true,
-      detail: `${servers.length} servers registered`,
-    });
-
-    // Check that servers have health fields
-    if (servers.length > 0) {
-      const s = servers[0];
-      checks.push({
-        name: "Server has health fields",
-        passed: s.is_healthy !== undefined && s.has_api_key !== undefined,
-        detail: `is_healthy: ${s.is_healthy}, has_api_key: ${s.has_api_key}, health_error: ${s.health_error || "none"}`,
-      });
-    }
-  } catch (e) {
-    checks.push({ name: "LLM servers list", passed: false, detail: e.message });
-  }
-
-  // 2. Add a server with an unreachable URL → verify health_error
-  let badServerId;
-  try {
-    const result = await api.post("/api/llm-servers", {
-      name: "Test Unreachable Server",
-      provider_type: "openai_compat",
-      host: "http://192.0.2.1:9999", // RFC 5737 TEST-NET — guaranteed unreachable
-    });
-    badServerId = result.id;
-    checks.push({
-      name: "Unreachable server added",
-      passed: !!badServerId && !result.is_healthy,
-      detail: `ID: ${badServerId}, healthy: ${result.is_healthy}`,
+      name: "Retired legacy LLM server route is absent",
+      passed: retired,
+      detail: `status=${res.status}`,
     });
   } catch (e) {
-    checks.push({ name: "Add unreachable server", passed: false, detail: e.message });
+    checks.push({ name: "Retired legacy LLM server route is absent", passed: false, detail: e.message });
   }
 
-  // 3. Run health check on the bad server → verify health_error populated
-  if (badServerId) {
-    try {
-      const health = await api.post(`/api/llm-servers/${badServerId}/health-check`, {});
-      checks.push({
-        name: "Health check returns error",
-        passed: !health.healthy && !!health.health_error,
-        detail: `healthy: ${health.healthy}, error: ${health.health_error || "none"}`,
-      });
-    } catch (e) {
-      checks.push({ name: "Health check error", passed: false, detail: e.message });
-    }
-
-    // Clean up
-    try {
-      await api.delete(`/api/llm-servers/${badServerId}`);
-    } catch {}
-  }
-
-  // 4. Verify healthy servers have proper status
+  // 2. Verify the current provider plane reports a usable or bounded state.
   try {
-    const data = await api.get("/api/llm-servers");
-    const healthyServers = (data.servers || []).filter((s) => s.is_healthy);
     const status = await api.get("/api/settings/status").catch(() => null);
+    const contractModeDegraded = status?.status === "degraded"
+      && status?.services?.llm === "connected"
+      && status?.llm_readiness?.chat_ready === false;
+    const operational = status?.status === "ok"
+      || status?.status === "healthy"
+      || status?.healthy === true
+      || contractModeDegraded;
     checks.push({
-      name: "At least one healthy server",
-      passed: healthyServers.length > 0 || status?.services?.llm === "connected",
-      detail: healthyServers.length > 0
-        ? `${healthyServers.length} healthy server(s)`
-        : `0 registered healthy servers; configured provider status=${status?.services?.llm || "unknown"}`,
+      name: "Current provider plane reports bounded health",
+      passed: operational,
+      detail: `status=${status?.status || "unknown"}, llm=${status?.services?.llm || "unknown"}, chat_ready=${status?.llm_readiness?.chat_ready === true}`,
     });
   } catch (e) {
-    checks.push({ name: "Healthy server check", passed: false, detail: e.message });
+    checks.push({ name: "Current provider plane reports bounded health", passed: false, detail: e.message });
   }
 
-  // 4b. Pi plane availability: configured endpoints (identity view) or an
+  // 3. Pi plane availability: configured endpoints (identity view) or an
   // active engine with a reachable provider. LLM health now spans BOTH planes.
   try {
     const catalog = await api.get(`/api/chat/model-catalog${ctx.projectId ? `?project_id=${encodeURIComponent(ctx.projectId)}` : ""}`);
@@ -96,7 +56,7 @@ export async function run(ctx) {
     checks.push({ name: "Pi/configured model plane visible", passed: false, detail: e.message });
   }
 
-  // 5. Verify system status endpoint includes LLM info
+  // 4. Verify system status endpoint includes LLM info
   try {
     const status = await api.get("/api/settings/status");
     checks.push({
@@ -108,7 +68,7 @@ export async function run(ctx) {
     checks.push({ name: "System status", passed: false, detail: e.message });
   }
 
-  // 6. Verify StatusBar shows connection status (frontend)
+  // 5. Verify StatusBar shows connection status (frontend)
   try {
     await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
     const statusBar = await page.locator("footer").first();
@@ -122,7 +82,7 @@ export async function run(ctx) {
     checks.push({ name: "StatusBar check", passed: false, detail: e.message });
   }
 
-  // 7. Verify compute nodes endpoint (if exists)
+  // 6. Verify compute nodes endpoint (if exists)
   try {
     if (!ctx.projectId) throw new Error("Missing ctx.projectId for project-scoped compute nodes");
     const compute = await api.get(`/api/compute/nodes?project_id=${encodeURIComponent(ctx.projectId)}`);

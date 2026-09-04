@@ -695,13 +695,37 @@ class ReportManager:
     # ── Template-Driven Report Composition ──────────────────────────
 
     REPORT_TEMPLATE = [
-        {"section": "I. Executive Summary (SCR)", "source": "executive_summary", "format": "narrative"},
+        {
+            "section": "I. Executive Summary (SCR)",
+            "source": "executive_summary",
+            "format": "narrative",
+        },
         {"section": "II. Research Methodology & Rigor", "source": "skills_used", "format": "list"},
-        {"section": "III. Strategic Thematic Analysis (MECE)", "source": "mece_categories", "format": "structured"},
-        {"section": "IV. Detailed Insights & Evidence Chain", "source": "insights", "format": "detailed_narrative"},
-        {"section": "V. Supporting Evidence (Nuggets & Facts)", "source": "nuggets_and_facts", "format": "citation_table"},
-        {"section": "VI. Actionable Recommendations (Pyramid Top)", "source": "recommendations", "format": "priority_table"},
-        {"section": "VII. Validation & Consensus Metrics", "source": "ensemble_scores", "format": "metrics"},
+        {
+            "section": "III. Strategic Thematic Analysis (MECE)",
+            "source": "mece_categories",
+            "format": "structured",
+        },
+        {
+            "section": "IV. Detailed Insights & Evidence Chain",
+            "source": "insights",
+            "format": "detailed_narrative",
+        },
+        {
+            "section": "V. Supporting Evidence (Nuggets & Facts)",
+            "source": "nuggets_and_facts",
+            "format": "citation_table",
+        },
+        {
+            "section": "VI. Actionable Recommendations (Pyramid Top)",
+            "source": "recommendations",
+            "format": "priority_table",
+        },
+        {
+            "section": "VII. Validation & Consensus Metrics",
+            "source": "ensemble_scores",
+            "format": "metrics",
+        },
         {"section": "VIII. Analysis Gaps & Next Steps", "source": "gaps", "format": "narrative"},
     ]
 
@@ -811,9 +835,7 @@ class ReportManager:
                         spine_phase="review",
                     )
                     score_data = (
-                        outcome.value
-                        if outcome.status == "success" and outcome.value
-                        else None
+                        outcome.value if outcome.status == "success" and outcome.value else None
                     )
                     if not score_data:
                         break
@@ -842,7 +864,9 @@ class ReportManager:
                             )
                             if refined:
                                 sections[i] = f"## {template['section']}\n\n{refined}"
-                                full_doc = f"# {report_snapshot.title}\n\n" + "\n\n---\n\n".join(sections)
+                                full_doc = f"# {report_snapshot.title}\n\n" + "\n\n---\n\n".join(
+                                    sections
+                                )
                                 logger.info(
                                     f"Report refined: section '{weakest}' (pass {pass_num + 1})"
                                 )
@@ -917,7 +941,7 @@ class ReportManager:
             items = findings.get("insights", [])
             if not items:
                 return "No key insights were generated."
-            
+
             if fmt == "detailed_narrative":
                 prompt = (
                     f"You are a management consultant. Expand these {len(items)} insights into a "
@@ -927,8 +951,7 @@ class ReportManager:
                     "contextualize it within the study's scope.\n"
                     "2. Use professional, objective language.\n"
                     "3. Connect insights where relationships exist.\n\n"
-                    "Insights:\n"
-                    + "\n".join(f"- {i['text']}" for i in items)
+                    "Insights:\n" + "\n".join(f"- {i['text']}" for i in items)
                 )
                 try:
                     # W5: the detailed insights narrative goes through the
@@ -981,7 +1004,7 @@ class ReportManager:
             items = findings.get("recommendations", [])
             if not items:
                 return "No actionable recommendations generated."
-            
+
             prompt = (
                 f"You are a management consultant. For each of these {len(items)} research recommendations, "
                 "develop a professional, multi-paragraph justification (~500 words total).\n\n"
@@ -989,8 +1012,7 @@ class ReportManager:
                 "1. State the recommendation clearly (The 'Pyramid Top').\n"
                 "2. Provide 2-3 logical supporting reasons based on research findings.\n"
                 "3. Suggest immediate next steps for implementation.\n\n"
-                "Recommendations:\n"
-                + "\n".join(f"- {r['text']}" for r in items)
+                "Recommendations:\n" + "\n".join(f"- {r['text']}" for r in items)
             )
             try:
                 # W5: the recommendations justification goes through the
@@ -1017,13 +1039,13 @@ class ReportManager:
             categories = json.loads(report.mece_categories_json or "[]")
             if not categories:
                 return "Strategic thematic analysis (MECE) not yet available."
-            
+
             parts = []
             for cat in categories:
                 name = cat.get("name", "Unknown Conclusion")
                 desc = cat.get("description", "No supporting argument provided.")
                 count = len(cat.get("finding_ids", []))
-                
+
                 # Deeper analysis for each MECE category
                 parts.append(
                     f"### {name}\n"

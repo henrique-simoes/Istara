@@ -25,7 +25,9 @@ class ChannelConversation(Base):
     participant_id: Mapped[str] = mapped_column(String(200), nullable=False)
     participant_name: Mapped[str] = mapped_column(String(200), default="")
     deployment_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    state: Mapped[str] = mapped_column(String(20), default="active")  # active|completed|paused|expired
+    state: Mapped[str] = mapped_column(
+        String(20), default="active"
+    )  # active|completed|paused|expired
     current_question_index: Mapped[int] = mapped_column(Integer, default=0)
     metadata_json: Mapped[str] = mapped_column(Text, default="{}")
     started_at: Mapped[datetime] = mapped_column(

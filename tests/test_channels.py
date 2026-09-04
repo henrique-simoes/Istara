@@ -1,6 +1,7 @@
 """Tests for Channels API routes — CRUD, start/stop, health, messages, conversations, send."""
 
 import json
+import re
 import uuid
 
 import pytest
@@ -350,6 +351,100 @@ async def test_channel_start_missing_config_reports_not_enabled(auth_headers, mo
     assert health.status_code == 200
     assert health.json()["status"] == "not_enabled"
     assert channel_router.get(instance_id) is None
+
+
+@pytest.mark.asyncio
+async def test_channel_start_never_exposes_provider_exception_text(monkeypatch):
+    """Startup failures use the stable public error and unregister the adapter."""
+    await init_db()
+    project_id = f"channel-start-safe-error-{uuid.uuid4()}"
+    instance_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Channel Start Safe Error"))
+        db.add(
+            ChannelInstance(
+                id=instance_id,
+                platform="telegram",
+                name="Unreachable Telegram",
+                config_json="{}",
+                project_id=project_id,
+            )
+        )
+        await db.commit()
+
+        class FakeAdapter:
+            def __init__(self):
+                self.instance_id = instance_id
+                self.enabled = True
+                self.is_running = False
+                self.platform = "telegram"
+                self.name = "telegram-safe-error"
+
+            def on_message(self, _callback):
+                pass
+
+            async def start(self):
+                pass
+
+        async def fail_start(_instance_id):
+            raise RuntimeError("httpx.ConnectError: https://secret-token@example.invalid")
+
+        monkeypatch.setattr(channel_service, "_instantiate_adapter", lambda _instance: FakeAdapter())
+        monkeypatch.setattr(channel_service.channel_router, "start_adapter", fail_start)
+
+        with pytest.raises(RuntimeError, match=re.escape(channel_service.PUBLIC_HEALTH_ERROR)) as exc_info:
+            await channel_service.start_channel_instance(
+                db, instance_id, project_id=project_id
+            )
+
+        assert "secret-token" not in str(exc_info.value)
+        assert "httpx" not in str(exc_info.value)
+        assert channel_router.get(instance_id) is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["returned_error", "raised_exception"])
+async def test_channel_health_never_exposes_provider_exception_text(monkeypatch, mode):
+    """Health failures are actionable to users without leaking provider internals."""
+    await init_db()
+    project_id = f"channel-health-safe-error-{uuid.uuid4()}"
+    instance_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Channel Health Safe Error"))
+        db.add(
+            ChannelInstance(
+                id=instance_id,
+                platform="telegram",
+                name="Unreachable Telegram",
+                config_json="{}",
+                project_id=project_id,
+            )
+        )
+        await db.commit()
+
+        class FakeAdapter:
+            enabled = True
+
+            async def health_check(self):
+                if mode == "raised_exception":
+                    raise RuntimeError("httpx.ConnectError: https://secret-token@example.invalid")
+                return {
+                    "status": "unhealthy",
+                    "platform": "telegram",
+                    "error": "httpx.ConnectError: https://secret-token@example.invalid",
+                }
+
+        monkeypatch.setattr(channel_service.channel_router, "get", lambda _instance_id: FakeAdapter())
+        health = await channel_service.health_check_instance(
+            db, instance_id, project_id=project_id
+        )
+
+    assert health["status"] == "unhealthy"
+    assert health["error"] == channel_service.PUBLIC_HEALTH_ERROR
+    assert "secret-token" not in str(health)
+    assert "httpx" not in str(health)
 
 
 @pytest.mark.asyncio

@@ -273,6 +273,7 @@
 <li>“Different models” means distinct model identities for independent validation, not merely different endpoint IDs. Replicas may improve availability but cannot provide independent raters; the system does not invent diversity when the required model identities are unavailable.</li>
 <li>When distinct endpoints cannot be selected, validation degrades to the documented lower-assurance path or reports unavailable/blocked. A failed judge is not a pass. These outcomes keep unvalidated work out of accepted research evidence and reports.</li>
 <li>W8 now routes embedding-based comparison through <code>agentic.embed</code>: Pi uses the <code>EmbeddingsGateway</code>, while legacy keeps the unchanged <code>ollama.embed*</code> plane. This preserves the vector-space and fail-closed boundaries for both engines.</li>
+<li>Self-healing signals in Ensemble Health express a bounded failed-attempt fraction over the rolling 15-minute window. A displayed percentage is never allowed to exceed 100%, even when the panel is reopened or refreshed repeatedly.</li>
 </ul>
 <h2 id="rollback">Rollback</h2>
 <p>Choose the <code>legacy</code> engine for the project (or keep the legacy global default) to return validation calls to the dispatcher&#x27;s preserved legacy route. Engine selection changes the executor, not the product call-site path.</p>

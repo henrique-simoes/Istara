@@ -498,6 +498,8 @@ export async function run(ctx) {
 
   // ── Step 4: Test each skill — plan + execute ──
   const LLM_CONNECTED = ctx.llmConnected;
+  const CHAT_READY = ctx.llmReadiness?.chat_ready !== false;
+  const LIVE_SKILL_EXECUTION_READY = LLM_CONNECTED && CHAT_READY;
   const skillSelection = await scenario20SkillSelection({
     api,
     projectId,
@@ -553,6 +555,15 @@ export async function run(ctx) {
 
       // Test: Skill execution (requires LLM)
       if (LLM_CONNECTED) {
+        if (!LIVE_SKILL_EXECUTION_READY) {
+          skillResults.skipped++;
+          phaseResults[phase].skipped++;
+          pushCheck({
+            name: `[${phase}] ${skill.name} — execute`,
+            passed: true,
+            detail: "[skipped] Provider is reachable, but no chat-ready model is configured; live skill execution is not applicable",
+          }, `${skill.name} skipped`);
+        } else {
         // Build rich user_context with actual data for the LLM to analyze
         const canonicalData = canonicalDataForSkill(skill);
         const richContext = [
@@ -627,6 +638,7 @@ export async function run(ctx) {
               : `success=${result.success}, report_allowed=${result.report_allowed}, research_validity=${result.research_validity?.status}, json_success=${result.json_success}, errors=${JSON.stringify(result.errors || []).substring(0, 80)}`,
           };
         });
+        }
 
         // Test: Skill plan generation
         await safeCheck(`[${phase}] ${skill.name} — plan`, async () => {

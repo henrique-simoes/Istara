@@ -74,10 +74,10 @@ class TestFieldEncryption:
         result = decrypt_field("plain-text-value")
         assert result == "plain-text-value"
 
-    def test_decrypt_invalid_encrypted_returns_as_is(self):
-        """Invalid ENC: values (tampered) are returned unchanged, not crashed."""
+    def test_decrypt_invalid_encrypted_fails_closed(self):
+        """Invalid ENC: values (tampered) fail closed without leaking ciphertext."""
         result = decrypt_field("ENC:invalid-base64-data!!!")
-        assert "invalid" in result  # Returns ciphertext on failure
+        assert result == ""
         health = encryption_health_snapshot()
         assert health["decryption_failures"] == 1
         assert health["healthy"] is False

@@ -71,9 +71,7 @@ class RAGParamsRunner(BaseLoopRunner):
             return await self._llm_hypothesis(current_score, history)
         return self._random_perturbation()
 
-    async def apply_mutation(
-        self, target: str, mutation: dict
-    ) -> Callable[[], Awaitable[None]]:
+    async def apply_mutation(self, target: str, mutation: dict) -> Callable[[], Awaitable[None]]:
         """Apply parameter changes to settings in-memory.  Returns revert fn."""
         old_values: dict[str, float | int] = {}
         params = mutation.get("params", {})
@@ -121,9 +119,7 @@ class RAGParamsRunner(BaseLoopRunner):
     def _snapshot_current_params(self) -> None:
         """Capture current RAG settings for reference."""
         self._original_values = {
-            key: getattr(settings, key)
-            for key in PARAM_RANGES
-            if hasattr(settings, key)
+            key: getattr(settings, key) for key in PARAM_RANGES if hasattr(settings, key)
         }
 
     def _random_perturbation(self) -> tuple[str, dict]:
@@ -153,9 +149,7 @@ class RAGParamsRunner(BaseLoopRunner):
         }
         return hypothesis, mutation
 
-    async def _llm_hypothesis(
-        self, current_score: float, history: list[dict]
-    ) -> tuple[str, dict]:
+    async def _llm_hypothesis(self, current_score: float, history: list[dict]) -> tuple[str, dict]:
         """Ask the LLM to suggest parameter changes based on experiment history."""
         # Scope the dispatch/telemetry to the authorized BaseLoopRunner binding,
         # never the caller-controlled target. Resolving it before the try block
@@ -285,4 +279,4 @@ class RAGParamsRunner(BaseLoopRunner):
         coverage = min(1.0, num_results / max(settings.rag_top_k, 1))
 
         # Combined score
-        return (avg_score * 0.6 + coverage * 0.4)
+        return avg_score * 0.6 + coverage * 0.4

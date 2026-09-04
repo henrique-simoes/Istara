@@ -65,20 +65,24 @@ def _render_list(title: str, items: list[Any], level: int = 2) -> list[str]:
     if not items:
         return [f"{heading} {title.replace('_', ' ').title()}", "", "No items.", ""]
     if all(isinstance(item, dict) for item in items):
-        return _render_list_of_dicts(title, items) if level == 2 else [
-            f"{heading} {title.replace('_', ' ').title()}",
-            "",
-            *[
-                line
-                for index, item in enumerate(items, start=1)
-                for line in [
-                    f"{heading}# {item.get('code') or item.get('response_id') or item.get('id') or f'Item {index}'}",
-                    "",
-                    *_render_dict(item, level=level + 1),
-                    "",
-                ]
-            ],
-        ]
+        return (
+            _render_list_of_dicts(title, items)
+            if level == 2
+            else [
+                f"{heading} {title.replace('_', ' ').title()}",
+                "",
+                *[
+                    line
+                    for index, item in enumerate(items, start=1)
+                    for line in [
+                        f"{heading}# {item.get('code') or item.get('response_id') or item.get('id') or f'Item {index}'}",
+                        "",
+                        *_render_dict(item, level=level + 1),
+                        "",
+                    ]
+                ],
+            ]
+        )
     return [
         f"{heading} {title.replace('_', ' ').title()}",
         "",
@@ -102,7 +106,9 @@ def _render_dict(data: dict[str, Any], level: int = 2) -> list[str]:
     return lines
 
 
-def render_artifact_document(filename: str, content: str, skill_name: str | None = None) -> dict[str, str]:
+def render_artifact_document(
+    filename: str, content: str, skill_name: str | None = None
+) -> dict[str, str]:
     """Return a researcher-readable document representation for an artifact.
 
     Machine-oriented JSON remains useful internally, but generated Documents should

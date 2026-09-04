@@ -153,9 +153,7 @@ class ProjectVersioning:
                 current_files.append(line.strip())
 
         if current_entry:
-            entries.append(
-                VersionEntry(**current_entry, files_changed=current_files)
-            )
+            entries.append(VersionEntry(**current_entry, files_changed=current_files))
 
         return entries
 

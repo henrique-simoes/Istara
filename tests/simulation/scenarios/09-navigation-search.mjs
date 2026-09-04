@@ -271,7 +271,13 @@ export async function run(ctx) {
   await page.waitForTimeout(300);
   await page.keyboard.press("Meta+k");
   await page.waitForTimeout(800);
-  const searchModal = await page.locator('input[placeholder*="Search"]').isVisible({ timeout: 3000 }).catch(() => false);
+  // The Documents view also owns a visible search input. Scope this assertion
+  // to the modal so Playwright's strict locator semantics cannot turn a real
+  // Cmd+K open into a false negative when both fields are mounted.
+  const searchModal = await page
+    .locator('.fixed.inset-0 input[placeholder="Search findings, nuggets, insights..."]')
+    .isVisible({ timeout: 3000 })
+    .catch(() => false);
   checks.push({ name: "Cmd+K opens search modal", passed: searchModal, detail: "" });
   await screenshot("09-search-modal");
 

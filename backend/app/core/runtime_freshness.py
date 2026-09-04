@@ -69,9 +69,7 @@ def detect_runtime_freshness(
 
     source_files = _frontend_sources(root / "frontend" / "src")
     source_mtimes = [
-        (path, mtime)
-        for path in source_files
-        if (mtime := _safe_mtime(path)) is not None
+        (path, mtime) for path in source_files if (mtime := _safe_mtime(path)) is not None
     ]
     newest_source_mtime = max((mtime for _, mtime in source_mtimes), default=None)
 
@@ -92,7 +90,9 @@ def detect_runtime_freshness(
         message = "No production frontend build id was found; this usually means a development server or unbuilt checkout."
     else:
         status = "fresh"
-        message = "The production frontend build is at least as new as the tracked frontend source files."
+        message = (
+            "The production frontend build is at least as new as the tracked frontend source files."
+        )
 
     payload: dict[str, Any] = {
         "frontend": {

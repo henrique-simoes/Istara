@@ -9,7 +9,7 @@ related_glossary: ["atomic-research"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodebookViewer.tsx", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"]
 test_references: ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py", "tests/test_research_validity_contract.py", "tests/pi_production/test_w7_validation.py", "tests/pi_production/test_w7_pi_manager_integration.py"]
-last_verified: 2026-08-25
+last_verified: 2026-09-02
 compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-78 / CF-1005; CF-SPEC-124 / CF-1590
 ---
 
@@ -17,7 +17,7 @@ compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-78 / CF-100
 
 ## Implementation Summary
 
-The Codebook tab surfaces qualitative coding structures and codebook versions associated with project findings. Project-facing codebook and code by-id routes require the active project id and load records by both record id and project id before returning or mutating data.
+The Codebook tab surfaces qualitative coding structures and codebook versions associated with project findings. Project-facing codebook and code by-id routes require the active project id and load records by both record id and project id before returning or mutating data. Create and update responses explicitly eager-load the codes relationship before serialization, so an empty codebook returns `201`/`200` instead of triggering an async lazy-load `500`.
 
 ## Frontend Surface
 

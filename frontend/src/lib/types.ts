@@ -80,6 +80,9 @@ export interface Task {
   human_feedback_score: number | null;
   review_severity: string | null;
   review_failure_category: string | null;
+  locked_by: string | null;
+  locked_at: string | null;
+  lock_expires_at: string | null;
   validation_method: string | null;
   consensus_score: number | null;
   health?: {
@@ -359,6 +362,8 @@ export interface PiEndpointInfo {
   supports_tools?: boolean;
   supports_vision?: boolean;
   kind?: string;
+  credential_status?: "ready" | "missing" | "unavailable";
+  availability_reason?: string | null;
 }
 
 export interface ChatUsage {

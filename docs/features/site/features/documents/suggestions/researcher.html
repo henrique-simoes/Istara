@@ -258,8 +258,11 @@
 <ul>
 <li>Open Documents &gt; Suggestions from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with document suggestions in the active project context.</li>
-<li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
+<li>Review the provisional output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
+<li>Use Stop to cancel an active suggestion request. If no chat-ready model is</li>
 </ul>
+<p>configured, the panel shows the server&#x27;s Settings guidance instead of</p>
+<p>remaining blank.</p>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
 <li>Start from Documents &gt; Suggestions when the current research task needs document suggestions.</li>
@@ -273,9 +276,19 @@
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
-<li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
-<li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
+<li>Organization suggestions do not rename or move files. They are provisional</li>
 </ul>
+<p>chat guidance and are not accepted Research Spine evidence.</p>
+<ul>
+<li>A project-scoped suggestion session can still be opened in Chat after it is</li>
+</ul>
+<p>created. A model-readiness error must be resolved in Settings before a useful</p>
+<p>answer can be generated.</p>
+<ul>
+<li>Loading, unavailable-model error, and cancellation behavior were verified on</li>
+</ul>
+<p>the published QA surface; permission-denied behavior remains contract-tested</p>
+<p>elsewhere rather than exercised with a second live role in this walkthrough.</p>
 <h2 id="related-features">Related Features</h2>
 <ul>
 <li><a href="../preview/researcher.html">documents.preview</a></li>
@@ -288,8 +301,8 @@
 <h2 id="evidence">Evidence</h2>
 <ul>
 <li>Source files: <code>frontend/src/components/common/InteractiveSuggestionBox.tsx</code>, <code>frontend/src/components/documents/DocumentsView.tsx</code></li>
-<li>API references: <code>backend/app/api/routes/documents.py</code></li>
-<li>Tests: none recorded</li>
+<li>API references: <code>backend/app/api/routes/sessions.py</code>, <code>backend/app/api/routes/chat.py</code></li>
+<li>Tests: <code>frontend/src/lib/suggestionStream.test.ts</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

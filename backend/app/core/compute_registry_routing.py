@@ -33,6 +33,7 @@ from app.core.token_counter import count_tokens
 
 logger = logging.getLogger("app.core.compute_registry")
 
+
 class ComputeRegistryRoutingMixin:
     def _sorted_servers(
         self,
@@ -153,9 +154,7 @@ class ComputeRegistryRoutingMixin:
         requested_model = (model or "").strip()
         if requested_model and requested_model != "default" and strict_model and candidates:
             candidates = [
-                n
-                for n in candidates
-                if self._node_can_attempt_requested_model(n, requested_model)
+                n for n in candidates if self._node_can_attempt_requested_model(n, requested_model)
             ]
 
         if min_context > 0 and candidates:
@@ -276,7 +275,9 @@ class ComputeRegistryRoutingMixin:
     @staticmethod
     def _content_requires_vision(content: Any) -> bool:
         if isinstance(content, list):
-            return any(ComputeRegistryRoutingMixin._content_requires_vision(item) for item in content)
+            return any(
+                ComputeRegistryRoutingMixin._content_requires_vision(item) for item in content
+            )
         if isinstance(content, dict):
             item_type = str(content.get("type", "")).lower()
             if item_type in {"image", "image_url", "input_image"}:
@@ -293,7 +294,8 @@ class ComputeRegistryRoutingMixin:
     @staticmethod
     def _messages_require_vision(messages: list[dict]) -> bool:
         return any(
-            ComputeRegistryRoutingMixin._content_requires_vision(msg.get("content")) for msg in messages
+            ComputeRegistryRoutingMixin._content_requires_vision(msg.get("content"))
+            for msg in messages
         )
 
     @staticmethod
@@ -367,11 +369,7 @@ class ComputeRegistryRoutingMixin:
             pass
 
         requested_model = (model or "").strip()
-        strict_requested_model = (
-            strict_model
-            and requested_model
-            and requested_model != "default"
-        )
+        strict_requested_model = strict_model and requested_model and requested_model != "default"
 
         loaded_models = [
             name
@@ -380,9 +378,7 @@ class ComputeRegistryRoutingMixin:
         ]
         if strict_requested_model:
             loaded_models = [
-                name
-                for name in loaded_models
-                if name in self._model_aliases(requested_model)
+                name for name in loaded_models if name in self._model_aliases(requested_model)
             ]
         if loaded_models:
             candidates = loaded_models
@@ -410,9 +406,7 @@ class ComputeRegistryRoutingMixin:
                 if isinstance(caps, dict) and caps.get("is_loaded"):
                     try:
                         loaded_context = int(
-                            caps.get("loaded_context_length")
-                            or caps.get("context_length")
-                            or 0
+                            caps.get("loaded_context_length") or caps.get("context_length") or 0
                         )
                     except (TypeError, ValueError):
                         loaded_context = 0
@@ -493,11 +487,7 @@ class ComputeRegistryRoutingMixin:
             return None
 
         requested_model = (model or "").strip()
-        if (
-            settings.strict_auto_routing
-            and requested_model
-            and requested_model != "default"
-        ):
+        if settings.strict_auto_routing and requested_model and requested_model != "default":
             candidates = [requested_model]
         else:
             candidates = self._node_load_candidates(

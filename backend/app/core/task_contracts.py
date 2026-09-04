@@ -48,5 +48,8 @@ async def ensure_project_documents(
         if doc_id not in project_by_id or project_by_id.get(doc_id) != project_id
     ]
     if invalid:
-        return [], "Cannot create task: input_document_ids contains unknown documents for this project."
+        return (
+            [],
+            "Cannot create task: input_document_ids contains unknown documents for this project.",
+        )
     return ids, None

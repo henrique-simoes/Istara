@@ -132,9 +132,7 @@ class QuestionBankRunner(BaseLoopRunner):
         }
         return hypothesis, mutation
 
-    async def apply_mutation(
-        self, target: str, mutation: dict
-    ) -> Callable[[], Awaitable[None]]:
+    async def apply_mutation(self, target: str, mutation: dict) -> Callable[[], Awaitable[None]]:
         """Modify deployment questions in the database.  Returns revert fn."""
         old_questions_json = json.dumps(mutation["old_questions"])
         new_questions_json = json.dumps(mutation["new_questions"])
@@ -211,7 +209,7 @@ class QuestionBankRunner(BaseLoopRunner):
 
         # Format questions for the simulated participant
         questions_text = "\n".join(
-            f"{i+1}. {q.get('text', q) if isinstance(q, dict) else q}"
+            f"{i + 1}. {q.get('text', q) if isinstance(q, dict) else q}"
             for i, q in enumerate(questions)
         )
 
@@ -255,9 +253,7 @@ class QuestionBankRunner(BaseLoopRunner):
         # Score the response quality
         return await self._score_responses(questions_text, participant_response)
 
-    async def _score_responses(
-        self, questions_text: str, responses: str
-    ) -> float:
+    async def _score_responses(self, questions_text: str, responses: str) -> float:
         """Score how well the questions elicited useful research responses."""
         if not responses or len(responses.strip()) < 30:
             return 0.1

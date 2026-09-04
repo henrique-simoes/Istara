@@ -72,6 +72,55 @@ async def test_codebooks_list_returns_project_codebooks(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_create_codebook_returns_empty_codebook(auth_headers):
+    """Creating a codebook must serialize before its codes relationship is loaded."""
+    await init_db()
+    project_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Codebook Create"))
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/codebooks",
+            json={"project_id": project_id, "name": "New Codebook"},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["project_id"] == project_id
+    assert body["name"] == "New Codebook"
+    assert body["code_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_update_codebook_returns_serialized_codebook(auth_headers):
+    """Updating a codebook must keep response serialization async-safe."""
+    await init_db()
+    project_id = str(uuid.uuid4())
+    codebook_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Codebook Update"))
+        db.add(Codebook(id=codebook_id, project_id=project_id, name="Before"))
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.patch(
+            f"/api/codebooks/{codebook_id}",
+            params={"project_id": project_id},
+            json={"name": "After"},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "After"
+    assert response.json()["code_count"] == 0
+
+
+@pytest.mark.asyncio
 async def test_codebooks_requires_auth():
     """Codebooks requires authentication in team mode."""
     await init_db()

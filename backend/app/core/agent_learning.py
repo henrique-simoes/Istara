@@ -39,20 +39,12 @@ class AgentLearning(Base):
     trigger: Mapped[str] = mapped_column(
         Text, nullable=False
     )  # What caused this learning (error message, user action, etc.)
-    resolution: Mapped[str] = mapped_column(
-        Text, default=""
-    )  # How it was resolved (if applicable)
-    learning: Mapped[str] = mapped_column(
-        Text, nullable=False
-    )  # The distilled learning
-    confidence: Mapped[int] = mapped_column(
-        Integer, default=50
-    )  # 0-100 confidence score
+    resolution: Mapped[str] = mapped_column(Text, default="")  # How it was resolved (if applicable)
+    learning: Mapped[str] = mapped_column(Text, nullable=False)  # The distilled learning
+    confidence: Mapped[int] = mapped_column(Integer, default=50)  # 0-100 confidence score
     times_applied: Mapped[int] = mapped_column(Integer, default=0)
     times_successful: Mapped[int] = mapped_column(Integer, default=0)
-    project_id: Mapped[str] = mapped_column(
-        String(36), default=""
-    )  # Empty = global learning
+    project_id: Mapped[str] = mapped_column(String(36), default="")  # Empty = global learning
     utility_score: Mapped[float] = mapped_column(Float, default=0.5)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -82,6 +74,7 @@ class AgentLearningManager:
         and succeeds.  The pattern is stored for future reference.
         """
         from app.core.autoresearch_isolation import is_autoresearch_active
+
         if is_autoresearch_active():
             return
         scoped_project_id = str(project_id or "").strip()
@@ -92,10 +85,7 @@ class AgentLearningManager:
             )
             return
 
-        learning_text = (
-            f"When encountering '{error_message[:200]}', "
-            f"resolve by: {resolution[:500]}"
-        )
+        learning_text = f"When encountering '{error_message[:200]}', resolve by: {resolution[:500]}"
 
         try:
             async with async_session() as db:
@@ -112,24 +102,16 @@ class AgentLearningManager:
 
                 if existing_record:
                     # Reinforce existing learning
-                    existing_record.times_applied = (
-                        existing_record.times_applied or 0
-                    ) + 1
-                    existing_record.times_successful = (
-                        existing_record.times_successful or 0
-                    ) + 1
-                    existing_record.confidence = min(
-                        100, (existing_record.confidence or 50) + 5
-                    )
+                    existing_record.times_applied = (existing_record.times_applied or 0) + 1
+                    existing_record.times_successful = (existing_record.times_successful or 0) + 1
+                    existing_record.confidence = min(100, (existing_record.confidence or 50) + 5)
                     # Update utility on successful resolution
                     existing_record.utility_score = (
-                        (existing_record.utility_score or 0.5) * 0.9 + 0.1
-                    )
+                        existing_record.utility_score or 0.5
+                    ) * 0.9 + 0.1
                     existing_record.updated_at = datetime.now(timezone.utc)
                     await db.commit()
-                    logger.info(
-                        f"Reinforced learning for {agent_id}: {error_message[:60]}"
-                    )
+                    logger.info(f"Reinforced learning for {agent_id}: {error_message[:60]}")
                 else:
                     # Create new learning
                     record = AgentLearning(
@@ -143,9 +125,7 @@ class AgentLearningManager:
                     )
                     db.add(record)
                     await db.commit()
-                    logger.info(
-                        f"New error learning for {agent_id}: {error_message[:60]}"
-                    )
+                    logger.info(f"New error learning for {agent_id}: {error_message[:60]}")
         except Exception as e:
             logger.warning(f"Failed to record error learning: {e}")
 
@@ -157,6 +137,7 @@ class AgentLearningManager:
     ) -> None:
         """Record a workflow pattern observation."""
         from app.core.autoresearch_isolation import is_autoresearch_active
+
         if is_autoresearch_active():
             return
         scoped_project_id = str(project_id or "").strip()
@@ -190,6 +171,7 @@ class AgentLearningManager:
     ) -> None:
         """Record a user preference or feedback learning."""
         from app.core.autoresearch_isolation import is_autoresearch_active
+
         if is_autoresearch_active():
             return
         scoped_project_id = str(project_id or "").strip()
@@ -271,9 +253,7 @@ class AgentLearningManager:
                     archived += 1
                 if archived:
                     await db.commit()
-                    logger.info(
-                        f"Archived {archived} low-utility learnings for {agent_id}"
-                    )
+                    logger.info(f"Archived {archived} low-utility learnings for {agent_id}")
         except Exception as e:
             logger.warning(f"Failed to archive low-utility learnings: {e}")
         return archived

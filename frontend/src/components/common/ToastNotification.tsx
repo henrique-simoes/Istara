@@ -11,6 +11,10 @@ import {
   Cpu,
 } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import {
+  classifyAgentStatusToast,
+  classifyTaskProgressToast,
+} from "@/lib/taskProgressToast";
 import { cn } from "@/lib/utils";
 import type { WSEvent } from "@/lib/types";
 
@@ -121,18 +125,26 @@ export default function ToastNotification() {
         case "agent_status": {
           const status = event.data.status as string;
           const details = event.data.details as string;
-          if (status === "working") {
-            addToast("agent", "🤖 Agent Working", details, 8000, "agents");
-          } else if (status === "error") {
-            addToast("warning", "⚠️ Agent Error", details, 10000, "agents");
+          const toast = classifyAgentStatusToast(status, details);
+          if (toast) {
+            addToast(
+              toast.type,
+              toast.title,
+              toast.message,
+              status === "working" ? 8000 : 10000,
+              "agents"
+            );
           }
           break;
         }
         case "task_progress": {
-          const progress = Math.round(((event.data.progress as number) || 0) * 100);
-          const notes = (event.data.notes as string) || "";
-          if (progress === 100) {
-            addToast("success", "✅ Task Complete", notes, 5000, "tasks");
+          const toast = classifyTaskProgressToast({
+            progress: (event.data.progress as number) || 0,
+            notes: (event.data.notes as string) || "",
+            outcome: event.data.outcome as string | undefined,
+          });
+          if (toast) {
+            addToast(toast.type, toast.title, toast.message, 5000, "tasks");
           }
           break;
         }

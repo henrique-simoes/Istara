@@ -19,6 +19,21 @@ def test_dispatcher_exposes_exactly_the_five_contract_verbs():
         assert callable(getattr(AgenticDispatcher, verb, None)), f"missing verb {verb}"
 
 
+def test_explicit_catalog_resolves_first_admitted_endpoint_when_unqualified():
+    """An injected authority catalog must not fall back to the built-in default."""
+    from dataclasses import replace
+
+    from tests.pi_production.harness import faux_endpoint, final_text
+
+    first = replace(
+        faux_endpoint([final_text("answer")], endpoint_id="pi-explicit-first"),
+        model="explicit-model",
+    )
+    manager = PiModelManager(endpoints=[first], include_local=False)
+
+    assert manager.resolve().endpoint_id == "pi-explicit-first"
+
+
 @pytest.mark.asyncio
 async def test_llm_server_projection_admits_only_healthy_non_donors():
     """Only healthy, non-relay rows can consume a Pi/Research Spine slot."""

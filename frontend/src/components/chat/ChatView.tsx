@@ -16,6 +16,7 @@ import ViewOnboarding from "@/components/common/ViewOnboarding";
 import ChatSessionsSidebar from "./ChatSessionsSidebar";
 import ChatModelControls from "./ChatModelControls";
 import type { PiCatalogProvider, PiEndpointInfo } from "@/lib/types";
+import { isChatSendReady } from "@/lib/modelCatalog";
 import { AgentAvatar, UserAvatar } from "./chatViewParts";
 
 function SteeringQueueIndicator({
@@ -80,9 +81,12 @@ export default function ChatView() {
   const [configuredModels, setConfiguredModels] = useState<PiEndpointInfo[]>([]);
   const [legacyModels, setLegacyModels] = useState<string[]>([]);
   const [modelEngine, setModelEngine] = useState<"pi" | "legacy">("legacy");
+  const [chatReady, setChatReady] = useState<boolean | null>(null);
+  const [defaultEndpointId, setDefaultEndpointId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canWrite = capabilities.canWriteActiveProject || canWriteActiveProject();
+  const chatUnavailable = !isChatSendReady(modelEngine, chatReady);
 
   // Initialize sessions: fetch list first (restores localStorage session), then ensure a default exists
   useEffect(() => {
@@ -94,6 +98,8 @@ export default function ChatView() {
         setConfiguredModels(catalog.configured || []);
         setLegacyModels(catalog.legacy_models || []);
         setModelEngine(catalog.engine === "pi" ? "pi" : "legacy");
+        setChatReady(catalog.chat_ready ?? null);
+        setDefaultEndpointId(catalog.default_endpoint_id || null);
         // Keep the request header in lockstep with the visible core chip so
         // what the user sees is exactly what routes the turn (CF-SPEC-1).
         setEngine(catalog.engine === "pi" ? "pi" : "legacy");
@@ -102,6 +108,8 @@ export default function ChatView() {
         setConfiguredModels([]);
         setLegacyModels([]);
         setModelEngine("legacy");
+        setChatReady(false);
+        setDefaultEndpointId(null);
         // Catalog unknown: clear the override so the request carries no
         // engine header and the backend uses the persisted choice (F-B1).
         setEngine(null);
@@ -122,18 +130,18 @@ export default function ChatView() {
 
   // Auto-send pending prefill message (from "Send to Agent" flow)
   useEffect(() => {
-    if (pendingPrefill && activeProjectId && activeSessionId && canWrite && !streaming && !loadingHistory) {
+    if (pendingPrefill && activeProjectId && activeSessionId && canWrite && !chatUnavailable && !streaming && !loadingHistory) {
       const msg = pendingPrefill;
       setPendingPrefill(null);
       sendMessage(activeProjectId, msg, activeSessionId);
     }
-  }, [pendingPrefill, activeProjectId, activeSessionId, canWrite, streaming, loadingHistory, setPendingPrefill, sendMessage]);
+  }, [pendingPrefill, activeProjectId, activeSessionId, canWrite, chatUnavailable, streaming, loadingHistory, setPendingPrefill, sendMessage]);
 
   const handleSend = async () => {
     const text = input.trim();
     const files = [...pendingFiles];
     const docRefs = [...pendingDocRefs];
-    if (!canWrite || (!text && files.length === 0 && docRefs.length === 0) || !activeProjectId || streaming) return;
+    if (!canWrite || chatUnavailable || (!text && files.length === 0 && docRefs.length === 0) || !activeProjectId || streaming) return;
 
     setInput("");
     setPendingFiles([]);
@@ -298,6 +306,7 @@ export default function ChatView() {
           configured={configuredModels}
           legacyModels={legacyModels}
           engine={modelEngine}
+          defaultEndpointId={defaultEndpointId}
           usage={usage}
           onUpdateSession={(data) => {
             if (activeProjectId && activeSessionId) void updateSession(activeProjectId, activeSessionId, data);
@@ -486,6 +495,11 @@ export default function ChatView() {
         {/* Input */}
         <div className="border-t border-slate-200 dark:border-slate-800 p-4">
           <div className="max-w-3xl mx-auto">
+            {chatUnavailable && (
+              <p role="status" className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                Chat is unavailable until a connected model is ready. Configure one in Settings.
+              </p>
+            )}
             {/* Queue status */}
             {capabilities.canUseSteering && (
               <SteeringQueueIndicator
@@ -598,7 +612,7 @@ export default function ChatView() {
 
               <button
                 onClick={handleSend}
-                disabled={!canWrite || (!input.trim() && pendingFiles.length === 0 && pendingDocRefs.length === 0) || streaming}
+                disabled={!canWrite || chatUnavailable || (!input.trim() && pendingFiles.length === 0 && pendingDocRefs.length === 0) || streaming}
               aria-label="Send message"
               className={cn(
                 "p-2.5 rounded-lg transition-colors",

@@ -26,6 +26,4 @@ def _unwrap(routes, prefix: str = "") -> Iterator[tuple[object, str]]:
 
 def iter_route_paths(app) -> set[str]:
     """All registered paths (HTTP and WebSocket), include prefixes applied."""
-    return {
-        path for _, path in _unwrap(getattr(app, "routes", [])) if path
-    }
+    return {path for _, path in _unwrap(getattr(app, "routes", [])) if path}

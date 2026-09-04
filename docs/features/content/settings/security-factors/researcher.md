@@ -6,10 +6,10 @@ audience: researcher
 status: documented
 related_features: ["auth.login", "settings.sessions"]
 related_glossary: ["webauthn", "totp"]
-code_references: ["frontend/src/components/settings/AccountSecurityManager.tsx", "frontend/src/components/settings/PasskeyManager.tsx", "frontend/src/components/settings/TOTPManager.tsx", "backend/app/api/routes/webauthn.py", "backend/app/api/routes/auth.py", "backend/app/core/recovery_codes.py"]
+code_references: ["frontend/src/components/settings/AccountSecurityManager.tsx", "frontend/src/lib/profileFormState.ts", "frontend/src/components/settings/PasskeyManager.tsx", "frontend/src/components/settings/TOTPManager.tsx", "backend/app/api/routes/webauthn.py", "backend/app/api/routes/auth.py", "backend/app/core/recovery_codes.py"]
 api_references: ["backend/app/api/routes/webauthn.py", "backend/app/api/routes/auth.py"]
-test_references: ["tests/test_auth_security.py"]
-last_verified: 2026-05-22
+test_references: ["frontend/src/lib/profileFormState.test.ts", "frontend/src/lib/profileUpdatePayload.test.ts", "tests/test_auth_security.py"]
+last_verified: 2026-09-01
 compass: CF-SPEC-134 / CF-1671
 ---
 
@@ -52,6 +52,8 @@ Passkeys And Two-Factor Authentication exists so the work represented by Setting
 - Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
 - Recovery codes are shown once. Save them offline before leaving the screen.
 - Current 2FA options are TOTP plus recovery codes. Passkeys are passwordless sign-in credentials, not SMS or email OTP.
+- If the server cannot decrypt stored email PII, Settings intentionally shows a blank email rather than ciphertext. Saving another profile field omits that blank optional email, so the action does not accidentally submit an invalid replacement.
+- If login bootstrap briefly supplies an incomplete team identity, the profile panel performs one safe authoritative refresh. It does not retry indefinitely, and a still-unavailable email remains blank rather than exposing encrypted data.
 
 ## Related Features
 
@@ -65,6 +67,6 @@ Passkeys And Two-Factor Authentication exists so the work represented by Setting
 
 ## Evidence
 
-- Source files: `frontend/src/components/settings/AccountSecurityManager.tsx`, `frontend/src/components/settings/PasskeyManager.tsx`, `frontend/src/components/settings/TOTPManager.tsx`, `backend/app/api/routes/webauthn.py`, `backend/app/api/routes/auth.py`, `backend/app/core/recovery_codes.py`
+- Source files: `frontend/src/components/settings/AccountSecurityManager.tsx`, `frontend/src/lib/profileFormState.ts`, `frontend/src/components/settings/PasskeyManager.tsx`, `frontend/src/components/settings/TOTPManager.tsx`, `backend/app/api/routes/webauthn.py`, `backend/app/api/routes/auth.py`, `backend/app/core/recovery_codes.py`
 - API references: `backend/app/api/routes/webauthn.py`, `backend/app/api/routes/auth.py`
-- Tests: `tests/test_auth_security.py`
+- Tests: `frontend/src/lib/profileFormState.test.ts`, `frontend/src/lib/profileUpdatePayload.test.ts`, `tests/test_auth_security.py`

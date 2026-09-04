@@ -31,15 +31,20 @@ function parseCron(cron: string): string[] {
   return parts.slice(0, 5);
 }
 
-function describeNextRuns(cron: string, count = 5): string[] {
+export function describeNextRuns(cron: string, count = 5): string[] {
   // Simple next-run estimation for common patterns
   try {
     const parts = parseCron(cron);
     const results: string[] = [];
     const now = new Date();
     let cursor = new Date(now);
+    // Sparse schedules (daily, weekly, or monthly) can have fewer than five
+    // matches in the old one-thousand-minute window. Search far enough to
+    // show the requested count while retaining a finite guard for impossible
+    // expressions such as February 31st.
+    const maxAttempts = Math.max(1000, count * 366 * 24 * 60);
 
-    for (let attempts = 0; attempts < 1000 && results.length < count; attempts++) {
+    for (let attempts = 0; attempts < maxAttempts && results.length < count; attempts++) {
       cursor = new Date(cursor.getTime() + 60_000); // advance by 1 minute
 
       const minute = cursor.getMinutes();
@@ -59,7 +64,7 @@ function describeNextRuns(cron: string, count = 5): string[] {
         hour: "2-digit", minute: "2-digit",
       }));
     }
-    return results.length > 0 ? results : ["Unable to compute next runs"];
+    return results.length === count ? results : ["Unable to compute next runs"];
   } catch {
     return ["Invalid cron expression"];
   }

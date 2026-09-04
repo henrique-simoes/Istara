@@ -41,10 +41,12 @@ class CodebookVersion(Base):
 
     def to_dict(self) -> dict:
         return {
-            "id": self.id, "project_id": self.project_id,
+            "id": self.id,
+            "project_id": self.project_id,
             "version": self.version,
             "codes": _json_list(self.codes_json),
-            "change_log": self.change_log, "created_by": self.created_by,
+            "change_log": self.change_log,
+            "created_by": self.created_by,
             "methodology": self.methodology,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

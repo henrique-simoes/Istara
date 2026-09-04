@@ -43,11 +43,17 @@ class ContextDocument(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     level: Mapped[int] = mapped_column(Integer, nullable=False)  # 0-5
-    level_type: Mapped[str] = mapped_column(String(50), nullable=False)  # platform, company, product, project, task, agent
-    parent_id: Mapped[str] = mapped_column(String(36), default="")  # Links to parent context (e.g., project → company)
+    level_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # platform, company, product, project, task, agent
+    parent_id: Mapped[str] = mapped_column(
+        String(36), default=""
+    )  # Links to parent context (e.g., project → company)
     project_id: Mapped[str] = mapped_column(String(36), default="")  # For project/task level
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    priority: Mapped[int] = mapped_column(Integer, default=0)  # Higher = more important, overrides lower
+    priority: Mapped[int] = mapped_column(
+        Integer, default=0
+    )  # Higher = more important, overrides lower
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -106,9 +112,11 @@ class ContextHierarchy:
 
         # Level 1-5: Load project-local context rows from database.
         scoped_project_id = self._normalize_project_id(project_id)
-        query = select(ContextDocument).where(
-            ContextDocument.enabled == True
-        ).order_by(ContextDocument.level, ContextDocument.priority.desc())
+        query = (
+            select(ContextDocument)
+            .where(ContextDocument.enabled == True)
+            .order_by(ContextDocument.level, ContextDocument.priority.desc())
+        )
 
         if scoped_project_id:
             query = query.where(ContextDocument.project_id == scoped_project_id)
@@ -247,7 +255,6 @@ class ContextHierarchy:
         await db.delete(doc)
         await db.commit()
         return True
-
 
     async def compose_context_with_budget(
         self,

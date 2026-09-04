@@ -35,10 +35,10 @@ logger = logging.getLogger(__name__)
 
 # Sections from CORE.md that are ALWAYS included (identity anchor)
 ALWAYS_INCLUDE_PATTERNS = [
-    r"^# ",            # Title line
-    r"^## Identity",   # Core identity
-    r"^## Personality", # Communication style
-    r"^## Values",     # Behavioral anchors
+    r"^# ",  # Title line
+    r"^## Identity",  # Core identity
+    r"^## Personality",  # Communication style
+    r"^## Values",  # Behavioral anchors
 ]
 
 # Maximum tokens for the always-included identity anchor
@@ -55,6 +55,7 @@ PROMPT_RAG_SPINE_NOTICE = (
     "must be injected and enforced by the owning Research Spine service."
     "</promotion_gate>"
 )
+PROMPT_COMPOSITION_SEPARATOR = "\n\n---\n\n"
 
 PROMPT_RAG_STOPWORDS = {
     "about",
@@ -123,6 +124,7 @@ PROMPT_RAG_DOMAIN_ALIASES = {
 # Section chunking
 # ---------------------------------------------------------------------------
 
+
 class PromptSection:
     """A chunk of a persona file, indexed by its section header."""
 
@@ -177,13 +179,15 @@ def _chunk_md_by_sections(
             if current_header and current_lines:
                 text = "\n".join(current_lines).strip()
                 if text and len(text) > 20:  # Skip trivially small sections
-                    sections.append(PromptSection(
-                        agent_id=agent_id,
-                        filename=filename,
-                        header=current_header,
-                        content=text,
-                        depth=current_depth,
-                    ))
+                    sections.append(
+                        PromptSection(
+                            agent_id=agent_id,
+                            filename=filename,
+                            header=current_header,
+                            content=text,
+                            depth=current_depth,
+                        )
+                    )
 
             current_header = line.strip()
             current_lines = []
@@ -195,13 +199,15 @@ def _chunk_md_by_sections(
     if current_header and current_lines:
         text = "\n".join(current_lines).strip()
         if text and len(text) > 20:
-            sections.append(PromptSection(
-                agent_id=agent_id,
-                filename=filename,
-                header=current_header,
-                content=text,
-                depth=current_depth,
-            ))
+            sections.append(
+                PromptSection(
+                    agent_id=agent_id,
+                    filename=filename,
+                    header=current_header,
+                    content=text,
+                    depth=current_depth,
+                )
+            )
 
     return sections
 
@@ -231,6 +237,7 @@ def index_agent_sections(agent_id: str) -> list[PromptSection]:
 # Similarity scoring (lightweight, no embedding dependency)
 # ---------------------------------------------------------------------------
 
+
 def _normalize_keyword_token(token: str) -> str:
     """Normalize light keyword variants without pulling in a stemmer."""
     if len(token) > 5 and token.endswith("ies"):
@@ -243,7 +250,7 @@ def _normalize_keyword_token(token: str) -> str:
 def _tokenize(text: str) -> set[str]:
     """Simple word tokenization for keyword overlap scoring."""
     tokens: set[str] = set()
-    for raw_token in re.findall(r'\b\w{3,}\b', text.lower()):
+    for raw_token in re.findall(r"\b\w{3,}\b", text.lower()):
         token = _normalize_keyword_token(raw_token)
         if token and token not in PROMPT_RAG_STOPWORDS:
             tokens.add(token)
@@ -337,6 +344,7 @@ async def _embedding_similarity(
 # Identity anchor extraction
 # ---------------------------------------------------------------------------
 
+
 def _extract_identity_anchor(agent_id: str) -> str:
     """Extract the always-included identity core from CORE.md.
 
@@ -367,9 +375,7 @@ def _extract_identity_anchor(agent_id: str) -> str:
             continue
 
         # Check if this line starts an anchor section
-        is_anchor_header = any(
-            re.match(pat, line) for pat in ALWAYS_INCLUDE_PATTERNS
-        )
+        is_anchor_header = any(re.match(pat, line) for pat in ALWAYS_INCLUDE_PATTERNS)
         if is_anchor_header:
             in_anchor = True
 
@@ -388,6 +394,42 @@ def _extract_identity_anchor(agent_id: str) -> str:
 
 def _with_spine_notice(anchor: str) -> str:
     return "\n\n".join(part for part in [anchor, PROMPT_RAG_SPINE_NOTICE] if part)
+
+
+def _fit_anchor_to_budget(anchor: str, budget: int) -> str:
+    """Trim the identity anchor so the notice and one dynamic section can fit.
+
+    The old tight-budget path returned the fixed 600-token anchor plus the
+    promotion notice, exceeding small budgets before retrieval even started.
+    Keep the beginning of the anchor (where the identity title and values live)
+    and reserve space for the mandatory notice and a small section header.
+    """
+    if not anchor or budget <= 0:
+        return anchor[: max(0, budget * 4)]
+
+    notice_tokens = len(PROMPT_RAG_SPINE_NOTICE) // 4
+    separator_tokens = len(PROMPT_COMPOSITION_SEPARATOR) // 4
+    minimum_section_tokens = 8
+    available_anchor_tokens = budget - notice_tokens - separator_tokens - minimum_section_tokens
+    if available_anchor_tokens <= 0:
+        available_anchor_tokens = max(1, budget - notice_tokens)
+
+    if len(anchor) // 4 <= available_anchor_tokens:
+        return anchor
+
+    trimmed = anchor[: available_anchor_tokens * 4]
+    # Avoid ending halfway through a markdown line while preserving the prefix.
+    line_safe = trimmed.rsplit("\n", 1)[0].strip()
+    return line_safe or trimmed
+
+
+def _truncate_to_tokens(text: str, max_tokens: int) -> str:
+    """Return a prefix no larger than the approximate token budget."""
+    if max_tokens <= 0:
+        return ""
+    if len(text) // 4 <= max_tokens:
+        return text
+    return text[: max_tokens * 4]
 
 
 # ---------------------------------------------------------------------------
@@ -417,9 +459,7 @@ async def _record_prompt_rag_telemetry(
             retrieval_mode="prompt-rag-embedding" if use_embeddings else "prompt-rag-keyword",
             status=status,
             quality_score=(
-                min(1.0, selected_count / total_sections)
-                if total_sections > 0
-                else None
+                min(1.0, selected_count / total_sections) if total_sections > 0 else None
             ),
             error_type=error_type,
         )
@@ -453,22 +493,11 @@ async def compose_dynamic_prompt(
         budget = int(budget * 0.3)  # 30% of context for identity
 
     # 1. Always include the identity anchor
-    anchor = _extract_identity_anchor(agent_id)
+    anchor = _fit_anchor_to_budget(_extract_identity_anchor(agent_id), budget)
     anchor_tokens = len(anchor) // 4
-
-    remaining_budget = budget - anchor_tokens
-    if remaining_budget <= 100:
-        # Budget too tight — just return the anchor
-        await _record_prompt_rag_telemetry(
-            project_id=project_id,
-            agent_id=agent_id,
-            use_embeddings=use_embeddings,
-            selected_count=0,
-            total_sections=0,
-            status="degraded",
-            error_type="prompt_rag_budget_too_small",
-        )
-        return _with_spine_notice(anchor)
+    anchor_with_notice_tokens = len(_with_spine_notice(anchor)) // 4
+    separator_tokens = len(PROMPT_COMPOSITION_SEPARATOR) // 4
+    remaining_budget = max(0, budget - anchor_with_notice_tokens - separator_tokens)
 
     # 2. Index all sections
     all_sections = index_agent_sections(agent_id)
@@ -491,19 +520,15 @@ async def compose_dynamic_prompt(
     if use_embeddings:
         try:
             from app.core.embeddings import embed_text
+
             query_vector = await embed_text(query)
 
             for section in all_sections:
                 # Skip sections that are part of the anchor (already included)
-                if any(
-                    re.match(pat, section.header)
-                    for pat in ALWAYS_INCLUDE_PATTERNS
-                ):
+                if any(re.match(pat, section.header) for pat in ALWAYS_INCLUDE_PATTERNS):
                     continue
 
-                score = await _embedding_similarity(
-                    query, section, query_vector
-                )
+                score = await _embedding_similarity(query, section, query_vector)
                 scored_sections.append((score, section))
         except Exception:
             # Fall back to keyword similarity
@@ -511,10 +536,7 @@ async def compose_dynamic_prompt(
 
     if not use_embeddings:
         for section in all_sections:
-            if any(
-                re.match(pat, section.header)
-                for pat in ALWAYS_INCLUDE_PATTERNS
-            ):
+            if any(re.match(pat, section.header) for pat in ALWAYS_INCLUDE_PATTERNS):
                 continue
 
             score = _keyword_similarity(query_tokens, section)
@@ -523,10 +545,43 @@ async def compose_dynamic_prompt(
     # 4. Sort by relevance and select top-K within budget
     scored_sections.sort(key=lambda x: x[0], reverse=True)
 
+    if remaining_budget <= 100:
+        # Preserve a small, query-relevant section header even when the identity
+        # anchor consumes most of the budget. The section body is deliberately
+        # bounded; this keeps the diagnostic endpoint honest about retrieval.
+        candidate = next((section for score, section in scored_sections if score > 0), None)
+        if candidate is None:
+            candidate = next(
+                (
+                    section
+                    for section in all_sections
+                    if not any(re.match(pat, section.header) for pat in ALWAYS_INCLUDE_PATTERNS)
+                ),
+                None,
+            )
+        parts = [_with_spine_notice(anchor)]
+        available_section_tokens = max(
+            0,
+            budget - len(parts[0]) // 4 - separator_tokens - 1,
+        )
+        if candidate is not None and available_section_tokens > 0:
+            parts.append(_truncate_to_tokens(candidate.to_text(), available_section_tokens))
+        composed = PROMPT_COMPOSITION_SEPARATOR.join(parts)
+        await _record_prompt_rag_telemetry(
+            project_id=project_id,
+            agent_id=agent_id,
+            use_embeddings=use_embeddings,
+            selected_count=1 if len(parts) > 1 else 0,
+            total_sections=len(all_sections),
+            status="degraded",
+            error_type="prompt_rag_budget_too_small",
+        )
+        return composed
+
     selected_sections: list[PromptSection] = []
     used_tokens = 0
 
-    for score, section in scored_sections[:top_k * 2]:  # Oversample for budget fit
+    for score, section in scored_sections[: top_k * 2]:  # Oversample for budget fit
         if len(selected_sections) >= top_k:
             break
         if score <= 0:
@@ -538,15 +593,13 @@ async def compose_dynamic_prompt(
 
     # 5. Compose: anchor + selected sections (sorted by file order, not relevance)
     file_order = {f: i for i, f in enumerate(IDENTITY_FILES)}
-    selected_sections.sort(
-        key=lambda s: (file_order.get(s.filename, 99), s.depth)
-    )
+    selected_sections.sort(key=lambda s: (file_order.get(s.filename, 99), s.depth))
 
     parts = [_with_spine_notice(anchor)]
     for section in selected_sections:
         parts.append(section.to_text())
 
-    composed = "\n\n---\n\n".join(parts)
+    composed = PROMPT_COMPOSITION_SEPARATOR.join(parts)
 
     logger.debug(
         f"Prompt RAG for {agent_id}: {anchor_tokens} anchor + "
@@ -571,6 +624,7 @@ async def compose_dynamic_prompt(
 # Keyword-only fast path (for when embeddings are unavailable or too slow)
 # ---------------------------------------------------------------------------
 
+
 def compose_keyword_prompt(
     agent_id: str,
     query: str,
@@ -587,12 +641,11 @@ def compose_keyword_prompt(
         budget = getattr(settings, "max_context_tokens", 8192)
         budget = int(budget * 0.3)
 
-    anchor = _extract_identity_anchor(agent_id)
+    anchor = _fit_anchor_to_budget(_extract_identity_anchor(agent_id), budget)
     anchor_tokens = len(anchor) // 4
-    remaining = budget - anchor_tokens
-
-    if remaining <= 100:
-        return _with_spine_notice(anchor)
+    anchor_with_notice_tokens = len(_with_spine_notice(anchor)) // 4
+    separator_tokens = len(PROMPT_COMPOSITION_SEPARATOR) // 4
+    remaining = max(0, budget - anchor_with_notice_tokens - separator_tokens)
 
     all_sections = index_agent_sections(agent_id)
     if not all_sections:
@@ -606,9 +659,29 @@ def compose_keyword_prompt(
     ]
     scored.sort(key=lambda x: x[0], reverse=True)
 
+    if remaining <= 100:
+        candidate = next((section for score, section in scored if score > 0), None)
+        if candidate is None:
+            candidate = next(
+                (
+                    section
+                    for section in all_sections
+                    if not any(re.match(pat, section.header) for pat in ALWAYS_INCLUDE_PATTERNS)
+                ),
+                None,
+            )
+        parts = [_with_spine_notice(anchor)]
+        available_section_tokens = max(
+            0,
+            budget - len(parts[0]) // 4 - separator_tokens - 1,
+        )
+        if candidate is not None and available_section_tokens > 0:
+            parts.append(_truncate_to_tokens(candidate.to_text(), available_section_tokens))
+        return PROMPT_COMPOSITION_SEPARATOR.join(parts)
+
     selected: list[PromptSection] = []
     used = 0
-    for score, section in scored[:top_k * 2]:
+    for score, section in scored[: top_k * 2]:
         if len(selected) >= top_k:
             break
         if score <= 0:
@@ -625,4 +698,4 @@ def compose_keyword_prompt(
     for section in selected:
         parts.append(section.to_text())
 
-    return "\n\n---\n\n".join(parts)
+    return PROMPT_COMPOSITION_SEPARATOR.join(parts)

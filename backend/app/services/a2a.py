@@ -90,9 +90,7 @@ async def _filter_messages_by_project(
 ) -> list[A2AMessage]:
     resolved_project_ids = await _resolve_message_project_ids(db, messages)
     return [
-        message
-        for message in messages
-        if resolved_project_ids.get(str(message.id)) == project_id
+        message for message in messages if resolved_project_ids.get(str(message.id)) == project_id
     ]
 
 
@@ -102,29 +100,20 @@ async def _resolve_message_project_ids(
 ) -> dict[str, str]:
     """Resolve message project identity only when available ownership claims agree."""
     task_ids = {
-        task_id
-        for message in messages
-        for task_id in [_message_task_id(message)]
-        if task_id
+        task_id for message in messages for task_id in [_message_task_id(message)] if task_id
     }
     task_project_ids: dict[str, str] = {}
     if task_ids:
         from app.models.task import Task
 
-        result = await db.execute(
-            select(Task.id, Task.project_id).where(Task.id.in_(task_ids))
-        )
+        result = await db.execute(select(Task.id, Task.project_id).where(Task.id.in_(task_ids)))
         task_project_ids = {
             str(task_id): str(task_project_id)
             for task_id, task_project_id in result.all()
             if task_project_id
         }
 
-    agent_ids = {
-        agent_id
-        for message in messages
-        for agent_id in _message_agent_ids(message)
-    }
+    agent_ids = {agent_id for message in messages for agent_id in _message_agent_ids(message)}
     agent_project_ids: dict[str, str] = {}
     if agent_ids:
         from app.models.agent import Agent
@@ -156,8 +145,10 @@ async def _resolve_message_project_ids(
                 claims[f"agent:{agent_id}"] = agent_project_id
 
         unique_project_ids = set(claims.values())
-        has_message_or_task_claim = bool(row_project_id) or bool(metadata_project_id) or bool(
-            task_id and task_project_ids.get(task_id)
+        has_message_or_task_claim = (
+            bool(row_project_id)
+            or bool(metadata_project_id)
+            or bool(task_id and task_project_ids.get(task_id))
         )
         if len(unique_project_ids) == 1 and has_message_or_task_claim:
             resolved[str(message.id)] = next(iter(unique_project_ids))
@@ -173,9 +164,7 @@ async def _resolve_message_project_ids(
 async def _agent_scope_project_id(db: AsyncSession, agent_id: str) -> str | None:
     from app.models.agent import Agent
 
-    result = await db.execute(
-        select(Agent.project_id, Agent.scope).where(Agent.id == agent_id)
-    )
+    result = await db.execute(select(Agent.project_id, Agent.scope).where(Agent.id == agent_id))
     row = result.first()
     if not row:
         return None
@@ -199,7 +188,7 @@ async def send_message(
 
     SECURITY: Validates message types against allowed enum values.
     Only whitelisted message types are permitted to prevent injection attacks.
-    
+
     Allowed Types (per phase-alpha protocol):
     - consult, report, alert, delegate, debate_request, debate_response
     - collaboration_request, collaboration_response
@@ -208,26 +197,26 @@ async def send_message(
     """
     # Validate message_type against allowed whitelist
     ALLOWED_MESSAGE_TYPES = {
-        "consult",      # Request information/expertise
-        "report",       # Send findings/status
-        "alert",        # Urgent notification  
-        "delegate",     # Assign task to other agent
+        "consult",  # Request information/expertise
+        "report",  # Send findings/status
+        "alert",  # Urgent notification
+        "delegate",  # Assign task to other agent
         "debate_request",  # Multi-agent debate initiation
-        "debate_response", # Debate round response
-        "collaboration_request",   # Joint work request
+        "debate_response",  # Debate round response
+        "collaboration_request",  # Joint work request
         "collaboration_response",  # Joint work agreement/response
-        "task_request",    # Task assignment via A2A
-        "status",          # Agent status update
-        "response",        # Response to previous message
-        "finding",         # Research finding broadcast/notification
-        "request",         # Generic request preserved for legacy agents
-        "broadcast",       # Explicit all-agent announcement
-        "a2a_task",        # JSON-RPC task envelope
+        "task_request",  # Task assignment via A2A
+        "status",  # Agent status update
+        "response",  # Response to previous message
+        "finding",  # Research finding broadcast/notification
+        "request",  # Generic request preserved for legacy agents
+        "broadcast",  # Explicit all-agent announcement
+        "a2a_task",  # JSON-RPC task envelope
     }
 
     # Normalize type (lowercase) for consistent validation
     normalized_type = message_type.lower().strip()
-    
+
     if normalized_type not in ALLOWED_MESSAGE_TYPES:
         raise ValueError(
             f"Invalid message_type '{message_type}'. "
@@ -263,13 +252,13 @@ async def send_message(
     # Broadcast via WebSocket (if available)
     try:
         from app.api.websocket import manager as ws_manager
+
         await ws_manager.broadcast("a2a_message", result)
     except Exception:
         pass
 
     logger.info(
-        f"A2A: {from_agent_id} -> {to_agent_id or 'broadcast'}: "
-        f"{message_type} [{normalized_type}]"
+        f"A2A: {from_agent_id} -> {to_agent_id or 'broadcast'}: {message_type} [{normalized_type}]"
     )
     return result
 
@@ -300,11 +289,16 @@ async def validate_delegate_message(msg: dict) -> tuple[bool, str]:
 
     # Validate agent IDs (UUID format)
     import re as _re_module
-    
-    if not _re_module.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', from_agent.replace('"', '')):
+
+    if not _re_module.match(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        from_agent.replace('"', ""),
+    ):
         return False, f"Invalid 'from' agent_id: {from_agent}"
-        
-    if not _re_module.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', to_agent.replace('"', '')):
+
+    if not _re_module.match(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", to_agent.replace('"', "")
+    ):
         return False, f"Invalid 'to' agent_id: {to_agent}"
 
     # Validate request structure
@@ -351,11 +345,10 @@ async def validate_message(message_type: str, body: dict) -> tuple[bool, str]:
             return False, "report requires 'content'"
 
     if message_type == "alert":
-        # Alerts should have priority metadata  
+        # Alerts should have priority metadata
         pass  # Currently allow all alerts with optional severity
 
     return True, None
-
 
 
 async def send_task_request(
@@ -455,9 +448,7 @@ async def get_project_inbox(
     if unread_only:
         query = query.where(A2AMessage.read == False)
 
-    query = query.order_by(A2AMessage.created_at.desc()).limit(
-        _project_scoped_fetch_limit(limit)
-    )
+    query = query.order_by(A2AMessage.created_at.desc()).limit(_project_scoped_fetch_limit(limit))
     result = await db.execute(query)
     messages = list(result.scalars().all())
     resolved_project_ids = await _resolve_message_project_ids(db, messages)
@@ -486,12 +477,17 @@ async def get_conversation(
     limit: int = 50,
 ) -> list[dict]:
     """Get messages between two specific agents."""
-    query = select(A2AMessage).where(
-        or_(
-            (A2AMessage.from_agent_id == agent_a) & (A2AMessage.to_agent_id == agent_b),
-            (A2AMessage.from_agent_id == agent_b) & (A2AMessage.to_agent_id == agent_a),
+    query = (
+        select(A2AMessage)
+        .where(
+            or_(
+                (A2AMessage.from_agent_id == agent_a) & (A2AMessage.to_agent_id == agent_b),
+                (A2AMessage.from_agent_id == agent_b) & (A2AMessage.to_agent_id == agent_a),
+            )
         )
-    ).order_by(A2AMessage.created_at.desc()).limit(_project_scoped_fetch_limit(limit))
+        .order_by(A2AMessage.created_at.desc())
+        .limit(_project_scoped_fetch_limit(limit))
+    )
 
     result = await db.execute(query)
     messages = await _filter_messages_by_project(db, list(result.scalars().all()), project_id)
@@ -512,14 +508,20 @@ async def get_conversation_thread(
     """
     # Context ID is stored in extra_data JSON as "context_id"
     # We query all messages and filter by context_id in extra_data
-    query = select(A2AMessage).order_by(A2AMessage.created_at.asc()).limit(
-        _project_scoped_fetch_limit(limit)
+    query = (
+        select(A2AMessage)
+        .order_by(A2AMessage.created_at.asc())
+        .limit(_project_scoped_fetch_limit(limit))
     )
     result = await db.execute(query)
     thread = []
     for msg in result.scalars().all():
         try:
-            extra = json.loads(msg.extra_data or "{}") if isinstance(msg.extra_data, str) else (msg.extra_data or {})
+            extra = (
+                json.loads(msg.extra_data or "{}")
+                if isinstance(msg.extra_data, str)
+                else (msg.extra_data or {})
+            )
             if extra.get("context_id") == context_id or msg.id == context_id:
                 thread.append(msg)
         except Exception:
@@ -552,9 +554,7 @@ async def mark_read(
 ) -> bool:
     """Mark a message as read."""
     scoped_project_id = _require_project_id(project_id, "A2A message mutations")
-    result = await db.execute(
-        select(A2AMessage).where(A2AMessage.id == message_id)
-    )
+    result = await db.execute(select(A2AMessage).where(A2AMessage.id == message_id))
     msg = result.scalar_one_or_none()
     if not msg:
         return False

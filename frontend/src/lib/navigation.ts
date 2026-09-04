@@ -141,6 +141,10 @@ export function filterNavItemsForRole(items: NavItem[], role?: string | null): N
   return items.filter((item) => itemAllowedForRole(item, role));
 }
 
+export function primaryNavItemsForRole(role?: string | null): NavItem[] {
+  return filterNavItemsForRole(PRIMARY_NAV_ITEMS, role);
+}
+
 export function isViewAllowed(viewId: string, role?: string | null): boolean {
   const item = ALL_NAV_ITEMS.find((candidate) => candidate.id === viewId);
   return Boolean(item && itemAllowedForRole(item, role));

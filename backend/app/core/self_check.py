@@ -112,14 +112,10 @@ Respond with the structured object:
         except ValueError:
             confidence = Confidence.UNVERIFIED
     supporting = [
-        s.strip()
-        for s in (value.get("supporting") or [])
-        if isinstance(s, str) and s.strip()
+        s.strip() for s in (value.get("supporting") or []) if isinstance(s, str) and s.strip()
     ]
     contradicting = [
-        s.strip()
-        for s in (value.get("contradicting") or [])
-        if isinstance(s, str) and s.strip()
+        s.strip() for s in (value.get("contradicting") or []) if isinstance(s, str) and s.strip()
     ]
     notes = str(value.get("notes") or "")
 

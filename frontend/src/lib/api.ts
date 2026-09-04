@@ -65,6 +65,7 @@ export const tasks = {
     labels?: Array<string | { name: string; color?: string; kind?: string }>;
     user_context?: string;
     agent_id?: string;
+    lock_for_edit?: boolean;
   }) => request<any>("/api/tasks", { method: "POST", body: JSON.stringify(data) }),
   get: (id: string, projectId: string) =>
     get<any>(`/api/tasks/${id}?${taskScopeParams(projectId)}`),
@@ -590,10 +591,15 @@ export const dataManagement = {
 
 // --- Task Locking ---
 
+function currentTaskLockUserId(): string {
+  if (typeof window === "undefined") return "local";
+  return localStorage.getItem("istara_auth_user_id") || "local";
+}
+
 export const taskLocking = {
-  lock: (taskId: string, projectId: string, userId: string = "local") =>
+  lock: (taskId: string, projectId: string, userId: string = currentTaskLockUserId()) =>
     post<any>(`/api/tasks/${taskId}/lock?${taskScopeParams(projectId, { user_id: userId })}`, {}),
-  unlock: (taskId: string, projectId: string, userId: string = "local", force: boolean = false) =>
+  unlock: (taskId: string, projectId: string, userId: string = currentTaskLockUserId(), force: boolean = false) =>
     post<any>(`/api/tasks/${taskId}/unlock?${taskScopeParams(projectId, { user_id: userId, force })}`, {}),
 };
 
@@ -1174,6 +1180,8 @@ export interface PiEndpoint {
   auth_provider?: string;
   auth_method?: string;
   oauth_flow_id?: string;
+  /** Secret-free readiness reported by the server. */
+  credential_status?: "ready" | "stored" | "missing";
 }
 
 export interface PiCatalogModel {
@@ -1255,7 +1263,7 @@ export const piOAuthApi = {
 
 export const piEndpoints = {
   list: () =>
-    request<{ endpoints: PiEndpoint[]; retirement_note: string }>(
+    request<{ endpoints: PiEndpoint[]; default_endpoint_id: string | null; default_model: string | null; research_endpoint_ids: string[]; research_selection_mode: "automatic" | "preferred_then_automatic"; retirement_note: string }>(
       "/api/settings/pi-endpoints"
     ),
   add: (endpoint: PiEndpoint) =>
@@ -1271,5 +1279,15 @@ export const piEndpoints = {
   delete: (endpointId: string) =>
     request<any>(`/api/settings/pi-endpoints/${encodeURIComponent(endpointId)}`, {
       method: "DELETE",
+    }),
+  setDefault: (endpointId: string) =>
+    request<any>("/api/settings/pi-default", {
+      method: "POST",
+      body: JSON.stringify({ endpoint_id: endpointId }),
+    }),
+  setResearchEnsemble: (endpointIds: string[]) =>
+    request<{ endpoint_ids: string[]; selection_mode: "automatic" | "preferred_then_automatic" }>("/api/settings/pi-research-ensemble", {
+      method: "PUT",
+      body: JSON.stringify({ endpoint_ids: endpointIds }),
     }),
 };

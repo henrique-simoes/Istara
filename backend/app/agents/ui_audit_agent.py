@@ -84,6 +84,7 @@ class UIAuditAgent:
         self._last_html: str = ""
         # Task execution worker
         from app.core.sub_agent_worker import SubAgentWorker
+
         self._worker = SubAgentWorker("istara-ui-audit", check_interval=30)
         self._worker_task: asyncio.Task | None = None
 
@@ -112,9 +113,7 @@ class UIAuditAgent:
 
         while self._running:
             try:
-                await broadcast_agent_status(
-                    "working", "UI Audit Agent: running quality checks..."
-                )
+                await broadcast_agent_status("working", "UI Audit Agent: running quality checks...")
                 report = await self.run_audit()
                 self._reports.append(report)
 
@@ -214,65 +213,77 @@ class UIAuditAgent:
 
                 # Check for essential meta tags
                 if "viewport" not in html.lower():
-                    issues.append(UIIssue(
-                        category="accessibility",
-                        severity=Severity.MAJOR,
-                        location="index.html",
-                        description="Missing viewport meta tag — mobile experience may be broken.",
-                        heuristic="WCAG 1.4.10 Reflow",
-                        recommendation="Add <meta name='viewport' content='width=device-width, initial-scale=1'>",
-                    ))
+                    issues.append(
+                        UIIssue(
+                            category="accessibility",
+                            severity=Severity.MAJOR,
+                            location="index.html",
+                            description="Missing viewport meta tag — mobile experience may be broken.",
+                            heuristic="WCAG 1.4.10 Reflow",
+                            recommendation="Add <meta name='viewport' content='width=device-width, initial-scale=1'>",
+                        )
+                    )
 
                 # Check for lang attribute
-                if not re.search(r'<html[^>]*lang=', html):
-                    issues.append(UIIssue(
-                        category="accessibility",
-                        severity=Severity.MAJOR,
-                        location="index.html",
-                        description="Missing lang attribute on <html> element.",
-                        heuristic="WCAG 3.1.1 Language of Page",
-                        recommendation="Add lang='en' to the <html> tag.",
-                    ))
+                if not re.search(r"<html[^>]*lang=", html):
+                    issues.append(
+                        UIIssue(
+                            category="accessibility",
+                            severity=Severity.MAJOR,
+                            location="index.html",
+                            description="Missing lang attribute on <html> element.",
+                            heuristic="WCAG 3.1.1 Language of Page",
+                            recommendation="Add lang='en' to the <html> tag.",
+                        )
+                    )
 
                 # Check for title
                 if "<title>" not in html.lower() or "<title></title>" in html.lower():
-                    issues.append(UIIssue(
-                        category="accessibility",
-                        severity=Severity.MINOR,
-                        location="index.html",
-                        description="Missing or empty page title.",
-                        heuristic="WCAG 2.4.2 Page Titled",
-                        recommendation="Set a descriptive page title.",
-                    ))
+                    issues.append(
+                        UIIssue(
+                            category="accessibility",
+                            severity=Severity.MINOR,
+                            location="index.html",
+                            description="Missing or empty page title.",
+                            heuristic="WCAG 2.4.2 Page Titled",
+                            recommendation="Set a descriptive page title.",
+                        )
+                    )
 
                 # Check JS bundle size (rough estimate from script tags)
                 script_count = html.lower().count("<script")
                 if script_count > 15:
-                    issues.append(UIIssue(
-                        category="performance",
-                        severity=Severity.MINOR,
-                        location="index.html",
-                        description=f"Found {script_count} script tags — may impact initial load time.",
-                        recommendation="Consider code splitting and lazy loading.",
-                    ))
+                    issues.append(
+                        UIIssue(
+                            category="performance",
+                            severity=Severity.MINOR,
+                            location="index.html",
+                            description=f"Found {script_count} script tags — may impact initial load time.",
+                            recommendation="Consider code splitting and lazy loading.",
+                        )
+                    )
 
             else:
-                issues.append(UIIssue(
+                issues.append(
+                    UIIssue(
+                        category="availability",
+                        severity=Severity.CRITICAL,
+                        location="frontend",
+                        description=f"Frontend returned HTTP {resp.status_code}",
+                        recommendation="Ensure frontend dev server is running on port 3000.",
+                    )
+                )
+
+        except httpx.ConnectError:
+            issues.append(
+                UIIssue(
                     category="availability",
                     severity=Severity.CRITICAL,
                     location="frontend",
-                    description=f"Frontend returned HTTP {resp.status_code}",
-                    recommendation="Ensure frontend dev server is running on port 3000.",
-                ))
-
-        except httpx.ConnectError:
-            issues.append(UIIssue(
-                category="availability",
-                severity=Severity.CRITICAL,
-                location="frontend",
-                description="Cannot connect to frontend at " + FRONTEND_BASE,
-                recommendation="Start the frontend dev server: npm --prefix frontend run dev",
-            ))
+                    description="Cannot connect to frontend at " + FRONTEND_BASE,
+                    recommendation="Start the frontend dev server: npm --prefix frontend run dev",
+                )
+            )
         except Exception as e:
             logger.error(f"Frontend HTML fetch error: {e}")
 
@@ -296,40 +307,48 @@ class UIAuditAgent:
                 endpoints_checked += 1
 
                 if resp.status_code != 200:
-                    issues.append(UIIssue(
-                        category="api_consistency",
-                        severity=Severity.MAJOR,
-                        location=path,
-                        description=f"API endpoint {path} returned {resp.status_code}",
-                        recommendation=f"Fix {name} endpoint to return 200.",
-                    ))
+                    issues.append(
+                        UIIssue(
+                            category="api_consistency",
+                            severity=Severity.MAJOR,
+                            location=path,
+                            description=f"API endpoint {path} returned {resp.status_code}",
+                            recommendation=f"Fix {name} endpoint to return 200.",
+                        )
+                    )
                 elif not resp.headers.get("content-type", "").startswith("application/json"):
-                    issues.append(UIIssue(
-                        category="api_consistency",
-                        severity=Severity.MINOR,
-                        location=path,
-                        description=f"API endpoint {path} doesn't return application/json content-type",
-                        recommendation="Set Content-Type: application/json header.",
-                    ))
+                    issues.append(
+                        UIIssue(
+                            category="api_consistency",
+                            severity=Severity.MINOR,
+                            location=path,
+                            description=f"API endpoint {path} doesn't return application/json content-type",
+                            recommendation="Set Content-Type: application/json header.",
+                        )
+                    )
                 else:
                     # Check response time
                     if hasattr(resp, "elapsed") and resp.elapsed.total_seconds() > 3:
-                        issues.append(UIIssue(
-                            category="performance",
-                            severity=Severity.MINOR,
-                            location=path,
-                            description=f"API response time > 3s ({resp.elapsed.total_seconds():.1f}s)",
-                            recommendation="Optimize query or add caching.",
-                        ))
+                        issues.append(
+                            UIIssue(
+                                category="performance",
+                                severity=Severity.MINOR,
+                                location=path,
+                                description=f"API response time > 3s ({resp.elapsed.total_seconds():.1f}s)",
+                                recommendation="Optimize query or add caching.",
+                            )
+                        )
 
             except Exception as e:
-                issues.append(UIIssue(
-                    category="api_consistency",
-                    severity=Severity.MAJOR,
-                    location=path,
-                    description=f"Failed to reach API endpoint {path}: {e}",
-                    recommendation="Ensure backend is running on port 8000.",
-                ))
+                issues.append(
+                    UIIssue(
+                        category="api_consistency",
+                        severity=Severity.MAJOR,
+                        location=path,
+                        description=f"Failed to reach API endpoint {path}: {e}",
+                        recommendation="Ensure backend is running on port 8000.",
+                    )
+                )
 
         return issues, endpoints_checked
 
@@ -340,42 +359,48 @@ class UIAuditAgent:
             return issues
 
         # Check for images without alt text
-        imgs_without_alt = len(re.findall(r'<img(?![^>]*alt=)', html))
+        imgs_without_alt = len(re.findall(r"<img(?![^>]*alt=)", html))
         if imgs_without_alt > 0:
-            issues.append(UIIssue(
-                category="accessibility",
-                severity=Severity.MAJOR,
-                location="global",
-                description=f"Found {imgs_without_alt} images without alt attributes.",
-                heuristic="WCAG 1.1.1 Non-text Content",
-                recommendation="Add descriptive alt text to all images.",
-            ))
+            issues.append(
+                UIIssue(
+                    category="accessibility",
+                    severity=Severity.MAJOR,
+                    location="global",
+                    description=f"Found {imgs_without_alt} images without alt attributes.",
+                    heuristic="WCAG 1.1.1 Non-text Content",
+                    recommendation="Add descriptive alt text to all images.",
+                )
+            )
 
         # Check for buttons without accessible names
-        buttons_without_text = len(re.findall(r'<button[^>]*>\s*</button>', html))
+        buttons_without_text = len(re.findall(r"<button[^>]*>\s*</button>", html))
         if buttons_without_text > 0:
-            issues.append(UIIssue(
-                category="accessibility",
-                severity=Severity.MAJOR,
-                location="global",
-                description=f"Found {buttons_without_text} empty buttons without text or aria-label.",
-                heuristic="WCAG 4.1.2 Name, Role, Value",
-                recommendation="Add text content or aria-label to all buttons.",
-            ))
+            issues.append(
+                UIIssue(
+                    category="accessibility",
+                    severity=Severity.MAJOR,
+                    location="global",
+                    description=f"Found {buttons_without_text} empty buttons without text or aria-label.",
+                    heuristic="WCAG 4.1.2 Name, Role, Value",
+                    recommendation="Add text content or aria-label to all buttons.",
+                )
+            )
 
         # Check for form inputs without labels
-        inputs = len(re.findall(r'<input[^>]*>', html))
-        labels = len(re.findall(r'<label', html))
-        aria_labels_on_inputs = len(re.findall(r'<input[^>]*aria-label', html))
+        inputs = len(re.findall(r"<input[^>]*>", html))
+        labels = len(re.findall(r"<label", html))
+        aria_labels_on_inputs = len(re.findall(r"<input[^>]*aria-label", html))
         if inputs > 0 and (labels + aria_labels_on_inputs) < inputs:
-            issues.append(UIIssue(
-                category="accessibility",
-                severity=Severity.MINOR,
-                location="global",
-                description=f"Found {inputs} inputs but only {labels + aria_labels_on_inputs} labels/aria-labels.",
-                heuristic="WCAG 1.3.1 Info and Relationships",
-                recommendation="Ensure every input has an associated label or aria-label.",
-            ))
+            issues.append(
+                UIIssue(
+                    category="accessibility",
+                    severity=Severity.MINOR,
+                    location="global",
+                    description=f"Found {inputs} inputs but only {labels + aria_labels_on_inputs} labels/aria-labels.",
+                    heuristic="WCAG 1.3.1 Info and Relationships",
+                    recommendation="Ensure every input has an associated label or aria-label.",
+                )
+            )
 
         return issues
 
@@ -389,13 +414,15 @@ class UIAuditAgent:
             html_lower = self._last_html.lower()
             missing = [item for item in required_nav_items if item not in html_lower]
             if missing:
-                issues.append(UIIssue(
-                    category="navigation",
-                    severity=Severity.MINOR,
-                    location="frontend",
-                    description=f"Navigation items not found in initial HTML: {', '.join(missing)} (may be client-rendered)",
-                    recommendation="Verify all navigation items render client-side.",
-                ))
+                issues.append(
+                    UIIssue(
+                        category="navigation",
+                        severity=Severity.MINOR,
+                        location="frontend",
+                        description=f"Navigation items not found in initial HTML: {', '.join(missing)} (may be client-rendered)",
+                        recommendation="Verify all navigation items render client-side.",
+                    )
+                )
 
         return issues
 
@@ -414,21 +441,25 @@ class UIAuditAgent:
         for comp_name, comp_data in components.items():
             states = comp_data.get("states", [])
             if "error" not in states:
-                issues.append(UIIssue(
-                    category="consistency",
-                    severity=Severity.MINOR,
-                    location=comp_name,
-                    description=f"Component '{comp_name}' has no explicit error state defined.",
-                    recommendation="Add error state handling with clear error message and retry action.",
-                ))
+                issues.append(
+                    UIIssue(
+                        category="consistency",
+                        severity=Severity.MINOR,
+                        location=comp_name,
+                        description=f"Component '{comp_name}' has no explicit error state defined.",
+                        recommendation="Add error state handling with clear error message and retry action.",
+                    )
+                )
             if "loading" not in states and "empty" not in states:
-                issues.append(UIIssue(
-                    category="consistency",
-                    severity=Severity.COSMETIC,
-                    location=comp_name,
-                    description=f"Component '{comp_name}' has no explicit loading state defined.",
-                    recommendation="Add loading skeleton or spinner for async data fetching.",
-                ))
+                issues.append(
+                    UIIssue(
+                        category="consistency",
+                        severity=Severity.COSMETIC,
+                        location=comp_name,
+                        description=f"Component '{comp_name}' has no explicit loading state defined.",
+                        recommendation="Add loading skeleton or spinner for async data fetching.",
+                    )
+                )
 
         return issues
 
@@ -440,13 +471,15 @@ class UIAuditAgent:
         try:
             resp = await client.get(f"{API_BASE}/api/projects/nonexistent-id-12345")
             if resp.status_code == 500:
-                issues.append(UIIssue(
-                    category="error_handling",
-                    severity=Severity.MAJOR,
-                    location="/api/projects/:id",
-                    description="Invalid project ID returns 500 instead of 404.",
-                    recommendation="Return 404 with clear error message for missing resources.",
-                ))
+                issues.append(
+                    UIIssue(
+                        category="error_handling",
+                        severity=Severity.MAJOR,
+                        location="/api/projects/:id",
+                        description="Invalid project ID returns 500 instead of 404.",
+                        recommendation="Return 404 with clear error message for missing resources.",
+                    )
+                )
         except Exception:
             pass
 
@@ -457,13 +490,15 @@ class UIAuditAgent:
                 json={"title": ""},  # Missing required fields
             )
             if resp.status_code == 500:
-                issues.append(UIIssue(
-                    category="error_handling",
-                    severity=Severity.MAJOR,
-                    location="/api/tasks",
-                    description="Invalid task creation returns 500 instead of 422.",
-                    recommendation="Return 422 with validation error details.",
-                ))
+                issues.append(
+                    UIIssue(
+                        category="error_handling",
+                        severity=Severity.MAJOR,
+                        location="/api/tasks",
+                        description="Invalid task creation returns 500 instead of 422.",
+                        recommendation="Return 422 with validation error details.",
+                    )
+                )
         except Exception:
             pass
 
@@ -474,8 +509,7 @@ class UIAuditAgent:
         issues = []
 
         existing_issues_summary = "\n".join(
-            f"- [{i.severity.value}] {i.location}: {i.description}"
-            for i in report.issues[:20]
+            f"- [{i.severity.value}] {i.location}: {i.description}" for i in report.issues[:20]
         )
 
         prompt = f"""You are a UX expert evaluating a web application called Istara (a UX Research assistant).
@@ -484,10 +518,10 @@ Real audit data from this cycle:
 - Frontend pages fetched: {report.pages_fetched}
 - API endpoints checked: {report.api_endpoints_checked}
 - Issues found so far: {len(report.issues)}
-- Checks passed: {', '.join(report.passed_checks) or 'none yet'}
+- Checks passed: {", ".join(report.passed_checks) or "none yet"}
 
 Existing issues found by automated checks:
-{existing_issues_summary or 'None found by automated checks.'}
+{existing_issues_summary or "None found by automated checks."}
 
 Based on the REAL data above, identify 3-5 additional heuristic issues that are
 NOT already covered by the existing issues. Focus on actionable, specific issues.
@@ -513,14 +547,16 @@ Respond in JSON:
                     sev = issue_data.get("severity", "minor")
                     if sev not in ("critical", "major", "minor", "cosmetic"):
                         sev = "minor"
-                    issues.append(UIIssue(
-                        category="heuristic",
-                        severity=Severity(sev),
-                        location=issue_data.get("location", "unknown"),
-                        description=issue_data.get("description", ""),
-                        heuristic=issue_data.get("heuristic", ""),
-                        recommendation=issue_data.get("recommendation", ""),
-                    ))
+                    issues.append(
+                        UIIssue(
+                            category="heuristic",
+                            severity=Severity(sev),
+                            location=issue_data.get("location", "unknown"),
+                            description=issue_data.get("description", ""),
+                            heuristic=issue_data.get("heuristic", ""),
+                            recommendation=issue_data.get("recommendation", ""),
+                        )
+                    )
         except Exception as e:
             logger.error(f"Heuristic evaluation error: {e}")
 
@@ -534,9 +570,13 @@ Respond in JSON:
         for cat in categories:
             cat_issues = [i for i in report.issues if i.category == cat]
             penalty = sum(
-                25 if i.severity == Severity.CRITICAL else
-                15 if i.severity == Severity.MAJOR else
-                5 if i.severity == Severity.MINOR else 1
+                25
+                if i.severity == Severity.CRITICAL
+                else 15
+                if i.severity == Severity.MAJOR
+                else 5
+                if i.severity == Severity.MINOR
+                else 1
                 for i in cat_issues
             )
             scores[cat] = max(0, 100 - penalty)

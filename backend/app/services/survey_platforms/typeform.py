@@ -99,9 +99,7 @@ class TypeformAdapter(SurveyPlatformAdapter):
         Returns:
             True if the signature is valid.
         """
-        expected = hmac.new(
-            secret.encode(), payload, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
         provided = signature.removeprefix("sha256=")
         return hmac.compare_digest(expected, provided)
 
@@ -182,10 +180,12 @@ class TypeformAdapter(SurveyPlatformAdapter):
 
                 answers.append({"question": q_text, "answer": value})
 
-            normalised.append({
-                "id": item.get("response_id", item.get("token", "")),
-                "answers": answers,
-            })
+            normalised.append(
+                {
+                    "id": item.get("response_id", item.get("token", "")),
+                    "answers": answers,
+                }
+            )
 
         return normalised
 
@@ -216,9 +216,7 @@ class TypeformAdapter(SurveyPlatformAdapter):
         if secret:
             body["secret"] = secret
 
-        await self._request(
-            "PUT", f"/forms/{survey_id}/webhooks/{tag}", json_body=body
-        )
+        await self._request("PUT", f"/forms/{survey_id}/webhooks/{tag}", json_body=body)
 
         return {
             "webhook_tag": tag,

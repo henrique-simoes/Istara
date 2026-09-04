@@ -25,11 +25,7 @@ def _wilson_interval(success_count: int, total_runs: int, z: float = 1.96) -> tu
     z2 = z * z
     denominator = 1 + z2 / total_runs
     center = (phat + z2 / (2 * total_runs)) / denominator
-    margin = (
-        z
-        * math.sqrt((phat * (1 - phat) + z2 / (4 * total_runs)) / total_runs)
-        / denominator
-    )
+    margin = z * math.sqrt((phat * (1 - phat) + z2 / (4 * total_runs)) / total_runs) / denominator
     return max(0.0, center - margin), min(1.0, center + margin)
 
 
@@ -78,9 +74,7 @@ def _aggregate_method_metrics(method_stats: list[MethodMetric]) -> list[dict]:
                 "total_runs": total_runs,
                 "success_count": success_count,
                 "fail_count": row["fail_count"],
-                "avg_consensus_score": round(
-                    row["weighted_consensus_sum"] / total_runs, 3
-                )
+                "avg_consensus_score": round(row["weighted_consensus_sum"] / total_runs, 3)
                 if total_runs
                 else 0.0,
                 "success_rate": round(success_count / total_runs, 3) if total_runs else 0.0,
@@ -322,4 +316,5 @@ async def get_model_intelligence(
     await require_project_access(db, request, project_id, min_role="viewer")
 
     from app.core.telemetry import telemetry_recorder
+
     return await telemetry_recorder.get_model_intelligence(project_id, limit=limit)

@@ -9,7 +9,7 @@ related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/autoresearch/AutoresearchView.tsx", "backend/app/core/autoresearch_engine.py", "backend/app/core/autoresearch_runners/__init__.py", "backend/app/core/autoresearch_runners/model_temp.py", "backend/app/core/autoresearch_runners/persona.py", "backend/app/core/autoresearch_runners/question_bank.py", "backend/app/core/autoresearch_runners/skill_prompt.py", "backend/app/core/autoresearch_runners/ui_sim.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/pi_runtime/model_manager.py"]
 api_references: ["backend/app/api/routes/autoresearch.py"]
 test_references: ["tests/test_autoresearch.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w6_autoresearch_runners.py"]
-last_verified: 2026-08-25
+last_verified: 2026-09-02
 compass: CF-SPEC-60 / CF-754; CF-SPEC-68 / CF-870; CF-SPEC-96 / CF-1226; CF-SPEC-8 (Pi replacement W6)
 ---
 
@@ -38,7 +38,7 @@ Experiments configure and inspect automated research runs across strategies or p
 - `backend/app/api/routes/autoresearch.py`
 - Experiment list, start, and stop routes require `project_id` and enforce project access. Autoresearch engine records and broadcasts the experiment project id, and experiment history filters by `AutoresearchExperiment.project_id`.
 - Starting an experiment requires the requested project to be active and unpaused before the runner is constructed or scheduled. The engine records the active project owner for the whole run, including baseline measurement, and repeats the active-project check before baseline and iteration work so a paused or missing project cannot keep processing in the background.
-- A start request with `dry_run: true` is non-mutating for every caller, including callers that do not select the Pi replacement engine: it returns a dry-run response and never schedules a background loop. Pi-selected dry runs additionally record the governed Pi telemetry span.
+- A start request with `dry_run: true` is non-mutating for every caller, including callers that do not select the Pi replacement engine: it returns a dry-run response and never schedules a background loop. The request still validates `loop_type` against the six installed runners, so an unknown loop name is rejected consistently with a live run. Pi-selected dry runs additionally record the governed Pi telemetry span.
 - A Pi-selected governed turn that reaches `error` or `aborted` fails closed with a typed 503 before any candidate proposal or fallback hypothesis is created; partial streamed output is not an experiment artifact.
 - The engine binds the authorized project id into each loop runner before baseline measurement. Question-bank runners then load and update `ResearchDeployment` rows by both deployment id and that bound project id, so a stale deployment id from another project cannot be measured, mutated, reverted, or sent into LLM evaluation.
 

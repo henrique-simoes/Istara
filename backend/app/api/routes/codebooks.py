@@ -18,6 +18,7 @@ router = APIRouter()
 
 # --- Request / Response schemas ---
 
+
 class CodebookCreate(BaseModel):
     project_id: str
     name: str
@@ -106,6 +107,7 @@ async def _get_project_code_or_404(
 
 # --- Codebook endpoints ---
 
+
 @router.get("/codebooks")
 async def list_codebooks(
     project_id: str,
@@ -125,7 +127,9 @@ async def list_codebooks(
 
 
 @router.post("/codebooks", status_code=201)
-async def create_codebook(data: CodebookCreate, request: Request, db: AsyncSession = Depends(get_db)):
+async def create_codebook(
+    data: CodebookCreate, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Create a new codebook."""
     await require_project_access(db, request, data.project_id, min_role="researcher")
     codebook = Codebook(
@@ -137,8 +141,15 @@ async def create_codebook(data: CodebookCreate, request: Request, db: AsyncSessi
     )
     db.add(codebook)
     await db.commit()
-    await db.refresh(codebook)
-    return codebook.to_dict()
+    # ``to_dict`` reads the codes relationship synchronously.  Refreshing only
+    # the scalar columns leaves that relationship unloaded, which causes
+    # SQLAlchemy's async lazy-loader to raise ``MissingGreenlet`` and turns a
+    # successful write into an HTTP 500.  Re-query with an explicit eager load
+    # so the response is safe and deterministic for both SQLite and Postgres.
+    result = await db.execute(
+        select(Codebook).where(Codebook.id == codebook.id).options(selectinload(Codebook.codes))
+    )
+    return result.scalar_one().to_dict()
 
 
 @router.get("/codebooks/{codebook_id}")
@@ -172,8 +183,10 @@ async def update_codebook(
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(codebook, field, value)
     await db.commit()
-    await db.refresh(codebook)
-    return codebook.to_dict()
+    result = await db.execute(
+        select(Codebook).where(Codebook.id == codebook.id).options(selectinload(Codebook.codes))
+    )
+    return result.scalar_one().to_dict()
 
 
 @router.delete("/codebooks/{codebook_id}", status_code=204)
@@ -192,6 +205,7 @@ async def delete_codebook(
 
 
 # --- Code endpoints ---
+
 
 @router.post("/codes", status_code=201)
 async def create_code(
@@ -230,9 +244,7 @@ async def update_code(
     db: AsyncSession = Depends(get_db),
 ):
     """Update a code."""
-    code = await _get_project_code_or_404(
-        db, request, code_id, project_id, min_role="researcher"
-    )
+    code = await _get_project_code_or_404(db, request, code_id, project_id, min_role="researcher")
     update_data = data.model_dump(exclude_unset=True)
     if "examples" in update_data:
         update_data["examples"] = json.dumps(update_data["examples"])
@@ -251,8 +263,6 @@ async def delete_code(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a code."""
-    code = await _get_project_code_or_404(
-        db, request, code_id, project_id, min_role="researcher"
-    )
+    code = await _get_project_code_or_404(db, request, code_id, project_id, min_role="researcher")
     await db.delete(code)
     await db.commit()

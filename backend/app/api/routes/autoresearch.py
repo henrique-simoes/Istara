@@ -37,6 +37,15 @@ from app.models.telemetry_span import TelemetrySpan
 router = APIRouter(prefix="/autoresearch")
 logger = logging.getLogger(__name__)
 
+_RUNNER_SPECS = {
+    "model_temp": ("app.core.autoresearch_runners.model_temp", "ModelTempRunner"),
+    "skill_prompt": ("app.core.autoresearch_runners.skill_prompt", "SkillPromptRunner"),
+    "rag_params": ("app.core.autoresearch_runners.rag_params", "RAGParamsRunner"),
+    "persona": ("app.core.autoresearch_runners.persona", "PersonaRunner"),
+    "question_bank": ("app.core.autoresearch_runners.question_bank", "QuestionBankRunner"),
+    "ui_sim": ("app.core.autoresearch_runners.ui_sim", "UISimRunner"),
+}
+
 
 # ---------------------------------------------------------------------------
 # Request / response models
@@ -86,6 +95,7 @@ def _get_engine():
     """Lazy-import the autoresearch engine singleton."""
     try:
         from app.core.autoresearch_engine import autoresearch_engine
+
         return autoresearch_engine
     except ImportError:
         raise HTTPException(
@@ -96,23 +106,16 @@ def _get_engine():
 
 def _get_runner(loop_type: str):
     """Lazy-import a runner by loop type."""
-    runner_map = {
-        "model_temp": ("app.core.autoresearch_runners.model_temp", "ModelTempRunner"),
-        "skill_prompt": ("app.core.autoresearch_runners.skill_prompt", "SkillPromptRunner"),
-        "rag_params": ("app.core.autoresearch_runners.rag_params", "RAGParamsRunner"),
-        "persona": ("app.core.autoresearch_runners.persona", "PersonaRunner"),
-        "question_bank": ("app.core.autoresearch_runners.question_bank", "QuestionBankRunner"),
-        "ui_sim": ("app.core.autoresearch_runners.ui_sim", "UISimRunner"),
-    }
-    runner_spec = runner_map.get(loop_type)
+    runner_spec = _RUNNER_SPECS.get(loop_type)
     if not runner_spec:
         raise HTTPException(
             status_code=400,
-            detail=f"Unknown loop type: {loop_type}. Valid types: {', '.join(runner_map.keys())}",
+            detail=f"Unknown loop type: {loop_type}. Valid types: {', '.join(_RUNNER_SPECS)}",
         )
     module_path, class_name = runner_spec
     try:
         import importlib
+
         mod = importlib.import_module(module_path)
         runner_cls = getattr(mod, class_name)
         return runner_cls()
@@ -121,6 +124,15 @@ def _get_runner(loop_type: str):
         raise HTTPException(
             status_code=501,
             detail=f"Runner for loop type '{loop_type}' is not installed.",
+        )
+
+
+def _validate_loop_type(loop_type: str) -> None:
+    """Reject unsupported loop names before mutation-free or live execution paths."""
+    if loop_type not in _RUNNER_SPECS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown loop type: {loop_type}. Valid types: {', '.join(_RUNNER_SPECS)}",
         )
 
 
@@ -157,29 +169,46 @@ async def _require_active_project_scope(
 
 async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
     """Summarize project-scoped operational signals that AutoResearch can use."""
-    total_tasks = await db.scalar(
-        select(func.count(Task.id)).where(Task.project_id == project_id)
-    ) or 0
+    total_tasks = (
+        await db.scalar(select(func.count(Task.id)).where(Task.project_id == project_id)) or 0
+    )
     done_tasks = (
-        await db.scalar(select(func.count(Task.id)).where(Task.project_id == project_id, Task.status == TaskStatus.DONE))
+        await db.scalar(
+            select(func.count(Task.id)).where(
+                Task.project_id == project_id, Task.status == TaskStatus.DONE
+            )
+        )
     ) or 0
     in_review_tasks = (
-        await db.scalar(select(func.count(Task.id)).where(Task.project_id == project_id, Task.status == TaskStatus.IN_REVIEW))
+        await db.scalar(
+            select(func.count(Task.id)).where(
+                Task.project_id == project_id, Task.status == TaskStatus.IN_REVIEW
+            )
+        )
     ) or 0
     needs_revision_tasks = (
         await db.scalar(
             select(func.count(Task.id)).where(
                 Task.project_id == project_id,
-                Task.review_state.in_(("needs_revision", "rejected_after_done", "system_failed"))
+                Task.review_state.in_(("needs_revision", "rejected_after_done", "system_failed")),
             )
         )
     ) or 0
     approved_tasks = (
-        await db.scalar(select(func.count(Task.id)).where(Task.project_id == project_id, Task.review_state == "approved"))
+        await db.scalar(
+            select(func.count(Task.id)).where(
+                Task.project_id == project_id, Task.review_state == "approved"
+            )
+        )
     ) or 0
-    total_review_cycles = await db.scalar(
-        select(func.coalesce(func.sum(Task.review_cycle_count), 0)).where(Task.project_id == project_id)
-    ) or 0
+    total_review_cycles = (
+        await db.scalar(
+            select(func.coalesce(func.sum(Task.review_cycle_count), 0)).where(
+                Task.project_id == project_id
+            )
+        )
+        or 0
+    )
     avg_feedback = await db.scalar(
         select(func.avg(Task.human_feedback_score)).where(
             Task.project_id == project_id,
@@ -193,19 +222,18 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
         )
     )
     validation_method_rows = (
-        (
-            await db.execute(
-                select(
-                    MethodMetric.method,
-                    func.sum(MethodMetric.total_runs),
-                    func.sum(MethodMetric.success_count),
-                    func.sum(MethodMetric.fail_count),
-                    func.avg(MethodMetric.avg_consensus_score),
-                ).where(MethodMetric.project_id == project_id).group_by(MethodMetric.method)
+        await db.execute(
+            select(
+                MethodMetric.method,
+                func.sum(MethodMetric.total_runs),
+                func.sum(MethodMetric.success_count),
+                func.sum(MethodMetric.fail_count),
+                func.avg(MethodMetric.avg_consensus_score),
             )
+            .where(MethodMetric.project_id == project_id)
+            .group_by(MethodMetric.method)
         )
-        .all()
-    )
+    ).all()
     validation_method_stats = [
         {
             "method": row[0],
@@ -219,9 +247,12 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
     ]
     validation_runs = sum(row["total_runs"] for row in validation_method_stats)
     validation_successes = sum(row["success_count"] for row in validation_method_stats)
-    review_events = await db.scalar(
-        select(func.count(TaskReviewEvent.id)).where(TaskReviewEvent.project_id == project_id)
-    ) or 0
+    review_events = (
+        await db.scalar(
+            select(func.count(TaskReviewEvent.id)).where(TaskReviewEvent.project_id == project_id)
+        )
+        or 0
+    )
     approval_events = (
         await db.scalar(
             select(func.count(TaskReviewEvent.id)).where(
@@ -234,65 +265,117 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
         await db.scalar(
             select(func.count(TaskReviewEvent.id)).where(
                 TaskReviewEvent.project_id == project_id,
-                TaskReviewEvent.outcome.in_(("needs_revision", "rejected_after_done", "system_failed"))
+                TaskReviewEvent.outcome.in_(
+                    ("needs_revision", "rejected_after_done", "system_failed")
+                ),
             )
         )
     ) or 0
 
-    total_agents = await db.scalar(
-        select(func.count(Agent.id)).where(Agent.project_id == project_id)
-    ) or 0
-    active_agents = await db.scalar(
-        select(func.count(Agent.id)).where(Agent.project_id == project_id, Agent.is_active.is_(True))
-    ) or 0
-    working_agents = await db.scalar(
-        select(func.count(Agent.id)).where(Agent.project_id == project_id, Agent.state == AgentState.WORKING)
-    ) or 0
-    paused_agents = await db.scalar(
-        select(func.count(Agent.id)).where(Agent.project_id == project_id, Agent.state == AgentState.PAUSED)
-    ) or 0
-    agent_errors = await db.scalar(
-        select(func.coalesce(func.sum(Agent.error_count), 0)).where(Agent.project_id == project_id)
-    ) or 0
-    agent_executions = await db.scalar(
-        select(func.coalesce(func.sum(Agent.executions), 0)).where(Agent.project_id == project_id)
-    ) or 0
+    total_agents = (
+        await db.scalar(select(func.count(Agent.id)).where(Agent.project_id == project_id)) or 0
+    )
+    active_agents = (
+        await db.scalar(
+            select(func.count(Agent.id)).where(
+                Agent.project_id == project_id, Agent.is_active.is_(True)
+            )
+        )
+        or 0
+    )
+    working_agents = (
+        await db.scalar(
+            select(func.count(Agent.id)).where(
+                Agent.project_id == project_id, Agent.state == AgentState.WORKING
+            )
+        )
+        or 0
+    )
+    paused_agents = (
+        await db.scalar(
+            select(func.count(Agent.id)).where(
+                Agent.project_id == project_id, Agent.state == AgentState.PAUSED
+            )
+        )
+        or 0
+    )
+    agent_errors = (
+        await db.scalar(
+            select(func.coalesce(func.sum(Agent.error_count), 0)).where(
+                Agent.project_id == project_id
+            )
+        )
+        or 0
+    )
+    agent_executions = (
+        await db.scalar(
+            select(func.coalesce(func.sum(Agent.executions), 0)).where(
+                Agent.project_id == project_id
+            )
+        )
+        or 0
+    )
     unhealthy_heartbeats = (
         await db.scalar(
             select(func.count(Agent.id)).where(
                 Agent.project_id == project_id,
-                Agent.heartbeat_status.in_((HeartbeatStatus.DEGRADED, HeartbeatStatus.ERROR, HeartbeatStatus.STOPPED))
+                Agent.heartbeat_status.in_(
+                    (HeartbeatStatus.DEGRADED, HeartbeatStatus.ERROR, HeartbeatStatus.STOPPED)
+                ),
             )
         )
     ) or 0
 
-    total_documents = await db.scalar(
-        select(func.count(Document.id)).where(Document.project_id == project_id)
-    ) or 0
-    ready_documents = await db.scalar(
-        select(func.count(Document.id)).where(Document.project_id == project_id, Document.status == DocumentStatus.READY)
-    ) or 0
-    errored_documents = await db.scalar(
-        select(func.count(Document.id)).where(Document.project_id == project_id, Document.status == DocumentStatus.ERROR)
-    ) or 0
+    total_documents = (
+        await db.scalar(select(func.count(Document.id)).where(Document.project_id == project_id))
+        or 0
+    )
+    ready_documents = (
+        await db.scalar(
+            select(func.count(Document.id)).where(
+                Document.project_id == project_id, Document.status == DocumentStatus.READY
+            )
+        )
+        or 0
+    )
+    errored_documents = (
+        await db.scalar(
+            select(func.count(Document.id)).where(
+                Document.project_id == project_id, Document.status == DocumentStatus.ERROR
+            )
+        )
+        or 0
+    )
     indexed_text_documents = (
-        await db.scalar(select(func.count(Document.id)).where(Document.project_id == project_id, Document.content_text != ""))
+        await db.scalar(
+            select(func.count(Document.id)).where(
+                Document.project_id == project_id, Document.content_text != ""
+            )
+        )
     ) or 0
     total_findings = sum(
         [
-            await db.scalar(select(func.count(Nugget.id)).where(Nugget.project_id == project_id)) or 0,
+            await db.scalar(select(func.count(Nugget.id)).where(Nugget.project_id == project_id))
+            or 0,
             await db.scalar(select(func.count(Fact.id)).where(Fact.project_id == project_id)) or 0,
-            await db.scalar(select(func.count(Insight.id)).where(Insight.project_id == project_id)) or 0,
-            await db.scalar(select(func.count(Recommendation.id)).where(Recommendation.project_id == project_id)) or 0,
+            await db.scalar(select(func.count(Insight.id)).where(Insight.project_id == project_id))
+            or 0,
+            await db.scalar(
+                select(func.count(Recommendation.id)).where(Recommendation.project_id == project_id)
+            )
+            or 0,
         ]
     )
     avg_insight_confidence = await db.scalar(
         select(func.avg(Insight.confidence)).where(Insight.project_id == project_id)
     )
 
-    total_code_applications = await db.scalar(
-        select(func.count(CodeApplication.id)).where(CodeApplication.project_id == project_id)
-    ) or 0
+    total_code_applications = (
+        await db.scalar(
+            select(func.count(CodeApplication.id)).where(CodeApplication.project_id == project_id)
+        )
+        or 0
+    )
     pending_code_reviews = (
         await db.scalar(
             select(func.count(CodeApplication.id)).where(
@@ -311,9 +394,12 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
     ) or 0
 
     recent_cutoff = datetime.now(timezone.utc) - timedelta(days=1)
-    total_spans = await db.scalar(
-        select(func.count(TelemetrySpan.id)).where(TelemetrySpan.project_id == project_id)
-    ) or 0
+    total_spans = (
+        await db.scalar(
+            select(func.count(TelemetrySpan.id)).where(TelemetrySpan.project_id == project_id)
+        )
+        or 0
+    )
     spans_last_24h = (
         await db.scalar(
             select(func.count(TelemetrySpan.id)).where(
@@ -338,12 +424,15 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
             TelemetrySpan.quality_score.is_not(None),
         )
     )
-    total_model_entries = await db.scalar(
-        select(func.count(func.distinct(TelemetrySpan.model_name))).where(
-            TelemetrySpan.project_id == project_id,
-            TelemetrySpan.model_name != "",
+    total_model_entries = (
+        await db.scalar(
+            select(func.count(func.distinct(TelemetrySpan.model_name))).where(
+                TelemetrySpan.project_id == project_id,
+                TelemetrySpan.model_name != "",
+            )
         )
-    ) or 0
+        or 0
+    )
     production_model_entries = (
         await db.scalar(
             select(func.count(func.distinct(TelemetrySpan.model_name))).where(
@@ -369,9 +458,14 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
         select(func.max(TelemetrySpan.quality_score)).where(TelemetrySpan.project_id == project_id)
     )
 
-    total_deployments = await db.scalar(
-        select(func.count(ResearchDeployment.id)).where(ResearchDeployment.project_id == project_id)
-    ) or 0
+    total_deployments = (
+        await db.scalar(
+            select(func.count(ResearchDeployment.id)).where(
+                ResearchDeployment.project_id == project_id
+            )
+        )
+        or 0
+    )
     active_deployments = (
         await db.scalar(
             select(func.count(ResearchDeployment.id)).where(
@@ -380,15 +474,30 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
             )
         )
     ) or 0
-    deployment_responses = await db.scalar(
-        select(func.coalesce(func.sum(ResearchDeployment.current_responses), 0)).where(ResearchDeployment.project_id == project_id)
-    ) or 0
-    deployment_targets = await db.scalar(
-        select(func.coalesce(func.sum(ResearchDeployment.target_responses), 0)).where(ResearchDeployment.project_id == project_id)
-    ) or 0
-    survey_integrations = await db.scalar(
-        select(func.count(SurveyIntegration.id)).where(SurveyIntegration.project_id == project_id)
-    ) or 0
+    deployment_responses = (
+        await db.scalar(
+            select(func.coalesce(func.sum(ResearchDeployment.current_responses), 0)).where(
+                ResearchDeployment.project_id == project_id
+            )
+        )
+        or 0
+    )
+    deployment_targets = (
+        await db.scalar(
+            select(func.coalesce(func.sum(ResearchDeployment.target_responses), 0)).where(
+                ResearchDeployment.project_id == project_id
+            )
+        )
+        or 0
+    )
+    survey_integrations = (
+        await db.scalar(
+            select(func.count(SurveyIntegration.id)).where(
+                SurveyIntegration.project_id == project_id
+            )
+        )
+        or 0
+    )
     active_survey_integrations = (
         await db.scalar(
             select(func.count(SurveyIntegration.id)).where(
@@ -397,19 +506,30 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
             )
         )
     ) or 0
-    survey_links = await db.scalar(
-        select(func.count(SurveyLink.id)).where(SurveyLink.project_id == project_id)
-    ) or 0
-    survey_responses = await db.scalar(
-        select(func.coalesce(func.sum(SurveyLink.response_count), 0)).where(SurveyLink.project_id == project_id)
-    ) or 0
+    survey_links = (
+        await db.scalar(
+            select(func.count(SurveyLink.id)).where(SurveyLink.project_id == project_id)
+        )
+        or 0
+    )
+    survey_responses = (
+        await db.scalar(
+            select(func.coalesce(func.sum(SurveyLink.response_count), 0)).where(
+                SurveyLink.project_id == project_id
+            )
+        )
+        or 0
+    )
 
     try:
         from app.core.scheduler import ScheduledTask
 
-        total_schedules = await db.scalar(
-            select(func.count(ScheduledTask.id)).where(ScheduledTask.project_id == project_id)
-        ) or 0
+        total_schedules = (
+            await db.scalar(
+                select(func.count(ScheduledTask.id)).where(ScheduledTask.project_id == project_id)
+            )
+            or 0
+        )
         active_schedules = (
             await db.scalar(
                 select(func.count(ScheduledTask.id)).where(
@@ -426,9 +546,14 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
                 )
             )
         ) or 0
-        schedule_executions = await db.scalar(
-            select(func.coalesce(func.sum(ScheduledTask.execution_count), 0)).where(ScheduledTask.project_id == project_id)
-        ) or 0
+        schedule_executions = (
+            await db.scalar(
+                select(func.coalesce(func.sum(ScheduledTask.execution_count), 0)).where(
+                    ScheduledTask.project_id == project_id
+                )
+            )
+            or 0
+        )
     except Exception:
         total_schedules = active_schedules = running_schedules = schedule_executions = 0
 
@@ -437,9 +562,7 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
     compute_stats = compute_registry.get_stats(project_id=project_id)
     nodes = compute_stats.get("nodes", [])
     healthy_nodes = [
-        node
-        for node in nodes
-        if node.get("is_healthy") or node.get("health_state") == "ready"
+        node for node in nodes if node.get("is_healthy") or node.get("health_state") == "ready"
     ]
     available_models = sorted(
         {
@@ -463,10 +586,14 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
             "review_cycles": total_review_cycles,
             "completion_rate": round(done_tasks / max(total_tasks, 1) * 100, 1),
             "approval_rate": round(approval_events / max(review_events, 1) * 100, 1),
-            "avg_human_feedback": round(float(avg_feedback), 2) if avg_feedback is not None else None,
+            "avg_human_feedback": round(float(avg_feedback), 2)
+            if avg_feedback is not None
+            else None,
             "avg_consensus": round(float(avg_consensus), 2) if avg_consensus is not None else None,
             "validation_runs": validation_runs,
-            "validation_success_rate": round(validation_successes / max(validation_runs, 1) * 100, 1),
+            "validation_success_rate": round(
+                validation_successes / max(validation_runs, 1) * 100, 1
+            ),
             "validation_methods": validation_method_stats,
         },
         "agents": {
@@ -485,7 +612,9 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
             "errored_documents": errored_documents,
             "indexed_text_documents": indexed_text_documents,
             "findings": total_findings,
-            "avg_insight_confidence": round(float(avg_insight_confidence), 2) if avg_insight_confidence is not None else None,
+            "avg_insight_confidence": round(float(avg_insight_confidence), 2)
+            if avg_insight_confidence is not None
+            else None,
             "code_applications": total_code_applications,
             "pending_code_reviews": pending_code_reviews,
             "approved_code_reviews": approved_code_reviews,
@@ -496,12 +625,18 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
             "spans_last_24h": spans_last_24h,
             "errors_last_24h": error_spans_last_24h,
             "error_rate_24h": round(error_spans_last_24h / max(spans_last_24h, 1) * 100, 1),
-            "avg_quality_24h": round(float(avg_quality_24h), 2) if avg_quality_24h is not None else None,
+            "avg_quality_24h": round(float(avg_quality_24h), 2)
+            if avg_quality_24h is not None
+            else None,
             "model_entries": total_model_entries,
             "production_model_entries": production_model_entries,
             "autoresearch_model_entries": autoresearch_model_entries,
-            "avg_model_quality": round(float(avg_model_quality), 2) if avg_model_quality is not None else None,
-            "best_model_quality": round(float(best_model_quality), 2) if best_model_quality is not None else None,
+            "avg_model_quality": round(float(avg_model_quality), 2)
+            if avg_model_quality is not None
+            else None,
+            "best_model_quality": round(float(best_model_quality), 2)
+            if best_model_quality is not None
+            else None,
         },
         "loops": {
             "total_schedules": total_schedules,
@@ -514,7 +649,9 @@ async def _build_operational_metrics(db: AsyncSession, project_id: str) -> dict:
             "active_deployments": active_deployments,
             "deployment_responses": deployment_responses,
             "deployment_targets": deployment_targets,
-            "deployment_completion_rate": round(deployment_responses / max(deployment_targets, 1) * 100, 1),
+            "deployment_completion_rate": round(
+                deployment_responses / max(deployment_targets, 1) * 100, 1
+            ),
             "survey_integrations": survey_integrations,
             "active_survey_integrations": active_survey_integrations,
             "survey_links": survey_links,
@@ -623,6 +760,7 @@ async def start_experiment(
             detail="Autoresearch is disabled. Enable it first via /api/autoresearch/toggle.",
         )
 
+    _validate_loop_type(body.loop_type)
     max_iterations = _clamp_iterations(body.max_iterations)
     # Resolve the per-experiment engine once at the boundary (validated pi|legacy,
     # or defaulted from settings.agentic_core) and thread it into the runner loop.
@@ -734,7 +872,9 @@ async def stop_experiment(
 
     current = engine.get_current_experiment()
     if not engine.is_running or not current or current.get("project_id") != project_id:
-        raise HTTPException(status_code=409, detail="No experiment loop is currently running for this project.")
+        raise HTTPException(
+            status_code=409, detail="No experiment loop is currently running for this project."
+        )
 
     engine.request_stop()
     return {"status": "stopped"}
@@ -761,19 +901,27 @@ async def update_config(body: ConfigUpdate, request: Request):
         settings.autoresearch_enabled = body.enabled
     if body.max_experiments_per_run is not None:
         if body.max_experiments_per_run < 1 or body.max_experiments_per_run > 100:
-            raise HTTPException(status_code=400, detail="max_experiments_per_run must be between 1 and 100")
+            raise HTTPException(
+                status_code=400, detail="max_experiments_per_run must be between 1 and 100"
+            )
         settings.autoresearch_max_experiments_per_run = body.max_experiments_per_run
     if body.max_daily_experiments is not None:
         if body.max_daily_experiments < 1 or body.max_daily_experiments > 1000:
-            raise HTTPException(status_code=400, detail="max_daily_experiments must be between 1 and 1000")
+            raise HTTPException(
+                status_code=400, detail="max_daily_experiments must be between 1 and 1000"
+            )
         settings.autoresearch_max_daily_experiments = body.max_daily_experiments
     if body.min_improvement_delta is not None:
         if body.min_improvement_delta < 0 or body.min_improvement_delta > 1:
-            raise HTTPException(status_code=400, detail="min_improvement_delta must be between 0 and 1")
+            raise HTTPException(
+                status_code=400, detail="min_improvement_delta must be between 0 and 1"
+            )
         settings.autoresearch_min_improvement_delta = body.min_improvement_delta
     if body.measurement_repeats is not None:
         if body.measurement_repeats < 1 or body.measurement_repeats > 10:
-            raise HTTPException(status_code=400, detail="measurement_repeats must be between 1 and 10")
+            raise HTTPException(
+                status_code=400, detail="measurement_repeats must be between 1 and 10"
+            )
         settings.autoresearch_measurement_repeats = body.measurement_repeats
 
     return {

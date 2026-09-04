@@ -6,6 +6,7 @@ from httpx import AsyncClient, ASGITransport
 from types import SimpleNamespace
 import uuid
 from unittest.mock import AsyncMock
+from fastapi import HTTPException
 
 from app.main import app
 from app.config import settings
@@ -286,6 +287,41 @@ async def test_start_autoresearch_dry_run_without_pi_does_not_start_background_l
     assert result["pi_replacement"] is False
     assert result["background_task_started"] is False
     assert added == []
+
+
+@pytest.mark.asyncio
+async def test_start_autoresearch_dry_run_rejects_unknown_loop_type(monkeypatch):
+    """Dry-run validation must match the real runner contract."""
+    from fastapi import BackgroundTasks
+    from app.api.routes import autoresearch as autoresearch_route
+
+    settings.autoresearch_enabled = True
+
+    async def fake_project_scope(*args, **kwargs):
+        return "dry-run-invalid-loop-project"
+
+    class FakeEngine:
+        is_running = False
+
+    background_tasks = BackgroundTasks()
+    monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", fake_project_scope)
+    monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: FakeEngine())
+
+    with pytest.raises(HTTPException) as exc_info:
+        await autoresearch_route.start_experiment(
+            autoresearch_route.StartExperimentRequest(
+                loop_type="unknown",
+                target="dry-run-target",
+                project_id="dry-run-invalid-loop-project",
+                dry_run=True,
+            ),
+            SimpleNamespace(headers={}),
+            background_tasks,
+            None,
+        )
+
+    assert exc_info.value.status_code == 400
+    assert "Unknown loop type" in str(exc_info.value.detail)
 
 
 @pytest.mark.asyncio

@@ -32,10 +32,7 @@ QWEN_RATE_LIMIT_FALLBACK_CHAINS = {
 }
 
 
-QWEN_FALLBACK_ONLY_MODELS = tuple(
-    chain[1]
-    for chain in QWEN_RATE_LIMIT_FALLBACK_CHAINS.values()
-)
+QWEN_FALLBACK_ONLY_MODELS = tuple(chain[1] for chain in QWEN_RATE_LIMIT_FALLBACK_CHAINS.values())
 
 
 DASHSCOPE_COMPAT_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"

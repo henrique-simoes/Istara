@@ -264,6 +264,7 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/settings/SessionManager.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>Active-session requests read the in-memory <code>authStore</code> token. A successful <code>fetchMe()</code> during shell bootstrap must hydrate that token from browser storage before this component fetches sessions.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -273,7 +274,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>frontend/src/stores/authStore.test.ts</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

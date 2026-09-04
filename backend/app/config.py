@@ -120,9 +120,12 @@ def _write_macos_keychain_secret(service: str, account: str, value: str) -> bool
         "/usr/bin/security",
         "add-generic-password",
         "-U",  # update if exists
-        "-a", account or "default",
-        "-s", service,
-        "-w", value,
+        "-a",
+        account or "default",
+        "-s",
+        service,
+        "-w",
+        value,
     ]
     try:
         result = subprocess.run(
@@ -359,6 +362,13 @@ class Settings(BaseSettings):
     # JSON-compatible settings input.  Empty preserves the existing default
     # endpoint without registering it as donated/shared compute.
     pi_api_endpoints: list[PiApiEndpoint] = []
+    # Global generation default. Empty means the first connected provider
+    # endpoint is selected, with the built-in Pi endpoint as the final fallback.
+    pi_default_endpoint_id: str = ""
+    # Ordered Research Spine preferences. Empty preserves automatic selection
+    # from healthy, project-authorized Pi/donor routes. Preferences are tried
+    # first and the automatic catalog fills remaining independent coder slots.
+    pi_research_endpoint_ids: list[str] = []
     # Bounded Pi runtime worker pool size (round-robin by session_key hash).
     pi_worker_pool_size: int = 2
     # Petals bridge (CF-335..338): expose consented donors as identity-pinned,

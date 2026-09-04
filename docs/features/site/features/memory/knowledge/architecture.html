@@ -267,6 +267,8 @@
 <li>The feature is mounted through <code>frontend/src/components/memory/MemoryView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li><code>backend/app/api/routes/memory.py</code> validates project visibility before opening vector or keyword memory storage, so unknown or unauthorized project ids cannot create or inspect memory indexes.</li>
 <li><code>frontend/src/components/memory/MemoryView.tsx</code> remounts project-backed memory tabs when the active project changes so local chunks, search results, notes, and health state do not linger across projects.</li>
+<li>Memory source rows, health breakdowns, filters, search results, and chunks resolve uploaded document metadata to a human-readable title (with the filename as a disambiguator); the canonical source path remains in the DOM title and is still used for filtering and deletion.</li>
+<li>If document metadata cannot be loaded, the UI safely falls back to the source basename without blocking memory browsing.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

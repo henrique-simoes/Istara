@@ -48,7 +48,7 @@ from app.core.auth_sessions import (
     validate_auth_session,
 )
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
-from app.core.field_encryption import hash_field
+from app.core.field_encryption import hash_field, safe_decrypt_field
 from app.core.recovery_codes import (
     consume_recovery_code,
     recovery_code_status,
@@ -199,7 +199,7 @@ def _user_to_dict(user: User) -> dict:
     return {
         "id": user.id,
         "username": user.username,
-        "email": user.email or "",
+        "email": safe_decrypt_field(user.email),
         "role": user.role.value if hasattr(user.role, "value") else str(user.role),
         "display_name": user.display_name or user.username,
         "preferences": json.loads(user.preferences) if user.preferences else {},
@@ -408,9 +408,7 @@ async def register(req: RegisterRequest, response: Response, request: Request):
 
             email_hash = hash_field(req.email)
             existing = await db.execute(
-                select(User).where(
-                    (User.username == username) | (User.email_hash == email_hash)
-                )
+                select(User).where((User.username == username) | (User.email_hash == email_hash))
             )
             if existing.scalars().first():
                 raise HTTPException(status_code=409, detail="Username or email already exists.")
@@ -904,7 +902,7 @@ async def get_me(request: Request):
             return {
                 "id": user.id,
                 "username": user.username,
-                "email": user.email or "",
+                "email": safe_decrypt_field(user.email),
                 "role": user.role.value if hasattr(user.role, "value") else str(user.role),
                 "display_name": user.display_name or user.username,
                 "preferences": json.loads(user.preferences) if user.preferences else {},
@@ -1103,7 +1101,7 @@ async def list_users(request: Request, db: AsyncSession = Depends(get_db)):
         {
             "id": u.id,
             "username": u.username,
-            "email": u.email,
+            "email": safe_decrypt_field(u.email),
             "role": u.role.value if hasattr(u.role, "value") else u.role,
             "display_name": u.display_name,
             "totp_enabled": getattr(u, "totp_enabled", False),

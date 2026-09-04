@@ -8,8 +8,8 @@ related_features: ["shell.projects", "shell.search", "shell.keyboard-shortcuts",
 related_glossary: ["wcag", "compass-forge"]
 code_references: ["frontend/src/lib/navigation.ts", "frontend/src/components/layout/HomeClient.tsx", "frontend/src/components/layout/Sidebar.tsx", "frontend/src/components/layout/MobileNav.tsx"]
 api_references: []
-test_references: []
-last_verified: 2026-05-15
+test_references: ["frontend/src/lib/navigation.test.ts"]
+last_verified: 2026-09-01
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -40,6 +40,7 @@ The main shell organizes Istara into primary, secondary, utility, and mobile nav
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/lib/navigation.ts` and the UI navigation path recorded in the inventory.
+- Role-gated entries are filtered before rendering in both desktop and mobile shells. In particular, `primaryNavItemsForRole` keeps researcher-only Loops out of viewer navigation while preserving it for researcher and admin roles.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -49,7 +50,7 @@ The main shell organizes Istara into primary, secondary, utility, and mobile nav
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `frontend/src/lib/navigation.test.ts` verifies role-specific primary navigation, including the viewer Loops exclusion.
 
 ## Related Features
 

@@ -299,4 +299,3 @@ def managed_upload_files() -> list[Path]:
     if not root.exists():
         return []
     return [path for path in root.rglob("*") if path.is_file()]
-

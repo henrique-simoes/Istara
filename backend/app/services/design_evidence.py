@@ -66,7 +66,9 @@ def parse_json_list(raw: Any) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
-def normalize_id_list(raw_ids: list[str] | tuple[str, ...] | None, *, max_items: int = 10) -> list[str]:
+def normalize_id_list(
+    raw_ids: list[str] | tuple[str, ...] | None, *, max_items: int = 10
+) -> list[str]:
     """Return unique, trimmed IDs in caller order."""
     normalized: list[str] = []
     seen: set[str] = set()
@@ -166,9 +168,7 @@ def build_seeded_prompt(prompt: str, findings: list[DesignSeedFinding]) -> str:
     return (
         "Use these project-local research seed findings as design context. "
         "Preserve each Research Spine status: provisional sources are candidate "
-        "context only, not accepted report evidence.\n"
-        + "\n".join(lines)
-        + f"\n\nDesign: {prompt}"
+        "context only, not accepted report evidence.\n" + "\n".join(lines) + f"\n\nDesign: {prompt}"
     )
 
 
@@ -209,7 +209,9 @@ async def hydrate_design_brief(db: AsyncSession, brief: DesignBrief) -> dict[str
 
     if insight_ids:
         rows = await db.execute(
-            select(Insight).where(Insight.project_id == brief.project_id, Insight.id.in_(insight_ids))
+            select(Insight).where(
+                Insight.project_id == brief.project_id, Insight.id.in_(insight_ids)
+            )
         )
         insight_by_id = {item.id: item for item in rows.scalars().all()}
         for iid in insight_ids:

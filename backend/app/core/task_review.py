@@ -46,25 +46,40 @@ def classify_review_feedback(feedback: str, labels: list[Any] | None = None) -> 
     text = f"{feedback or ''} {' '.join(str(l) for l in labels or [])}".lower()
     checks = [
         ("missing_evidence", ("evidence", "source", "quote", "citation", "unsupported", "nugget")),
-        ("ignored_user_instructions", ("ignored", "instruction", "asked", "didn't follow", "did not follow")),
+        (
+            "ignored_user_instructions",
+            ("ignored", "instruction", "asked", "didn't follow", "did not follow"),
+        ),
         ("wrong_skill", ("wrong skill", "different skill", "rerun skill", "method")),
         ("wrong_agent", ("wrong agent", "specialist", "assign")),
-        ("hallucination_or_unsupported_claim", ("hallucinat", "made up", "fabricat", "unsupported")),
+        (
+            "hallucination_or_unsupported_claim",
+            ("hallucinat", "made up", "fabricat", "unsupported"),
+        ),
         ("bad_synthesis", ("synthesis", "shallow", "summary", "pattern")),
         ("insufficient_documents", ("document", "file", "missing input", "upload")),
         ("url_or_tool_failure", ("url", "website", "browser", "fetch", "tool")),
         ("validation_false_positive", ("validation", "consensus", "said it was good")),
-        ("user_changed_requirements", ("changed", "new idea", "new requirement", "later", "instead")),
+        (
+            "user_changed_requirements",
+            ("changed", "new idea", "new requirement", "later", "instead"),
+        ),
         ("unclear_task", ("unclear", "ambiguous", "clarify")),
     ]
     for category, needles in checks:
         if any(needle in text for needle in needles):
-            severity = "major" if category in {"hallucination_or_unsupported_claim", "validation_false_positive"} else "moderate"
+            severity = (
+                "major"
+                if category in {"hallucination_or_unsupported_claim", "validation_false_positive"}
+                else "moderate"
+            )
             return category, severity
     return "other", "moderate" if feedback else "minor"
 
 
-def feedback_score(outcome: str, severity: str | None = None, failure_category: str | None = None) -> float:
+def feedback_score(
+    outcome: str, severity: str | None = None, failure_category: str | None = None
+) -> float:
     """Map human review to a bounded quality/reward score."""
     if outcome == APPROVED:
         return 1.0
@@ -82,69 +97,104 @@ def feedback_score(outcome: str, severity: str | None = None, failure_category: 
 async def build_atomic_snapshot(db: AsyncSession, task: Task) -> dict:
     """Collect a compact task-specific atomic research path snapshot."""
     docs = (
-        await db.execute(select(Document).where(Document.task_id == task.id).limit(50))
-    ).scalars().all()
+        (await db.execute(select(Document).where(Document.task_id == task.id).limit(50)))
+        .scalars()
+        .all()
+    )
     nuggets = (
-        await db.execute(
-            select(Nugget)
-            .where(Nugget.project_id == task.project_id, Nugget.task_id == task.id)
-            .order_by(Nugget.created_at.desc())
-            .limit(25)
+        (
+            await db.execute(
+                select(Nugget)
+                .where(Nugget.project_id == task.project_id, Nugget.task_id == task.id)
+                .order_by(Nugget.created_at.desc())
+                .limit(25)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     facts = (
-        await db.execute(
-            select(Fact)
-            .where(Fact.project_id == task.project_id, Fact.task_id == task.id)
-            .order_by(Fact.created_at.desc())
-            .limit(25)
+        (
+            await db.execute(
+                select(Fact)
+                .where(Fact.project_id == task.project_id, Fact.task_id == task.id)
+                .order_by(Fact.created_at.desc())
+                .limit(25)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     insights = (
-        await db.execute(
-            select(Insight)
-            .where(Insight.project_id == task.project_id, Insight.task_id == task.id)
-            .order_by(Insight.created_at.desc())
-            .limit(25)
+        (
+            await db.execute(
+                select(Insight)
+                .where(Insight.project_id == task.project_id, Insight.task_id == task.id)
+                .order_by(Insight.created_at.desc())
+                .limit(25)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     recommendations = (
-        await db.execute(
-            select(Recommendation)
-            .where(Recommendation.project_id == task.project_id, Recommendation.task_id == task.id)
-            .order_by(Recommendation.created_at.desc())
-            .limit(25)
+        (
+            await db.execute(
+                select(Recommendation)
+                .where(
+                    Recommendation.project_id == task.project_id, Recommendation.task_id == task.id
+                )
+                .order_by(Recommendation.created_at.desc())
+                .limit(25)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     reports = (
-        await db.execute(
-            select(ProjectReport)
-            .where(ProjectReport.project_id == task.project_id)
-            .order_by(ProjectReport.updated_at.desc())
-            .limit(10)
+        (
+            await db.execute(
+                select(ProjectReport)
+                .where(ProjectReport.project_id == task.project_id)
+                .order_by(ProjectReport.updated_at.desc())
+                .limit(10)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     try:
         from app.models.code_application import CodeApplication
         from app.models.research_validity import CodingRun
         from app.services.finding_validity_service import finding_research_validity_map
 
         code_applications = (
-            await db.execute(
-                select(CodeApplication)
-                .where(CodeApplication.project_id == task.project_id, CodeApplication.task_id == task.id)
-                .order_by(CodeApplication.created_at.desc())
-                .limit(25)
+            (
+                await db.execute(
+                    select(CodeApplication)
+                    .where(
+                        CodeApplication.project_id == task.project_id,
+                        CodeApplication.task_id == task.id,
+                    )
+                    .order_by(CodeApplication.created_at.desc())
+                    .limit(25)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         coding_runs = (
-            await db.execute(
-                select(CodingRun)
-                .where(CodingRun.project_id == task.project_id, CodingRun.task_id == task.id)
-                .order_by(CodingRun.created_at.desc())
-                .limit(5)
+            (
+                await db.execute(
+                    select(CodingRun)
+                    .where(CodingRun.project_id == task.project_id, CodingRun.task_id == task.id)
+                    .order_by(CodingRun.created_at.desc())
+                    .limit(5)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         validity_by_id = await finding_research_validity_map(
             db,
             project_id=task.project_id,
@@ -169,12 +219,18 @@ async def build_atomic_snapshot(db: AsyncSession, task: Task) -> dict:
         return items
 
     return {
-        "documents": {"count": len(docs), "items": [{"id": d.id, "title": d.title} for d in docs[:5]]},
+        "documents": {
+            "count": len(docs),
+            "items": [{"id": d.id, "title": d.title} for d in docs[:5]],
+        },
         "nuggets": {"count": len(nuggets), "items": preview(nuggets)},
         "facts": {"count": len(facts), "items": preview(facts)},
         "insights": {"count": len(insights), "items": preview(insights)},
         "recommendations": {"count": len(recommendations), "items": preview(recommendations)},
-        "reports": {"count": len(reports), "items": [{"id": r.id, "title": r.title} for r in reports[:5]]},
+        "reports": {
+            "count": len(reports),
+            "items": [{"id": r.id, "title": r.title} for r in reports[:5]],
+        },
         "research_validity": {
             "coding_run_count": len(coding_runs),
             "code_application_count": len(code_applications),
@@ -204,8 +260,12 @@ def build_context_snapshot(task: Task, extra: dict | None = None) -> dict:
         "skill_name": task.skill_name,
         "priority": task.priority,
         "labels": task.get_labels() if hasattr(task, "get_labels") else [],
-        "input_document_ids": task.get_input_document_ids() if hasattr(task, "get_input_document_ids") else [],
-        "output_document_ids": task.get_output_document_ids() if hasattr(task, "get_output_document_ids") else [],
+        "input_document_ids": task.get_input_document_ids()
+        if hasattr(task, "get_input_document_ids")
+        else [],
+        "output_document_ids": task.get_output_document_ids()
+        if hasattr(task, "get_output_document_ids")
+        else [],
         "urls": task.get_urls() if hasattr(task, "get_urls") else [],
         "review_cycle_count": task.review_cycle_count or 0,
         "failure_streak": task.failure_streak or 0,
@@ -241,7 +301,11 @@ async def record_task_review_event(
     inferred_category, inferred_severity = classify_review_feedback(what_to_review, labels)
     failure_category = failure_category or (None if outcome == APPROVED else inferred_category)
     severity = severity or (None if outcome == APPROVED else inferred_severity)
-    score = quality_score if quality_score is not None else feedback_score(outcome, severity, failure_category)
+    score = (
+        quality_score
+        if quality_score is not None
+        else feedback_score(outcome, severity, failure_category)
+    )
     now = datetime.now(timezone.utc)
 
     if outcome == APPROVED:
@@ -251,8 +315,15 @@ async def record_task_review_event(
     else:
         task.failure_streak = (task.failure_streak or 0) + 1
         task.approval_streak = 0
-        task.next_agent_action = "resume_in_progress" if next_status == TaskStatus.IN_PROGRESS else "return_to_backlog"
-        task.what_to_review = what_to_review
+        task.next_agent_action = (
+            "resume_in_progress" if next_status == TaskStatus.IN_PROGRESS else "return_to_backlog"
+        )
+        # A machine failure is a new review event, not a replacement for the
+        # researcher's last revision instruction. Keep any existing instruction
+        # as the next-agent context; the new diagnostic remains in the durable
+        # review event and ``last_review_feedback``.
+        if not (outcome == SYSTEM_FAILED and task.what_to_review):
+            task.what_to_review = what_to_review
 
     task.status = next_status
     task.review_state = next_review_state
@@ -448,10 +519,13 @@ async def diagnose_review_event(db: AsyncSession, event_id: str) -> None:
     diagnosis = {
         "primary_failure_category": event.failure_category or "none",
         "severity": event.severity or "none",
-        "recommended_next_action": "approve" if event.outcome == APPROVED else "revise_with_feedback",
+        "recommended_next_action": "approve"
+        if event.outcome == APPROVED
+        else "revise_with_feedback",
         "should_switch_skill": event.failure_category in {"wrong_skill", "bad_synthesis"},
         "should_switch_agent": event.failure_category in {"wrong_agent", "routing_issue"},
-        "should_trigger_ensemble": event.failure_category in {"validation_false_positive", "hallucination_or_unsupported_claim"},
+        "should_trigger_ensemble": event.failure_category
+        in {"validation_false_positive", "hallucination_or_unsupported_claim"},
         "should_propose_skill_update": event.failure_streak_after >= 2 and bool(event.skill_name),
         "learning_summary": event.feedback_summary[:500],
     }

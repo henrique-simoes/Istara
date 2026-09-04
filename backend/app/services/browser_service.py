@@ -25,6 +25,7 @@ BROWSER_AVAILABLE = False
 try:
     from browser_use import Agent as BrowserAgent, Browser, BrowserConfig
     from langchain_openai import ChatOpenAI
+
     BROWSER_AVAILABLE = True
 except ImportError:
     logger.info(
@@ -109,8 +110,7 @@ async def browse_website(
     if not BROWSER_AVAILABLE:
         return {
             "error": (
-                "browser-use not installed. "
-                "Install: pip install browser-use langchain-openai"
+                "browser-use not installed. Install: pip install browser-use langchain-openai"
             ),
             "result": None,
         }
@@ -135,35 +135,34 @@ async def browse_website(
         result = {
             "result": history.final_result() if history.is_done() else None,
             "success": (
-                history.is_successful()
-                if hasattr(history, "is_successful")
-                else history.is_done()
+                history.is_successful() if hasattr(history, "is_successful") else history.is_done()
             ),
-            "urls_visited": (
-                history.urls() if hasattr(history, "urls") else []
-            ),
-            "actions_taken": (
-                history.action_names() if hasattr(history, "action_names") else []
-            ),
+            "urls_visited": (history.urls() if hasattr(history, "urls") else []),
+            "actions_taken": (history.action_names() if hasattr(history, "action_names") else []),
             "extracted_content": (
-                history.extracted_content()
-                if hasattr(history, "extracted_content")
-                else []
+                history.extracted_content() if hasattr(history, "extracted_content") else []
             ),
             "errors": history.errors() if hasattr(history, "errors") else [],
         }
 
         await browser.close()
         await _record_browser_usage(
-            endpoint=endpoint, project_id=project_id, agent_id=agent_id,
-            status="success", started=started,
+            endpoint=endpoint,
+            project_id=project_id,
+            agent_id=agent_id,
+            status="success",
+            started=started,
         )
         return result
 
     except Exception as e:
         logger.exception("Browser browsing failed")
         await _record_browser_usage(
-            endpoint=endpoint, project_id=project_id, agent_id=agent_id,
-            status="error", started=started, error_type=type(e).__name__,
+            endpoint=endpoint,
+            project_id=project_id,
+            agent_id=agent_id,
+            status="error",
+            started=started,
+            error_type=type(e).__name__,
         )
         return {"error": str(e), "result": None}

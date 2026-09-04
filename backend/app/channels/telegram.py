@@ -66,7 +66,7 @@ class TelegramAdapter(ChannelAdapter):
     def _clean_path_component(value: str | None, default: str = "file") -> str:
         """Return a filesystem-safe single path component."""
         cleaned = _SAFE_NAME_RE.sub("_", value or "").strip("._-")
-        return (cleaned[:120] if cleaned else default)
+        return cleaned[:120] if cleaned else default
 
     @staticmethod
     def _safe_suffix(suffix: str | None, default: str = ".bin") -> str:
@@ -143,18 +143,10 @@ class TelegramAdapter(ChannelAdapter):
         self._app = ApplicationBuilder().token(self._bot_token).build()
 
         # Register handlers for different message types
-        self._app.add_handler(
-            MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_text)
-        )
-        self._app.add_handler(
-            MessageHandler(filters.VOICE, self._handle_voice)
-        )
-        self._app.add_handler(
-            MessageHandler(filters.PHOTO, self._handle_photo)
-        )
-        self._app.add_handler(
-            MessageHandler(filters.Document.ALL, self._handle_document)
-        )
+        self._app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_text))
+        self._app.add_handler(MessageHandler(filters.VOICE, self._handle_voice))
+        self._app.add_handler(MessageHandler(filters.PHOTO, self._handle_photo))
+        self._app.add_handler(MessageHandler(filters.Document.ALL, self._handle_document))
 
         # Manual startup sequence (run_polling blocks, so we do it step-by-step)
         await self._app.initialize()
@@ -194,14 +186,10 @@ class TelegramAdapter(ChannelAdapter):
 
                 async def _send_document(path: str = file_path) -> None:
                     with open(path, "rb") as document:
-                        await self._app.bot.send_document(
-                            chat_id=chat_id, document=document
-                        )
+                        await self._app.bot.send_document(chat_id=chat_id, document=document)
 
                 await self._breaker.call(
-                    lambda: retry_with_backoff(
-                        _send_document, max_retries=3, base_delay=1.0
-                    )
+                    lambda: retry_with_backoff(_send_document, max_retries=3, base_delay=1.0)
                 )
 
         # Build optional reply markup
@@ -275,16 +263,12 @@ class TelegramAdapter(ChannelAdapter):
             metadata={"content_type": content_type},
         )
 
-    async def _handle_text(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle plain text messages."""
         msg = self._build_incoming(update, text=update.message.text or "")
         await self._dispatch(msg)
 
-    async def _handle_voice(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _handle_voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle voice messages -- download, transcribe, and dispatch."""
         try:
             voice = update.message.voice
@@ -309,6 +293,7 @@ class TelegramAdapter(ChannelAdapter):
             transcription_tags = []
             try:
                 from app.core.transcription import transcribe_audio, convert_audio_to_wav
+
                 wav_path = convert_audio_to_wav(str(audio_path))
                 result = transcribe_audio(wav_path)
                 transcription_text = result.text
@@ -333,9 +318,7 @@ class TelegramAdapter(ChannelAdapter):
         except Exception:
             logger.exception("Error handling voice message on %s", self.name)
 
-    async def _handle_photo(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _handle_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle photo messages."""
         try:
             # Get the largest photo size
@@ -367,9 +350,7 @@ class TelegramAdapter(ChannelAdapter):
         except Exception:
             logger.exception("Error handling photo message on %s", self.name)
 
-    async def _handle_document(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _handle_document(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle document/file messages."""
         try:
             doc = update.message.document

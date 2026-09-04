@@ -74,7 +74,9 @@ class ManagedAgent:
             "current_task": self.current_task,
             "error_count": self.error_count,
             "executions": self.executions,
-            "system_prompt_preview": self.system_prompt[:200] + "..." if len(self.system_prompt) > 200 else self.system_prompt,
+            "system_prompt_preview": self.system_prompt[:200] + "..."
+            if len(self.system_prompt) > 200
+            else self.system_prompt,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "last_active": self.last_active.isoformat() if self.last_active else None,
         }
@@ -108,6 +110,7 @@ def _load_role_prompt(role: AgentRole) -> str:
     """
     try:
         from app.core.agent_identity import load_agent_identity
+
         agent_id = _ROLE_AGENT_IDS.get(role, "")
         if agent_id:
             identity = load_agent_identity(agent_id)
@@ -176,6 +179,7 @@ class MetaOrchestrator:
         """Determine swarm tier based on local resources + compute pool."""
         try:
             from app.core.compute_pool import compute_pool
+
             pool_nodes = compute_pool.total_capacity()
         except Exception:
             pool_nodes = 0
@@ -203,6 +207,7 @@ class MetaOrchestrator:
                     self._log_action(agent.id, "paused", "Resource pressure — system paused")
             try:
                 from app.api.websocket import broadcast_resource_throttle
+
                 await broadcast_resource_throttle(
                     "System resources under pressure — agents paused",
                     budget.__dict__ if hasattr(budget, "__dict__") else {},
@@ -287,9 +292,13 @@ class MetaOrchestrator:
                         if reports:
                             latest = reports[-1]
                             if isinstance(latest, dict):
-                                managed.last_output = str(latest.get("summary", latest.get("status", "")))[:200]
+                                managed.last_output = str(
+                                    latest.get("summary", latest.get("status", ""))
+                                )[:200]
                             else:
-                                managed.last_output = str(getattr(latest, "overall_score", ""))[:200]
+                                managed.last_output = str(getattr(latest, "overall_score", ""))[
+                                    :200
+                                ]
                 else:
                     managed.state = AgentState.STOPPED
 
@@ -337,6 +346,7 @@ class MetaOrchestrator:
                     # Merge any existing A2A collaboration responses into task context
                     try:
                         from app.services.a2a import get_messages
+
                         collab_responses = await get_messages(
                             db,
                             routing["primary_agent_id"],
@@ -344,15 +354,31 @@ class MetaOrchestrator:
                             project_id=task.project_id,
                         )
                         for resp in collab_responses:
-                            resp_type = resp.get("message_type") if isinstance(resp, dict) else getattr(resp, "message_type", "")
+                            resp_type = (
+                                resp.get("message_type")
+                                if isinstance(resp, dict)
+                                else getattr(resp, "message_type", "")
+                            )
                             if resp_type != "collaboration_response":
                                 continue
-                            resp_meta = resp.get("metadata", {}) if isinstance(resp, dict) else getattr(resp, "metadata", {})
+                            resp_meta = (
+                                resp.get("metadata", {})
+                                if isinstance(resp, dict)
+                                else getattr(resp, "metadata", {})
+                            )
                             if isinstance(resp_meta, str):
                                 resp_meta = json.loads(resp_meta) if resp_meta else {}
                             if resp_meta.get("task_id") == task.id:
-                                resp_from = resp.get("from_agent_id", "") if isinstance(resp, dict) else getattr(resp, "from_agent_id", "")
-                                resp_content = resp.get("content", "") if isinstance(resp, dict) else getattr(resp, "content", "")
+                                resp_from = (
+                                    resp.get("from_agent_id", "")
+                                    if isinstance(resp, dict)
+                                    else getattr(resp, "from_agent_id", "")
+                                )
+                                resp_content = (
+                                    resp.get("content", "")
+                                    if isinstance(resp, dict)
+                                    else getattr(resp, "content", "")
+                                )
                                 collab_context = f"\n[{resp_from} analysis]: {resp_content[:500]}"
                                 task.user_context = (task.user_context or "") + collab_context
                     except Exception as e:
@@ -375,11 +401,7 @@ class MetaOrchestrator:
 
                             factory = AgentFactory()
                             available_agents = await get_available_agents(db)
-                            agents_list = [
-                                a.to_dict()
-                                for a in available_agents
-                                if a.is_active
-                            ]
+                            agents_list = [a.to_dict() for a in available_agents if a.is_active]
                             gap = factory.detect_capability_gap(
                                 routing.get("specialties_needed", []),
                                 agents_list,
@@ -395,7 +417,9 @@ class MetaOrchestrator:
                                 )
                                 try:
                                     from dataclasses import asdict
-                                    from app.core.improvement_governance import improvement_governance
+                                    from app.core.improvement_governance import (
+                                        improvement_governance,
+                                    )
 
                                     await improvement_governance.register_agent_creation_proposal(
                                         asdict(proposal),
@@ -403,9 +427,7 @@ class MetaOrchestrator:
                                     )
                                 except Exception:
                                     pass
-                                logger.info(
-                                    f"Agent creation proposed: {proposal.proposed_name}"
-                                )
+                                logger.info(f"Agent creation proposed: {proposal.proposed_name}")
                                 self._log_action(
                                     "orchestrator",
                                     "agent_proposal",
@@ -457,6 +479,7 @@ class MetaOrchestrator:
                     try:
                         if agent_id == "istara-main":
                             from app.core.agent import agent as agent_orchestrator
+
                             agent_orchestrator.wake()
                         # Sub-agents are woken via their own check cycles
                     except Exception:
@@ -490,7 +513,9 @@ class MetaOrchestrator:
         if not agent:
             return False
         agent.system_prompt = system_prompt
-        self._log_action(agent_id, "prompt_updated", f"System prompt updated ({len(system_prompt)} chars)")
+        self._log_action(
+            agent_id, "prompt_updated", f"System prompt updated ({len(system_prompt)} chars)"
+        )
         return True
 
     def create_custom_agent(self, name: str, role: AgentRole, system_prompt: str) -> ManagedAgent:

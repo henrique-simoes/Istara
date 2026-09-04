@@ -30,7 +30,11 @@ from app.models.research_validity import (
     ResearchEvidenceEdge,
 )
 
-from app.services.research_validity_schemas import ACCEPTED_PROMOTION_STATUSES, RECONCILED_CODE_APPLICATION_STATUSES, _json_list_value
+from app.services.research_validity_schemas import (
+    ACCEPTED_PROMOTION_STATUSES,
+    RECONCILED_CODE_APPLICATION_STATUSES,
+    _json_list_value,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -611,9 +615,7 @@ async def build_evidence_graph_traceability(
         # Project-level benchmark coding runs intentionally have no task_id.
         # An explicit run scope keeps their source-grounded applications
         # observable without broadening the default project trace.
-        code_query = code_query.where(
-            CodeApplication.coding_run_id == normalized_coding_run_id
-        )
+        code_query = code_query.where(CodeApplication.coding_run_id == normalized_coding_run_id)
         if task_ids:
             code_query = code_query.where(CodeApplication.task_id.in_(task_ids))
     elif task_ids:
@@ -658,9 +660,7 @@ async def build_evidence_graph_traceability(
             ReconciliationDecision.coding_run_id == normalized_coding_run_id
         )
         if task_ids:
-            decision_query = decision_query.where(
-                ReconciliationDecision.task_id.in_(task_ids)
-            )
+            decision_query = decision_query.where(ReconciliationDecision.task_id.in_(task_ids))
     elif task_ids:
         decision_query = decision_query.where(ReconciliationDecision.task_id.in_(task_ids))
     elif run_ids:
@@ -746,8 +746,7 @@ async def build_evidence_graph_traceability(
             "accepted_code_application_count": sum(
                 1
                 for row in code_rows
-                if row.task_id == scoped_task_id
-                and _is_reconciled_code_application(row)
+                if row.task_id == scoped_task_id and _is_reconciled_code_application(row)
             ),
         }
         for scoped_task_id in sorted(task_ids)
@@ -865,11 +864,7 @@ async def assess_task_research_validity(
             "report_allowed": False,
             "reason": f"Task has {unresolved_count} unreconciled code application(s).",
         }
-    if (
-        latest_run
-        and code_rows
-        and latest_run.promotion_status not in ACCEPTED_PROMOTION_STATUSES
-    ):
+    if latest_run and code_rows and latest_run.promotion_status not in ACCEPTED_PROMOTION_STATUSES:
         return {
             **base,
             "report_allowed": False,
@@ -879,9 +874,7 @@ async def assess_task_research_validity(
             ),
         }
     accepted_document_rows = [
-        row
-        for row in code_rows
-        if _is_reconciled_code_application(row) and row.source_document_id
+        row for row in code_rows if _is_reconciled_code_application(row) and row.source_document_id
     ]
     if accepted_document_rows:
         from app.models.document import Document
@@ -901,9 +894,7 @@ async def assess_task_research_validity(
         )
         current_by_id = {document.id: document for document in current_documents}
         evidence_unit_ids = {
-            str(row.evidence_unit_id)
-            for row in accepted_document_rows
-            if row.evidence_unit_id
+            str(row.evidence_unit_id) for row in accepted_document_rows if row.evidence_unit_id
         }
         units = (
             (

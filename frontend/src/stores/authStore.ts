@@ -254,6 +254,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const data = await res.json();
         localStorage.setItem("istara_auth_user_id", data.id);
         set({
+          // LoginScreen owns several raw credential/passkey/join flows and
+          // persists their JWT before asking fetchMe() to bootstrap the app.
+          // Hydrate the store from that authoritative browser value so
+          // store-backed protected actions do not remain unauthenticated.
+          token: _tk,
           user: {
             id: data.id,
             username: data.username,

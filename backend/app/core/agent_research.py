@@ -55,6 +55,7 @@ from app.core.agent_models import (
 
 logger = logging.getLogger("app.core.agent")
 
+
 class AgentResearchMixin:
     async def _execute_general_task(self, db: AsyncSession, task: Task, project: Project) -> None:
         """Handle tasks without a specific skill — use general LLM reasoning."""
@@ -159,9 +160,7 @@ class AgentResearchMixin:
                 )
             if execute_tool is not None:
                 started = datetime.now(UTC)
-                tool_result = await execute_tool(
-                    tool_name, tool_args, project.id, self._agent_id
-                )
+                tool_result = await execute_tool(tool_name, tool_args, project.id, self._agent_id)
                 duration_ms = (datetime.now(UTC) - started).total_seconds() * 1000
                 asyncio.create_task(
                     telemetry_recorder.record_span(
@@ -169,8 +168,7 @@ class AgentResearchMixin:
                         operation="tool_call",
                         tool_name=tool_name,
                         tool_success=bool(
-                            isinstance(tool_result, dict)
-                            and tool_result.get("success", True)
+                            isinstance(tool_result, dict) and tool_result.get("success", True)
                         ),
                         tool_duration_ms=duration_ms,
                         agent_id=self._agent_id,
@@ -221,14 +219,30 @@ class AgentResearchMixin:
                 "General agent response was too short or empty.",
             )
             await db.commit()
-            await broadcast_task_progress(task.id, 1.0, "Verification failed: response too short")
+            await broadcast_task_progress(
+                task.id,
+                1.0,
+                "Verification failed: response too short",
+                outcome="verification_failed",
+                project_id=task.project_id,
+            )
             await self._persist_agent_state(AgentState.IDLE)
-            await broadcast_agent_status("warning", f"Needs attention: {task.title}", project_id=task.project_id)
+            await broadcast_agent_status(
+                "warning", f"Needs attention: {task.title}", project_id=task.project_id
+            )
         else:
             await self._mark_task_ready_for_review(db, task, f"{tool_summary}{result}")
-            await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
+            await broadcast_task_progress(
+                task.id,
+                1.0,
+                "Complete — ready for review.",
+                outcome="ready_for_review",
+                project_id=task.project_id,
+            )
             await self._persist_agent_state(AgentState.IDLE)
-            await broadcast_agent_status("idle", f"Completed: {task.title}", project_id=task.project_id)
+            await broadcast_agent_status(
+                "idle", f"Completed: {task.title}", project_id=task.project_id
+            )
 
     async def _execute_react_skill_tool(
         self,
@@ -254,7 +268,10 @@ class AgentResearchMixin:
             }
 
         if not await self._check_agent_skill_acl(task.agent_id, skill_name):
-            return {"success": False, "error": f"Skill '{skill_name}' is not allowed for this agent."}
+            return {
+                "success": False,
+                "error": f"Skill '{skill_name}' is not allowed for this agent.",
+            }
 
         skill = registry.get(skill_name)
         if not skill:
@@ -546,6 +563,7 @@ class AgentResearchMixin:
                     task.id,
                     0.2 + (0.6 * step_num / total_steps),
                     f"Running {parallel_count} steps in parallel...",
+                    project_id=task.project_id,
                 )
             else:
                 await broadcast_agent_thinking(
@@ -555,6 +573,7 @@ class AgentResearchMixin:
                     task.id,
                     0.2 + (0.6 * step_num / total_steps),
                     f"Step: {ready[0].description[:60]}",
+                    project_id=task.project_id,
                 )
 
             # Execute ready steps in parallel
@@ -594,10 +613,16 @@ class AgentResearchMixin:
         )
 
         await broadcast_task_progress(
-            task.id, 1.0, f"Plan complete — {len(plan.past_steps)} steps ({total_steps} planned)."
+            task.id,
+            1.0,
+            f"Plan complete — {len(plan.past_steps)} steps ({total_steps} planned).",
+            outcome="ready_for_review",
+            project_id=task.project_id,
         )
         await self._persist_agent_state(AgentState.IDLE)
-        await broadcast_agent_status("idle", f"Completed plan: {task.title}", project_id=task.project_id)
+        await broadcast_agent_status(
+            "idle", f"Completed plan: {task.title}", project_id=task.project_id
+        )
 
     async def _execute_single_step(
         self,
@@ -714,7 +739,9 @@ class AgentResearchMixin:
         created_evidence_unit_ids: list[str] = []
         finding_agent_id = task.agent_id or self.agent_id
 
-        from app.services.research_finding_links import persist_scoped_derivation_links as persist_links  # noqa: E501,I001
+        from app.services.research_finding_links import (
+            persist_scoped_derivation_links as persist_links,
+        )  # noqa: E501,I001
 
         for nugget_data in output.nuggets:
             nid = str(uuid.uuid4())
@@ -766,14 +793,19 @@ class AgentResearchMixin:
                 or nugget_data.get("quote")
                 or ""
             ).strip()
-            has_exact_source_span = bool(source_document_id and source_location and exact_source_text)
+            has_exact_source_span = bool(
+                source_document_id and source_location and exact_source_text
+            )
             evidence_source_text = (
                 exact_source_text if has_exact_source_span else str(nugget_data.get("text", ""))
             )[:2000]
             units = []
             if evidence_source_text.strip():
                 try:
-                    from app.services.research_validity_service import persist_task_nugget_evidence_units
+                    from app.services.research_validity_service import (
+                        persist_task_nugget_evidence_units,
+                    )
+
                     units = await persist_task_nugget_evidence_units(
                         db,
                         project_id=project_id,
@@ -803,7 +835,10 @@ class AgentResearchMixin:
             _reasoning = nugget_data.get("coding_reasoning", "")
             if _reasoning and isinstance(_enriched_tags, list) and _enriched_tags:
                 try:
-                    from app.services.research_validity_service import add_agent_initial_code_applications
+                    from app.services.research_validity_service import (
+                        add_agent_initial_code_applications,
+                    )
+
                     add_agent_initial_code_applications(
                         db,
                         project_id=project_id,
@@ -824,7 +859,17 @@ class AgentResearchMixin:
 
         for fact_data in output.facts:
             fid = str(uuid.uuid4())
-            linked_nuggets = await persist_links(db, Nugget, fact_data.get("nugget_ids"), created_nugget_ids[-5:], project_id, task, "fact", fid, "nugget")  # noqa: E501
+            linked_nuggets = await persist_links(
+                db,
+                Nugget,
+                fact_data.get("nugget_ids"),
+                created_nugget_ids[-5:],
+                project_id,
+                task,
+                "fact",
+                fid,
+                "nugget",
+            )  # noqa: E501
             fact = Fact(
                 id=fid,
                 project_id=project_id,
@@ -839,7 +884,17 @@ class AgentResearchMixin:
 
         for insight_data in output.insights:
             iid = str(uuid.uuid4())
-            linked_facts = await persist_links(db, Fact, insight_data.get("fact_ids"), created_fact_ids[-3:], project_id, task, "insight", iid, "fact")  # noqa: E501
+            linked_facts = await persist_links(
+                db,
+                Fact,
+                insight_data.get("fact_ids"),
+                created_fact_ids[-3:],
+                project_id,
+                task,
+                "insight",
+                iid,
+                "fact",
+            )  # noqa: E501
             insight = Insight(
                 id=iid,
                 project_id=project_id,
@@ -855,7 +910,17 @@ class AgentResearchMixin:
 
         for rec_data in output.recommendations:
             rid = str(uuid.uuid4())
-            linked_insights = await persist_links(db, Insight, rec_data.get("insight_ids"), created_insight_ids[-2:], project_id, task, "recommendation", rid, "insight")  # noqa: E501
+            linked_insights = await persist_links(
+                db,
+                Insight,
+                rec_data.get("insight_ids"),
+                created_insight_ids[-2:],
+                project_id,
+                task,
+                "recommendation",
+                rid,
+                "insight",
+            )  # noqa: E501
             rec = Recommendation(
                 id=rid,
                 project_id=project_id,
@@ -884,7 +949,10 @@ class AgentResearchMixin:
         await db.commit()
         if created_evidence_unit_ids:
             try:
-                from app.services.research_validity_service import run_task_coding_run_and_mark_review
+                from app.services.research_validity_service import (
+                    run_task_coding_run_and_mark_review,
+                )
+
                 await run_task_coding_run_and_mark_review(
                     db,
                     task=task,
@@ -1138,7 +1206,9 @@ class AgentResearchMixin:
                 company_context=project.company_context,
             )
 
-            await broadcast_agent_status("working", f"Running {skill.display_name}...", project_id=project_id)
+            await broadcast_agent_status(
+                "working", f"Running {skill.display_name}...", project_id=project_id
+            )
 
             try:
                 output = await skill.execute(skill_input)
@@ -1198,7 +1268,9 @@ class AgentResearchMixin:
                 )
 
                 if verified:
-                    await broadcast_agent_status("idle", f"Completed: {skill.display_name}", project_id=project_id)
+                    await broadcast_agent_status(
+                        "idle", f"Completed: {skill.display_name}", project_id=project_id
+                    )
                 else:
                     await broadcast_agent_status(
                         "warning",

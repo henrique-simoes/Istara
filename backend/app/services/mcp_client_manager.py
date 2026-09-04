@@ -17,11 +17,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.content_guard import ContentGuard
-from app.core.endpoint_security import EndpointPolicy, normalized_service_url, redacted_endpoint_label
+from app.core.endpoint_security import (
+    EndpointPolicy,
+    normalized_service_url,
+    redacted_endpoint_label,
+)
 from app.core.field_encryption import decrypt_field, encrypt_field
 from app.models.mcp_server_config import MCPServerConfig
 
 logger = logging.getLogger(__name__)
+
+# Transport adapters can include private URLs, credentials, or stack details in
+# exception text. API callers receive this stable message; full details stay in
+# local logs for diagnosis.
+PUBLIC_MCP_ERROR = "Connection check failed. Verify the credentials and network access, then retry."
 SUPPORTED_TRANSPORTS = {"http"}
 _guard = ContentGuard()
 _TOOL_NAME_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
@@ -35,6 +44,7 @@ MAX_MCP_TOOL_SCHEMA_BYTES = 16 * 1024
 try:
     from mcp.client.streamable_http import streamablehttp_client  # type: ignore[import-untyped]
     from mcp import ClientSession  # type: ignore[import-untyped]
+
     MCP_CLIENT_AVAILABLE = True
 except ImportError:
     MCP_CLIENT_AVAILABLE = False
@@ -159,8 +169,7 @@ def _safe_tool_descriptor(tool) -> dict | None:
         warnings.append("description_prompt_injection_indicators")
         safe_description = (
             "[Istara security: tool description contained instruction-like content "
-            "and was sanitized.] "
-            + safe_description
+            "and was sanitized.] " + safe_description
         )[:MAX_MCP_TOOL_DESCRIPTION_CHARS]
 
     input_schema = getattr(tool, "inputSchema", None) or {}
@@ -236,9 +245,7 @@ async def discover_tools(
                 server.last_discovery_at = datetime.now(timezone.utc)
                 server.health_status = "healthy"
                 await db.commit()
-                logger.info(
-                    "Discovered %d tools from MCP server '%s'", len(tools), server.name
-                )
+                logger.info("Discovered %d tools from MCP server '%s'", len(tools), server.name)
                 return tools
     except Exception as exc:
         logger.warning("Tool discovery failed for '%s': %s", server.name, exc)
@@ -305,12 +312,10 @@ async def call_tool(
                         }
                 return {"result": "empty_response"}
     except Exception as exc:
-        logger.warning(
-            "Tool call '%s' on server '%s' failed: %s", tool_name, server.name, exc
-        )
+        logger.warning("Tool call '%s' on server '%s' failed: %s", tool_name, server.name, exc)
         server.health_status = "unhealthy"
         await db.commit()
-        return {"error": str(exc)}
+        return {"error": PUBLIC_MCP_ERROR}
 
 
 # ---------------------------------------------------------------------------
@@ -355,7 +360,8 @@ async def health_check(
     except Exception as exc:
         server.health_status = "unhealthy"
         await db.commit()
-        return {"healthy": False, "error": str(exc), "server": server.name}
+        logger.warning("MCP health check failed for '%s': %s", server.name, exc)
+        return {"healthy": False, "error": PUBLIC_MCP_ERROR, "server": server.name}
 
 
 # ---------------------------------------------------------------------------
@@ -456,10 +462,12 @@ async def list_all_tools(db: AsyncSession, *, project_id: str) -> list[dict]:
         seen_servers.add(key)
         tools = json.loads(server.tools_json) if server.tools_json else []
         for tool in tools:
-            all_tools.append({
-                **tool,
-                "server_id": server.id,
-                "server_name": server.name,
-            })
+            all_tools.append(
+                {
+                    **tool,
+                    "server_id": server.id,
+                    "server_name": server.name,
+                }
+            )
 
     return all_tools

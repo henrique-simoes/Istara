@@ -8,8 +8,8 @@ related_features: ["shell.navigation", "chat.overview", "tasks.kanban"]
 related_glossary: ["compass-forge"]
 code_references: ["frontend/src/components/layout/Sidebar.tsx", "frontend/src/stores/projectStore.ts", "backend/app/api/routes/projects.py"]
 api_references: ["backend/app/api/routes/projects.py"]
-test_references: []
-last_verified: 2026-05-15
+test_references: ["tests/test_projects.py::test_delete_project_cleans_managed_runtime_artifacts_but_keeps_external_watch_folder", "tests/test_projects.py::test_delete_project_removes_project_memberships"]
+last_verified: 2026-09-02
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -38,6 +38,8 @@ The sidebar project control lists available projects and lets users create, sele
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/layout/Sidebar.tsx` and the UI navigation path recorded in the inventory.
+- Deleting a project removes only its managed upload, vector, keyword-index, and versioning paths after the database transaction commits; linked external watch folders are retained while their watcher registrations are removed.
+- Deleting a project explicitly removes its project memberships before commit so SQLite deployments cannot leave stale rows in Admin > Access when database-level cascades are unavailable.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

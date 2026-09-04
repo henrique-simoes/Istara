@@ -26,9 +26,7 @@ class Project(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
-    phase: Mapped[ProjectPhase] = mapped_column(
-        Enum(ProjectPhase), default=ProjectPhase.DISCOVER
-    )
+    phase: Mapped[ProjectPhase] = mapped_column(Enum(ProjectPhase), default=ProjectPhase.DISCOVER)
     company_context: Mapped[str] = mapped_column(Text, default="")
     project_context: Mapped[str] = mapped_column(Text, default="")
     guardrails: Mapped[str] = mapped_column(Text, default="")
@@ -60,6 +58,12 @@ class Project(Base):
     sessions = relationship("ChatSession", back_populates="project", cascade="all, delete-orphan")
     codebooks = relationship("Codebook", back_populates="project", cascade="all, delete-orphan")
     documents = relationship("Document", back_populates="project", cascade="all, delete-orphan")
-    design_screens = relationship("DesignScreen", back_populates="project", cascade="all, delete-orphan")
-    design_briefs = relationship("DesignBrief", back_populates="project", cascade="all, delete-orphan")
-    design_decisions = relationship("DesignDecision", back_populates="project", cascade="all, delete-orphan")
+    design_screens = relationship(
+        "DesignScreen", back_populates="project", cascade="all, delete-orphan"
+    )
+    design_briefs = relationship(
+        "DesignBrief", back_populates="project", cascade="all, delete-orphan"
+    )
+    design_decisions = relationship(
+        "DesignDecision", back_populates="project", cascade="all, delete-orphan"
+    )

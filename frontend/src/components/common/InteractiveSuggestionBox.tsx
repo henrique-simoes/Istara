@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { X, Send, Loader2, ExternalLink, StopCircle } from "lucide-react";
 import { chat as chatApi, sessions as sessionsApi } from "@/lib/api";
+import {
+  consumeSuggestionStreamEvents,
+  createSuggestionStream,
+} from "@/lib/suggestionStream";
 import { cn } from "@/lib/utils";
 
 interface InteractiveSuggestionBoxProps {
@@ -62,26 +66,37 @@ export default function InteractiveSuggestionBox({
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       try {
-        let accumulated = "";
-        abortControllerRef.current = new AbortController();
-        
-        for await (const event of chatApi.send(projectId, content, sid)) {
-          if (event.type === "chunk" && event.content) {
-            accumulated += event.content;
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        await consumeSuggestionStreamEvents(
+          createSuggestionStream(
+            chatApi.send,
+            projectId,
+            content,
+            sid,
+            controller.signal,
+          ),
+          (accumulated) => {
             setMessages((prev) => {
               const updated = [...prev];
               updated[updated.length - 1] = { role: "assistant", content: accumulated };
               return updated;
             });
-          }
-        }
+          },
+        );
       } catch (e: any) {
         if (e.name !== "AbortError" && e.message !== "aborted") {
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            return last?.role === "assistant" && !last.content ? prev.slice(0, -1) : prev;
+          });
           setError(e.message || "Failed to get AI response");
         }
+      } finally {
+        abortControllerRef.current = null;
+        setStreaming(false);
       }
-
-      setStreaming(false);
     },
     [projectId]
   );
@@ -190,7 +205,7 @@ export default function InteractiveSuggestionBox({
             <div className="whitespace-pre-wrap">{msg.content}</div>
           </div>
         ))}
-        {streaming && messages.length > 0 && messages[messages.length - 1].content === "" && (
+        {streaming && (messages.length === 0 || messages[messages.length - 1].content === "") && (
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <Loader2 size={14} className="animate-spin" />
             <span>Thinking...</span>

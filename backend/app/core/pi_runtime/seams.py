@@ -185,9 +185,7 @@ async def run_pi_delegation(
     # Reject a non-success terminal before the caller persists/sends a reply: a
     # turn that errored or was aborted must not surface partial text (RF3-2).
     if (result or {}).get("status") != "success":
-        logger.warning(
-            "Pi delegation non-success (fail-closed): %s", (result or {}).get("status")
-        )
+        logger.warning("Pi delegation non-success (fail-closed): %s", (result or {}).get("status"))
         return None
     return result
 

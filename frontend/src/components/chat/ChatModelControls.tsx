@@ -14,6 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { ChatSession, ChatUsage, PiCatalogModel, PiCatalogProvider, PiEndpointInfo } from "@/lib/types";
+import { isPiEndpointReady, isPiSessionOverrideReady } from "@/lib/modelCatalog";
 import { cn } from "@/lib/utils";
 
 interface ModelChoice {
@@ -229,6 +230,7 @@ export default function ChatModelControls({
   configured,
   legacyModels,
   engine,
+  defaultEndpointId,
   usage,
   onUpdateSession,
 }: {
@@ -238,6 +240,7 @@ export default function ChatModelControls({
   configured: PiEndpointInfo[];
   legacyModels: string[];
   engine: "pi" | "legacy";
+  defaultEndpointId: string | null;
   usage: ChatUsage | null;
   onUpdateSession: (data: Record<string, unknown>) => void;
 }) {
@@ -260,7 +263,7 @@ export default function ChatModelControls({
           endpointId: endpoint?.endpoint_id,
           label: model.name || model.id,
           providerLabel: provider.display_name,
-          enabled: Boolean(endpoint) && engine === "pi",
+          enabled: Boolean(endpoint && isPiEndpointReady(endpoint)),
         });
       }
     }
@@ -271,7 +274,12 @@ export default function ChatModelControls({
       ? [...legacyChoices, ...result]
       : [...result.filter((choice) => choice.enabled), ...result.filter((choice) => !choice.enabled)];
     const override = activeSession?.model_override;
-    if (override && !ordered.some((choice) => choice.modelId === override && (!activeSession?.endpoint_override || choice.endpointId === activeSession.endpoint_override))) {
+    const overrideReady = engine === "legacy" || isPiSessionOverrideReady(
+      configured,
+      override,
+      activeSession?.endpoint_override,
+    );
+    if (override && overrideReady && !ordered.some((choice) => choice.modelId === override && (!activeSession?.endpoint_override || choice.endpointId === activeSession.endpoint_override))) {
       ordered.unshift({ key: `current:${override}`, provider: null, model: null, endpointId: activeSession?.endpoint_override || undefined, modelId: override, label: override, providerLabel: "Current session model", enabled: true });
     }
     return ordered;
@@ -279,7 +287,16 @@ export default function ChatModelControls({
 
   if (!activeSession) return null;
 
-  const selected = (activeSession.endpoint_override ? choices.find((choice) => choice.endpointId === activeSession.endpoint_override) : undefined) || choices.find((choice) => choice.modelId === activeSession.model_override) || choices.find((choice) => choice.enabled) || null;
+  const activeOverrideReady = engine === "legacy" || isPiSessionOverrideReady(
+    configured,
+    activeSession.model_override,
+    activeSession.endpoint_override,
+  );
+  const selectedOverride = activeOverrideReady
+    ? ((activeSession.endpoint_override ? choices.find((choice) => choice.endpointId === activeSession.endpoint_override) : undefined)
+      || choices.find((choice) => choice.modelId === activeSession.model_override))
+    : undefined;
+  const selected = selectedOverride || (defaultEndpointId ? choices.find((choice) => choice.endpointId === defaultEndpointId && choice.enabled) : undefined) || choices.find((choice) => choice.enabled) || null;
   const effortLevels = modelEffortLevels(selected?.model || null);
   const currentEffort = effortLevels.includes(activeSession.thinking_mode || "") ? activeSession.thinking_mode : effortLevels[0];
   const assignedAgent = agents.find((agent: any) => agent.id === activeSession.agent_id);

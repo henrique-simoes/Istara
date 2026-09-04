@@ -321,6 +321,83 @@ async def test_deployment_detail_requires_matching_active_project_for_admin(admi
 
 
 @pytest.mark.asyncio
+async def test_deployment_delete_requires_project_scope_and_removes_owned_conversations(
+    admin_auth_headers,
+):
+    """Simulation cleanup must delete only the scoped deployment and its children."""
+    await init_db()
+    project_a = _id("project-a")
+    project_b = _id("project-b")
+    channel_a = ChannelInstance(
+        id=_id("channel-a"),
+        platform="telegram",
+        name="Project A Telegram",
+        project_id=project_a,
+    )
+    deployment_a = _deployment(
+        project_id=project_a,
+        channel_instance_id=channel_a.id,
+        state="completed",
+    )
+    conversation_a = _conversation(
+        project_id=project_a,
+        channel_instance_id=channel_a.id,
+        deployment_id=deployment_a.id,
+    )
+    message_a = _message(
+        project_id=project_a,
+        channel_instance_id=channel_a.id,
+        conversation_id=conversation_a.id,
+    )
+    async with async_session() as db:
+        db.add_all(
+            [
+                Project(id=project_a, name="Deployment Delete Project A"),
+                Project(id=project_b, name="Deployment Delete Project B"),
+                channel_a,
+                deployment_a,
+                conversation_a,
+                message_a,
+            ]
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        unscoped = await ac.delete(
+            f"/api/deployments/{deployment_a.id}",
+            headers=admin_auth_headers,
+        )
+        wrong_project = await ac.delete(
+            f"/api/deployments/{deployment_a.id}?project_id={project_b}",
+            headers=admin_auth_headers,
+        )
+        deleted = await ac.delete(
+            f"/api/deployments/{deployment_a.id}?project_id={project_a}",
+            headers=admin_auth_headers,
+        )
+        missing = await ac.delete(
+            f"/api/deployments/{deployment_a.id}?project_id={project_a}",
+            headers=admin_auth_headers,
+        )
+
+    assert unscoped.status_code == 400
+    assert unscoped.json()["detail"] == "project_id is required"
+    assert wrong_project.status_code == 404
+    assert wrong_project.json()["detail"] == "Deployment not found"
+    assert deleted.status_code == 204
+    assert deleted.content == b""
+    assert missing.status_code == 404
+    assert missing.json()["detail"] == "Deployment not found"
+
+    async with async_session() as db:
+        assert await db.get(ResearchDeployment, deployment_a.id) is None
+        assert await db.get(ChannelConversation, conversation_a.id) is None
+        assert await db.get(ChannelMessage, message_a.id) is None
+        assert await db.get(ChannelInstance, channel_a.id) is not None
+
+
+@pytest.mark.asyncio
 async def test_deployment_detail_actions_require_matching_active_project_scope(admin_auth_headers):
     await init_db()
     project_a = _id("project-a")
@@ -631,3 +708,27 @@ async def test_deployment_service_helpers_require_project_scope():
         )
 
     assert [message["project_id"] for message in transcript] == [project_a]
+
+
+@pytest.mark.asyncio
+async def test_activate_interview_uses_grammatically_correct_intro():
+    await init_db()
+    project_id = _id("project-interview-intro")
+    channel_id = _id("channel-interview-intro")
+    deployment = _deployment(
+        project_id=project_id,
+        channel_instance_id=channel_id,
+        state="draft",
+    )
+    deployment.deployment_type = "interview"
+
+    async with async_session() as db:
+        db.add(deployment)
+        await db.commit()
+        result = await deployment_service.activate_deployment(
+            db,
+            deployment.id,
+            project_id=project_id,
+        )
+
+    assert result["intro"].startswith("Hi! We're conducting an interview.")

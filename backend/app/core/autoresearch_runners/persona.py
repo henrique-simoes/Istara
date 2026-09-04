@@ -142,9 +142,7 @@ class PersonaRunner(BaseLoopRunner):
         }
         return hypothesis, mutation
 
-    async def apply_mutation(
-        self, target: str, mutation: dict
-    ) -> Callable[[], Awaitable[None]]:
+    async def apply_mutation(self, target: str, mutation: dict) -> Callable[[], Awaitable[None]]:
         """Write modified persona file.  Returns revert function."""
         filename = mutation["filename"]
         old_content = mutation["old_content"]

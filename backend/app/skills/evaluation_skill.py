@@ -11,17 +11,27 @@ from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, Skil
 
 logger = logging.getLogger(__name__)
 
+
 class EvaluationSkill(BaseSkill):
     @property
-    def name(self) -> str: return "evaluate-research"
+    def name(self) -> str:
+        return "evaluate-research"
+
     @property
-    def display_name(self) -> str: return "Evaluate Research Quality"
+    def display_name(self) -> str:
+        return "Evaluate Research Quality"
+
     @property
-    def description(self) -> str: return "LLM-as-Judge framework benchmarking research outputs."
+    def description(self) -> str:
+        return "LLM-as-Judge framework benchmarking research outputs."
+
     @property
-    def phase(self) -> SkillPhase: return SkillPhase.DELIVER
+    def phase(self) -> SkillPhase:
+        return SkillPhase.DELIVER
+
     @property
-    def skill_type(self) -> SkillType: return SkillType.MIXED
+    def skill_type(self) -> SkillType:
+        return SkillType.MIXED
 
     async def plan(self, skill_input: SkillInput) -> dict:
         return {
@@ -90,5 +100,5 @@ class EvaluationSkill(BaseSkill):
         return SkillOutput(
             success=True,
             summary="Research quality evaluation completed.",
-            artifacts={"evaluation_report.md": combined_report}
+            artifacts={"evaluation_report.md": combined_report},
         )

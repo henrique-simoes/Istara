@@ -8,8 +8,8 @@ related_features: ["shell.projects", "shell.search", "shell.keyboard-shortcuts",
 related_glossary: ["wcag", "compass-forge"]
 code_references: ["frontend/src/lib/navigation.ts", "frontend/src/components/layout/HomeClient.tsx", "frontend/src/components/layout/Sidebar.tsx", "frontend/src/components/layout/MobileNav.tsx"]
 api_references: []
-test_references: []
-last_verified: 2026-05-15
+test_references: ["frontend/src/lib/navigation.test.ts"]
+last_verified: 2026-09-01
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -33,6 +33,7 @@ Application Navigation exists so the work represented by Shell > Navigation has 
 
 - Open Shell > Navigation from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with application navigation in the active project context.
+- Viewers see the core primary navigation only; researcher-only entries such as Loops appear for researcher and admin roles.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -67,4 +68,4 @@ Application Navigation exists so the work represented by Shell > Navigation has 
 
 - Source files: `frontend/src/lib/navigation.ts`, `frontend/src/components/layout/HomeClient.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/components/layout/MobileNav.tsx`
 - API references: none recorded
-- Tests: none recorded
+- Tests: `frontend/src/lib/navigation.test.ts`

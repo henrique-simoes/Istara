@@ -80,6 +80,7 @@ def _metric_gate_decision(
         "",
     )
 
+
 QUALITATIVE_CODING_PROTOCOL = {
     "version": "2026-05-research-validity-v1",
     "method": "inductive_open_coding_with_governed_codebook",
@@ -588,10 +589,7 @@ def distinct_model_identities(applications: list[dict]) -> set[str]:
         # alias or endpoint label can differ while resolving to the same
         # served checkpoint, so it must never manufacture independence.
         model_name = str(
-            app.get("served_model")
-            or app.get("model_name")
-            or app.get("model")
-            or ""
+            app.get("served_model") or app.get("model_name") or app.get("model") or ""
         ).strip()
         if model_name:
             identities.add(model_name.casefold())

@@ -17,24 +17,22 @@ class BackupRecord(Base):
 
     __tablename__ = "backup_records"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     filename: Mapped[str] = mapped_column(String(500), nullable=False)
     backup_type: Mapped[str] = mapped_column(String(20), default="full")  # full | incremental
     parent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     file_count: Mapped[int] = mapped_column(Integer, default=0)
-    status: Mapped[str] = mapped_column(String(20), default="in_progress")  # completed | failed | in_progress | verified
+    status: Mapped[str] = mapped_column(
+        String(20), default="in_progress"
+    )  # completed | failed | in_progress | verified
     error_message: Mapped[str] = mapped_column(Text, default="")
     components: Mapped[str] = mapped_column(Text, default="{}")  # JSON string
     checksum: Mapped[str] = mapped_column(String(128), default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-    verified_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def to_dict(self) -> dict:
         """Serialize to API-ready dict."""

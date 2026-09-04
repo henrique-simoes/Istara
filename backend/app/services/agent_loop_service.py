@@ -54,11 +54,10 @@ def _get_interval_attr_name(agent_id: str) -> str | None:
 # Config CRUD
 # ---------------------------------------------------------------------------
 
+
 async def get_loop_config(db: AsyncSession, agent_id: str) -> dict:
     """Fetch the loop config for an agent, creating a default if needed."""
-    result = await db.execute(
-        select(AgentLoopConfig).where(AgentLoopConfig.agent_id == agent_id)
-    )
+    result = await db.execute(select(AgentLoopConfig).where(AgentLoopConfig.agent_id == agent_id))
     config = result.scalar_one_or_none()
 
     if config is None:
@@ -84,9 +83,7 @@ async def get_loop_config(db: AsyncSession, agent_id: str) -> dict:
 
 async def update_loop_config(db: AsyncSession, agent_id: str, data: dict) -> dict:
     """Update a loop config and apply runtime changes."""
-    result = await db.execute(
-        select(AgentLoopConfig).where(AgentLoopConfig.agent_id == agent_id)
-    )
+    result = await db.execute(select(AgentLoopConfig).where(AgentLoopConfig.agent_id == agent_id))
     config = result.scalar_one_or_none()
 
     if config is None:
@@ -136,11 +133,10 @@ def _apply_runtime_interval(agent_id: str, interval_seconds: int) -> None:
 # List all loops
 # ---------------------------------------------------------------------------
 
+
 async def list_all_loops(db: AsyncSession) -> list[dict]:
     """Return all agents with their loop configs."""
-    result = await db.execute(
-        select(AgentLoopConfig).order_by(AgentLoopConfig.agent_id)
-    )
+    result = await db.execute(select(AgentLoopConfig).order_by(AgentLoopConfig.agent_id))
     configs = [c.to_dict() for c in result.scalars().all()]
 
     # Ensure all known agents are represented
@@ -158,10 +154,12 @@ async def list_all_loops(db: AsyncSession) -> list[dict]:
 # Pause / resume / set interval
 # ---------------------------------------------------------------------------
 
+
 async def pause_agent_loop(agent_id: str) -> bool:
     """Pause an agent loop via the meta orchestrator."""
     try:
         from app.agents.orchestrator import meta_orchestrator
+
         result = meta_orchestrator.pause_agent(agent_id)
 
         # Persist to DB
@@ -185,6 +183,7 @@ async def resume_agent_loop(agent_id: str) -> bool:
     """Resume a paused agent loop via the meta orchestrator."""
     try:
         from app.agents.orchestrator import meta_orchestrator
+
         result = meta_orchestrator.resume_agent(agent_id)
 
         # Persist to DB

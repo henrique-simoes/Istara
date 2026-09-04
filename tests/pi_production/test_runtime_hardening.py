@@ -24,6 +24,8 @@ from app.core.pi_runtime.engine import (
     _bind_payload,
     _enforce_test_provider_network_policy,
 )
+from app.core.pi_runtime.embedding_profile import ActiveEmbeddingProfile
+from app.core.pi_runtime.embeddings_gateway import EmbeddingsGateway
 from app.core.pi_runtime.model_manager import PiModelManager
 from app.core.pi_runtime.pool import PiRuntimePool
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
@@ -102,6 +104,46 @@ async def test_provider_only_turn_blocks_external_endpoint_before_worker_start(m
             tools=None,
             params=TurnParams(endpoint_id=endpoint.endpoint_id),
         )
+
+
+@pytest.mark.asyncio
+async def test_embedding_gateway_blocks_external_provider_before_http(monkeypatch):
+    """Ordinary tests must not wait on a real embedding endpoint."""
+    monkeypatch.setenv("ISTARA_TEST_BLOCK_EXTERNAL_LLM", "1")
+    endpoint = ResolvedPiEndpoint(
+        endpoint_id="pi-embedding-live-forbidden",
+        provider_kind="openai_compat",
+        base_url="https://api.deepseek.com/v1",
+        model="deepseek-embed",
+        api_key="unused-test-secret",
+        timeout_ms=30_000,
+        max_retries=0,
+    )
+    manager = PiModelManager(endpoints=[endpoint], include_local=False)
+    manager._db_projected = True
+    profile = ActiveEmbeddingProfile(
+        profile_id="test-embedding-profile",
+        version=1,
+        model_id=endpoint.model,
+        endpoint_id=endpoint.endpoint_id,
+        transport="pi_http",
+        dimension=0,
+        dtype="float",
+        normalization="provider_native",
+        cache_namespace=endpoint.model,
+        health_status="unknown",
+        migration_source="test",
+    )
+    gateway = EmbeddingsGateway(manager=manager, profile=profile)
+    async def _network_must_not_start(*_args, **_kwargs):
+        raise AssertionError("embedding HTTP must be blocked before network dispatch")
+
+    monkeypatch.setattr(gateway, "_call_openai_compatible", _network_must_not_start)
+
+    with pytest.raises(
+        PiEndpointResolutionError, match="external_provider_blocked_in_test"
+    ):
+        await gateway.embed(["hello"])
 
 
 @pytest.mark.asyncio

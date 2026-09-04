@@ -268,6 +268,7 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/lib/navigation.ts</code> and the UI navigation path recorded in the inventory.</li>
+<li>Role-gated entries are filtered before rendering in both desktop and mobile shells. In particular, <code>primaryNavItemsForRole</code> keeps researcher-only Loops out of viewer navigation while preserving it for researcher and admin roles.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -277,7 +278,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>frontend/src/lib/navigation.test.ts</code> verifies role-specific primary navigation, including the viewer Loops exclusion.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

@@ -346,7 +346,9 @@ async def edit_screen(data: EditRequest, request: Request, db: AsyncSession = De
 
 
 @router.post("/interfaces/screens/variant")
-async def create_variant(data: VariantRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def create_variant(
+    data: VariantRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Create design variants of an existing screen via Stitch."""
     import httpx
     from app.services.stitch_service import stitch_service

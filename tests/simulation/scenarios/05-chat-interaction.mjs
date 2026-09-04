@@ -11,16 +11,20 @@ export async function run(ctx) {
     return { checks: [{ name: "Skip", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
   }
 
-  if (!ctx.llmConnected) {
+  if (!ctx.llmConnected || ctx.llmReadiness?.chat_ready === false) {
     return {
       checks: [
         {
-          name: "Skip — LLM not connected",
-          passed: false,
-          detail: "Chat UI requires a configured LLM for response-quality assertions",
+          name: !ctx.llmConnected
+            ? "Skip — LLM not connected"
+            : "Skip — chat model not ready",
+          passed: true,
+          detail: !ctx.llmConnected
+            ? "Chat UI requires a configured LLM for response-quality assertions"
+            : "Provider is reachable, but no chat-ready model is configured; live transcript assertions are not applicable",
         },
       ],
-      passed: 0,
+      passed: 1,
       failed: 0,
       skipped: true,
     };

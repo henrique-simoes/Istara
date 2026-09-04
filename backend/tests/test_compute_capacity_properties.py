@@ -68,7 +68,9 @@ def test_node_capacity_score_is_available_and_bounded(active, latency, priority,
     assert score <= 120.0
     assert node_capacity_score(_node(is_healthy=False), now=100.0) == -1
     assert node_capacity_score(_node(active_requests=5, max_active_requests=5), now=100.0) == -1
-    assert node_capacity_score(_node(health_state="cooldown", cooldown_until=101.0), now=100.0) == -1
+    assert (
+        node_capacity_score(_node(health_state="cooldown", cooldown_until=101.0), now=100.0) == -1
+    )
 
 
 def test_node_capacity_score_penalizes_active_requests_monotonically():

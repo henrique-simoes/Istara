@@ -52,6 +52,7 @@ from app.core.agent_models import (
 
 logger = logging.getLogger("app.core.agent")
 
+
 class AgentLifecycleMixin:
     def __init__(self, agent_id: str = "istara-main") -> None:
         self._running = False
@@ -153,7 +154,7 @@ class AgentLifecycleMixin:
         if getattr(task, "what_to_review", ""):
             parts.append(f"What to Review: {task.what_to_review}")
         if getattr(task, "last_review_feedback", ""):
-            parts.append(f"Last human feedback: {task.last_review_feedback}")
+            parts.append(f"Last review feedback: {task.last_review_feedback}")
         if labels:
             parts.append(f"Task labels: {json.dumps(labels)[:600]}")
         if getattr(task, "review_failure_category", None):
@@ -289,7 +290,9 @@ class AgentLifecycleMixin:
                 task.status = TaskStatus.BACKLOG
                 task.agent_notes = "Project is paused; agent execution deferred."
                 await db.commit()
-                await broadcast_agent_status("paused", f"Project paused: {project.name}", project_id=project.id)
+                await broadcast_agent_status(
+                    "paused", f"Project paused: {project.name}", project_id=project.id
+                )
                 return False
 
             # 3. Execute the task (register with governor for concurrent limits)
@@ -344,7 +347,9 @@ class AgentLifecycleMixin:
                 )
             else:
                 self._loop_interval = 30  # Back to normal
-                await broadcast_agent_status("idle", "All tasks processed.", project_id=task.project_id)
+                await broadcast_agent_status(
+                    "idle", "All tasks processed.", project_id=task.project_id
+                )
 
             # ── Check follow-up queue — only processed when agent would
             # otherwise stop (no more tasks in the pipeline). This matches
@@ -446,7 +451,9 @@ class AgentLifecycleMixin:
                 project.id,
                 self._agent_id,
             )
-            await broadcast_agent_status("paused", f"Project paused: {project.name}", project_id=project.id)
+            await broadcast_agent_status(
+                "paused", f"Project paused: {project.name}", project_id=project.id
+            )
             return
 
         project_context = "\n".join(
@@ -655,9 +662,7 @@ class AgentLifecycleMixin:
 
         if not pi_replacement_requested(metadata=metadata):
             return
-        message_id = (
-            msg.get("id", "") if isinstance(msg, dict) else getattr(msg, "id", "")
-        )
+        message_id = msg.get("id", "") if isinstance(msg, dict) else getattr(msg, "id", "")
         delegation = await run_pi_delegation(
             project_id=project_id,
             task_text=str(task_text),
@@ -1163,6 +1168,11 @@ class AgentLifecycleMixin:
                     Task.status.in_([TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS]),
                     Task.agent_id.is_(None),
                     Project.is_paused.is_(False),
+                    or_(
+                        Task.locked_by.is_(None),
+                        Task.locked_by == self._agent_id,
+                        Task.lock_expires_at < datetime.now(UTC),
+                    ),
                 )
                 .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
                 .limit(10)

@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, FileText, Globe, GripVertical, Plus, Trash2 } from "lucide-react";
 import { useTaskStore } from "@/stores/taskStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAgentStore } from "@/stores/agentStore";
-import type { Task, TaskStatus } from "@/lib/types";
+import type { Task, TaskStatus, WSEvent } from "@/lib/types";
+import { taskLocking } from "@/lib/api";
+import { shouldRefreshKanbanForEvent } from "@/lib/taskRealtime";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { cn, statusLabel } from "@/lib/utils";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
@@ -153,21 +156,20 @@ function TaskCard({ task, projectId, canWrite, onOpen, onDelete }: { task: Task;
       onClick={() => {
         if (!dragging) onOpen();
       }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-      role="button"
-      tabIndex={0}
       className={cn("cursor-grab rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-istara-500 dark:border-slate-700 dark:bg-slate-800 border-l-[3px]", dragging && "opacity-60", PRIORITY_COLORS[priority])}
     >
       <div className="flex items-start gap-2">
         <GripVertical size={14} className="mt-0.5 shrink-0 text-slate-300" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 dark:text-white">{task.title}</p>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpen(); }}
+              className="min-w-0 flex-1 truncate text-left text-sm font-medium text-slate-900 hover:underline dark:text-white"
+              aria-label={`Open ${task.title}`}
+            >
+              {task.title}
+            </button>
             <div className="relative shrink-0">
               <button
                 onClick={(e) => {
@@ -245,13 +247,14 @@ function TaskCard({ task, projectId, canWrite, onOpen, onDelete }: { task: Task;
 }
 
 export default function KanbanBoard() {
-  const { tasks, fetchTasks, createTask, moveTask, deleteTask } = useTaskStore();
+  const { tasks, fetchTasks, refreshTasks, createTask, moveTask, deleteTask } = useTaskStore();
   const { activeProjectId, canWriteActiveProject } = useProjectStore();
   const { agents, fetchAgents } = useAgentStore();
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [addingTo, setAddingTo] = useState<TaskStatus | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<string | null>(null);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (activeProjectId) fetchTasks(activeProjectId);
@@ -261,12 +264,53 @@ export default function KanbanBoard() {
     if (activeProjectId && agents.length === 0) fetchAgents(activeProjectId);
   }, [activeProjectId, agents.length, fetchAgents]);
 
+  const handleTaskRealtime = useCallback((event: WSEvent) => {
+    if (!activeProjectId || !shouldRefreshKanbanForEvent(event)) return;
+    clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => refreshTasks(activeProjectId), 100);
+  }, [activeProjectId, refreshTasks]);
+
+  useWebSocket(handleTaskRealtime);
+
+  useEffect(() => () => clearTimeout(refreshTimer.current), []);
+
+  const openTaskEditor = useCallback(async (taskId: string) => {
+    if (!activeProjectId || !canWriteActiveProject()) return;
+    try {
+      await taskLocking.lock(taskId, activeProjectId);
+      setEditingTask(taskId);
+    } catch (e) {
+      showTaskToast(
+        "warning",
+        "Task is being edited",
+        e instanceof Error ? e.message : "Istara could not reserve this task for editing."
+      );
+      await refreshTasks(activeProjectId);
+    }
+  }, [activeProjectId, canWriteActiveProject, refreshTasks]);
+
   const handleCreate = async (status: TaskStatus) => {
     if (!newTaskTitle.trim() || !activeProjectId || !canWriteActiveProject()) return;
-    const task = await createTask(activeProjectId, newTaskTitle.trim());
-    if (status !== "backlog") await moveTask(task.id, status === "done" ? "in_review" : status, activeProjectId);
-    setNewTaskTitle("");
-    setAddingTo(null);
+    try {
+      const task = await createTask(
+        activeProjectId,
+        newTaskTitle.trim(),
+        undefined,
+        { lockForEdit: true }
+      );
+      setEditingTask(task.id);
+      setNewTaskTitle("");
+      setAddingTo(null);
+      if (status !== "backlog") {
+        await moveTask(task.id, status === "done" ? "in_review" : status, activeProjectId);
+      }
+    } catch (e) {
+      showTaskToast(
+        "error",
+        "Task creation failed",
+        e instanceof Error ? e.message : "Istara could not create this task."
+      );
+    }
   };
 
   const handleDrop = async (taskId: string, newStatus: TaskStatus) => {
@@ -356,7 +400,7 @@ export default function KanbanBoard() {
 
               <div className="min-h-[100px] space-y-2 p-2">
                 {columnTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} projectId={activeProjectId} canWrite={canWriteActiveProject()} onOpen={() => setEditingTask(task.id)} onDelete={() => canWriteActiveProject() && setDeleteConfirm(task.id)} />
+                  <TaskCard key={task.id} task={task} projectId={activeProjectId} canWrite={canWriteActiveProject()} onOpen={() => void openTaskEditor(task.id)} onDelete={() => canWriteActiveProject() && setDeleteConfirm(task.id)} />
                 ))}
               </div>
             </div>
@@ -366,7 +410,7 @@ export default function KanbanBoard() {
 
       {editingTask && (() => {
         const task = tasks.find((t) => t.id === editingTask);
-        return task ? <TaskEditor task={task} onClose={() => { setEditingTask(null); if (activeProjectId) fetchTasks(activeProjectId); }} /> : null;
+        return task ? <TaskEditor task={task} onClose={() => { setEditingTask(null); if (activeProjectId) refreshTasks(activeProjectId); }} /> : null;
       })()}
 
       <ConfirmDialog

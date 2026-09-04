@@ -40,6 +40,8 @@ The Memory knowledge tab manages project knowledge artifacts and retrieval mater
 - The feature is mounted through `frontend/src/components/memory/MemoryView.tsx` and the UI navigation path recorded in the inventory.
 - `backend/app/api/routes/memory.py` validates project visibility before opening vector or keyword memory storage, so unknown or unauthorized project ids cannot create or inspect memory indexes.
 - `frontend/src/components/memory/MemoryView.tsx` remounts project-backed memory tabs when the active project changes so local chunks, search results, notes, and health state do not linger across projects.
+- Memory source rows, health breakdowns, filters, search results, and chunks resolve uploaded document metadata to a human-readable title (with the filename as a disambiguator); the canonical source path remains in the DOM title and is still used for filtering and deletion.
+- If document metadata cannot be loaded, the UI safely falls back to the source basename without blocking memory browsing.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

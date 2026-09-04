@@ -6,6 +6,7 @@ from sqlalchemy import select
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.api.routes import chat as chat_route
+from app.api.routes import settings as settings_route
 from app.api.routes.chat import ChatRequest
 from app.config import settings
 from app.core.rag import RAGContext
@@ -285,6 +286,60 @@ async def test_chat_model_catalog_and_usage_are_project_scoped(monkeypatch):
     assert operator_catalog.json()["engine"] == "pi"
     assert usage.status_code == 200
     assert usage.json()["total_tokens"] == 0
+
+
+@pytest.mark.asyncio
+async def test_chat_model_catalog_excludes_embedding_only_legacy_models(monkeypatch):
+    """Embedding transports must not be offered as chat models."""
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    token = create_token("legacy-catalog-user", "legacy-catalog-user", "admin")
+
+    from app.core.compute_registry import compute_registry
+
+    async def fake_list_models(*args, **kwargs):
+        return [
+            {"name": "qwen3:7b", "capabilities": {"tools": True}},
+            {"name": "nomic-embed-text:latest", "capabilities": {}},
+            {"name": "istara-qa-contract-embed:latest", "capabilities": {}},
+        ]
+
+    monkeypatch.setattr(compute_registry, "list_models", fake_list_models)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            "/api/chat/model-catalog?project_id=test-project-123",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert response.status_code == 200
+    legacy_models = response.json()["legacy_models"]
+    assert "qwen3:7b" in legacy_models
+    assert not any("embed" in model.lower() for model in legacy_models)
+
+
+@pytest.mark.asyncio
+async def test_chat_model_catalog_exposes_passive_legacy_readiness(monkeypatch):
+    """The composer can fail closed without probing or loading a provider."""
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    token = create_token("readiness-user", "readiness-user", "admin")
+    monkeypatch.setattr(settings, "pi_replacement_enabled", False)
+    monkeypatch.setattr(settings, "agentic_engine_default", "legacy")
+    monkeypatch.setattr(settings_route, "_cached_llm_readiness", lambda: (True, False))
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            "/api/chat/model-catalog?project_id=test-project-123",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["engine"] == "legacy"
+    assert response.json()["chat_ready"] is False
 
 
 @pytest.mark.asyncio

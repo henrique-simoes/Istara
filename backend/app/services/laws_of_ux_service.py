@@ -114,9 +114,7 @@ class LawsOfUXService:
             return existing_tags
 
         matches = self.match_text(text, top_k=5)
-        law_tags = [
-            f"ux-law:{law_id}" for law_id, score in matches if score >= threshold
-        ]
+        law_tags = [f"ux-law:{law_id}" for law_id, score in matches if score >= threshold]
 
         # Merge without duplicates
         existing_set = set(existing_tags)
@@ -182,9 +180,7 @@ class LawsOfUXService:
                 "violations": sum(1 for s in scores if s < 100),
             }
 
-        overall = (
-            round(sum(l["score"] for l in by_law) / len(by_law)) if by_law else 100
-        )
+        overall = round(sum(l["score"] for l in by_law) / len(by_law)) if by_law else 100
 
         return {
             "overall_score": overall,
@@ -201,12 +197,8 @@ class LawsOfUXService:
         by_law = compliance.get("by_law", [])
         return {
             "categories": list(compliance.get("by_category", {}).keys()),
-            "category_scores": [
-                v["score"] for v in compliance.get("by_category", {}).values()
-            ],
-            "detailed_axes": [
-                {"axis": l["law_name"], "value": l["score"]} for l in by_law
-            ],
+            "category_scores": [v["score"] for v in compliance.get("by_category", {}).values()],
+            "detailed_axes": [{"axis": l["law_name"], "value": l["score"]} for l in by_law],
         }
 
 

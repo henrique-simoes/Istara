@@ -1,5 +1,6 @@
 """Tests for Context DAG API routes — structure, health, expand, grep, node, compact."""
 
+import asyncio
 import json
 import uuid
 from datetime import datetime, timezone
@@ -14,6 +15,7 @@ from app.models.message import Message
 from app.models.project import Project
 from app.models.session import ChatSession
 from app.core.auth import create_token
+from app.core.context_dag import context_dag
 
 
 @pytest.fixture(autouse=True)
@@ -214,3 +216,24 @@ async def test_context_dag_rejects_stale_cross_project_session_id(auth_headers):
 
     assert structure_response.status_code == 404
     assert node_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_context_dag_compaction_tasks_are_deduplicated_and_drained(monkeypatch):
+    """Background compaction must be owned by the DAG lifecycle."""
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def fake_compact(session_id: str) -> None:
+        started.set()
+        await release.wait()
+
+    monkeypatch.setattr(context_dag, "compact_if_needed", fake_compact)
+
+    first = context_dag.schedule_compaction("session-1")
+    await started.wait()
+    assert context_dag.schedule_compaction("session-1") is first
+
+    release.set()
+    await context_dag.drain_compaction_tasks()
+    assert not context_dag._compaction_tasks

@@ -119,9 +119,7 @@ async def _dispatch_ensemble(
     route_evidence: list[dict] = []
     for index, sample in enumerate(outcome.samples):
         endpoint_id = (
-            outcome.endpoint_ids[index]
-            if index < len(outcome.endpoint_ids)
-            else sample.endpoint_id
+            outcome.endpoint_ids[index] if index < len(outcome.endpoint_ids) else sample.endpoint_id
         ) or ""
         if sample.status != "success" or not sample.text:
             logger.warning(
@@ -598,6 +596,7 @@ async def _get_embeddings(
     """
     try:
         from app.core.agentic import agentic
+
         return await agentic.embed(texts=texts, project_id=project_id)
     except Exception:
         return []
@@ -605,6 +604,7 @@ async def _get_embeddings(
 
 def _empty_result(method: str) -> ValidationResult:
     from app.core.consensus import ConsensusResult
+
     return ValidationResult(
         method=method,
         consensus=ConsensusResult(

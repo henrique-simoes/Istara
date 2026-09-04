@@ -31,34 +31,74 @@ DESIGN_TOOLS = [
         "name": "generate_screen",
         "description": "Generate a UI screen from a text description using Google Stitch. Creates a DesignDecision linking research findings to the generated screen.",
         "parameters": {
-            "prompt": {"type": "string", "required": True, "description": "Description of the UI screen to generate"},
-            "device_type": {"type": "string", "required": False, "description": "Device type: MOBILE, DESKTOP, TABLET, or AGNOSTIC (default: DESKTOP)"},
-            "model": {"type": "string", "required": False, "description": "AI model: GEMINI_3_PRO or GEMINI_3_FLASH (default: GEMINI_3_FLASH)"},
-            "seed_finding_ids": {"type": "array", "required": False, "description": "Array of finding IDs (insights/recommendations) to seed the design from"},
+            "prompt": {
+                "type": "string",
+                "required": True,
+                "description": "Description of the UI screen to generate",
+            },
+            "device_type": {
+                "type": "string",
+                "required": False,
+                "description": "Device type: MOBILE, DESKTOP, TABLET, or AGNOSTIC (default: DESKTOP)",
+            },
+            "model": {
+                "type": "string",
+                "required": False,
+                "description": "AI model: GEMINI_3_PRO or GEMINI_3_FLASH (default: GEMINI_3_FLASH)",
+            },
+            "seed_finding_ids": {
+                "type": "array",
+                "required": False,
+                "description": "Array of finding IDs (insights/recommendations) to seed the design from",
+            },
         },
     },
     {
         "name": "edit_screen",
         "description": "Edit an existing generated screen with text instructions",
         "parameters": {
-            "screen_id": {"type": "string", "required": True, "description": "ID of the screen to edit"},
-            "instructions": {"type": "string", "required": True, "description": "Edit instructions for the screen"},
+            "screen_id": {
+                "type": "string",
+                "required": True,
+                "description": "ID of the screen to edit",
+            },
+            "instructions": {
+                "type": "string",
+                "required": True,
+                "description": "Edit instructions for the screen",
+            },
         },
     },
     {
         "name": "create_variant",
         "description": "Generate design variants of an existing screen. Types: REFINE (small tweaks), EXPLORE (moderate changes), REIMAGINE (major rethink)",
         "parameters": {
-            "screen_id": {"type": "string", "required": True, "description": "ID of the screen to create variants from"},
-            "variant_type": {"type": "string", "required": True, "description": "Type: REFINE, EXPLORE, or REIMAGINE"},
-            "count": {"type": "integer", "required": False, "description": "Number of variants (1-5, default: 3)"},
+            "screen_id": {
+                "type": "string",
+                "required": True,
+                "description": "ID of the screen to create variants from",
+            },
+            "variant_type": {
+                "type": "string",
+                "required": True,
+                "description": "Type: REFINE, EXPLORE, or REIMAGINE",
+            },
+            "count": {
+                "type": "integer",
+                "required": False,
+                "description": "Number of variants (1-5, default: 3)",
+            },
         },
     },
     {
         "name": "search_findings_for_design",
         "description": "Search research findings (insights, recommendations, facts) relevant to a design task",
         "parameters": {
-            "query": {"type": "string", "required": True, "description": "Search query for findings"},
+            "query": {
+                "type": "string",
+                "required": True,
+                "description": "Search query for findings",
+            },
         },
     },
     {
@@ -70,7 +110,11 @@ DESIGN_TOOLS = [
         "name": "import_from_figma",
         "description": "Import design context from a Figma URL (file or specific frame)",
         "parameters": {
-            "figma_url": {"type": "string", "required": True, "description": "Figma URL to import from"},
+            "figma_url": {
+                "type": "string",
+                "required": True,
+                "description": "Figma URL to import from",
+            },
         },
     },
     {
@@ -96,9 +140,7 @@ OPENAI_DESIGN_TOOLS = [
                     for name, info in tool["parameters"].items()
                 },
                 "required": [
-                    name
-                    for name, info in tool["parameters"].items()
-                    if info.get("required")
+                    name for name, info in tool["parameters"].items() if info.get("required")
                 ],
             },
         },
@@ -168,11 +210,15 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
         try:
             stitch_proj = await stitch_service.create_project(f"Istara-{project_id[:8]}")
             raw_name = stitch_proj.get("name", "")
-            stitch_project_id = stitch_service.extract_project_id(raw_name) if raw_name else "default"
+            stitch_project_id = (
+                stitch_service.extract_project_id(raw_name) if raw_name else "default"
+            )
         except Exception:
             pass
 
-        data = await stitch_service.generate_screen(stitch_project_id, enriched_prompt, device, model)
+        data = await stitch_service.generate_screen(
+            stitch_project_id, enriched_prompt, device, model
+        )
 
         # Parse real Stitch response: screens are nested in outputComponents
         output_components = data.get("outputComponents", [{}])
@@ -200,7 +246,9 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
                     # Download HTML from downloadUrl
                     html_content = ""
                     html_code = s_data.get("htmlCode", {})
-                    html_url = html_code.get("downloadUrl", "") if isinstance(html_code, dict) else ""
+                    html_url = (
+                        html_code.get("downloadUrl", "") if isinstance(html_code, dict) else ""
+                    )
                     if html_url:
                         try:
                             resp = await http.get(html_url)
@@ -216,7 +264,11 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
                     # Download screenshot
                     screenshot_path = ""
                     screenshot_info = s_data.get("screenshot", {})
-                    screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+                    screenshot_url = (
+                        screenshot_info.get("downloadUrl", "")
+                        if isinstance(screenshot_info, dict)
+                        else ""
+                    )
                     if screenshot_url:
                         try:
                             resp = await http.get(screenshot_url)
@@ -243,11 +295,13 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
                         stitch_screen_id=stitch_screen_id,
                         status="ready",
                         source_findings=json.dumps(seed_ids),
-                        metadata_json=json.dumps({
-                            "stitch_session_id": stitch_session_id,
-                            "stitch_width": s_data.get("width"),
-                            "stitch_height": s_data.get("height"),
-                        }),
+                        metadata_json=json.dumps(
+                            {
+                                "stitch_session_id": stitch_session_id,
+                                "stitch_width": s_data.get("width"),
+                                "stitch_height": s_data.get("height"),
+                            }
+                        ),
                     )
                     db.add(screen)
 
@@ -376,7 +430,11 @@ async def _exec_edit_screen(params: dict, project_id: str, agent_id: str) -> str
 
                 # Download screenshot
                 screenshot_info = s_data.get("screenshot", {})
-                screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+                screenshot_url = (
+                    screenshot_info.get("downloadUrl", "")
+                    if isinstance(screenshot_info, dict)
+                    else ""
+                )
                 if screenshot_url:
                     try:
                         resp = await http.get(screenshot_url)
@@ -470,7 +528,9 @@ async def _exec_create_variant(params: dict, project_id: str, agent_id: str) -> 
                     # Download HTML
                     html_content = ""
                     html_code = s_data.get("htmlCode", {})
-                    html_url = html_code.get("downloadUrl", "") if isinstance(html_code, dict) else ""
+                    html_url = (
+                        html_code.get("downloadUrl", "") if isinstance(html_code, dict) else ""
+                    )
                     if html_url:
                         try:
                             resp = await http.get(html_url)
@@ -484,7 +544,11 @@ async def _exec_create_variant(params: dict, project_id: str, agent_id: str) -> 
                     # Download screenshot
                     screenshot_path = ""
                     screenshot_info = s_data.get("screenshot", {})
-                    screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+                    screenshot_url = (
+                        screenshot_info.get("downloadUrl", "")
+                        if isinstance(screenshot_info, dict)
+                        else ""
+                    )
                     if screenshot_url:
                         try:
                             resp = await http.get(screenshot_url)
@@ -529,7 +593,11 @@ async def _exec_search_findings(params: dict, project_id: str, agent_id: str) ->
     query = params["query"].lower()
     results: list[str] = []
     async with async_session() as db:
-        for Model, label in [(Insight, "Insight"), (Recommendation, "Recommendation"), (Fact, "Fact")]:
+        for Model, label in [
+            (Insight, "Insight"),
+            (Recommendation, "Recommendation"),
+            (Fact, "Fact"),
+        ]:
             result = await db.execute(select(Model).where(Model.project_id == project_id))
             for item in result.scalars().all():
                 if query in item.text.lower():
@@ -544,9 +612,7 @@ async def _exec_create_brief(params: dict, project_id: str, agent_id: str) -> st
     from app.models.design_screen import DesignBrief
 
     async with async_session() as db:
-        insight_result = await db.execute(
-            select(Insight).where(Insight.project_id == project_id)
-        )
+        insight_result = await db.execute(select(Insight).where(Insight.project_id == project_id))
         insights = insight_result.scalars().all()
         rec_result = await db.execute(
             select(Recommendation).where(Recommendation.project_id == project_id)

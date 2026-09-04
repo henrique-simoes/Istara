@@ -250,8 +250,10 @@
 <ul>
 <li><code>frontend/src/components/layout/HomeClient.tsx</code></li>
 <li><code>frontend/src/stores/authStore.ts</code></li>
+<li><code>frontend/src/lib/runtimeConfig.ts</code></li>
 <li><code>backend/app/api/routes/auth.py</code></li>
 <li><code>backend/app/core/auth_sessions.py</code></li>
+<li><code>docker-compose.qa.yml</code></li>
 </ul>
 <h2 id="state-api-and-backend-contracts">State, API, And Backend Contracts</h2>
 <h3 id="stores">Stores</h3>
@@ -266,6 +268,11 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/layout/HomeClient.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li><code>LoginScreen</code> credential, passkey, registration, and connection-string flows persist the returned JWT before <code>HomeClient</code> calls <code>fetchMe()</code>; a successful <code>fetchMe()</code> must hydrate both the user and the same token into <code>authStore</code> before protected child views mount.</li>
+<li>The QA UI is published canonically on a loopback host, with its API proxy on a separate loopback port. Frontend runtime configuration aligns explicit loopback API and WebSocket overrides (<code>localhost</code>, <code>127.0.0.1</code>, or <code>::1</code>) with the browser&#x27;s loopback hostname and scheme. If a local tunnel must retain the other loopback spelling, the backend accepts that request only when the exact UI origin is configured as trusted, both hosts are loopback, and the schemes match; arbitrary cross-site origins remain denied. Explicit non-loopback deployments stay authoritative.</li>
+<li>The disposable QA compose contract may inject a per-run <code>QA_NETWORK_ACCESS_TOKEN</code> into the backend and loopback proxy so container-network requests remain authenticated without using a production credential. The UI lane may also set <code>QA_TEAM_MODE=true</code> to exercise first-admin registration and normal session bootstrap; contract-only runs remain in local mode by default.</li>
+<li>A freshly recreated team-mode QA backend can receive <code>QA_ADMIN_USERNAME</code> and <code>QA_ADMIN_PASSWORD</code> for a deterministic first-admin fixture. Those values are runtime-only and must never be committed, logged, or reused outside the disposable stack.</li>
+<li>The QA backend also sets a stable QA-only <code>DATA_ENCRYPTION_KEY</code>, overridable with <code>QA_DATA_ENCRYPTION_KEY</code>, so disposable QA backend recreation does not strand encrypted auth/user fields behind an unreadable random key. This key is not a production secret and must remain isolated to the QA compose contract.</li>
 <li>Local marathon and simulation harnesses must use an explicit test JWT or the opt-in local signed-token path; third-party LLM provider tokens are not Istara admin session credentials.</li>
 <li>Frontend role checks use <code>frontend/src/lib/roleCapabilities.ts</code> and <code>frontend/src/hooks/useRoleCapabilities.ts</code> so global role and active-project role are evaluated together. Researcher sessions may mount personal settings, project workspaces, and researcher workflows, but must not mount global-admin panels that call user-management, connection-string, telemetry-toggle, governed-evolution, or steering endpoints.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
@@ -278,6 +285,10 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_marathon_config_integrity.py</code></li>
+<li><code>tests/test_auth_encrypted_pii.py</code></li>
+<li><code>tests/test_auth_security.py</code></li>
+<li><code>tests/test_qa_stack_contract.py</code></li>
+<li><code>frontend/src/stores/authStore.test.ts</code></li>
 <li><code>scripts/marathon/run-cycle.mjs</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>

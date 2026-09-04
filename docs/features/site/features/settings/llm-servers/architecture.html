@@ -306,6 +306,9 @@
 <p><code>catalog()</code> feeds the settings model UI and benchmark comparison surfaces;</p>
 <p>project-readable chat callers pass a project id so Petals entries are</p>
 <p>filtered by the same admission predicate used by endpoint resolution.</p>
+<p>When an isolated caller injects an explicit catalog, an unqualified</p>
+<p>resolution selects its first admitted entry instead of falling back to the</p>
+<p>built-in default endpoint, preserving the caller&#x27;s authority boundary.</p>
 <h3 id="live-catalog-refresh-and-merged-model-view">Live Catalog Refresh And Merged Model View</h3>
 <ul>
 <li>Model-management mutations refresh every live manager so both loop modes see</li>
@@ -355,6 +358,13 @@
 </ul>
 <p><code>endpoint_override</code> alongside <code>model_override</code>, preserving provider identity</p>
 <p>when two providers expose the same model id.</p>
+<ul>
+<li>The shared Pi endpoint-boundary network guard applies to both worker-backed</li>
+</ul>
+<p>chat and the Python-direct embeddings gateway. Ordinary tests fail closed</p>
+<p>before public-provider HTTP when <code>ISTARA_TEST_BLOCK_EXTERNAL_LLM=1</code>; only</p>
+<p>loopback, faux, Docker, and reserved test domains remain eligible for</p>
+<p>deterministic contract coverage.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>Compatibility is implemented by read-only row projection, not a public legacy route. User-facing configuration is mounted through <code>frontend/src/components/settings/PiModelManagement.tsx</code> and documented under <code>settings.general</code>.</li>

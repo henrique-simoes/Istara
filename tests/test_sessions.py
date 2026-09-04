@@ -182,6 +182,38 @@ async def test_create_session_rejects_invalid_inference_preset(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_session_model_override_rejects_embedding_only_models(auth_headers):
+    """Embedding transports cannot be persisted as chat session overrides."""
+    await init_db()
+    project = await _seed_project()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        create_response = await ac.post(
+            "/api/sessions",
+            headers=auth_headers,
+            json={
+                "project_id": project.id,
+                "title": "Embedding override",
+                "model_override": "istara-qa-contract-embed:latest",
+            },
+        )
+        valid_create = await ac.post(
+            "/api/sessions",
+            headers=auth_headers,
+            json={"project_id": project.id, "title": "Valid override", "model_override": "qwen3:7b"},
+        )
+        update_response = await ac.patch(
+            f"/api/sessions/{valid_create.json()['id']}?project_id={project.id}",
+            headers=auth_headers,
+            json={"model_override": "nomic-embed-text:latest"},
+        )
+
+    assert create_response.status_code == 422
+    assert valid_create.status_code == 201
+    assert update_response.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_session_title_is_normalized_on_create(auth_headers):
     await init_db()
     project = await _seed_project()

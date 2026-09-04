@@ -91,7 +91,9 @@ def extract_json_schema(response_format: dict[str, Any] | None) -> dict[str, Any
     return None
 
 
-def response_format_name(response_format: dict[str, Any] | None, default: str = "istara_output") -> str:
+def response_format_name(
+    response_format: dict[str, Any] | None, default: str = "istara_output"
+) -> str:
     if isinstance(response_format, dict):
         wrapped = response_format.get("json_schema")
         if isinstance(wrapped, dict) and isinstance(wrapped.get("name"), str):
@@ -193,7 +195,7 @@ def parse_json_object(text: str) -> dict[str, Any] | None:
     decoder = json.JSONDecoder()
     for match in re.finditer(r"\{", raw):
         try:
-            parsed, _ = decoder.raw_decode(raw[match.start():])
+            parsed, _ = decoder.raw_decode(raw[match.start() :])
             return parsed if isinstance(parsed, dict) else None
         except json.JSONDecodeError:
             continue

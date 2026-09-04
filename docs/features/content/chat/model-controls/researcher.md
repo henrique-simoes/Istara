@@ -41,6 +41,7 @@ Chat Model Controls exists so the work represented by Chat > Model Controls has 
 - Start from Chat > Model Controls when the current research task needs chat model controls.
 - Unconfigured catalog entries remain visible but disabled; connect them from Settings > Pi Model Management.
 - Change the model and effort for the next turn without leaving the conversation.
+- Embedding-only legacy models are not offered as chat choices, so the selected session model remains callable.
 
 ## Inputs, Outputs, And Expected Outcomes
 

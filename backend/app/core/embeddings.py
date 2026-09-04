@@ -217,6 +217,4 @@ async def ensure_embed_model() -> None:
     if endpoint.kind == "local" and not provisioned:
         from app.core.pi_runtime.endpoints import PiEndpointResolutionError
 
-        raise PiEndpointResolutionError(
-            f"embedding_model_provision_failed:{endpoint.endpoint_id}"
-        )
+        raise PiEndpointResolutionError(f"embedding_model_provision_failed:{endpoint.endpoint_id}")

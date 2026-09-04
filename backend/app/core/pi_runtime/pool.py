@@ -99,9 +99,7 @@ class PiRuntimePool:
         worker owns provider selection and execution. Provider-only turns must
         therefore follow the same sticky session routing as ordinary turns.
         """
-        async for frame in self._owner(session_key).run_provider_turn(
-            session_key, messages, tools
-        ):
+        async for frame in self._owner(session_key).run_provider_turn(session_key, messages, tools):
             yield frame
 
     def active_run_id(self, session_key: str) -> str | None:

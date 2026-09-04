@@ -273,6 +273,7 @@
 <li>The backend requires project-admin access for the supplied project id and creates custom agents with <code>scope=&quot;project&quot;</code> and the matching <code>project_id</code> in the first database write.</li>
 <li>Imported agent configs follow the same active-project rule: the frontend attaches the active project id, the backend rejects missing <code>project_id</code>, and the imported agent is created as project-scoped instead of becoming a universal/global custom agent.</li>
 <li>Proposal-approved agents use the same scoped creation path so generated agents do not transiently exist as universal agents before metadata is patched.</li>
+<li>The create request validates <code>role</code> against the shared <code>AgentRole</code> enum (<code>task_executor</code>, <code>devops_audit</code>, <code>ui_audit</code>, <code>ux_evaluation</code>, <code>user_simulation</code>, <code>design_lead</code>, or <code>custom</code>) at the API boundary. Unsupported values return a 422 validation response instead of leaking an enum conversion error as HTTP 500.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -283,7 +284,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li><code>tests/test_agents.py</code> covers missing project ids and verifies created custom agents are project-scoped.</li>
+<li><code>tests/test_agents.py</code> covers missing project ids, rejects unsupported roles with a 422 validation response, and verifies created custom agents are project-scoped.</li>
 <li><code>tests/test_agent_mutation_scope.py</code> verifies imported agent configs require and preserve the active project id.</li>
 <li><code>tests/test_agent_scope_contracts.py</code> pins the frontend/store/API/backend project-scope contract, including imported agent configs.</li>
 </ul>

@@ -97,8 +97,11 @@ class FileWatcher:
         tasks: list[tuple[str, str, str]] = []
 
         # Interview transcripts
-        if "interview" in filename or "transcript" in filename or \
-           ("[00:" in preview and "interviewer:" in preview):
+        if (
+            "interview" in filename
+            or "transcript" in filename
+            or ("[00:" in preview and "interviewer:" in preview)
+        ):
             tasks.append(("user-interviews", f"Analyze interview: {stem}", "high"))
             tasks.append(("thematic-analysis", f"Thematic analysis: {stem}", "medium"))
 
@@ -130,7 +133,9 @@ class FileWatcher:
             tasks.append(("competitive-analysis", f"Competitive analysis: {stem}", "high"))
 
         # Analytics data
-        elif ext == ".csv" and ("sessions" in preview or "bounce_rate" in preview or "conversions" in preview):
+        elif ext == ".csv" and (
+            "sessions" in preview or "bounce_rate" in preview or "conversions" in preview
+        ):
             tasks.append(("analytics-review", f"Analytics review: {stem}", "high"))
             if "variant" in preview or "a/b" in preview or "ab-test" in filename:
                 tasks.append(("ab-test-analysis", f"A/B test analysis: {stem}", "high"))
@@ -215,6 +220,7 @@ class FileWatcher:
 
             try:
                 from app.core.agent import agent as agent_orchestrator
+
                 agent_orchestrator.wake()
             except Exception:
                 pass
@@ -315,9 +321,8 @@ class FileWatcher:
             # Notify via WebSocket
             try:
                 from app.api.websocket import broadcast_document_event
-                await broadcast_document_event(
-                    "document_created", doc.id, title, project_id
-                )
+
+                await broadcast_document_event("document_created", doc.id, title, project_id)
             except Exception:
                 pass
 
@@ -327,7 +332,11 @@ class FileWatcher:
 
     # Cloud-sync temp file patterns to skip
     _TEMP_PATTERNS = {
-        ".partial", ".tmp", ".crdownload", ".download", ".part",
+        ".partial",
+        ".tmp",
+        ".crdownload",
+        ".download",
+        ".part",
     }
     _TEMP_PREFIXES = ("~$", ".~", "._")
 

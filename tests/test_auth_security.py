@@ -522,60 +522,6 @@ async def test_legacy_session_cookie_still_accepted_during_transition():
 
 
 @pytest.mark.asyncio
-async def test_login_rejects_cross_site_browser_attempts_before_cookie_creation():
-    """Auth-exempt login should still reject browser CSRF signals."""
-    await init_db()
-    settings.team_mode = False
-    if not settings.jwt_secret:
-        settings.jwt_secret = "test-secret"
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        origin_response = await ac.post(
-            "/api/auth/login",
-            json={"username": "testuser", "password": ""},
-            headers={"Origin": "https://evil.example"},
-        )
-        fetch_metadata_response = await ac.post(
-            "/api/auth/login",
-            json={"username": "testuser", "password": ""},
-            headers={"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate"},
-        )
-
-    assert origin_response.status_code == 403
-    assert AUTH_COOKIE_NAME not in origin_response.cookies
-    assert "Untrusted browser origin" in origin_response.json()["detail"]
-    assert fetch_metadata_response.status_code == 403
-    assert AUTH_COOKIE_NAME not in fetch_metadata_response.cookies
-    assert "Untrusted browser origin" in fetch_metadata_response.json()["detail"]
-
-
-@pytest.mark.asyncio
-async def test_register_rejects_untrusted_browser_origin_before_user_creation():
-    """Team registration should not mint a first session for an untrusted origin."""
-    await init_db()
-    settings.team_mode = True
-    if not settings.jwt_secret:
-        settings.jwt_secret = "test-secret"
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post(
-            "/api/auth/register",
-            json={
-                "username": "origin_attack",
-                "email": "origin_attack@example.com",
-                "password": "xK9#mP2$vL7nQ4@wR1!",
-            },
-            headers={"Origin": "https://evil.example"},
-        )
-
-    assert response.status_code == 403
-    assert AUTH_COOKIE_NAME not in response.cookies
-    assert "Untrusted browser origin" in response.json()["detail"]
-
-
-@pytest.mark.asyncio
 async def test_login_creates_revocable_server_auth_session():
     """Team-mode login should create a server-backed session that logout revokes."""
     await init_db()

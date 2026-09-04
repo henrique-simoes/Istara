@@ -224,7 +224,10 @@ export async function run(ctx) {
   await page.waitForTimeout(800);
 
   // Check Agents view loaded — look for "Agents" heading or agent cards
-  let agentsViewVisible = await page.locator("text=System Agents").isVisible({ timeout: 3000 }).catch(() => false);
+  // The rendered section heading is uppercase ("SYSTEM AGENTS"). Use a
+  // case-insensitive text locator so styling/capitalization cannot create a
+  // false negative for a loaded Agents view.
+  let agentsViewVisible = await page.getByText(/system agents/i).first().isVisible({ timeout: 3000 }).catch(() => false);
 
   // Fallback: click the sidebar nav button
   if (!agentsViewVisible) {
@@ -232,7 +235,7 @@ export async function run(ctx) {
     if (await agentsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await agentsBtn.click();
       await page.waitForTimeout(800);
-      agentsViewVisible = await page.locator("text=System Agents").isVisible({ timeout: 3000 }).catch(() => false);
+      agentsViewVisible = await page.getByText(/system agents/i).first().isVisible({ timeout: 3000 }).catch(() => false);
     }
   }
 

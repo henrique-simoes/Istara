@@ -79,6 +79,39 @@ def test_websocket_manager_imports():
 
 
 @pytest.mark.asyncio
+async def test_task_progress_broadcast_preserves_terminal_outcome(monkeypatch):
+    """Consumers must receive failure/success semantics separately from numeric progress."""
+    from app.api import websocket as websocket_module
+
+    captured: dict[str, object] = {}
+
+    async def capture(event_type: str, data: dict) -> None:
+        captured["event_type"] = event_type
+        captured["data"] = data
+
+    monkeypatch.setattr(websocket_module.manager, "broadcast", capture)
+
+    await websocket_module.broadcast_task_progress(
+        "task-1",
+        1.0,
+        "Verification failed: no evidence",
+        outcome="verification_failed",
+        project_id="project-1",
+    )
+
+    assert captured == {
+        "event_type": "task_progress",
+        "data": {
+            "task_id": "task-1",
+            "progress": 1.0,
+            "notes": "Verification failed: no evidence",
+            "outcome": "verification_failed",
+            "project_id": "project-1",
+        },
+    }
+
+
+@pytest.mark.asyncio
 async def test_notification_drain_discards_tasks_from_foreign_event_loops():
     """A global manager must not gather tasks owned by a prior pytest event loop."""
     from app.api.websocket import ConnectionManager

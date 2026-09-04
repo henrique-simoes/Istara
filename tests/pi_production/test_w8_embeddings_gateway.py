@@ -1241,7 +1241,10 @@ def test_static_ux_parity_hooks():
         encoding="utf-8"
     )
     assert "reset_live_db_projections" in discovery
-    assert settings_source.count('"pi_catalog": await _pi_catalog_info()') == 2
+    # The settings response computes one catalog snapshot per branch so the
+    # default metadata and public catalog cannot drift between awaits.
+    assert settings_source.count("pi_catalog = await _pi_catalog_info()") == 2
+    assert settings_source.count('"pi_catalog": pi_catalog') == 2
     projects = (REPO_ROOT / "backend/app/api/routes/projects.py").read_text(
         encoding="utf-8"
     )

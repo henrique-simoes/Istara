@@ -106,7 +106,9 @@ class AutoresearchEngine:
         baseline = 0.0
         best_score = baseline
         min_delta = max(0.0, float(getattr(settings, "autoresearch_min_improvement_delta", 0.01)))
-        measurement_repeats = max(1, min(10, int(getattr(settings, "autoresearch_measurement_repeats", 1))))
+        measurement_repeats = max(
+            1, min(10, int(getattr(settings, "autoresearch_measurement_repeats", 1)))
+        )
 
         try:
             # Acquire persona lock if needed
@@ -174,13 +176,9 @@ class AutoresearchEngine:
 
                     try:
                         # Hypothesize
-                        hypothesis, mutation = await runner.hypothesize(
-                            target, best_score, results
-                        )
+                        hypothesis, mutation = await runner.hypothesize(target, best_score, results)
                         experiment["hypothesis"] = hypothesis
-                        experiment["mutation_description"] = str(
-                            mutation.get("description", "")
-                        )
+                        experiment["mutation_description"] = str(mutation.get("description", ""))
 
                         experiment["candidate_mutation"] = mutation
                         experiment["sandboxed"] = True
@@ -207,7 +205,9 @@ class AutoresearchEngine:
                             experiment["delta"] = delta
                             experiment["score_samples"] = measurement["samples"]
                             experiment["score_stddev"] = measurement["stddev"]
-                            experiment["confidence_interval_95"] = measurement["confidence_interval_95"]
+                            experiment["confidence_interval_95"] = measurement[
+                                "confidence_interval_95"
+                            ]
                             experiment["minimum_delta"] = min_delta
                             experiment["measurement_repeats"] = measurement_repeats
 
@@ -226,7 +226,7 @@ class AutoresearchEngine:
                                 experiment["kept"] = True
                                 experiment["status"] = "proposal_ready"
                                 logger.info(
-                                    f"  [{i+1}/{max_iterations}] PROPOSED: "
+                                    f"  [{i + 1}/{max_iterations}] PROPOSED: "
                                     f"{hypothesis[:60]} "
                                     f"(delta=+{delta:.4f}, reason={decision_reason})"
                                 )
@@ -234,7 +234,7 @@ class AutoresearchEngine:
                                 experiment["kept"] = False
                                 experiment["status"] = "reverted"
                                 logger.info(
-                                    f"  [{i+1}/{max_iterations}] REVERTED: "
+                                    f"  [{i + 1}/{max_iterations}] REVERTED: "
                                     f"{hypothesis[:60]} "
                                     f"(delta={delta:.4f}, reason={decision_reason})"
                                 )
@@ -244,16 +244,12 @@ class AutoresearchEngine:
                             experiment["kept"] = False
                             experiment["status"] = "failed"
                             experiment["error_message"] = str(e)[:500]
-                            logger.warning(
-                                f"  [{i+1}/{max_iterations}] FAILED: {e}"
-                            )
+                            logger.warning(f"  [{i + 1}/{max_iterations}] FAILED: {e}")
                     except Exception as e:
                         experiment["kept"] = False
                         experiment["status"] = "failed"
                         experiment["error_message"] = str(e)[:500]
-                        logger.warning(
-                            f"  [{i+1}/{max_iterations}] HYPOTHESIS FAILED: {e}"
-                        )
+                        logger.warning(f"  [{i + 1}/{max_iterations}] HYPOTHESIS FAILED: {e}")
 
                     # Persist experiment
                     experiment["completed_at"] = datetime.now(timezone.utc).isoformat()
@@ -263,7 +259,9 @@ class AutoresearchEngine:
                         experiment,
                         project_id,
                     )
-                    experiment["improvement_proposal_ids"] = await self._register_improvement_proposals(
+                    experiment[
+                        "improvement_proposal_ids"
+                    ] = await self._register_improvement_proposals(
                         experiment,
                         project_id,
                     )
@@ -485,9 +483,11 @@ class AutoresearchEngine:
         from sqlalchemy import select
 
         async with async_session() as db:
-            query = select(AutoresearchExperiment).order_by(
-                AutoresearchExperiment.started_at.desc()
-            ).where(AutoresearchExperiment.project_id == project_id)
+            query = (
+                select(AutoresearchExperiment)
+                .order_by(AutoresearchExperiment.started_at.desc())
+                .where(AutoresearchExperiment.project_id == project_id)
+            )
             if loop_type:
                 query = query.where(AutoresearchExperiment.loop_type == loop_type)
             if kept is not None:

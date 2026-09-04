@@ -267,6 +267,10 @@
 <li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
 <li>Move to related surfaces when needed: tasks.editor, tasks.review, tasks.send-report.</li>
 <li>Task cards are loaded only for the active project. Switching projects clears the previous board state before the new project&#x27;s cards are shown.</li>
+<li>Creating a card opens Task Editor immediately and reserves the task from agents while you configure its skill, files, context, and instructions. The agent can claim it only after Done Editing saves successfully and releases the reservation.</li>
+<li>Opening an existing card also reserves it. If another user already owns the edit lock, Istara warns you and leaves the editor closed.</li>
+<li>Agent terminal events refresh the card in place, so In Review and failure states reconcile without a manual page refresh or a blank-board flicker.</li>
+<li>Agent terminal updates distinguish work that is ready for human review from work that failed verification. A warning says <code>Task Needs Attention</code>; only a verified handoff says <code>Ready for Review</code>. A percentage reaching 100% alone is not presented as successful completion.</li>
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
@@ -277,6 +281,7 @@
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
+<li>A failed verification leaves the card outside Done and should be resolved through task details and review feedback; its warning is not evidence that research was accepted or reportable.</li>
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
@@ -291,9 +296,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/kanban/KanbanBoard.tsx</code>, <code>frontend/src/stores/taskStore.ts</code>, <code>backend/app/api/routes/tasks.py</code></li>
-<li>API references: <code>backend/app/api/routes/tasks.py</code></li>
-<li>Tests: <code>tests/test_tasks.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Source files: <code>frontend/src/components/kanban/KanbanBoard.tsx</code>, <code>frontend/src/components/common/ToastNotification.tsx</code>, <code>frontend/src/lib/taskProgressToast.ts</code>, <code>frontend/src/lib/taskRealtime.ts</code>, <code>frontend/src/stores/taskStore.ts</code>, <code>backend/app/api/routes/tasks.py</code>, <code>backend/app/api/websocket.py</code>, <code>backend/app/core/agent_lifecycle.py</code></li>
+<li>API references: <code>backend/app/api/routes/tasks.py</code>, <code>backend/app/api/websocket.py</code></li>
+<li>Tests: <code>frontend/src/lib/taskProgressToast.test.ts</code>, <code>frontend/src/lib/taskRealtime.test.ts</code>, <code>frontend/src/stores/taskStore.test.ts</code>, <code>tests/test_websocket.py</code>, <code>tests/test_tasks.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

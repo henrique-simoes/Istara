@@ -133,22 +133,41 @@ def decrypt_field(ciphertext: str) -> str:
     """Decrypt a string field. Returns plaintext.
 
     If the field is not encrypted (no ``ENC:`` prefix), returns as-is.
-    If decryption fails, returns the ciphertext unchanged.
+    If decryption fails, returns an empty unavailable value without exposing
+    the encrypted blob.
     """
     if not ciphertext or not ciphertext.startswith("ENC:"):
         return ciphertext  # Not encrypted — return as-is
     f = _get_fernet()
     if f is None:
         _record_decryption_failure()
-        logger.warning("Cannot decrypt — no encryption key configured")
-        return ciphertext
+        logger.warning("Cannot decrypt encrypted field — no encryption key configured")
+        return ""
     try:
         encrypted_bytes = ciphertext[4:].encode()  # Strip "ENC:" prefix
         return f.decrypt(encrypted_bytes).decode()
     except Exception:
         _record_decryption_failure()
-        logger.warning("Field decryption failed — returning ciphertext")
-        return ciphertext
+        logger.warning("Field decryption failed — value unavailable")
+        return ""
+
+
+def safe_decrypt_field(value: object | None) -> str:
+    """Return a user-safe plaintext value without ever exposing ciphertext.
+
+    ORM result processing normally calls :func:`decrypt_field`, but API
+    serializers can also receive stale or manually assigned model values
+    during key rotation, database restore, or tests.  Keep this boundary
+    defensive so an ``ENC:`` blob cannot cross into a user-facing response.
+    """
+    if value is None:
+        return ""
+    try:
+        return decrypt_field(str(value))
+    except Exception:
+        _record_decryption_failure()
+        logger.warning("Could not normalize encrypted field for API response")
+        return ""
 
 
 def hash_field(value: str) -> str:

@@ -79,7 +79,9 @@ def _validate_coverage(
     row_by_id: dict[str, CodeApplication],
 ) -> list[str]:
     requested_ids = [str(item.get("code_application_id") or "").strip() for item in decisions]
-    if any(not item_id for item_id in requested_ids) or len(set(requested_ids)) != len(requested_ids):
+    if any(not item_id for item_id in requested_ids) or len(set(requested_ids)) != len(
+        requested_ids
+    ):
         raise ValueError("Synthetic decisions must contain unique code application ids.")
     if set(requested_ids) != set(row_by_id):
         raise ValueError(
@@ -103,7 +105,9 @@ async def _existing_receipts(
             ReconciliationDecision.decided_by == f"benchmark-synthetic:{diagnostic_id}",
         )
     )
-    return {row.code_application_id: row for row in result.scalars().all() if row.code_application_id}
+    return {
+        row.code_application_id: row for row in result.scalars().all() if row.code_application_id
+    }
 
 
 def _validate_retry_payload(

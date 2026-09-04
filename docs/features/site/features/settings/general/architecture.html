@@ -245,7 +245,7 @@
   <p class="concept-line"><strong>Concepts:</strong> rag</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>Settings shows backend and LLM health, a first-class Agentic Core comparison and choice, hardware/model guidance, and the Pi provider/model management workbench. Pi Model Management offers a complete browseable catalog plus autocomplete, provider-native authentication choices, and server-side credential custody. The former compact Agentic Core selector is no longer inside System Status; the legacy LLM Servers catalog is not rendered in normal Settings UX while compatibility routes/data remain preserved. Public status is intentionally minimal: <code>/api/settings/status</code> exposes backend health, team mode, cached LLM reachability/readiness, and frontend freshness only. Provider, model, hardware, integration, vector-health, maintenance, and data-integrity details are shared infrastructure metadata and require global admin access in team mode.</p>
+<p>Settings shows backend and LLM health, a first-class Agentic Core comparison and choice, hardware/model guidance, and the Pi provider/model management workbench. Pi Model Management offers a complete browseable catalog plus autocomplete, provider-native authentication choices, server-side credential custody, and a global default chat-model selector. The former compact Agentic Core selector is no longer inside System Status; the legacy LLM Servers catalog is not rendered in normal Settings UX while compatibility routes/data remain preserved. Public status is intentionally minimal: <code>/api/settings/status</code> exposes backend health, team mode, cached LLM reachability/readiness, and frontend freshness only. Provider, model, hardware, integration, vector-health, maintenance, and data-integrity details are shared infrastructure metadata and require global admin access in team mode.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/common/SettingsView.tsx</code></li>
@@ -264,14 +264,21 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/common/SettingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li><code>frontend/src/components/layout/StatusBar.tsx</code> reconciles WebSocket LLM events with passive <code>/api/settings/status</code> polling.</li>
-<li><code>/api/settings/status</code> reports <code>services.llm</code> from cached provider reachability and <code>llm_readiness.chat_ready</code> separately, so status bars and guided checks can distinguish connected-but-not-ready from disconnected without running provider probes.</li>
+<li><code>/api/settings/status</code> reports <code>services.llm</code> from cached provider reachability and <code>llm_readiness.chat_ready</code> separately, so status bars and guided checks can distinguish connected-but-not-ready from disconnected without running provider probes. The deterministic contract transport may contribute reachability but is always forced to <code>chat_ready=false</code>, matching the model-source boundary that forbids using it for chat. The Settings status card preserves the same three states (<code>Disconnected</code>, <code>Reachable, chat unavailable</code>, and <code>Chat ready</code>) rather than labeling a reachable transport as a working chat model.</li>
 <li><code>/api/settings/status</code> does not expose provider names, active model identifiers, embedding model identifiers, RAG configuration, or loaded-model discovery results. Admin-only settings views read model/provider details from <code>/api/settings/models</code>.</li>
 <li><code>/api/settings/hardware</code>, <code>/api/settings/models</code>, <code>/api/settings/maintenance</code>, <code>/api/settings/integrations-status</code>, <code>/api/settings/vector-health</code>, <code>/api/settings/data-integrity</code>, <code>/api/settings/model</code>, and <code>/api/settings/provider</code> require global admin access in team mode.</li>
-<li><code>GET /api/settings/models</code> returns the normalized <code>agentic_engine_default</code> (<code>pi</code> or <code>legacy</code>) alongside the provider inventory and identity-only Pi projections. <code>AgenticCoreSection</code> renders the global choice as a dedicated, plain-language comparison with the shared embedding invariant and source-linked provisional benchmark rows.</li>
+<li><code>GET /api/settings/models</code> returns the normalized <code>agentic_engine_default</code> (<code>pi</code> or <code>legacy</code>) alongside the provider inventory, the effective <code>default_endpoint_id</code>/<code>default_model</code> for chat generation, and identity-only Pi projections. A Pi identity is reported as the default only when its passive credential state is <code>ready</code> or <code>stored</code>; an uncredentialed built-in catalog row is inventory, not availability. <code>AgenticCoreSection</code> renders the global choice as a dedicated, plain-language comparison with the shared embedding invariant and source-linked provisional benchmark rows. The Settings status card labels the effective generation choice as <code>Default Chat Model</code>; when Pi is selected it never substitutes the local transport&#x27;s <code>active_model</code>, and shows <code>Not configured</code> until a credential-ready Pi default exists. When Istara is selected, the local <code>active_model</code> is shown only while cached local chat readiness is true, so a contract or otherwise non-ready transport cannot be presented as the effective model.</li>
 <li>The <code>pi_catalog</code> portion of <code>GET /api/settings/models</code> is fail-closed: a Pi projection or catalog read failure returns a typed <code>503</code> (<code>pi_catalog_unavailable</code>) instead of an empty list that could be mistaken for a healthy legacy-only inventory. The separate <code>GET /api/settings/pi-catalog</code> endpoint remains the detailed diagnostic surface.</li>
 <li><code>GET /api/settings/pi-catalog</code> returns the full secret-free Pi catalog. <code>PiModelManagement</code> supports both a visible dropdown/browse path and autocomplete search. Selecting a model resolves URL, protocol, capabilities, effort levels, and pricing from the catalog; users never type an endpoint URL.</li>
 <li>Pi OAuth metadata distinguishes API key, browser PKCE, and device-code methods. OpenAI is explicit: OpenAI API is API-key based, while the shared Codex models expose Pi&#x27;s ChatGPT subscription OAuth with Browser login and Device code (headless) choices. Browser callbacks verify state and never return tokens.</li>
 <li>Pi endpoint, provider, and model mutations refresh the live <code>PiModelManager</code> catalog immediately. Both Istara and Pi Agentic Loop requests therefore resolve against the same current authority without requiring a backend restart.</li>
+<li>The first credential-ready Pi provider endpoint becomes the persisted global chat</li>
+</ul>
+<p>default automatically. Admins can switch it with</p>
+<p><code>POST /api/settings/pi-default</code>; deleting the selected endpoint safely falls</p>
+<p>back to the remaining first connected endpoint. Chat sessions may still keep</p>
+<p>an explicit endpoint override.</p>
+<ul>
 <li><code>POST</code> and <code>PUT /api/settings/pi-endpoints</code> share one preparation path: a</li>
 </ul>
 <p>sparse PUT inherits omitted endpoint fields, catalog provider/model choices</p>
@@ -281,6 +288,8 @@
 <p>OAuth credential is retained unless a new completed flow is supplied.</p>
 <ul>
 <li><code>GET /api/settings/security-integrity</code> is global-admin-only and reports value-free health counters for encrypted-field and telemetry persistence failures. It never returns keys, ciphertext, provider URLs, prompts, or research content.</li>
+<li><code>POST /api/settings/agentic-engine</code> and <code>POST /api/settings/strict-routing</code> return the boolean result of their environment persistence attempt. In read-only deployments the in-memory setting may change for the current process, but <code>persisted</code> is <code>false</code> so the UI cannot imply that the value will survive a restart.</li>
+<li><code>POST /api/settings/telemetry/toggle</code> updates the in-memory telemetry switch first. If a read-only deployment cannot persist <code>TELEMETRY_ENABLED</code>, the endpoint still returns 200 with an explicit process-scoped persistence warning; only expected OS-level write failures are contained, while unexpected persistence errors remain visible.</li>
 <li>Settings is role-composed rather than a single global-admin surface. Researcher-safe personal panels such as compute donation, security factors, sessions, and updates may render for researchers, while global-admin panels for governed evolution, users, connection strings, LLM infrastructure, telemetry, and team-mode toggles are gated before mounting so their admin-only API calls are never made by normal researcher journeys.</li>
 <li><code>/api/settings/status</code> also includes <code>runtime.frontend</code> freshness diagnostics. The status bar shows <code>Runtime bundle stale</code> when the production Next build predates tracked frontend source files, preventing stale bundles from being mistaken for current project-isolation behavior.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes. The shared UI tokens and state contract live in root <code>DESIGN.md</code> and the semantic projection in <code>frontend/src/app/globals.css</code>.</li>
@@ -294,7 +303,9 @@
 <ul>
 <li><code>tests/test_settings.py</code></li>
 <li><code>tests/test_runtime_source_boundary.py</code></li>
+<li><code>tests/test_settings_agentic_pi_endpoints.py</code> — provider-default selection,</li>
 </ul>
+<p>switching, and deletion fallback.</p>
 <h2 id="related-features">Related Features</h2>
 <ul>
 <li><a href="../llm-servers/architecture.html">settings.llm-servers</a></li>

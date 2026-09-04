@@ -36,11 +36,7 @@ class LMStudioClient:
             headers = {}
             if settings.lmstudio_api_key:
                 headers["Authorization"] = f"Bearer {settings.lmstudio_api_key}"
-            self._client = httpx.AsyncClient(
-                base_url=self.base_url, 
-                headers=headers,
-                timeout=300.0
-            )
+            self._client = httpx.AsyncClient(base_url=self.base_url, headers=headers, timeout=300.0)
         return self._client
 
     async def close(self) -> None:

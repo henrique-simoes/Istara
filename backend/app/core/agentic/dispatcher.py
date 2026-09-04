@@ -26,7 +26,6 @@ from typing import Any
 
 from app.config import settings
 from app.core.pi_replacement import PI_ENGINE_VALUES
-from app.core.pi_runtime.endpoints import DEFAULT_ENDPOINT_ID
 from app.core.pi_runtime.engine import PiExecutionService
 
 from .legacy import legacy_executor as _real_legacy_executor
@@ -773,7 +772,7 @@ class AgenticDispatcher:
             user_text=user_text,
             tool_executor=tool_executor or _no_tool_executor,
             session_key=session_key,
-            endpoint_id=params.endpoint_id or DEFAULT_ENDPOINT_ID,
+            endpoint_id=params.endpoint_id,
             allowed_tools=tool_names,
             steering=steering_binding,
             params=params,

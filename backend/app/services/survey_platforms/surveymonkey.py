@@ -81,15 +81,11 @@ class SurveyMonkeyAdapter(SurveyPlatformAdapter):
                 sm_q["family"] = "single_choice"
                 sm_q["subtype"] = "vertical"
                 choices = q.get("choices", [])
-                sm_q["answers"] = {
-                    "choices": [{"text": c} for c in choices]
-                }
+                sm_q["answers"] = {"choices": [{"text": c} for c in choices]}
             elif q_type == "rating":
                 sm_q["family"] = "matrix"
                 sm_q["subtype"] = "rating"
-                sm_q["answers"] = {
-                    "choices": [{"text": str(i)} for i in range(1, 6)]
-                }
+                sm_q["answers"] = {"choices": [{"text": str(i)} for i in range(1, 6)]}
             else:
                 sm_q["family"] = "open_ended"
                 sm_q["subtype"] = "essay"
@@ -130,17 +126,19 @@ class SurveyMonkeyAdapter(SurveyPlatformAdapter):
                         break
                     answer_texts: list[str] = []
                     for ans in question.get("answers", []):
-                        answer_texts.append(
-                            ans.get("text", ans.get("choice_id", ""))
-                        )
-                    answers.append({
-                        "question": q_heading,
-                        "answer": "; ".join(answer_texts) if answer_texts else "",
-                    })
-            normalised.append({
-                "id": str(resp.get("id", "")),
-                "answers": answers,
-            })
+                        answer_texts.append(ans.get("text", ans.get("choice_id", "")))
+                    answers.append(
+                        {
+                            "question": q_heading,
+                            "answer": "; ".join(answer_texts) if answer_texts else "",
+                        }
+                    )
+            normalised.append(
+                {
+                    "id": str(resp.get("id", "")),
+                    "answers": answers,
+                }
+            )
 
         return normalised
 

@@ -129,13 +129,33 @@ def detect_content_type(text: str, suffix: str) -> str:
         # Check CSV headers to classify more precisely
         first_line = text.split("\n")[0].lower() if text else ""
         survey_signals = [
-            "sus", "nasa", "tlx", "likert", "rating", "score", "scale",
-            "satisfaction", "ease", "usability", "nps", "response",
-            "survey", "participant", "respondent", "questionnaire",
+            "sus",
+            "nasa",
+            "tlx",
+            "likert",
+            "rating",
+            "score",
+            "scale",
+            "satisfaction",
+            "ease",
+            "usability",
+            "nps",
+            "response",
+            "survey",
+            "participant",
+            "respondent",
+            "questionnaire",
         ]
         interview_signals = [
-            "transcript", "interviewer", "interviewee", "moderator",
-            "question", "answer", "speaker", "timestamp", "duration",
+            "transcript",
+            "interviewer",
+            "interviewee",
+            "moderator",
+            "question",
+            "answer",
+            "speaker",
+            "timestamp",
+            "duration",
         ]
         survey_hits = sum(1 for s in survey_signals if s in first_line)
         interview_hits = sum(1 for s in interview_signals if s in first_line)
@@ -164,8 +184,12 @@ def chunk_by_speaker_turn(text: str, source: str) -> list[TextChunk]:
     Very short consecutive turns (< 100 chars) are merged into one chunk.
     """
     # Split on lines that start with a speaker label
-    parts = re.split(r"(?=^(?:Interviewer|Participant|Moderator|Respondent|Speaker\s*\d*"
-                     r"|P\d+|Q|A|\[Speaker[^\]]*\])\s*:)", text, flags=re.MULTILINE)
+    parts = re.split(
+        r"(?=^(?:Interviewer|Participant|Moderator|Respondent|Speaker\s*\d*"
+        r"|P\d+|Q|A|\[Speaker[^\]]*\])\s*:)",
+        text,
+        flags=re.MULTILINE,
+    )
     parts = [p.strip() for p in parts if p.strip()]
 
     # Merge short consecutive turns
@@ -194,12 +218,14 @@ def chunk_by_speaker_turn(text: str, source: str) -> list[TextChunk]:
                 position += 1
                 chunks.append(sc)
         else:
-            chunks.append(TextChunk(
-                text=segment,
-                source=source,
-                position=position,
-                chunk_type="speaker_turn",
-            ))
+            chunks.append(
+                TextChunk(
+                    text=segment,
+                    source=source,
+                    position=position,
+                    chunk_type="speaker_turn",
+                )
+            )
             position += 1
 
     return chunks
@@ -227,12 +253,14 @@ def chunk_by_heading(text: str, source: str) -> list[TextChunk]:
                 position += 1
                 chunks.append(sc)
         else:
-            chunks.append(TextChunk(
-                text=section,
-                source=source,
-                position=position,
-                chunk_type="heading_section",
-            ))
+            chunks.append(
+                TextChunk(
+                    text=section,
+                    source=source,
+                    position=position,
+                    chunk_type="heading_section",
+                )
+            )
             position += 1
 
     return chunks

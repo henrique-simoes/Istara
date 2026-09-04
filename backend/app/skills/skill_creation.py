@@ -73,7 +73,9 @@ class SkillCreationMixin:
         )
         self._creation_proposals.append(proposal)
         self._save_creation_proposals()
-        logger.info("Proposed new skill creation: %s (confidence=%s)", definition["name"], confidence)
+        logger.info(
+            "Proposed new skill creation: %s (confidence=%s)", definition["name"], confidence
+        )
         return proposal
 
     def _matches_creation_project(
@@ -104,9 +106,7 @@ class SkillCreationMixin:
     ) -> list[SkillCreationProposal]:
         """Return the last N creation proposals."""
         return [
-            p
-            for p in self._creation_proposals
-            if self._matches_creation_project(p, project_id)
+            p for p in self._creation_proposals if self._matches_creation_project(p, project_id)
         ][-limit:]
 
     async def verify_skill_proposal(
@@ -166,7 +166,10 @@ class SkillCreationMixin:
                 result = {"passed": False, "issues": ["Could not instantiate skill for testing"]}
 
             test_path.unlink(missing_ok=True)
-            if loaded.name in self._definitions and self._definitions[loaded.name].path == test_path:
+            if (
+                loaded.name in self._definitions
+                and self._definitions[loaded.name].path == test_path
+            ):
                 del self._definitions[loaded.name]
 
             proposal.test_result = result
@@ -194,7 +197,9 @@ class SkillCreationMixin:
                 and proposal.status == "pending"
                 and self._matches_creation_project(proposal, project_id)
             ):
-                if isinstance(proposal.test_result, dict) and not proposal.test_result.get("passed", True):
+                if isinstance(proposal.test_result, dict) and not proposal.test_result.get(
+                    "passed", True
+                ):
                     logger.warning(
                         "Skill approval blocked; verification failed: %s",
                         proposal.test_result.get("issues"),

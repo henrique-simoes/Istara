@@ -244,7 +244,7 @@
   <p class="concept-line"><strong>Concepts:</strong> compass-forge</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The update checker surfaces available Istara software updates from the settings view.</p>
+<p>The update checker surfaces available Istara software updates from the settings view and fails safely when release discovery is unavailable.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/settings/UpdateChecker.tsx</code></li>
@@ -263,6 +263,8 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/settings/UpdateChecker.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li><code>GET /api/updates/check</code> requests the latest GitHub release and caches successful release metadata. Transport failures are logged server-side but return the stable <code>update_check_unavailable</code> code and an actionable user message; resolver errors, hostnames, socket details, and other raw exception text never enter the Settings UI.</li>
+<li>A failed check does not claim that the installed build is current. The card renders the warning and keeps the manual <code>Check Now</code> retry available.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -272,7 +274,7 @@
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
-<li>No focused test reference recorded yet.</li>
+<li><code>tests/test_updates_security.py</code> — update authorization and transport-error redaction.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

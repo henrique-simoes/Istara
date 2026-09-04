@@ -22,6 +22,7 @@ from app.core.model_capabilities import ANTHROPIC_PROVIDERS, provider_auth_heade
 
 logger = logging.getLogger("app.core.compute_registry")
 
+
 class ComputeNodeTransportMixin:
     def server_id(self) -> str:
         return self.node_id

@@ -19,7 +19,8 @@ from app.core.resource_governor import governor
 from app.models.database import async_session
 from app.models.agent import Agent, AgentRole, AgentState
 from app.models.task import Task, TaskStatus
-from app.api.websocket import broadcast_agent_status
+from app.api.websocket import broadcast_agent_status, broadcast_task_progress
+from app.core.datetime_utils import ensure_utc
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +67,7 @@ class CustomAgentWorker:
 
         async with async_session() as db:
             # Check if agent is still active and not paused
-            result = await db.execute(
-                select(Agent).where(Agent.id == self.agent_id)
-            )
+            result = await db.execute(select(Agent).where(Agent.id == self.agent_id))
             agent = result.scalar_one_or_none()
             if not agent or not agent.is_active or agent.state == AgentState.PAUSED:
                 return False
@@ -106,7 +105,19 @@ class CustomAgentWorker:
             .order_by(priority_order, Task.position.asc(), Task.created_at.asc())
             .limit(1)
         )
-        return result.scalar_one_or_none()
+        for task in result.scalars().all():
+            if not self._is_in_backoff(task):
+                return task
+        return None
+
+    @staticmethod
+    def _is_in_backoff(task: Task) -> bool:
+        """Avoid immediately re-picking a task that just failed."""
+        if task.last_retry_at and (task.retry_count or 0) > 0:
+            backoff = min(5 * (3 ** (task.retry_count - 1)), 120)
+            elapsed = (datetime.now(timezone.utc) - ensure_utc(task.last_retry_at)).total_seconds()
+            return elapsed < backoff
+        return False
 
     async def _execute_task(self, db: AsyncSession, task: Task, agent: Agent) -> None:
         """Execute a task using the main agent orchestrator's skill execution."""
@@ -117,16 +128,16 @@ class CustomAgentWorker:
         await db.commit()
 
         await self._update_db_state(AgentState.WORKING, task.title)
-        await broadcast_agent_status("working", f"{self.agent_name}: {task.title}", project_id=task.project_id)
+        await broadcast_agent_status(
+            "working", f"{self.agent_name}: {task.title}", project_id=task.project_id
+        )
 
         try:
             # Delegate to the main agent orchestrator's skill execution
             from app.core.agent import agent as agent_orchestrator
             from app.models.project import Project
 
-            project_result = await db.execute(
-                select(Project).where(Project.id == task.project_id)
-            )
+            project_result = await db.execute(select(Project).where(Project.id == task.project_id))
             project = project_result.scalar_one_or_none()
             if not project:
                 logger.warning(
@@ -136,19 +147,20 @@ class CustomAgentWorker:
                 task.agent_notes = "Error: project deleted — task orphaned"
                 task.status = TaskStatus.IN_REVIEW
                 task.review_state = "needs_revision"
-                task.what_to_review = (
+                failure_reason = (
                     "Execution failed because the task's project no longer exists. "
                     "A human must resolve or remove the orphaned task; it was not completed."
                 )
+                if not task.what_to_review:
+                    task.what_to_review = failure_reason
+                task.last_review_feedback = failure_reason
                 await db.commit()
                 return
 
             await agent_orchestrator._execute_task(db, task, project)
 
             # Update execution count
-            agent_row_result = await db.execute(
-                select(Agent).where(Agent.id == self.agent_id)
-            )
+            agent_row_result = await db.execute(select(Agent).where(Agent.id == self.agent_id))
             agent_row = agent_row_result.scalar_one_or_none()
             if agent_row:
                 agent_row.executions = (agent_row.executions or 0) + 1
@@ -156,11 +168,72 @@ class CustomAgentWorker:
                 await db.commit()
 
         except Exception as e:
-            logger.error(f"Custom agent {self.agent_id} task error: {e}")
-            task.status = TaskStatus.BACKLOG
-            task.agent_notes = f"Error: {e}"
+            error_msg = str(e)
+            logger.error(f"Custom agent {self.agent_id} task error: {error_msg}")
+            task.retry_count = (task.retry_count or 0) + 1
+            task.last_retry_at = datetime.now(timezone.utc)
+            task.agent_notes = f"Error: {error_msg}"
+            max_retries = task.max_retries or 3
+            review_event = None
+            if task.retry_count < max_retries:
+                task.status = TaskStatus.BACKLOG
+                # The task is retryable, but it must not continue to look
+                # active after the worker has returned it to the backlog.
+                task.progress = 0.0
+                progress_notes = f"Execution failed: {error_msg}"
+                progress_outcome = "retry_scheduled"
+                status_kind = "warning"
+                status_prefix = f"Task retry scheduled ({task.retry_count}/{max_retries})"
+            else:
+                from app.core.task_review import (
+                    SYSTEM_FAILED,
+                    diagnose_review_event,
+                    record_task_review_event,
+                )
+
+                task.progress = 1.0
+                task.status = TaskStatus.IN_REVIEW
+                task.review_state = "system_failed"
+                review_reason = (
+                    f"Custom agent failed after {task.retry_count} retries: {error_msg[:500]}"
+                )
+                review_event = await record_task_review_event(
+                    db,
+                    task,
+                    outcome=SYSTEM_FAILED,
+                    next_status=TaskStatus.IN_REVIEW,
+                    next_review_state="system_failed",
+                    what_to_review=review_reason,
+                    created_by=self.agent_id,
+                    failure_category="custom_agent_execution_failure",
+                    severity="major",
+                    quality_score=0.1,
+                    context_extra={"source": "custom_worker"},
+                )
+                await diagnose_review_event(db, review_event.id)
+                progress_notes = f"Execution failed after {task.retry_count} retries: {error_msg}"
+                progress_outcome = SYSTEM_FAILED
+                status_kind = "error"
+                status_prefix = f"Task failed after {task.retry_count} retries"
+
             await db.commit()
-            await self._update_db_state(AgentState.ERROR, str(e))
+            await self._update_db_state(AgentState.ERROR, error_msg)
+            await broadcast_task_progress(
+                task.id,
+                task.progress,
+                progress_notes,
+                outcome=progress_outcome,
+                project_id=task.project_id,
+            )
+            await broadcast_agent_status(
+                status_kind,
+                f"{status_prefix}: {task.title} — {error_msg[:80]}",
+                project_id=task.project_id,
+            )
+            if review_event is not None:
+                from app.core.task_review import record_review_side_effects
+
+                await record_review_side_effects(review_event)
             return
 
         await self._update_db_state(AgentState.IDLE)
@@ -169,9 +242,7 @@ class CustomAgentWorker:
         """Update agent state in the database."""
         try:
             async with async_session() as db:
-                result = await db.execute(
-                    select(Agent).where(Agent.id == self.agent_id)
-                )
+                result = await db.execute(select(Agent).where(Agent.id == self.agent_id))
                 agent = result.scalar_one_or_none()
                 if agent:
                     agent.state = state

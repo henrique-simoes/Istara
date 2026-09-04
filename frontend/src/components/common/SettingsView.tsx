@@ -18,7 +18,11 @@ import SessionManager from "@/components/settings/SessionManager";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
-import { mergeModelCatalogs } from "@/lib/modelCatalog";
+import {
+  mergeModelCatalogs,
+  settingsDefaultChatModel,
+  settingsLlmReadiness,
+} from "@/lib/modelCatalog";
 import AgenticCoreSection from "@/components/settings/AgenticCoreSection";
 import PiModelManagement from "@/components/settings/PiModelManagement";
 import { providerLabel } from "@/lib/modelProviders";
@@ -85,6 +89,9 @@ export default function SettingsView() {
     );
   }
 
+  const llmReadiness = settingsLlmReadiness(systemStatus?.llm_readiness);
+  const defaultChatModel = settingsDefaultChatModel(models, systemStatus);
+
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-6">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white">⚙️ Settings</h2>
@@ -141,9 +148,13 @@ export default function SettingsView() {
             <span className="text-sm text-slate-500">
               LLM{models?.provider ? ` (${providerLabel(models.provider)})` : ""}:
             </span>
-            {systemStatus?.services?.llm === "connected" ? (
+            {llmReadiness === "ready" ? (
               <span className="flex items-center gap-1 text-sm text-green-600 font-medium">
-                <Wifi size={14} /> Connected
+                <Wifi size={14} /> Chat ready
+              </span>
+            ) : llmReadiness === "not_ready" ? (
+              <span className="flex items-center gap-1 text-sm text-amber-600 font-medium">
+                <Wifi size={14} /> Reachable, chat unavailable
               </span>
             ) : (
               <span className="flex items-center gap-1 text-sm text-red-500 font-medium">
@@ -155,8 +166,8 @@ export default function SettingsView() {
           {canManageInfrastructure && (
             <>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-500">Server Model:</span>
-                <span className="text-sm font-mono">{models?.active_model || "—"}</span>
+                <span className="text-sm text-slate-500">Default Chat Model:</span>
+                <span className="text-sm font-mono">{defaultChatModel || "Not configured"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-slate-500">Embed Model:</span>
@@ -405,6 +416,7 @@ function TelemetrySection() {
   } | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<string | null>(null);
+  const [persistenceNotice, setPersistenceNotice] = useState<string | null>(null);
 
   const fetchTelemetryStatus = async () => {
     try {
@@ -422,7 +434,18 @@ function TelemetrySection() {
     try {
       const result = await telemetryApi.toggle(!telemetryEnabled);
       setTelemetryEnabled(result.telemetry_enabled);
-    } catch {}
+      setPersistenceNotice(
+        result.message.toLowerCase().includes("persistence is unavailable")
+          ? result.message
+          : null,
+      );
+    } catch (error) {
+      setPersistenceNotice(
+        error instanceof Error
+          ? `Telemetry update failed: ${error.message}`
+          : "Telemetry update failed. Try again.",
+      );
+    }
   };
 
   const handleExport = async () => {
@@ -499,6 +522,15 @@ function TelemetrySection() {
       {exportResult && (
         <div className="mb-3 text-xs p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded border border-blue-100 dark:border-blue-800 break-all font-mono">
           {exportResult}
+        </div>
+      )}
+
+      {persistenceNotice && (
+        <div
+          className="mb-3 text-xs p-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded border border-amber-100 dark:border-amber-800"
+          role="status"
+        >
+          {persistenceNotice}
         </div>
       )}
 

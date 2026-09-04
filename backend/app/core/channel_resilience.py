@@ -167,7 +167,9 @@ def resilient_send(
 
             if breaker is not None:
                 return await breaker.call(
-                    lambda: retry_with_backoff(_call, max_retries=max_retries, base_delay=base_delay)
+                    lambda: retry_with_backoff(
+                        _call, max_retries=max_retries, base_delay=base_delay
+                    )
                 )
             return await retry_with_backoff(_call, max_retries=max_retries, base_delay=base_delay)
 

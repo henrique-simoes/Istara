@@ -277,6 +277,8 @@
 <li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
 <li>Recovery codes are shown once. Save them offline before leaving the screen.</li>
 <li>Current 2FA options are TOTP plus recovery codes. Passkeys are passwordless sign-in credentials, not SMS or email OTP.</li>
+<li>If the server cannot decrypt stored email PII, Settings intentionally shows a blank email rather than ciphertext. Saving another profile field omits that blank optional email, so the action does not accidentally submit an invalid replacement.</li>
+<li>If login bootstrap briefly supplies an incomplete team identity, the profile panel performs one safe authoritative refresh. It does not retry indefinitely, and a still-unavailable email remains blank rather than exposing encrypted data.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -290,9 +292,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/settings/AccountSecurityManager.tsx</code>, <code>frontend/src/components/settings/PasskeyManager.tsx</code>, <code>frontend/src/components/settings/TOTPManager.tsx</code>, <code>backend/app/api/routes/webauthn.py</code>, <code>backend/app/api/routes/auth.py</code>, <code>backend/app/core/recovery_codes.py</code></li>
+<li>Source files: <code>frontend/src/components/settings/AccountSecurityManager.tsx</code>, <code>frontend/src/lib/profileFormState.ts</code>, <code>frontend/src/components/settings/PasskeyManager.tsx</code>, <code>frontend/src/components/settings/TOTPManager.tsx</code>, <code>backend/app/api/routes/webauthn.py</code>, <code>backend/app/api/routes/auth.py</code>, <code>backend/app/core/recovery_codes.py</code></li>
 <li>API references: <code>backend/app/api/routes/webauthn.py</code>, <code>backend/app/api/routes/auth.py</code></li>
-<li>Tests: <code>tests/test_auth_security.py</code></li>
+<li>Tests: <code>frontend/src/lib/profileFormState.test.ts</code>, <code>frontend/src/lib/profileUpdatePayload.test.ts</code>, <code>tests/test_auth_security.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

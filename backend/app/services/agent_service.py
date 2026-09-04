@@ -11,8 +11,12 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent import (
-    Agent, AgentRole, AgentState, HeartbeatStatus,
-    ALL_CAPABILITIES, DEFAULT_CAPABILITIES,
+    Agent,
+    AgentRole,
+    AgentState,
+    HeartbeatStatus,
+    ALL_CAPABILITIES,
+    DEFAULT_CAPABILITIES,
 )
 from app.core.resource_governor import governor
 from app.core.hardware import detect_hardware
@@ -108,7 +112,13 @@ SYSTEM_AGENTS = [
             "traceability to the Atomic Research chain, and collaborate with "
             "Pixel, Sage, Echo, and Istara before recommending interface changes."
         ),
-        "capabilities": ["skill_execution", "findings_write", "a2a_messaging", "task_creation", "rag_retrieval"],
+        "capabilities": [
+            "skill_execution",
+            "findings_write",
+            "a2a_messaging",
+            "task_creation",
+            "rag_retrieval",
+        ],
         "specialties": ["design", "interfaces", "prototyping"],
         "is_system": True,
     },
@@ -124,9 +134,7 @@ async def seed_system_agents(db: AsyncSession) -> None:
     Pixel, Sage, Echo).
     """
     for agent_def in SYSTEM_AGENTS:
-        result = await db.execute(
-            select(Agent).where(Agent.id == agent_def["id"])
-        )
+        result = await db.execute(select(Agent).where(Agent.id == agent_def["id"]))
         existing = result.scalar_one_or_none()
 
         if existing is None:
@@ -165,9 +173,7 @@ async def seed_system_agents(db: AsyncSession) -> None:
                 existing.specialties = target_specs
                 updated = True
             if updated:
-                logger.info(
-                    f"Updated system agent: {agent_def['name']} ({agent_def['id']})"
-                )
+                logger.info(f"Updated system agent: {agent_def['name']} ({agent_def['id']})")
     await db.commit()
 
 
@@ -263,9 +269,9 @@ async def delete_agent(db: AsyncSession, agent_id: str) -> bool:
 async def set_agent_state(db: AsyncSession, agent_id: str, state: AgentState) -> bool:
     """Update an agent's state."""
     result = await db.execute(
-        update(Agent).where(Agent.id == agent_id).values(
-            state=state, updated_at=datetime.now(timezone.utc)
-        )
+        update(Agent)
+        .where(Agent.id == agent_id)
+        .values(state=state, updated_at=datetime.now(timezone.utc))
     )
     await db.commit()
     return result.rowcount > 0

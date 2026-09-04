@@ -208,9 +208,8 @@ async def relay_websocket(ws: WebSocket):
     from app.models.database import async_session
 
     network_token = ws.headers.get("x-access-token", "") or ws.query_params.get("access_token", "")
-    connection_string = (
-        ws.headers.get("x-istara-connection-string", "")
-        or ws.query_params.get("connection_string", "")
+    connection_string = ws.headers.get("x-istara-connection-string", "") or ws.query_params.get(
+        "connection_string", ""
     )
     auth_header = ws.headers.get("authorization", "")
     jwt_token = (
@@ -273,7 +272,9 @@ async def relay_websocket(ws: WebSocket):
                             registration_connection_string,
                         )
                     if reason != "ok":
-                        await ws.close(code=4001, reason="Invalid compute donation connection string")
+                        await ws.close(
+                            code=4001, reason="Invalid compute donation connection string"
+                        )
                         return
                     node_allowed_project_ids = _combine_project_scopes(user_scope, message_scope)
 

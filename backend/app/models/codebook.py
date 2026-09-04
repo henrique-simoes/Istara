@@ -40,7 +40,9 @@ class Codebook(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     version: Mapped[int] = mapped_column(Integer, default=1)
     description: Mapped[str] = mapped_column(Text, default="")
-    approach: Mapped[str] = mapped_column(String(20), default="inductive")  # inductive/deductive/hybrid
+    approach: Mapped[str] = mapped_column(
+        String(20), default="inductive"
+    )  # inductive/deductive/hybrid
     status: Mapped[str] = mapped_column(String(20), default="draft")  # draft/in_use/archived
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -88,7 +90,9 @@ class Code(Base):
     inclusion_criteria: Mapped[str] = mapped_column(Text, default="")
     exclusion_criteria: Mapped[str] = mapped_column(Text, default="")
     examples: Mapped[str] = mapped_column(Text, default="")  # JSON array of example quotes
-    code_type: Mapped[str] = mapped_column(String(30), default="descriptive")  # descriptive/in_vivo/process/emotion/evaluation
+    code_type: Mapped[str] = mapped_column(
+        String(30), default="descriptive"
+    )  # descriptive/in_vivo/process/emotion/evaluation
     frequency: Mapped[int] = mapped_column(Integer, default=0)
     kappa: Mapped[float | None] = mapped_column(Float, nullable=True)  # per-code ICR score
     created_at: Mapped[datetime] = mapped_column(

@@ -156,9 +156,7 @@ class ModelTempRunner(BaseLoopRunner):
         """Flag ``sweep_truncated`` when the catalog spans fewer distinct
         endpoints than the requested sweep width (never silently narrowed)."""
         if available == 0:
-            logger.warning(
-                "ModelTempRunner: no models available from PiModelManager catalog"
-            )
+            logger.warning("ModelTempRunner: no models available from PiModelManager catalog")
             self._sweep_truncated = True
         elif available < self._requested_endpoint_width:
             logger.warning(
@@ -179,17 +177,13 @@ class ModelTempRunner(BaseLoopRunner):
         self._tested.clear()
         self._grid = await self._build_grid()
         self._grid_index = 0
-        return await self._evaluate_skill(
-            target, endpoint_id=None, model=None, temperature=0.7
-        )
+        return await self._evaluate_skill(target, endpoint_id=None, model=None, temperature=0.7)
 
     async def measure(self, target: str) -> float:
         """Execute skill with the current test endpoint/temp."""
         candidate = self._current
         if candidate is None:
-            return await self._evaluate_skill(
-                target, endpoint_id=None, model=None, temperature=0.7
-            )
+            return await self._evaluate_skill(target, endpoint_id=None, model=None, temperature=0.7)
         return await self._evaluate_skill(
             target,
             endpoint_id=candidate.endpoint_id,
@@ -218,8 +212,7 @@ class ModelTempRunner(BaseLoopRunner):
         )
         mutation = {
             "description": (
-                f"endpoint={identity}, model={candidate.model}, "
-                f"temp={candidate.temperature}"
+                f"endpoint={identity}, model={candidate.model}, temp={candidate.temperature}"
             ),
             "endpoint_id": candidate.endpoint_id,
             "model": candidate.model,
@@ -227,9 +220,7 @@ class ModelTempRunner(BaseLoopRunner):
         }
         return hypothesis, mutation
 
-    async def apply_mutation(
-        self, target: str, mutation: dict
-    ) -> Callable[[], Awaitable[None]]:
+    async def apply_mutation(self, target: str, mutation: dict) -> Callable[[], Awaitable[None]]:
         """Set current endpoint/temp for evaluation. Revert is a no-op for point evals."""
         self._current = SweepCandidate(
             endpoint_id=mutation.get("endpoint_id"),
@@ -357,10 +348,7 @@ class ModelTempRunner(BaseLoopRunner):
             },
             {
                 "role": "user",
-                "content": (
-                    f"Skill: {skill_name}\n\n"
-                    f"Output to score:\n{output[:2000]}"
-                ),
+                "content": (f"Skill: {skill_name}\n\nOutput to score:\n{output[:2000]}"),
             },
         ]
 

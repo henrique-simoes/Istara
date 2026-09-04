@@ -120,7 +120,9 @@ def _resolve_document_file_path(doc: Document, project=None) -> Path | None:
         for idx in range(0, len(raw_parts) - 1):
             if raw_parts[idx : idx + 2] == upload_parts:
                 candidate = upload_dir / Path(*raw_parts[idx + 2 :])
-                if candidate.exists() and _is_allowed_project_path(candidate, project, doc.project_id):
+                if candidate.exists() and _is_allowed_project_path(
+                    candidate, project, doc.project_id
+                ):
                     return candidate
 
     candidates = [
@@ -256,21 +258,35 @@ async def _project_tag_counts(db: AsyncSession, project_id: str) -> dict[str, in
     """Aggregate project tags from documents, nuggets, and code applications."""
     tag_counts: dict[str, int] = {}
 
-    doc_rows = (await db.execute(select(Document.tags).where(Document.project_id == project_id))).scalars().all()
+    doc_rows = (
+        (await db.execute(select(Document.tags).where(Document.project_id == project_id)))
+        .scalars()
+        .all()
+    )
     for tags_json in doc_rows:
         for tag in _safe_json_list(tags_json):
             if isinstance(tag, str) and tag.strip():
                 tag_counts[tag] = tag_counts.get(tag, 0) + 1
 
-    nugget_rows = (await db.execute(select(Nugget.tags).where(Nugget.project_id == project_id))).scalars().all()
+    nugget_rows = (
+        (await db.execute(select(Nugget.tags).where(Nugget.project_id == project_id)))
+        .scalars()
+        .all()
+    )
     for tags_json in nugget_rows:
         for tag in _safe_json_list(tags_json):
             if isinstance(tag, str) and tag.strip():
                 tag_counts[tag] = tag_counts.get(tag, 0) + 1
 
     code_rows = (
-        await db.execute(select(CodeApplication.code_id).where(CodeApplication.project_id == project_id))
-    ).scalars().all()
+        (
+            await db.execute(
+                select(CodeApplication.code_id).where(CodeApplication.project_id == project_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
     for code_id in code_rows:
         if code_id and code_id.strip():
             tag_counts[code_id] = tag_counts.get(code_id, 0) + 1
@@ -278,26 +294,34 @@ async def _project_tag_counts(db: AsyncSession, project_id: str) -> dict[str, in
     return tag_counts
 
 
-async def _document_ids_for_project_tag(db: AsyncSession, project_id: str | None, tag: str) -> list[str]:
+async def _document_ids_for_project_tag(
+    db: AsyncSession, project_id: str | None, tag: str
+) -> list[str]:
     """Find documents related to a tag through direct tags or nugget sources."""
     if not project_id:
         return []
 
     docs = (
-        await db.execute(select(Document).where(Document.project_id == project_id))
-    ).scalars().all()
+        (await db.execute(select(Document).where(Document.project_id == project_id)))
+        .scalars()
+        .all()
+    )
     matched_ids = {
         doc.id for doc in docs if tag in [t for t in doc.get_tags() if isinstance(t, str)]
     }
 
     nugget_rows = (
-        await db.execute(
-            select(Nugget.source).where(
-                Nugget.project_id == project_id,
-                Nugget.tags.contains(f'"{tag}"'),
+        (
+            await db.execute(
+                select(Nugget.source).where(
+                    Nugget.project_id == project_id,
+                    Nugget.tags.contains(f'"{tag}"'),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for source in nugget_rows:
         for doc in docs:
             if _source_matches_document(source or "", doc):
@@ -335,7 +359,19 @@ class DocumentCreate(BaseModel):
     qa_provisional: bool = Field(default=False)
     source_kind: str = Field(default="", max_length=60)
 
-    @field_validator("project_id", "title", "description", "file_path", "file_name", "file_type", "task_id", "phase", "content_preview", "content_text", mode="before")
+    @field_validator(
+        "project_id",
+        "title",
+        "description",
+        "file_path",
+        "file_name",
+        "file_type",
+        "task_id",
+        "phase",
+        "content_preview",
+        "content_text",
+        mode="before",
+    )
     @classmethod
     def _strip_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -366,7 +402,9 @@ class DocumentUpdate(BaseModel):
     content_text: str | None = Field(default=None, max_length=5000000)
     version: int | None = Field(default=None, ge=1, le=1000000)
 
-    @field_validator("title", "description", "phase", "content_preview", "content_text", mode="before")
+    @field_validator(
+        "title", "description", "phase", "content_preview", "content_text", mode="before"
+    )
     @classmethod
     def _strip_optional_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -384,7 +422,9 @@ async def _require_task_in_project(db: AsyncSession, project_id: str, task_id: s
         return
     from app.models.task import Task
 
-    task = (await db.execute(select(Task.id).where(Task.id == task_id, Task.project_id == project_id))).scalar_one_or_none()
+    task = (
+        await db.execute(select(Task.id).where(Task.id == task_id, Task.project_id == project_id))
+    ).scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Linked task not found in this project.")
 
@@ -529,7 +569,9 @@ async def get_document(
 
 
 @router.post("/documents", status_code=201)
-async def create_document(data: DocumentCreate, request: Request, db: AsyncSession = Depends(get_db)):
+async def create_document(
+    data: DocumentCreate, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Create a new document record."""
     await get_visible_project_or_404(db, request, data.project_id, min_role="researcher")
     await _require_task_in_project(db, data.project_id, data.task_id)
@@ -691,6 +733,23 @@ async def delete_document(
         project_id,
         min_role="researcher",
     )
+
+    # Uploaded files live in the managed upload root and are scanned by the
+    # automatic project-folder sync. Remove the physical artifact with the
+    # USER_UPLOAD row so a later sync cannot resurrect a UUID-named duplicate.
+    # Never remove PROJECT_FILE/watch-folder sources or paths outside the
+    # managed root; those files remain owned by the user/project folder.
+    if doc.source == DocumentSource.USER_UPLOAD:
+        managed_file_path = _resolve_document_file_path(doc)
+        if managed_file_path and _is_managed_upload_path(managed_file_path):
+            try:
+                if managed_file_path.exists() and managed_file_path.is_file():
+                    managed_file_path.unlink()
+            except OSError as exc:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Unable to remove the managed upload; document was not deleted",
+                ) from exc
 
     await db.delete(doc)
     await db.commit()

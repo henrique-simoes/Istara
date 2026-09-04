@@ -265,6 +265,9 @@
 <li>The feature is mounted through <code>frontend/src/components/admin/AdminDashboard.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>The dashboard should prefer partial data with an explicit section error over all-or-nothing loading.</li>
 <li>The dashboard loads compute capacity through the admin-only aggregate endpoint instead of reusing project-facing <code>/api/compute/*</code> routes.</li>
+<li>The Access section reads <code>/api/admin/access</code>, which orders memberships by their persisted <code>added_at</code> timestamp and resolves project/user labels without exposing internal database errors.</li>
+<li>User emails in the Admin user list and Access view are fail-closed: unreadable encrypted values render as empty rather than leaking ciphertext (see <code>safe_decrypt_field</code>).</li>
+<li>Project deletion removes memberships explicitly before commit, keeping this Access view free of stale rows even when SQLite does not enforce foreign-key cascades.</li>
 <li>The dashboard&#x27;s donation-string action sends <code>allowed_project_ids</code> for the chosen project so donated compute does not become a global content processor.</li>
 <li>When the server has no network access token yet, compute donation string generation creates one before signing the donation string; invite strings for human users remain separate and do not include relay credentials.</li>
 <li>The dashboard may list and review pending permission requests without <code>project_id</code> only because the route checks global admin status; Project Settings must pass the active project id for the same permission-request APIs.</li>

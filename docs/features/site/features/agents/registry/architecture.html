@@ -270,6 +270,7 @@
 <li>Agent heartbeat, recent-log, avatar, and identity requests also carry the active project id; non-admin requests without that scope are rejected instead of falling back to a global agent view.</li>
 <li>Project-facing by-id actions for update, delete, pause, resume, restart, avatar upload, memory update, identity update, export, and import require the active project id. The backend resolves the agent by id plus owned project and returns not found for stale ids from another project or for universal/system agents on these project-owned mutation paths.</li>
 <li>Universal agents remain visible in project views, but runtime memory and current-task state are redacted for non-admin users because those fields are not project-partitioned.</li>
+<li>The onboarding description derives its system-agent count from the registry response, so the explanatory copy cannot drift from the number of rendered system-agent cards.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

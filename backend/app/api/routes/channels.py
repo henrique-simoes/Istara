@@ -26,6 +26,7 @@ router = APIRouter()
 # Request / response schemas
 # ---------------------------------------------------------------------------
 
+
 class CreateChannelRequest(BaseModel):
     platform: str  # telegram|slack|whatsapp|google_chat
     name: str
@@ -100,9 +101,7 @@ async def create_channel(
 ) -> dict:
     """Create a new channel instance."""
     scoped_project_id = _require_project_id(body.project_id)
-    await get_active_project_or_404(
-        db, request, scoped_project_id, min_role="project_admin"
-    )
+    await get_active_project_or_404(db, request, scoped_project_id, min_role="project_admin")
     try:
         instance = await channel_service.create_channel_instance(
             db,
@@ -197,9 +196,7 @@ async def start_channel(
     scoped_project_id, _ = await _get_project_channel_or_404(
         db, request, instance_id, project_id, min_role="project_admin"
     )
-    await get_active_project_or_404(
-        db, request, scoped_project_id, min_role="project_admin"
-    )
+    await get_active_project_or_404(db, request, scoped_project_id, min_role="project_admin")
     try:
         result = await channel_service.start_channel_instance(
             db, instance_id, project_id=scoped_project_id
@@ -292,9 +289,7 @@ async def get_channel_conversations(
     scoped_project_id, _ = await _get_project_channel_or_404(
         db, request, instance_id, project_id, min_role="viewer"
     )
-    return await channel_service.get_conversations(
-        db, instance_id, project_id=scoped_project_id
-    )
+    return await channel_service.get_conversations(db, instance_id, project_id=scoped_project_id)
 
 
 @router.post("/channels/{instance_id}/send")

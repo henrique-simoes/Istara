@@ -8,7 +8,7 @@ related_features: ["context.editor", "memory.knowledge", "chat.sessions"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/memory/MemoryView.tsx", "frontend/src/components/memory/ContextDAGView.tsx", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/contextDagApi.ts", "backend/app/api/routes/context_dag.py", "backend/app/core/context_dag.py"]
 api_references: ["backend/app/api/routes/context_dag.py"]
-test_references: ["tests/test_context_dag.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_context_dag.py", "tests/test_context_dag_ui_contracts.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
 compass: CF-SPEC-60 / CF-761
 ---
@@ -35,6 +35,8 @@ Context DAG exists so the work represented by Memory > Context DAG has a stable,
 - Use the visible controls in this surface to work with context dag in the active project context.
 - If no active-project chat session exists, the DAG remains empty instead of showing a previous project's context graph.
 - A stale session id from another project is rejected even when the same user can access both projects.
+- Chat compaction runs in the background without leaving pending database work behind at shutdown; repeated responses for one session share the active compaction task.
+- History Search keeps the result count readable as “N results for …”, including when no matches are found.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -68,4 +70,4 @@ Context DAG exists so the work represented by Memory > Context DAG has a stable,
 
 - Source files: `frontend/src/components/memory/MemoryView.tsx`, `frontend/src/components/memory/ContextDAGView.tsx`, `frontend/src/stores/sessionStore.ts`, `frontend/src/lib/contextDagApi.ts`, `backend/app/api/routes/context_dag.py`, `backend/app/core/context_dag.py`
 - API references: `backend/app/api/routes/context_dag.py`
-- Tests: `tests/test_context_dag.py`, `tests/test_project_scope_contracts.py`
+- Tests: `tests/test_context_dag.py`, `tests/test_context_dag_ui_contracts.py`, `tests/test_project_scope_contracts.py`

@@ -72,10 +72,13 @@ PARAMETER_BOUNDS: dict[str, Any] = {
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MetaProposal:
     id: str  # "mp_{uuid}"
-    target_system: str  # "task_router"|"self_evolution"|"skill_selection"|"quality_eval"|"agent_factory"
+    target_system: (
+        str  # "task_router"|"self_evolution"|"skill_selection"|"quality_eval"|"agent_factory"
+    )
     parameter_path: str  # e.g. "PROMOTION_THRESHOLDS.min_occurrences"
     current_value: Any
     proposed_value: Any
@@ -113,6 +116,7 @@ class MetaVariant:
 # Atomic file write (matches agent_factory.py pattern)
 # ---------------------------------------------------------------------------
 
+
 def _atomic_write(path: Path, content: str) -> None:
     """Write content to a file atomically via temp-file + rename."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -132,6 +136,7 @@ def _atomic_write(path: Path, content: str) -> None:
 # ---------------------------------------------------------------------------
 # MetaHyperagent singleton
 # ---------------------------------------------------------------------------
+
 
 class MetaHyperagent:
     """Observes subsystem metrics and proposes parameter tuning changes."""
@@ -287,9 +292,8 @@ class MetaHyperagent:
         # 1. Task routing — current keyword config
         try:
             import app.core.task_router as tr
-            keyword_counts = {
-                domain: len(kws) for domain, kws in tr.SPECIALTY_KEYWORDS.items()
-            }
+
+            keyword_counts = {domain: len(kws) for domain, kws in tr.SPECIALTY_KEYWORDS.items()}
             observation["task_routing"] = {
                 "specialty_domains": list(tr.SPECIALTY_KEYWORDS.keys()),
                 "keyword_counts": keyword_counts,
@@ -301,6 +305,7 @@ class MetaHyperagent:
         # 2. Self-evolution — current thresholds and promotion stats
         try:
             import app.core.self_evolution as se
+
             self_evolution_stats = {
                 "thresholds": se.get_effective_promotion_thresholds(scoped_project_id),
             }
@@ -351,9 +356,7 @@ class MetaHyperagent:
             total_executions = sum(s.get("executions", 0) for s in stats.values())
             total_successes = sum(s.get("successes", 0) for s in stats.values())
             total_failures = sum(s.get("failures", 0) for s in stats.values())
-            fallback_count = sum(
-                1 for s in stats.values() if s.get("matched_via") == "semantic"
-            )
+            fallback_count = sum(1 for s in stats.values() if s.get("matched_via") == "semantic")
             observation["skill_selection"] = {
                 "project_id": scoped_project_id,
                 "total_skills_tracked": len(stats),
@@ -362,9 +365,7 @@ class MetaHyperagent:
                 "total_failures": total_failures,
                 "semantic_fallback_count": fallback_count,
                 "success_rate": (
-                    round(total_successes / total_executions, 3)
-                    if total_executions > 0
-                    else None
+                    round(total_successes / total_executions, 3) if total_executions > 0 else None
                 ),
             }
         except Exception as exc:
@@ -375,20 +376,15 @@ class MetaHyperagent:
             from app.skills.skill_manager import skill_manager
 
             stats = skill_manager.get_usage_stats(project_id=scoped_project_id)
-            verification_passes = sum(
-                s.get("verification_passes", 0) for s in stats.values()
-            )
-            verification_fails = sum(
-                s.get("verification_fails", 0) for s in stats.values()
-            )
+            verification_passes = sum(s.get("verification_passes", 0) for s in stats.values())
+            verification_fails = sum(s.get("verification_fails", 0) for s in stats.values())
             observation["quality_eval"] = {
                 "project_id": scoped_project_id,
                 "verification_passes": verification_passes,
                 "verification_fails": verification_fails,
                 "pass_rate": (
                     round(
-                        verification_passes
-                        / (verification_passes + verification_fails),
+                        verification_passes / (verification_passes + verification_fails),
                         3,
                     )
                     if (verification_passes + verification_fails) > 0
@@ -429,14 +425,17 @@ class MetaHyperagent:
             self._recent_observations = self._recent_observations[-100:]
         self._save_observations()
 
-        self._log_audit("observation_cycle", {
-            "project_id": scoped_project_id,
-            "summary": {
-                k: bool(v)
-                for k, v in observation.items()
-                if k not in {"timestamp", "project_id"}
+        self._log_audit(
+            "observation_cycle",
+            {
+                "project_id": scoped_project_id,
+                "summary": {
+                    k: bool(v)
+                    for k, v in observation.items()
+                    if k not in {"timestamp", "project_id"}
+                },
             },
-        })
+        )
         return observation
 
     # -- Analysis & Proposal Generation -------------------------------------
@@ -459,28 +458,32 @@ class MetaHyperagent:
                 current_threshold = 0.6  # default in agent.py
                 proposed = max(0.3, round(current_threshold - 0.1, 2))
                 if proposed != current_threshold:
-                    proposals.append(MetaProposal(
-                        id=f"mp_{uuid.uuid4().hex[:12]}",
-                        target_system="skill_selection",
-                        parameter_path="agent.skill_similarity_threshold",
-                        current_value=current_threshold,
-                        proposed_value=proposed,
-                        reason=(
-                            f"Semantic fallback rate is {fallback_count}/{total_exec} "
-                            f"({fallback_count / total_exec:.0%}), exceeding 40% threshold. "
-                            f"Lowering similarity threshold may improve direct matching."
-                        ),
-                        evidence=[{
-                            "metric": "semantic_fallback_rate",
-                            "value": round(fallback_count / total_exec, 3),
-                            "total_executions": total_exec,
-                        }],
-                        confidence=60,
-                        expected_impact="More skills matched directly, fewer semantic fallbacks",
-                        status="pending",
-                        created_at=datetime.now(timezone.utc).isoformat(),
-                        project_id=scoped_project_id,
-                    ))
+                    proposals.append(
+                        MetaProposal(
+                            id=f"mp_{uuid.uuid4().hex[:12]}",
+                            target_system="skill_selection",
+                            parameter_path="agent.skill_similarity_threshold",
+                            current_value=current_threshold,
+                            proposed_value=proposed,
+                            reason=(
+                                f"Semantic fallback rate is {fallback_count}/{total_exec} "
+                                f"({fallback_count / total_exec:.0%}), exceeding 40% threshold. "
+                                f"Lowering similarity threshold may improve direct matching."
+                            ),
+                            evidence=[
+                                {
+                                    "metric": "semantic_fallback_rate",
+                                    "value": round(fallback_count / total_exec, 3),
+                                    "total_executions": total_exec,
+                                }
+                            ],
+                            confidence=60,
+                            expected_impact="More skills matched directly, fewer semantic fallbacks",
+                            status="pending",
+                            created_at=datetime.now(timezone.utc).isoformat(),
+                            project_id=scoped_project_id,
+                        )
+                    )
         except Exception as exc:
             logger.debug(f"Meta-hyperagent: skill selection analysis failed: {exc}")
 
@@ -495,31 +498,35 @@ class MetaHyperagent:
             promotion_rate = promoted_count / learning_count if learning_count else 0
             if min_occ > 2 and learning_count >= 10 and promotion_rate < 0.05:
                 # Require project-local evidence before suggesting evolution tuning.
-                proposals.append(MetaProposal(
-                    id=f"mp_{uuid.uuid4().hex[:12]}",
-                    target_system="self_evolution",
-                    parameter_path="self_evolution.PROMOTION_THRESHOLDS.min_occurrences",
-                    current_value=min_occ,
-                    proposed_value=max(1, min_occ - 1),
-                    reason=(
-                        f"Project has {learning_count} active learnings and only "
-                        f"{promoted_count} promoted ({promotion_rate:.0%}). "
-                        f"Lowering min_occurrences from {min_occ} to "
-                        f"{max(1, min_occ - 1)} may allow reviewed project-local "
-                        f"learning to mature faster."
-                    ),
-                    evidence=[{
-                        "metric": "project_promotion_rate",
-                        "project_learning_count": learning_count,
-                        "project_promoted_count": promoted_count,
-                        "value": round(promotion_rate, 3),
-                    }],
-                    confidence=45,
-                    expected_impact="More learnings promoted, faster agent adaptation",
-                    status="pending",
-                    created_at=datetime.now(timezone.utc).isoformat(),
-                    project_id=scoped_project_id,
-                ))
+                proposals.append(
+                    MetaProposal(
+                        id=f"mp_{uuid.uuid4().hex[:12]}",
+                        target_system="self_evolution",
+                        parameter_path="self_evolution.PROMOTION_THRESHOLDS.min_occurrences",
+                        current_value=min_occ,
+                        proposed_value=max(1, min_occ - 1),
+                        reason=(
+                            f"Project has {learning_count} active learnings and only "
+                            f"{promoted_count} promoted ({promotion_rate:.0%}). "
+                            f"Lowering min_occurrences from {min_occ} to "
+                            f"{max(1, min_occ - 1)} may allow reviewed project-local "
+                            f"learning to mature faster."
+                        ),
+                        evidence=[
+                            {
+                                "metric": "project_promotion_rate",
+                                "project_learning_count": learning_count,
+                                "project_promoted_count": promoted_count,
+                                "value": round(promotion_rate, 3),
+                            }
+                        ],
+                        confidence=45,
+                        expected_impact="More learnings promoted, faster agent adaptation",
+                        status="pending",
+                        created_at=datetime.now(timezone.utc).isoformat(),
+                        project_id=scoped_project_id,
+                    )
+                )
         except Exception as exc:
             logger.debug(f"Meta-hyperagent: self-evolution analysis failed: {exc}")
 
@@ -532,34 +539,39 @@ class MetaHyperagent:
             total = passes + fails
             if total >= 10 and fails / total > 0.30:
                 import app.core.self_evolution as se
-                current_conf = se.get_effective_promotion_thresholds(
-                    scoped_project_id
-                ).get("min_confidence", 70)
+
+                current_conf = se.get_effective_promotion_thresholds(scoped_project_id).get(
+                    "min_confidence", 70
+                )
                 proposed_conf = min(95, current_conf + 5)
                 if proposed_conf != current_conf:
-                    proposals.append(MetaProposal(
-                        id=f"mp_{uuid.uuid4().hex[:12]}",
-                        target_system="quality_eval",
-                        parameter_path="self_evolution.PROMOTION_THRESHOLDS.min_confidence",
-                        current_value=current_conf,
-                        proposed_value=proposed_conf,
-                        reason=(
-                            f"Quality verification fail rate is {fails}/{total} "
-                            f"({fails / total:.0%}). Raising confidence threshold "
-                            f"from {current_conf} to {proposed_conf} may improve "
-                            f"promoted learning quality."
-                        ),
-                        evidence=[{
-                            "metric": "verification_fail_rate",
-                            "value": round(fails / total, 3),
-                            "total_checks": total,
-                        }],
-                        confidence=55,
-                        expected_impact="Higher quality promoted learnings, fewer bad promotions",
-                        status="pending",
-                        created_at=datetime.now(timezone.utc).isoformat(),
-                        project_id=scoped_project_id,
-                    ))
+                    proposals.append(
+                        MetaProposal(
+                            id=f"mp_{uuid.uuid4().hex[:12]}",
+                            target_system="quality_eval",
+                            parameter_path="self_evolution.PROMOTION_THRESHOLDS.min_confidence",
+                            current_value=current_conf,
+                            proposed_value=proposed_conf,
+                            reason=(
+                                f"Quality verification fail rate is {fails}/{total} "
+                                f"({fails / total:.0%}). Raising confidence threshold "
+                                f"from {current_conf} to {proposed_conf} may improve "
+                                f"promoted learning quality."
+                            ),
+                            evidence=[
+                                {
+                                    "metric": "verification_fail_rate",
+                                    "value": round(fails / total, 3),
+                                    "total_checks": total,
+                                }
+                            ],
+                            confidence=55,
+                            expected_impact="Higher quality promoted learnings, fewer bad promotions",
+                            status="pending",
+                            created_at=datetime.now(timezone.utc).isoformat(),
+                            project_id=scoped_project_id,
+                        )
+                    )
         except Exception as exc:
             logger.debug(f"Meta-hyperagent: quality eval analysis failed: {exc}")
 
@@ -580,17 +592,21 @@ class MetaHyperagent:
 
         if new_proposals:
             self._save()
-            self._log_audit("proposals_generated", {
-                "project_id": scoped_project_id,
-                "count": len(new_proposals),
-                "paths": [p.parameter_path for p in new_proposals],
-            })
+            self._log_audit(
+                "proposals_generated",
+                {
+                    "project_id": scoped_project_id,
+                    "count": len(new_proposals),
+                    "paths": [p.parameter_path for p in new_proposals],
+                },
+            )
 
             # Broadcast each new proposal via WebSocket
             for p in new_proposals:
                 await self._record_validity_proposal(p, project_id=scoped_project_id)
                 try:
                     from app.api.websocket import broadcast_meta_proposal
+
                     await broadcast_meta_proposal(
                         proposal_id=p.id,
                         target_system=p.target_system,
@@ -637,8 +653,7 @@ class MetaHyperagent:
     def _is_protected_research_parameter(parameter_path: str) -> bool:
         normalized = str(parameter_path or "").strip().lower()
         return any(
-            normalized.startswith(prefix)
-            for prefix in PROTECTED_RESEARCH_PARAMETER_PREFIXES
+            normalized.startswith(prefix) for prefix in PROTECTED_RESEARCH_PARAMETER_PREFIXES
         )
 
     def _active_variant_count(self, project_id: str) -> int:
@@ -667,7 +682,9 @@ class MetaHyperagent:
 
         # Safety: max active variants
         if self._active_variant_count(scoped_project_id) >= MAX_ACTIVE_VARIANTS:
-            return {"error": f"Max active variants ({MAX_ACTIVE_VARIANTS}) reached. Revert or confirm existing variants first."}
+            return {
+                "error": f"Max active variants ({MAX_ACTIVE_VARIANTS}) reached. Revert or confirm existing variants first."
+            }
 
         if self._is_protected_research_parameter(proposal["parameter_path"]):
             return {
@@ -680,7 +697,9 @@ class MetaHyperagent:
 
         # Validate bounds
         if not self._validate_bounds(proposal["parameter_path"], proposal["proposed_value"]):
-            return {"error": f"Proposed value {proposal['proposed_value']} is outside bounds for {proposal['parameter_path']}"}
+            return {
+                "error": f"Proposed value {proposal['proposed_value']} is outside bounds for {proposal['parameter_path']}"
+            }
 
         # Create a project-scoped variant. The owning services consult active
         # variants at read time; meta-hyperagent must not mutate module globals
@@ -707,14 +726,17 @@ class MetaHyperagent:
         proposal["applied_at"] = now_iso
 
         self._save()
-        self._log_audit("proposal_applied", {
-            "project_id": scoped_project_id,
-            "proposal_id": proposal_id,
-            "variant_id": variant.id,
-            "parameter_path": proposal["parameter_path"],
-            "old_value": proposal["current_value"],
-            "new_value": proposal["proposed_value"],
-        })
+        self._log_audit(
+            "proposal_applied",
+            {
+                "project_id": scoped_project_id,
+                "proposal_id": proposal_id,
+                "variant_id": variant.id,
+                "parameter_path": proposal["parameter_path"],
+                "old_value": proposal["current_value"],
+                "new_value": proposal["proposed_value"],
+            },
+        )
 
         return variant_dict
 
@@ -737,18 +759,23 @@ class MetaHyperagent:
 
         # Update associated proposal
         for p in self._proposals:
-            if p.get("id") == variant["proposal_id"] and self._matches_project(p, scoped_project_id):
+            if p.get("id") == variant["proposal_id"] and self._matches_project(
+                p, scoped_project_id
+            ):
                 p["status"] = "reverted"
                 p["reverted_at"] = now_iso
                 break
 
         self._save()
-        self._log_audit("variant_reverted", {
-            "project_id": scoped_project_id,
-            "variant_id": variant_id,
-            "parameter_path": variant["parameter_path"],
-            "restored_value": variant["old_value"],
-        })
+        self._log_audit(
+            "variant_reverted",
+            {
+                "project_id": scoped_project_id,
+                "variant_id": variant_id,
+                "parameter_path": variant["parameter_path"],
+                "restored_value": variant["old_value"],
+            },
+        )
         return variant
 
     async def confirm_variant(self, variant_id: str, project_id: str | None = None) -> dict:
@@ -768,7 +795,9 @@ class MetaHyperagent:
 
         # Update associated proposal
         for p in self._proposals:
-            if p.get("id") == variant["proposal_id"] and self._matches_project(p, scoped_project_id):
+            if p.get("id") == variant["proposal_id"] and self._matches_project(
+                p, scoped_project_id
+            ):
                 p["status"] = "approved"
                 break
 
@@ -784,12 +813,15 @@ class MetaHyperagent:
         _atomic_write(OVERRIDES_FILE, json.dumps(overrides, indent=2, default=str))
 
         self._save()
-        self._log_audit("variant_confirmed", {
-            "project_id": scoped_project_id,
-            "variant_id": variant_id,
-            "parameter_path": variant["parameter_path"],
-            "confirmed_value": variant["new_value"],
-        })
+        self._log_audit(
+            "variant_confirmed",
+            {
+                "project_id": scoped_project_id,
+                "variant_id": variant_id,
+                "parameter_path": variant["parameter_path"],
+                "confirmed_value": variant["new_value"],
+            },
+        )
         return variant
 
     # -- Override persistence -----------------------------------------------
@@ -831,9 +863,8 @@ class MetaHyperagent:
         for param_path, entry in persisted.items():
             overrides[param_path] = entry.get("value") if isinstance(entry, dict) else entry
         for variant in self._variants:
-            if (
-                variant.get("status") in {"active", "confirmed"}
-                and self._matches_project(variant, scoped_project_id)
+            if variant.get("status") in {"active", "confirmed"} and self._matches_project(
+                variant, scoped_project_id
             ):
                 overrides[str(variant.get("parameter_path", ""))] = variant.get("new_value")
         return {key: value for key, value in overrides.items() if key}
@@ -857,7 +888,7 @@ class MetaHyperagent:
         result: dict[str, Any] = {}
         for path, value in self.get_project_parameter_overrides(project_id).items():
             if path.startswith(prefix):
-                key = path[len(prefix):]
+                key = path[len(prefix) :]
                 if key:
                     result[key] = value
         return result
@@ -882,15 +913,19 @@ class MetaHyperagent:
 
         if parts[0] == "self_evolution" and parts[1] == "PROMOTION_THRESHOLDS":
             import app.core.self_evolution as se
+
             key = parts[2] if len(parts) > 2 else None
             if key and key in se.PROMOTION_THRESHOLDS:
                 se.PROMOTION_THRESHOLDS[key] = value
-                logger.info(f"Meta-hyperagent: set self_evolution.PROMOTION_THRESHOLDS.{key} = {value}")
+                logger.info(
+                    f"Meta-hyperagent: set self_evolution.PROMOTION_THRESHOLDS.{key} = {value}"
+                )
                 return
             raise ValueError(f"Unknown PROMOTION_THRESHOLDS key: {key}")
 
         if parts[0] == "task_router" and parts[1] == "SPECIALTY_KEYWORDS":
             import app.core.task_router as tr
+
             if len(parts) >= 3:
                 domain = parts[2]
                 # value can be a keyword string to append, or a list to replace
@@ -901,17 +936,23 @@ class MetaHyperagent:
                             max_kw = bounds.get("max_keywords_per_domain", 50)
                             if len(tr.SPECIALTY_KEYWORDS[domain]) < max_kw:
                                 tr.SPECIALTY_KEYWORDS[domain].append(value)
-                                logger.info(f"Meta-hyperagent: appended '{value}' to task_router.SPECIALTY_KEYWORDS[{domain}]")
+                                logger.info(
+                                    f"Meta-hyperagent: appended '{value}' to task_router.SPECIALTY_KEYWORDS[{domain}]"
+                                )
                                 return
                             raise ValueError(f"Domain '{domain}' at max keywords ({max_kw})")
                         return  # Already present
                     else:
                         tr.SPECIALTY_KEYWORDS[domain] = [value]
-                        logger.info(f"Meta-hyperagent: created task_router.SPECIALTY_KEYWORDS[{domain}] = [{value}]")
+                        logger.info(
+                            f"Meta-hyperagent: created task_router.SPECIALTY_KEYWORDS[{domain}] = [{value}]"
+                        )
                         return
                 elif isinstance(value, list):
                     tr.SPECIALTY_KEYWORDS[domain] = value
-                    logger.info(f"Meta-hyperagent: replaced task_router.SPECIALTY_KEYWORDS[{domain}]")
+                    logger.info(
+                        f"Meta-hyperagent: replaced task_router.SPECIALTY_KEYWORDS[{domain}]"
+                    )
                     return
             raise ValueError(f"Invalid task_router.SPECIALTY_KEYWORDS path: {parameter_path}")
 
@@ -929,6 +970,7 @@ class MetaHyperagent:
         if parameter_path == "agent_factory.coverage_threshold":
             # The coverage check uses a hardcoded 0.6 — store as module attr
             import app.core.agent_factory as af
+
             af._META_COVERAGE_THRESHOLD = value
             logger.info(f"Meta-hyperagent: set agent_factory._META_COVERAGE_THRESHOLD = {value}")
             return
@@ -951,27 +993,19 @@ class MetaHyperagent:
         """Return whether the observation loop is active for the requested project."""
         scoped_project_id = str(project_id or "").strip()
         return bool(
-            scoped_project_id
-            and self.is_running
-            and self._active_project_id == scoped_project_id
+            scoped_project_id and self.is_running and self._active_project_id == scoped_project_id
         )
 
     def start(self, project_id: str | None = None) -> asyncio.Task:
         """Start the observation loop and retain the task handle."""
         scoped_project_id = self._require_project_id(project_id)
-        if (
-            self._task
-            and not self._task.done()
-            and self._active_project_id == scoped_project_id
-        ):
+        if self._task and not self._task.done() and self._active_project_id == scoped_project_id:
             return self._task
         if self._task and not self._task.done():
             self.stop()
         self._active_project_id = scoped_project_id
         self.load_confirmed_overrides(project_id=scoped_project_id)
-        self._task = asyncio.create_task(
-            self.start_observation_loop(project_id=scoped_project_id)
-        )
+        self._task = asyncio.create_task(self.start_observation_loop(project_id=scoped_project_id))
         return self._task
 
     async def start_observation_loop(self, project_id: str | None = None) -> None:
@@ -1094,11 +1128,14 @@ class MetaHyperagent:
                 if reason:
                     p["reject_reason"] = reason
                 self._save()
-                self._log_audit("proposal_rejected", {
-                    "project_id": scoped_project_id,
-                    "proposal_id": proposal_id,
-                    "reason": reason,
-                })
+                self._log_audit(
+                    "proposal_rejected",
+                    {
+                        "project_id": scoped_project_id,
+                        "proposal_id": proposal_id,
+                        "reason": reason,
+                    },
+                )
                 return p
         return None
 

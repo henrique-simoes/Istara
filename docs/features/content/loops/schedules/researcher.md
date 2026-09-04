@@ -34,6 +34,7 @@ Loop Schedules exists so the work represented by Loops > Schedules has a stable,
 - Open Loops > Schedules from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with loop schedules in the active project context.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- Use the live preview to confirm that five future occurrences are shown for sparse schedules such as daily or weekly runs before saving.
 
 ## Supported Workflows
 

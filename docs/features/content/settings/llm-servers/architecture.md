@@ -72,6 +72,9 @@ public `/api/settings/status` is redacted and passive.
   `catalog()` feeds the settings model UI and benchmark comparison surfaces;
   project-readable chat callers pass a project id so Petals entries are
   filtered by the same admission predicate used by endpoint resolution.
+  When an isolated caller injects an explicit catalog, an unqualified
+  resolution selects its first admitted entry instead of falling back to the
+  built-in default endpoint, preserving the caller's authority boundary.
 
 ### Live Catalog Refresh And Merged Model View
 
@@ -109,6 +112,11 @@ public `/api/settings/status` is redacted and passive.
 - Chat uses the project-readable identity-only model catalog and stores an exact
   `endpoint_override` alongside `model_override`, preserving provider identity
   when two providers expose the same model id.
+- The shared Pi endpoint-boundary network guard applies to both worker-backed
+  chat and the Python-direct embeddings gateway. Ordinary tests fail closed
+  before public-provider HTTP when `ISTARA_TEST_BLOCK_EXTERNAL_LLM=1`; only
+  loopback, faux, Docker, and reserved test domains remain eligible for
+  deterministic contract coverage.
 
 ## Architecture Notes
 

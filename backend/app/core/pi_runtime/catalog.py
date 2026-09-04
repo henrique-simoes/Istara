@@ -142,16 +142,48 @@ _API_KEY_PROVIDERS: dict[str, tuple[str, str, str]] = {
     "moonshotai": ("MOONSHOTAI_API_KEY", "moonshotai", "Moonshot AI"),
     "moonshotai-cn": ("MOONSHOTAI_CN_API_KEY", "moonshotai-cn", "Moonshot AI (China)"),
     "qwen-token-plan": ("QWEN_TOKEN_PLAN_API_KEY", "qwen-token-plan", "Qwen Token Plan"),
-    "qwen-token-plan-cn": ("QWEN_TOKEN_PLAN_CN_API_KEY", "qwen-token-plan-cn", "Qwen Token Plan (China)"),
-    "qwen-token-plan-individual": ("QWEN_TOKEN_PLAN_API_KEY", "qwen-token-plan-individual", "Qwen Token Plan (Individual)"),
+    "qwen-token-plan-cn": (
+        "QWEN_TOKEN_PLAN_CN_API_KEY",
+        "qwen-token-plan-cn",
+        "Qwen Token Plan (China)",
+    ),
+    "qwen-token-plan-individual": (
+        "QWEN_TOKEN_PLAN_API_KEY",
+        "qwen-token-plan-individual",
+        "Qwen Token Plan (Individual)",
+    ),
     "xiaomi": ("XIAOMI_API_KEY", "xiaomi", "Xiaomi MiMo"),
-    "xiaomi-token-plan-cn": ("XIAOMI_TOKEN_PLAN_CN_API_KEY", "xiaomi-token-plan-cn", "Xiaomi MiMo Token Plan (China)"),
-    "xiaomi-token-plan-ams": ("XIAOMI_TOKEN_PLAN_AMS_API_KEY", "xiaomi-token-plan-ams", "Xiaomi MiMo Token Plan (Amsterdam)"),
-    "xiaomi-token-plan-sgp": ("XIAOMI_TOKEN_PLAN_SGP_API_KEY", "xiaomi-token-plan-sgp", "Xiaomi MiMo Token Plan (Singapore)"),
+    "xiaomi-token-plan-cn": (
+        "XIAOMI_TOKEN_PLAN_CN_API_KEY",
+        "xiaomi-token-plan-cn",
+        "Xiaomi MiMo Token Plan (China)",
+    ),
+    "xiaomi-token-plan-ams": (
+        "XIAOMI_TOKEN_PLAN_AMS_API_KEY",
+        "xiaomi-token-plan-ams",
+        "Xiaomi MiMo Token Plan (Amsterdam)",
+    ),
+    "xiaomi-token-plan-sgp": (
+        "XIAOMI_TOKEN_PLAN_SGP_API_KEY",
+        "xiaomi-token-plan-sgp",
+        "Xiaomi MiMo Token Plan (Singapore)",
+    ),
     "ant-ling": ("ANT_LING_API_KEY", "ant-ling", "Ant Ling"),
-    "azure-openai-responses": ("AZURE_OPENAI_API_KEY", "azure-openai-responses", "Azure OpenAI Responses"),
-    "cloudflare-ai-gateway": ("CLOUDFLARE_API_KEY", "cloudflare-ai-gateway", "Cloudflare AI Gateway"),
-    "cloudflare-workers-ai": ("CLOUDFLARE_API_KEY", "cloudflare-workers-ai", "Cloudflare Workers AI"),
+    "azure-openai-responses": (
+        "AZURE_OPENAI_API_KEY",
+        "azure-openai-responses",
+        "Azure OpenAI Responses",
+    ),
+    "cloudflare-ai-gateway": (
+        "CLOUDFLARE_API_KEY",
+        "cloudflare-ai-gateway",
+        "Cloudflare AI Gateway",
+    ),
+    "cloudflare-workers-ai": (
+        "CLOUDFLARE_API_KEY",
+        "cloudflare-workers-ai",
+        "Cloudflare Workers AI",
+    ),
     "vercel-ai-gateway": ("AI_GATEWAY_API_KEY", "vercel-ai-gateway", "Vercel AI Gateway"),
     "opencode": ("OPENCODE_API_KEY", "opencode", "OpenCode Zen"),
     "opencode-go": ("OPENCODE_API_KEY", "opencode-go", "OpenCode Go"),
@@ -201,7 +233,9 @@ def pi_catalog_providers() -> list[PiCatalogProvider]:
         oauth = _OAUTH_PROVIDERS.get(provider_id)
         key_info = _API_KEY_PROVIDERS.get(provider_id)
         models = [
-            PiCatalogModel(**{k: v for k, v in m.items() if k in PiCatalogModel.__dataclass_fields__})
+            PiCatalogModel(
+                **{k: v for k, v in m.items() if k in PiCatalogModel.__dataclass_fields__}
+            )
             for m in raw[provider_id]
         ]
         oauth_provider = str(oauth.get("oauth_provider", provider_id)) if oauth else None
@@ -222,7 +256,9 @@ def pi_catalog_providers() -> list[PiCatalogProvider]:
                 oauth_methods=list(oauth.get("oauth_methods", [])) if oauth else [],
                 oauth_provider=oauth_provider,
                 oauth_model_ids=oauth_model_ids,
-                auth_description=str(oauth.get("description", "")) if oauth else "API key or configured ambient credentials.",
+                auth_description=str(oauth.get("description", ""))
+                if oauth
+                else "API key or configured ambient credentials.",
                 models=models,
             )
         )
@@ -239,7 +275,15 @@ def provider_summary() -> dict[str, Any]:
     return {
         "provider_count": len(providers),
         "model_count": sum(len(p.models) for p in providers),
-        "providers": [{"id": p.id, "display_name": p.display_name, "models": len(p.models),
-                       "login_methods": p.login_methods, "oauth_flow": p.oauth_flow,
-                       "env_var": p.env_var} for p in providers],
+        "providers": [
+            {
+                "id": p.id,
+                "display_name": p.display_name,
+                "models": len(p.models),
+                "login_methods": p.login_methods,
+                "oauth_flow": p.oauth_flow,
+                "env_var": p.env_var,
+            }
+            for p in providers
+        ],
     }

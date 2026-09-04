@@ -147,7 +147,7 @@ def _truncate_to_tokens(text: str, max_tokens: int) -> str:
     last_newline = truncated.rfind("\n")
     cut_point = max(last_period, last_newline)
     if cut_point > max_chars * 0.7:
-        return truncated[:cut_point + 1]
+        return truncated[: cut_point + 1]
     return truncated + "\n\n[...truncated for context window budget]"
 
 
@@ -218,6 +218,7 @@ def _compress_llmlingua(composed: str, budget_tokens: int) -> str:
     """Compress using LLMLingua-inspired heuristic compression."""
     try:
         from app.core.prompt_compressor import compress_prompt
+
         return compress_prompt(composed, max_tokens=budget_tokens)
     except Exception as e:
         logger.warning(f"LLMLingua compression failed, falling back to truncate: {e}")
@@ -309,8 +310,7 @@ def list_agent_personas() -> list[str]:
         if not base_dir.exists():
             continue
         agent_ids.update(
-            d.name for d in base_dir.iterdir()
-            if d.is_dir() and (d / "CORE.md").exists()
+            d.name for d in base_dir.iterdir() if d.is_dir() and (d / "CORE.md").exists()
         )
     return sorted(agent_ids)
 
@@ -460,8 +460,18 @@ def get_capability_card(agent_id: str) -> dict:
             card["description"] = lines[0][:200]
         # Extract specialties from keywords
         core_lower = core_text.lower()
-        for specialty in ["usability", "accessibility", "devops", "data integrity", "simulation",
-                          "testing", "ux evaluation", "ui audit", "research", "analysis"]:
+        for specialty in [
+            "usability",
+            "accessibility",
+            "devops",
+            "data integrity",
+            "simulation",
+            "testing",
+            "ux evaluation",
+            "ui audit",
+            "research",
+            "analysis",
+        ]:
             if specialty in core_lower:
                 card["specialties"].append(specialty)
 
@@ -471,7 +481,8 @@ def get_capability_card(agent_id: str) -> dict:
         skills_text = skills_path.read_text(encoding="utf-8")
         # Find skill-like headers (## or ### with action verbs)
         import re
-        headers = re.findall(r'^#{2,3}\s+(.+)', skills_text, re.MULTILINE)
+
+        headers = re.findall(r"^#{2,3}\s+(.+)", skills_text, re.MULTILINE)
         card["skills"] = [h.strip() for h in headers[:20]]
 
     return card

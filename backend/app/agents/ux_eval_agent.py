@@ -32,6 +32,7 @@ class UXEvalAgent:
         self._client: httpx.AsyncClient | None = None
         # Task execution worker
         from app.core.sub_agent_worker import SubAgentWorker
+
         self._worker = SubAgentWorker("istara-ux-eval", check_interval=30)
         self._worker_task: asyncio.Task | None = None
 
@@ -148,7 +149,9 @@ class UXEvalAgent:
                 "step": name,
                 "success": success,
                 "status_code": resp.status_code,
-                "response_ms": resp.elapsed.total_seconds() * 1000 if hasattr(resp, "elapsed") else 0,
+                "response_ms": resp.elapsed.total_seconds() * 1000
+                if hasattr(resp, "elapsed")
+                else 0,
                 "response": body,
                 "error": None if success else resp.text[:200],
             }
@@ -175,7 +178,10 @@ class UXEvalAgent:
 
         # Step 3: Create project with full context
         result = await self._step(
-            client, "Create project", "POST", "/api/projects",
+            client,
+            "Create project",
+            "POST",
+            "/api/projects",
             json={
                 "name": f"UX Eval Test {uuid.uuid4().hex[:6]}",
                 "description": "Automated UX evaluation journey test",
@@ -200,7 +206,11 @@ class UXEvalAgent:
             await self._step(client, "Cleanup", "DELETE", f"/api/projects/{project_id}")
 
         passed = all(s["success"] for s in steps if s["step"] != "Cleanup")
-        issues = [s["step"] + ": " + (s["error"] or "failed") for s in steps if not s["success"] and s["step"] != "Cleanup"]
+        issues = [
+            s["step"] + ": " + (s["error"] or "failed")
+            for s in steps
+            if not s["success"] and s["step"] != "Cleanup"
+        ]
 
         return {
             "name": "First-time Setup",
@@ -217,8 +227,14 @@ class UXEvalAgent:
 
         # Step 1: Create project
         result = await self._step(
-            client, "Create project", "POST", "/api/projects",
-            json={"name": f"Upload Test {uuid.uuid4().hex[:6]}", "description": "File upload journey test"},
+            client,
+            "Create project",
+            "POST",
+            "/api/projects",
+            json={
+                "name": f"Upload Test {uuid.uuid4().hex[:6]}",
+                "description": "File upload journey test",
+            },
         )
         steps.append(result)
         if result["success"]:
@@ -236,7 +252,10 @@ class UXEvalAgent:
             )
             files = {"file": ("test-interview.txt", test_content.encode(), "text/plain")}
             result = await self._step(
-                client, "Upload file", "POST", f"/api/files/upload/{project_id}",
+                client,
+                "Upload file",
+                "POST",
+                f"/api/files/upload/{project_id}",
                 files=files,
             )
             steps.append(result)
@@ -264,7 +283,11 @@ class UXEvalAgent:
             await self._step(client, "Cleanup", "DELETE", f"/api/projects/{project_id}")
 
         passed = all(s["success"] for s in steps if s["step"] != "Cleanup")
-        issues = [s["step"] + ": " + (s["error"] or "failed") for s in steps if not s["success"] and s["step"] != "Cleanup"]
+        issues = [
+            s["step"] + ": " + (s["error"] or "failed")
+            for s in steps
+            if not s["success"] and s["step"] != "Cleanup"
+        ]
 
         return {
             "name": "Upload & Analyze Interview",
@@ -282,8 +305,14 @@ class UXEvalAgent:
 
         # Step 1: Create project
         result = await self._step(
-            client, "Create project", "POST", "/api/projects",
-            json={"name": f"Task Test {uuid.uuid4().hex[:6]}", "description": "Task tracking journey test"},
+            client,
+            "Create project",
+            "POST",
+            "/api/projects",
+            json={
+                "name": f"Task Test {uuid.uuid4().hex[:6]}",
+                "description": "Task tracking journey test",
+            },
         )
         steps.append(result)
         if result["success"]:
@@ -292,7 +321,10 @@ class UXEvalAgent:
         if project_id:
             # Step 2: Create a task
             result = await self._step(
-                client, "Create task", "POST", "/api/tasks",
+                client,
+                "Create task",
+                "POST",
+                "/api/tasks",
                 json={
                     "project_id": project_id,
                     "title": "Analyze test interview data",
@@ -307,7 +339,10 @@ class UXEvalAgent:
             # Step 3: Assign to agent
             if task_id:
                 result = await self._step(
-                    client, "Assign to agent", "PATCH", f"/api/tasks/{task_id}",
+                    client,
+                    "Assign to agent",
+                    "PATCH",
+                    f"/api/tasks/{task_id}",
                     json={"agent_id": "istara-main"},
                 )
                 steps.append(result)
@@ -319,16 +354,18 @@ class UXEvalAgent:
             steps.append(result)
 
             # Step 5: Check agent status
-            result = await self._step(
-                client, "Check agent status", "GET", "/api/agents/status"
-            )
+            result = await self._step(client, "Check agent status", "GET", "/api/agents/status")
             steps.append(result)
 
             # Cleanup
             await self._step(client, "Cleanup", "DELETE", f"/api/projects/{project_id}")
 
         passed = all(s["success"] for s in steps if s["step"] != "Cleanup")
-        issues = [s["step"] + ": " + (s["error"] or "failed") for s in steps if not s["success"] and s["step"] != "Cleanup"]
+        issues = [
+            s["step"] + ": " + (s["error"] or "failed")
+            for s in steps
+            if not s["success"] and s["step"] != "Cleanup"
+        ]
 
         return {
             "name": "Create & Track Tasks",
@@ -345,7 +382,9 @@ class UXEvalAgent:
         # Step 1: List all projects
         result = await self._step(client, "List projects", "GET", "/api/projects")
         steps.append(result)
-        projects = result["response"] if result["success"] and isinstance(result["response"], list) else []
+        projects = (
+            result["response"] if result["success"] and isinstance(result["response"], list) else []
+        )
 
         if projects:
             pid = projects[0].get("id", "")
@@ -356,9 +395,7 @@ class UXEvalAgent:
             steps.append(result)
 
             # Step 3: Get nuggets
-            result = await self._step(
-                client, "Get nuggets", "GET", f"/api/findings/{pid}/nuggets"
-            )
+            result = await self._step(client, "Get nuggets", "GET", f"/api/findings/{pid}/nuggets")
             steps.append(result)
 
             # Step 4: Get insights
@@ -367,7 +404,16 @@ class UXEvalAgent:
             )
             steps.append(result)
         else:
-            steps.append({"step": "Skip findings (no projects)", "success": True, "status_code": 0, "response_ms": 0, "response": {}, "error": None})
+            steps.append(
+                {
+                    "step": "Skip findings (no projects)",
+                    "success": True,
+                    "status_code": 0,
+                    "response_ms": 0,
+                    "response": {},
+                    "error": None,
+                }
+            )
 
         passed = all(s["success"] for s in steps)
         issues = [s["step"] + ": " + (s["error"] or "failed") for s in steps if not s["success"]]
@@ -387,8 +433,14 @@ class UXEvalAgent:
 
         # Step 1: Create project
         result = await self._step(
-            client, "Create project", "POST", "/api/projects",
-            json={"name": f"Context Test {uuid.uuid4().hex[:6]}", "description": "Context journey test"},
+            client,
+            "Create project",
+            "POST",
+            "/api/projects",
+            json={
+                "name": f"Context Test {uuid.uuid4().hex[:6]}",
+                "description": "Context journey test",
+            },
         )
         steps.append(result)
         if result["success"]:
@@ -397,21 +449,30 @@ class UXEvalAgent:
         if project_id:
             # Step 2: Update company context
             result = await self._step(
-                client, "Update company context", "PATCH", f"/api/projects/{project_id}",
+                client,
+                "Update company context",
+                "PATCH",
+                f"/api/projects/{project_id}",
                 json={"company_context": "Updated company context for testing"},
             )
             steps.append(result)
 
             # Step 3: Update project context
             result = await self._step(
-                client, "Update project context", "PATCH", f"/api/projects/{project_id}",
+                client,
+                "Update project context",
+                "PATCH",
+                f"/api/projects/{project_id}",
                 json={"project_context": "Updated project context for testing"},
             )
             steps.append(result)
 
             # Step 4: Update guardrails
             result = await self._step(
-                client, "Update guardrails", "PATCH", f"/api/projects/{project_id}",
+                client,
+                "Update guardrails",
+                "PATCH",
+                f"/api/projects/{project_id}",
                 json={"guardrails": "Updated guardrails for testing"},
             )
             steps.append(result)
@@ -431,7 +492,11 @@ class UXEvalAgent:
             await self._step(client, "Cleanup", "DELETE", f"/api/projects/{project_id}")
 
         passed = all(s["success"] for s in steps if s["step"] != "Cleanup")
-        issues = [s["step"] + ": " + (s["error"] or "failed") for s in steps if not s["success"] and s["step"] != "Cleanup"]
+        issues = [
+            s["step"] + ": " + (s["error"] or "failed")
+            for s in steps
+            if not s["success"] and s["step"] != "Cleanup"
+        ]
 
         return {
             "name": "Configure Context Layers",

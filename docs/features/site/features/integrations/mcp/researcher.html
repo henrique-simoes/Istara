@@ -272,7 +272,10 @@
 <li>Project-scoped MCP server registrations associated with the selected project.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 <li>Discovery, deletion, health checks, cached tool views, and tool calls only operate on MCP servers owned by the active project.</li>
+<li>If a server save is rejected (for example, because the URL or headers are invalid), the setup form remains available and shows the returned error so the researcher can correct the input.</li>
+<li>The setup form keeps Test Connection and Save Server disabled until the URL is an absolute HTTP(S) endpoint without embedded credentials or query parameters, and shows an inline correction message for malformed values.</li>
 <li>Admin MCP audit review in the Integrations MCP tab is filtered to the active project. Cross-project MCP audit aggregation is reserved for explicit global-admin reporting surfaces.</li>
+<li>If an external MCP health check or tool call fails, the UI receives stable credential/network guidance; private endpoint and transport exception details stay in server logs.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>

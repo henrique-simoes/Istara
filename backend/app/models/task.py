@@ -39,7 +39,9 @@ class Task(Base):
     position: Mapped[int] = mapped_column(default=0)
     priority: Mapped[str] = mapped_column(String(20), default="medium")
     input_document_ids: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of document IDs
-    output_document_ids: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of document IDs
+    output_document_ids: Mapped[str] = mapped_column(
+        Text, default="[]"
+    )  # JSON list of document IDs
     urls: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of URLs to fetch
     instructions: Mapped[str] = mapped_column(Text, default="")  # Specific instructions from user
     labels: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of task-management labels
@@ -52,17 +54,25 @@ class Task(Base):
     approval_streak: Mapped[int] = mapped_column(Integer, default=0)
     last_review_outcome: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)
     last_reviewed_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
-    last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    last_reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
     last_review_feedback: Mapped[str] = mapped_column(Text, default="")
     next_agent_action: Mapped[str | None] = mapped_column(String(30), nullable=True, default=None)
     human_feedback_score: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     review_severity: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
-    review_failure_category: Mapped[str | None] = mapped_column(String(60), nullable=True, default=None)
+    review_failure_category: Mapped[str | None] = mapped_column(
+        String(60), nullable=True, default=None
+    )
 
     # Task locking (multi-user)
     locked_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
-    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
-    lock_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    locked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
+    lock_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
 
     # Validation / consensus
     validation_method: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)
@@ -72,7 +82,9 @@ class Task(Base):
     # Retry / process hardening
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     max_retries: Mapped[int] = mapped_column(Integer, default=3)
-    last_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    last_retry_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

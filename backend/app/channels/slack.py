@@ -30,8 +30,7 @@ try:
 except ImportError:
     _SLACK_AVAILABLE = False
     logger.warning(
-        "slack-bolt is not installed. "
-        "Install with: pip install 'slack-bolt[async]>=1.20.0'"
+        "slack-bolt is not installed. Install with: pip install 'slack-bolt[async]>=1.20.0'"
     )
 
 
@@ -40,15 +39,11 @@ class SlackAdapter(ChannelAdapter):
 
     def __init__(self, instance_id: str = "", config: dict | None = None) -> None:
         super().__init__(instance_id, config)
-        self._bot_token: str = self.config.get("bot_token", "") or os.getenv(
-            "SLACK_BOT_TOKEN", ""
-        )
+        self._bot_token: str = self.config.get("bot_token", "") or os.getenv("SLACK_BOT_TOKEN", "")
         self._signing_secret: str = self.config.get("signing_secret", "") or os.getenv(
             "SLACK_SIGNING_SECRET", ""
         )
-        self._app_token: str = self.config.get("app_token", "") or os.getenv(
-            "SLACK_APP_TOKEN", ""
-        )
+        self._app_token: str = self.config.get("app_token", "") or os.getenv("SLACK_APP_TOKEN", "")
         self._slack_app = None  # slack_bolt AsyncApp
         self._client: AsyncWebClient | None = None
         self._socket_handler = None
@@ -69,13 +64,10 @@ class SlackAdapter(ChannelAdapter):
         """Start the Slack event listener."""
         if not _SLACK_AVAILABLE:
             raise RuntimeError(
-                "slack-bolt is not installed. "
-                "Install with: pip install 'slack-bolt[async]>=1.20.0'"
+                "slack-bolt is not installed. Install with: pip install 'slack-bolt[async]>=1.20.0'"
             )
         if not self._bot_token or not self._signing_secret:
-            raise RuntimeError(
-                "SlackAdapter is not enabled (missing bot_token or signing_secret)"
-            )
+            raise RuntimeError("SlackAdapter is not enabled (missing bot_token or signing_secret)")
 
         self._slack_app = AsyncApp(
             token=self._bot_token,
@@ -94,13 +86,9 @@ class SlackAdapter(ChannelAdapter):
 
         # Start Socket Mode if app_token is available
         if self._app_token:
-            self._socket_handler = AsyncSocketModeHandler(
-                self._slack_app, self._app_token
-            )
+            self._socket_handler = AsyncSocketModeHandler(self._slack_app, self._app_token)
             self._bg_task = asyncio.create_task(self._socket_handler.start_async())
-            logger.info(
-                "Slack adapter started in Socket Mode (instance=%s).", self.name
-            )
+            logger.info("Slack adapter started in Socket Mode (instance=%s).", self.name)
         else:
             # HTTP mode: the app needs to be mounted externally or events
             # routed via a webhook. We mark as running but note the limitation.
@@ -178,9 +166,7 @@ class SlackAdapter(ChannelAdapter):
                     )
 
                 await self._breaker.call(
-                    lambda: retry_with_backoff(
-                        _upload_file, max_retries=3, base_delay=1.0
-                    )
+                    lambda: retry_with_backoff(_upload_file, max_retries=3, base_delay=1.0)
                 )
 
     async def health_check(self) -> dict:

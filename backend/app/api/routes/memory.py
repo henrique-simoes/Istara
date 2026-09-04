@@ -43,15 +43,23 @@ async def list_memory(
 
         chunks = []
         for _, row in page_df.iterrows():
-            chunks.append({
-                "text": str(row.get("text", ""))[:500],  # Truncate for listing
-                "source": str(row.get("source", "")),
-                "page": int(row.get("page", 0)) if "page" in row.index else 0,
-                "agent_id": str(row.get("agent_id", "")) if "agent_id" in row.index else "",
-                "chunk_type": str(row.get("chunk_type", "character")) if "chunk_type" in row.index else "character",
-                "created_at": float(row.get("created_at", 0)) if "created_at" in row.index else 0,
-                "confidence": float(row.get("confidence", 1.0)) if "confidence" in row.index else 1.0,
-            })
+            chunks.append(
+                {
+                    "text": str(row.get("text", ""))[:500],  # Truncate for listing
+                    "source": str(row.get("source", "")),
+                    "page": int(row.get("page", 0)) if "page" in row.index else 0,
+                    "agent_id": str(row.get("agent_id", "")) if "agent_id" in row.index else "",
+                    "chunk_type": str(row.get("chunk_type", "character"))
+                    if "chunk_type" in row.index
+                    else "character",
+                    "created_at": float(row.get("created_at", 0))
+                    if "created_at" in row.index
+                    else 0,
+                    "confidence": float(row.get("confidence", 1.0))
+                    if "confidence" in row.index
+                    else 1.0,
+                }
+            )
 
         # Source distribution
         sources = {}
@@ -90,7 +98,9 @@ async def search_memory(
         return {"results": [], "query": search_text, "total": 0}
 
     source_filter = source.strip() if source and source.strip() else None
-    file_type_filter = file_type.strip().lstrip(".").lower() if file_type and file_type.strip() else None
+    file_type_filter = (
+        file_type.strip().lstrip(".").lower() if file_type and file_type.strip() else None
+    )
 
     context = await retrieve_context(
         project_id,
@@ -182,6 +192,7 @@ async def agent_notes(
     await get_visible_project_or_404(db, request, project_id, min_role="viewer")
 
     from app.core.agent_memory import agent_memory
+
     notes = await agent_memory.get_all_notes(project_id, agent_id)
     return {"agent_id": agent_id, "project_id": project_id, "notes": notes}
 

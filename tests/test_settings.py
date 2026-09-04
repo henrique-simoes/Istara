@@ -153,6 +153,23 @@ async def test_settings_status_uses_cached_llm_readiness_without_probes(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_settings_status_never_calls_contract_stub_chat_ready(monkeypatch):
+    """The deterministic QA transport may be reachable but is not a chat model."""
+    from app.api.routes import settings as settings_routes
+
+    fake_registry = _PassiveCachedRegistry()
+    fake_registry._nodes = {"node": _CachedNode(reachable=True, ready=True)}
+    monkeypatch.setattr(settings_routes, "ollama", fake_registry)
+    monkeypatch.setattr(settings, "llm_provider_contract_stub", True)
+
+    response = await settings_routes.system_status()
+
+    assert response["llm_readiness"] == {"reachable": True, "chat_ready": False}
+    assert response["services"]["llm"] == "connected"
+    assert response["status"] == "degraded"
+
+
+@pytest.mark.asyncio
 async def test_strict_routing_toggle_updates_runtime_and_persists(auth_headers, monkeypatch):
     """POST /api/settings/strict-routing persists the compute routing mode."""
     await init_db()
@@ -174,6 +191,37 @@ async def test_strict_routing_toggle_updates_runtime_and_persists(auth_headers, 
     assert response.json()["strict_auto_routing"] is True
     assert settings.strict_auto_routing is True
     assert persisted == {"STRICT_AUTO_ROUTING": "true"}
+
+
+@pytest.mark.asyncio
+async def test_telemetry_toggle_keeps_runtime_state_when_env_is_read_only(
+    auth_headers, monkeypatch
+):
+    """A read-only runtime must not turn a valid telemetry toggle into a 500."""
+    from app.api.routes import settings as settings_routes
+
+    await init_db()
+    original = settings.telemetry_enabled
+
+    def raise_read_only(*_args, **_kwargs):
+        raise OSError("read-only filesystem")
+
+    monkeypatch.setattr(settings_routes, "persist_env_value", raise_read_only)
+    transport = ASGITransport(app=app)
+
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/settings/telemetry/toggle?enabled=true",
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 200
+        assert response.json()["telemetry_enabled"] is True
+        assert "runtime" in response.json()["message"].lower()
+        assert settings.telemetry_enabled is True
+    finally:
+        settings.telemetry_enabled = original
 
 
 @pytest.mark.asyncio

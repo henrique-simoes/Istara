@@ -24,7 +24,10 @@ import {
   selectCanonicalSimulationProject,
 } from "./lib/project-selection.mjs";
 import { scenarioFiles } from "./lib/scenario-registry.mjs";
-import { setDefaultEngine as setClientDefaultEngine } from "./lib/api-client.mjs";
+import {
+  setAuthToken as setClientAuthToken,
+  setDefaultEngine as setClientDefaultEngine,
+} from "./lib/api-client.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RESULTS_DIR = join(__dirname, ".results");
@@ -249,6 +252,14 @@ const apiClient = {
   _token: null,
   _userId: null,
 
+  _setToken(token) {
+    this._token = token || null;
+    // Keep the module-level REST/chat client in lockstep with the harness
+    // authentication state. Without this, API methods use the token while
+    // imported chat/authHeaders helpers silently remain anonymous.
+    setClientAuthToken(this._token || "");
+  },
+
   _useLocalSignedToken(username) {
     if (!["1", "true", "yes"].includes(String(process.env.ISTARA_E2E_ALLOW_LOCAL_TOKEN || "").toLowerCase())) {
       return false;
@@ -284,7 +295,7 @@ const apiClient = {
         lastError = `${pythonBin} returned an empty token`;
         continue;
       }
-      this._token = token;
+      this._setToken(token);
       this._userId = "simulation-admin";
       console.log("  ✅ Authenticated with local signed simulation token");
       return true;
@@ -297,7 +308,7 @@ const apiClient = {
   async authenticate() {
     const providedToken = String(process.env.ISTARA_TEST_AUTH_TOKEN || "").trim();
     if (providedToken) {
-      this._token = providedToken;
+      this._setToken(providedToken);
       try {
         const meRes = await fetch(`${API_BASE}/api/auth/me`, {
           headers: this._headers(),
@@ -368,7 +379,7 @@ const apiClient = {
       }
       if (res.ok) {
         const data = await res.json();
-        this._token = data.token || data.access_token;
+        this._setToken(data.token || data.access_token);
         this._userId = data.user?.id || null;
         if (!this._userId && this._token) {
           try {

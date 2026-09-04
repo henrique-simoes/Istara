@@ -17,7 +17,9 @@ class MethodMetric(Base):
     project_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     skill_name: Mapped[str] = mapped_column(String(100), default="")
     agent_id: Mapped[str] = mapped_column(String(36), default="")
-    method: Mapped[str] = mapped_column(String(50), nullable=False)  # dual_run, adversarial_review, etc.
+    method: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # dual_run, adversarial_review, etc.
     success_count: Mapped[int] = mapped_column(Integer, default=0)
     fail_count: Mapped[int] = mapped_column(Integer, default=0)
     avg_consensus_score: Mapped[float] = mapped_column(Float, default=0.0)

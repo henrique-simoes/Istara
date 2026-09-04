@@ -45,10 +45,12 @@ async def dispose_db_engine():
     # loop boundary cannot leave session-close coroutines unawaited.
     from app.api.websocket import manager as websocket_manager
     from app.core.compute_route_evidence import drain_compute_telemetry
+    from app.core.context_dag import context_dag
     from app.models.database import engine
 
     await websocket_manager.drain_notification_tasks()
     await drain_compute_telemetry()
+    await context_dag.drain_compaction_tasks()
     await engine.dispose()
 
 

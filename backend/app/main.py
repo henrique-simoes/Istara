@@ -102,8 +102,12 @@ def _build_configured_local_llm_node():
     from app.core.compute_registry import ComputeNode
 
     local_type = app_settings.llm_provider
-    local_host = app_settings.lmstudio_host if local_type == "lmstudio" else app_settings.ollama_host
-    model_name = app_settings.lmstudio_model if local_type == "lmstudio" else app_settings.ollama_model
+    local_host = (
+        app_settings.lmstudio_host if local_type == "lmstudio" else app_settings.ollama_host
+    )
+    model_name = (
+        app_settings.lmstudio_model if local_type == "lmstudio" else app_settings.ollama_model
+    )
     api_key = app_settings.lmstudio_api_key if local_type == "lmstudio" else ""
     loaded_models = [model_name] if model_name and model_name != "default" else []
 
@@ -525,9 +529,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     watcher_task = asyncio.create_task(watcher.start())
     app.state.file_watcher = watcher
 
-    disable_background_agents = os.environ.get(
-        "ISTARA_DISABLE_BACKGROUND_AGENTS", ""
-    ).lower() in {"1", "true", "yes"}
+    disable_background_agents = os.environ.get("ISTARA_DISABLE_BACKGROUND_AGENTS", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
     autonomous_quality_agents_enabled = app_settings.autonomous_quality_agents_enabled
 
@@ -653,6 +659,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         _sd_log.warning(f"WebSocket notification persistence drain failed: {e}")
 
+    try:
+        from app.core.context_dag import context_dag
+
+        await context_dag.drain_compaction_tasks()
+    except Exception as e:
+        _sd_log.warning(f"Context-DAG compaction drain failed: {e}")
+
     # Owned teardown of the supervised Pi runtime worker (Plan C D-C1): cancel
     # runs, terminate, then kill only the child PID it created. No-op when a Pi
     # request never started the worker; never blocks shutdown on a stuck child.
@@ -703,7 +716,12 @@ app.add_middleware(
     allow_origin_regex=app_settings.cors_origin_regex or None,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Access-Token"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-Access-Token",
+        "X-Istara-Agent-Engine",
+    ],
 )
 
 if app_settings.network_access_token or requires_local_admin_network_guard(app_settings):

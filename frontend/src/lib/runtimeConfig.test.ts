@@ -16,6 +16,36 @@ describe("runtimeConfig", () => {
     expect(getWsBase()).toBe("wss://ws.istara.example");
   });
 
+  it("aligns loopback overrides with the browser hostname to preserve same-site auth", () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://127.0.0.1:8000/");
+    vi.stubEnv("NEXT_PUBLIC_WS_URL", "ws://127.0.0.1:8000/");
+    vi.stubGlobal("window", {
+      location: {
+        protocol: "http:",
+        hostname: "localhost",
+        port: "3000",
+      },
+    });
+
+    expect(getApiBase()).toBe("http://localhost:8000");
+    expect(getWsBase()).toBe("ws://localhost:8000");
+  });
+
+  it("keeps explicit non-loopback overrides authoritative", () => {
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://api.istara.example/");
+    vi.stubEnv("NEXT_PUBLIC_WS_URL", "wss://ws.istara.example/");
+    vi.stubGlobal("window", {
+      location: {
+        protocol: "http:",
+        hostname: "localhost",
+        port: "3000",
+      },
+    });
+
+    expect(getApiBase()).toBe("https://api.istara.example");
+    expect(getWsBase()).toBe("wss://ws.istara.example");
+  });
+
   it("derives browser-local API and websocket bases from the current origin", () => {
     vi.stubGlobal("window", {
       location: {

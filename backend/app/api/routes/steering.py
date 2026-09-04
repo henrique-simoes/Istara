@@ -37,6 +37,7 @@ SYSTEM_AGENT_IDS = {str(agent["id"]) for agent in SYSTEM_AGENTS}
 # Request / Response models
 # ---------------------------------------------------------------------------
 
+
 class SteeringMessageRequest(BaseModel):
     message: str
     project_id: str
@@ -87,6 +88,7 @@ class SteeringAbortResponse(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _require_project_id(project_id: str | None) -> str:
     scoped_project_id = (project_id or "").strip()
     if not scoped_project_id:
@@ -135,6 +137,7 @@ async def _require_steerable_agent(
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
 
 @router.post("/steering/{agent_id}", response_model=dict)
 async def queue_steering_message(
@@ -222,6 +225,7 @@ async def abort_agent_work(
     # Also signal the orchestrator to stop current task
     if agent_id == "istara-main":
         from app.core.agent import agent as agent_orchestrator
+
         agent_orchestrator.stop()
 
     return SteeringAbortResponse(
@@ -321,11 +325,13 @@ async def wait_for_agent_idle(
     from fastapi.responses import StreamingResponse
 
     async def event_stream():
-        result = await steering_manager.wait_for_idle(agent_id, timeout=300.0, project_id=project.id)
+        result = await steering_manager.wait_for_idle(
+            agent_id, timeout=300.0, project_id=project.id
+        )
         status = "idle" if result else "timeout"
         yield (
-            f"data: {{\"agent_id\": \"{agent_id}\", \"project_id\": "
-            f"\"{project.id}\", \"status\": \"{status}\"}}\n\n"
+            f'data: {{"agent_id": "{agent_id}", "project_id": '
+            f'"{project.id}", "status": "{status}"}}\n\n'
         )
 
     return StreamingResponse(

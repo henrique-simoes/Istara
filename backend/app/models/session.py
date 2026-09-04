@@ -25,7 +25,9 @@ class ChatSession(Base):
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
     title: Mapped[str] = mapped_column(String(255), default="New Chat")
     agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # assigned agent
-    model_override: Mapped[str | None] = mapped_column(String(255), nullable=True)  # model name override
+    model_override: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # model name override
     endpoint_override: Mapped[str | None] = mapped_column(String(120), nullable=True)
     inference_preset: Mapped[InferencePreset] = mapped_column(
         Enum(InferencePreset), default=InferencePreset.MEDIUM

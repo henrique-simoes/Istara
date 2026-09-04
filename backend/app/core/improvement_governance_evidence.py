@@ -49,7 +49,9 @@ class ImprovementGovernanceEvidenceMixin:
     ) -> dict:
         """Record producer evidence without treating it as an applied behavior mutation."""
         feature_key = _clean_string(feature, max_chars=120) or "unknown_feature"
-        event_id = _clean_string(source_id or f"{feature_key}:{_utcnow().timestamp()}", max_chars=90)
+        event_id = _clean_string(
+            source_id or f"{feature_key}:{_utcnow().timestamp()}", max_chars=90
+        )
         proposal_source_id = _clean_string(f"{feature_key}:{event_id}", max_chars=120)
 
         async def _record(session: AsyncSession) -> dict:
@@ -94,7 +96,8 @@ class ImprovementGovernanceEvidenceMixin:
 
             matrix = next(
                 (
-                    item for item in self.feature_contract_matrix()
+                    item
+                    for item in self.feature_contract_matrix()
                     if item.get("feature") == feature_key
                 ),
                 {},
@@ -155,8 +158,10 @@ class ImprovementGovernanceEvidenceMixin:
                 "by_source_system": dict(source_counts),
                 "by_surface": dict(surface_counts),
                 "pending_human_approval": sum(
-                    1 for item in proposals
-                    if item.requires_human_approval and item.status in {STATUS["draft"], STATUS["proposed"]}
+                    1
+                    for item in proposals
+                    if item.requires_human_approval
+                    and item.status in {STATUS["draft"], STATUS["proposed"]}
                 ),
                 "applied": status_counts.get(STATUS["applied"], 0),
                 "reverted": status_counts.get(STATUS["reverted"], 0),
@@ -207,9 +212,7 @@ class ImprovementGovernanceEvidenceMixin:
                 "target_name": experiment.get("target_name"),
                 "hypothesis": experiment.get("hypothesis"),
                 "mutation_description": experiment.get("mutation_description"),
-                "candidate_mutation": _clean_payload(
-                    experiment.get("candidate_mutation") or {}
-                ),
+                "candidate_mutation": _clean_payload(experiment.get("candidate_mutation") or {}),
                 "sandboxed": bool(experiment.get("sandboxed")),
                 "governance_required": True,
             },
@@ -218,20 +221,25 @@ class ImprovementGovernanceEvidenceMixin:
                 "requires_verification": True,
                 "reason": "Autoresearch retained only a candidate proposal; production promotion remains governed.",
             },
-            evidence=[{
-                "kind": "autoresearch_experiment",
-                "experiment_id": experiment.get("id"),
-                "delta": experiment.get("delta"),
-                "score_samples": experiment.get("score_samples"),
-                "score_stddev": experiment.get("score_stddev"),
-                "confidence_interval_95": experiment.get("confidence_interval_95"),
-                "decision_reason": experiment.get("decision_reason"),
-                "mutation_live_after_measurement": bool(
-                    experiment.get("mutation_live_after_measurement")
-                ),
-            }],
+            evidence=[
+                {
+                    "kind": "autoresearch_experiment",
+                    "experiment_id": experiment.get("id"),
+                    "delta": experiment.get("delta"),
+                    "score_samples": experiment.get("score_samples"),
+                    "score_stddev": experiment.get("score_stddev"),
+                    "confidence_interval_95": experiment.get("confidence_interval_95"),
+                    "decision_reason": experiment.get("decision_reason"),
+                    "mutation_live_after_measurement": bool(
+                        experiment.get("mutation_live_after_measurement")
+                    ),
+                }
+            ],
             metrics_before={"score": experiment.get("baseline_score")},
-            metrics_after={"score": experiment.get("experiment_score"), "delta": experiment.get("delta")},
+            metrics_after={
+                "score": experiment.get("experiment_score"),
+                "delta": experiment.get("delta"),
+            },
             reasoning_memory_ids=reasoning_memory_ids or [],
             improvement_score=experiment.get("delta"),
             confidence=0.7 if experiment.get("score_samples") else 0.6,
@@ -323,12 +331,14 @@ class ImprovementGovernanceEvidenceMixin:
                 "strategy": "disable or delete the generated custom agent and remove its persona overlay",
                 "source_task_id": proposal.get("source_task_id"),
             },
-            evidence=[{
-                "kind": "memento_agent_creation",
-                "project_id": scoped_project_id,
-                "confidence": proposal.get("confidence"),
-                "created_at": proposal.get("created_at"),
-            }],
+            evidence=[
+                {
+                    "kind": "memento_agent_creation",
+                    "project_id": scoped_project_id,
+                    "confidence": proposal.get("confidence"),
+                    "created_at": proposal.get("created_at"),
+                }
+            ],
             confidence=max(0.0, min(1.0, float(proposal.get("confidence", 50)) / 100)),
             created_by="agent-factory",
         )
@@ -369,12 +379,14 @@ class ImprovementGovernanceEvidenceMixin:
                 "field": proposal.get("field"),
                 "old_value": proposal.get("current_value"),
             },
-            evidence=[{
-                "kind": "skill_update_proposal",
-                "project_id": scoped_project_id,
-                "confidence": proposal.get("confidence"),
-                "created_at": proposal.get("created_at"),
-            }],
+            evidence=[
+                {
+                    "kind": "skill_update_proposal",
+                    "project_id": scoped_project_id,
+                    "confidence": proposal.get("confidence"),
+                    "created_at": proposal.get("created_at"),
+                }
+            ],
             confidence=max(0.0, min(1.0, float(proposal.get("confidence", 0.5)))),
             created_by="skill-manager",
         )
@@ -406,12 +418,14 @@ class ImprovementGovernanceEvidenceMixin:
                 "strategy": "delete or disable the generated runtime skill definition",
                 "skill_name": definition.get("name"),
             },
-            evidence=[{
-                "kind": "memento_skill_creation",
-                "project_id": scoped_project_id,
-                "confidence": proposal.get("confidence"),
-                "test_result": proposal.get("test_result"),
-            }],
+            evidence=[
+                {
+                    "kind": "memento_skill_creation",
+                    "project_id": scoped_project_id,
+                    "confidence": proposal.get("confidence"),
+                    "test_result": proposal.get("test_result"),
+                }
+            ],
             confidence=max(0.0, min(1.0, float(proposal.get("confidence", 50)) / 100)),
             created_by="skill-manager",
         )

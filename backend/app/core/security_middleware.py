@@ -32,7 +32,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from app.core.auth_cookies import get_auth_cookie_token, has_auth_cookie
-from app.core.auth_origins import configured_trusted_origins, request_origin
+from app.core.auth_origins import configured_trusted_origins, request_origin, trusted_loopback_alias
 
 logger = logging.getLogger(__name__)
 
@@ -121,13 +121,16 @@ def browser_origin_denial(request: Request, *, require_cookie_auth: bool = False
         return None
 
     fetch_site = request.headers.get("sec-fetch-site", "").strip().lower()
+    origin = request_origin(request)
+    trusted_origins = _trusted_origins(request)
     if fetch_site == "cross-site":
+        if trusted_loopback_alias(request, trusted_origins):
+            return None
         return "Untrusted browser origin for authentication request."
 
-    origin = request_origin(request)
     if not origin:
         return None
-    if origin in _trusted_origins(request):
+    if origin in trusted_origins:
         return None
     if require_cookie_auth:
         return "Untrusted browser origin for cookie-authenticated request."

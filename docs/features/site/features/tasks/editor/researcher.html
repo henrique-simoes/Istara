@@ -265,6 +265,9 @@
 <li>Start from Tasks &gt; Task Editor when the current research task needs task editor.</li>
 <li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
 <li>Move to related surfaces when needed: tasks.kanban, tasks.attachments.</li>
+<li>A newly created task opens here before any agent can claim it. Add the intended skill, files, context, instructions, links, and labels while the header says the task is locked for editing.</li>
+<li>Save records changes but keeps the reservation. Done Editing saves, releases the reservation, and only then makes Backlog or In Progress work available to the assigned agent.</li>
+<li>If saving or releasing the reservation fails, the editor stays open and shows the error; your task is not silently handed to an agent with partial configuration.</li>
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
@@ -287,9 +290,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/kanban/TaskEditor.tsx</code>, <code>frontend/src/stores/taskStore.ts</code>, <code>backend/app/api/routes/tasks.py</code></li>
+<li>Source files: <code>frontend/src/components/kanban/TaskEditor.tsx</code>, <code>frontend/src/components/kanban/KanbanBoard.tsx</code>, <code>frontend/src/lib/api.ts</code>, <code>frontend/src/stores/taskStore.ts</code>, <code>backend/app/api/routes/tasks.py</code>, <code>backend/app/core/agent_lifecycle.py</code></li>
 <li>API references: <code>backend/app/api/routes/tasks.py</code></li>
-<li>Tests: <code>tests/test_tasks.py</code></li>
+<li>Tests: <code>frontend/src/stores/taskStore.test.ts</code>, <code>tests/test_tasks.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

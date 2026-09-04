@@ -15,6 +15,7 @@ from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.project import Project
 from app.models.research_validity import EvidenceUnit, ResearchEvidenceEdge
 from app.models.task import Task, TaskStatus
+from app.core.rag import RAGContext
 
 
 @pytest.fixture(autouse=True)
@@ -279,6 +280,38 @@ async def test_facts_requires_auth():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/findings/facts")
         assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_project_findings_search_includes_manual_findings(auth_headers, monkeypatch):
+    """Project search must find manual findings even when document RAG is empty."""
+    await init_db()
+    project_id = f"findings-search-project-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Findings Search Project"))
+        db.add(
+            Insight(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                text="Pricing transparency is the top customer concern.",
+            )
+        )
+        await db.commit()
+
+    async def empty_rag(*_args, **_kwargs):
+        return RAGContext(query="pricing", retrieved=[], context_text="")
+
+    monkeypatch.setattr("app.core.rag.retrieve_context", empty_rag)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/findings/search/{project_id}?query=pricing",
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert any("Pricing transparency" in item["text"] for item in payload["results"])
 
 
 # ---------------------------------------------------------------------------

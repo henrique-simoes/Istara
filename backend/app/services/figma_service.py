@@ -21,9 +21,7 @@ class FigmaService:
     def _ensure_configured(self, api_token: str | None = None) -> str:
         resolved_token = self._resolve_token(api_token)
         if not resolved_token:
-            raise ValueError(
-                "Figma API token not configured for this project."
-            )
+            raise ValueError("Figma API token not configured for this project.")
         return resolved_token
 
     def _headers(self, api_token: str | None = None) -> dict[str, str]:

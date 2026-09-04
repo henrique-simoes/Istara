@@ -111,10 +111,13 @@ def _usage_numbers(usage: dict[str, Any]) -> dict[str, Any]:
     output_tokens = int(usage.get("output_tokens", usage.get("output", 0)) or 0)
     cache_read = int(usage.get("cache_read", usage.get("cacheRead", 0)) or 0)
     cache_write = int(usage.get("cache_write", usage.get("cacheWrite", 0)) or 0)
-    total = int(usage.get(
-        "total_tokens",
-        usage.get("totalTokens", input_tokens + output_tokens + cache_read + cache_write),
-    ) or 0)
+    total = int(
+        usage.get(
+            "total_tokens",
+            usage.get("totalTokens", input_tokens + output_tokens + cache_read + cache_write),
+        )
+        or 0
+    )
     cost_raw = usage.get("cost")
     if isinstance(cost_raw, dict):
         cost = float(cost_raw.get("total", 0) or 0)
@@ -189,7 +192,10 @@ def _estimated_numbers(
 
 
 def _accounting_numbers(
-    *, engine: str, outcome: dict[str, Any], request_text: str | None,
+    *,
+    engine: str,
+    outcome: dict[str, Any],
+    request_text: str | None,
     response_text: str | None,
 ) -> tuple[dict[str, Any], bool]:
     """Select exact provider numbers, a complete estimate, or zero usage."""
@@ -206,23 +212,39 @@ def _accounting_numbers(
             outcome, request_text=request_text or "", response_text=response_text
         ), True
     return {
-        "input_tokens": 0, "output_tokens": 0, "cache_read": 0, "cache_write": 0,
-        "total_tokens": 0, "cost_usd": 0.0, "turns": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "total_tokens": 0,
+        "cost_usd": 0.0,
+        "turns": 0,
     }, False
 
 
 def build_usage_row(
-    *, engine: str, purpose: str, project_id: str, agent_id: str,
-    outcome: dict[str, Any], model: str | None = None, started_at: float | None = None,
-    session_id: str | None = None, task_id: str | None = None,
-    spine_phase: str | None = None, node_id: str | None = None,
-    request_text: str | None = None, response_text: str | None = None,
+    *,
+    engine: str,
+    purpose: str,
+    project_id: str,
+    agent_id: str,
+    outcome: dict[str, Any],
+    model: str | None = None,
+    started_at: float | None = None,
+    session_id: str | None = None,
+    task_id: str | None = None,
+    spine_phase: str | None = None,
+    node_id: str | None = None,
+    request_text: str | None = None,
+    response_text: str | None = None,
     error_type: str | None = None,
 ) -> AgenticUsageRow:
     """Build the ledger row for one dispatch, applying exact/estimate rules."""
     latency_ms = (time.perf_counter() - started_at) * 1000 if started_at else 0.0
     numbers, estimate = _accounting_numbers(
-        engine=engine, outcome=outcome, request_text=request_text,
+        engine=engine,
+        outcome=outcome,
+        request_text=request_text,
         response_text=response_text,
     )
     status = str(outcome.get("status", "success"))
@@ -255,11 +277,20 @@ def build_usage_row(
 
 
 async def record_agentic_usage(
-    *, engine: str, purpose: str, project_id: str, agent_id: str,
-    outcome: dict[str, Any], model: str | None = None, started_at: float | None = None,
-    session_id: str | None = None, task_id: str | None = None,
-    spine_phase: str | None = None, node_id: str | None = None,
-    request_text: str | None = None, response_text: str | None = None,
+    *,
+    engine: str,
+    purpose: str,
+    project_id: str,
+    agent_id: str,
+    outcome: dict[str, Any],
+    model: str | None = None,
+    started_at: float | None = None,
+    session_id: str | None = None,
+    task_id: str | None = None,
+    spine_phase: str | None = None,
+    node_id: str | None = None,
+    request_text: str | None = None,
+    response_text: str | None = None,
     error_type: str | None = None,
 ) -> None:
     """Persist exactly one usage-ledger row plus a short identity trace span.
@@ -268,10 +299,20 @@ async def record_agentic_usage(
     prompts, or responses — only counts and identity handles.
     """
     row = build_usage_row(
-        engine=engine, purpose=purpose, project_id=project_id, agent_id=agent_id,
-        outcome=outcome, model=model, started_at=started_at, session_id=session_id,
-        task_id=task_id, spine_phase=spine_phase, node_id=node_id, request_text=request_text,
-        response_text=response_text, error_type=error_type,
+        engine=engine,
+        purpose=purpose,
+        project_id=project_id,
+        agent_id=agent_id,
+        outcome=outcome,
+        model=model,
+        started_at=started_at,
+        session_id=session_id,
+        task_id=task_id,
+        spine_phase=spine_phase,
+        node_id=node_id,
+        request_text=request_text,
+        response_text=response_text,
+        error_type=error_type,
     )
     try:
         async with async_session() as session:

@@ -25,9 +25,7 @@ class Notification(Base):
 
     __tablename__ = "notifications"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     type: Mapped[str] = mapped_column(String(50))  # WS event type
     title: Mapped[str] = mapped_column(String(500), default="")
     message: Mapped[str] = mapped_column(Text, default="")
@@ -76,9 +74,7 @@ class NotificationPreference(Base):
 
     __tablename__ = "notification_preferences"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     category: Mapped[str] = mapped_column(String(50))
     agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     show_toast: Mapped[bool] = mapped_column(Boolean, default=True)

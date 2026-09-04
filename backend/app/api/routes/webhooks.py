@@ -53,6 +53,7 @@ def _reject_replay(
 # WhatsApp webhooks
 # ---------------------------------------------------------------------------
 
+
 @router.get("/whatsapp/{instance_id}")
 async def whatsapp_verify(
     instance_id: str,
@@ -113,6 +114,7 @@ async def whatsapp_webhook(instance_id: str, request: Request) -> dict:
 # ---------------------------------------------------------------------------
 # Google Chat webhooks
 # ---------------------------------------------------------------------------
+
 
 @router.post("/google-chat/{instance_id}")
 async def google_chat_webhook(instance_id: str, request: Request) -> dict:

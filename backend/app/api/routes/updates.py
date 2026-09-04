@@ -30,8 +30,8 @@ _CACHE_TTL = 600  # 10 minutes — GitHub allows 60 req/hour unauthenticated
 _CANDIDATES = [
     Path(__file__).resolve().parents[4] / "VERSION",  # from backend/app/api/routes/
     Path(__file__).resolve().parents[3] / "VERSION",  # fallback (different layout)
-    Path.cwd() / "VERSION",                            # CWD is project root
-    Path.cwd().parent / "VERSION",                     # CWD is backend/
+    Path.cwd() / "VERSION",  # CWD is project root
+    Path.cwd().parent / "VERSION",  # CWD is backend/
 ]
 
 
@@ -105,6 +105,7 @@ def is_newer(latest: str, current: str) -> bool:
 
     try:
         from packaging.version import parse
+
         return parse(latest) > parse(current)
     except Exception:
         # Fallback to string comparison if format is unexpected
@@ -114,7 +115,15 @@ def is_newer(latest: str, current: str) -> bool:
 def get_latest_release_version_from_git() -> str:
     """Resolve the newest published release tag from git metadata."""
     result = subprocess.run(
-        ["git", "ls-remote", "--tags", "--refs", "--sort=v:refname", "https://github.com/henrique-simoes/Istara.git", "v*"],
+        [
+            "git",
+            "ls-remote",
+            "--tags",
+            "--refs",
+            "--sort=v:refname",
+            "https://github.com/henrique-simoes/Istara.git",
+            "v*",
+        ],
         capture_output=True,
         text=True,
         timeout=15,
@@ -129,7 +138,11 @@ def get_remote_release_commit(tag: str, install_dir: Path | None = None) -> str:
     """Resolve the commit SHA behind a remote release tag without fetching local tags."""
     if not tag:
         return ""
-    remote = "origin" if install_dir and (install_dir / ".git").is_dir() else "https://github.com/henrique-simoes/Istara.git"
+    remote = (
+        "origin"
+        if install_dir and (install_dir / ".git").is_dir()
+        else "https://github.com/henrique-simoes/Istara.git"
+    )
     cwd = install_dir if remote == "origin" else None
     peeled = _run_git(["ls-remote", remote, f"refs/tags/v{tag}^{{}}"], cwd=cwd)
     if peeled:
@@ -186,7 +199,9 @@ async def check_for_updates():
         result = {**cached["data"], "current_version": current}
         result["update_available"] = is_newer(result.get("latest_version", ""), current)
         if install_dir and (install_dir / ".git").is_dir():
-            source_status = await asyncio.to_thread(head_includes_release, install_dir, result.get("latest_version", ""))
+            source_status = await asyncio.to_thread(
+                head_includes_release, install_dir, result.get("latest_version", "")
+            )
             if source_status is True:
                 result["update_available"] = False
                 result["current_version"] = result.get("latest_version", current) or current
@@ -196,6 +211,7 @@ async def check_for_updates():
 
     try:
         import httpx
+
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
                 "https://api.github.com/repos/henrique-simoes/Istara/releases/latest",
@@ -237,7 +253,9 @@ async def check_for_updates():
             update_available = is_newer(latest_tag, current)
             source_status = None
             if install_dir and (install_dir / ".git").is_dir():
-                source_status = await asyncio.to_thread(head_includes_release, install_dir, latest_tag)
+                source_status = await asyncio.to_thread(
+                    head_includes_release, install_dir, latest_tag
+                )
                 if source_status is True:
                     update_available = False
                     current = latest_tag or current
@@ -275,7 +293,8 @@ async def check_for_updates():
         return {
             "update_available": False,
             "current_version": current,
-            "error": str(e),
+            "error_code": "update_check_unavailable",
+            "error": "Update check is unavailable. Check the network connection and try again.",
         }
 
 
@@ -304,6 +323,7 @@ async def prepare_update(
 
     try:
         from app.core.backup_manager import backup_manager
+
         record = await backup_manager.create_backup(
             backup_type="pre_update",
             note=f"Pre-update backup (current version: {get_current_version()})",
@@ -377,6 +397,7 @@ async def _run_update(install_dir: Path):
         logger.info("Auto-update: creating backup...")
         try:
             from app.core.backup_manager import backup_manager
+
             await backup_manager.create_backup(
                 backup_type="pre_update",
                 note=f"Auto-update backup (from {get_current_version()})",
@@ -388,10 +409,14 @@ async def _run_update(install_dir: Path):
         # 2. Broadcast update notification
         try:
             from app.api.websocket import manager
-            await manager.broadcast("system", {
-                "type": "update_started",
-                "message": "Istara is updating. The server will restart in a moment...",
-            })
+
+            await manager.broadcast(
+                "system",
+                {
+                    "type": "update_started",
+                    "message": "Istara is updating. The server will restart in a moment...",
+                },
+            )
         except Exception:
             pass
 
@@ -469,10 +494,14 @@ rm -f .istara-update.sh
         # Try to notify clients
         try:
             from app.api.websocket import manager
-            await manager.broadcast("system", {
-                "type": "update_failed",
-                "message": f"Update failed: {e}",
-            })
+
+            await manager.broadcast(
+                "system",
+                {
+                    "type": "update_failed",
+                    "message": f"Update failed: {e}",
+                },
+            )
         except Exception:
             pass
 
@@ -501,25 +530,33 @@ async def check_for_updates_on_startup():
         # Broadcast WebSocket notification
         try:
             from app.api.websocket import manager
-            await manager.broadcast("update_available", {
-                "current_version": current,
-                "latest_version": latest_tag,
-                "release_name": result.get("release_name", ""),
-                "changelog": result.get("changelog", ""),
-                "release_url": result.get("release_url", ""),
-            })
+
+            await manager.broadcast(
+                "update_available",
+                {
+                    "current_version": current,
+                    "latest_version": latest_tag,
+                    "release_name": result.get("release_name", ""),
+                    "changelog": result.get("changelog", ""),
+                    "release_url": result.get("release_url", ""),
+                },
+            )
         except Exception:
             pass
 
         # Persist notification to database
         try:
             from app.services.notification_service import persist_notification
-            await persist_notification("update_available", {
-                "title": f"Istara {latest_tag} is available",
-                "message": f"Update from {current} to {latest_tag}. Go to Settings to update.",
-                "current_version": current,
-                "latest_version": latest_tag,
-            })
+
+            await persist_notification(
+                "update_available",
+                {
+                    "title": f"Istara {latest_tag} is available",
+                    "message": f"Update from {current} to {latest_tag}. Go to Settings to update.",
+                    "current_version": current,
+                    "latest_version": latest_tag,
+                },
+            )
         except Exception as e:
             logger.debug(f"Failed to persist update notification: {e}")
 

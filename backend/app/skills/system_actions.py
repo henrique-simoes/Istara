@@ -48,7 +48,13 @@ def _resolve_project_folder(project, project_id: str) -> Path:
     return Path(settings.upload_dir) / project_id
 
 
-_BUILTIN_UNIVERSAL_AGENTS = {"istara-main", "istara-devops", "istara-ui-audit", "istara-ux-eval", "istara-sim"}
+_BUILTIN_UNIVERSAL_AGENTS = {
+    "istara-main",
+    "istara-devops",
+    "istara-ui-audit",
+    "istara-ux-eval",
+    "istara-sim",
+}
 
 
 async def _validate_agent_for_project(
@@ -765,16 +771,23 @@ async def execute_tool(
 
     try:
         result = await executor(params, project_id, agent_id)
-        
+
         data_gathering_tools = {
-            "search_documents", "search_findings", "get_document_content", 
-            "search_memory", "web_fetch", "browse_website", "context_expand", 
-            "context_grep", "list_project_files"
+            "search_documents",
+            "search_findings",
+            "get_document_content",
+            "search_memory",
+            "web_fetch",
+            "browse_website",
+            "context_expand",
+            "context_grep",
+            "list_project_files",
         }
-        
+
         if tool_name in data_gathering_tools:
             if not isinstance(result, str):
                 import json
+
                 result_str = json.dumps(result, ensure_ascii=False)
             else:
                 result_str = result
@@ -994,12 +1007,15 @@ async def _exec_search_findings(params: dict, project_id: str, agent_id: str) ->
             )
             for item in items:
                 validity = validity_by_id.get(str(item.id), {})
-                status = "accepted" if validity.get("report_allowed") else validity.get("status", "provisional")
+                status = (
+                    "accepted"
+                    if validity.get("report_allowed")
+                    else validity.get("status", "provisional")
+                )
                 report_note = "reportable" if validity.get("report_allowed") else "not reportable"
                 text_preview = item.text[:150] + "..." if len(item.text) > 150 else item.text
                 results.append(
-                    f"- [{type_name} | {status} | {report_note}] {text_preview} "
-                    f"(ID: {item.id})"
+                    f"- [{type_name} | {status} | {report_note}] {text_preview} (ID: {item.id})"
                 )
 
         if not results:
@@ -1059,6 +1075,7 @@ async def _exec_assign_agent(params: dict, project_id: str, agent_id: str) -> st
 async def _exec_send_agent_message(params: dict, project_id: str, agent_id: str) -> str:
     async with async_session() as db:
         from app.services.a2a import send_message
+
         agent_error = await _validate_agent_for_project(
             db,
             params["to_agent_id"],
@@ -1140,7 +1157,9 @@ async def _exec_update_task(params: dict, project_id: str, agent_id: str) -> str
         updated_fields = []
         for field in ("title", "description", "priority", "instructions", "skill_name"):
             if field in params and params[field] is not None:
-                value = normalize_task_priority(params[field]) if field == "priority" else params[field]
+                value = (
+                    normalize_task_priority(params[field]) if field == "priority" else params[field]
+                )
                 setattr(task, field, value)
                 updated_fields.append(field)
 
@@ -1187,6 +1206,7 @@ async def _exec_sync_project_documents(params: dict, project_id: str, agent_id: 
             await db.commit()
 
         return f"Synced project folder: {new_count} new document(s) registered, {len(files)} total files."
+
 
 # ── Executor Registry ─────────────────────────────────────────────
 

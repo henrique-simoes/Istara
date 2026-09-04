@@ -126,6 +126,41 @@ async def test_documents_sync_returns_response(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_documents_sync_registers_file_created_in_linked_external_folder(
+    auth_headers, tmp_path
+):
+    """Scenario-29 regression: a file created in a linked external folder must
+    be registered by the next sync (same-host topology)."""
+    await init_db()
+    project_id = f"doc-sync-linked-{uuid.uuid4()}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Document Sync Linked Project"))
+        await db.commit()
+
+    external_dir = tmp_path / "linked-external"
+    external_dir.mkdir()
+    external_name = f"external-test-{uuid.uuid4().hex[:8]}.txt"
+    (external_dir / external_name).write_text("External folder test content")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        link = await ac.post(
+            f"/api/projects/{project_id}/link-folder",
+            headers=auth_headers,
+            json={"folder_path": str(external_dir)},
+        )
+        assert link.status_code == 200, link.text
+        first = await ac.post(f"/api/documents/sync/{project_id}", headers=auth_headers)
+        assert first.status_code == 200, first.text
+        assert first.json()["synced"] >= 1, first.json()
+        before_total = first.json()["total"]
+        second = await ac.post(f"/api/documents/sync/{project_id}", headers=auth_headers)
+        assert second.status_code == 200, second.text
+        assert second.json()["synced"] == 0, second.json()
+        assert second.json()["total"] == before_total, second.json()
+
+
+@pytest.mark.asyncio
 async def test_document_create_registers_raw_source_evidence_units(auth_headers):
     """Document creation must enter the Research Spine as raw source units."""
     await init_db()
@@ -483,3 +518,106 @@ async def test_document_content_refuses_file_path_outside_project_roots(auth_hea
 
     assert response.status_code == 200
     assert response.json()["content"] == "safe fallback"
+
+
+@pytest.mark.asyncio
+async def test_delete_managed_upload_removes_file_and_prevents_sync_resurrection(
+    auth_headers, tmp_path, monkeypatch
+):
+    """Deleting an uploaded document must remove its managed file before folder sync sees it."""
+    await init_db()
+    upload_dir = tmp_path / "uploads"
+    project_id = f"delete-upload-{uuid.uuid4()}"
+    project_dir = upload_dir / project_id
+    project_dir.mkdir(parents=True)
+    uploaded_file = project_dir / "safe-upload.txt"
+    uploaded_file.write_text("participant notes", encoding="utf-8")
+    monkeypatch.setattr(settings, "upload_dir", str(upload_dir))
+    doc_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Delete Upload Project"))
+        db.add(
+            Document(
+                id=doc_id,
+                project_id=project_id,
+                title="Safe Upload",
+                file_name="safe-upload.txt",
+                file_path=str(uploaded_file),
+                file_type=".txt",
+                file_size=uploaded_file.stat().st_size,
+                source=DocumentSource.USER_UPLOAD,
+                status=DocumentStatus.READY,
+            )
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        delete_response = await ac.delete(
+            f"/api/documents/{doc_id}?project_id={project_id}", headers=auth_headers
+        )
+        sync_response = await ac.post(
+            f"/api/documents/sync/{project_id}", headers=auth_headers
+        )
+
+    assert delete_response.status_code == 204
+    assert not uploaded_file.exists()
+    assert sync_response.status_code == 200
+    assert sync_response.json()["synced"] == 0
+
+    async with async_session() as db:
+        assert await db.get(Document, doc_id) is None
+        remaining = (
+            await db.execute(select(Document).where(Document.project_id == project_id))
+        ).scalars().all()
+    assert remaining == []
+
+
+@pytest.mark.asyncio
+async def test_delete_project_file_never_removes_external_watch_file(
+    auth_headers, tmp_path, monkeypatch
+):
+    """Deleting a linked-folder document must not delete the user's external source file."""
+    await init_db()
+    upload_dir = tmp_path / "uploads"
+    watch_dir = tmp_path / "watch"
+    upload_dir.mkdir()
+    watch_dir.mkdir()
+    project_id = f"delete-project-file-{uuid.uuid4()}"
+    external_file = watch_dir / "research.txt"
+    external_file.write_text("keep this source", encoding="utf-8")
+    monkeypatch.setattr(settings, "upload_dir", str(upload_dir))
+    doc_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(
+            Project(
+                id=project_id,
+                name="Delete Linked File Project",
+                watch_folder_path=str(watch_dir),
+            )
+        )
+        db.add(
+            Document(
+                id=doc_id,
+                project_id=project_id,
+                title="Linked Research",
+                file_name=external_file.name,
+                file_path=str(external_file),
+                file_type=".txt",
+                file_size=external_file.stat().st_size,
+                source=DocumentSource.PROJECT_FILE,
+                status=DocumentStatus.READY,
+            )
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.delete(
+            f"/api/documents/{doc_id}?project_id={project_id}", headers=auth_headers
+        )
+
+    assert response.status_code == 204
+    assert external_file.exists()

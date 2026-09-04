@@ -48,13 +48,13 @@ async def get_slide_instructions(
     if not report or report.project_id != scoped_project_id:
         raise HTTPException(status_code=404, detail="Report not found")
     await require_project_access(db, request, scoped_project_id, min_role="viewer")
-        
+
     content = json.loads(report.content_json or "{}")
     full_text = content.get("full_document", "")
     if not full_text:
         # Fallback to executive summary if full doc not yet generated
         full_text = report.executive_summary or "No report content available."
-        
+
     # Generate the instruction package via LLM
     prompt = (
         "You are a presentation design specialist. Based on the following professional research report, "
@@ -67,7 +67,7 @@ async def get_slide_instructions(
         "3. JSON SCHEMA: A strict schema for the slide data.\n\n"
         "Format the response as a clear, copyable guide for executive presentations. Ensure it respects academic rigor and consulting-grade clarity."
     )
-    
+
     try:
         outcome = await agentic.completion(
             purpose="presentation.slides",
@@ -85,5 +85,5 @@ async def get_slide_instructions(
         "project_id": report.project_id,
         "title": f"Slide Instructions: {report.title}",
         "instructions": instructions,
-        "methodology": "Minto Pyramid / Action Titles / SCR Framework"
+        "methodology": "Minto Pyramid / Action Titles / SCR Framework",
     }

@@ -5,8 +5,9 @@ import type { ReactNode } from "react";
 import { AlertTriangle, Bot, CheckCircle2, ClipboardList, FileStack, FileText, Globe, Network, Plus, RotateCcw, Save, Send, ShieldCheck, Tags, Trash2, User, X, Zap } from "lucide-react";
 import { useTaskStore } from "@/stores/taskStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { documents as documentsApi, tasks as tasksApi } from "@/lib/api";
+import { documents as documentsApi, taskLocking, tasks as tasksApi } from "@/lib/api";
 import { researchValidity } from "@/lib/researchIntegrityApi";
+import { loadTaskDocumentReferences, resolveTaskDocumentTitle } from "@/lib/taskDocumentTitles";
 import type { EvidenceGraphTraceabilityType, Task, TaskAtomicPath, TaskQualitySummary } from "@/lib/types";
 
 const SKILL_OPTIONS = [
@@ -110,6 +111,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const [showDocPicker, setShowDocPicker] = useState<"input" | "output" | null>(null);
   const [docsLoading, setDocsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [whatToReview, setWhatToReview] = useState(task.what_to_review || task.last_review_feedback || "");
   const [revisionTarget, setRevisionTarget] = useState<"backlog" | "in_progress">("backlog");
   const [quality, setQuality] = useState<TaskQualitySummary | null>(null);
@@ -121,10 +123,12 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const docPickerRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
   const hasActiveTaskProject = Boolean(activeProjectId && activeProjectId === task.project_id);
+  const hasAttachedDocuments = inputDocs.length > 0 || outputDocs.length > 0;
 
   const saveDraft = useCallback(async () => {
-    if (saving || !activeProjectId || activeProjectId !== task.project_id) return;
+    if (saving || !activeProjectId || activeProjectId !== task.project_id) return false;
     setSaving(true);
+    setSaveError("");
     try {
       await updateTask(task.id, {
         title,
@@ -138,19 +142,37 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         input_document_ids: inputDocs,
         output_document_ids: outputDocs,
       }, activeProjectId);
+      return true;
     } catch (e) {
       console.error("Failed to save task:", e);
+      setSaveError(e instanceof Error ? e.message : "Istara could not save this task.");
+      return false;
     } finally {
       setSaving(false);
     }
   }, [activeProjectId, description, inputDocs, instructions, labels, outputDocs, saving, skillName, task.id, task.project_id, title, updateTask, urls, userContext, whatToReview]);
 
+  const releaseLock = useCallback(async () => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return false;
+    try {
+      await taskLocking.unlock(task.id, activeProjectId);
+      return true;
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not release the editing lock.");
+      return false;
+    }
+  }, [activeProjectId, task.id, task.project_id]);
+
   const closeWithSave = useCallback(async () => {
     if (closingRef.current) return;
     closingRef.current = true;
-    await saveDraft();
+    const saved = await saveDraft();
+    if (!saved || !(await releaseLock())) {
+      closingRef.current = false;
+      return;
+    }
     onClose();
-  }, [onClose, saveDraft]);
+  }, [onClose, releaseLock, saveDraft]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -196,13 +218,34 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   }, [activeProjectId, refreshReviewEvidence, task.id, task.project_id]);
 
   useEffect(() => {
-    if (!showDocPicker || !activeProjectId) return;
+    // Resolve attached document titles as soon as a task is reopened. Loading
+    // only after opening the picker left existing chips displaying UUIDs.
+    if (
+      !activeProjectId ||
+      activeProjectId !== task.project_id ||
+      (!showDocPicker && !hasAttachedDocuments)
+    ) {
+      if (!hasAttachedDocuments) setProjectDocuments([]);
+      return;
+    }
+    let cancelled = false;
+    setProjectDocuments([]);
     setDocsLoading(true);
-    documentsApi.list({ project_id: activeProjectId, page_size: 100 })
-      .then((data) => setProjectDocuments((data.documents || []).map((d: any) => ({ id: d.id, title: d.title }))))
-      .catch(() => setProjectDocuments([]))
-      .finally(() => setDocsLoading(false));
-  }, [showDocPicker, activeProjectId]);
+    loadTaskDocumentReferences(
+      documentsApi,
+      activeProjectId,
+      [...inputDocs, ...outputDocs],
+    )
+      .then((documents) => {
+        if (!cancelled) setProjectDocuments(documents);
+      })
+      .finally(() => {
+        if (!cancelled) setDocsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProjectId, hasAttachedDocuments, inputDocs, outputDocs, showDocPicker, task.project_id]);
 
   useEffect(() => {
     if (!showDocPicker) return;
@@ -213,7 +256,9 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, [showDocPicker]);
 
-  const getDocTitle = (docId: string) => projectDocuments.find((d) => d.id === docId)?.title || `${docId.slice(0, 12)}...`;
+  const getDocTitle = (docId: string) => {
+    return resolveTaskDocumentTitle(projectDocuments, docId, docsLoading);
+  };
   const addDocument = (docId: string, target: "input" | "output") => {
     if (target === "input" && !inputDocs.includes(docId)) setInputDocs([...inputDocs, docId]);
     if (target === "output" && !outputDocs.includes(docId)) setOutputDocs([...outputDocs, docId]);
@@ -235,27 +280,45 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
 
   const approve = async () => {
     if (!activeProjectId || activeProjectId !== task.project_id) return;
-    await saveDraft();
-    await approveTask(task.id, activeProjectId, whatToReview || "Human approved task output.");
+    if (!(await saveDraft())) return;
+    try {
+      await approveTask(task.id, activeProjectId, whatToReview || "Human approved task output.");
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not approve this task.");
+      return;
+    }
+    if (!(await releaseLock())) return;
     onClose();
   };
   const flagRevision = async () => {
     if (!activeProjectId || activeProjectId !== task.project_id) return;
-    await saveDraft();
-    await requestRevision(task.id, {
-      what_to_review: whatToReview,
-      next_status: revisionTarget,
-      labels,
-      skill_name: skillName,
-      input_document_ids: inputDocs,
-      urls,
-    }, activeProjectId);
+    if (!(await saveDraft())) return;
+    try {
+      await requestRevision(task.id, {
+        what_to_review: whatToReview,
+        next_status: revisionTarget,
+        labels,
+        skill_name: skillName,
+        input_document_ids: inputDocs,
+        urls,
+      }, activeProjectId);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not request a revision.");
+      return;
+    }
+    if (!(await releaseLock())) return;
     onClose();
   };
   const sendReport = async () => {
     if (!activeProjectId || activeProjectId !== task.project_id) return;
-    await saveDraft();
-    await tasksApi.createReport(task.id, activeProjectId);
+    if (!(await saveDraft())) return;
+    try {
+      await tasksApi.createReport(task.id, activeProjectId);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not create the report.");
+      return;
+    }
+    if (!(await releaseLock())) return;
     onClose();
   };
 
@@ -338,10 +401,10 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-700 dark:bg-slate-900">
           <div className="min-w-0">
             <h3 id="task-editor-title" className="truncate text-base font-semibold text-slate-900 dark:text-white">Task Details</h3>
-            <p className="text-xs text-slate-500">Autosaves when the dialog closes.</p>
+            <p className="text-xs text-slate-500">Reserved from agents while editing. Saves before the dialog closes.</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">{saving ? "Saving..." : "Saved on close"}</span>
+            <span className="text-xs text-slate-400">{saving ? "Saving..." : "Locked for editing"}</span>
             <button onClick={closeWithSave} className="rounded p-2 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close task editor"><X size={18} /></button>
           </div>
         </div>
@@ -450,9 +513,30 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
               {canReview ? (
                 <div className="space-y-3">
                   <textarea value={whatToReview} onChange={(e) => setWhatToReview(e.target.value)} rows={6} className="field-input resize-y" placeholder="What should agents review, correct, repeat, or preserve?" />
+                  {(quality?.recent_review_events?.length ?? 0) > 0 && (
+                    <details className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+                      <summary className="cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-200">
+                        Recent review history ({quality?.recent_review_events.length})
+                      </summary>
+                      <div className="mt-2 space-y-2" aria-label="Recent review history">
+                        {quality?.recent_review_events.map((event) => (
+                          <div key={event.id} className="rounded border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
+                            <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500">
+                              <span className="font-medium uppercase tracking-wide">{event.outcome.replace(/_/g, " ")}</span>
+                              <span>{event.created_by}</span>
+                            </div>
+                            <p className="mt-1 whitespace-pre-wrap text-xs text-slate-700 dark:text-slate-300">
+                              {event.what_to_review || "No written instruction."}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                  <p className="text-xs font-medium text-slate-500">Send unsuccessful work back to:</p>
                   <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => setRevisionTarget("backlog")} className={revisionTarget === "backlog" ? "review-choice-active" : "review-choice"}>Backlog</button>
-                    <button onClick={() => setRevisionTarget("in_progress")} className={revisionTarget === "in_progress" ? "review-choice-active" : "review-choice"}>In Progress</button>
+                    <button onClick={() => setRevisionTarget("backlog")} className={revisionTarget === "backlog" ? "review-choice-active" : "review-choice"}>Return to Backlog</button>
+                    <button onClick={() => setRevisionTarget("in_progress")} className={revisionTarget === "in_progress" ? "review-choice-active" : "review-choice"}>Resume In Progress</button>
                   </div>
                   {task.status === "in_review" && (
                     <button
@@ -469,7 +553,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
                       {doneGateReason}
                     </p>
                   )}
-                  <button onClick={flagRevision} disabled={!whatToReview.trim()} className="secondary-action disabled:opacity-40"><RotateCcw size={16} /> Not Successful</button>
+                  <button onClick={flagRevision} disabled={!whatToReview.trim()} className="secondary-action disabled:opacity-40"><RotateCcw size={16} /> Request Revision</button>
                   {task.status === "done" && task.review_state === "approved" && (
                     <button
                       onClick={sendReport}
@@ -583,8 +667,9 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         </div>
 
         <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-slate-200 bg-white px-5 py-3 dark:border-slate-700 dark:bg-slate-900">
-          <button onClick={saveDraft} disabled={saving || !title.trim() || !hasActiveTaskProject} className="secondary-action disabled:opacity-40"><Save size={15} /> Save</button>
-          <button onClick={closeWithSave} className="primary-action">Done Editing</button>
+          {saveError && <p role="alert" className="mr-auto text-xs text-red-600 dark:text-red-400">{saveError}</p>}
+          <button onClick={() => void saveDraft()} disabled={saving || !title.trim() || !hasActiveTaskProject} className="secondary-action disabled:opacity-40"><Save size={15} /> Save</button>
+          <button onClick={closeWithSave} disabled={saving || !title.trim() || !hasActiveTaskProject} className="primary-action disabled:opacity-40">Done Editing</button>
         </div>
       </div>
     </div>

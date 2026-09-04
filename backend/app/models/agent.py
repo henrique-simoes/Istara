@@ -12,8 +12,8 @@ from app.models.database import Base
 
 
 class AgentScope(str, enum.Enum):
-    UNIVERSAL = "universal"   # Available across all projects (system agents, promoted)
-    PROJECT = "project"       # Scoped to a single project
+    UNIVERSAL = "universal"  # Available across all projects (system agents, promoted)
+    PROJECT = "project"  # Scoped to a single project
 
 
 class AgentRole(str, enum.Enum):
@@ -82,9 +82,7 @@ class Agent(Base):
     last_heartbeat_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    state: Mapped[AgentState] = mapped_column(
-        Enum(AgentState), default=AgentState.IDLE
-    )
+    state: Mapped[AgentState] = mapped_column(Enum(AgentState), default=AgentState.IDLE)
     current_task: Mapped[str] = mapped_column(String(500), default="")
     error_count: Mapped[int] = mapped_column(Integer, default=0)
     executions: Mapped[int] = mapped_column(Integer, default=0)
@@ -103,6 +101,7 @@ class Agent(Base):
 
     def to_dict(self) -> dict:
         import json
+
         return {
             "id": self.id,
             "name": self.name,
@@ -114,7 +113,9 @@ class Agent(Base):
             "specialties": json.loads(self.specialties) if self.specialties else [],
             "heartbeat_interval_seconds": self.heartbeat_interval_seconds,
             "heartbeat_status": self.heartbeat_status.value if self.heartbeat_status else "stopped",
-            "last_heartbeat_at": self.last_heartbeat_at.isoformat() if self.last_heartbeat_at else None,
+            "last_heartbeat_at": self.last_heartbeat_at.isoformat()
+            if self.last_heartbeat_at
+            else None,
             "state": self.state.value if self.state else "idle",
             "current_task": self.current_task,
             "error_count": self.error_count,
@@ -137,7 +138,9 @@ class A2AMessage(Base):
     project_id: Mapped[str] = mapped_column(String(36), default="", index=True)
     from_agent_id: Mapped[str] = mapped_column(String(36), nullable=False)
     to_agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # null = broadcast
-    message_type: Mapped[str] = mapped_column(String(50), nullable=False)  # consult, finding, status, request, response
+    message_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # consult, finding, status, request, response
     content: Mapped[str] = mapped_column(Text, nullable=False)
     extra_data: Mapped[str] = mapped_column(Text, default="{}")  # JSON
     read: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -147,6 +150,7 @@ class A2AMessage(Base):
 
     def to_dict(self) -> dict:
         import json
+
         return {
             "id": self.id,
             "project_id": self.project_id or "",

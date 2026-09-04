@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 from typing import Any
 
 from fastapi import HTTPException
 
-from app.config import PiApiEndpoint
+from app.config import PiApiEndpoint, _read_pi_endpoint_secret
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,9 @@ def _apply_catalog_fields(payload: dict[str, Any]) -> None:
     payload["provider_kind"] = (
         "openai_codex"
         if api == "openai-codex-responses"
-        else "anthropic_compat" if "anthropic" in api else "openai_compat"
+        else "anthropic_compat"
+        if "anthropic" in api
+        else "openai_compat"
     )
     payload["base_url"] = match.get("baseUrl") or payload.get("base_url")
     payload["model"] = match["id"]
@@ -100,6 +103,13 @@ def prepare_pi_endpoint_payload(data: Any, existing: PiApiEndpoint | None = None
 def _custody_api_key(data: Any, payload: dict[str, Any]) -> None:
     api_key = str(data.api_key or "").strip()
     if not api_key:
+        existing = _read_pi_endpoint_secret(
+            str(payload.get("endpoint_id") or ""),
+            str(payload.get("keychain_service") or ""),
+            str(payload.get("keychain_account") or ""),
+        )
+        if not existing:
+            raise HTTPException(status_code=400, detail="pi_api_key_required")
         return
     try:
         if sys.platform == "darwin":
@@ -107,11 +117,13 @@ def _custody_api_key(data: Any, payload: dict[str, Any]) -> None:
             # a checkout .env on the host.
             from app.config import _write_macos_keychain_secret
 
-            _write_macos_keychain_secret(
+            stored = _write_macos_keychain_secret(
                 payload["keychain_service"],
                 payload.get("keychain_account") or "default",
                 api_key,
             )
+            if not stored:
+                raise RuntimeError("macos_keychain_write_failed")
         else:
             # Linux Docker has no macOS Keychain. Persist the endpoint-scoped
             # env secret into the configured writable runtime env file so the
@@ -119,13 +131,34 @@ def _custody_api_key(data: Any, payload: dict[str, Any]) -> None:
             from app.config import _pi_endpoint_secret_env_name
             from app.core.env_persistence import persist_env_value
 
-            persist_env_value(_pi_endpoint_secret_env_name(payload["endpoint_id"]), api_key)
-    except Exception as exc:  # pragma: no cover - custody failure is non-fatal to config
+            env_name = _pi_endpoint_secret_env_name(payload["endpoint_id"])
+            persist_env_value(env_name, api_key)
+            # Runtime persistence alone is not visible to the current process.
+            # Bind the just-custodied endpoint immediately so Chat works without
+            # requiring a backend restart.
+            os.environ[env_name] = api_key
+    except HTTPException:
+        raise
+    except Exception as exc:  # pragma: no cover - platform custody failure
         logger.warning(
             "pi endpoint: keychain write failed for %s: %s",
             payload.get("endpoint_id", "<unknown>"),
             exc,
         )
+        raise HTTPException(status_code=503, detail="pi_api_key_custody_failed") from exc
+
+
+def pi_endpoint_credential_status(endpoint: PiApiEndpoint) -> str:
+    """Return a secret-free, passive credential state for Settings UX."""
+    auth_method = str(endpoint.auth_method or "api_key").strip().lower()
+    if auth_method.startswith("oauth"):
+        return "stored" if endpoint.oauth_credential_encrypted else "missing"
+    secret = _read_pi_endpoint_secret(
+        endpoint.endpoint_id,
+        endpoint.keychain_service,
+        endpoint.keychain_account,
+    )
+    return "ready" if secret else "missing"
 
 
 def _custody_oauth(data: Any, payload: dict[str, Any], existing: PiApiEndpoint | None) -> None:

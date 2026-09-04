@@ -43,6 +43,7 @@ import pytest
 # pre-existing architecture debt outside this wave's files; initializing the
 # plane here keeps a standalone run of this file green.
 import app.core.agentic  # noqa: F401
+from app.config import settings
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 VALIDATION = REPO_ROOT / "backend/app/core/validation.py"
@@ -671,6 +672,7 @@ class _StubPiModelManager:
         self._error = error
         self.projected = False
         self.resolve_calls: list[dict] = []
+        self.resolve_exact_calls: list[dict] = []
         _StubPiModelManager.instances.append(self)
 
     async def ensure_db_projection(self):
@@ -680,7 +682,32 @@ class _StubPiModelManager:
         self.resolve_calls.append({"n": n, **kwargs})
         if self._error is not None:
             raise self._error
-        return self._endpoints[:n]
+        excluded = set(kwargs.get("exclude", ()))
+        excluded_models = {
+            str(model).casefold() for model in kwargs.get("exclude_models", ())
+        }
+        eligible = [
+            endpoint
+            for endpoint in self._endpoints
+            if endpoint.endpoint_id not in excluded
+            and endpoint.model.casefold() not in excluded_models
+        ]
+        return eligible[:n]
+
+    def resolve(self, *, endpoint_id, model=None, project_id=None):
+        self.resolve_exact_calls.append(
+            {"endpoint_id": endpoint_id, "model": model, "project_id": project_id}
+        )
+        from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+        endpoint = next(
+            (item for item in self._endpoints if item.endpoint_id == endpoint_id), None
+        )
+        if endpoint is None:
+            raise PiEndpointResolutionError("unknown_pi_endpoint")
+        if model is not None and endpoint.model != model:
+            raise ValueError("model mismatch")
+        return endpoint
 
 
 def _fake_endpoint(endpoint_id: str, model: str) -> SimpleNamespace:
@@ -729,6 +756,52 @@ async def test_select_pi_coders_maps_distinct_endpoint_identities(monkeypatch):
             "exclude_models": ("qwen3.7-plus-2026-05-26", "qwen3.7-flash-2026-07-15"),
         }
     ]
+
+
+async def test_select_pi_coders_prefers_configured_order_then_fills_from_catalog(monkeypatch):
+    manager = _StubPiModelManager(
+        endpoints=[
+            _fake_endpoint("ep-a", "model-a"),
+            _fake_endpoint("ep-b", "model-b"),
+            _fake_endpoint("ep-c", "model-c"),
+        ]
+    )
+    monkeypatch.setitem(settings.__dict__, "pi_research_endpoint_ids", ["ep-c", "ep-a"])
+
+    from app.services.research_validity_service import _select_pi_coders
+
+    coders = await _select_pi_coders(
+        max_coders=3,
+        project_id="project-a",
+        manager=manager,
+    )
+
+    assert [coder.node.endpoint_id for coder in coders] == ["ep-c", "ep-a", "ep-b"]
+    assert manager.resolve_exact_calls == [
+        {"endpoint_id": "ep-c", "model": None, "project_id": "project-a"},
+        {"endpoint_id": "ep-a", "model": None, "project_id": "project-a"},
+    ]
+    assert manager.resolve_calls[-1]["exclude"] == ("ep-c", "ep-a")
+
+
+async def test_select_pi_coders_keeps_healthy_fallback_when_preference_is_unavailable(monkeypatch):
+    manager = _StubPiModelManager(
+        endpoints=[
+            _fake_endpoint("ep-a", "model-a"),
+            _fake_endpoint("ep-b", "model-b"),
+            _fake_endpoint("ep-c", "model-c"),
+        ]
+    )
+    monkeypatch.setitem(
+        settings.__dict__, "pi_research_endpoint_ids", ["missing", "ep-b"]
+    )
+
+    from app.services.research_validity_service import _select_pi_coders
+
+    coders = await _select_pi_coders(max_coders=3, manager=manager)
+
+    assert [coder.node.endpoint_id for coder in coders] == ["ep-b", "ep-a", "ep-c"]
+    assert manager.resolve_calls[-1]["exclude"] == ("missing", "ep-b")
 
 
 async def test_select_pi_coders_fails_closed_on_insufficient_distinct(monkeypatch):

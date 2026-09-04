@@ -8,8 +8,8 @@ related_features: ["settings.general"]
 related_glossary: ["compass-forge"]
 code_references: ["frontend/src/components/settings/UpdateChecker.tsx", "frontend/src/lib/updatesApi.ts", "backend/app/api/routes/updates.py"]
 api_references: ["backend/app/api/routes/updates.py"]
-test_references: []
-last_verified: 2026-05-15
+test_references: ["tests/test_updates_security.py"]
+last_verified: 2026-08-30
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -17,7 +17,7 @@ compass: CF-SPEC-53 / CF-657
 
 ## Implementation Summary
 
-The update checker surfaces available Istara software updates from the settings view.
+The update checker surfaces available Istara software updates from the settings view and fails safely when release discovery is unavailable.
 
 ## Frontend Surface
 
@@ -38,6 +38,8 @@ The update checker surfaces available Istara software updates from the settings 
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/settings/UpdateChecker.tsx` and the UI navigation path recorded in the inventory.
+- `GET /api/updates/check` requests the latest GitHub release and caches successful release metadata. Transport failures are logged server-side but return the stable `update_check_unavailable` code and an actionable user message; resolver errors, hostnames, socket details, and other raw exception text never enter the Settings UI.
+- A failed check does not claim that the installed build is current. The card renders the warning and keeps the manual `Check Now` retry available.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -47,7 +49,7 @@ The update checker surfaces available Istara software updates from the settings 
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `tests/test_updates_security.py` — update authorization and transport-error redaction.
 
 ## Related Features
 

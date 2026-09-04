@@ -54,10 +54,7 @@ class SkillRegistry:
         return {
             "skills": [s.to_dict() for s in self._skills.values()],
             "count": len(self._skills),
-            "by_phase": {
-                phase.value: len(self.list_by_phase(phase))
-                for phase in SkillPhase
-            },
+            "by_phase": {phase.value: len(self.list_by_phase(phase)) for phase in SkillPhase},
         }
 
     def register_from_definition(self, name: str) -> bool:
@@ -131,9 +128,7 @@ def load_default_skills() -> None:
         if not directory.exists():
             continue
         names.update(
-            path.stem
-            for path in directory.glob("*.json")
-            if not path.name.startswith(("_", "._"))
+            path.stem for path in directory.glob("*.json") if not path.name.startswith(("_", "._"))
         )
 
     for name in sorted(names):

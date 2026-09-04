@@ -3,6 +3,7 @@
 These functions let an agent drill into DAG-summarized context when it needs
 the original details behind a summary node.
 """
+
 from __future__ import annotations
 
 from app.core.context_dag import context_dag
@@ -42,8 +43,7 @@ async def context_expand(session_id: str, node_id: str) -> str:
             t_start = item.get("time_range_start", "")
             t_end = item.get("time_range_end", "")
             lines.append(
-                f"  [DAG:{nid} depth={depth} msgs={count} "
-                f"range={t_start}..{t_end}]\n    {summary}"
+                f"  [DAG:{nid} depth={depth} msgs={count} range={t_start}..{t_end}]\n    {summary}"
             )
 
     return "\n".join(lines)

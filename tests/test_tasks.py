@@ -1,6 +1,7 @@
 """Tests for Tasks API routes — CRUD, move, attach/detach, lock/unlock."""
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -15,6 +16,7 @@ from app.models.finding import Nugget
 from app.models.project import Project
 from app.models.research_validity import EvidenceUnit, ResearchEvidenceEdge
 from app.models.task import Task, TaskStatus
+from app.models.task_review import TaskReviewEvent
 
 
 @pytest.fixture(autouse=True)
@@ -245,6 +247,69 @@ async def test_agent_task_picker_skips_paused_project_tasks():
     assert picked is not None
     assert picked.id == active_task.id
     assert picked.id != paused_task.id
+
+
+@pytest.mark.asyncio
+async def test_quick_create_edit_lock_is_atomic_and_blocks_worker_claim(auth_headers):
+    """A task created for immediate editing cannot run before the editor saves it."""
+    from app.core.agent import AgentOrchestrator
+
+    await init_db()
+    settings.team_mode = True
+    project = await _seed_project("Atomic Quick Create")
+    agent_id = f"edit-lock-agent-{uuid.uuid4()}"
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/tasks",
+            headers=auth_headers,
+            json={
+                "project_id": project.id,
+                "title": "Configure me before execution",
+                "agent_id": agent_id,
+                "lock_for_edit": True,
+            },
+        )
+
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["locked_by"] == "user1"
+    lock_expiry = datetime.fromisoformat(payload["lock_expires_at"])
+    if lock_expiry.tzinfo is None:
+        lock_expiry = lock_expiry.replace(tzinfo=timezone.utc)
+    assert lock_expiry > datetime.now(timezone.utc)
+
+    orchestrator = AgentOrchestrator(agent_id=agent_id)
+    async with async_session() as db:
+        assert await orchestrator._pick_next_task(db) is None
+
+
+@pytest.mark.asyncio
+async def test_main_agent_fallback_skips_active_user_edit_lock():
+    """The unassigned-task fallback must honor the same editing lock as assigned work."""
+    from app.core.agent import AgentOrchestrator
+
+    await init_db()
+    project = await _seed_project("Locked Main Fallback")
+    locked_task = Task(
+        id=str(uuid.uuid4()),
+        project_id=project.id,
+        title="Do not claim while editing",
+        status=TaskStatus.BACKLOG,
+        agent_id=None,
+        priority="critical",
+        position=-1,
+        locked_by="user1",
+        locked_at=datetime.now(timezone.utc),
+        lock_expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+    )
+    async with async_session() as db:
+        db.add(locked_task)
+        await db.commit()
+
+        picked = await AgentOrchestrator(agent_id="istara-main")._pick_next_task(db)
+
+    assert picked is None or picked.id != locked_task.id
 
 
 @pytest.mark.asyncio
@@ -642,6 +707,65 @@ async def test_done_task_revision_returns_to_backlog_with_feedback(auth_headers)
         audit = await telemetry_recorder.get_research_validity_audit(project.id)
         assert audit["operation_counts"]["kanban.status_transition"] == 3
         assert audit["operation_counts"]["human_review.decision"] == 2
+
+
+@pytest.mark.asyncio
+async def test_machine_failure_preserves_human_revision_instruction(auth_headers):
+    """A later machine failure must not replace the researcher's revision instruction."""
+    await init_db()
+    project = await _seed_project("Review History Preservation")
+    human_instruction = "Preserve the pricing quotes and rerun the synthesis with source spans."
+    machine_reason = "Agent execution failed after the provider timed out."
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/tasks",
+            headers=auth_headers,
+            json={"project_id": project.id, "title": "Preserve revision history"},
+        )
+        task_id = created.json()["id"]
+        await ac.post(
+            f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}",
+            headers=auth_headers,
+        )
+        revised = await ac.post(
+            f"/api/tasks/{task_id}/review/request-revision?project_id={project.id}",
+            headers=auth_headers,
+            json={"what_to_review": human_instruction, "next_status": "backlog"},
+        )
+        assert revised.status_code == 200
+
+    async with async_session() as db:
+        task = await db.get(Task, task_id)
+        assert task is not None
+        from app.core.task_review import SYSTEM_FAILED, record_task_review_event
+
+        event = await record_task_review_event(
+            db,
+            task,
+            outcome=SYSTEM_FAILED,
+            next_status=TaskStatus.IN_REVIEW,
+            next_review_state=SYSTEM_FAILED,
+            what_to_review=machine_reason,
+            created_by="test-agent",
+            failure_category="agent_execution_failure",
+            severity="major",
+            quality_score=0.1,
+        )
+        await db.commit()
+        await db.refresh(task)
+
+        events = (
+            await db.execute(
+                select(TaskReviewEvent).where(TaskReviewEvent.task_id == task_id)
+            )
+        ).scalars().all()
+
+    assert task.what_to_review == human_instruction
+    assert task.last_review_feedback == machine_reason
+    assert event.what_to_review == machine_reason
+    assert {row.what_to_review for row in events} == {human_instruction, machine_reason}
 
 
 @pytest.mark.asyncio

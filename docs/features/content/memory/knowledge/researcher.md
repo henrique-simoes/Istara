@@ -34,6 +34,7 @@ Knowledge Memory exists so the work represented by Memory > Knowledge has a stab
 - Open Memory > Knowledge from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with knowledge memory in the active project context.
 - Project switches clear the visible memory tab state before loading the next project's chunks, sources, and search results.
+- Source rows, health breakdowns, filters, search results, and chunks show uploaded document titles (and filenames when needed to distinguish duplicates) instead of opaque storage paths; the canonical path remains available as a hover detail for traceability.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows
@@ -46,6 +47,7 @@ Knowledge Memory exists so the work represented by Memory > Knowledge has a stab
 
 - Project-scoped state or artifact updates associated with knowledge memory.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+- Human-readable source labels with a basename fallback when document metadata is unavailable.
 
 ## Caveats
 

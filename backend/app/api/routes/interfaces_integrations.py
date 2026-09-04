@@ -39,7 +39,9 @@ router = APIRouter()
 
 
 @router.post("/interfaces/figma/import")
-async def figma_import(data: FigmaImportRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def figma_import(
+    data: FigmaImportRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Import design context from a Figma URL."""
     from app.services.figma_service import figma_service
 
@@ -156,7 +158,9 @@ async def figma_import(data: FigmaImportRequest, request: Request, db: AsyncSess
 
 
 @router.post("/interfaces/figma/export")
-async def figma_export(data: FigmaExportRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def figma_export(
+    data: FigmaExportRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Export a design screen to Figma."""
     screen = await get_screen_or_404(db, data.screen_id)
     await require_project_access(db, request, screen.project_id, min_role="researcher")
@@ -330,11 +334,15 @@ async def interfaces_status(
     """Get the current status of the Interfaces module."""
     scoped_project_id = require_project_id(project_id)
     await require_project_access(db, request, scoped_project_id, min_role="viewer")
-    screens_query = select(func.count()).select_from(DesignScreen).where(
-        DesignScreen.project_id == scoped_project_id
+    screens_query = (
+        select(func.count())
+        .select_from(DesignScreen)
+        .where(DesignScreen.project_id == scoped_project_id)
     )
-    briefs_query = select(func.count()).select_from(DesignBrief).where(
-        DesignBrief.project_id == scoped_project_id
+    briefs_query = (
+        select(func.count())
+        .select_from(DesignBrief)
+        .where(DesignBrief.project_id == scoped_project_id)
     )
     interface_config = await get_project_interface_config(db, scoped_project_id)
 

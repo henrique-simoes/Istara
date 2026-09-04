@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   Check,
   ChevronDown,
   ExternalLink,
@@ -34,8 +36,10 @@ function modelCapabilityLabel(model: PiCatalogModel): string {
 }
 
 function endpointAuthLabel(endpoint: PiEndpoint): string {
-  if (endpoint.auth_method?.startsWith("oauth")) return "OAuth connected";
-  return "API key / configured secret";
+  if (endpoint.credential_status === "missing") return "Credential missing";
+  if (endpoint.auth_method?.startsWith("oauth")) return "OAuth credential stored";
+  if (endpoint.credential_status === "ready") return "API key ready";
+  return "Credential status unknown";
 }
 
 function normaliseEndpointId(value: string): string {
@@ -212,6 +216,10 @@ function CatalogPicker<T>({
 export default function PiModelManagement() {
   const { user, teamMode } = useAuthStore();
   const [endpoints, setEndpoints] = useState<PiEndpoint[]>([]);
+  const [defaultEndpointId, setDefaultEndpointId] = useState<string | null>(null);
+  const [researchEndpointIds, setResearchEndpointIds] = useState<string[]>([]);
+  const [researchCandidateId, setResearchCandidateId] = useState("");
+  const [savingResearch, setSavingResearch] = useState(false);
   const [retirementNote, setRetirementNote] = useState("");
   const [providers, setProviders] = useState<PiCatalogProvider[]>([]);
   const [loading, setLoading] = useState(true);
@@ -247,10 +255,14 @@ export default function PiModelManagement() {
       const [catalog, configured] = await Promise.all([piCatalogApi.get(), piEndpoints.list()]);
       setProviders(catalog.providers || []);
       setEndpoints(configured.endpoints || []);
+      setDefaultEndpointId(configured.default_endpoint_id || null);
+      setResearchEndpointIds(configured.research_endpoint_ids || []);
       setRetirementNote(configured.retirement_note || "");
     } catch {
       setProviders([]);
       setEndpoints([]);
+      setDefaultEndpointId(null);
+      setResearchEndpointIds([]);
     } finally {
       setLoading(false);
     }
@@ -300,6 +312,11 @@ export default function PiModelManagement() {
     return matches.slice(0, 80);
   }, [selectedProvider, modelQuery]);
 
+  const availableResearchEndpoints = useMemo(
+    () => endpoints.filter((endpoint) => endpoint.credential_status !== "missing" && !researchEndpointIds.includes(endpoint.endpoint_id)),
+    [endpoints, researchEndpointIds],
+  );
+
   const selectProvider = (provider: PiCatalogProvider | null) => {
     setSelectedProvider(provider);
     setSelectedModel(null);
@@ -310,6 +327,7 @@ export default function PiModelManagement() {
     setCompletedOAuthFlowId(null);
     setActiveOAuth(null);
     setManualOAuthInput("");
+    setApiKey("");
     setOauthError(null);
     if (provider?.login_methods.includes("api_key")) setAuthMode("api_key");
     else setAuthMode("oauth");
@@ -416,7 +434,10 @@ export default function PiModelManagement() {
       setCredentialReady(false);
       await fetchAll();
     } catch (error) {
-      setAddError(error instanceof Error ? error.message : "Could not add this model.");
+      const message = error instanceof Error ? error.message : "Could not add this model.";
+      setAddError(message.includes("pi_api_key_required")
+        ? "Enter this provider's API key, or configure the matching credential on the server first."
+        : message);
     } finally {
       setAdding(false);
     }
@@ -431,6 +452,38 @@ export default function PiModelManagement() {
       window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "error", title: "Could not remove model", message: error instanceof Error ? error.message : "Try again." } }));
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const setDefaultModel = async (endpointId: string) => {
+    try {
+      await piEndpoints.setDefault(endpointId);
+      await fetchAll();
+    } catch (error) {
+      window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "error", title: "Could not set default model", message: error instanceof Error ? error.message : "Try again." } }));
+    }
+  };
+
+  const moveResearchPreference = (index: number, offset: -1 | 1) => {
+    const target = index + offset;
+    if (target < 0 || target >= researchEndpointIds.length) return;
+    setResearchEndpointIds((current) => {
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const saveResearchPreferences = async () => {
+    setSavingResearch(true);
+    try {
+      const response = await piEndpoints.setResearchEnsemble(researchEndpointIds);
+      setResearchEndpointIds(response.endpoint_ids || []);
+      window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "success", title: "Research model preferences saved", message: researchEndpointIds.length ? "Preferred models will be tried in order, then healthy donors fill remaining slots." : "Automatic healthy-donor selection is active." } }));
+    } catch (error) {
+      window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "error", title: "Could not save research model preferences", message: error instanceof Error ? error.message : "Try again." } }));
+    } finally {
+      setSavingResearch(false);
     }
   };
 
@@ -545,13 +598,13 @@ export default function PiModelManagement() {
             </div>
           )}
 
-          {selectedProvider && selectedModel && (
+          {selectedProvider && (
             <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-700">
               <div className="mb-3 flex items-start gap-3">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-istara-600 text-sm font-semibold text-white">2</span>
                 <div>
                   <h3 className="font-semibold text-slate-900 dark:text-white">Choose how to sign in</h3>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">The available choices come from Pi&apos;s provider definition for this model.</p>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Enter the provider credential now. Model-specific OAuth choices appear after you choose a model.</p>
                 </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -577,7 +630,7 @@ export default function PiModelManagement() {
 
               {authMode === "api_key" && selectedProvider.login_methods.includes("api_key") && (
                 <div className="mt-4 max-w-xl">
-                  <label htmlFor="pi-api-key" className="mb-2 block text-sm font-medium text-slate-900 dark:text-white">API key <span className="font-normal text-slate-500">(optional if already configured)</span></label>
+                  <label htmlFor="pi-api-key" className="mb-2 block text-sm font-medium text-slate-900 dark:text-white">API key <span className="font-normal text-slate-500">(required unless already stored on this server)</span></label>
                   <input id="pi-api-key" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={selectedProvider.env_var || "Paste a provider key"} className="ui-control w-full px-3 text-sm" autoComplete="off" />
                   <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Stored by the server in Keychain or encrypted local custody. It is never returned to the UI.</p>
                 </div>
@@ -657,7 +710,7 @@ export default function PiModelManagement() {
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Connected models</h3>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Only connections enabled here appear as usable choices in Chat.</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">The first connected model becomes the default chat model. You can change it here or per chat.</p>
           </div>
           {loading && <span className="text-xs text-slate-500">Loading catalog…</span>}
         </div>
@@ -680,12 +733,80 @@ export default function PiModelManagement() {
                     {endpoint.auth_method === "oauth_browser" && <span>Browser OAuth</span>}
                   </div>
                 </div>
-                <button type="button" className="ui-icon-button shrink-0 self-end text-slate-500 hover:text-red-700 sm:self-center" disabled={deleting === endpoint.endpoint_id} onClick={() => void deleteModel(endpoint.endpoint_id)} aria-label={`Remove ${endpoint.pi_model || endpoint.model}`}>
-                  <Trash2 size={17} />
-                </button>
+                <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
+                  {defaultEndpointId === endpoint.endpoint_id ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-istara-100 px-2.5 py-1 text-xs font-semibold text-istara-700 dark:bg-istara-950/60 dark:text-istara-300">
+                      <Check size={13} aria-hidden="true" /> Default chat model
+                    </span>
+                  ) : (
+                    <button type="button" className="ui-control min-h-[36px] px-3 text-xs font-semibold" disabled={loading} onClick={() => void setDefaultModel(endpoint.endpoint_id)}>
+                      Set as default
+                    </button>
+                  )}
+                  <button type="button" className="ui-icon-button text-slate-500 hover:text-red-700" disabled={deleting === endpoint.endpoint_id} onClick={() => void deleteModel(endpoint.endpoint_id)} aria-label={`Remove ${endpoint.pi_model || endpoint.model}`}>
+                    <Trash2 size={17} />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      <div className="border-t border-slate-200 px-5 py-5 dark:border-slate-700 sm:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Research Spine model preferences</h3>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500 dark:text-slate-400">
+              Order the models you prefer for independent coding and ensemble research. Healthy, project-authorized donors remain active and automatically fill any remaining or temporarily unavailable slots.
+            </p>
+          </div>
+          <button type="button" className="primary-action min-h-[40px] shrink-0" disabled={savingResearch} onClick={() => void saveResearchPreferences()}>
+            <ShieldCheck size={16} /> {savingResearch ? "Saving…" : "Save research preferences"}
+          </button>
+        </div>
+
+        {researchEndpointIds.length === 0 ? (
+          <div className="mt-4 rounded-xl border border-dashed border-istara-300 bg-istara-50/60 px-4 py-4 dark:border-istara-800 dark:bg-istara-950/30">
+            <p className="text-sm font-semibold text-istara-800 dark:text-istara-200">Automatic healthy-donor selection</p>
+            <p className="mt-1 text-xs leading-5 text-istara-700 dark:text-istara-300">No preference is set. The existing Research Spine selector chooses distinct healthy models for each governed run.</p>
+          </div>
+        ) : (
+          <ol className="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+            {researchEndpointIds.map((endpointId, index) => {
+              const endpoint = endpoints.find((item) => item.endpoint_id === endpointId);
+              return (
+                <li key={endpointId} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.1em] text-istara-700 dark:text-istara-300">{index === 0 ? "Primary preference" : `Preference ${index + 1}`}</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-slate-950 dark:text-white">{endpoint?.pi_model || endpoint?.model || endpointId}</p>
+                    <p className="mt-1 truncate font-mono text-xs text-slate-500">{endpoint?.pi_provider || endpoint?.provider_kind || "Unavailable connection"} · {endpointId}</p>
+                  </div>
+                  <div className="flex items-center gap-1 self-end sm:self-center">
+                    <button type="button" className="ui-icon-button" disabled={index === 0} onClick={() => moveResearchPreference(index, -1)} aria-label={`Move ${endpoint?.model || endpointId} earlier`}><ArrowUp size={16} /></button>
+                    <button type="button" className="ui-icon-button" disabled={index === researchEndpointIds.length - 1} onClick={() => moveResearchPreference(index, 1)} aria-label={`Move ${endpoint?.model || endpointId} later`}><ArrowDown size={16} /></button>
+                    <button type="button" className="ui-icon-button text-slate-500 hover:text-red-700" onClick={() => setResearchEndpointIds((current) => current.filter((id) => id !== endpointId))} aria-label={`Remove ${endpoint?.model || endpointId} from research preferences`}><Trash2 size={16} /></button>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <label className="min-w-0 flex-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
+            Add a connected model preference
+            <select value={researchCandidateId} onChange={(event) => setResearchCandidateId(event.target.value)} className="ui-control mt-2 w-full px-3 text-sm">
+              <option value="">Choose a credential-ready model</option>
+              {availableResearchEndpoints.map((endpoint) => (
+                <option key={endpoint.endpoint_id} value={endpoint.endpoint_id}>{endpoint.pi_model || endpoint.model} · {endpoint.pi_provider || endpoint.provider_kind}</option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="secondary-action min-h-[42px]" disabled={!researchCandidateId} onClick={() => { setResearchEndpointIds((current) => [...current, researchCandidateId]); setResearchCandidateId(""); }}><Plus size={16} /> Add preference</button>
+        </div>
+        {endpoints.some((endpoint) => endpoint.credential_status === "missing") && (
+          <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Connections with missing credentials are excluded. Re-add them with a valid provider key before assigning them to research.</p>
         )}
       </div>
     </section>

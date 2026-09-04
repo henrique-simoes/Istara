@@ -147,9 +147,7 @@ async def get_context(
     project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ):
-    _, doc = await _get_active_context_or_404(
-        db, request, doc_id, project_id, min_role="viewer"
-    )
+    _, doc = await _get_active_context_or_404(db, request, doc_id, project_id, min_role="viewer")
     return {
         "id": doc.id,
         "name": doc.name,
@@ -176,9 +174,7 @@ async def update_context(
     )
 
     updates = data.model_dump(exclude_unset=True)
-    doc = await context_hierarchy.update_context(
-        db, doc_id, updates, project_id=scoped_project_id
-    )
+    doc = await context_hierarchy.update_context(db, doc_id, updates, project_id=scoped_project_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Context not found")
     return {"id": doc.id, "name": doc.name, "updated": True}
@@ -195,9 +191,7 @@ async def delete_context(
         db, request, doc_id, project_id, min_role="researcher"
     )
 
-    if not await context_hierarchy.delete_context(
-        db, doc_id, project_id=scoped_project_id
-    ):
+    if not await context_hierarchy.delete_context(db, doc_id, project_id=scoped_project_id):
         raise HTTPException(status_code=404, detail="Context not found")
 
 

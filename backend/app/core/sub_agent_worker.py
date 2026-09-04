@@ -167,7 +167,11 @@ class SubAgentWorker:
             if task.retry_count < (task.max_retries or 3):
                 task.status = TaskStatus.BACKLOG
             else:
-                from app.core.task_review import SYSTEM_FAILED, diagnose_review_event, record_task_review_event
+                from app.core.task_review import (
+                    SYSTEM_FAILED,
+                    diagnose_review_event,
+                    record_task_review_event,
+                )
 
                 event = await record_task_review_event(
                     db,

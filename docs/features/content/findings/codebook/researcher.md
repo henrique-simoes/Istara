@@ -9,7 +9,7 @@ related_glossary: ["atomic-research"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodebookViewer.tsx", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py"]
 api_references: ["backend/app/api/routes/codebooks.py", "backend/app/api/routes/codebook_versions.py"]
 test_references: ["tests/test_codebooks.py", "tests/test_project_scope_contracts.py", "tests/test_research_validity_contract.py", "tests/pi_production/test_w7_validation.py"]
-last_verified: 2026-07-22
+last_verified: 2026-09-02
 compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-78 / CF-1005
 ---
 
@@ -45,6 +45,7 @@ Findings Codebook exists so the work represented by Findings > Codebook has a st
 
 - Project-scoped state or artifact updates associated with findings codebook.
 - Direct codebook and code actions stay bound to the active project; stale links or ids from other projects do not open or update records in this view.
+- Creating or renaming a codebook returns its saved details and a zero code count when it has no codes; the response remains usable without a refresh.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Independent Coding And Reliability

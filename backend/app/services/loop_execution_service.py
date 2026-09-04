@@ -126,6 +126,7 @@ async def record_execution(
 # Query
 # ---------------------------------------------------------------------------
 
+
 async def list_executions(
     db: AsyncSession,
     *,
@@ -203,6 +204,7 @@ async def list_executions(
 # Stats
 # ---------------------------------------------------------------------------
 
+
 async def get_execution_stats(
     db: AsyncSession,
     source_id: Optional[str] = None,
@@ -250,9 +252,7 @@ async def get_execution_stats(
         running_count = sum(1 for execution in executions if execution.status == "running")
         skipped_count = sum(1 for execution in executions if execution.status == "skipped")
         durations = [
-            execution.duration_ms
-            for execution in executions
-            if execution.duration_ms is not None
+            execution.duration_ms for execution in executions if execution.duration_ms is not None
         ]
         avg_duration = sum(durations) / len(durations) if durations else 0.0
         success_rate = (success_count / total * 100) if total > 0 else 0.0

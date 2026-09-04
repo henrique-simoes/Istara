@@ -173,7 +173,9 @@ async def upload_and_restore_backup(request: Request, file: UploadFile = File(..
         or "\\" in filename
         or not (filename.endswith(".tar.gz") or filename.endswith(".tar.gz.enc"))
     ):
-        raise HTTPException(status_code=400, detail="Invalid file format. Must be .tar.gz or .tar.gz.enc")
+        raise HTTPException(
+            status_code=400, detail="Invalid file format. Must be .tar.gz or .tar.gz.enc"
+        )
 
     # Save to temp location
     backup_dir = Path(settings.backup_dir)
@@ -223,7 +225,9 @@ async def download_backup(backup_id: str, request: Request):
 
     return StreamingResponse(
         _iter_file(),
-        media_type="application/octet-stream" if archive_path.name.endswith(".enc") else "application/gzip",
+        media_type="application/octet-stream"
+        if archive_path.name.endswith(".enc")
+        else "application/gzip",
         headers={
             "Content-Disposition": f"attachment; filename={archive_path.name}",
             "Content-Length": str(archive_path.stat().st_size),

@@ -11,6 +11,39 @@ function withoutTrailingSlash(value: string): string {
   return value.replace(/\/$/, "");
 }
 
+function isLoopbackHost(hostname: string): boolean {
+  const normalized = hostname.trim().toLowerCase();
+  return normalized === "localhost" || normalized === "::1" || /^127(?:\.\d{1,3}){3}$/.test(normalized);
+}
+
+/**
+ * Keep browser-local API URLs same-site when a deployment was built with the
+ * other loopback spelling (localhost vs 127.0.0.1). Fetch Metadata treats
+ * those hostnames as cross-site, which correctly blocks cookie-authenticated
+ * requests. Only rewrite when both sides are loopback; explicit non-loopback
+ * deployments remain authoritative.
+ */
+function alignLoopbackUrlWithBrowser(value: string): string {
+  const normalized = withoutTrailingSlash(value);
+  if (typeof window === "undefined" || !window.location.hostname) return normalized;
+
+  try {
+    const configured = new URL(normalized);
+    const browserHostname = window.location.hostname;
+    if (!isLoopbackHost(configured.hostname) || !isLoopbackHost(browserHostname)) {
+      return normalized;
+    }
+
+    configured.hostname = browserHostname;
+    configured.protocol = window.location.protocol === "https:"
+      ? configured.protocol === "ws:" || configured.protocol === "wss:" ? "wss:" : "https:"
+      : configured.protocol === "ws:" || configured.protocol === "wss:" ? "ws:" : "http:";
+    return withoutTrailingSlash(configured.toString());
+  } catch {
+    return normalized;
+  }
+}
+
 function browserOriginWithPort(port: string): string | null {
   if (typeof window === "undefined") return null;
   const { protocol, hostname, port: currentPort } = window.location;
@@ -25,13 +58,13 @@ function browserOriginWithPort(port: string): string | null {
 
 export function getApiBase(): string {
   const publicApiUrl = readPublicRuntimeSetting("NEXT_PUBLIC_API_URL");
-  if (publicApiUrl) return withoutTrailingSlash(publicApiUrl);
+  if (publicApiUrl) return alignLoopbackUrlWithBrowser(publicApiUrl);
   return browserOriginWithPort(DEFAULT_BACKEND_PORT) || "http://localhost:8000";
 }
 
 export function getWsBase(): string {
   const publicWsUrl = readPublicRuntimeSetting("NEXT_PUBLIC_WS_URL");
-  if (publicWsUrl) return withoutTrailingSlash(publicWsUrl);
+  if (publicWsUrl) return alignLoopbackUrlWithBrowser(publicWsUrl);
 
   if (typeof window !== "undefined") {
     const { protocol, hostname, port } = window.location;

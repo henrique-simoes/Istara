@@ -65,15 +65,15 @@ class SkillOutput:
 
     def mark_research_artifacts_candidate(self) -> None:
         """Mark skill-created research artifacts as provisional by default."""
-        previous_validity = self.research_validity if isinstance(self.research_validity, dict) else {}
+        previous_validity = (
+            self.research_validity if isinstance(self.research_validity, dict) else {}
+        )
         self.research_validity = {
             **previous_validity,
             "status": "provisional",
             "artifact_state": "skill_output_candidate",
             "report_allowed": False,
-            "promotion_required": (
-                "source_grounded_coding_reliability_reconciliation_done_gate"
-            ),
+            "promotion_required": ("source_grounded_coding_reliability_reconciliation_done_gate"),
         }
         artifact_states = {
             "nuggets": "candidate_atom",
@@ -191,11 +191,15 @@ class BaseSkill(ABC):
 
         for nugget in output.nuggets:
             if not nugget.get("source"):
-                warnings.append(f"Candidate nugget missing source: '{nugget.get('text', '')[:50]}...'")
+                warnings.append(
+                    f"Candidate nugget missing source: '{nugget.get('text', '')[:50]}...'"
+                )
             text = nugget.get("text", "")
             word_count = len(text.split())
             if word_count < 3:
-                warnings.append(f"Candidate nugget too short ({word_count} words): '{text[:50]}...'")
+                warnings.append(
+                    f"Candidate nugget too short ({word_count} words): '{text[:50]}...'"
+                )
             if not nugget.get("tags"):
                 warnings.append(f"Candidate nugget missing tags/codes: '{text[:50]}...'")
 

@@ -189,7 +189,9 @@ class ChannelRouter:
     async def _handle_message(self, message: IncomingMessage) -> OutgoingMessage | None:
         """Route an incoming message through the configured handler."""
         if self._handler is None:
-            logger.warning("ChannelRouter has no handler set; dropping message from %s", message.channel)
+            logger.warning(
+                "ChannelRouter has no handler set; dropping message from %s", message.channel
+            )
             return None
         return await self._handler(message)
 

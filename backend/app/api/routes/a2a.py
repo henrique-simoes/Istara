@@ -231,9 +231,7 @@ def _a2a_metadata(value: object) -> dict:
         raise ValueError("message.metadata must be a JSON object")
     encoded = json.dumps(value, ensure_ascii=False).encode("utf-8")
     if len(encoded) > A2A_MAX_METADATA_BYTES:
-        raise ValueError(
-            f"message.metadata exceeds maximum size of {A2A_MAX_METADATA_BYTES} bytes"
-        )
+        raise ValueError(f"message.metadata exceeds maximum size of {A2A_MAX_METADATA_BYTES} bytes")
     return value
 
 

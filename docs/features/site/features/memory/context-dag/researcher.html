@@ -260,6 +260,8 @@
 <li>Use the visible controls in this surface to work with context dag in the active project context.</li>
 <li>If no active-project chat session exists, the DAG remains empty instead of showing a previous project&#x27;s context graph.</li>
 <li>A stale session id from another project is rejected even when the same user can access both projects.</li>
+<li>Chat compaction runs in the background without leaving pending database work behind at shutdown; repeated responses for one session share the active compaction task.</li>
+<li>History Search keeps the result count readable as “N results for …”, including when no matches are found.</li>
 <li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
 </ul>
 <h2 id="supported-workflows">Supported Workflows</h2>
@@ -293,7 +295,7 @@
 <ul>
 <li>Source files: <code>frontend/src/components/memory/MemoryView.tsx</code>, <code>frontend/src/components/memory/ContextDAGView.tsx</code>, <code>frontend/src/stores/sessionStore.ts</code>, <code>frontend/src/lib/contextDagApi.ts</code>, <code>backend/app/api/routes/context_dag.py</code>, <code>backend/app/core/context_dag.py</code></li>
 <li>API references: <code>backend/app/api/routes/context_dag.py</code></li>
-<li>Tests: <code>tests/test_context_dag.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_context_dag.py</code>, <code>tests/test_context_dag_ui_contracts.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

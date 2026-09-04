@@ -308,8 +308,12 @@ async def rank_skill_candidates(
         executions = int(stats.get("executions", 0) or 0)
         if executions <= 0:
             continue
-        success_rate = float(stats.get("success_rate", stats.get("successes", 0) / max(executions, 1)) or 0.0)
-        avg_quality = float(stats.get("avg_quality", stats.get("total_quality", 0) / max(executions, 1)) or 0.0)
+        success_rate = float(
+            stats.get("success_rate", stats.get("successes", 0) / max(executions, 1)) or 0.0
+        )
+        avg_quality = float(
+            stats.get("avg_quality", stats.get("total_quality", 0) / max(executions, 1)) or 0.0
+        )
         utility = float(stats.get("utility_score", 0.5) or 0.5)
         amount = min(0.18, success_rate * 0.06 + avg_quality * 0.07 + utility * 0.05)
         _bump(candidates, skill.name, amount, "memento_usage", "learned")
@@ -477,7 +481,9 @@ async def execute_ranked_skill_tool(
     try:
         output = await asyncio.wait_for(
             skill.execute(skill_input),
-            timeout=max(1.0, float(timeout_seconds or settings.agent_react_skill_tool_timeout_seconds)),
+            timeout=max(
+                1.0, float(timeout_seconds or settings.agent_react_skill_tool_timeout_seconds)
+            ),
         )
         status = "success" if output.success else "error"
         return output, (time.perf_counter() - started) * 1000

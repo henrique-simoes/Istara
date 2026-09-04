@@ -9,7 +9,7 @@ related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/integrations/DeploymentsTab.tsx", "frontend/src/components/integrations/DeploymentWizard.tsx", "frontend/src/components/integrations/DeploymentDashboard.tsx", "frontend/src/components/integrations/ConversationTranscript.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
 api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
 test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py", "tests/test_integration_simulation_scope.py", "tests/real_user_benchmark/run.mjs"]
-last_verified: 2026-05-20
+last_verified: 2026-09-02
 compass: CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773; CF-SPEC-62 / CF-793; CF-SPEC-75 / CF-964; CF-SPEC-82 / CF-1061; CF-SPEC-93 / CF-1184; CF-SPEC-121
 ---
 
@@ -50,6 +50,7 @@ Deployments configure participant-facing research deployments and link them to c
 - Deployment creation validates every `channel_instance_id` against the deployment `project_id` before storing the deployment, so a deployment in one project cannot route participant content through another project's messaging channel.
 - Inbound channel processors attach participant messages only to same-project deployments that explicitly list the receiving channel instance; deployments with no channels are not a global fallback.
 - Deployment activation and participant response handling reject paused projects before dispatching participant-facing work, updating adaptive conversation state, or reaching LLM-backed follow-up generation.
+- Deployment activation builds a grammatical default intro (for example, “an interview” and “a survey”); a configured `intro_message` remains the explicit override.
 - Deployment response handling, conversations, transcripts, analytics, and overview counters all require the conversation/deployment/channel records to match the same project boundary before participant content or findings are read, updated, or summarized.
 - Deployment websocket progress, response, and finding events resolve project ownership from `deployment_id`, deliver only to sockets subscribed to that project, and drop events with conflicting deployment/project claims.
 - Simulation and real-user benchmark deployment paths must carry active project scope on by-id lifecycle, response, analytics, conversation, delete, and channel cleanup calls, proving the same boundary exercised by the UI.

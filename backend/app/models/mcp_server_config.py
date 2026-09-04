@@ -25,18 +25,24 @@ class MCPServerConfig(Base):
     headers_json: Mapped[str] = mapped_column(Text, default="{}")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     tools_json: Mapped[str] = mapped_column(Text, default="[]")  # cached tool list from discovery
-    last_discovery_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    health_status: Mapped[str] = mapped_column(String(20), default="unknown")  # healthy|unhealthy|unknown
+    last_discovery_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    health_status: Mapped[str] = mapped_column(
+        String(20), default="unknown"
+    )  # healthy|unhealthy|unknown
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     def to_dict(self) -> dict:
         import json
+
         return {
             "id": self.id,
             "project_id": self.project_id or "",
@@ -45,7 +51,9 @@ class MCPServerConfig(Base):
             "transport": self.transport,
             "is_active": self.is_active,
             "tools": json.loads(self.tools_json) if self.tools_json else [],
-            "last_discovery_at": self.last_discovery_at.isoformat() if self.last_discovery_at else None,
+            "last_discovery_at": self.last_discovery_at.isoformat()
+            if self.last_discovery_at
+            else None,
             "health_status": self.health_status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

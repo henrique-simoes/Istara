@@ -137,9 +137,7 @@ class UISimRunner(BaseLoopRunner):
         }
         return hypothesis, mutation
 
-    async def apply_mutation(
-        self, target: str, mutation: dict
-    ) -> Callable[[], Awaitable[None]]:
+    async def apply_mutation(self, target: str, mutation: dict) -> Callable[[], Awaitable[None]]:
         """Write modified component file.  Returns revert function.
 
         Uses direct file write + backup instead of git stash for simpler
@@ -195,10 +193,7 @@ class UISimRunner(BaseLoopRunner):
             },
             {
                 "role": "user",
-                "content": (
-                    f"Component: {filepath.name}\n\n"
-                    f"Code:\n{code[:3000]}"
-                ),
+                "content": (f"Component: {filepath.name}\n\nCode:\n{code[:3000]}"),
             },
         ]
 

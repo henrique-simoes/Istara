@@ -1,4 +1,5 @@
 """Context DAG API — inspect, search, and manage the conversation DAG."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -68,17 +69,21 @@ async def _require_dag_node(
 
 # ---- Request models ----
 
+
 class ExpandRequest(BaseModel):
     """Request body for expanding a DAG node."""
+
     node_id: str = Field(..., min_length=1, max_length=36)
 
 
 class GrepRequest(BaseModel):
     """Request body for searching conversation history."""
+
     query: str = Field(..., min_length=1, max_length=500)
 
 
 # ---- Endpoints ----
+
 
 @router.get("/context-dag/{session_id}")
 async def get_dag_structure(

@@ -57,12 +57,15 @@ def _get_adapter(integration: SurveyIntegration):
 
     if integration.platform == "surveymonkey":
         from app.services.survey_platforms.surveymonkey import SurveyMonkeyAdapter
+
         return SurveyMonkeyAdapter(config)
     elif integration.platform == "google_forms":
         from app.services.survey_platforms.google_forms import GoogleFormsAdapter
+
         return GoogleFormsAdapter(config)
     elif integration.platform == "typeform":
         from app.services.survey_platforms.typeform import TypeformAdapter
+
         return TypeformAdapter(config)
     else:
         raise HTTPException(
@@ -80,10 +83,7 @@ def _is_demo_integration(integration: SurveyIntegration) -> bool:
         config = json.loads(raw)
     except json.JSONDecodeError:
         return False
-    return any(
-        isinstance(value, str) and value.startswith("sim-")
-        for value in config.values()
-    )
+    return any(isinstance(value, str) and value.startswith("sim-") for value in config.values())
 
 
 async def _get_integration(db: AsyncSession, integration_id: str) -> SurveyIntegration:
@@ -97,9 +97,7 @@ async def _get_integration(db: AsyncSession, integration_id: str) -> SurveyInteg
 
 
 async def _get_link(db: AsyncSession, link_id: str) -> SurveyLink:
-    result = await db.execute(
-        select(SurveyLink).where(SurveyLink.id == link_id)
-    )
+    result = await db.execute(select(SurveyLink).where(SurveyLink.id == link_id))
     link = result.scalar_one_or_none()
     if not link:
         raise HTTPException(status_code=404, detail="Survey link not found")
@@ -141,9 +139,7 @@ async def _get_project_integration_or_404(
     *,
     min_role: ProjectRole,
 ) -> tuple[str, SurveyIntegration]:
-    scoped_project_id = await _require_project_scope(
-        db, request, project_id, min_role=min_role
-    )
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role=min_role)
     integration = await _get_integration(db, integration_id)
     if integration.project_id != scoped_project_id:
         raise HTTPException(status_code=404, detail="Integration not found")
@@ -158,9 +154,7 @@ async def _get_project_link_or_404(
     *,
     min_role: ProjectRole,
 ) -> tuple[str, SurveyLink]:
-    scoped_project_id = await _require_project_scope(
-        db, request, project_id, min_role=min_role
-    )
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role=min_role)
     link = await _get_link(db, link_id)
     if link.project_id != scoped_project_id:
         raise HTTPException(status_code=404, detail="Survey link not found")
@@ -180,9 +174,7 @@ async def list_integrations(
     db: AsyncSession = Depends(get_db),
 ):
     """List all configured survey platform integrations."""
-    scoped_project_id = await _require_project_scope(
-        db, request, project_id, min_role="viewer"
-    )
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
     query = select(SurveyIntegration).order_by(SurveyIntegration.created_at.desc())
     if platform:
         query = query.where(SurveyIntegration.platform == platform)
@@ -209,7 +201,7 @@ async def create_integration(
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported platform: {data.platform}. "
-                   f"Supported: {', '.join(sorted(SUPPORTED_PLATFORMS))}",
+            f"Supported: {', '.join(sorted(SUPPORTED_PLATFORMS))}",
         )
 
     integration = SurveyIntegration(
@@ -344,9 +336,7 @@ async def list_links(
     db: AsyncSession = Depends(get_db),
 ):
     """List survey links, optionally filtered by project or integration."""
-    scoped_project_id = await _require_project_scope(
-        db, request, project_id, min_role="viewer"
-    )
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
 
     query = select(SurveyLink).order_by(SurveyLink.created_at.desc())
     query = query.where(SurveyLink.project_id == scoped_project_id)
