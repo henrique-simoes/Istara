@@ -208,6 +208,97 @@ class TelemetryRecorder:
             error_message=(error_message or "")[:500] if error_message else None,
         )
 
+    async def record_tool_call(
+        self,
+        *,
+        tool_name: str,
+        duration_ms: float,
+        success: bool,
+        project_id: str = "",
+        agent_id: str = "",
+        task_id: str | None = None,
+        trace_id: str | None = None,
+        parent_id: str | None = None,
+        error_type: str | None = None,
+        error_message: str | None = None,
+        source: str = "production",
+        session: AsyncSession | None = None,
+    ) -> None:
+        """Record a canonical tool execution span following OpenTelemetry GenAI conventions."""
+        await self.record_span(
+            trace_id=trace_id or uuid.uuid4().hex[:36],
+            parent_id=parent_id,
+            operation="tool_call",
+            tool_name=tool_name,
+            tool_success=success,
+            tool_duration_ms=duration_ms,
+            duration_ms=duration_ms,
+            status="success" if success else "error",
+            agent_id=agent_id,
+            project_id=project_id,
+            task_id=task_id,
+            error_type=error_type,
+            error_message=error_message,
+            source=source,
+            session=session,
+        )
+
+    async def record_steering_event(
+        self,
+        *,
+        project_id: str,
+        agent_id: str,
+        action: str,
+        trace_id: str | None = None,
+        task_id: str | None = None,
+        status: str = "success",
+        queue_depth: int | None = None,
+        error_message: str | None = None,
+        session: AsyncSession | None = None,
+    ) -> None:
+        """Record an agentic steering lifecycle event (queue, drain, abort)."""
+        await self.record_span(
+            trace_id=trace_id or uuid.uuid4().hex[:36],
+            operation="steering.event",
+            event_kind="agent_steering",
+            agent_id=agent_id,
+            project_id=project_id,
+            task_id=task_id,
+            status=status,
+            route_id=f"{action}:queue_depth={queue_depth}" if queue_depth is not None else action,
+            error_message=error_message,
+            session=session,
+        )
+
+    async def record_reliability_evaluation(
+        self,
+        *,
+        project_id: str,
+        coding_run_id: str,
+        metric_name: str,
+        score: float | None,
+        alpha: float | None = None,
+        threshold: float = 0.60,
+        rater_count: int = 3,
+        item_count: int = 0,
+        promotion_status: str = "accepted",
+        trace_id: str | None = None,
+        session: AsyncSession | None = None,
+    ) -> None:
+        """Record mathematical inter-coder reliability evaluation across multi-model ensemble."""
+        await self.record_span(
+            trace_id=trace_id or uuid.uuid4().hex[:36],
+            operation="coding_run.reliability",
+            event_kind="research_validity",
+            coding_run_id=coding_run_id,
+            project_id=project_id,
+            reliability_score=score,
+            consensus_score=alpha,
+            status="success" if promotion_status == "accepted" else "degraded",
+            route_id=f"{metric_name}:raters={rater_count}:items={item_count}:threshold={threshold}",
+            session=session,
+        )
+
     async def record_model_performance(
         self,
         skill_name: str,
@@ -353,14 +444,27 @@ class TelemetryRecorder:
                         tool_stats[tname]["errors"][s.error_type] = (
                             tool_stats[tname]["errors"].get(s.error_type, 0) + 1
                         )
-                    if s.tool_duration_ms:
+                    if s.tool_duration_ms is not None and s.tool_duration_ms >= 0:
                         tool_stats[tname]["durations"].append(s.tool_duration_ms)
+
+                total_tool_calls = sum(st["total"] for st in tool_stats.values())
+                total_tool_success = sum(st["success"] for st in tool_stats.values())
+                tool_summary = {
+                    "total_calls": total_tool_calls,
+                    "overall_success_rate": round(total_tool_success / max(total_tool_calls, 1), 3)
+                    if total_tool_calls
+                    else 0.0,
+                    "distinct_tools": len(tool_stats),
+                }
 
                 tool_success_rates = []
                 for tname, stats in tool_stats.items():
                     durations = sorted(stats["durations"]) if stats["durations"] else [0]
                     p50 = durations[len(durations) // 2] if durations else 0
                     p90 = durations[int(len(durations) * 0.9)] if len(durations) > 1 else p50
+                    p95 = durations[int(len(durations) * 0.95)] if len(durations) > 1 else p90
+                    min_d = durations[0] if durations else 0
+                    max_d = durations[-1] if durations else 0
                     tool_success_rates.append(
                         {
                             "tool": tname,
@@ -371,6 +475,9 @@ class TelemetryRecorder:
                             ),
                             "p50_duration_ms": round(p50, 1),
                             "p90_duration_ms": round(p90, 1),
+                            "p95_duration_ms": round(p95, 1),
+                            "min_duration_ms": round(min_d, 1),
+                            "max_duration_ms": round(max_d, 1),
                             "error_types": stats["errors"],
                         }
                     )
@@ -400,12 +507,16 @@ class TelemetryRecorder:
                     sd = sorted(durs)
                     p50 = sd[len(sd) // 2] if sd else 0
                     p90 = sd[int(len(sd) * 0.9)] if len(sd) > 1 else p50
+                    p95 = sd[int(len(sd) * 0.95)] if len(sd) > 1 else p90
                     p99 = sd[int(len(sd) * 0.99)] if len(sd) > 10 else p90
+                    avg_ms = sum(sd) / max(len(sd), 1)
                     latency_percentiles.append(
                         {
                             "model": mn,
+                            "avg_ms": round(avg_ms, 1),
                             "p50_ms": round(p50, 1),
                             "p90_ms": round(p90, 1),
+                            "p95_ms": round(p95, 1),
                             "p99_ms": round(p99, 1),
                             "samples": len(sd),
                         }
@@ -444,11 +555,34 @@ class TelemetryRecorder:
                         }
                     )
 
+                # Steering summary for this project
+                steering_stmt = (
+                    select(TelemetrySpan)
+                    .where(
+                        TelemetrySpan.project_id == project_id,
+                        TelemetrySpan.operation == "steering.event",
+                    )
+                    .order_by(TelemetrySpan.created_at.desc())
+                    .limit(200)
+                )
+                steering_result = await session.execute(steering_stmt)
+                steering_spans = steering_result.scalars().all()
+                steering_counts: dict[str, int] = {}
+                for sp in steering_spans:
+                    act = sp.route_id.split(":")[0] if sp.route_id else "unknown"
+                    steering_counts[act] = steering_counts.get(act, 0) + 1
+                steering_summary = {
+                    "total_events": len(steering_spans),
+                    "action_counts": steering_counts,
+                }
+
                 return {
                     "project_id": project_id,
                     "leaderboard": leaderboard,
                     "error_taxonomy": error_taxonomy,
                     "tool_success_rates": tool_success_rates,
+                    "tool_summary": tool_summary,
+                    "steering_summary": steering_summary,
                     "json_parse_success_rates": json_parse_success_rates,
                     "latency_percentiles": latency_percentiles,
                 }
@@ -460,6 +594,8 @@ class TelemetryRecorder:
                 "leaderboard": [],
                 "error_taxonomy": {},
                 "tool_success_rates": [],
+                "tool_summary": {"total_calls": 0, "overall_success_rate": 0.0, "distinct_tools": 0},
+                "steering_summary": {"total_events": 0, "action_counts": {}},
                 "json_parse_success_rates": [],
                 "latency_percentiles": [],
             }

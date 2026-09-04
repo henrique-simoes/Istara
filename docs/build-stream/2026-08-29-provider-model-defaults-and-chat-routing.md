@@ -8,9 +8,35 @@ phase: "Phase 2 — execute expanded routing and model-role contract"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: antigravity, at: 2026-09-04T12:25:00Z, ledger: L-402 }
-next_action: "Proceed with remaining S3 independent review and gate verification for production readiness."
+last: { agent: antigravity, at: 2026-09-04T13:30:00Z, ledger: L-403 }
+next_action: "Receive DashScope credentials, bind 3-model endpoints, and run live CareNav Research Spine & Scenario 76 verification."
 ```
+
+### L-403 | 2026-09-04T13:30:00Z | S2-execute/S2-verify | antigravity | Universal OpenTelemetry GenAI tool telemetry, steering lifecycle spans, and model intelligence enrichment
+
+Did:
+1. Universal Tool Execution Telemetry in `backend/app/skills/system_actions.py`:
+   - Wrapped `execute_tool()` with canonical `TelemetrySpan(operation="tool_call")` following OpenTelemetry GenAI semantic conventions.
+   - Decoupled tool execution duration (`tool_duration_ms` using high-resolution `time.perf_counter()`) from LLM generation time.
+   - Structured tool error taxonomy (`unknown_tool`, `not_found`, `permission_denied`, `timeout`, `json_parse`, `validation_error`, `rate_limit`, `execution_error`) with sanitized error messaging.
+   - Added thread-safe, non-breaking trace propagation (`trace_id`, `task_id`, `parent_id`, `session`).
+2. Core Telemetry Architecture in `backend/app/core/telemetry.py`:
+   - Added `record_tool_call()`: records OpenTelemetry GenAI-compliant spans for all agent/ReAct tool invocations.
+   - Added `record_steering_event()`: captures agent steering queue events (`steer_queued`, `steer_drained`, `follow_up_queued`, `abort`) with project scoping and queue depths.
+   - Added `record_reliability_evaluation()`: records mathematical inter-coder reliability metrics (Fleiss' Kappa, Krippendorff's Alpha, rater count, threshold, item count).
+   - Enriched `get_model_intelligence()`: computes extended percentiles (`p95_duration_ms`, `min_duration_ms`, `max_duration_ms`), top-level `tool_summary` (total calls, overall success rate, distinct tool count), `steering_summary` (action frequency), and model latency percentiles (`avg_ms`, `p95_ms`).
+3. Mid-Execution Steering Instrumentation in `backend/app/core/steering.py`:
+   - Integrated telemetry emission in `steer()`, `follow_up()`, `get_steering()`, and `abort()` with defensive error guards.
+4. Comprehensive Test Suite in `tests/test_telemetry.py`:
+   - Added `TestEnhancedToolAndSteeringTelemetry`: 5 new async tests verifying tool spans, steering events, reliability evaluations, `execute_tool` end-to-end integration, and model intelligence aggregates.
+   - Suite passed 19/19 tests (100%).
+
+Verified:
+- `rtk pytest tests/test_telemetry.py tests/test_agent_skill_tools.py tests/pi_production/test_tool_authority.py tests/pi_production/test_worker_tool_loop.py tests/pi_production/test_steering_binding.py tests/test_agents.py tests/test_research_validity_contract.py tests/test_metrics.py tests/test_research_integrity_metrics.py -q`: 148 passed.
+- `python scripts/security_benchmark.py --fail-on-threshold`: 28/28 passed (100.0%, status: pass).
+- `git diff --check`: clean (0 errors, 0 trailing whitespace).
+
+Next: Receive DashScope API key and 2 selected model IDs from user, configure 3-model endpoint IDs, and launch live CareNav Research Spine execution and Scenario 76 long-horizon stress run.
 
 ### L-402 | 2026-09-04T12:25:00Z | S2-verify | antigravity | User simulation suite sweep on Mac Studio Docker stack (10 scenarios 100% green)
 

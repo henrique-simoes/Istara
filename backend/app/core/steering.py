@@ -155,6 +155,18 @@ class SteeringManager:
             msg = SteeringMessage(message=message, source=source, metadata=msg_metadata)
             state.steering_queue.append(msg)
             logger.info(f"Steering queued for {agent_id}: {message[:80]}...")
+            if scoped_project_id:
+                try:
+                    from app.core.telemetry import telemetry_recorder
+
+                    await telemetry_recorder.record_steering_event(
+                        project_id=scoped_project_id,
+                        agent_id=agent_id,
+                        action="steer_queued",
+                        queue_depth=len(state.steering_queue),
+                    )
+                except Exception as exc:
+                    logger.debug("Steering telemetry skipped: %s", exc)
 
     async def follow_up(
         self,
@@ -177,6 +189,18 @@ class SteeringManager:
             msg = SteeringMessage(message=message, source=source, metadata=msg_metadata)
             state.follow_up_queue.append(msg)
             logger.info(f"Follow-up queued for {agent_id}: {message[:80]}...")
+            if scoped_project_id:
+                try:
+                    from app.core.telemetry import telemetry_recorder
+
+                    await telemetry_recorder.record_steering_event(
+                        project_id=scoped_project_id,
+                        agent_id=agent_id,
+                        action="follow_up_queued",
+                        queue_depth=len(state.follow_up_queue),
+                    )
+                except Exception as exc:
+                    logger.debug("Follow-up telemetry skipped: %s", exc)
 
     # -----------------------------------------------------------------------
     # Steering message retrieval (called by agent work cycle)
@@ -190,11 +214,26 @@ class SteeringManager:
         """Drain steering queue. Called by agent after each skill execution completes."""
         state = self._get_or_create(agent_id)
         async with state.lock:
-            return self._drain_matching(
+            messages = self._drain_matching(
                 state.steering_queue,
                 mode=state.steering_mode,
                 project_id=project_id,
             )
+            if messages:
+                scoped_project_id = self._normalize_project_id(project_id)
+                if scoped_project_id:
+                    try:
+                        from app.core.telemetry import telemetry_recorder
+
+                        await telemetry_recorder.record_steering_event(
+                            project_id=scoped_project_id,
+                            agent_id=agent_id,
+                            action="steer_drained",
+                            queue_depth=len(messages),
+                        )
+                    except Exception as exc:
+                        logger.debug("Steering drain telemetry skipped: %s", exc)
+            return messages
 
     async def get_follow_up(
         self,
@@ -460,6 +499,17 @@ class SteeringManager:
                     state.follow_up_queue, project_id=scoped_project_id
                 ),
             }
+            if scoped_project_id:
+                try:
+                    from app.core.telemetry import telemetry_recorder
+
+                    await telemetry_recorder.record_steering_event(
+                        project_id=scoped_project_id,
+                        agent_id=agent_id,
+                        action="abort",
+                    )
+                except Exception as exc:
+                    logger.debug("Abort telemetry skipped: %s", exc)
             return res
 
 

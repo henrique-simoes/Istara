@@ -7,8 +7,10 @@ native function calling, while `SYSTEM_TOOLS` and `build_tools_prompt()` keep th
 text fallback path working for models without native tool support.
 """
 
+import asyncio
 import json
 import logging
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -754,22 +756,104 @@ def build_tools_prompt() -> str:
 # ── Tool Execution ────────────────────────────────────────────────
 
 
+def _classify_tool_error(err_str: str) -> str:
+    """Classify tool errors into structured telemetry taxonomy."""
+    lower = err_str.lower()
+    if "unknown tool" in lower:
+        return "unknown_tool"
+    if "not found" in lower or "missing" in lower:
+        return "not_found"
+    if "permission" in lower or "denied" in lower or "not available" in lower or "not active" in lower:
+        return "permission_denied"
+    if "timeout" in lower or "timed out" in lower:
+        return "timeout"
+    if "json" in lower or "parse" in lower:
+        return "json_parse"
+    if "validation" in lower or "invalid" in lower:
+        return "validation_error"
+    if "rate limit" in lower or "429" in lower:
+        return "rate_limit"
+    return "execution_error"
+
+
+def _classify_exception(exc: Exception) -> str:
+    if isinstance(exc, (TimeoutError, asyncio.TimeoutError)):
+        return "timeout"
+    if isinstance(exc, ValueError):
+        return "validation_error"
+    if isinstance(exc, PermissionError):
+        return "permission_denied"
+    return _classify_tool_error(str(exc))
+
+
 async def execute_tool(
     tool_name: str,
     params: dict[str, Any],
     project_id: str,
     agent_id: str = "istara-main",
+    *,
+    trace_id: str | None = None,
+    task_id: str | None = None,
+    parent_id: str | None = None,
+    session: AsyncSession | None = None,
 ) -> dict[str, Any]:
     """Execute a system action tool and return the result.
 
     Returns a dict with 'success' bool and 'result' or 'error' string.
+    Instruments tool execution with canonical OpenTelemetry GenAI spans.
     """
+    from app.core.telemetry import telemetry_recorder
+
+    start_perf = time.perf_counter()
+    resolved_trace_id = trace_id or params.get("_trace_id") or uuid.uuid4().hex[:36]
+    resolved_task_id = task_id or params.get("task_id") or params.get("target_task_id")
+    if resolved_task_id is not None:
+        resolved_task_id = str(resolved_task_id)[:36]
+
     executor = TOOL_EXECUTORS.get(tool_name)
     if not executor:
-        return {"success": False, "error": f"Unknown tool: {tool_name}"}
+        duration_ms = (time.perf_counter() - start_perf) * 1000.0
+        err_msg = f"Unknown tool: {tool_name}"
+        try:
+            await telemetry_recorder.record_tool_call(
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                success=False,
+                project_id=project_id,
+                agent_id=agent_id,
+                task_id=resolved_task_id,
+                trace_id=resolved_trace_id,
+                parent_id=parent_id,
+                error_type="unknown_tool",
+                error_message=err_msg,
+                session=session,
+            )
+        except Exception as tel_err:
+            logger.debug("Telemetry record failed for unknown tool %s: %s", tool_name, tel_err)
+        return {"success": False, "error": err_msg}
 
     try:
         result = await executor(params, project_id, agent_id)
+
+        is_success = True
+        error_type: str | None = None
+        error_message: str | None = None
+
+        if isinstance(result, dict):
+            if result.get("success") is False or ("error" in result and "result" not in result):
+                is_success = False
+                err_text = str(result.get("error", "tool_failed"))
+                error_type = _classify_tool_error(err_text)
+                error_message = err_text[:500]
+        elif isinstance(result, str) and (
+            result.startswith("Agent not found:")
+            or result.startswith("Agent is not active:")
+            or result.startswith("Agent '")
+            or "unknown documents for this project" in result
+        ):
+            is_success = False
+            error_type = _classify_tool_error(result)
+            error_message = result[:500]
 
         data_gathering_tools = {
             "search_documents",
@@ -792,9 +876,49 @@ async def execute_tool(
                 result_str = result
             result = f"<tool_output>\n{result_str}\n</tool_output>"
 
+        duration_ms = (time.perf_counter() - start_perf) * 1000.0
+        try:
+            await telemetry_recorder.record_tool_call(
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                success=is_success,
+                project_id=project_id,
+                agent_id=agent_id,
+                task_id=resolved_task_id,
+                trace_id=resolved_trace_id,
+                parent_id=parent_id,
+                error_type=error_type,
+                error_message=error_message,
+                session=session,
+            )
+        except Exception as tel_err:
+            logger.debug("Telemetry record failed for tool %s: %s", tool_name, tel_err)
+
+        if isinstance(result, dict) and result.get("success") is False:
+            return result
+
         return {"success": True, "result": result}
     except Exception as e:
+        duration_ms = (time.perf_counter() - start_perf) * 1000.0
+        error_type = _classify_exception(e)
+        error_msg = str(e)[:500]
         logger.error(f"Tool execution error ({tool_name}): {e}")
+        try:
+            await telemetry_recorder.record_tool_call(
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                success=False,
+                project_id=project_id,
+                agent_id=agent_id,
+                task_id=resolved_task_id,
+                trace_id=resolved_trace_id,
+                parent_id=parent_id,
+                error_type=error_type,
+                error_message=error_msg,
+                session=session,
+            )
+        except Exception as tel_err:
+            logger.debug("Telemetry record failed for exception in tool %s: %s", tool_name, tel_err)
         return {"success": False, "error": str(e)}
 
 
