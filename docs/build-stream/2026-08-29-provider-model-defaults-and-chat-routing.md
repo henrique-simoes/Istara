@@ -8,7 +8,7 @@ phase: "Phase 2 — execute expanded routing and model-role contract"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: glm-5.3-flash, at: 2026-09-04T07:20:00Z, ledger: L-400 }
+last: { agent: glm-5.3-flash, at: 2026-09-04T07:40:00Z, ledger: L-401 }
 next_action: "Scenario-29 aligned rerun + authenticated menu sweep on the owner-supplied disposable admin credential. Wave A complete pending S3 review."
 ```
 
@@ -98,6 +98,27 @@ Verified: `gate suppress` ×6 accepted; `gate after --task CF-47` → record
 Next: scenario-29 aligned rerun + authenticated menu sweep — blocked on the
 owner-supplied disposable admin credential; Wave A is otherwise complete
 pending the separate-model S3 review.
+
+### L-401 | 2026-09-04T07:40:00Z | S2-record | glm-5.3-flash | Ledger catch-up: plan-mode decisions + push state
+
+Did: Closed two ledger gaps found on review. (1) Plan-mode decisions now
+recorded: **S3 reviewer = separate model** (executor cannot self-sign; a
+different-model reviewer verifies each unit before any register row flips)
+and **scope = full sweep** (scenario-29 fix first, then every remaining menu
+in the inventory except live-model and donor surfaces, which stay not-run /
+non-goal). (2) Push state recorded: `origin/testing` advanced
+`8c4e54f1..570d61e9`, which carries the entire parked campaign delta plus
+this session's units (`37480dd7` facade split was already in the base;
+`f85feaeb`, format + CI truthfulness `a8a949c4`, ledger checkpoints).
+Pending credential trail also noted: QA stack auth requires the
+owner-supplied disposable `QA_ADMIN_*` credential (absent from deploy.env
+and the QA checkout by design); three runner-harness iterations established
+the working invocation (campaign Playwright image + browsers volume +
+dual-network join); no credential was read, printed, or stored at any point.
+Verified: Status Block below reflects L-401; `git rev-parse HEAD
+origin/testing` equal; tree clean.
+Next: scenario-29 aligned rerun + authenticated menu sweep on the
+owner-supplied disposable admin credential.
 ### L-396 | 2026-09-03T22:14:25Z | S2-handoff | hermes-bearino | Owner-ordered stop, everything parked
 
 Did: Closed the resume session without product changes. Verified Mac Studio QA stack healthy (istara-qa-live-20260902 backend healthy, UI 200), ran Compass Forge impact/why/test-impact on projects routes, drove QA UI through fresh SSH tunnels, traced the stuck login spinner to LoginScreen connecting state. Two subagents delivered the scenario-29 code trail (resolve mismatch + extension filter lines) and the three-fix regression review (no spine regressions, two small follow-ups). No product source touched, no credentials stored, no live model calls.
