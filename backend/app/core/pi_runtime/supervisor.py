@@ -534,7 +534,7 @@ class PiRuntimeSupervisor:
         try:
             return await tool_handler(frame.get("name", ""), frame.get("arguments") or {})
         except Exception as exc:  # authority errors never kill the run
-            logger.warning("pi-runtime: tool handler raised for %s", frame.get("name"))
+            logger.exception("pi-runtime: tool handler raised for %s", frame.get("name"))
             return {"ok": False, "error": f"tool_handler_error:{type(exc).__name__}"}
         finally:
             _tool_call_context.reset(context_token)

@@ -78,14 +78,29 @@ export class PiSession {
     this._emit = emit;
     this._history = (history || [])
       .slice(-LIMITS.MAX_HISTORY_MESSAGES)
-      .map((m) => ({
-        role: m.role,
-        // pi-agent-core message content is a block array; server-persisted
-        // history arrives as plain strings, so wrap them as text blocks (a raw
-        // string throws `content.map is not a function` on rehydration).
-        content: typeof m.content === "string" ? [{ type: "text", text: m.content }] : (m.content || []),
-        timestamp: nowTs(),
-      }));
+      .map((m) => {
+        const content = typeof m.content === "string" ? [{ type: "text", text: m.content }] : (m.content || []);
+        if (m.role === "assistant") {
+          return {
+            role: "assistant",
+            content,
+            api: m.api || "openai-completions",
+            provider: m.provider || "istara-history",
+            model: m.model || "history",
+            usage: m.usage || {
+              input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: m.stop_reason || m.stopReason || "stop",
+            timestamp: nowTs(),
+          };
+        }
+        return {
+          role: m.role,
+          content,
+          timestamp: nowTs(),
+        };
+      });
     this._catalog = catalog || [];
     this._limits = limits || {}; // {max_turns?, max_wall_clock_ms?, max_cost_usd?}
     this._binding = null; // {models, model, params, stream, dispose}

@@ -468,6 +468,22 @@ export function buildRealProvider(endpoint) {
   const envVar = `PI_RUNTIME_KEY_${ENV_KEY_COUNTER++}`;
   process.env[envVar] = apiKey;
 
+  // DashScope, DeepSeek, and non-OpenAI gateways reject the `developer` role.
+  // When building a real OpenAI-compatible provider outside api.openai.com,
+  // ensure `compat.supportsDeveloperRole` is explicitly false so system prompts
+  // are sent as `role: "system"`.
+  const isCustomOpenAICompat =
+    modelApi === "openai-completions" &&
+    baseUrl &&
+    !baseUrl.includes("api.openai.com") &&
+    !baseUrl.includes("azure.com");
+  const compat = capabilities.compat
+    ? {
+        ...(isCustomOpenAICompat ? { supportsDeveloperRole: false } : {}),
+        ...capabilities.compat,
+      }
+    : (isCustomOpenAICompat ? { supportsDeveloperRole: false } : undefined);
+
   const model = {
     id: modelId,
     name: modelId,
@@ -476,7 +492,7 @@ export function buildRealProvider(endpoint) {
     baseUrl,
     reasoning: capabilities.reasoning,
     thinkingLevels: capabilities.thinkingLevels,
-    compat: capabilities.compat,
+    compat,
     // Preserve the catalog's modality contract. Pi Model Management resolves
     // `supports_vision` from the selected model; dropping it here makes a
     // vision-capable Qwen/Codex model appear text-only to pi-agent-core.

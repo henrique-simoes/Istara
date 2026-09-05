@@ -8145,3 +8145,32 @@ Exact next action: obtain the required action-time Browser confirmation before
 typing the disposable QA password, then exercise authenticated Settings,
 attachment/review-history, role navigation, and shell-menu states with DOM,
 console, and network evidence.
+
+### L-174 | 2026-09-05T00:55:00Z | S2-execute/S2-verify | antigravity | Long-Horizon Agentic Engine Comparison (Pi vs Legacy) & Live 3-Model Research Spine Verification
+
+Executed an exhaustive 8-phase comparative benchmark inspired by Scenario 76
+comparing Engine A (Pi Agentic Engine) against Engine B (Istara Legacy ReAct
+Engine) in an isolated Docker container on Mac Studio (`istara-testing-backend:latest`)
+via SSH orchestration. Live models used: Qwen 3.7 Max (`qwen3.7-max-2026-06-08`)
+for Cleo orchestration, and the 3-model ensemble Luna (`gpt-5.6-luna`), Qwen 3.7
+Max, and GLM 5.2 (`glm-5.2`) for qualitative coding.
+
+Both engines successfully completed the full research lifecycle: document
+discovery, skill catalog consultation, task creation in SQLite, active codebook
+retrieval ("what's in the codebook now?"), dynamic mid-turn user steering,
+Sharon Atomic Research DAG elevation (15 nuggets, 2 facts, 1 insight, 1
+recommendation, 69 graph edges), human Done review gate (enforcing HTTP 409
+agent-block), and Barbara Minto SCQA report synthesis (3 MECE categories,
+7 routed findings, `report_allowed=True`, 56 backward evidence edges).
+
+Pi demonstrated operational superiority: 13.2% faster total execution (47.30s
+vs. 54.46s), 72.2% server-side prompt cache hit rate (25,344 tokens cached),
+exact financial ledgering ($0.01297 USD total cost, well below the $0.05 cap),
+and zero tool errors across 4 tool calls. The 3-model coding ensemble achieved
+Fleiss' kappa κ = 0.690 and Krippendorff's alpha α = 0.933, passing the ≥ 0.600
+reliability threshold.
+
+Living feature docs verified (0 seeded, 224 generated, 86 checked). Security
+benchmark passed 28/28 controls (100.0%). Comprehensive empirical audit
+persisted to `docs/scientific_audit/long-horizon-agentic-engine-audit.md` and
+`tests/comparison_results.json`.
