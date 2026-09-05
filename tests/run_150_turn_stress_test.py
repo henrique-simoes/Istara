@@ -194,6 +194,9 @@ async def seed_stress_test_assets(project_id: str, suffix: str) -> dict[str, Any
     """Seed 35 canonical documents, 100 surveys, 20 usability tests, and codebooks."""
     CHECKPOINTS_DIR.mkdir(parents=True, exist_ok=True)
     async with async_session() as db:
+        upload_folder = Path(settings.upload_dir) / project_id
+        upload_folder.mkdir(parents=True, exist_ok=True)
+
         # 1. Project
         project = Project(
             id=project_id,
@@ -201,6 +204,7 @@ async def seed_stress_test_assets(project_id: str, suffix: str) -> dict[str, Any
             description="Ultra-long 150-turn agentic stress test across Double Diamond",
             agentic_engine="pi" if "pi" in project_id else "legacy",
             project_context="CareNav: Patient appointment readiness and governed caregiver proxy access.",
+            watch_folder_path=str(upload_folder),
         )
         db.add(project)
 
@@ -219,11 +223,19 @@ async def seed_stress_test_assets(project_id: str, suffix: str) -> dict[str, Any
             else:
                 content = f"# {s['title']}\nMethod: {s['method']}\nRole: {s['role']}\nSummary of research observations."
 
+            doc_file = upload_folder / f"{s['id']}-{s['method']}.{s.get('file_type', 'md')}"
+            try:
+                doc_file.write_text(content, encoding="utf-8")
+            except Exception as write_err:
+                logger.debug(f"Could not write file to upload folder: {write_err}")
+
             doc_id = f"doc-{s['id']}-{suffix}"
             doc = Document(
                 id=doc_id,
                 project_id=project_id,
                 title=f"{s['id']} {s['title']}",
+                file_name=doc_file.name,
+                file_path=str(doc_file),
                 phase=s.get("phase", "discover"),
                 source=DocumentSource.USER_UPLOAD,
                 status=DocumentStatus.READY,
@@ -356,24 +368,6 @@ async def run_stress_test(
     session_id = f"session-st150-{engine}-{suffix}"
     session_key = f"{project_id}:{session_id}"
 
-    print("\n" + "=" * 80)
-    print(f"STARTING 150-TURN STRESS TEST: ENGINE '{engine.upper()}'")
-    print(f"  Project ID: {project_id}")
-    print(f"  Turns Range: {start_turn} -> {end_turn} (Total: {end_turn - start_turn + 1})")
-    print(f"  Model: {model_name} on {endpoint_id}")
-    print("=" * 80)
-
-    # 1. Seed Assets
-    print(f"\n[{engine.upper()}] Seeding 35 Documents, 100 Surveys, 20 Usability Tests, Codebooks...")
-    assets = await seed_stress_test_assets(project_id, suffix)
-
-    # Load trajectory specification
-    with open(DATA_DIR / "trajectory_150_turns.json", encoding="utf-8") as f:
-        trajectory = json.load(f)
-
-    # Filter turns to requested range
-    active_turns = [t for t in trajectory if start_turn <= t["turn_index"] <= end_turn]
-
     dispatcher = AgenticDispatcher()
     messages_history: list[dict[str, Any]] = []
     turns_telemetry: list[TurnTelemetry] = []
@@ -382,6 +376,53 @@ async def run_stress_test(
     tool_calls_total = 0
     tool_errors_total = 0
     steering_count = 0
+
+    resumed_ckpt: dict[str, Any] | None = None
+    if (start_turn > 1 or resume) and CHECKPOINTS_DIR.exists():
+        # Look for the closest checkpoint at or before start_turn - 1
+        search_target = start_turn - 1 if start_turn > 1 else start_turn
+        for cand in range(search_target, 0, -1):
+            cand_file = CHECKPOINTS_DIR / f"checkpoint_{engine}_turn_{cand}.json"
+            if cand_file.exists():
+                try:
+                    with open(cand_file, encoding="utf-8") as cf:
+                        resumed_ckpt = json.load(cf)
+                    print(f"[{engine.upper()}] Resuming from checkpoint: {cand_file.name} (last turn: {cand})")
+                    break
+                except Exception as ckpt_err:
+                    logger.warning(f"Could not read checkpoint {cand_file}: {ckpt_err}")
+
+    if resumed_ckpt:
+        project_id = resumed_ckpt.get("project_id", project_id)
+        session_id = resumed_ckpt.get("session_id", session_id)
+        session_key = f"{project_id}:{session_id}"
+        messages_history = resumed_ckpt.get("messages_history", [])
+        raw_telemetry = resumed_ckpt.get("turns_telemetry", [])
+        turns_telemetry = [TurnTelemetry(**t) for t in raw_telemetry]
+        tool_latencies = resumed_ckpt.get("tool_latencies", [])
+        tool_calls_total = resumed_ckpt.get("tool_calls_total", 0)
+        tool_errors_total = resumed_ckpt.get("tool_errors_total", 0)
+        steering_count = resumed_ckpt.get("steering_count", 0)
+
+        # Check if project exists in db
+        async with async_session() as db:
+            res_p = await db.execute(select(Project).where(Project.id == project_id))
+            if not res_p.scalars().first():
+                print(f"[{engine.upper()}] Project {project_id} not in DB, seeding assets...")
+                assets = await seed_stress_test_assets(project_id, suffix)
+            else:
+                print(f"[{engine.upper()}] Project {project_id} confirmed in database.")
+    else:
+        # 1. Seed Assets
+        print(f"\n[{engine.upper()}] Seeding 35 Documents, 100 Surveys, 20 Usability Tests, Codebooks...")
+        assets = await seed_stress_test_assets(project_id, suffix)
+
+    # Load trajectory specification
+    with open(DATA_DIR / "trajectory_150_turns.json", encoding="utf-8") as f:
+        trajectory = json.load(f)
+
+    # Filter turns to requested range
+    active_turns = [t for t in trajectory if start_turn <= t["turn_index"] <= end_turn]
 
     # Load mock survey and usability data for extended tools
     with open(DATA_DIR / "simulated_surveys_100.json", encoding="utf-8") as f:
@@ -397,11 +438,14 @@ async def run_stress_test(
             ver = params.get("version", "1.0")
             stage_key = "v1_0_initial" if "1.0" in ver else ("v1_1_steered" if "1.1" in ver else "v2_0_consolidated")
             stage = codebook_data["stages"].get(stage_key, codebook_data["stages"]["v1_0_initial"])
+            payload = {
+                "version": stage["version"],
+                "total_codes": len(stage["codes"]),
+                "codes": stage["codes"],
+            }
             return {
                 "success": True,
-                "version": stage["version"],
-                "codes": stage["codes"],
-                "total_codes": len(stage["codes"]),
+                "result": json.dumps(payload, indent=2),
             }
         elif name == "query_survey_responses":
             metric = params.get("metric", "readiness_clarity")
@@ -409,13 +453,21 @@ async def run_stress_test(
             filtered = [r for r in survey_data if not role_filter or r["demographics"]["role"] == role_filter]
             scores = [r["metrics"].get(metric, 3) for r in filtered if metric in r["metrics"]]
             mean_val = round(sum(scores) / len(scores), 2) if scores else 0.0
-            return {
-                "success": True,
+            sample_comments = [
+                f"- [{r['demographics']['role']} | {r['demographics']['clinic']}]: \"{r['answers'][0]['answer']}\""
+                for r in filtered[:5]
+            ]
+            payload = {
                 "metric": metric,
                 "sample_size": len(filtered),
                 "mean_rating": mean_val,
                 "min_rating": min(scores) if scores else 0,
                 "max_rating": max(scores) if scores else 0,
+                "sample_qualitative_verbatims": sample_comments,
+            }
+            return {
+                "success": True,
+                "result": json.dumps(payload, indent=2),
             }
         elif name == "calculate_usability_metrics":
             sus_scores = [s["metrics"]["sus_score"] for s in usability_data]
@@ -423,8 +475,7 @@ async def run_stress_test(
             t1_success = sum(1 for s in usability_data if s["tasks"][0]["success"])
             t2_success = sum(1 for s in usability_data if s["tasks"][1]["success"])
             t3_success = sum(1 for s in usability_data if s["tasks"][2]["success"])
-            return {
-                "success": True,
+            payload = {
                 "total_sessions": len(usability_data),
                 "mean_sus_score": round(sum(sus_scores) / len(sus_scores), 1),
                 "mean_umux_score": round(sum(umux_scores) / len(umux_scores), 1),
@@ -434,9 +485,12 @@ async def run_stress_test(
                     "task_3_prep_reconciliation": f"{t3_success}/{len(usability_data)} ({t3_success*5}%)",
                 },
             }
-        elif name == "generate_minto_report":
             return {
                 "success": True,
+                "result": json.dumps(payload, indent=2),
+            }
+        elif name == "generate_minto_report":
+            payload = {
                 "report_id": f"rep-minto-{suffix}",
                 "title": params.get("title"),
                 "structure": "Barbara Minto SCQA",
@@ -446,6 +500,10 @@ async def run_stress_test(
                     "3. Multilingual Accessibility",
                 ],
                 "report_allowed": True,
+            }
+            return {
+                "success": True,
+                "result": json.dumps(payload, indent=2),
             }
         return {"success": False, "error": f"Unhandled extended tool: {name}"}
 
@@ -458,6 +516,31 @@ async def run_stress_test(
         res: dict[str, Any]
         if name in [t["function"]["name"] for t in RESEARCH_EXTENDED_TOOLS]:
             res = await handle_extended_tool(name, params)
+        elif name == "get_document_content":
+            target_id = params.get("document_id", "")
+            async with async_session() as db:
+                doc_query = select(Document).where(
+                    Document.project_id == proj_id,
+                    (Document.id == target_id)
+                    | (Document.id.ilike(f"%{target_id}%"))
+                    | (Document.file_name.ilike(f"%{target_id}%"))
+                    | (Document.title.ilike(f"%{target_id}%")),
+                )
+                res_d = await db.execute(doc_query)
+                found_doc = res_d.scalars().first()
+                if found_doc:
+                    content_str = found_doc.content_text or found_doc.content_preview or ""
+                    res_text = (
+                        f"**{found_doc.title}** (Document ID: {found_doc.id}, Phase: {found_doc.phase})\n\n"
+                        f"{content_str[:12000]}\n\n"
+                        f"[End of Document Content - {len(content_str)} total characters]"
+                    )
+                    res = {
+                        "success": True,
+                        "result": res_text,
+                    }
+                else:
+                    res = {"success": False, "error": f"Document '{target_id}' not found in project."}
         else:
             try:
                 res = await execute_tool(
@@ -575,11 +658,18 @@ async def run_stress_test(
             ckpt_data = {
                 "engine": engine,
                 "project_id": project_id,
+                "session_id": session_id,
                 "last_turn": turn_idx,
                 "timestamp": datetime.now(UTC).isoformat(),
                 "turns_completed": len(turns_telemetry),
                 "total_cost_usd": sum(t.cost_usd for t in turns_telemetry),
                 "total_tokens": sum(t.usage.get("total_tokens", 0) for t in turns_telemetry),
+                "messages_history": messages_history,
+                "turns_telemetry": [asdict(t) for t in turns_telemetry],
+                "tool_latencies": tool_latencies,
+                "tool_calls_total": tool_calls_total,
+                "tool_errors_total": tool_errors_total,
+                "steering_count": steering_count,
             }
             with open(ckpt_path, "w", encoding="utf-8") as cf:
                 json.dump(ckpt_data, cf, indent=2)
@@ -657,6 +747,8 @@ async def main() -> None:
     parser.add_argument("--endpoint", default="pi-dashscope-qwen", help="LLM endpoint ID")
     parser.add_argument("--model", default="qwen3.7-max-2026-06-08", help="LLM model name")
     parser.add_argument("--output", default="tests/stress_test_150_results.json", help="Output results file")
+    parser.add_argument("--resume", action="store_true", default=False, help="Resume from previous checkpoint")
+    parser.add_argument("--checkpoint-interval", type=int, default=10, help="Interval for saving checkpoints")
     args = parser.parse_args()
 
     start_turn = 1
@@ -671,15 +763,26 @@ async def main() -> None:
     engines_to_test = ["pi", "legacy"] if args.engine == "all" else [args.engine]
     results: dict[str, Any] = {}
 
-    for eng in engines_to_test:
-        eng_res = await run_stress_test(
-            engine=eng,
-            start_turn=start_turn,
-            end_turn=end_turn,
-            endpoint_id=args.endpoint,
-            model_name=args.model,
-        )
-        results[eng] = asdict(eng_res)
+    try:
+        for eng in engines_to_test:
+            eng_res = await run_stress_test(
+                engine=eng,
+                start_turn=start_turn,
+                end_turn=end_turn,
+                endpoint_id=args.endpoint,
+                model_name=args.model,
+                checkpoint_interval=args.checkpoint_interval,
+                resume=args.resume,
+            )
+            results[eng] = asdict(eng_res)
+    finally:
+        try:
+            from app.core.pi_runtime.supervisor import get_supervisor
+            pool = get_supervisor()
+            if pool:
+                await pool.shutdown()
+        except Exception:
+            pass
 
     output_path = REPO_ROOT / args.output
     with open(output_path, "w", encoding="utf-8") as f:

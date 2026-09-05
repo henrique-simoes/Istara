@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-import pytest
 
 DATA_DIR = Path(__file__).resolve().parent / "data" / "stress_test_150_turns"
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -153,3 +152,18 @@ def test_trajectory_150_turns_integrity():
     assert phase_counts["develop"] == 35
     assert phase_counts["deliver"] == 35
     assert steering_count >= 30, f"Expected at least 30 steering interventions, found {steering_count}"
+
+
+if __name__ == "__main__":
+    print("Running test_corpus_manifest_integrity...")
+    test_corpus_manifest_integrity()
+    print("Running test_simulated_surveys_100_integrity...")
+    test_simulated_surveys_100_integrity()
+    print("Running test_usability_testing_20_integrity...")
+    test_usability_testing_20_integrity()
+    print("Running test_codebook_lifecycle_integrity...")
+    test_codebook_lifecycle_integrity()
+    print("Running test_trajectory_150_turns_integrity...")
+    test_trajectory_150_turns_integrity()
+    print("\nALL 5 DATASET TESTS PASSED CLEANLY!")
+

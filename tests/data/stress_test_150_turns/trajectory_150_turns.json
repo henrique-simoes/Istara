@@ -39,8 +39,8 @@
   {
     "turn_index": 4,
     "phase": "discover",
-    "step_title": "Discover Step 4: Examine CR-003, the Spanish-speaking pat...",
-    "user_prompt": "Examine CR-003, the Spanish-speaking patient interview. How did they describe their experience trying to determine if their laboratory blood work had arrived?",
+    "step_title": "Discover Step 4: Examine CR-003, the oncology patient int...",
+    "user_prompt": "Examine CR-003, the oncology patient interview. How did they describe their experience trying to determine if their laboratory blood work had arrived?",
     "steering": null,
     "expected_tool": "get_document_content",
     "expected_tool_params": {},
@@ -52,8 +52,8 @@
   {
     "turn_index": 5,
     "phase": "discover",
-    "step_title": "Discover Step 5: Now review CR-004, the family caregiver ...",
-    "user_prompt": "Now review CR-004, the family caregiver interview for an elderly cardiology patient. How does the caregiver describe the handoff between appointment scheduling and clinical lab notes?",
+    "step_title": "Discover Step 5: Now review CR-004, the Spanish-speaking ...",
+    "user_prompt": "Now review CR-004, the Spanish-speaking care coordinator interview at the community health center. How does the coordinator describe the handoff between appointment scheduling and clinical lab notes?",
     "steering": {
       "type": "scope_narrowing",
       "injection_text": "Steering: Do not generalize across all clinics yet. Focus specifically on the Cardiology and Oncology outpatient cohorts where missed prep tasks trigger same-day cancellations.",
@@ -69,8 +69,8 @@
   {
     "turn_index": 6,
     "phase": "discover",
-    "step_title": "Discover Step 6: Let's look into CR-005, the nurse manage...",
-    "user_prompt": "Let's look into CR-005, the nurse manager interview. Why do the triage nurses distrust the automated green status indicator?",
+    "step_title": "Discover Step 6: Let's look into CR-005, the rural clinic...",
+    "user_prompt": "Let's look into CR-005, the rural clinic administrator interview. Why do clinic staff distrust the automated green status indicator?",
     "steering": null,
     "expected_tool": "get_document_content",
     "expected_tool_params": {},
@@ -82,8 +82,8 @@
   {
     "turn_index": 7,
     "phase": "discover",
-    "step_title": "Discover Step 7: Inspect CR-006, the operations analyst i...",
-    "user_prompt": "Inspect CR-006, the operations analyst interview. What data do they provide on appointment cancellation rates when patients arrive without pre-visit labs?",
+    "step_title": "Discover Step 7: Inspect CR-006, the pediatric patient in...",
+    "user_prompt": "Inspect CR-006, the pediatric patient interview. What experiences do they share regarding appointment check-in and preparation friction?",
     "steering": null,
     "expected_tool": "get_document_content",
     "expected_tool_params": {},
@@ -95,8 +95,8 @@
   {
     "turn_index": 8,
     "phase": "discover",
-    "step_title": "Discover Step 8: Examine participant profile CR-025. What...",
-    "user_prompt": "Examine participant profile CR-025. What is their digital health literacy profile, and how do they manage appointment notifications?",
+    "step_title": "Discover Step 8: Examine participant profile CR-025 for t...",
+    "user_prompt": "Examine participant profile CR-025 for the urban care coordinator. What is their workflow profile, and how do they manage appointment notifications?",
     "steering": null,
     "expected_tool": "get_document_content",
     "expected_tool_params": {},
@@ -108,8 +108,8 @@
   {
     "turn_index": 9,
     "phase": "discover",
-    "step_title": "Discover Step 9: Review participant profile CR-026. What ...",
-    "user_prompt": "Review participant profile CR-026. What assistive devices or screen reader accommodations does this patient rely on?",
+    "step_title": "Discover Step 9: Review participant profile CR-026 for th...",
+    "user_prompt": "Review participant profile CR-026 for the Spanish-speaking oncology clinic administrator. What operational challenges does this profile highlight?",
     "steering": null,
     "expected_tool": "get_document_content",
     "expected_tool_params": {},
@@ -121,8 +121,8 @@
   {
     "turn_index": 10,
     "phase": "discover",
-    "step_title": "Discover Step 10: Inspect participant profile CR-027. What...",
-    "user_prompt": "Inspect participant profile CR-027. What are their chronic conditions and why do they require frequent caregiver proxy check-ins?",
+    "step_title": "Discover Step 10: Inspect participant profile CR-027 for t...",
+    "user_prompt": "Inspect participant profile CR-027 for the community health center patient. What are their chronic conditions and why do they require caregiver proxy check-ins?",
     "steering": {
       "type": "hypothesis_challenge",
       "injection_text": "Steering: Wait. Participant P-02 mentioned that SMS reminders were confusing rather than helpful. Check if text message reminders are actually causing more clinic inbound calls.",
