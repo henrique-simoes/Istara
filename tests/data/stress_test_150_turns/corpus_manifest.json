@@ -1,7 +1,7 @@
 {
   "project": "CareNav Renewal - 150 Turn Stress Test",
   "description": "35 canonical multi-modal documents selected for long-horizon agentic reasoning",
-  "total_selected": 35,
+  "total_selected": 39,
   "sources": [
     {
       "id": "CR-001",
@@ -1012,6 +1012,117 @@
         "stitch-design"
       ],
       "word_count": 10050
+    },
+    {
+      "id": "CR-149",
+      "title": "CareNav Renewal stakeholder source 02",
+      "method": "stakeholder",
+      "phase": "define",
+      "role": "caregiver",
+      "language": "en",
+      "clinic": "rural clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/stakeholder/CR-149-stakeholder-02.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "stakeholder",
+        "define",
+        "caregiver",
+        "en",
+        "rural-clinic"
+      ],
+      "skills": [
+        "stakeholder_analysis",
+        "decision_mapping",
+        "workshop-facilitation"
+      ],
+      "word_count": 10048
+    },
+    {
+      "id": "CR-107",
+      "title": "CareNav Renewal support source 01",
+      "method": "support",
+      "phase": "discover",
+      "role": "patient",
+      "language": "es",
+      "clinic": "rural clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/support/CR-107-support-01.csv",
+      "file_exists": true,
+      "file_type": "csv",
+      "tags": [
+        "support",
+        "discover",
+        "patient",
+        "es",
+        "rural-clinic"
+      ],
+      "skills": [
+        "support_ticket_analysis",
+        "thematic_analysis",
+        "pain_point_analysis",
+        "usability-testing",
+        "user-flow-mapping",
+        "user-interviews",
+        "ux-law-compliance"
+      ],
+      "word_count": 11127
+    },
+    {
+      "id": "CR-108",
+      "title": "CareNav Renewal support source 02",
+      "method": "support",
+      "phase": "discover",
+      "role": "care coordinator",
+      "language": "en",
+      "clinic": "pediatric clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/support/CR-108-support-02.csv",
+      "file_exists": true,
+      "file_type": "csv",
+      "tags": [
+        "support",
+        "discover",
+        "care coordinator",
+        "en",
+        "pediatric-clinic"
+      ],
+      "skills": [
+        "support_ticket_analysis",
+        "thematic_analysis",
+        "pain_point_analysis",
+        "affinity-mapping",
+        "analytics-review",
+        "browser-accessibility-check",
+        "browser-competitive-benchmark"
+      ],
+      "word_count": 11127
+    },
+    {
+      "id": "CR-153",
+      "title": "CareNav Renewal plan source 01",
+      "method": "plan",
+      "phase": "discover",
+      "role": "clinic admin",
+      "language": "pt-BR",
+      "clinic": "community health center",
+      "relative_path": "tests/document_corpus/canonical/sources/plan/CR-153-plan-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "plan",
+        "discover",
+        "clinic admin",
+        "pt-BR",
+        "community-health-center"
+      ],
+      "skills": [
+        "research_planning",
+        "recruitment_planning",
+        "longitudinal-tracking",
+        "nps-analysis",
+        "participant-simulation",
+        "persona-creation"
+      ],
+      "word_count": 5999
     }
   ]
 }

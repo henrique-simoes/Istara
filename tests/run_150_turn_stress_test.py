@@ -386,7 +386,12 @@ async def run_stress_test(
             if cand_file.exists():
                 try:
                     with open(cand_file, encoding="utf-8") as cf:
-                        resumed_ckpt = json.load(cf)
+                        loaded = json.load(cf)
+                    # Verify last turn was not an error
+                    tels = loaded.get("turns_telemetry", [])
+                    if tels and tels[-1].get("status") == "error":
+                        continue
+                    resumed_ckpt = loaded
                     print(f"[{engine.upper()}] Resuming from checkpoint: {cand_file.name} (last turn: {cand})")
                     break
                 except Exception as ckpt_err:
@@ -622,6 +627,29 @@ async def run_stress_test(
             engine=engine,
         )
 
+        # Governed rate-limit / quota fallback
+        if result.status != "success" and endpoint_id != "pi-dashscope-glm":
+            print(f"  [{engine.upper()} Turn {turn_idx}] Primary endpoint {endpoint_id} returned status={result.status}. Executing governed fallback to pi-dashscope-glm (glm-5.2)...")
+            result = await dispatcher.chat_turn(
+                project_id=project_id,
+                agent_id=agent_id,
+                session_key=session_key,
+                session_id=session_id,
+                system_prompt=system_prompt,
+                messages=list(messages_history),
+                user_text=user_prompt,
+                tool_executor=tracked_tool_executor,
+                tool_names=[t["function"]["name"] for t in ALL_HARNESS_TOOLS],
+                tools=ALL_HARNESS_TOOLS,
+                params=TurnParams(
+                    model="glm-5.2",
+                    endpoint_id="pi-dashscope-glm",
+                    temperature=0.0,
+                    max_tokens=1000,
+                ),
+                engine=engine,
+            )
+
         turn_dur = time.perf_counter() - t_turn_start
         cost = result.usage.get("cost_usd", 0.0) or 0.0
 
@@ -744,8 +772,8 @@ async def main() -> None:
     parser.add_argument("--engine", choices=["pi", "legacy", "all"], default="all", help="Agentic engine to test")
     parser.add_argument("--turns", type=int, default=150, help="Number of turns to execute (1 to 150)")
     parser.add_argument("--range", type=str, default=None, help="Turn range, e.g. 1-30, 31-60, 1-150")
-    parser.add_argument("--endpoint", default="pi-dashscope-qwen", help="LLM endpoint ID")
-    parser.add_argument("--model", default="qwen3.7-max-2026-06-08", help="LLM model name")
+    parser.add_argument("--endpoint", default="pi-dashscope-glm", help="LLM endpoint ID")
+    parser.add_argument("--model", default="glm-5.2", help="LLM model name")
     parser.add_argument("--output", default="tests/stress_test_150_results.json", help="Output results file")
     parser.add_argument("--resume", action="store_true", default=False, help="Resume from previous checkpoint")
     parser.add_argument("--checkpoint-interval", type=int, default=10, help="Interval for saving checkpoints")
