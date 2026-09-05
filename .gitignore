@@ -41,6 +41,8 @@ docker-compose.override.yml
 data/
 !tests/simulation/data/
 !backend/app/core/pi_runtime/data/
+!tests/data/
+tests/data/stress_test_150_turns/checkpoints/
 
 *.db
 *.sqlite

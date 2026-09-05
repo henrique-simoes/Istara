@@ -1,0 +1,4402 @@
+[
+  {
+    "response_id": "resp-150s-001",
+    "participant_id": "P-ST150-001",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 5,
+      "nps_rating": 1
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "The checklist showed everything completed, but when I arrived at cardiology, they said the EKG from last month was missing."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 5,
+        "answer": "Satisfaction rating 5/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 1,
+        "answer": "NPS rating 1/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-002",
+    "participant_id": "P-ST150-002",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-003",
+    "participant_id": "P-ST150-003",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 3,
+      "notification_satisfaction": 1,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "Loved the clear indicator showing Dr. Vance had reviewed my pre-op clearance. Gave me total peace of mind."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 3,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-004",
+    "participant_id": "P-ST150-004",
+    "demographics": {
+      "role": "patient",
+      "language": "pt-BR",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 5,
+      "nps_rating": 7
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "[PT-BR] Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient. (O sistema precisa de confirmacao medica clara em portugues)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "[PT-BR] I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked. (Minha familia cuida das consultas mas nao deve ver prontuarios intimos)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 5,
+        "answer": "Satisfaction rating 5/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 7,
+        "answer": "NPS rating 7/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-005",
+    "participant_id": "P-ST150-005",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "pt-BR",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 2,
+      "nps_rating": 5
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "[PT-BR] It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light. (O sistema precisa de confirmacao medica clara em portugues)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "[PT-BR] Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes. (Minha familia cuida das consultas mas nao deve ver prontuarios intimos)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 5,
+        "answer": "NPS rating 5/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-006",
+    "participant_id": "P-ST150-006",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-007",
+    "participant_id": "P-ST150-007",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "es",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 5,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "[ES] Complete lack of transparency. A red exclamation mark appeared with no phone number or clinic note to clarify what was needed. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 5,
+        "answer": "[ES] As a full-time caregiver, having complete transparency into appointments and physician notes is critical for preventing medication errors. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-008",
+    "participant_id": "P-ST150-008",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 5
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "Very helpful for elderly parents who cannot navigate smartphones, as long as the patient explicitly signs the digital waiver."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 5,
+        "answer": "NPS rating 5/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-009",
+    "participant_id": "P-ST150-009",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "es",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 2,
+      "notification_satisfaction": 3,
+      "nps_rating": 10
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "[ES] Helpful reminders, though sometimes the SMS arrives after I already completed the questionnaire online. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "[ES] Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 2,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 10,
+        "answer": "NPS rating 10/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-010",
+    "participant_id": "P-ST150-010",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 5,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "Complete lack of transparency. A red exclamation mark appeared with no phone number or clinic note to clarify what was needed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 5,
+        "answer": "Satisfaction rating 5/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-011",
+    "participant_id": "P-ST150-011",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "es",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "[ES] Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "[ES] My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-012",
+    "participant_id": "P-ST150-012",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 1,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "Status changed overnight without any alert. If I had not checked the portal by chance, I would have arrived fasting for an appointment that was postponed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-013",
+    "participant_id": "P-ST150-013",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 2,
+      "nps_rating": 7
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "Status changed overnight without any alert. If I had not checked the portal by chance, I would have arrived fasting for an appointment that was postponed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "Very helpful for elderly parents who cannot navigate smartphones, as long as the patient explicitly signs the digital waiver."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 7,
+        "answer": "NPS rating 7/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-014",
+    "participant_id": "P-ST150-014",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 2,
+      "notification_satisfaction": 1,
+      "nps_rating": 7
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "I will never allow proxy access if it means my daughter can read my behavioral health counseling notes. There must be strict compartmentalization."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 2,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 7,
+        "answer": "NPS rating 7/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-015",
+    "participant_id": "P-ST150-015",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Generally clear. I could see that the fasting blood draw was still needed before the endocrinologist visit."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-016",
+    "participant_id": "P-ST150-016",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 3,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "Status changed overnight without any alert. If I had not checked the portal by chance, I would have arrived fasting for an appointment that was postponed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-017",
+    "participant_id": "P-ST150-017",
+    "demographics": {
+      "role": "patient",
+      "language": "es",
+      "clinic": "Community Health Center",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 3,
+      "notification_satisfaction": 2,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "[ES] Status changed overnight without any alert. If I had not checked the portal by chance, I would have arrived fasting for an appointment that was postponed. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "[ES] It works fine for scheduling, but the privacy settings are confusing and hard to find on a mobile phone. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 3,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-018",
+    "participant_id": "P-ST150-018",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 5,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 2,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "Very clear. The step-by-step breakdown showed exactly what the clinic had received and what was pending on my end."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 5,
+        "answer": "As a full-time caregiver, having complete transparency into appointments and physician notes is critical for preventing medication errors."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-019",
+    "participant_id": "P-ST150-019",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "Loved the clear indicator showing Dr. Vance had reviewed my pre-op clearance. Gave me total peace of mind."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-020",
+    "participant_id": "P-ST150-020",
+    "demographics": {
+      "role": "patient",
+      "language": "pt-BR",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 2,
+      "notification_satisfaction": 3,
+      "nps_rating": 10
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "[PT-BR] I spent two hours on hold because the check-in screen claimed insurance was invalid when it was already verified in person. (O sistema precisa de confirmacao medica clara em portugues)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "[PT-BR] Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes. (Minha familia cuida das consultas mas nao deve ver prontuarios intimos)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 2,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 10,
+        "answer": "NPS rating 10/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-021",
+    "participant_id": "P-ST150-021",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "en",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 2,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "Acceptable if there is a clear warning banner telling me exactly what my caregiver is able to see."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-022",
+    "participant_id": "P-ST150-022",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "Status changed overnight without any alert. If I had not checked the portal by chance, I would have arrived fasting for an appointment that was postponed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Too broad. I need granular checkboxes: let my caregiver handle logistics, but keep clinical consultation notes strictly confidential."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-023",
+    "participant_id": "P-ST150-023",
+    "demographics": {
+      "role": "patient",
+      "language": "es",
+      "clinic": "Community Health Center",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 5,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 1,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "[ES] It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 5,
+        "answer": "[ES] Full proxy access is a lifesaver for my 86-year-old mother who has dementia. I need to see every clinical detail to keep her safe. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-024",
+    "participant_id": "P-ST150-024",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "es",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 10
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "[ES] Status changed overnight without any alert. If I had not checked the portal by chance, I would have arrived fasting for an appointment that was postponed. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "[ES] Very helpful for elderly parents who cannot navigate smartphones, as long as the patient explicitly signs the digital waiver. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 10,
+        "answer": "NPS rating 10/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-025",
+    "participant_id": "P-ST150-025",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 2,
+      "nps_rating": 5
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Helpful reminders, though sometimes the SMS arrives after I already completed the questionnaire online."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 5,
+        "answer": "NPS rating 5/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-026",
+    "participant_id": "P-ST150-026",
+    "demographics": {
+      "role": "patient",
+      "language": "pt-BR",
+      "clinic": "Community Health Center",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 2,
+      "notification_satisfaction": 3,
+      "nps_rating": 2
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "[PT-BR] It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light. (O sistema precisa de confirmacao medica clara em portugues)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "[PT-BR] I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked. (Minha familia cuida das consultas mas nao deve ver prontuarios intimos)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 2,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 2,
+        "answer": "NPS rating 2/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-027",
+    "participant_id": "P-ST150-027",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "I spent two hours on hold because the check-in screen claimed insurance was invalid when it was already verified in person."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-028",
+    "participant_id": "P-ST150-028",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 3,
+      "notification_satisfaction": 4,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "The checklist showed everything completed, but when I arrived at cardiology, they said the EKG from last month was missing."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 3,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-029",
+    "participant_id": "P-ST150-029",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "en",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 10
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Generally clear. I could see that the fasting blood draw was still needed before the endocrinologist visit."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "Terrified that sensitive reproductive health records will be exposed to my ex-spouse who has shared custody access for our child."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 10,
+        "answer": "NPS rating 10/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-030",
+    "participant_id": "P-ST150-030",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 3,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "Status changed overnight without any alert. If I had not checked the portal by chance, I would have arrived fasting for an appointment that was postponed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-031",
+    "participant_id": "P-ST150-031",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 10
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "Loved the clear indicator showing Dr. Vance had reviewed my pre-op clearance. Gave me total peace of mind."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 10,
+        "answer": "NPS rating 10/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-032",
+    "participant_id": "P-ST150-032",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "I spent two hours on hold because the check-in screen claimed insurance was invalid when it was already verified in person."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "Acceptable if there is a clear warning banner telling me exactly what my caregiver is able to see."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-033",
+    "participant_id": "P-ST150-033",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 5,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "I spent two hours on hold because the check-in screen claimed insurance was invalid when it was already verified in person."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 5,
+        "answer": "Full proxy access is a lifesaver for my 86-year-old mother who has dementia. I need to see every clinical detail to keep her safe."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-034",
+    "participant_id": "P-ST150-034",
+    "demographics": {
+      "role": "patient",
+      "language": "pt-BR",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 5
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "[PT-BR] The checklist showed everything completed, but when I arrived at cardiology, they said the EKG from last month was missing. (O sistema precisa de confirmacao medica clara em portugues)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "[PT-BR] Very helpful for elderly parents who cannot navigate smartphones, as long as the patient explicitly signs the digital waiver. (Minha familia cuida das consultas mas nao deve ver prontuarios intimos)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 5,
+        "answer": "NPS rating 5/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-035",
+    "participant_id": "P-ST150-035",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 2,
+      "nps_rating": 7
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Helpful reminders, though sometimes the SMS arrives after I already completed the questionnaire online."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 7,
+        "answer": "NPS rating 7/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-036",
+    "participant_id": "P-ST150-036",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 2,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Generally clear. I could see that the fasting blood draw was still needed before the endocrinologist visit."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-037",
+    "participant_id": "P-ST150-037",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 2,
+      "nps_rating": 3
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Generally clear. I could see that the fasting blood draw was still needed before the endocrinologist visit."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 3,
+        "answer": "NPS rating 3/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-038",
+    "participant_id": "P-ST150-038",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 3,
+      "notification_satisfaction": 4,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "Acceptable if there is a clear warning banner telling me exactly what my caregiver is able to see."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 3,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-039",
+    "participant_id": "P-ST150-039",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "es",
+      "clinic": "Community Health Center",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 7
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "[ES] Status changed overnight without any alert. If I had not checked the portal by chance, I would have arrived fasting for an appointment that was postponed. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "[ES] Very helpful for elderly parents who cannot navigate smartphones, as long as the patient explicitly signs the digital waiver. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 7,
+        "answer": "NPS rating 7/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-040",
+    "participant_id": "P-ST150-040",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "The checklist showed everything completed, but when I arrived at cardiology, they said the EKG from last month was missing."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "Very helpful for elderly parents who cannot navigate smartphones, as long as the patient explicitly signs the digital waiver."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-041",
+    "participant_id": "P-ST150-041",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Helpful reminders, though sometimes the SMS arrives after I already completed the questionnaire online."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-042",
+    "participant_id": "P-ST150-042",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 1
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "Complete lack of transparency. A red exclamation mark appeared with no phone number or clinic note to clarify what was needed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "Terrified that sensitive reproductive health records will be exposed to my ex-spouse who has shared custody access for our child."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 1,
+        "answer": "NPS rating 1/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-043",
+    "participant_id": "P-ST150-043",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 5,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "Loved the clear indicator showing Dr. Vance had reviewed my pre-op clearance. Gave me total peace of mind."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "It works fine for scheduling, but the privacy settings are confusing and hard to find on a mobile phone."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 5,
+        "answer": "Satisfaction rating 5/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-044",
+    "participant_id": "P-ST150-044",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 5,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "Very helpful for elderly parents who cannot navigate smartphones, as long as the patient explicitly signs the digital waiver."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 5,
+        "answer": "Satisfaction rating 5/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-045",
+    "participant_id": "P-ST150-045",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 5,
+      "nps_rating": 7
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Helpful reminders, though sometimes the SMS arrives after I already completed the questionnaire online."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 5,
+        "answer": "Satisfaction rating 5/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 7,
+        "answer": "NPS rating 7/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-046",
+    "participant_id": "P-ST150-046",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 3,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "Complete lack of transparency. A red exclamation mark appeared with no phone number or clinic note to clarify what was needed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Too broad. I need granular checkboxes: let my caregiver handle logistics, but keep clinical consultation notes strictly confidential."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-047",
+    "participant_id": "P-ST150-047",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 5,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 1,
+      "nps_rating": 10
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "The app said 'Not Ready' with zero explanation. I panicked thinking my surgery was cancelled, but the nurse just had not clicked the lab checkbox."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 5,
+        "answer": "Full proxy access is a lifesaver for my 86-year-old mother who has dementia. I need to see every clinical detail to keep her safe."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 10,
+        "answer": "NPS rating 10/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-048",
+    "participant_id": "P-ST150-048",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 2,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "Complete lack of transparency. A red exclamation mark appeared with no phone number or clinic note to clarify what was needed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "Acceptable if there is a clear warning banner telling me exactly what my caregiver is able to see."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-049",
+    "participant_id": "P-ST150-049",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "es",
+      "clinic": "Community Health Center",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 2,
+      "notification_satisfaction": 3,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "[ES] Loved the clear indicator showing Dr. Vance had reviewed my pre-op clearance. Gave me total peace of mind. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "[ES] Terrified that sensitive reproductive health records will be exposed to my ex-spouse who has shared custody access for our child. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 2,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-050",
+    "participant_id": "P-ST150-050",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 2
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "I spent two hours on hold because the check-in screen claimed insurance was invalid when it was already verified in person."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 2,
+        "answer": "NPS rating 2/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-051",
+    "participant_id": "P-ST150-051",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 3,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-052",
+    "participant_id": "P-ST150-052",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "Loved the clear indicator showing Dr. Vance had reviewed my pre-op clearance. Gave me total peace of mind."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Too broad. I need granular checkboxes: let my caregiver handle logistics, but keep clinical consultation notes strictly confidential."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-053",
+    "participant_id": "P-ST150-053",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "es",
+      "clinic": "Community Health Center",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 5
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "[ES] Generally clear. I could see that the fasting blood draw was still needed before the endocrinologist visit. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "[ES] Terrified that sensitive reproductive health records will be exposed to my ex-spouse who has shared custody access for our child. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 5,
+        "answer": "NPS rating 5/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-054",
+    "participant_id": "P-ST150-054",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 7
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "Status changed overnight without any alert. If I had not checked the portal by chance, I would have arrived fasting for an appointment that was postponed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "Acceptable if there is a clear warning banner telling me exactly what my caregiver is able to see."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 7,
+        "answer": "NPS rating 7/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-055",
+    "participant_id": "P-ST150-055",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 1,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Too broad. I need granular checkboxes: let my caregiver handle logistics, but keep clinical consultation notes strictly confidential."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-056",
+    "participant_id": "P-ST150-056",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 3,
+      "nps_rating": 5
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "Very clear. The step-by-step breakdown showed exactly what the clinic had received and what was pending on my end."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "Acceptable if there is a clear warning banner telling me exactly what my caregiver is able to see."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 5,
+        "answer": "NPS rating 5/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-057",
+    "participant_id": "P-ST150-057",
+    "demographics": {
+      "role": "patient",
+      "language": "es",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "[ES] The checklist showed everything completed, but when I arrived at cardiology, they said the EKG from last month was missing. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "[ES] I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-058",
+    "participant_id": "P-ST150-058",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 2,
+      "notification_satisfaction": 1,
+      "nps_rating": 5
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Generally clear. I could see that the fasting blood draw was still needed before the endocrinologist visit."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 2,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 5,
+        "answer": "NPS rating 5/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-059",
+    "participant_id": "P-ST150-059",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-060",
+    "participant_id": "P-ST150-060",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 1,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "The checklist showed everything completed, but when I arrived at cardiology, they said the EKG from last month was missing."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-061",
+    "participant_id": "P-ST150-061",
+    "demographics": {
+      "role": "patient",
+      "language": "pt-BR",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "[PT-BR] Very clear. The step-by-step breakdown showed exactly what the clinic had received and what was pending on my end. (O sistema precisa de confirmacao medica clara em portugues)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "[PT-BR] Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes. (Minha familia cuida das consultas mas nao deve ver prontuarios intimos)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-062",
+    "participant_id": "P-ST150-062",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 5
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "The app said 'Not Ready' with zero explanation. I panicked thinking my surgery was cancelled, but the nurse just had not clicked the lab checkbox."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "Terrified that sensitive reproductive health records will be exposed to my ex-spouse who has shared custody access for our child."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 5,
+        "answer": "NPS rating 5/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-063",
+    "participant_id": "P-ST150-063",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 10
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "Loved the clear indicator showing Dr. Vance had reviewed my pre-op clearance. Gave me total peace of mind."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 10,
+        "answer": "NPS rating 10/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-064",
+    "participant_id": "P-ST150-064",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 7
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "Complete lack of transparency. A red exclamation mark appeared with no phone number or clinic note to clarify what was needed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "Terrified that sensitive reproductive health records will be exposed to my ex-spouse who has shared custody access for our child."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 7,
+        "answer": "NPS rating 7/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-065",
+    "participant_id": "P-ST150-065",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 3,
+      "notification_satisfaction": 1,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Too broad. I need granular checkboxes: let my caregiver handle logistics, but keep clinical consultation notes strictly confidential."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 3,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-066",
+    "participant_id": "P-ST150-066",
+    "demographics": {
+      "role": "patient",
+      "language": "pt-BR",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 5,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 0
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "[PT-BR] Very clear. The step-by-step breakdown showed exactly what the clinic had received and what was pending on my end. (O sistema precisa de confirmacao medica clara em portugues)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 5,
+        "answer": "[PT-BR] As a full-time caregiver, having complete transparency into appointments and physician notes is critical for preventing medication errors. (Minha familia cuida das consultas mas nao deve ver prontuarios intimos)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 0,
+        "answer": "NPS rating 0/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-067",
+    "participant_id": "P-ST150-067",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "pt-BR",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "[PT-BR] It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light. (O sistema precisa de confirmacao medica clara em portugues)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "[PT-BR] I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked. (Minha familia cuida das consultas mas nao deve ver prontuarios intimos)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-068",
+    "participant_id": "P-ST150-068",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 3,
+      "nps_rating": 5
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Helpful reminders, though sometimes the SMS arrives after I already completed the questionnaire online."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "Acceptable if there is a clear warning banner telling me exactly what my caregiver is able to see."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 5,
+        "answer": "NPS rating 5/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-069",
+    "participant_id": "P-ST150-069",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 1,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Too broad. I need granular checkboxes: let my caregiver handle logistics, but keep clinical consultation notes strictly confidential."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-070",
+    "participant_id": "P-ST150-070",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 1,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Generally clear. I could see that the fasting blood draw was still needed before the endocrinologist visit."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-071",
+    "participant_id": "P-ST150-071",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "en",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "Loved the clear indicator showing Dr. Vance had reviewed my pre-op clearance. Gave me total peace of mind."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-072",
+    "participant_id": "P-ST150-072",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 2,
+      "notification_satisfaction": 4,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Helpful reminders, though sometimes the SMS arrives after I already completed the questionnaire online."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 2,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-073",
+    "participant_id": "P-ST150-073",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "It works fine for scheduling, but the privacy settings are confusing and hard to find on a mobile phone."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-074",
+    "participant_id": "P-ST150-074",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "es",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 1,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "[ES] It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "[ES] Terrified that sensitive reproductive health records will be exposed to my ex-spouse who has shared custody access for our child. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-075",
+    "participant_id": "P-ST150-075",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 1,
+      "nps_rating": 10
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "Status changed overnight without any alert. If I had not checked the portal by chance, I would have arrived fasting for an appointment that was postponed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 10,
+        "answer": "NPS rating 10/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-076",
+    "participant_id": "P-ST150-076",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 5,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 7
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 5,
+        "answer": "As a full-time caregiver, having complete transparency into appointments and physician notes is critical for preventing medication errors."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 7,
+        "answer": "NPS rating 7/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-077",
+    "participant_id": "P-ST150-077",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "es",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 5,
+      "nps_rating": 10
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "[ES] I spent two hours on hold because the check-in screen claimed insurance was invalid when it was already verified in person. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "[ES] I will never allow proxy access if it means my daughter can read my behavioral health counseling notes. There must be strict compartmentalization. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 5,
+        "answer": "Satisfaction rating 5/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 10,
+        "answer": "NPS rating 10/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-078",
+    "participant_id": "P-ST150-078",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "es",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 1,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "[ES] It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "[ES] It works fine for scheduling, but the privacy settings are confusing and hard to find on a mobile phone. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-079",
+    "participant_id": "P-ST150-079",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 3,
+      "notification_satisfaction": 4,
+      "nps_rating": 6
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Generally clear. I could see that the fasting blood draw was still needed before the endocrinologist visit."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "Terrified that sensitive reproductive health records will be exposed to my ex-spouse who has shared custody access for our child."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 3,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 6,
+        "answer": "NPS rating 6/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-080",
+    "participant_id": "P-ST150-080",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 5,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "Status changed overnight without any alert. If I had not checked the portal by chance, I would have arrived fasting for an appointment that was postponed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "I will never allow proxy access if it means my daughter can read my behavioral health counseling notes. There must be strict compartmentalization."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 5,
+        "answer": "Satisfaction rating 5/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-081",
+    "participant_id": "P-ST150-081",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "pt-BR",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 5,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "[PT-BR] Generally clear. I could see that the fasting blood draw was still needed before the endocrinologist visit. (O sistema precisa de confirmacao medica clara em portugues)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "[PT-BR] Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes. (Minha familia cuida das consultas mas nao deve ver prontuarios intimos)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 5,
+        "answer": "Satisfaction rating 5/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-082",
+    "participant_id": "P-ST150-082",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 1,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "I spent two hours on hold because the check-in screen claimed insurance was invalid when it was already verified in person."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-083",
+    "participant_id": "P-ST150-083",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "es",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "[ES] Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient. (La aplicacion necesita instrucciones mas claras en espanol)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "[ES] Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes. (Los permisos de privacidad deben ser transparentes para la familia)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-084",
+    "participant_id": "P-ST150-084",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 3
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Generally clear. I could see that the fasting blood draw was still needed before the endocrinologist visit."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 3,
+        "answer": "NPS rating 3/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-085",
+    "participant_id": "P-ST150-085",
+    "demographics": {
+      "role": "patient",
+      "language": "pt-BR",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 5,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "[PT-BR] Very clear. The step-by-step breakdown showed exactly what the clinic had received and what was pending on my end. (O sistema precisa de confirmacao medica clara em portugues)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 5,
+        "answer": "[PT-BR] As a full-time caregiver, having complete transparency into appointments and physician notes is critical for preventing medication errors. (Minha familia cuida das consultas mas nao deve ver prontuarios intimos)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-086",
+    "participant_id": "P-ST150-086",
+    "demographics": {
+      "role": "patient",
+      "language": "pt-BR",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 0
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "[PT-BR] Very clear. The step-by-step breakdown showed exactly what the clinic had received and what was pending on my end. (O sistema precisa de confirmacao medica clara em portugues)."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "[PT-BR] Very helpful for elderly parents who cannot navigate smartphones, as long as the patient explicitly signs the digital waiver. (Minha familia cuida das consultas mas nao deve ver prontuarios intimos)."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 0,
+        "answer": "NPS rating 0/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-087",
+    "participant_id": "P-ST150-087",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 5,
+      "audit_trail_importance": 3,
+      "notification_satisfaction": 2,
+      "nps_rating": 0
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Helpful reminders, though sometimes the SMS arrives after I already completed the questionnaire online."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 5,
+        "answer": "Full proxy access is a lifesaver for my 86-year-old mother who has dementia. I need to see every clinical detail to keep her safe."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 3,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 0,
+        "answer": "NPS rating 0/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-088",
+    "participant_id": "P-ST150-088",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 2,
+      "notification_satisfaction": 1,
+      "nps_rating": 10
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "I will never allow proxy access if it means my daughter can read my behavioral health counseling notes. There must be strict compartmentalization."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 2,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 10,
+        "answer": "NPS rating 10/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-089",
+    "participant_id": "P-ST150-089",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 3,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Generally clear. I could see that the fasting blood draw was still needed before the endocrinologist visit."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "Very helpful for elderly parents who cannot navigate smartphones, as long as the patient explicitly signs the digital waiver."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-090",
+    "participant_id": "P-ST150-090",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 2,
+      "nps_rating": 5
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Helpful reminders, though sometimes the SMS arrives after I already completed the questionnaire online."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "I trust my doctor, not an automated algorithm. Always show the exact medical note that triggered the appointment clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 2,
+        "answer": "Satisfaction rating 2/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 5,
+        "answer": "NPS rating 5/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-091",
+    "participant_id": "P-ST150-091",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 5,
+      "nps_rating": 1
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "Complete lack of transparency. A red exclamation mark appeared with no phone number or clinic note to clarify what was needed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "I will never allow proxy access if it means my daughter can read my behavioral health counseling notes. There must be strict compartmentalization."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 5,
+        "answer": "Satisfaction rating 5/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 1,
+        "answer": "NPS rating 1/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-092",
+    "participant_id": "P-ST150-092",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "30-49"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "Very helpful for elderly parents who cannot navigate smartphones, as long as the patient explicitly signs the digital waiver."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-093",
+    "participant_id": "P-ST150-093",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "en",
+      "clinic": "Cardiology Specialty Clinic",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 1,
+      "notification_satisfaction": 4,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Helpful reminders, though sometimes the SMS arrives after I already completed the questionnaire online."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "I will never allow proxy access if it means my daughter can read my behavioral health counseling notes. There must be strict compartmentalization."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 1,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-094",
+    "participant_id": "P-ST150-094",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 3,
+      "nps_rating": 7
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "Complete lack of transparency. A red exclamation mark appeared with no phone number or clinic note to clarify what was needed."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "My son manages my appointments, but he does not need to see my oncology prognosis before I discuss it with my oncologist."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Don't just say 'Labs Cleared' - show me the date, the laboratory name, and the doctor's electronic signature."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 7,
+        "answer": "NPS rating 7/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-095",
+    "participant_id": "P-ST150-095",
+    "demographics": {
+      "role": "healthcare_proxy",
+      "language": "en",
+      "clinic": "Geriatric Primary Care",
+      "age_bracket": "80+"
+    },
+    "metrics": {
+      "readiness_clarity": 2,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 2,
+      "notification_satisfaction": 5,
+      "nps_rating": 9
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 2,
+        "answer": "The checklist showed everything completed, but when I arrived at cardiology, they said the EKG from last month was missing."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "Acceptable if there is a clear warning banner telling me exactly what my caregiver is able to see."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 2,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 5,
+        "answer": "Satisfaction rating 5/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 9,
+        "answer": "NPS rating 9/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-096",
+    "participant_id": "P-ST150-096",
+    "demographics": {
+      "role": "family_caregiver",
+      "language": "en",
+      "clinic": "Community Health Center",
+      "age_bracket": "50-64"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 1,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 7
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "It gives a general status, but it does not tell you WHICH specific doctor note or blood test is holding up the green light."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 1,
+        "answer": "Terrified that sensitive reproductive health records will be exposed to my ex-spouse who has shared custody access for our child."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "Traceability is non-negotiable in healthcare. Every status flag should link directly to the underlying EHR entry."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 7,
+        "answer": "NPS rating 7/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-097",
+    "participant_id": "P-ST150-097",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Post-Operative Surgical Clinic",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 1,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 5,
+      "notification_satisfaction": 4,
+      "nps_rating": 8
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 1,
+        "answer": "I spent two hours on hold because the check-in screen claimed insurance was invalid when it was already verified in person."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "I am comfortable with my spouse seeing appointment logistics and lab instructions, provided psychological notes remain locked."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 5,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 8,
+        "answer": "NPS rating 8/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-098",
+    "participant_id": "P-ST150-098",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Oncology Infusion Center",
+      "age_bracket": "65-79"
+    },
+    "metrics": {
+      "readiness_clarity": 3,
+      "caregiver_proxy_comfort": 4,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 3,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 3,
+        "answer": "Decent overview, but the technical terms like 'pre-authorization pending' mean nothing to an 80-year-old patient."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 4,
+        "answer": "Very helpful for elderly parents who cannot navigate smartphones, as long as the patient explicitly signs the digital waiver."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 3,
+        "answer": "Satisfaction rating 3/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-099",
+    "participant_id": "P-ST150-099",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 4,
+      "caregiver_proxy_comfort": 2,
+      "audit_trail_importance": 3,
+      "notification_satisfaction": 1,
+      "nps_rating": 10
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 4,
+        "answer": "Helpful reminders, though sometimes the SMS arrives after I already completed the questionnaire online."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 2,
+        "answer": "Caregiver permissions are currently all-or-nothing. I want my son to see appointment times, but NOT my medication list or doctor notes."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 3,
+        "answer": "Without the source note attached, staff and patients are left guessing whether the triage decision was made by an AI or a clinician."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 1,
+        "answer": "Satisfaction rating 1/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 10,
+        "answer": "NPS rating 10/10."
+      }
+    ]
+  },
+  {
+    "response_id": "resp-150s-100",
+    "participant_id": "P-ST150-100",
+    "demographics": {
+      "role": "patient",
+      "language": "en",
+      "clinic": "Pediatric Outpatient Pavilion",
+      "age_bracket": "18-29"
+    },
+    "metrics": {
+      "readiness_clarity": 5,
+      "caregiver_proxy_comfort": 3,
+      "audit_trail_importance": 4,
+      "notification_satisfaction": 4,
+      "nps_rating": 4
+    },
+    "answers": [
+      {
+        "question": "How clearly did CareNav explain why an appointment was ready or not ready?",
+        "rating": 5,
+        "answer": "Loved the clear indicator showing Dr. Vance had reviewed my pre-op clearance. Gave me total peace of mind."
+      },
+      {
+        "question": "What is your primary concern regarding caregiver proxy access to your clinical notes?",
+        "rating": 3,
+        "answer": "Acceptable if there is a clear warning banner telling me exactly what my caregiver is able to see."
+      },
+      {
+        "question": "How important is seeing the verbatim clinical note behind an appointment readiness flag?",
+        "rating": 4,
+        "answer": "A green badge means nothing to me unless I can click it and see Dr. Vance's signed clinical note confirming my clearance."
+      },
+      {
+        "question": "How satisfied are you with the frequency of SMS and portal appointment readiness notifications?",
+        "rating": 4,
+        "answer": "Satisfaction rating 4/5 for notification pacing."
+      },
+      {
+        "question": "Overall, how likely are you to recommend CareNav to another patient or caregiver?",
+        "rating": 4,
+        "answer": "NPS rating 4/10."
+      }
+    ]
+  }
+]

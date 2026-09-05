@@ -1,0 +1,1301 @@
+[
+  {
+    "session_id": "US-150s-01",
+    "participant_id": "P-LAB-01",
+    "persona": "Eleanor (78yo, Cardiology Patient, low tech literacy)",
+    "assistive_tech": "200% Zoom",
+    "device": "iPad Safari",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 106.3,
+        "errors": 2,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 103.2,
+        "errors": 2,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": false,
+        "duration_seconds": 160.5,
+        "errors": 6,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        4,
+        3,
+        3,
+        3,
+        4,
+        1,
+        4,
+        3,
+        4,
+        1
+      ],
+      "sus_score": 70.0,
+      "umux_items": [
+        6,
+        6
+      ],
+      "umux_score": 83.3,
+      "total_duration_seconds": 370.0,
+      "total_errors": 10
+    },
+    "critical_incidents": [
+      {
+        "task": "Global Navigation",
+        "severity": 3,
+        "heuristic": "Accessibility / WCAG 2.2 AA Contrast",
+        "observation": "Assistive technology (200% Zoom) failed to identify the secondary action button due to 2.8:1 contrast ratio against gray card background."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-02",
+    "participant_id": "P-LAB-02",
+    "persona": "Carlos (46yo, Caregiver for elderly father, bilingual)",
+    "assistive_tech": "None",
+    "device": "iPhone Safari",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 129.8,
+        "errors": 2,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 113.3,
+        "errors": 0,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": true,
+        "duration_seconds": 184.1,
+        "errors": 3,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        5,
+        3,
+        5,
+        2,
+        5,
+        2,
+        3,
+        3,
+        3,
+        3
+      ],
+      "sus_score": 70.0,
+      "umux_items": [
+        4,
+        3
+      ],
+      "umux_score": 41.7,
+      "total_duration_seconds": 427.2,
+      "total_errors": 5
+    },
+    "critical_incidents": []
+  },
+  {
+    "session_id": "US-150s-03",
+    "participant_id": "P-LAB-03",
+    "persona": "Marcus (34yo, Tech worker, first-time oncology visit)",
+    "assistive_tech": "None",
+    "device": "Desktop Chrome",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 120.1,
+        "errors": 4,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": false,
+        "duration_seconds": 31.7,
+        "errors": 3,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": false,
+        "duration_seconds": 89.9,
+        "errors": 7,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        5,
+        3,
+        4,
+        1,
+        5,
+        2,
+        4,
+        3,
+        3,
+        3
+      ],
+      "sus_score": 72.5,
+      "umux_items": [
+        4,
+        5
+      ],
+      "umux_score": 58.3,
+      "total_duration_seconds": 241.7,
+      "total_errors": 14
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 1: Caregiver Proxy Restriction",
+        "severity": 3,
+        "heuristic": "Flexibility and Efficiency of Use / User Control",
+        "observation": "Participant clicked 'Share Profile' expecting permission toggles, but received an immediate all-access confirmation without granular redaction choices."
+      },
+      {
+        "task": "Task 2: Diagnose Not-Ready Flag",
+        "severity": 4,
+        "heuristic": "Visibility of System Status / Error Prevention",
+        "observation": "Red status icon was displayed without a tooltip or hyperlinked clinician note. Participant tried clicking the icon 5 times without response."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-04",
+    "participant_id": "P-LAB-04",
+    "persona": "Beatrice (62yo, Low vision, post-hip replacement)",
+    "assistive_tech": "Screen Reader (VoiceOver)",
+    "device": "iPhone Safari",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 69.6,
+        "errors": 1,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 82.8,
+        "errors": 0,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": true,
+        "duration_seconds": 148.5,
+        "errors": 5,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        4,
+        1,
+        5,
+        2,
+        5,
+        4,
+        5,
+        2,
+        5,
+        3
+      ],
+      "sus_score": 80.0,
+      "umux_items": [
+        6,
+        5
+      ],
+      "umux_score": 75.0,
+      "total_duration_seconds": 300.9,
+      "total_errors": 6
+    },
+    "critical_incidents": [
+      {
+        "task": "Global Navigation",
+        "severity": 3,
+        "heuristic": "Accessibility / WCAG 2.2 AA Contrast",
+        "observation": "Assistive technology (Screen Reader (VoiceOver)) failed to identify the secondary action button due to 2.8:1 contrast ratio against gray card background."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-05",
+    "participant_id": "P-LAB-05",
+    "persona": "Devon (29yo, Pediatric caregiver for toddler)",
+    "assistive_tech": "None",
+    "device": "Android Chrome",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": false,
+        "duration_seconds": 60.0,
+        "errors": 3,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 61.6,
+        "errors": 0,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": false,
+        "duration_seconds": 183.4,
+        "errors": 6,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        3,
+        3,
+        3,
+        2,
+        4,
+        4,
+        5,
+        1,
+        4,
+        2
+      ],
+      "sus_score": 67.5,
+      "umux_items": [
+        5,
+        3
+      ],
+      "umux_score": 50.0,
+      "total_duration_seconds": 305.0,
+      "total_errors": 9
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 1: Caregiver Proxy Restriction",
+        "severity": 3,
+        "heuristic": "Flexibility and Efficiency of Use / User Control",
+        "observation": "Participant clicked 'Share Profile' expecting permission toggles, but received an immediate all-access confirmation without granular redaction choices."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-06",
+    "participant_id": "P-LAB-06",
+    "persona": "Helena (53yo, Chronic autoimmune patient)",
+    "assistive_tech": "High Contrast Mode",
+    "device": "Desktop Firefox",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 84.9,
+        "errors": 0,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": false,
+        "duration_seconds": 95.7,
+        "errors": 6,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": false,
+        "duration_seconds": 79.9,
+        "errors": 5,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        4,
+        2,
+        5,
+        2,
+        5,
+        2,
+        3,
+        1,
+        5,
+        2
+      ],
+      "sus_score": 82.5,
+      "umux_items": [
+        7,
+        4
+      ],
+      "umux_score": 75.0,
+      "total_duration_seconds": 260.5,
+      "total_errors": 11
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 2: Diagnose Not-Ready Flag",
+        "severity": 4,
+        "heuristic": "Visibility of System Status / Error Prevention",
+        "observation": "Red status icon was displayed without a tooltip or hyperlinked clinician note. Participant tried clicking the icon 5 times without response."
+      },
+      {
+        "task": "Global Navigation",
+        "severity": 3,
+        "heuristic": "Accessibility / WCAG 2.2 AA Contrast",
+        "observation": "Assistive technology (High Contrast Mode) failed to identify the secondary action button due to 2.8:1 contrast ratio against gray card background."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-07",
+    "participant_id": "P-LAB-07",
+    "persona": "George (82yo, Heart failure patient, caregiver-managed)",
+    "assistive_tech": "200% Zoom",
+    "device": "iPad Safari",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 155.1,
+        "errors": 3,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 101.8,
+        "errors": 2,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": false,
+        "duration_seconds": 125.6,
+        "errors": 5,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        5,
+        2,
+        4,
+        3,
+        4,
+        2,
+        4,
+        1,
+        4,
+        2
+      ],
+      "sus_score": 77.5,
+      "umux_items": [
+        7,
+        6
+      ],
+      "umux_score": 91.7,
+      "total_duration_seconds": 382.5,
+      "total_errors": 10
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 1: Caregiver Proxy Restriction",
+        "severity": 3,
+        "heuristic": "Flexibility and Efficiency of Use / User Control",
+        "observation": "Participant clicked 'Share Profile' expecting permission toggles, but received an immediate all-access confirmation without granular redaction choices."
+      },
+      {
+        "task": "Global Navigation",
+        "severity": 3,
+        "heuristic": "Accessibility / WCAG 2.2 AA Contrast",
+        "observation": "Assistive technology (200% Zoom) failed to identify the secondary action button due to 2.8:1 contrast ratio against gray card background."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-08",
+    "participant_id": "P-LAB-08",
+    "persona": "Sofia (39yo, Healthcare proxy for two aging parents)",
+    "assistive_tech": "None",
+    "device": "Desktop Chrome",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": false,
+        "duration_seconds": 139.3,
+        "errors": 4,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 100.8,
+        "errors": 3,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": true,
+        "duration_seconds": 97.9,
+        "errors": 3,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        4,
+        3,
+        5,
+        2,
+        3,
+        1,
+        5,
+        3,
+        4,
+        1
+      ],
+      "sus_score": 77.5,
+      "umux_items": [
+        7,
+        3
+      ],
+      "umux_score": 66.7,
+      "total_duration_seconds": 338.0,
+      "total_errors": 10
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 1: Caregiver Proxy Restriction",
+        "severity": 3,
+        "heuristic": "Flexibility and Efficiency of Use / User Control",
+        "observation": "Participant clicked 'Share Profile' expecting permission toggles, but received an immediate all-access confirmation without granular redaction choices."
+      },
+      {
+        "task": "Task 2: Diagnose Not-Ready Flag",
+        "severity": 2,
+        "heuristic": "Visibility of System Status / Error Prevention",
+        "observation": "Red status icon was displayed without a tooltip or hyperlinked clinician note. Participant tried clicking the icon 5 times without response."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-09",
+    "participant_id": "P-LAB-09",
+    "persona": "Amir (41yo, Diabetic neuropathy patient)",
+    "assistive_tech": "None",
+    "device": "Android Chrome",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 79.6,
+        "errors": 3,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 51.2,
+        "errors": 2,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": true,
+        "duration_seconds": 131.2,
+        "errors": 1,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        5,
+        3,
+        3,
+        3,
+        5,
+        4,
+        5,
+        1,
+        5,
+        3
+      ],
+      "sus_score": 72.5,
+      "umux_items": [
+        7,
+        5
+      ],
+      "umux_score": 83.3,
+      "total_duration_seconds": 262.0,
+      "total_errors": 6
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 1: Caregiver Proxy Restriction",
+        "severity": 3,
+        "heuristic": "Flexibility and Efficiency of Use / User Control",
+        "observation": "Participant clicked 'Share Profile' expecting permission toggles, but received an immediate all-access confirmation without granular redaction choices."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-10",
+    "participant_id": "P-LAB-10",
+    "persona": "Grace (71yo, Mild cognitive impairment, cardiology)",
+    "assistive_tech": "Large Text",
+    "device": "iPad Safari",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": false,
+        "duration_seconds": 62.0,
+        "errors": 3,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 94.9,
+        "errors": 3,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": true,
+        "duration_seconds": 152.9,
+        "errors": 1,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        3,
+        1,
+        3,
+        1,
+        3,
+        4,
+        3,
+        3,
+        5,
+        2
+      ],
+      "sus_score": 65.0,
+      "umux_items": [
+        7,
+        6
+      ],
+      "umux_score": 91.7,
+      "total_duration_seconds": 309.8,
+      "total_errors": 7
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 1: Caregiver Proxy Restriction",
+        "severity": 3,
+        "heuristic": "Flexibility and Efficiency of Use / User Control",
+        "observation": "Participant clicked 'Share Profile' expecting permission toggles, but received an immediate all-access confirmation without granular redaction choices."
+      },
+      {
+        "task": "Task 2: Diagnose Not-Ready Flag",
+        "severity": 2,
+        "heuristic": "Visibility of System Status / Error Prevention",
+        "observation": "Red status icon was displayed without a tooltip or hyperlinked clinician note. Participant tried clicking the icon 5 times without response."
+      },
+      {
+        "task": "Global Navigation",
+        "severity": 3,
+        "heuristic": "Accessibility / WCAG 2.2 AA Contrast",
+        "observation": "Assistive technology (Large Text) failed to identify the secondary action button due to 2.8:1 contrast ratio against gray card background."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-11",
+    "participant_id": "P-LAB-11",
+    "persona": "Liam (25yo, Sports medicine patient)",
+    "assistive_tech": "None",
+    "device": "iPhone Safari",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 131.5,
+        "errors": 0,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 65.3,
+        "errors": 0,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": true,
+        "duration_seconds": 61.4,
+        "errors": 1,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        4,
+        3,
+        5,
+        1,
+        3,
+        4,
+        3,
+        1,
+        3,
+        1
+      ],
+      "sus_score": 70.0,
+      "umux_items": [
+        7,
+        4
+      ],
+      "umux_score": 75.0,
+      "total_duration_seconds": 258.2,
+      "total_errors": 1
+    },
+    "critical_incidents": []
+  },
+  {
+    "session_id": "US-150s-12",
+    "participant_id": "P-LAB-12",
+    "persona": "Valerie (58yo, Post-mastectomy surgical follow-up)",
+    "assistive_tech": "None",
+    "device": "Desktop Safari",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 147.9,
+        "errors": 3,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": false,
+        "duration_seconds": 108.8,
+        "errors": 4,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": true,
+        "duration_seconds": 114.6,
+        "errors": 2,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        3,
+        1,
+        3,
+        3,
+        5,
+        1,
+        4,
+        2,
+        5,
+        2
+      ],
+      "sus_score": 77.5,
+      "umux_items": [
+        4,
+        3
+      ],
+      "umux_score": 41.7,
+      "total_duration_seconds": 371.3,
+      "total_errors": 9
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 1: Caregiver Proxy Restriction",
+        "severity": 3,
+        "heuristic": "Flexibility and Efficiency of Use / User Control",
+        "observation": "Participant clicked 'Share Profile' expecting permission toggles, but received an immediate all-access confirmation without granular redaction choices."
+      },
+      {
+        "task": "Task 2: Diagnose Not-Ready Flag",
+        "severity": 4,
+        "heuristic": "Visibility of System Status / Error Prevention",
+        "observation": "Red status icon was displayed without a tooltip or hyperlinked clinician note. Participant tried clicking the icon 5 times without response."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-13",
+    "participant_id": "P-LAB-13",
+    "persona": "Raul (67yo, Spanish-dominant, cataract pre-op)",
+    "assistive_tech": "High Contrast Mode",
+    "device": "Android Chrome",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 123.1,
+        "errors": 1,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": false,
+        "duration_seconds": 85.0,
+        "errors": 2,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": true,
+        "duration_seconds": 186.3,
+        "errors": 3,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        5,
+        3,
+        4,
+        1,
+        5,
+        1,
+        4,
+        2,
+        4,
+        2
+      ],
+      "sus_score": 82.5,
+      "umux_items": [
+        4,
+        5
+      ],
+      "umux_score": 58.3,
+      "total_duration_seconds": 394.4,
+      "total_errors": 6
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 2: Diagnose Not-Ready Flag",
+        "severity": 4,
+        "heuristic": "Visibility of System Status / Error Prevention",
+        "observation": "Red status icon was displayed without a tooltip or hyperlinked clinician note. Participant tried clicking the icon 5 times without response."
+      },
+      {
+        "task": "Global Navigation",
+        "severity": 3,
+        "heuristic": "Accessibility / WCAG 2.2 AA Contrast",
+        "observation": "Assistive technology (High Contrast Mode) failed to identify the secondary action button due to 2.8:1 contrast ratio against gray card background."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-14",
+    "participant_id": "P-LAB-14",
+    "persona": "Chloe (31yo, Caregiver for brother with Down syndrome)",
+    "assistive_tech": "None",
+    "device": "Desktop Chrome",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": false,
+        "duration_seconds": 114.3,
+        "errors": 3,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 35.4,
+        "errors": 2,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": true,
+        "duration_seconds": 137.2,
+        "errors": 4,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        4,
+        1,
+        3,
+        2,
+        5,
+        1,
+        3,
+        1,
+        4,
+        1
+      ],
+      "sus_score": 82.5,
+      "umux_items": [
+        4,
+        4
+      ],
+      "umux_score": 50.0,
+      "total_duration_seconds": 286.9,
+      "total_errors": 9
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 1: Caregiver Proxy Restriction",
+        "severity": 3,
+        "heuristic": "Flexibility and Efficiency of Use / User Control",
+        "observation": "Participant clicked 'Share Profile' expecting permission toggles, but received an immediate all-access confirmation without granular redaction choices."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-15",
+    "participant_id": "P-LAB-15",
+    "persona": "Dennis (75yo, Hearing impaired, prostate care)",
+    "assistive_tech": "Large Text",
+    "device": "iPad Safari",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 146.8,
+        "errors": 0,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 80.1,
+        "errors": 3,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": false,
+        "duration_seconds": 184.4,
+        "errors": 8,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        5,
+        2,
+        3,
+        3,
+        5,
+        2,
+        4,
+        1,
+        5,
+        2
+      ],
+      "sus_score": 80.0,
+      "umux_items": [
+        6,
+        5
+      ],
+      "umux_score": 75.0,
+      "total_duration_seconds": 411.3,
+      "total_errors": 11
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 2: Diagnose Not-Ready Flag",
+        "severity": 2,
+        "heuristic": "Visibility of System Status / Error Prevention",
+        "observation": "Red status icon was displayed without a tooltip or hyperlinked clinician note. Participant tried clicking the icon 5 times without response."
+      },
+      {
+        "task": "Global Navigation",
+        "severity": 3,
+        "heuristic": "Accessibility / WCAG 2.2 AA Contrast",
+        "observation": "Assistive technology (Large Text) failed to identify the secondary action button due to 2.8:1 contrast ratio against gray card background."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-16",
+    "participant_id": "P-LAB-16",
+    "persona": "Mei-Ling (48yo, Orthopedic surgery patient)",
+    "assistive_tech": "None",
+    "device": "iPhone Safari",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": false,
+        "duration_seconds": 86.5,
+        "errors": 7,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 99.9,
+        "errors": 0,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": true,
+        "duration_seconds": 53.8,
+        "errors": 1,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        4,
+        3,
+        5,
+        2,
+        3,
+        2,
+        3,
+        3,
+        3,
+        3
+      ],
+      "sus_score": 62.5,
+      "umux_items": [
+        7,
+        6
+      ],
+      "umux_score": 91.7,
+      "total_duration_seconds": 240.2,
+      "total_errors": 8
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 1: Caregiver Proxy Restriction",
+        "severity": 3,
+        "heuristic": "Flexibility and Efficiency of Use / User Control",
+        "observation": "Participant clicked 'Share Profile' expecting permission toggles, but received an immediate all-access confirmation without granular redaction choices."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-17",
+    "participant_id": "P-LAB-17",
+    "persona": "Frank (69yo, Hypertension & kidney disease)",
+    "assistive_tech": "None",
+    "device": "Desktop Chrome",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": false,
+        "duration_seconds": 82.0,
+        "errors": 7,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 86.2,
+        "errors": 1,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": false,
+        "duration_seconds": 187.5,
+        "errors": 6,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        5,
+        2,
+        3,
+        1,
+        3,
+        1,
+        3,
+        3,
+        4,
+        1
+      ],
+      "sus_score": 75.0,
+      "umux_items": [
+        5,
+        4
+      ],
+      "umux_score": 58.3,
+      "total_duration_seconds": 355.7,
+      "total_errors": 14
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 1: Caregiver Proxy Restriction",
+        "severity": 3,
+        "heuristic": "Flexibility and Efficiency of Use / User Control",
+        "observation": "Participant clicked 'Share Profile' expecting permission toggles, but received an immediate all-access confirmation without granular redaction choices."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-18",
+    "participant_id": "P-LAB-18",
+    "persona": "Patricia (84yo, Assisted living resident, palliative)",
+    "assistive_tech": "Screen Reader (NVDA)",
+    "device": "Desktop Chrome",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 75.5,
+        "errors": 3,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 67.3,
+        "errors": 1,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": false,
+        "duration_seconds": 134.0,
+        "errors": 7,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        4,
+        3,
+        3,
+        3,
+        4,
+        2,
+        4,
+        1,
+        5,
+        1
+      ],
+      "sus_score": 75.0,
+      "umux_items": [
+        5,
+        4
+      ],
+      "umux_score": 58.3,
+      "total_duration_seconds": 276.8,
+      "total_errors": 11
+    },
+    "critical_incidents": [
+      {
+        "task": "Task 1: Caregiver Proxy Restriction",
+        "severity": 3,
+        "heuristic": "Flexibility and Efficiency of Use / User Control",
+        "observation": "Participant clicked 'Share Profile' expecting permission toggles, but received an immediate all-access confirmation without granular redaction choices."
+      },
+      {
+        "task": "Global Navigation",
+        "severity": 3,
+        "heuristic": "Accessibility / WCAG 2.2 AA Contrast",
+        "observation": "Assistive technology (Screen Reader (NVDA)) failed to identify the secondary action button due to 2.8:1 contrast ratio against gray card background."
+      }
+    ]
+  },
+  {
+    "session_id": "US-150s-19",
+    "participant_id": "P-LAB-19",
+    "persona": "Tariq (36yo, Outpatient endoscopy prep)",
+    "assistive_tech": "None",
+    "device": "Android Chrome",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 63.8,
+        "errors": 0,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 35.6,
+        "errors": 2,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": false,
+        "duration_seconds": 77.9,
+        "errors": 4,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        5,
+        3,
+        4,
+        3,
+        5,
+        4,
+        4,
+        3,
+        4,
+        1
+      ],
+      "sus_score": 70.0,
+      "umux_items": [
+        5,
+        4
+      ],
+      "umux_score": 58.3,
+      "total_duration_seconds": 177.3,
+      "total_errors": 6
+    },
+    "critical_incidents": []
+  },
+  {
+    "session_id": "US-150s-20",
+    "participant_id": "P-LAB-20",
+    "persona": "Ingrid (60yo, Rheumatology patient, dexterity tremor)",
+    "assistive_tech": "High Contrast + Large Buttons",
+    "device": "iPad Safari",
+    "tasks": [
+      {
+        "task_id": "T1",
+        "name": "Configure Caregiver Proxy Access",
+        "success": true,
+        "duration_seconds": 86.4,
+        "errors": 1,
+        "verbatim": "Where do I uncheck the therapy records? I don't want my sister reading my depression history."
+      },
+      {
+        "task_id": "T2",
+        "name": "Diagnose Appointment Not-Ready Flag",
+        "success": true,
+        "duration_seconds": 83.0,
+        "errors": 0,
+        "verbatim": "It says fasting required, but which doctor wrote that? My cardiologist or the surgeon?"
+      },
+      {
+        "task_id": "T3",
+        "name": "Reconcile Conflicting Preparation Advice",
+        "success": true,
+        "duration_seconds": 83.9,
+        "errors": 3,
+        "verbatim": "The text message said stop blood thinners 3 days before, but the app says 5 days. Who do I believe?"
+      }
+    ],
+    "metrics": {
+      "sus_items": [
+        5,
+        2,
+        4,
+        2,
+        4,
+        1,
+        4,
+        2,
+        4,
+        2
+      ],
+      "sus_score": 80.0,
+      "umux_items": [
+        4,
+        5
+      ],
+      "umux_score": 58.3,
+      "total_duration_seconds": 253.3,
+      "total_errors": 4
+    },
+    "critical_incidents": [
+      {
+        "task": "Global Navigation",
+        "severity": 3,
+        "heuristic": "Accessibility / WCAG 2.2 AA Contrast",
+        "observation": "Assistive technology (High Contrast + Large Buttons) failed to identify the secondary action button due to 2.8:1 contrast ratio against gray card background."
+      }
+    ]
+  }
+]

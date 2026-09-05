@@ -1,0 +1,2078 @@
+[
+  {
+    "turn_index": 1,
+    "phase": "discover",
+    "step_title": "Discover Step 1: Hello Cleo. We are beginning a comprehen...",
+    "user_prompt": "Hello Cleo. We are beginning a comprehensive multi-week research sprint on the CareNav Renewal program for Northstar Health. Let's start by listing the available project documents and files to understand our corpus.",
+    "steering": null,
+    "expected_tool": "list_project_files",
+    "expected_tool_params": {},
+    "context_dependencies": [],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 2,
+    "phase": "discover",
+    "step_title": "Discover Step 2: Great. Now inspect the first interview t...",
+    "user_prompt": "Great. Now inspect the first interview transcript CR-001 with the pediatric care coordinator. What were their main operational frustrations regarding patient readiness verification?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      1
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 3,
+    "phase": "discover",
+    "step_title": "Discover Step 3: Look at CR-002, the interview with the u...",
+    "user_prompt": "Look at CR-002, the interview with the urban specialty clinic administrator in Sao Paulo/Portuguese cohort. What unique friction points did they report regarding multilingual reminders?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      2
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 4,
+    "phase": "discover",
+    "step_title": "Discover Step 4: Examine CR-003, the Spanish-speaking pat...",
+    "user_prompt": "Examine CR-003, the Spanish-speaking patient interview. How did they describe their experience trying to determine if their laboratory blood work had arrived?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      3
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 5,
+    "phase": "discover",
+    "step_title": "Discover Step 5: Now review CR-004, the family caregiver ...",
+    "user_prompt": "Now review CR-004, the family caregiver interview for an elderly cardiology patient. How does the caregiver describe the handoff between appointment scheduling and clinical lab notes?",
+    "steering": {
+      "type": "scope_narrowing",
+      "injection_text": "Steering: Do not generalize across all clinics yet. Focus specifically on the Cardiology and Oncology outpatient cohorts where missed prep tasks trigger same-day cancellations.",
+      "verification_criterion": "Assistant confines analysis to cardiology and oncology outpatient prep."
+    },
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      4
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 6,
+    "phase": "discover",
+    "step_title": "Discover Step 6: Let's look into CR-005, the nurse manage...",
+    "user_prompt": "Let's look into CR-005, the nurse manager interview. Why do the triage nurses distrust the automated green status indicator?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      5
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 7,
+    "phase": "discover",
+    "step_title": "Discover Step 7: Inspect CR-006, the operations analyst i...",
+    "user_prompt": "Inspect CR-006, the operations analyst interview. What data do they provide on appointment cancellation rates when patients arrive without pre-visit labs?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      6
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 8,
+    "phase": "discover",
+    "step_title": "Discover Step 8: Examine participant profile CR-025. What...",
+    "user_prompt": "Examine participant profile CR-025. What is their digital health literacy profile, and how do they manage appointment notifications?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      7
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 9,
+    "phase": "discover",
+    "step_title": "Discover Step 9: Review participant profile CR-026. What ...",
+    "user_prompt": "Review participant profile CR-026. What assistive devices or screen reader accommodations does this patient rely on?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      8
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 10,
+    "phase": "discover",
+    "step_title": "Discover Step 10: Inspect participant profile CR-027. What...",
+    "user_prompt": "Inspect participant profile CR-027. What are their chronic conditions and why do they require frequent caregiver proxy check-ins?",
+    "steering": {
+      "type": "hypothesis_challenge",
+      "injection_text": "Steering: Wait. Participant P-02 mentioned that SMS reminders were confusing rather than helpful. Check if text message reminders are actually causing more clinic inbound calls.",
+      "verification_criterion": "Assistant checks inbound call drivers related to SMS reminder confusion."
+    },
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      9
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 11,
+    "phase": "discover",
+    "step_title": "Discover Step 11: Look at diary study CR-037. Over the 7-d...",
+    "user_prompt": "Look at diary study CR-037. Over the 7-day pre-appointment log, on which days did the patient experience the highest anxiety?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      10
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 12,
+    "phase": "discover",
+    "step_title": "Discover Step 12: Examine diary study CR-038. Did the pati...",
+    "user_prompt": "Examine diary study CR-038. Did the patient receive duplicate or conflicting messages between the automated SMS and phone calls?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      11
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 13,
+    "phase": "discover",
+    "step_title": "Discover Step 13: Review diary study CR-039. How did the f...",
+    "user_prompt": "Review diary study CR-039. How did the family caregiver document their attempt to verify whether fasting was required for the ultrasound?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      12
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 14,
+    "phase": "discover",
+    "step_title": "Discover Step 14: Inspect diary study CR-040. What happene...",
+    "user_prompt": "Inspect diary study CR-040. What happened when the patient's appointment was rescheduled at the last minute?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      13
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 15,
+    "phase": "discover",
+    "step_title": "Discover Step 15: Let's look at field observation notes CR...",
+    "user_prompt": "Let's look at field observation notes CR-099 from the community health center waiting room. What behaviors were observed at the self-service check-in kiosk?",
+    "steering": {
+      "type": "demographic_pivot",
+      "injection_text": "Steering: Let's explicitly separate elderly patients (65+) managed by adult children from self-managing tech-literate patients.",
+      "verification_criterion": "Assistant splits participant findings into self-managing vs caregiver-assisted cohorts."
+    },
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      14
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 16,
+    "phase": "discover",
+    "step_title": "Discover Step 16: Examine field notes CR-100 from the card...",
+    "user_prompt": "Examine field notes CR-100 from the cardiology waiting area. How often did front-desk staff have to intervene to resolve check-in errors?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      15
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 17,
+    "phase": "discover",
+    "step_title": "Discover Step 17: Review patient journey map CR-093 coveri...",
+    "user_prompt": "Review patient journey map CR-093 covering pre-visit lab completion. Where does the steepest drop-off in patient task completion occur?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      16
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 18,
+    "phase": "discover",
+    "step_title": "Discover Step 18: Inspect journey map CR-094 on caregiver ...",
+    "user_prompt": "Inspect journey map CR-094 on caregiver invitation and consent. What are the key friction steps where caregivers abandon the proxy setup?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      17
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 19,
+    "phase": "discover",
+    "step_title": "Discover Step 19: Let's create a formal Kanban task to tra...",
+    "user_prompt": "Let's create a formal Kanban task to track our discovery findings on caregiver proxy consent friction. Title it 'Analyze Caregiver Proxy Consent Drop-Off'.",
+    "steering": null,
+    "expected_tool": "create_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      18
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 20,
+    "phase": "discover",
+    "step_title": "Discover Step 20: Examine competitor benchmark CR-125 for ...",
+    "user_prompt": "Examine competitor benchmark CR-125 for Epic MyChart. How does MyChart handle proxy access permissions for family members?",
+    "steering": {
+      "type": "competitor_crosscheck",
+      "injection_text": "Steering: Check our Epic MyChart and Cerner HealtheLife benchmark notes (CR-125, CR-126). Does Epic allow fine-grained proxy redaction or is it all-or-nothing?",
+      "verification_criterion": "Assistant verifies competitor proxy access is all-or-nothing without granular redaction."
+    },
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      19
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 21,
+    "phase": "discover",
+    "step_title": "Discover Step 21: Inspect competitor benchmark CR-126 for ...",
+    "user_prompt": "Inspect competitor benchmark CR-126 for Cerner HealtheLife. What audit trail mechanisms does Cerner provide to patients verifying triage status?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      20
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 22,
+    "phase": "discover",
+    "step_title": "Discover Step 22: Review competitor benchmark CR-127 for Z...",
+    "user_prompt": "Review competitor benchmark CR-127 for Zocdoc. How does Zocdoc communicate pre-visit readiness checklists compared to hospital portals?",
+    "steering": null,
+    "expected_tool": "list_tasks",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      21
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 23,
+    "phase": "discover",
+    "step_title": "Discover Step 23: Now review heuristic evaluation CR-130 c...",
+    "user_prompt": "Now review heuristic evaluation CR-130 conducted on CareNav v1.0. Which Nielsen-Norman heuristics were violated most severely?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      22
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 24,
+    "phase": "discover",
+    "step_title": "Discover Step 24: Inspect heuristic evaluation CR-131 rega...",
+    "user_prompt": "Inspect heuristic evaluation CR-131 regarding error prevention. What specific design flaw allowed patients to check in without completing required fasting labs?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      23
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 25,
+    "phase": "discover",
+    "step_title": "Discover Step 25: Review accessibility audit CR-135. What ...",
+    "user_prompt": "Review accessibility audit CR-135. What were the critical WCAG 2.2 AA non-compliance issues identified on the mobile check-in view?",
+    "steering": {
+      "type": "multilingual_alert",
+      "injection_text": "Steering: In CR-002 and CR-003, notice how Spanish and Portuguese copy caused confusion in cardiology pre-op. Flag multilingual disparity as a high-risk finding.",
+      "verification_criterion": "Assistant flags multilingual copy discrepancy as high-risk qualitative finding."
+    },
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      24
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 26,
+    "phase": "discover",
+    "step_title": "Discover Step 26: Examine accessibility audit CR-136 focus...",
+    "user_prompt": "Examine accessibility audit CR-136 focusing on screen reader compatibility. What accessibility barriers did VoiceOver users encounter on the readiness modal?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      25
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 27,
+    "phase": "discover",
+    "step_title": "Discover Step 27: Inspect Laws of UX evaluation CR-140. Ho...",
+    "user_prompt": "Inspect Laws of UX evaluation CR-140. How does CareNav currently violate Hick's Law and Cognitive Load principles on the preparation dashboard?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      26
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 28,
+    "phase": "discover",
+    "step_title": "Discover Step 28: Review Laws of UX evaluation CR-141 rega...",
+    "user_prompt": "Review Laws of UX evaluation CR-141 regarding Fitts's Law. Are the primary action buttons appropriately sized and positioned for elderly arthritic patients?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      27
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 29,
+    "phase": "discover",
+    "step_title": "Discover Step 29: Examine stakeholder memo CR-148 from the...",
+    "user_prompt": "Examine stakeholder memo CR-148 from the Chief Medical Officer. What are the CMO's core governance requirements for AI-assisted readiness triage?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      28
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 30,
+    "phase": "discover",
+    "step_title": "Discover Step 30: Look at stakeholder memo CR-149 from the...",
+    "user_prompt": "Look at stakeholder memo CR-149 from the VP of Patient Experience. What are their priorities for reducing patient anxiety and improving NPS scores?",
+    "steering": {
+      "type": "methodological_challenge",
+      "injection_text": "Steering: We cannot accept synthesized claims about patient readiness without reviewing the raw transcript spans. Search CR-004 specifically for verbatim quotes on fasting.",
+      "verification_criterion": "Assistant quotes exact verbatim spans from CR-004 regarding fasting confusion."
+    },
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      29
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 31,
+    "phase": "discover",
+    "step_title": "Discover Step 31: Let's check our active tasks on the Kanb...",
+    "user_prompt": "Let's check our active tasks on the Kanban board. List all current tasks and their priority levels.",
+    "steering": null,
+    "expected_tool": "list_tasks",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      30
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 32,
+    "phase": "discover",
+    "step_title": "Discover Step 32: Create another research task: 'Synthesiz...",
+    "user_prompt": "Create another research task: 'Synthesize Multi-Source Privacy Requirements for Family Proxies' with high priority.",
+    "steering": null,
+    "expected_tool": "create_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      31
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 33,
+    "phase": "discover",
+    "step_title": "Discover Step 33: Inspect the support ticket summary in CR...",
+    "user_prompt": "Inspect the support ticket summary in CR-107. What percentage of inbound patient support calls are driven by confusing readiness status alerts?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      32
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 34,
+    "phase": "discover",
+    "step_title": "Discover Step 34: Look at the support ticket log CR-108. W...",
+    "user_prompt": "Look at the support ticket log CR-108. What are the recurring complaints regarding automated SMS notification frequency?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      33
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 35,
+    "phase": "discover",
+    "step_title": "Discover Step 35: Let's search memory for previous insight...",
+    "user_prompt": "Let's search memory for previous insights on 'caregiver privacy' across all indexed transcripts.",
+    "steering": {
+      "type": "privacy_boundary_drilldown",
+      "injection_text": "Steering: The patient in CR-001 strongly demanded that psychiatric notes be hidden from family caregivers. Let's make this our primary privacy design inquiry.",
+      "verification_criterion": "Assistant elevates psychiatric record compartmentalization to primary design inquiry."
+    },
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      34
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 36,
+    "phase": "discover",
+    "step_title": "Discover Step 36: Search documents for references to 'bloo...",
+    "user_prompt": "Search documents for references to 'blood draw' or 'fasting instructions' across interviews and diary studies.",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      35
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 37,
+    "phase": "discover",
+    "step_title": "Discover Step 37: Examine executive research report CR-171...",
+    "user_prompt": "Examine executive research report CR-171 from the previous quarter's pilot. What baseline metrics did they establish for check-in completion?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      36
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 38,
+    "phase": "discover",
+    "step_title": "Discover Step 38: Review the initial project brief in CR-1...",
+    "user_prompt": "Review the initial project brief in CR-153. What were the original success criteria defined for the CareNav renewal program?",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      37
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 39,
+    "phase": "discover",
+    "step_title": "Discover Step 39: Check if there are any unassigned tasks ...",
+    "user_prompt": "Check if there are any unassigned tasks on our board, and assign 'Analyze Caregiver Proxy Consent Drop-Off' to istara-main.",
+    "steering": null,
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      38
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 40,
+    "phase": "discover",
+    "step_title": "Discover Step 40: We are ready to wrap up Discover. Summar...",
+    "user_prompt": "We are ready to wrap up Discover. Summarize the key findings from our 35-document review before we dive into codebook definition and survey analysis.",
+    "steering": {
+      "type": "phase_transition_gate",
+      "injection_text": "Steering: Discover phase is concluding. Before we transition to Define, summarize the top 4 empirical themes supported by at least 3 distinct source documents.",
+      "verification_criterion": "Assistant lists 4 grounded empirical themes citing at least 3 source IDs each."
+    },
+    "expected_tool": "get_document_content",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      39
+    ],
+    "research_spine_milestone": "source_ingestion_and_exploration"
+  },
+  {
+    "turn_index": 41,
+    "phase": "define",
+    "step_title": "Define Step 41: Cleo, what's in the codebook now? Inspec...",
+    "user_prompt": "Cleo, what's in the codebook now? Inspect the active qualitative codebook and display all registered codes and their definitions.",
+    "steering": null,
+    "expected_tool": "get_codebook",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      40
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 42,
+    "phase": "define",
+    "step_title": "Define Step 42: Let's review the code 'caregiver-privacy...",
+    "user_prompt": "Let's review the code 'caregiver-privacy'. What are its inclusion criteria, and which interview quotes have been tagged with it so far?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      41
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 43,
+    "phase": "define",
+    "step_title": "Define Step 43: Examine 'audit-trail-visibility'. Does o...",
+    "user_prompt": "Examine 'audit-trail-visibility'. Does our current definition account for both patient-facing and clinician-facing audit trails?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      42
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 44,
+    "phase": "define",
+    "step_title": "Define Step 44: Now inspect 'clinical-oversight'. How do...",
+    "user_prompt": "Now inspect 'clinical-oversight'. How does this code distinguish between automated rule checks and human clinician sign-off?",
+    "steering": {
+      "type": "codebook_exclusion_refinement",
+      "injection_text": "Steering: Refine codebook v1.0. Exclude password resets, forgotten PINs, and general portal login problems from 'caregiver-privacy'. Keep it strictly focused on clinical data disclosure.",
+      "verification_criterion": "Assistant updates inclusion/exclusion rules for caregiver-privacy code."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      43
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 45,
+    "phase": "define",
+    "step_title": "Define Step 45: Let's ingest the 100 new patient and car...",
+    "user_prompt": "Let's ingest the 100 new patient and caregiver survey responses from simulated_surveys_100.json into our project's survey integration.",
+    "steering": null,
+    "expected_tool": "query_survey_responses",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      44
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 46,
+    "phase": "define",
+    "step_title": "Define Step 46: Query the survey dataset: What is the me...",
+    "user_prompt": "Query the survey dataset: What is the mean rating for 'readiness_clarity' across all 100 participants?",
+    "steering": null,
+    "expected_tool": "query_survey_responses",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      45
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 47,
+    "phase": "define",
+    "step_title": "Define Step 47: Break down the 'caregiver_proxy_comfort'...",
+    "user_prompt": "Break down the 'caregiver_proxy_comfort' survey metric by participant role (patient vs family caregiver vs healthcare proxy). What is the spread?",
+    "steering": null,
+    "expected_tool": "query_survey_responses",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      46
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 48,
+    "phase": "define",
+    "step_title": "Define Step 48: Let's analyze the qualitative survey com...",
+    "user_prompt": "Let's analyze the qualitative survey comments for question 2 regarding proxy privacy. What are the most frequent words and recurring fears?",
+    "steering": {
+      "type": "codebook_split",
+      "injection_text": "Steering: 'caregiver-privacy' is too broad. Split it into two distinct codes: 'caregiver-proxy-scheduling' (logistics, transport) and 'caregiver-confidential-notes' (psychiatric/oncology privacy).",
+      "verification_criterion": "Assistant promotes codebook v1.1 with split codes."
+    },
+    "expected_tool": "query_survey_responses",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      47
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 49,
+    "phase": "define",
+    "step_title": "Define Step 49: Review the qualitative comments regardin...",
+    "user_prompt": "Review the qualitative comments regarding clinical note visibility. How many respondents explicitly stated they do not trust an ungrounded green status badge?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      48
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 50,
+    "phase": "define",
+    "step_title": "Define Step 50: Let's inspect the survey respondents fro...",
+    "user_prompt": "Let's inspect the survey respondents from the Oncology Infusion Center. What specific concerns do cancer patients express about family proxy access?",
+    "steering": null,
+    "expected_tool": "query_survey_responses",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      49
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 51,
+    "phase": "define",
+    "step_title": "Define Step 51: Now look at survey responses from the Ca...",
+    "user_prompt": "Now look at survey responses from the Cardiology Specialty Clinic. How do cardiology patients describe their confusion over fasting instructions?",
+    "steering": null,
+    "expected_tool": "query_survey_responses",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      50
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 52,
+    "phase": "define",
+    "step_title": "Define Step 52: Compare survey sentiment between English...",
+    "user_prompt": "Compare survey sentiment between English-speaking respondents and Spanish/Portuguese respondents. Is there a statistically meaningful difference in readiness clarity?",
+    "steering": {
+      "type": "survey_subgroup_focus",
+      "injection_text": "Steering: In the survey responses, filter specifically for family caregivers aged 50-64. How do their privacy ratings compare to younger patients?",
+      "verification_criterion": "Assistant compares survey responses across age subgroups."
+    },
+    "expected_tool": "query_survey_responses",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      51
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 53,
+    "phase": "define",
+    "step_title": "Define Step 53: Let's segment our survey responses into ...",
+    "user_prompt": "Let's segment our survey responses into evidence units. How many discrete sentiment atoms can we extract from the 100 survey comments?",
+    "steering": null,
+    "expected_tool": "query_survey_responses",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      52
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 54,
+    "phase": "define",
+    "step_title": "Define Step 54: Create a new Kanban task: 'Reconcile Qua...",
+    "user_prompt": "Create a new Kanban task: 'Reconcile Qualitative Interview Themes with Quantitative Survey Metrics' with high priority.",
+    "steering": null,
+    "expected_tool": "query_survey_responses",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      53
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 55,
+    "phase": "define",
+    "step_title": "Define Step 55: Let's check the current status of the co...",
+    "user_prompt": "Let's check the current status of the codebook. Has CodebookVersion 1.1 been officially recorded in the database?",
+    "steering": null,
+    "expected_tool": "get_codebook",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      54
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 56,
+    "phase": "define",
+    "step_title": "Define Step 56: Let's run multi-coder thematic analysis ...",
+    "user_prompt": "Let's run multi-coder thematic analysis on the top 15 interview quote spans using our updated codebook v1.1.",
+    "steering": {
+      "type": "contradiction_uncovered",
+      "injection_text": "Steering: Notice a contradiction! While overall NPS is relatively high (avg 7.4), the satisfaction with automated readiness explanations is very low (2.3/5). Why this divergence?",
+      "verification_criterion": "Assistant investigates gap between high brand loyalty and low feature satisfaction."
+    },
+    "expected_tool": "get_codebook",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      55
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 57,
+    "phase": "define",
+    "step_title": "Define Step 57: Inspect the intercoder agreement matrix ...",
+    "user_prompt": "Inspect the intercoder agreement matrix across our coders. What is the observed agreement percentage on 'caregiver-confidential-notes'?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      56
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 58,
+    "phase": "define",
+    "step_title": "Define Step 58: Calculate Cohen's Kappa for the coding r...",
+    "user_prompt": "Calculate Cohen's Kappa for the coding run. Does our agreement meet the research validity threshold of kappa >= 0.65?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      57
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 59,
+    "phase": "define",
+    "step_title": "Define Step 59: What about Krippendorff's Alpha? Display...",
+    "user_prompt": "What about Krippendorff's Alpha? Display the alpha coefficient for our multi-model qualitative coding run.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      58
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 60,
+    "phase": "define",
+    "step_title": "Define Step 60: Review the coding discrepancies where th...",
+    "user_prompt": "Review the coding discrepancies where the models differed. Which quote spans had split decisions between coders?",
+    "steering": {
+      "type": "reliability_rigor",
+      "injection_text": "Steering: We need multi-model intercoder reliability. Run the coding verification on the 10 core interview quotes across Luna, Qwen, and GLM. Calculate Cohen's Kappa.",
+      "verification_criterion": "Assistant verifies multi-model coding with Cohen's Kappa score >= 0.65."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      59
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 61,
+    "phase": "define",
+    "step_title": "Define Step 61: Let's resolve the split decision on Quot...",
+    "user_prompt": "Let's resolve the split decision on Quote span 7 from CR-001. Did the participant mean logistics or medical privacy?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      60
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 62,
+    "phase": "define",
+    "step_title": "Define Step 62: Now review Quote span 12 from CR-004. Re...",
+    "user_prompt": "Now review Quote span 12 from CR-004. Reconcile this span under 'caregiver-confidential-notes'.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      61
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 63,
+    "phase": "define",
+    "step_title": "Define Step 63: Check the reconciliation ledger. Are all...",
+    "user_prompt": "Check the reconciliation ledger. Are all 15 quote spans now resolved with human-approved decisions?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      62
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 64,
+    "phase": "define",
+    "step_title": "Define Step 64: Let's elevate these 15 reconciled spans ...",
+    "user_prompt": "Let's elevate these 15 reconciled spans into Sharon Accepted Atomic Nuggets. Display the resulting nugget IDs.",
+    "steering": {
+      "type": "clinical_provenance_mandate",
+      "injection_text": "Steering: In our codebook, add 'clinical-provenance'. Over 80% of survey respondents insist on seeing the clinician's electronic signature and timestamp.",
+      "verification_criterion": "Assistant adds clinical-provenance code with strict criteria."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      63
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 65,
+    "phase": "define",
+    "step_title": "Define Step 65: Now synthesize our first Sharon Fact: 'P...",
+    "user_prompt": "Now synthesize our first Sharon Fact: 'Patients demand strict boundary separation between caregiver scheduling logistics and confidential psychiatric/reproductive notes.'",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      64
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 66,
+    "phase": "define",
+    "step_title": "Define Step 66: Synthesize our second Sharon Fact: 'Auto...",
+    "user_prompt": "Synthesize our second Sharon Fact: 'Automated appointment readiness flags trigger patient distrust and phone triage spikes unless backed by verbatim clinician notes.'",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      65
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 67,
+    "phase": "define",
+    "step_title": "Define Step 67: Synthesize our third Sharon Fact: 'Multi...",
+    "user_prompt": "Synthesize our third Sharon Fact: 'Multilingual reminders exhibit terminology discrepancies that increase prep failure rates in Spanish and Portuguese cohorts.'",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      66
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 68,
+    "phase": "define",
+    "step_title": "Define Step 68: Synthesize our fourth Sharon Fact: 'Over...",
+    "user_prompt": "Synthesize our fourth Sharon Fact: 'Over 78% of family caregivers report anxiety when proxy permissions do not clearly display what is shared vs what is withheld.'",
+    "steering": {
+      "type": "sharon_atomic_elevation",
+      "injection_text": "Steering: Elevate these accepted atomic nuggets into structured Sharon Facts. Ensure every fact links directly to at least 2 raw evidence unit spans.",
+      "verification_criterion": "Assistant constructs Facts with dual evidence unit links."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      67
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 69,
+    "phase": "define",
+    "step_title": "Define Step 69: Link each of these 4 Facts to their supp...",
+    "user_prompt": "Link each of these 4 Facts to their supporting Sharon Nuggets in the research evidence graph.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      68
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 70,
+    "phase": "define",
+    "step_title": "Define Step 70: Verify the graph integrity: Do all 4 Fac...",
+    "user_prompt": "Verify the graph integrity: Do all 4 Facts have bidirectional edges to accepted nuggets and underlying source spans?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      69
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 71,
+    "phase": "define",
+    "step_title": "Define Step 71: Search findings for all facts tagged wit...",
+    "user_prompt": "Search findings for all facts tagged with 'caregiver' to ensure our DAG is properly structured.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      70
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 72,
+    "phase": "define",
+    "step_title": "Define Step 72: Search findings for all facts tagged wit...",
+    "user_prompt": "Search findings for all facts tagged with 'audit-trail' and display their supporting evidence counts.",
+    "steering": {
+      "type": "discard_ungrounded_theme",
+      "injection_text": "Steering: Discard the candidate theme that patients want gamified check-in badges. Survey responses indicate patients find gamification condescending for serious illnesses.",
+      "verification_criterion": "Assistant rejects gamification hypothesis based on survey comments."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      71
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 73,
+    "phase": "define",
+    "step_title": "Define Step 73: Let's inspect the distribution of our fi...",
+    "user_prompt": "Let's inspect the distribution of our findings: How many nuggets, facts, and candidate insights exist right now?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      72
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 74,
+    "phase": "define",
+    "step_title": "Define Step 74: Create a new Kanban task: 'Formulate Evi...",
+    "user_prompt": "Create a new Kanban task: 'Formulate Evidence-Grounded Design Principles for Caregiver Proxy Controls'.",
+    "steering": null,
+    "expected_tool": "create_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      73
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 75,
+    "phase": "define",
+    "step_title": "Define Step 75: Move task 'Analyze Caregiver Proxy Conse...",
+    "user_prompt": "Move task 'Analyze Caregiver Proxy Consent Drop-Off' to IN_REVIEW status on the Kanban board.",
+    "steering": null,
+    "expected_tool": "move_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      74
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 76,
+    "phase": "define",
+    "step_title": "Define Step 76: Let's attempt to move the task directly ...",
+    "user_prompt": "Let's attempt to move the task directly to DONE. (Notice whether the system enforces our human review gate!).",
+    "steering": {
+      "type": "reconciliation_protocol",
+      "injection_text": "Steering: For quote span Q-104 where Luna coded 'clinical-oversight' and Qwen coded 'audit-trail-visibility', reconcile under 'clinical-provenance' with human sign-off.",
+      "verification_criterion": "Assistant applies governed reconciliation decision with rationale."
+    },
+    "expected_tool": "move_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      75
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 77,
+    "phase": "define",
+    "step_title": "Define Step 77: The system appropriately blocked the tra...",
+    "user_prompt": "The system appropriately blocked the transition with an HTTP 409 guard! Let's record the human review sign-off with evidence verification.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      76
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 78,
+    "phase": "define",
+    "step_title": "Define Step 78: Now approve the task transition to DONE ...",
+    "user_prompt": "Now approve the task transition to DONE with authorized researcher credentials.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      77
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 79,
+    "phase": "define",
+    "step_title": "Define Step 79: Verify that the Kanban board reflects th...",
+    "user_prompt": "Verify that the Kanban board reflects the approved DONE status and logs the review side effects.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      78
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 80,
+    "phase": "define",
+    "step_title": "Define Step 80: Summarize the complete Sharon Atomic DAG...",
+    "user_prompt": "Summarize the complete Sharon Atomic DAG created in the Define phase before we proceed to Develop.",
+    "steering": {
+      "type": "define_gate_verification",
+      "injection_text": "Steering: Define phase is complete. Verify that all candidate nuggets have been reconciled into accepted atoms and elevated to verified Facts before we test solutions in Develop.",
+      "verification_criterion": "Assistant confirms 0 unreconciled candidate atoms remain."
+    },
+    "expected_tool": "create_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      79
+    ],
+    "research_spine_milestone": "thematic_coding_and_fact_elevation"
+  },
+  {
+    "turn_index": 81,
+    "phase": "develop",
+    "step_title": "Develop Step 81: Now we enter the Develop phase. Ingest t...",
+    "user_prompt": "Now we enter the Develop phase. Ingest the 20 usability lab testing sessions from usability_testing_20.json.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      80
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 82,
+    "phase": "develop",
+    "step_title": "Develop Step 82: Calculate the overall task completion ra...",
+    "user_prompt": "Calculate the overall task completion rate for Task 1: Configure Caregiver Proxy Access across all 20 participants.",
+    "steering": null,
+    "expected_tool": "calculate_usability_metrics",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      81
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 83,
+    "phase": "develop",
+    "step_title": "Develop Step 83: What was the mean duration in seconds fo...",
+    "user_prompt": "What was the mean duration in seconds for participants to complete Task 1, and what was the maximum time observed?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      82
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 84,
+    "phase": "develop",
+    "step_title": "Develop Step 84: Inspect the error log for Task 1. Why di...",
+    "user_prompt": "Inspect the error log for Task 1. Why did 6 participants fail to restrict clinical notes on their first attempt?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      83
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 85,
+    "phase": "develop",
+    "step_title": "Develop Step 85: Examine Task 2: Diagnose Appointment Not...",
+    "user_prompt": "Examine Task 2: Diagnose Appointment Not-Ready Flag. What was the task completion rate across the 20 participants?",
+    "steering": {
+      "type": "error_taxonomy_focus",
+      "injection_text": "Steering: In usability session analysis, do not just calculate average task times. Categorize errors into: slip, rule-based mistake, and knowledge-based mistake.",
+      "verification_criterion": "Assistant classifies usability errors into cognitive taxonomy."
+    },
+    "expected_tool": "calculate_usability_metrics",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      84
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 86,
+    "phase": "develop",
+    "step_title": "Develop Step 86: What were the primary navigation paths t...",
+    "user_prompt": "What were the primary navigation paths taken by participants who succeeded on Task 2 versus those who failed?",
+    "steering": null,
+    "expected_tool": "calculate_usability_metrics",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      85
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 87,
+    "phase": "develop",
+    "step_title": "Develop Step 87: Look at Task 3: Reconcile Conflicting Pr...",
+    "user_prompt": "Look at Task 3: Reconcile Conflicting Preparation Advice. How many participants noticed the conflict between SMS (3 days) and portal (5 days)?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      86
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 88,
+    "phase": "develop",
+    "step_title": "Develop Step 88: What were the verbal reactions recorded ...",
+    "user_prompt": "What were the verbal reactions recorded during Task 3 when participants encountered conflicting fasting timelines?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      87
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 89,
+    "phase": "develop",
+    "step_title": "Develop Step 89: Let's compute the System Usability Scale...",
+    "user_prompt": "Let's compute the System Usability Scale (SUS) scores across all 20 lab sessions. What is the mean SUS score?",
+    "steering": {
+      "type": "assistive_tech_priority",
+      "injection_text": "Steering: Participant Beatrice and Patricia used screen readers (VoiceOver/NVDA) and suffered catastrophic task failures on the readiness modal. Prioritize screen reader aria-live announcements over visual redesign.",
+      "verification_criterion": "Assistant prioritizes screen reader accessibility fixes."
+    },
+    "expected_tool": "calculate_usability_metrics",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      88
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 90,
+    "phase": "develop",
+    "step_title": "Develop Step 90: Display the distribution of SUS scores: ...",
+    "user_prompt": "Display the distribution of SUS scores: What is the highest SUS recorded, the lowest, and the standard deviation?",
+    "steering": null,
+    "expected_tool": "calculate_usability_metrics",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      89
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 91,
+    "phase": "develop",
+    "step_title": "Develop Step 91: Now calculate the UMUX-Lite score across...",
+    "user_prompt": "Now calculate the UMUX-Lite score across the 20 participants. How does our UMUX-Lite correlate with our SUS score?",
+    "steering": null,
+    "expected_tool": "calculate_usability_metrics",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      90
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 92,
+    "phase": "develop",
+    "step_title": "Develop Step 92: Let's examine participant Eleanor (78yo,...",
+    "user_prompt": "Let's examine participant Eleanor (78yo, Cardiology). Walk through her step-by-step experience and friction points during the lab session.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      91
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 93,
+    "phase": "develop",
+    "step_title": "Develop Step 93: Look at participant Beatrice (62yo, Scre...",
+    "user_prompt": "Look at participant Beatrice (62yo, Screen Reader user). What specific accessibility blocker caused her task failure on Task 2?",
+    "steering": {
+      "type": "sus_score_drilldown",
+      "injection_text": "Steering: The mean SUS score is 68.2 (marginal grade C). Breakdown the SUS scores by participant tech literacy. What is the SUS for elderly patients (65+)?",
+      "verification_criterion": "Assistant isolates elderly participant SUS score (showing drop to ~54.0)."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      92
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 94,
+    "phase": "develop",
+    "step_title": "Develop Step 94: Inspect participant Carlos (Bilingual ca...",
+    "user_prompt": "Inspect participant Carlos (Bilingual caregiver). What were his observations regarding the clarity of Spanish proxy permission options?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      93
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 95,
+    "phase": "develop",
+    "step_title": "Develop Step 95: Review participant Sofia (Healthcare pro...",
+    "user_prompt": "Review participant Sofia (Healthcare proxy for aging parents). Why did she spend 160 seconds configuring proxy permissions?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      94
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 96,
+    "phase": "develop",
+    "step_title": "Develop Step 96: Synthesize our first Sharon Insight: 'El...",
+    "user_prompt": "Synthesize our first Sharon Insight: 'Elderly patients and low-vision users experience severe task failure due to low-contrast status banners and unannounced modal updates.'",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      95
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 97,
+    "phase": "develop",
+    "step_title": "Develop Step 97: Synthesize our second Sharon Insight: 'B...",
+    "user_prompt": "Synthesize our second Sharon Insight: 'Binary proxy permissions force patients into an unacceptable tradeoff between caregiver support and medical privacy.'",
+    "steering": {
+      "type": "contrast_ratio_enforcement",
+      "injection_text": "Steering: Check the color contrast of our secondary warning text. It measures 2.8:1, violating WCAG AA 4.5:1. Require all text to meet 4.5:1 and 7:1 for headers.",
+      "verification_criterion": "Assistant specifies WCAG 2.2 AA contrast remediation rules."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      96
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 98,
+    "phase": "develop",
+    "step_title": "Develop Step 98: Synthesize our third Sharon Insight: 'Co...",
+    "user_prompt": "Synthesize our third Sharon Insight: 'Conflicting cross-channel preparation reminders create clinical confusion and erode patient trust in automated readiness.'",
+    "steering": null,
+    "expected_tool": "create_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      97
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 99,
+    "phase": "develop",
+    "step_title": "Develop Step 99: Synthesize our fourth Sharon Insight: 'P...",
+    "user_prompt": "Synthesize our fourth Sharon Insight: 'Plain-language progressive disclosure of clinician notes improves task completion speed by over 40% in usability trials.'",
+    "steering": null,
+    "expected_tool": "calculate_usability_metrics",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      98
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 100,
+    "phase": "develop",
+    "step_title": "Develop Step 100: Link each of these 4 Sharon Insights to ...",
+    "user_prompt": "Link each of these 4 Sharon Insights to their supporting Sharon Facts and Usability metrics in the research graph.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      99
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 101,
+    "phase": "develop",
+    "step_title": "Develop Step 101: Check our active tasks on the Kanban boa...",
+    "user_prompt": "Check our active tasks on the Kanban board. What tasks are currently in progress for Develop?",
+    "steering": {
+      "type": "progressive_disclosure_pivot",
+      "injection_text": "Steering: To resolve Task 2 fasting confusion, do not show 5 separate warning cards. Design a single progressive disclosure drawer that expands to reveal Dr. Vance's signed order.",
+      "verification_criterion": "Assistant applies progressive disclosure design pattern."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      100
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 102,
+    "phase": "develop",
+    "step_title": "Develop Step 102: Create a new Kanban task: 'Specify Three...",
+    "user_prompt": "Create a new Kanban task: 'Specify Three-Tiered Caregiver Proxy Authorization Architecture' with urgent priority.",
+    "steering": null,
+    "expected_tool": "create_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      101
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 103,
+    "phase": "develop",
+    "step_title": "Develop Step 103: Create another Kanban task: 'Remediate W...",
+    "user_prompt": "Create another Kanban task: 'Remediate WCAG 2.2 AA Contrast Deficiencies and Screen Reader Aria-Live Announcements'.",
+    "steering": null,
+    "expected_tool": "create_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      102
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 104,
+    "phase": "develop",
+    "step_title": "Develop Step 104: Attach usability test log usability_test...",
+    "user_prompt": "Attach usability test log usability_testing_20.json to the task 'Specify Three-Tiered Caregiver Proxy Authorization Architecture'.",
+    "steering": null,
+    "expected_tool": "attach_document",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      103
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 105,
+    "phase": "develop",
+    "step_title": "Develop Step 105: Move task 'Specify Three-Tiered Caregive...",
+    "user_prompt": "Move task 'Specify Three-Tiered Caregiver Proxy Authorization Architecture' to IN_REVIEW status.",
+    "steering": {
+      "type": "proxy_toggle_refinement",
+      "injection_text": "Steering: For Task 1 (Caregiver setup), test a three-tiered permission model: Tier 1 (Appointments & Transport), Tier 2 (+ Medication & Preparation Instructions), Tier 3 (+ Full Clinical Notes).",
+      "verification_criterion": "Assistant outlines 3-tiered proxy permissions architecture."
+    },
+    "expected_tool": "move_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      104
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 106,
+    "phase": "develop",
+    "step_title": "Develop Step 106: Let's review the evidence attached to 'S...",
+    "user_prompt": "Let's review the evidence attached to 'Specify Three-Tiered Caregiver Proxy Authorization Architecture'. Are all usability quotes properly cited?",
+    "steering": null,
+    "expected_tool": "attach_document",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      105
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 107,
+    "phase": "develop",
+    "step_title": "Develop Step 107: Record human review approval and transit...",
+    "user_prompt": "Record human review approval and transition 'Specify Three-Tiered Caregiver Proxy Authorization Architecture' to DONE.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      106
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 108,
+    "phase": "develop",
+    "step_title": "Develop Step 108: Now examine the second task: 'Remediate ...",
+    "user_prompt": "Now examine the second task: 'Remediate WCAG 2.2 AA Contrast Deficiencies'. Move it to IN_REVIEW.",
+    "steering": null,
+    "expected_tool": "move_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      107
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 109,
+    "phase": "develop",
+    "step_title": "Develop Step 109: Verify the accessibility audit evidence ...",
+    "user_prompt": "Verify the accessibility audit evidence (CR-135, CR-136) and approve the task to DONE.",
+    "steering": {
+      "type": "benchmark_comparison",
+      "injection_text": "Steering: How does our 3-tiered permission model compare to Epic MyChart? Note that Epic only offers binary all-or-nothing, giving CareNav a distinct competitive advantage.",
+      "verification_criterion": "Assistant highlights competitive advantage over Epic's binary proxy model."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      108
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 110,
+    "phase": "develop",
+    "step_title": "Develop Step 110: Search findings for all Insights created...",
+    "user_prompt": "Search findings for all Insights created so far. Display their IDs, titles, and supporting Fact counts.",
+    "steering": null,
+    "expected_tool": "create_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      109
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 111,
+    "phase": "develop",
+    "step_title": "Develop Step 111: Check if any Insights lack backward link...",
+    "user_prompt": "Check if any Insights lack backward links to Sharon Facts or Evidence Units.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      110
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 112,
+    "phase": "develop",
+    "step_title": "Develop Step 112: Search memory for design recommendations...",
+    "user_prompt": "Search memory for design recommendations related to 'progressive disclosure' in clinical workflows.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      111
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 113,
+    "phase": "develop",
+    "step_title": "Develop Step 113: Review the updated codebook v2.0. Are 'a...",
+    "user_prompt": "Review the updated codebook v2.0. Are 'accessibility-contrast-deficiency' and 'cognitive-load-reduction' registered?",
+    "steering": {
+      "type": "develop_gate_check",
+      "injection_text": "Steering: Develop phase is nearing completion. Verify that all 20 usability testing session logs and UMUX-Lite metrics have been synthesized into Sharon Insights.",
+      "verification_criterion": "Assistant confirms all 20 usability sessions ground subsequent insights."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      112
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 114,
+    "phase": "develop",
+    "step_title": "Develop Step 114: Verify that our qualitative codebook v2....",
+    "user_prompt": "Verify that our qualitative codebook v2.0 has been synchronized with the Research Spine database.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      113
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 115,
+    "phase": "develop",
+    "step_title": "Develop Step 115: Summarize the key accomplishments of the...",
+    "user_prompt": "Summarize the key accomplishments of the Develop phase before we move into Deliver and Final Governance.",
+    "steering": null,
+    "expected_tool": "move_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      114
+    ],
+    "research_spine_milestone": "usability_analysis_and_insight_synthesis"
+  },
+  {
+    "turn_index": 116,
+    "phase": "deliver",
+    "step_title": "Deliver Step 116: We are in the final Deliver phase. Let's...",
+    "user_prompt": "We are in the final Deliver phase. Let's synthesize our first Sharon Recommendation: 'Implement a Three-Tiered Role-Based Proxy Access Control System with Granular Clinical Note Redaction.'",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      115
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 117,
+    "phase": "deliver",
+    "step_title": "Deliver Step 117: Synthesize our second Sharon Recommendat...",
+    "user_prompt": "Synthesize our second Sharon Recommendation: 'Embed Verbatim Clinician EHR Notes and Lab Order Hyperlinks Directly Inside Appointment Readiness Status Banners.'",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      116
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 118,
+    "phase": "deliver",
+    "step_title": "Deliver Step 118: Synthesize our third Sharon Recommendati...",
+    "user_prompt": "Synthesize our third Sharon Recommendation: 'Establish Native Multilingual Clinical Review and Plain-Language Translation for All Pre-Visit Reminders in Spanish and Portuguese.'",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      117
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 119,
+    "phase": "deliver",
+    "step_title": "Deliver Step 119: Synthesize our fourth Sharon Recommendat...",
+    "user_prompt": "Synthesize our fourth Sharon Recommendation: 'Remediate Color Contrast to 4.5:1 and Implement WCAG 2.2 AA Compliant Aria-Live Status Announcements for Screen Readers.'",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      118
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 120,
+    "phase": "deliver",
+    "step_title": "Deliver Step 120: Synthesize our fifth Sharon Recommendati...",
+    "user_prompt": "Synthesize our fifth Sharon Recommendation: 'Implement an Immutable Append-Only Audit Ledger for All Automated and Clinician-Verified Readiness State Transitions.'",
+    "steering": {
+      "type": "recommendation_risk_rating",
+      "injection_text": "Steering: Every recommendation must include an explicit implementation effort (S/M/L), clinical risk rating (Low/Medium/High), and executive sponsor.",
+      "verification_criterion": "Assistant adds effort, risk, and sponsor metadata to recommendations."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      119
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 121,
+    "phase": "deliver",
+    "step_title": "Deliver Step 121: Link each of our 5 Recommendations to th...",
+    "user_prompt": "Link each of our 5 Recommendations to their supporting Sharon Insights in the evidence graph.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      120
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 122,
+    "phase": "deliver",
+    "step_title": "Deliver Step 122: Verify that the entire Sharon Atomic DAG...",
+    "user_prompt": "Verify that the entire Sharon Atomic DAG from raw sources -> evidence units -> nuggets -> facts -> insights -> recommendations is fully connected.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      121
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 123,
+    "phase": "deliver",
+    "step_title": "Deliver Step 123: How many total nodes exist in our Sharon...",
+    "user_prompt": "How many total nodes exist in our Sharon DAG across all tiers?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      122
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 124,
+    "phase": "deliver",
+    "step_title": "Deliver Step 124: How many total directed evidence edges c...",
+    "user_prompt": "How many total directed evidence edges connect our findings DAG?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      123
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 125,
+    "phase": "deliver",
+    "step_title": "Deliver Step 125: Let's create the final delivery task: 'P...",
+    "user_prompt": "Let's create the final delivery task: 'Produce Barbara Minto SCQA Executive Research Report for Northstar Health Executive Committee'.",
+    "steering": null,
+    "expected_tool": "create_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      124
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 126,
+    "phase": "deliver",
+    "step_title": "Deliver Step 126: Formulate the Barbara Minto Situation st...",
+    "user_prompt": "Formulate the Barbara Minto Situation statement based on our Discover and Define empirical data.",
+    "steering": {
+      "type": "minto_scqa_complication_refinement",
+      "injection_text": "Steering: In the Barbara Minto SCQA structure, sharpen the Complication: emphasize that 42% of elderly patients refuse portal onboarding entirely due to fear of unredacted proxy sharing.",
+      "verification_criterion": "Assistant frames SCQA complication around the 42% portal onboarding resistance rate."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      125
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 127,
+    "phase": "deliver",
+    "step_title": "Deliver Step 127: Formulate the Barbara Minto Complication...",
+    "user_prompt": "Formulate the Barbara Minto Complication statement incorporating the 42% caregiver privacy hesitation rate.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      126
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 128,
+    "phase": "deliver",
+    "step_title": "Deliver Step 128: Formulate the Barbara Minto Question: 'H...",
+    "user_prompt": "Formulate the Barbara Minto Question: 'How can Northstar Health scale automated appointment readiness while ensuring clinical trust, privacy compliance, and equitable access?'",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      127
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 129,
+    "phase": "deliver",
+    "step_title": "Deliver Step 129: Formulate the Barbara Minto Answer: 'By ...",
+    "user_prompt": "Formulate the Barbara Minto Answer: 'By deploying governed three-tiered proxy boundaries, source-verified clinician audit trails, and accessible multilingual workflows.'",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      128
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 130,
+    "phase": "deliver",
+    "step_title": "Deliver Step 130: Organize our findings into MECE Pillar 1...",
+    "user_prompt": "Organize our findings into MECE Pillar 1: Granular Proxy Governance (covering recommendations 1 and 5).",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      129
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 131,
+    "phase": "deliver",
+    "step_title": "Deliver Step 131: Organize our findings into MECE Pillar 2...",
+    "user_prompt": "Organize our findings into MECE Pillar 2: Clinician-Verified Traceability (covering recommendation 2 and audit trails).",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      130
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 132,
+    "phase": "deliver",
+    "step_title": "Deliver Step 132: Organize our findings into MECE Pillar 3...",
+    "user_prompt": "Organize our findings into MECE Pillar 3: Multilingual & Accessible Patient Communication (covering recommendations 3 and 4).",
+    "steering": {
+      "type": "mece_category_enforcement",
+      "injection_text": "Steering: The executive report recommendations must be 100% MECE across three mutually exclusive pillars: 1. Granular Proxy Governance, 2. Clinician-Verified Traceability, 3. Multilingual Accessibility.",
+      "verification_criterion": "Assistant organizes report into the 3 MECE pillars."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      131
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 133,
+    "phase": "deliver",
+    "step_title": "Deliver Step 133: Verify that these three pillars are comp...",
+    "user_prompt": "Verify that these three pillars are completely Mutually Exclusive and Collectively Exhaustive (100% MECE).",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      132
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 134,
+    "phase": "deliver",
+    "step_title": "Deliver Step 134: Generate the full ProjectReport model in...",
+    "user_prompt": "Generate the full ProjectReport model in the database linked to our project and findings DAG.",
+    "steering": null,
+    "expected_tool": "generate_minto_report",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      133
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 135,
+    "phase": "deliver",
+    "step_title": "Deliver Step 135: Inspect the generated report summary: Do...",
+    "user_prompt": "Inspect the generated report summary: Does it cite verbatim quotes and exact source IDs for every claim?",
+    "steering": null,
+    "expected_tool": "generate_minto_report",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      134
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 136,
+    "phase": "deliver",
+    "step_title": "Deliver Step 136: Check if any report claim relies on ungr...",
+    "user_prompt": "Check if any report claim relies on ungrounded model hallucinations or unverified assumptions.",
+    "steering": null,
+    "expected_tool": "generate_minto_report",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      135
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 137,
+    "phase": "deliver",
+    "step_title": "Deliver Step 137: Verify that report_allowed is set to Tru...",
+    "user_prompt": "Verify that report_allowed is set to True only because all prerequisite Done tasks and human reviews were satisfied.",
+    "steering": null,
+    "expected_tool": "generate_minto_report",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      136
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 138,
+    "phase": "deliver",
+    "step_title": "Deliver Step 138: Move task 'Produce Barbara Minto SCQA Ex...",
+    "user_prompt": "Move task 'Produce Barbara Minto SCQA Executive Research Report' to IN_REVIEW status.",
+    "steering": {
+      "type": "anti_hallucination_audit",
+      "injection_text": "Steering: Zero-trust research spine check: Verify that every single recommendation links to at least 1 Insight, 2 Facts, and 3 verbatim source quotes. Discard any ungrounded claim.",
+      "verification_criterion": "Assistant audits backward graph integrity with zero ungrounded recommendations."
+    },
+    "expected_tool": "move_task",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      137
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 139,
+    "phase": "deliver",
+    "step_title": "Deliver Step 139: Attempt to close the task directly to te...",
+    "user_prompt": "Attempt to close the task directly to test the HTTP 409 guard.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      138
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 140,
+    "phase": "deliver",
+    "step_title": "Deliver Step 140: Confirm that the 409 guard prevented pre...",
+    "user_prompt": "Confirm that the 409 guard prevented premature completion without human approval.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      139
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 141,
+    "phase": "deliver",
+    "step_title": "Deliver Step 141: Apply authorized human researcher approv...",
+    "user_prompt": "Apply authorized human researcher approval to the executive report task.",
+    "steering": null,
+    "expected_tool": "generate_minto_report",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      140
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 142,
+    "phase": "deliver",
+    "step_title": "Deliver Step 142: Transition the executive report task to ...",
+    "user_prompt": "Transition the executive report task to DONE status.",
+    "steering": null,
+    "expected_tool": "generate_minto_report",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      141
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 143,
+    "phase": "deliver",
+    "step_title": "Deliver Step 143: Verify on the Kanban board that all spri...",
+    "user_prompt": "Verify on the Kanban board that all sprint tasks are in DONE status with recorded review side effects.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      142
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 144,
+    "phase": "deliver",
+    "step_title": "Deliver Step 144: Perform a final integrity audit of the R...",
+    "user_prompt": "Perform a final integrity audit of the Research Spine evidence graph.",
+    "steering": {
+      "type": "http_409_done_attack",
+      "injection_text": "Steering: Test the system's security and governance gate: attempt to close the final delivery milestone task WITHOUT required human review signatures.",
+      "verification_criterion": "Assistant verifies HTTP 409 guard blocks unauthorized task completion."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      143
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 145,
+    "phase": "deliver",
+    "step_title": "Deliver Step 145: Confirm that 100% of recommendations tra...",
+    "user_prompt": "Confirm that 100% of recommendations trace backward through insights, facts, and nuggets to canonical source documents.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      144
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 146,
+    "phase": "deliver",
+    "step_title": "Deliver Step 146: Calculate total sprint token usage and e...",
+    "user_prompt": "Calculate total sprint token usage and estimate operational cost in USD.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      145
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 147,
+    "phase": "deliver",
+    "step_title": "Deliver Step 147: Examine prompt cache hit ratios across a...",
+    "user_prompt": "Examine prompt cache hit ratios across all turns in the session.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      146
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 148,
+    "phase": "deliver",
+    "step_title": "Deliver Step 148: Review tool execution latency percentile...",
+    "user_prompt": "Review tool execution latency percentiles: What was the p50 and p95 latency for system actions?",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      147
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 149,
+    "phase": "deliver",
+    "step_title": "Deliver Step 149: Check for any unhandled tool errors or r...",
+    "user_prompt": "Check for any unhandled tool errors or rate limits encountered during the 150-turn trajectory.",
+    "steering": null,
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      148
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  },
+  {
+    "turn_index": 150,
+    "phase": "deliver",
+    "step_title": "Deliver Step 150: Generate the final comprehensive executi...",
+    "user_prompt": "Generate the final comprehensive executive research summary and comparative agentic scorecard!",
+    "steering": {
+      "type": "final_telemetry_harvest",
+      "injection_text": "Steering: 150-turn trajectory complete! Harvest full telemetry: latency percentiles (p50, p90, p95, p99), token consumption, cache hit ratios, and cost accounting.",
+      "verification_criterion": "Assistant outputs complete comparative scorecard and telemetry breakdown."
+    },
+    "expected_tool": "search_findings",
+    "expected_tool_params": {},
+    "context_dependencies": [
+      149
+    ],
+    "research_spine_milestone": "recommendation_elevation_and_minto_report"
+  }
+]

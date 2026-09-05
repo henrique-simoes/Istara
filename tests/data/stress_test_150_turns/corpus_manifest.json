@@ -1,0 +1,1017 @@
+{
+  "project": "CareNav Renewal - 150 Turn Stress Test",
+  "description": "35 canonical multi-modal documents selected for long-horizon agentic reasoning",
+  "total_selected": 35,
+  "sources": [
+    {
+      "id": "CR-001",
+      "title": "CareNav Renewal interview source 01",
+      "method": "interview",
+      "phase": "discover",
+      "role": "care coordinator",
+      "language": "en",
+      "clinic": "pediatric clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/interview/CR-001-interview-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "interview",
+        "discover",
+        "care coordinator",
+        "en",
+        "pediatric-clinic"
+      ],
+      "skills": [
+        "interview_questions",
+        "interview_analysis",
+        "persona_creation",
+        "empathy_map",
+        "card-sorting",
+        "channel-research-deployment",
+        "cognitive-walkthrough",
+        "competitive-analysis"
+      ],
+      "word_count": 32125
+    },
+    {
+      "id": "CR-002",
+      "title": "CareNav Renewal interview source 02",
+      "method": "interview",
+      "phase": "discover",
+      "role": "clinic admin",
+      "language": "pt-BR",
+      "clinic": "urban specialty clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/interview/CR-002-interview-02.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "interview",
+        "discover",
+        "clinic admin",
+        "pt-BR",
+        "urban-specialty-clinic"
+      ],
+      "skills": [
+        "interview_questions",
+        "interview_analysis",
+        "persona_creation",
+        "empathy_map",
+        "design-system-audit",
+        "desk-research",
+        "diary-studies",
+        "empathy-mapping"
+      ],
+      "word_count": 31791
+    },
+    {
+      "id": "CR-003",
+      "title": "CareNav Renewal interview source 03",
+      "method": "interview",
+      "phase": "discover",
+      "role": "patient",
+      "language": "en",
+      "clinic": "oncology clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/interview/CR-003-interview-03.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "interview",
+        "discover",
+        "patient",
+        "en",
+        "oncology-clinic"
+      ],
+      "skills": [
+        "interview_questions",
+        "interview_analysis",
+        "persona_creation",
+        "empathy_map",
+        "heuristic-evaluation",
+        "hmw-statements",
+        "interview-question-generator",
+        "journey-mapping"
+      ],
+      "word_count": 32122
+    },
+    {
+      "id": "CR-004",
+      "title": "CareNav Renewal interview source 04",
+      "method": "interview",
+      "phase": "discover",
+      "role": "care coordinator",
+      "language": "es",
+      "clinic": "community health center",
+      "relative_path": "tests/document_corpus/canonical/sources/interview/CR-004-interview-04.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "interview",
+        "discover",
+        "care coordinator",
+        "es",
+        "community-health-center"
+      ],
+      "skills": [
+        "interview_questions",
+        "interview_analysis",
+        "persona_creation",
+        "empathy_map",
+        "nps-analysis",
+        "participant-simulation",
+        "persona-creation",
+        "prioritization-matrix"
+      ],
+      "word_count": 31808
+    },
+    {
+      "id": "CR-005",
+      "title": "CareNav Renewal interview source 05",
+      "method": "interview",
+      "phase": "discover",
+      "role": "clinic admin",
+      "language": "en",
+      "clinic": "rural clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/interview/CR-005-interview-05.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "interview",
+        "discover",
+        "clinic admin",
+        "en",
+        "rural-clinic"
+      ],
+      "skills": [
+        "interview_questions",
+        "interview_analysis",
+        "persona_creation",
+        "empathy_map",
+        "research-quality-evaluation",
+        "research-retro",
+        "research-synthesis",
+        "stakeholder-interviews"
+      ],
+      "word_count": 32151
+    },
+    {
+      "id": "CR-006",
+      "title": "CareNav Renewal interview source 06",
+      "method": "interview",
+      "phase": "discover",
+      "role": "patient",
+      "language": "en",
+      "clinic": "pediatric clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/interview/CR-006-interview-06.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "interview",
+        "discover",
+        "patient",
+        "en",
+        "pediatric-clinic"
+      ],
+      "skills": [
+        "interview_questions",
+        "interview_analysis",
+        "persona_creation",
+        "empathy_map",
+        "stitch-enhance-prompt",
+        "stitch-react-components",
+        "survey-ai-detection",
+        "survey-design"
+      ],
+      "word_count": 32148
+    },
+    {
+      "id": "CR-025",
+      "title": "CareNav Renewal participant profile source 01",
+      "method": "participant-profile",
+      "phase": "discover",
+      "role": "care coordinator",
+      "language": "en",
+      "clinic": "urban specialty clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/participant-profile/CR-025-participant-profile-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "participant-profile",
+        "discover",
+        "care coordinator",
+        "en",
+        "urban-specialty-clinic"
+      ],
+      "skills": [
+        "persona_creation",
+        "empathy_map",
+        "stakeholder_analysis",
+        "accessibility-audit",
+        "affinity-mapping",
+        "analytics-review",
+        "browser-accessibility-check"
+      ],
+      "word_count": 6072
+    },
+    {
+      "id": "CR-026",
+      "title": "CareNav Renewal participant profile source 02",
+      "method": "participant-profile",
+      "phase": "discover",
+      "role": "clinic admin",
+      "language": "es",
+      "clinic": "oncology clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/participant-profile/CR-026-participant-profile-02.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "participant-profile",
+        "discover",
+        "clinic admin",
+        "es",
+        "oncology-clinic"
+      ],
+      "skills": [
+        "persona_creation",
+        "empathy_map",
+        "stakeholder_analysis",
+        "channel-research-deployment",
+        "cognitive-walkthrough",
+        "competitive-analysis",
+        "concept-testing"
+      ],
+      "word_count": 5966
+    },
+    {
+      "id": "CR-027",
+      "title": "CareNav Renewal participant profile source 03",
+      "method": "participant-profile",
+      "phase": "discover",
+      "role": "patient",
+      "language": "en",
+      "clinic": "community health center",
+      "relative_path": "tests/document_corpus/canonical/sources/participant-profile/CR-027-participant-profile-03.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "participant-profile",
+        "discover",
+        "patient",
+        "en",
+        "community-health-center"
+      ],
+      "skills": [
+        "persona_creation",
+        "empathy_map",
+        "stakeholder_analysis",
+        "desk-research",
+        "diary-studies",
+        "empathy-mapping",
+        "evaluate-research"
+      ],
+      "word_count": 6060
+    },
+    {
+      "id": "CR-028",
+      "title": "CareNav Renewal participant profile source 04",
+      "method": "participant-profile",
+      "phase": "discover",
+      "role": "care coordinator",
+      "language": "en",
+      "clinic": "rural clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/participant-profile/CR-028-participant-profile-04.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "participant-profile",
+        "discover",
+        "care coordinator",
+        "en",
+        "rural-clinic"
+      ],
+      "skills": [
+        "persona_creation",
+        "empathy_map",
+        "stakeholder_analysis",
+        "hmw-statements",
+        "interview-question-generator",
+        "journey-mapping",
+        "jtbd-analysis"
+      ],
+      "word_count": 6038
+    },
+    {
+      "id": "CR-037",
+      "title": "CareNav Renewal diary source 01",
+      "method": "diary",
+      "phase": "discover",
+      "role": "care coordinator",
+      "language": "es",
+      "clinic": "rural clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/diary/CR-037-diary-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "diary",
+        "discover",
+        "care coordinator",
+        "es",
+        "rural-clinic"
+      ],
+      "skills": [
+        "journey_mapping",
+        "empathy_map",
+        "behavioral_analysis",
+        "longitudinal-tracking",
+        "nps-analysis",
+        "participant-simulation",
+        "persona-creation"
+      ],
+      "word_count": 8822
+    },
+    {
+      "id": "CR-038",
+      "title": "CareNav Renewal diary source 02",
+      "method": "diary",
+      "phase": "discover",
+      "role": "clinic admin",
+      "language": "en",
+      "clinic": "pediatric clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/diary/CR-038-diary-02.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "diary",
+        "discover",
+        "clinic admin",
+        "en",
+        "pediatric-clinic"
+      ],
+      "skills": [
+        "journey_mapping",
+        "empathy_map",
+        "behavioral_analysis",
+        "repository-curation",
+        "research-quality-evaluation",
+        "research-retro",
+        "research-synthesis"
+      ],
+      "word_count": 8940
+    },
+    {
+      "id": "CR-039",
+      "title": "CareNav Renewal diary source 03",
+      "method": "diary",
+      "phase": "discover",
+      "role": "patient",
+      "language": "en",
+      "clinic": "urban specialty clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/diary/CR-039-diary-03.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "diary",
+        "discover",
+        "patient",
+        "en",
+        "urban-specialty-clinic"
+      ],
+      "skills": [
+        "journey_mapping",
+        "empathy_map",
+        "behavioral_analysis",
+        "stitch-design-system",
+        "stitch-enhance-prompt",
+        "stitch-react-components",
+        "survey-ai-detection"
+      ],
+      "word_count": 8986
+    },
+    {
+      "id": "CR-040",
+      "title": "CareNav Renewal diary source 04",
+      "method": "diary",
+      "phase": "discover",
+      "role": "care coordinator",
+      "language": "pt-BR",
+      "clinic": "oncology clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/diary/CR-040-diary-04.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "diary",
+        "discover",
+        "care coordinator",
+        "pt-BR",
+        "oncology-clinic"
+      ],
+      "skills": [
+        "journey_mapping",
+        "empathy_map",
+        "behavioral_analysis",
+        "task-analysis-quant",
+        "taxonomy-generator",
+        "thematic-analysis",
+        "transcribe-audio"
+      ],
+      "word_count": 8835
+    },
+    {
+      "id": "CR-047",
+      "title": "CareNav Renewal usability source 01",
+      "method": "usability",
+      "phase": "develop",
+      "role": "patient",
+      "language": "es",
+      "clinic": "rural clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/usability/CR-047-usability-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "usability",
+        "develop",
+        "patient",
+        "es",
+        "rural-clinic"
+      ],
+      "skills": [
+        "usability_testing",
+        "heuristic_evaluation",
+        "cognitive_walkthrough",
+        "stakeholder-presentation",
+        "stitch-design",
+        "stitch-design-system",
+        "stitch-enhance-prompt"
+      ],
+      "word_count": 14829
+    },
+    {
+      "id": "CR-048",
+      "title": "CareNav Renewal usability source 02",
+      "method": "usability",
+      "phase": "develop",
+      "role": "care coordinator",
+      "language": "en",
+      "clinic": "pediatric clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/usability/CR-048-usability-02.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "usability",
+        "develop",
+        "care coordinator",
+        "en",
+        "pediatric-clinic"
+      ],
+      "skills": [
+        "usability_testing",
+        "heuristic_evaluation",
+        "cognitive_walkthrough",
+        "survey-generator",
+        "sus-umux-scoring",
+        "task-analysis-quant",
+        "taxonomy-generator"
+      ],
+      "word_count": 15013
+    },
+    {
+      "id": "CR-049",
+      "title": "CareNav Renewal usability source 03",
+      "method": "usability",
+      "phase": "develop",
+      "role": "clinic admin",
+      "language": "en",
+      "clinic": "urban specialty clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/usability/CR-049-usability-03.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "usability",
+        "develop",
+        "clinic admin",
+        "en",
+        "urban-specialty-clinic"
+      ],
+      "skills": [
+        "usability_testing",
+        "heuristic_evaluation",
+        "cognitive_walkthrough",
+        "usability-testing",
+        "user-flow-mapping",
+        "user-interviews",
+        "ux-law-compliance"
+      ],
+      "word_count": 15085
+    },
+    {
+      "id": "CR-050",
+      "title": "CareNav Renewal usability source 04",
+      "method": "usability",
+      "phase": "develop",
+      "role": "patient",
+      "language": "pt-BR",
+      "clinic": "oncology clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/usability/CR-050-usability-04.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "usability",
+        "develop",
+        "patient",
+        "pt-BR",
+        "oncology-clinic"
+      ],
+      "skills": [
+        "usability_testing",
+        "heuristic_evaluation",
+        "cognitive_walkthrough",
+        "affinity-mapping",
+        "analytics-review",
+        "browser-accessibility-check",
+        "browser-competitive-benchmark"
+      ],
+      "word_count": 14829
+    },
+    {
+      "id": "CR-051",
+      "title": "CareNav Renewal usability source 05",
+      "method": "usability",
+      "phase": "develop",
+      "role": "care coordinator",
+      "language": "en",
+      "clinic": "community health center",
+      "relative_path": "tests/document_corpus/canonical/sources/usability/CR-051-usability-05.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "usability",
+        "develop",
+        "care coordinator",
+        "en",
+        "community-health-center"
+      ],
+      "skills": [
+        "usability_testing",
+        "heuristic_evaluation",
+        "cognitive_walkthrough",
+        "cognitive-walkthrough",
+        "competitive-analysis",
+        "concept-testing",
+        "contextual-inquiry"
+      ],
+      "word_count": 15082
+    },
+    {
+      "id": "CR-052",
+      "title": "CareNav Renewal usability source 06",
+      "method": "usability",
+      "phase": "develop",
+      "role": "clinic admin",
+      "language": "es",
+      "clinic": "rural clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/usability/CR-052-usability-06.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "usability",
+        "develop",
+        "clinic admin",
+        "es",
+        "rural-clinic"
+      ],
+      "skills": [
+        "usability_testing",
+        "heuristic_evaluation",
+        "cognitive_walkthrough",
+        "diary-studies",
+        "empathy-mapping",
+        "evaluate-research",
+        "field-studies"
+      ],
+      "word_count": 14828
+    },
+    {
+      "id": "CR-093",
+      "title": "CareNav Renewal journey source 01",
+      "method": "journey",
+      "phase": "define",
+      "role": "clinic admin",
+      "language": "pt-BR",
+      "clinic": "community health center",
+      "relative_path": "tests/document_corpus/canonical/sources/journey/CR-093-journey-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "journey",
+        "define",
+        "clinic admin",
+        "pt-BR",
+        "community-health-center"
+      ],
+      "skills": [
+        "journey_mapping",
+        "service_blueprint",
+        "opportunity_solution_tree",
+        "design-critique",
+        "design-system-audit",
+        "desk-research",
+        "diary-studies"
+      ],
+      "word_count": 6007
+    },
+    {
+      "id": "CR-094",
+      "title": "CareNav Renewal journey source 02",
+      "method": "journey",
+      "phase": "define",
+      "role": "patient",
+      "language": "en",
+      "clinic": "rural clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/journey/CR-094-journey-02.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "journey",
+        "define",
+        "patient",
+        "en",
+        "rural-clinic"
+      ],
+      "skills": [
+        "journey_mapping",
+        "service_blueprint",
+        "opportunity_solution_tree",
+        "handoff-documentation",
+        "heuristic-evaluation",
+        "hmw-statements",
+        "interview-question-generator"
+      ],
+      "word_count": 6052
+    },
+    {
+      "id": "CR-099",
+      "title": "CareNav Renewal field note source 01",
+      "method": "field-note",
+      "phase": "discover",
+      "role": "clinic admin",
+      "language": "en",
+      "clinic": "oncology clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/field-note/CR-099-field-note-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "field-note",
+        "discover",
+        "clinic admin",
+        "en",
+        "oncology-clinic"
+      ],
+      "skills": [
+        "field_research",
+        "contextual_inquiry",
+        "ethnographic_analysis",
+        "user-interviews",
+        "ux-law-compliance",
+        "workshop-facilitation"
+      ],
+      "word_count": 8848
+    },
+    {
+      "id": "CR-100",
+      "title": "CareNav Renewal field note source 02",
+      "method": "field-note",
+      "phase": "discover",
+      "role": "patient",
+      "language": "en",
+      "clinic": "community health center",
+      "relative_path": "tests/document_corpus/canonical/sources/field-note/CR-100-field-note-02.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "field-note",
+        "discover",
+        "patient",
+        "en",
+        "community-health-center"
+      ],
+      "skills": [
+        "field_research",
+        "contextual_inquiry",
+        "ethnographic_analysis",
+        "browser-accessibility-check",
+        "browser-competitive-benchmark",
+        "browser-ux-audit",
+        "card-sorting"
+      ],
+      "word_count": 8877
+    },
+    {
+      "id": "CR-125",
+      "title": "CareNav Renewal competitor source 01",
+      "method": "competitor",
+      "phase": "discover",
+      "role": "patient",
+      "language": "en",
+      "clinic": "urban specialty clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/competitor/CR-125-competitor-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "competitor",
+        "discover",
+        "patient",
+        "en",
+        "urban-specialty-clinic"
+      ],
+      "skills": [
+        "competitive_analysis",
+        "market_research",
+        "browser-competitive-benchmark",
+        "browser-ux-audit",
+        "card-sorting",
+        "channel-research-deployment"
+      ],
+      "word_count": 11267
+    },
+    {
+      "id": "CR-126",
+      "title": "CareNav Renewal competitor source 02",
+      "method": "competitor",
+      "phase": "discover",
+      "role": "care coordinator",
+      "language": "es",
+      "clinic": "oncology clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/competitor/CR-126-competitor-02.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "competitor",
+        "discover",
+        "care coordinator",
+        "es",
+        "oncology-clinic"
+      ],
+      "skills": [
+        "competitive_analysis",
+        "market_research",
+        "contextual-inquiry",
+        "design-critique",
+        "design-system-audit",
+        "desk-research"
+      ],
+      "word_count": 11092
+    },
+    {
+      "id": "CR-127",
+      "title": "CareNav Renewal competitor source 03",
+      "method": "competitor",
+      "phase": "discover",
+      "role": "clinic admin",
+      "language": "en",
+      "clinic": "community health center",
+      "relative_path": "tests/document_corpus/canonical/sources/competitor/CR-127-competitor-03.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "competitor",
+        "discover",
+        "clinic admin",
+        "en",
+        "community-health-center"
+      ],
+      "skills": [
+        "competitive_analysis",
+        "market_research",
+        "field-studies",
+        "handoff-documentation",
+        "heuristic-evaluation",
+        "hmw-statements"
+      ],
+      "word_count": 11277
+    },
+    {
+      "id": "CR-130",
+      "title": "CareNav Renewal heuristic source 01",
+      "method": "heuristic",
+      "phase": "develop",
+      "role": "operations analyst",
+      "language": "en",
+      "clinic": "urban specialty clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/heuristic/CR-130-heuristic-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "heuristic",
+        "develop",
+        "operations analyst",
+        "en",
+        "urban-specialty-clinic"
+      ],
+      "skills": [
+        "heuristic_evaluation",
+        "design_critique",
+        "stitch-design",
+        "stitch-design-system",
+        "stitch-enhance-prompt",
+        "stitch-react-components"
+      ],
+      "word_count": 11214
+    },
+    {
+      "id": "CR-131",
+      "title": "CareNav Renewal heuristic source 02",
+      "method": "heuristic",
+      "phase": "develop",
+      "role": "caregiver",
+      "language": "es",
+      "clinic": "oncology clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/heuristic/CR-131-heuristic-02.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "heuristic",
+        "develop",
+        "caregiver",
+        "es",
+        "oncology-clinic"
+      ],
+      "skills": [
+        "heuristic_evaluation",
+        "design_critique",
+        "sus-umux-scoring",
+        "task-analysis-quant",
+        "taxonomy-generator",
+        "thematic-analysis"
+      ],
+      "word_count": 11023
+    },
+    {
+      "id": "CR-135",
+      "title": "CareNav Renewal accessibility source 01",
+      "method": "accessibility",
+      "phase": "develop",
+      "role": "clinic admin",
+      "language": "en",
+      "clinic": "urban specialty clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/accessibility/CR-135-accessibility-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "accessibility",
+        "develop",
+        "clinic admin",
+        "en",
+        "urban-specialty-clinic"
+      ],
+      "skills": [
+        "accessibility_audit",
+        "wcag_review",
+        "empathy-mapping",
+        "evaluate-research",
+        "field-studies",
+        "handoff-documentation"
+      ],
+      "word_count": 11249
+    },
+    {
+      "id": "CR-136",
+      "title": "CareNav Renewal accessibility source 02",
+      "method": "accessibility",
+      "phase": "develop",
+      "role": "patient",
+      "language": "es",
+      "clinic": "oncology clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/accessibility/CR-136-accessibility-02.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "accessibility",
+        "develop",
+        "patient",
+        "es",
+        "oncology-clinic"
+      ],
+      "skills": [
+        "accessibility_audit",
+        "wcag_review",
+        "journey-mapping",
+        "jtbd-analysis",
+        "kappa-thematic-analysis",
+        "longitudinal-tracking"
+      ],
+      "word_count": 11049
+    },
+    {
+      "id": "CR-140",
+      "title": "CareNav Renewal laws of ux source 01",
+      "method": "laws-of-ux",
+      "phase": "develop",
+      "role": "nurse manager",
+      "language": "en",
+      "clinic": "urban specialty clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/laws-of-ux/CR-140-laws-of-ux-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "laws-of-ux",
+        "develop",
+        "nurse manager",
+        "en",
+        "urban-specialty-clinic"
+      ],
+      "skills": [
+        "laws_of_ux_audit",
+        "heuristic_evaluation",
+        "tree-testing",
+        "usability-testing",
+        "user-flow-mapping",
+        "user-interviews"
+      ],
+      "word_count": 6061
+    },
+    {
+      "id": "CR-141",
+      "title": "CareNav Renewal laws of ux source 02",
+      "method": "laws-of-ux",
+      "phase": "develop",
+      "role": "operations analyst",
+      "language": "es",
+      "clinic": "oncology clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/laws-of-ux/CR-141-laws-of-ux-02.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "laws-of-ux",
+        "develop",
+        "operations analyst",
+        "es",
+        "oncology-clinic"
+      ],
+      "skills": [
+        "laws_of_ux_audit",
+        "heuristic_evaluation",
+        "accessibility-audit",
+        "affinity-mapping",
+        "analytics-review",
+        "browser-accessibility-check"
+      ],
+      "word_count": 5979
+    },
+    {
+      "id": "CR-148",
+      "title": "CareNav Renewal stakeholder source 01",
+      "method": "stakeholder",
+      "phase": "define",
+      "role": "operations analyst",
+      "language": "pt-BR",
+      "clinic": "community health center",
+      "relative_path": "tests/document_corpus/canonical/sources/stakeholder/CR-148-stakeholder-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "stakeholder",
+        "define",
+        "operations analyst",
+        "pt-BR",
+        "community-health-center"
+      ],
+      "skills": [
+        "stakeholder_analysis",
+        "decision_mapping",
+        "thematic-analysis",
+        "transcribe-audio",
+        "tree-testing",
+        "usability-testing"
+      ],
+      "word_count": 9981
+    },
+    {
+      "id": "CR-171",
+      "title": "CareNav Renewal report source 01",
+      "method": "report",
+      "phase": "deliver",
+      "role": "clinic admin",
+      "language": "en",
+      "clinic": "pediatric clinic",
+      "relative_path": "tests/document_corpus/canonical/sources/report/CR-171-report-01.md",
+      "file_exists": true,
+      "file_type": "md",
+      "tags": [
+        "report",
+        "deliver",
+        "clinic admin",
+        "en",
+        "pediatric-clinic"
+      ],
+      "skills": [
+        "finding_synthesis",
+        "reporting",
+        "mece_synthesis",
+        "research-synthesis",
+        "stakeholder-interviews",
+        "stakeholder-presentation",
+        "stitch-design"
+      ],
+      "word_count": 10050
+    }
+  ]
+}

@@ -1,0 +1,238 @@
+{
+  "project": "CareNav Renewal",
+  "lifecycle_description": "Qualitative codebook evolution across 150-turn research sprint",
+  "stages": {
+    "v1_0_initial": {
+      "version": "1.0.0",
+      "active_turns": "Turns 1-45 (Discover)",
+      "codes": [
+        {
+          "code_id": "cb1-01",
+          "name": "caregiver-privacy",
+          "definition": "Boundaries, controls, and restrictions governing family caregiver access to patient health data.",
+          "inclusion_criteria": "Mentions of proxy access, shared vs private clinical records, redaction of sensitive notes, or permission delegation.",
+          "exclusion_criteria": "General portal login password resets or basic account creation.",
+          "anchor_quotes": [
+            "My daughter needs to see appointment dates, but not my psychiatric notes.",
+            "Caregiver access must have explicit boundaries."
+          ]
+        },
+        {
+          "code_id": "cb1-02",
+          "name": "audit-trail-visibility",
+          "definition": "Requirement that automated status transitions display verifiable clinical evidence trails.",
+          "inclusion_criteria": "Mentions of queue verification, source trail, doctor signature, lab link, or audit logs.",
+          "exclusion_criteria": "General complaints about page loading latency.",
+          "anchor_quotes": [
+            "I will not trust a green badge without seeing the doctor's verified note.",
+            "The queue is useful only when the source trail is visible."
+          ]
+        },
+        {
+          "code_id": "cb1-03",
+          "name": "clinical-oversight",
+          "definition": "Physician and nurse verification protocols safeguarding AI-assisted triage decisions.",
+          "inclusion_criteria": "Mentions of clinician review of automated recommendations, liability, or nurse sign-off.",
+          "exclusion_criteria": "Front desk administrative room scheduling.",
+          "anchor_quotes": [
+            "Physicians don't trust an AI summary that doesn't let them click straight to the patient quote."
+          ]
+        },
+        {
+          "code_id": "cb1-04",
+          "name": "notification-fatigue",
+          "definition": "Cognitive overload and frustration resulting from repetitive or conflicting SMS and portal reminders.",
+          "inclusion_criteria": "Mentions of redundant texts, alerts sent during work hours, or conflicting prep instructions.",
+          "exclusion_criteria": "Desire for additional phone calls.",
+          "anchor_quotes": [
+            "I received four text messages in one morning for the same routine blood draw."
+          ]
+        }
+      ]
+    },
+    "v1_1_steered": {
+      "version": "1.1.0",
+      "active_turns": "Turns 46-90 (Define - Post Steering)",
+      "codes": [
+        {
+          "code_id": "cb1-02",
+          "name": "audit-trail-visibility",
+          "definition": "Requirement that automated status transitions display verifiable clinical evidence trails.",
+          "inclusion_criteria": "Mentions of queue verification, source trail, doctor signature, lab link, or audit logs.",
+          "exclusion_criteria": "General complaints about page loading latency.",
+          "anchor_quotes": [
+            "I will not trust a green badge without seeing the doctor's verified note.",
+            "The queue is useful only when the source trail is visible."
+          ]
+        },
+        {
+          "code_id": "cb1-03",
+          "name": "clinical-oversight",
+          "definition": "Physician and nurse verification protocols safeguarding AI-assisted triage decisions.",
+          "inclusion_criteria": "Mentions of clinician review of automated recommendations, liability, or nurse sign-off.",
+          "exclusion_criteria": "Front desk administrative room scheduling.",
+          "anchor_quotes": [
+            "Physicians don't trust an AI summary that doesn't let them click straight to the patient quote."
+          ]
+        },
+        {
+          "code_id": "cb1-04",
+          "name": "notification-fatigue",
+          "definition": "Cognitive overload and frustration resulting from repetitive or conflicting SMS and portal reminders.",
+          "inclusion_criteria": "Mentions of redundant texts, alerts sent during work hours, or conflicting prep instructions.",
+          "exclusion_criteria": "Desire for additional phone calls.",
+          "anchor_quotes": [
+            "I received four text messages in one morning for the same routine blood draw."
+          ]
+        },
+        {
+          "code_id": "cb11-01",
+          "name": "caregiver-proxy-scheduling",
+          "definition": "Positive collaborative coordination where caregivers manage logistics, transport, and calendars.",
+          "inclusion_criteria": "Mentions of booking visits, transportation coordination, calendar syncing, or check-in assistance.",
+          "exclusion_criteria": "Access to medical consultation notes or diagnostic test results.",
+          "anchor_quotes": [
+            "My son helps with my prescriptions and driving me to clinic."
+          ]
+        },
+        {
+          "code_id": "cb11-02",
+          "name": "caregiver-confidential-notes",
+          "definition": "Patient resistance and anxiety regarding proxy visibility into sensitive psychiatric, reproductive, or oncological diagnoses.",
+          "inclusion_criteria": "Mentions of privacy boundaries, behavioral health isolation, or desire to withhold notes from family.",
+          "exclusion_criteria": "Administrative scheduling permissions.",
+          "anchor_quotes": [
+            "My mother wants me to manage her logistics, but does not want me reading her counseling notes."
+          ]
+        },
+        {
+          "code_id": "cb11-03",
+          "name": "multilingual-disparity",
+          "definition": "Discrepancies in clarity, cultural appropriateness, or completeness between English and non-English communications.",
+          "inclusion_criteria": "Mentions of machine-translated Spanish/Portuguese copy, mistranslated medical terms, or untranslated warning flags.",
+          "exclusion_criteria": "Grammar typos in English documents.",
+          "anchor_quotes": [
+            "Spanish translations use clinical jargon nobody in our community understands."
+          ]
+        },
+        {
+          "code_id": "cb11-04",
+          "name": "clinical-provenance",
+          "definition": "Explicit requirement that automated flags display the authoring clinician, timestamp, and EHR reference ID.",
+          "inclusion_criteria": "Mentions of clinician credentials, author verification, or timestamped audit ledger.",
+          "exclusion_criteria": "Generic system timestamps without clinical author.",
+          "anchor_quotes": [
+            "Show me the date, laboratory name, and the doctor's electronic signature."
+          ]
+        }
+      ]
+    },
+    "v2_0_consolidated": {
+      "version": "2.0.0",
+      "active_turns": "Turns 91-150 (Develop & Deliver)",
+      "codes": [
+        {
+          "code_id": "cb1-02",
+          "name": "audit-trail-visibility",
+          "definition": "Requirement that automated status transitions display verifiable clinical evidence trails.",
+          "inclusion_criteria": "Mentions of queue verification, source trail, doctor signature, lab link, or audit logs.",
+          "exclusion_criteria": "General complaints about page loading latency.",
+          "anchor_quotes": [
+            "I will not trust a green badge without seeing the doctor's verified note.",
+            "The queue is useful only when the source trail is visible."
+          ]
+        },
+        {
+          "code_id": "cb1-03",
+          "name": "clinical-oversight",
+          "definition": "Physician and nurse verification protocols safeguarding AI-assisted triage decisions.",
+          "inclusion_criteria": "Mentions of clinician review of automated recommendations, liability, or nurse sign-off.",
+          "exclusion_criteria": "Front desk administrative room scheduling.",
+          "anchor_quotes": [
+            "Physicians don't trust an AI summary that doesn't let them click straight to the patient quote."
+          ]
+        },
+        {
+          "code_id": "cb1-04",
+          "name": "notification-fatigue",
+          "definition": "Cognitive overload and frustration resulting from repetitive or conflicting SMS and portal reminders.",
+          "inclusion_criteria": "Mentions of redundant texts, alerts sent during work hours, or conflicting prep instructions.",
+          "exclusion_criteria": "Desire for additional phone calls.",
+          "anchor_quotes": [
+            "I received four text messages in one morning for the same routine blood draw."
+          ]
+        },
+        {
+          "code_id": "cb11-01",
+          "name": "caregiver-proxy-scheduling",
+          "definition": "Positive collaborative coordination where caregivers manage logistics, transport, and calendars.",
+          "inclusion_criteria": "Mentions of booking visits, transportation coordination, calendar syncing, or check-in assistance.",
+          "exclusion_criteria": "Access to medical consultation notes or diagnostic test results.",
+          "anchor_quotes": [
+            "My son helps with my prescriptions and driving me to clinic."
+          ]
+        },
+        {
+          "code_id": "cb11-02",
+          "name": "caregiver-confidential-notes",
+          "definition": "Patient resistance and anxiety regarding proxy visibility into sensitive psychiatric, reproductive, or oncological diagnoses.",
+          "inclusion_criteria": "Mentions of privacy boundaries, behavioral health isolation, or desire to withhold notes from family.",
+          "exclusion_criteria": "Administrative scheduling permissions.",
+          "anchor_quotes": [
+            "My mother wants me to manage her logistics, but does not want me reading her counseling notes."
+          ]
+        },
+        {
+          "code_id": "cb11-03",
+          "name": "multilingual-disparity",
+          "definition": "Discrepancies in clarity, cultural appropriateness, or completeness between English and non-English communications.",
+          "inclusion_criteria": "Mentions of machine-translated Spanish/Portuguese copy, mistranslated medical terms, or untranslated warning flags.",
+          "exclusion_criteria": "Grammar typos in English documents.",
+          "anchor_quotes": [
+            "Spanish translations use clinical jargon nobody in our community understands."
+          ]
+        },
+        {
+          "code_id": "cb11-04",
+          "name": "clinical-provenance",
+          "definition": "Explicit requirement that automated flags display the authoring clinician, timestamp, and EHR reference ID.",
+          "inclusion_criteria": "Mentions of clinician credentials, author verification, or timestamped audit ledger.",
+          "exclusion_criteria": "Generic system timestamps without clinical author.",
+          "anchor_quotes": [
+            "Show me the date, laboratory name, and the doctor's electronic signature."
+          ]
+        },
+        {
+          "code_id": "cb2-01",
+          "name": "accessibility-contrast-deficiency",
+          "definition": "Violations of WCAG 2.2 AA contrast standards impeding elderly and low-vision patients.",
+          "inclusion_criteria": "Mentions of unreadable gray text, low contrast status indicators, small touch targets, or screen reader failures.",
+          "exclusion_criteria": "Aesthetic feedback on branding colors.",
+          "anchor_quotes": [
+            "The light gray text on white background makes it impossible for my 84-year-old eyes to read pre-op instructions."
+          ]
+        },
+        {
+          "code_id": "cb2-02",
+          "name": "cognitive-load-reduction",
+          "definition": "Design interventions that simplify complex multi-step clinical readiness into actionable, chunked checklists.",
+          "inclusion_criteria": "Mentions of progressive disclosure, single-page summaries, visual progress meters, or plain-language translations.",
+          "exclusion_criteria": "General visual layout preferences.",
+          "anchor_quotes": [
+            "Group the blood tests into one pre-op card instead of five separate warning banners."
+          ]
+        },
+        {
+          "code_id": "cb2-03",
+          "name": "audit-immutability-governance",
+          "definition": "Cryptographic and database governance ensuring historical readiness evidence cannot be retroactively altered.",
+          "inclusion_criteria": "Mentions of append-only audit ledgers, compliance verification, tamper-evident logs, or regulatory auditability.",
+          "exclusion_criteria": "Temporary session caching.",
+          "anchor_quotes": [
+            "If a readiness status changes from ready to blocked, the audit record must preserve the previous clinician sign-off."
+          ]
+        }
+      ]
+    }
+  }
+}
