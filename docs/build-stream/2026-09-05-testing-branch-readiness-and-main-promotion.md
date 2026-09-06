@@ -8,8 +8,8 @@ phase: "Phase 6 — Branch Reconciliation & Origin/Main Promotion Gate"
 stage: S3-review
 status: ready-for-merge
 blocked_on: null
-last: { agent: antigravity, at: 2026-09-06T12:53:00Z, ledger: L-413 }
-next_action: "Submit candidate promotion PR from testing to origin/main with certified release gates and zero unmerged commits."
+last: { agent: antigravity, at: 2026-09-06T13:14:00Z, ledger: L-414 }
+next_action: "Provide operator with browser access coordinates (http://127.0.0.1:3000) and assist with interactive agent conversation and report inspection."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -140,6 +140,11 @@ Compass Forge is completely bypassed for this initiative per user mandate; Build
 **Decision:** Formalized merge commit `fe4d1987` as the certified reconciliation anchor. Promotion of `testing` into `main` is now a 100% clean fast-forward merge.  
 **Why:** Eliminates all downstream PR merge friction on GitHub and certifies all 4 release gates on the reconciled tree.
 
+### DEC-012 | 2026-09-06 | S3-review | antigravity
+**Context:** User requested direct interactive browser access on their local workstation to the live QA Docker container on `macstudio` to inspect the preserved 150-turn research sprint, review approved reports, and converse directly with agents.  
+**Decision:** (1) Performed atomic SQLite online backup of golden database `/app/data/simulation-shared/istara-qa-150turn-approved-reports-persisted.db` (1,035 evidence units, 538 nuggets, 35 facts, 29 insights, 34 recommendations, 4 reports, 288 chat messages) into active container database `/tmp/istara-qa.db`, preserving the host golden file as immutable. (2) Set `admin` password to `admin` for seamless browser login. (3) Established a persistent background SSH local port forward (`ssh -f -N -L 3000:127.0.0.1:3000 -L 8000:127.0.0.1:8000 macstudio`).  
+**Why:** Enables immediate interactive human review and conversational agent verification from the operator's local browser while maintaining 100% preservation of all golden research assets.
+
 ---
 
 ## Ledger
@@ -190,6 +195,12 @@ Total verified: 32 simulation scenarios and 385+ checks passing cleanly (100% pa
 **Result:** `testing` branch is certified production-ready for promotion to `origin/main`.  
 **Verified:** Pytest suite passing, Security Benchmark 100%, Feature Docs 86/86 passing, Next.js production build passing, 32 simulation scenarios passing 100%.  
 **Next:** Deliver executive release certification report to operator.
+
+### L-414 | 2026-09-06T13:14:00Z | S3-review | antigravity | reviewer | Phase 6
+**Did:** Mounted the complete 150-turn golden research sprint (`proj-st150-pi-dd6bf277`, `session-st150-pi-b7a9bf45`, 4 approved reports, 1,035 evidence units, 538 nuggets, 35 facts, 29 insights, 34 recommendations, 288 messages) into the live QA backend container. Configured admin authentication (`admin` / `admin`). Established local SSH tunnel for ports 3000 and 8000 from Mac Studio to local workstation. Verified local HTTP endpoints (`http://127.0.0.1:3000` and `http://127.0.0.1:8000/api/health`), verified login token issuance, and verified session message retrieval through the tunnel.  
+**Result:** Interactive browser access is fully live and operational on `http://127.0.0.1:3000`. Operator can inspect all research deliverables and converse directly with agents in the live container.  
+**Verified:** `curl -s http://127.0.0.1:8000/api/health` -> 200 OK; `curl -s -X POST http://127.0.0.1:8000/api/auth/login` -> 200 OK; SSH tunnel PID 36796 listening on local ports 3000 and 8000.  
+**Next:** Guide operator through browser inspection and conversational agent interaction.
 
 ---
 
