@@ -1,8 +1,7 @@
-"""Presentation API — generate slide creation instructions from reports."""
-
+import asyncio
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.agentic import agentic
@@ -38,9 +37,10 @@ async def get_slide_instructions(
     report_id: str,
     request: Request,
     project_id: str | None = None,
+    regenerate: bool = Query(False),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate professional slide creation instructions for an external AI."""
+    """Generate professional slide creation instructions for an external AI with persistence and caching."""
     scoped_project_id = project_id.strip() if project_id else ""
     if not scoped_project_id:
         raise HTTPException(status_code=400, detail="project_id is required")
@@ -50,13 +50,24 @@ async def get_slide_instructions(
         raise HTTPException(status_code=404, detail="Report not found")
     await require_project_access(db, request, scoped_project_id, min_role="viewer")
 
+    # Fast path: Return cached instructions immediately
+    if report.slide_instructions and not regenerate:
+        return {
+            "report_id": report_id,
+            "project_id": report.project_id,
+            "title": f"Slide Instructions: {report.title}",
+            "instructions": report.slide_instructions,
+            "methodology": "Minto Pyramid / Action Titles / SCR Framework",
+            "cached": True,
+        }
+
     content = json.loads(report.content_json or "{}")
     full_text = content.get("full_document", "")
     if not full_text:
         # Fallback to executive summary if full doc not yet generated
         full_text = report.executive_summary or "No report content available."
 
-    # Generate the instruction package via LLM
+    # Generate the instruction package via LLM with bounded timeout
     prompt = (
         "You are a presentation design specialist. Based on the following professional research report, "
         "generate a comprehensive instruction package for another AI to create a high-impact slide deck.\n\n"
@@ -70,16 +81,28 @@ async def get_slide_instructions(
     )
 
     try:
-        outcome = await agentic.completion(
-            purpose="presentation.slides",
-            project_id=scoped_project_id,
-            system=None,
-            messages=[{"role": "user", "content": prompt}],
-            params=TurnParams(temperature=0.3),
+        outcome = await asyncio.wait_for(
+            agentic.completion(
+                purpose="presentation.slides",
+                project_id=scoped_project_id,
+                system=None,
+                messages=[{"role": "user", "content": prompt}],
+                params=TurnParams(temperature=0.3),
+            ),
+            timeout=10.0,
         )
-        instructions = outcome.text or "Failed to generate instructions."
+        instructions = (outcome.text or "").strip()
+        if not instructions:
+            instructions = _fallback_slide_instructions(report, full_text)
     except Exception:
         instructions = _fallback_slide_instructions(report, full_text)
+
+    # Persist instructions so future requests never hang
+    try:
+        report.slide_instructions = instructions
+        await db.commit()
+    except Exception:
+        pass
 
     return {
         "report_id": report_id,
@@ -87,4 +110,5 @@ async def get_slide_instructions(
         "title": f"Slide Instructions: {report.title}",
         "instructions": instructions,
         "methodology": "Minto Pyramid / Action Titles / SCR Framework",
+        "cached": False,
     }

@@ -168,7 +168,29 @@ function IstaraVersion() {
       .then(d => setVersion(d.version || "dev"))
       .catch(() => setVersion("dev"));
   }, []);
-  return <span>🐾 Istara v{version}</span>;
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "settings" }));
+    setTimeout(() => {
+      const el = document.getElementById("tour-target-software-updates");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 150);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className="hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-0 p-0 text-xs text-inherit"
+      title="View version & software updates in Settings"
+      aria-label={`Istara version ${version}. Click to open software updates.`}
+    >
+      🐾 Istara v{version}
+    </button>
+  );
 }
 
 function ConnectionStatus({

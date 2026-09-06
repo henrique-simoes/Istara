@@ -2,10 +2,10 @@
 
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertTriangle, Bot, CheckCircle2, ClipboardList, FileStack, FileText, Globe, Network, Plus, RotateCcw, Save, Send, ShieldCheck, Tags, Trash2, User, X, Zap } from "lucide-react";
+import { AlertTriangle, BookOpen, Bot, CheckCircle2, ClipboardList, FileStack, FileText, Globe, Network, Plus, RotateCcw, Save, Send, ShieldCheck, Tags, Trash2, User, X, Zap } from "lucide-react";
 import { useTaskStore } from "@/stores/taskStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { documents as documentsApi, taskLocking, tasks as tasksApi } from "@/lib/api";
+import { codebookVersions as codebookApi, documents as documentsApi, taskLocking, tasks as tasksApi } from "@/lib/api";
 import { researchValidity } from "@/lib/researchIntegrityApi";
 import { loadTaskDocumentReferences, resolveTaskDocumentTitle } from "@/lib/taskDocumentTitles";
 import type { EvidenceGraphTraceabilityType, Task, TaskAtomicPath, TaskQualitySummary } from "@/lib/types";
@@ -99,6 +99,8 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [skillName, setSkillName] = useState(task.skill_name);
+  const [codebookId, setCodebookId] = useState(task.codebook_id || "");
+  const [availableCodebooks, setAvailableCodebooks] = useState<Array<{ id: string; version: string; methodology?: string; change_log?: string }>>([]);
   const [userContext, setUserContext] = useState(task.user_context);
   const [instructions, setInstructions] = useState(task.instructions || "");
   const [urls, setUrls] = useState<string[]>(task.urls || []);
@@ -125,6 +127,15 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const hasActiveTaskProject = Boolean(activeProjectId && activeProjectId === task.project_id);
   const hasAttachedDocuments = inputDocs.length > 0 || outputDocs.length > 0;
 
+  useEffect(() => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return;
+    codebookApi.list(activeProjectId).then((cbs) => {
+      setAvailableCodebooks(cbs);
+    }).catch((err) => {
+      console.error("Failed to load codebooks for task editor:", err);
+    });
+  }, [activeProjectId, task.project_id]);
+
   const saveDraft = useCallback(async () => {
     if (saving || !activeProjectId || activeProjectId !== task.project_id) return false;
     setSaving(true);
@@ -134,6 +145,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         title,
         description,
         skill_name: skillName,
+        codebook_id: codebookId || null,
         user_context: userContext,
         instructions,
         urls,
@@ -150,7 +162,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
     } finally {
       setSaving(false);
     }
-  }, [activeProjectId, description, inputDocs, instructions, labels, outputDocs, saving, skillName, task.id, task.project_id, title, updateTask, urls, userContext, whatToReview]);
+  }, [activeProjectId, codebookId, description, inputDocs, instructions, labels, outputDocs, saving, skillName, task.id, task.project_id, title, updateTask, urls, userContext, whatToReview]);
 
   const releaseLock = useCallback(async () => {
     if (!activeProjectId || activeProjectId !== task.project_id) return false;
@@ -424,30 +436,46 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
                   {SKILL_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </Field>
-              <Field label="Task Labels" icon={<Tags size={13} />}>
-                <div className="space-y-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    {labels.map((label, idx) => (
-                      <button
-                        key={`${labelName(label)}-${idx}`}
-                        onClick={() => setLabels(labels.filter((_, i) => i !== idx))}
-                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-white"
-                        style={{ background: tagColor(label) }}
-                        title={`${tagDescription(label)} Click to remove.`}
-                      >
-                        {isSystemTag(label) && <span className="text-[9px] uppercase opacity-80">system</span>}
-                        <span>{labelName(label)}</span>
-                      </button>
-                    ))}
-                    {labels.length === 0 && <span className="text-xs text-slate-400">No labels yet.</span>}
-                  </div>
-                  <div className="flex gap-2">
-                    <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLabel(); } }} className="field-input min-w-0 flex-1" placeholder="Label" />
-                    <IconButton onClick={addLabel} label="Add label"><Plus size={14} /></IconButton>
-                  </div>
-                </div>
+              <Field label="Governing Codebook" icon={<BookOpen size={13} />}>
+                <select
+                  value={codebookId}
+                  onChange={(e) => setCodebookId(e.target.value)}
+                  className="field-input"
+                  aria-label="Select governing codebook"
+                >
+                  <option value="">None (Auto or default)</option>
+                  {availableCodebooks.map((cb) => (
+                    <option key={cb.id} value={cb.id}>
+                      v{cb.version} ({cb.methodology || "Codebook TA"})
+                    </option>
+                  ))}
+                </select>
               </Field>
             </div>
+
+            <Field label="Task Labels" icon={<Tags size={13} />}>
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {labels.map((label, idx) => (
+                    <button
+                      key={`${labelName(label)}-${idx}`}
+                      onClick={() => setLabels(labels.filter((_, i) => i !== idx))}
+                      className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-white"
+                      style={{ background: tagColor(label) }}
+                      title={`${tagDescription(label)} Click to remove.`}
+                    >
+                      {isSystemTag(label) && <span className="text-[9px] uppercase opacity-80">system</span>}
+                      <span>{labelName(label)}</span>
+                    </button>
+                  ))}
+                  {labels.length === 0 && <span className="text-xs text-slate-400">No labels yet.</span>}
+                </div>
+                <div className="flex gap-2">
+                  <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLabel(); } }} className="field-input min-w-0 flex-1" placeholder="Label" />
+                  <IconButton onClick={addLabel} label="Add label"><Plus size={14} /></IconButton>
+                </div>
+              </div>
+            </Field>
 
             <Field label="Specific Instructions" icon={<ClipboardList size={13} />}>
               <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={4} className="field-input resize-y" />

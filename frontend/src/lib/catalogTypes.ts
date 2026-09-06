@@ -84,6 +84,7 @@ export interface ProjectReport {
   version: number;
   finding_count: number;
   mece_categories: Array<{ name: string; description: string; finding_ids: string[] }>;
+  slide_instructions?: string | null;
   created_at: string;
   updated_at: string;
 }

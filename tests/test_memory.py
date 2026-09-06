@@ -8,6 +8,7 @@ from app.main import app
 from app.config import settings
 from app.core.rag import RAGContext, RetrievalResult
 from app.models.database import async_session, init_db
+from app.models.document import Document
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.core.auth import create_token
@@ -200,3 +201,33 @@ async def test_memory_search_supports_q_alias_and_metadata_filters(
     assert captured["source_filter"] == "interview.pdf"
     assert captured["file_type_filter"] == "pdf"
     assert response.json()["filters"] == {"source": "interview.pdf", "file_type": "pdf"}
+
+
+@pytest.mark.asyncio
+async def test_memory_sync_indexes_project_documents(auth_headers):
+    """POST /api/memory/{project_id}/sync indexes all project documents into search."""
+    await init_db()
+    project = await _seed_project()
+    doc_id = str(uuid.uuid4())
+    doc = Document(
+        id=doc_id,
+        project_id=project.id,
+        title="Customer Feedback Notes",
+        file_name="feedback.txt",
+        content_text="The onboarding experience was confusing for new enterprise users.",
+        content_preview="The onboarding experience was confusing...",
+    )
+    async with async_session() as db:
+        db.add(doc)
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(f"/api/memory/{project.id}/sync", headers=auth_headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["project_id"] == project.id
+    assert data["documents_indexed"] >= 1
+    assert data["chunks_indexed"] >= 1

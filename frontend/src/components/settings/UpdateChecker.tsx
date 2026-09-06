@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, CheckCircle2, AlertTriangle, Loader2, Shield, RefreshCw, Rocket } from "lucide-react";
+import { Download, CheckCircle2, AlertTriangle, Loader2, Shield, RefreshCw, Rocket, Copy, Check, ExternalLink, Terminal } from "lucide-react";
 
 import { updatesApi, type UpdateInfo } from "@/lib/updatesApi";
 
@@ -29,6 +29,7 @@ export default function UpdateChecker() {
   const [updating, setUpdating] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<"idle" | "backing_up" | "updating" | "restarting" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Auto-check on mount
   useEffect(() => {
@@ -118,8 +119,21 @@ export default function UpdateChecker() {
       </div>
 
       {/* Current version */}
-      <div className="text-sm text-slate-500 mb-3">
-        Current version: <span className="font-mono font-medium text-slate-700 dark:text-slate-300">{updateInfo?.current_version || "..."}</span>
+      <div className="flex items-center gap-2 text-sm text-slate-500 mb-3">
+        <span>Current version:</span>
+        <span className="font-mono font-medium text-slate-700 dark:text-slate-300">
+          {updateInfo?.current_version || "..."}
+        </span>
+        {updateInfo?.install_type === "docker" && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium">
+            Docker
+          </span>
+        )}
+        {updateInfo?.install_type === "git" && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+            Source Git
+          </span>
+        )}
       </div>
 
       {/* Update in progress */}
@@ -151,33 +165,67 @@ export default function UpdateChecker() {
           <div className="flex items-start gap-3">
             <Rocket size={20} className="text-istara-600 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-istara-800 dark:text-istara-300">
-                Istara {updateInfo.latest_version} is available
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-istara-800 dark:text-istara-300">
+                  Istara {updateInfo.latest_version} is available
+                </p>
+                {updateInfo.install_type === "docker" && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium">
+                    Docker Container
+                  </span>
+                )}
+              </div>
               {updateInfo.release_name && (
                 <p className="text-xs text-istara-600 dark:text-istara-400 mt-0.5">
                   {updateInfo.release_name}
                 </p>
               )}
               {updateInfo.changelog && (
-                <pre className="text-xs text-slate-600 dark:text-slate-400 mt-2 line-clamp-3 whitespace-pre-wrap font-sans">
+                <pre className="text-xs text-slate-600 dark:text-slate-400 mt-2 line-clamp-4 whitespace-pre-wrap font-sans">
                   {stripReleaseBody(updateInfo.changelog)}
                 </pre>
               )}
 
-              <div className="flex items-center gap-3 mt-3">
-                <button
-                  onClick={applyUpdate}
-                  disabled={updating}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 transition-colors"
-                >
-                  <Shield size={14} />
-                  Update Now
-                </button>
-                <p className="text-xs text-slate-400">
-                  Auto-backup → update → restart
-                </p>
-              </div>
+              {/* Action based on install type */}
+              {updateInfo.install_type === "docker" ? (
+                <div className="mt-3">
+                  <div className="p-2.5 rounded-lg bg-slate-900 text-slate-100 font-mono text-xs flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 truncate">
+                      <Terminal size={14} className="text-slate-400 shrink-0" />
+                      <span className="truncate">{updateInfo.docker_command || "docker compose pull && docker compose up -d"}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(updateInfo.docker_command || "docker compose pull && docker compose up -d");
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] flex items-center gap-1 shrink-0 text-slate-300 transition-colors"
+                      title="Copy command"
+                    >
+                      {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
+                      {copied ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
+                    Run this command on your host machine to update your Docker containers.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 mt-3">
+                  <button
+                    onClick={applyUpdate}
+                    disabled={updating}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-istara-600 text-white hover:bg-istara-700 disabled:opacity-50 transition-colors"
+                  >
+                    <Shield size={14} />
+                    Update Now
+                  </button>
+                  <p className="text-xs text-slate-400">
+                    Auto-backup → update → restart
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -185,9 +233,21 @@ export default function UpdateChecker() {
 
       {/* No update */}
       {updateInfo && !updateInfo.update_available && !updateInfo.error && updateStatus === "idle" && (
-        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-          <CheckCircle2 size={14} />
-          You're running the latest version.
+        <div className="flex items-center justify-between text-sm text-green-600 dark:text-green-400">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={16} />
+            <span>You're running the latest version (v{updateInfo.current_version}).</span>
+          </div>
+          {updateInfo.release_url && (
+            <a
+              href={updateInfo.release_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1"
+            >
+              Release notes <ExternalLink size={11} />
+            </a>
+          )}
         </div>
       )}
 

@@ -53,6 +53,7 @@ export interface Task {
   id: string;
   project_id: string;
   agent_id: string | null;
+  codebook_id?: string | null;
   title: string;
   description: string;
   status: TaskStatus;
@@ -155,6 +156,15 @@ export interface TaskQualitySummary {
   recent_review_events: TaskReviewEvent[];
 }
 
+export interface ToolCallExecution {
+  id?: string;
+  tool: string;
+  params?: Record<string, any> | string;
+  result?: string;
+  status?: "pending" | "running" | "completed" | "error";
+  duration_ms?: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -163,6 +173,8 @@ export interface ChatMessage {
   sources?: { source: string; score: number; page?: number }[];
   agent_id?: string;
   agent_name?: string;
+  thoughts?: string[];
+  tool_calls?: ToolCallExecution[];
 }
 
 export interface FindingResearchValidity {

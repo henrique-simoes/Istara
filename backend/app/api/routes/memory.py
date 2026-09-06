@@ -216,3 +216,18 @@ async def delete_source(
     await keyword_idx.delete_by_source(source_name)
 
     return {"deleted": True, "source": source_name}
+
+
+@router.post("/memory/{project_id}/sync")
+async def sync_project_knowledge(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Index or re-index all project documents and files into LanceDB and BM25 search indices."""
+    await get_visible_project_or_404(db, request, project_id, min_role="researcher")
+    from app.services.knowledge_sync import KnowledgeSyncService
+
+    service = KnowledgeSyncService()
+    result = await service.sync_project(project_id, db)
+    return result

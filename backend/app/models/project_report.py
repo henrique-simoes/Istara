@@ -64,6 +64,7 @@ class ProjectReport(Base):
 
     mece_categories_json: Mapped[str] = mapped_column(Text, default="[]")
     triangulation_matrix_json: Mapped[str] = mapped_column(Text, default="{}")
+    slide_instructions: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
@@ -91,6 +92,7 @@ class ProjectReport(Base):
             "version": self.version,
             "finding_count": len(finding_ids),
             "mece_categories": mece_categories,
+            "slide_instructions": self.slide_instructions,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

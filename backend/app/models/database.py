@@ -329,6 +329,11 @@ async def init_db() -> None:
             "ALTER TABLE agentic_usage_rows ADD COLUMN session_id VARCHAR(36)",
             "CREATE INDEX IF NOT EXISTS ix_agentic_usage_rows_session_id "
             "ON agentic_usage_rows(session_id)",
+            # Reports slide instructions caching
+            "ALTER TABLE project_reports ADD COLUMN slide_instructions TEXT",
+            # Task-level codebook assignment
+            "ALTER TABLE tasks ADD COLUMN codebook_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_tasks_codebook_id ON tasks(codebook_id)",
         ]
         for ddl in migrations:
             try:

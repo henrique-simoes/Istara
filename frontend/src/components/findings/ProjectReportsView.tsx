@@ -9,6 +9,7 @@ import {
   Presentation,
   ClipboardCopy,
   Check,
+  RefreshCw,
 } from "lucide-react";
 import { reports as reportsApi, presentation as presentationApi } from "@/lib/api";
 import type { ProjectReport } from "@/lib/types";
@@ -78,7 +79,12 @@ export default function ProjectReportsView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-  const [slideInstructions, setSlideInstructions] = useState<{title: string, content: string} | null>(null);
+  const [slideInstructions, setSlideInstructions] = useState<{
+    reportId: string;
+    title: string;
+    content: string;
+    cached?: boolean;
+  } | null>(null);
   const [loadingSlides, setLoadingSlides] = useState(false);
   const [slideError, setSlideError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -108,7 +114,7 @@ export default function ProjectReportsView({
 
   const activeReports = allReports.filter((report) => report.project_id === projectId);
 
-  const fetchSlideInstructions = async (reportId: string) => {
+  const fetchSlideInstructions = async (reportId: string, regenerate: boolean = false) => {
     setLoadingSlides(true);
     setSlideError(null);
     try {
@@ -116,11 +122,17 @@ export default function ProjectReportsView({
       if (!report || report.project_id !== projectId) {
         throw new Error("Report is not in the active project.");
       }
-      const data = await presentationApi.slideInstructions(reportId, projectId);
+      const data = await presentationApi.slideInstructions(reportId, projectId, regenerate);
       setSlideInstructions({
+        reportId,
         title: data.title,
         content: data.instructions,
+        cached: data.cached,
       });
+      // Cache instructions on report object in local state
+      setAllReports((prev) =>
+        prev.map((r) => (r.id === reportId ? { ...r, slide_instructions: data.instructions } : r))
+      );
     } catch (err) {
       console.error("Failed to fetch slide instructions:", err);
       setSlideError(err instanceof Error ? err.message : "Failed to fetch slide instructions");
@@ -412,7 +424,16 @@ export default function ProjectReportsView({
                     ) : (
                       <Presentation size={18} />
                     )}
-                    {loadingSlides ? "Generating..." : "Instructions to create slides"}
+                    {loadingSlides
+                      ? "Generating..."
+                      : report.slide_instructions
+                      ? "View Slide Instructions"
+                      : "Instructions to create slides"}
+                    {report.slide_instructions && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-istara-500/80 font-medium">
+                        Cached
+                      </span>
+                    )}
                   </button>
                   {slideError && (
                     <p className="max-w-md text-center text-xs text-red-600 dark:text-red-400" role="alert">
@@ -450,18 +471,28 @@ export default function ProjectReportsView({
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Minto Pyramid / Action Titles / SCR Instructions
                 </span>
-                <button
-                  onClick={copyToClipboard}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                    copied 
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-istara-500"
-                  )}
-                >
-                  {copied ? <Check size={14} /> : <ClipboardCopy size={14} />}
-                  {copied ? "Copied!" : "Copy Instructions"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => slideInstructions && fetchSlideInstructions(slideInstructions.reportId, true)}
+                    disabled={loadingSlides}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-istara-500 disabled:opacity-50 transition-all"
+                  >
+                    <RefreshCw size={13} className={loadingSlides ? "animate-spin" : ""} />
+                    {loadingSlides ? "Regenerating..." : "Regenerate"}
+                  </button>
+                  <button
+                    onClick={copyToClipboard}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                      copied 
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-istara-500"
+                    )}
+                  >
+                    {copied ? <Check size={14} /> : <ClipboardCopy size={14} />}
+                    {copied ? "Copied!" : "Copy Instructions"}
+                  </button>
+                </div>
               </div>
               <pre className="text-sm text-slate-800 dark:text-slate-300 whitespace-pre-wrap font-sans leading-relaxed">
                 {slideInstructions.content}

@@ -45,6 +45,14 @@ class SendMessageRequest(BaseModel):
     metadata: dict | None = None
 
 
+class SimulateInboundRequest(BaseModel):
+    sender_id: str = "participant-1"
+    sender_name: str = "Research Participant"
+    text: str
+    metadata: dict | None = None
+    project_id: str | None = None
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -319,3 +327,36 @@ async def send_channel_message(
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/channels/{instance_id}/simulate-inbound")
+async def simulate_inbound_channel_message(
+    instance_id: str,
+    body: SimulateInboundRequest,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Simulate an incoming participant message on a channel instance and process it."""
+    scoped_project_id, instance = await _get_project_channel_or_404(
+        db, request, instance_id, project_id or body.project_id, min_role="project_admin"
+    )
+    from app.channels.base import IncomingMessage
+    from app.services.inbound_processor import process_inbound_channel_message
+
+    incoming = IncomingMessage(
+        channel=instance.platform,
+        channel_id=instance.id,
+        sender_id=body.sender_id or "participant-1",
+        sender_name=body.sender_name or "Research Participant",
+        text=body.text,
+        instance_id=instance.id,
+        metadata=body.metadata or {},
+    )
+    outgoing = await process_inbound_channel_message(incoming)
+    return {
+        "status": "processed",
+        "inbound_received": True,
+        "instance_id": instance_id,
+        "reply": outgoing.text if outgoing else None,
+    }

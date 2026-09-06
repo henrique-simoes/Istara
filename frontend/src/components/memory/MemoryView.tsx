@@ -15,10 +15,13 @@ import {
   AlertTriangle,
   RefreshCw,
   GitBranch,
+  Sparkles,
+  Lightbulb,
 } from "lucide-react";
 import ContextDAGView from "./ContextDAGView";
-import { memory as memoryApi, agents as agentsApi, documents as documentsApi } from "@/lib/api";
+import { memory as memoryApi, agents as agentsApi, documents as documentsApi, reasoningBank } from "@/lib/api";
 import { memorySourceLabel, type MemorySourceDocument } from "@/lib/memorySourceLabels";
+import type { ReasoningMemoryItem } from "@/lib/reasoningBankTypes";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
@@ -342,6 +345,8 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
   const [sourceFilter, setSourceFilter] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchChunks = useCallback(async () => {
@@ -362,6 +367,22 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
   useEffect(() => {
     fetchChunks();
   }, [fetchChunks]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setError(null);
+    setSyncMessage(null);
+    try {
+      const res = await memoryApi.sync(projectId);
+      setSyncMessage(`Re-indexed ${res.documents_indexed} documents (${res.chunks_indexed} chunks).`);
+      await fetchChunks();
+    } catch (e: any) {
+      setError(e.message || "Failed to re-index knowledge base");
+      console.error("Re-index failed:", e);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -411,11 +432,29 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
         onClear={() => { setSearchResults(null); setSearchQuery(""); setSourceFilter(""); }}
       />
 
-      {/* Stats bar */}
-      <div className="flex items-center gap-4 text-xs text-slate-500">
-        <span>{total} chunks total</span>
-        <span>{sources.length} sources</span>
+      {/* Stats bar + Re-index button */}
+      <div className="flex items-center justify-between text-xs text-slate-500">
+        <div className="flex items-center gap-4">
+          <span>{total} chunks total</span>
+          <span>{sources.length} sources</span>
+        </div>
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          aria-label="Re-index Knowledge Base"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium transition disabled:opacity-50"
+        >
+          <RefreshCw size={13} className={cn(syncing && "animate-spin text-istara-600")} />
+          {syncing ? "Re-indexing documents..." : "Re-index Knowledge Base"}
+        </button>
       </div>
+
+      {syncMessage && (
+        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300">
+          <CheckCircle2 size={14} />
+          <span>{syncMessage}</span>
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
@@ -450,10 +489,16 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
 // ---- Agent Memory Tab ----
 
 function AgentMemoryTab({ projectId }: { projectId: string }) {
+  const [subTab, setSubTab] = useState<"notes" | "reasoning">("notes");
   const [agentList, setAgentList] = useState<AgentInfo[]>([]);
   const [notesByAgent, setNotesByAgent] = useState<Record<string, AgentNote[]>>({});
   const [loading, setLoading] = useState(false);
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+
+  // ReasoningBank state
+  const [reasoningMemories, setReasoningMemories] = useState<ReasoningMemoryItem[]>([]);
+  const [reasoningLoading, setReasoningLoading] = useState(false);
+  const [reasoningError, setReasoningError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAgents = async () => {
@@ -484,6 +529,24 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
     }
   }, [projectId, notesByAgent]);
 
+  const fetchReasoningMemories = useCallback(async () => {
+    setReasoningLoading(true);
+    setReasoningError(null);
+    try {
+      const data = await reasoningBank.memories({ project_id: projectId, limit: 50 });
+      setReasoningMemories(data.memories || []);
+    } catch (e: any) {
+      setReasoningError(e.message || "Failed to load reasoning memories");
+    }
+    setReasoningLoading(false);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (subTab === "reasoning") {
+      fetchReasoningMemories();
+    }
+  }, [subTab, fetchReasoningMemories]);
+
   const toggleAgent = (agentId: string) => {
     if (expandedAgent === agentId) {
       setExpandedAgent(null);
@@ -493,69 +556,214 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
     }
   };
 
-  if (loading) {
-    return <p className="text-sm text-slate-400 py-8 text-center">Loading agents...</p>;
-  }
-
-  if (agentList.length === 0) {
-    return (
-      <div className="text-center py-12 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
-        <Users size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-        <p className="text-sm text-slate-500 mb-1">No agents found</p>
-        <p className="text-xs text-slate-400">Agent notes will appear here as agents work on tasks</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-2" role="region" aria-label="Agent memory notes" tabIndex={0}>
-      {agentList.map((agent) => {
-        const expanded = expandedAgent === agent.id;
-        const notes = notesByAgent[agent.id];
-        return (
-          <div key={agent.id} className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+    <div className="space-y-4">
+      {/* Sub-tab pills */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+        <button
+          onClick={() => setSubTab("notes")}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+            subTab === "notes"
+              ? "bg-istara-50 text-istara-700 dark:bg-istara-950/50 dark:text-istara-300"
+              : "text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+          )}
+        >
+          <FileText size={13} />
+          Agent Working Notes ({agentList.length})
+        </button>
+        <button
+          onClick={() => setSubTab("reasoning")}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+            subTab === "reasoning"
+              ? "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
+              : "text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+          )}
+        >
+          <Sparkles size={13} className="text-amber-500" />
+          Reasoning & Process Memory (ReasoningBank)
+        </button>
+      </div>
+
+      {subTab === "notes" ? (
+        <div>
+          {loading ? (
+            <p className="text-sm text-slate-400 py-8 text-center">Loading agents...</p>
+          ) : agentList.length === 0 ? (
+            <div className="text-center py-12 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
+              <Users size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+              <p className="text-sm text-slate-500 mb-1">No agents found</p>
+              <p className="text-xs text-slate-400">Agent notes will appear here as agents work on tasks</p>
+            </div>
+          ) : (
+            <div className="space-y-2" role="region" aria-label="Agent memory notes" tabIndex={0}>
+              {agentList.map((agent) => {
+                const expanded = expandedAgent === agent.id;
+                const notes = notesByAgent[agent.id];
+                return (
+                  <div key={agent.id} className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                    <button
+                      onClick={() => toggleAgent(agent.id)}
+                      aria-label={`Toggle notes for ${agent.name}`}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-istara-100 dark:bg-istara-900/30 flex items-center justify-center text-istara-600 dark:text-istara-400 text-xs font-semibold">
+                        {agent.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-sm text-slate-900 dark:text-white truncate">{agent.name}</span>
+                        <p className="text-xs text-slate-500">{agent.id}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {notes !== undefined && (
+                          <span className="text-xs text-slate-400">{notes.length} notes</span>
+                        )}
+                        {expanded ? (
+                          <ChevronLeft size={14} className="text-slate-400 rotate-[-90deg]" />
+                        ) : (
+                          <ChevronRight size={14} className="text-slate-400" />
+                        )}
+                      </div>
+                    </button>
+                    {expanded && (
+                      <div className="border-t border-slate-100 dark:border-slate-700 px-4 py-3 space-y-2">
+                        {notes === undefined ? (
+                          <p className="text-xs text-slate-400">Loading notes...</p>
+                        ) : notes.length === 0 ? (
+                          <p className="text-xs text-slate-400">No notes stored by this agent yet.</p>
+                        ) : (
+                          notes.map((note, i) => (
+                            <div key={i} className="p-2 rounded bg-slate-50 dark:bg-slate-800/50">
+                              <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{note.text}</p>
+                              <p className="text-[10px] text-slate-400 mt-1">{note.source}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Experiential lessons, reflections, and rules retained across agent runs
+            </p>
             <button
-              onClick={() => toggleAgent(agent.id)}
-              aria-label={`Toggle notes for ${agent.name}`}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+              onClick={fetchReasoningMemories}
+              disabled={reasoningLoading}
+              className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
             >
-              <div className="w-8 h-8 rounded-full bg-istara-100 dark:bg-istara-900/30 flex items-center justify-center text-istara-600 dark:text-istara-400 text-xs font-semibold">
-                {agent.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="font-medium text-sm text-slate-900 dark:text-white truncate">{agent.name}</span>
-                <p className="text-xs text-slate-500">{agent.id}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {notes !== undefined && (
-                  <span className="text-xs text-slate-400">{notes.length} notes</span>
-                )}
-                {expanded ? (
-                  <ChevronLeft size={14} className="text-slate-400 rotate-[-90deg]" />
-                ) : (
-                  <ChevronRight size={14} className="text-slate-400" />
-                )}
-              </div>
+              <RefreshCw size={12} className={cn(reasoningLoading && "animate-spin")} />
+              Refresh
             </button>
-            {expanded && (
-              <div className="border-t border-slate-100 dark:border-slate-700 px-4 py-3 space-y-2">
-                {notes === undefined ? (
-                  <p className="text-xs text-slate-400">Loading notes...</p>
-                ) : notes.length === 0 ? (
-                  <p className="text-xs text-slate-400">No notes stored by this agent yet.</p>
-                ) : (
-                  notes.map((note, i) => (
-                    <div key={i} className="p-2 rounded bg-slate-50 dark:bg-slate-800/50">
-                      <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{note.text}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">{note.source}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
           </div>
-        );
-      })}
+
+          {reasoningLoading && (
+            <p className="text-sm text-slate-400 py-8 text-center">Loading reasoning memories...</p>
+          )}
+
+          {reasoningError && (
+            <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+              <AlertTriangle size={14} />
+              <span>{reasoningError}</span>
+            </div>
+          )}
+
+          {!reasoningLoading && !reasoningError && reasoningMemories.length === 0 && (
+            <div className="text-center py-12 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
+              <Brain size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+              <p className="text-sm text-slate-500 mb-1">No reasoning memories yet</p>
+              <p className="text-xs text-slate-400">
+                As agents execute tasks and reflect on outcomes, lessons and rules are synthesized into ReasoningBank.
+              </p>
+            </div>
+          )}
+
+          {!reasoningLoading && reasoningMemories.length > 0 && (
+            <div className="space-y-3">
+              {reasoningMemories.map((rm) => (
+                <div
+                  key={rm.id}
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 space-y-2.5 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm text-slate-900 dark:text-white">
+                          {rm.title}
+                        </span>
+                        {rm.domain && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium">
+                            {rm.domain}
+                          </span>
+                        )}
+                        {rm.source_kind && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                            {rm.source_kind}
+                          </span>
+                        )}
+                      </div>
+                      {rm.description && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{rm.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className={cn(
+                          "px-2 py-0.5 rounded-full text-[10px] font-medium uppercase",
+                          rm.outcome === "success"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                            : rm.outcome === "failure"
+                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                        )}
+                      >
+                        {rm.outcome || "observation"}
+                      </span>
+                      {rm.confidence != null && (
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {Math.round(rm.confidence * 100)}% conf
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-900/50 p-3 text-xs text-slate-700 dark:text-slate-300 font-mono whitespace-pre-wrap leading-relaxed">
+                    {rm.content}
+                  </div>
+
+                  {rm.tags && rm.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {rm.tags.map((t, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400"
+                        >
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700/50">
+                    <span>Agent: {rm.agent_id || "global"}</span>
+                    <span>
+                      {rm.created_at ? new Date(rm.created_at).toLocaleDateString() : ""}
+                      {rm.usage_count ? ` · used ${rm.usage_count}x` : ""}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

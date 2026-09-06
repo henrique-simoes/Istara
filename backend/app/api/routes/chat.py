@@ -429,6 +429,10 @@ async def _generate_pi_runtime(
                     all_text_parts.append(text)
                     metrics.observe_chunk(text)
                     yield "data: " + json.dumps({"type": "chunk", "content": text}) + "\n\n"
+            elif etype in ("thought", "thinking"):
+                thought_text = event.get("content") or event.get("text", "")
+                if thought_text:
+                    yield "data: " + json.dumps({"type": "thought", "content": thought_text}) + "\n\n"
             elif etype == "tool_call":
                 yield (
                     "data: "
@@ -520,6 +524,13 @@ async def _generate_pi_runtime(
             await metrics.finish(status=status, error_message=error_message)
         except Exception:
             pass
+        if status == "success" and getattr(request, "session_id", None) and settings.dag_enabled:
+            try:
+                from app.core.context_dag import context_dag
+
+                context_dag.schedule_compaction(request.session_id)
+            except Exception:
+                pass
 
 
 def _research_spine_chat_contract() -> str:
@@ -623,6 +634,13 @@ async def _generate_native_tools(
 
     async def _tool_exec(name, params, project_id, agent):
         tool_started = datetime.now(UTC)
+        tool_call_id = f"tc-{uuid.uuid4().hex[:8]}"
+        await queue.put({
+            "type": "tool_call",
+            "tool": name,
+            "params": params,
+            "tool_call_id": tool_call_id,
+        })
         result = await execute_tool(name, params, project_id, agent_id=agent)
         if pi_metrics:
             pi_metrics.observe_tool_call()
@@ -641,14 +659,13 @@ async def _generate_native_tools(
         else:
             result_text = str(result)
         tool_results.append({"tool": name, "result": result_text})
-        # Stream tool result notification to client (persisted, like before).
-        # NOTE (F-W2-R1-1): do NOT append to all_text_parts here. The queued
-        # content event below is drained by the main SSE loop, which appends it
-        # to all_text_parts once, in stream order. A direct append here would
-        # duplicate and (racing the async queue drain) misorder every
-        # tool-result block in the persisted assistant transcript.
-        result_display = f"**{name}**: {result_text}\n\n"
-        await queue.put({"type": "content", "text": result_display})
+        await queue.put({
+            "type": "tool_result",
+            "tool": name,
+            "tool_call_id": tool_call_id,
+            "result": result_text,
+            "ok": "error" not in result if isinstance(result, dict) else True,
+        })
         return result
 
     try:
@@ -687,7 +704,11 @@ async def _generate_native_tools(
             elif etype == "turn_separator":
                 yield f"data: {json.dumps({'type': 'chunk', 'content': event.get('text', '')})}\n\n"
             elif etype == "tool_call":
-                yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {})})}\n\n"
+                yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {}), 'tool_call_id': event.get('tool_call_id')})}\n\n"
+            elif etype == "tool_result":
+                yield f"data: {json.dumps({'type': 'tool_result', 'tool': event.get('tool'), 'tool_call_id': event.get('tool_call_id'), 'result': event.get('result'), 'ok': event.get('ok', True)})}\n\n"
+            elif etype in ("thought", "thinking"):
+                yield f"data: {json.dumps({'type': 'thought', 'content': event.get('content') or event.get('text', '')})}\n\n"
             elif etype == "_complete":
                 result = event.get("result")
                 if result is not None:
@@ -760,6 +781,13 @@ async def _generate_text_fallback(
     queue: asyncio.Queue = asyncio.Queue()
 
     async def _tool_exec(name, params, project_id, agent):
+        tool_call_id = f"tc-{uuid.uuid4().hex[:8]}"
+        await queue.put({
+            "type": "tool_call",
+            "tool": name,
+            "params": params,
+            "tool_call_id": tool_call_id,
+        })
         result = await execute_tool(name, params, project_id, agent_id=agent)
         if pi_metrics:
             pi_metrics.observe_tool_call()
@@ -768,12 +796,13 @@ async def _generate_text_fallback(
         else:
             result_text = str(result)
         tool_results.append({"tool": name, "result": result_text})
-        # NOTE (F-W2-R1-1): rely solely on the queued content event; the main
-        # SSE loop appends it to all_text_parts once, in stream order. A direct
-        # append here would duplicate and misorder the persisted tool-result
-        # block.
-        result_display = f"**{name}**: {result_text}\n\n"
-        await queue.put({"type": "content", "text": result_display})
+        await queue.put({
+            "type": "tool_result",
+            "tool": name,
+            "tool_call_id": tool_call_id,
+            "result": result_text,
+            "ok": "error" not in result if isinstance(result, dict) else True,
+        })
         return result
 
     try:
@@ -809,7 +838,11 @@ async def _generate_text_fallback(
                     pi_metrics.observe_chunk(text)
                 yield f"data: {json.dumps({'type': 'chunk', 'content': text})}\n\n"
             elif etype == "tool_call":
-                yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {})})}\n\n"
+                yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {}), 'tool_call_id': event.get('tool_call_id')})}\n\n"
+            elif etype == "tool_result":
+                yield f"data: {json.dumps({'type': 'tool_result', 'tool': event.get('tool'), 'tool_call_id': event.get('tool_call_id'), 'result': event.get('result'), 'ok': event.get('ok', True)})}\n\n"
+            elif etype in ("thought", "thinking"):
+                yield f"data: {json.dumps({'type': 'thought', 'content': event.get('content') or event.get('text', '')})}\n\n"
             elif etype == "_complete":
                 result = event.get("result")
                 if result is not None:

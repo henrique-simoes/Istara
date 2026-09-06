@@ -18,6 +18,7 @@ import ChatModelControls from "./ChatModelControls";
 import type { PiCatalogProvider, PiEndpointInfo } from "@/lib/types";
 import { isChatSendReady } from "@/lib/modelCatalog";
 import { AgentAvatar, UserAvatar } from "./chatViewParts";
+import AgentCognitionDisclosure, { extractCognitionFromContent } from "./AgentCognitionDisclosure";
 
 function SteeringQueueIndicator({
   agentId,
@@ -61,7 +62,20 @@ function SteeringQueueIndicator({
 }
 
 export default function ChatView() {
-  const { messages, streaming, streamingContent, error, usage, sendMessage, fetchHistory, cancelStreaming, setEngine } = useChatStore();
+  const {
+    messages,
+    streaming,
+    streamingContent,
+    streamingThoughts,
+    streamingToolCalls,
+    activeStreamingTool,
+    error,
+    usage,
+    sendMessage,
+    fetchHistory,
+    cancelStreaming,
+    setEngine,
+  } = useChatStore();
   const { activeProjectId, canWriteActiveProject } = useProjectStore();
   const { activeSessionId, ensureDefault, updateSession, pendingPrefill, setPendingPrefill, fetchSessions } = useSessionStore();
   const { agents, fetchAgents } = useAgentStore();
@@ -337,135 +351,151 @@ export default function ChatView() {
             </div>
           )}
 
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                "message-enter max-w-3xl flex gap-2.5",
-                msg.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
-              )}
-            >
-              {/* Avatar */}
-              <div className="mt-1">
-                {msg.role === "user" ? <UserAvatar /> : <AgentAvatar name={msg.agent_name} />}
-              </div>
+          {messages.map((msg) => {
+            const isUser = msg.role === "user";
+            const extracted = !isUser ? extractCognitionFromContent(msg.content) : null;
+            const cleanContent = extracted ? extracted.cleanContent : msg.content;
+            const thoughts = extracted ? [...(msg.thoughts || []), ...extracted.thoughts] : (msg.thoughts || []);
+            const toolCalls = extracted ? [...(msg.tool_calls || []), ...extracted.toolCalls] : (msg.tool_calls || []);
+            const hasCognition = thoughts.length > 0 || toolCalls.length > 0;
 
-              {/* Bubble */}
-              <div className="flex-1 min-w-0">
-                {msg.role !== "user" && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">
-                    {msg.agent_name || "Istara"}
-                  </p>
+            return (
+              <div
+                key={msg.id}
+                className={cn(
+                  "message-enter max-w-3xl flex gap-2.5",
+                  isUser ? "ml-auto flex-row-reverse" : "mr-auto"
                 )}
-                <div
-                  className={cn(
-                    "rounded-2xl px-4 py-3",
-                    msg.role === "user"
-                      ? "bg-istara-600 text-white rounded-br-md"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-md"
+              >
+                {/* Avatar */}
+                <div className="mt-1">
+                  {isUser ? <UserAvatar /> : <AgentAvatar name={msg.agent_name} />}
+                </div>
+
+                {/* Bubble */}
+                <div className="flex-1 min-w-0">
+                  {!isUser && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">
+                      {msg.agent_name || "Istara"}
+                    </p>
                   )}
-                >
-                  {msg.role === "user" ? (
-                    <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
-                  ) : (
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          p: ({ children }) => {
-                            const text = String(children);
-                            if (text.startsWith("[Tool:") && text.endsWith("]")) {
-                              const toolName = text.slice(7, -1);
-                              return (
-                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 my-1 rounded-full bg-slate-200 dark:bg-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                  <span>Ran: <span className="font-bold">{toolName}</span></span>
-                                </div>
-                              );
-                            }
-                            return <p className="my-1">{children}</p>;
-                          }
-                        }}
-                      >
-                        {msg.content}
-                      </ReactMarkdown>
+
+                  {/* Cognition disclosure for assistant messages */}
+                  {!isUser && hasCognition && (
+                    <AgentCognitionDisclosure
+                      thoughts={thoughts}
+                      toolCalls={toolCalls}
+                      agentName={msg.agent_name || "Istara"}
+                      defaultExpanded={false}
+                    />
                   )}
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Sources:</p>
-                      {msg.sources.map((src, i) => (
-                        <span
-                          key={i}
-                          className="inline-block text-xs bg-slate-200 dark:bg-slate-700 rounded px-1.5 py-0.5 mr-1 mb-1"
+
+                  {cleanContent && (
+                    <div
+                      className={cn(
+                        "rounded-2xl px-4 py-3",
+                        isUser
+                          ? "bg-istara-600 text-white rounded-br-md"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-md"
+                      )}
+                    >
+                      {isUser ? (
+                        <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                      ) : (
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({ children }) => <p className="my-1">{children}</p>,
+                          }}
                         >
-                          {(src.source ?? "unknown").split("/").pop()} ({Math.round((src.score ?? 0) * 100)}%)
-                        </span>
-                      ))}
+                          {cleanContent}
+                        </ReactMarkdown>
+                      )}
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Sources:</p>
+                          {msg.sources.map((src, i) => (
+                            <span
+                              key={i}
+                              className="inline-block text-xs bg-slate-200 dark:bg-slate-700 rounded px-1.5 py-0.5 mr-1 mb-1"
+                            >
+                              {(src.source ?? "unknown").split("/").pop()} ({Math.round((src.score ?? 0) * 100)}%)
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
+                  <p className="text-xs text-slate-400 mt-1 px-1">
+                    {formatDate(msg.created_at)}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-400 mt-1 px-1">
-                  {formatDate(msg.created_at)}
-                </p>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Streaming response */}
-          {streaming && streamingContent && (() => {
+          {streaming && (() => {
             const agentId = activeSession?.agent_id;
             const streamAgent = agentId ? agents.find((a) => a.id === agentId) : undefined;
             const streamAgentName = streamAgent?.name || "Istara";
+
+            const extracted = extractCognitionFromContent(streamingContent);
+            const liveCleanContent = extracted.cleanContent;
+            const liveThoughts = [...streamingThoughts, ...extracted.thoughts];
+            const liveTools = [...streamingToolCalls, ...extracted.toolCalls];
+            const hasLiveCognition = liveThoughts.length > 0 || liveTools.length > 0 || Boolean(activeStreamingTool);
+
             return (
-            <div className="mr-auto max-w-3xl flex gap-2.5 message-enter">
-              <div className="mt-1"><AgentAvatar name={streamAgentName} /></div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">{streamAgentName}</p>
-                <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                  <div className="streaming-cursor">
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        p: ({ children }) => {
-                          const text = String(children);
-                          if (text.startsWith("[Tool:") && text.endsWith("]")) {
-                            const toolName = text.slice(7, -1);
-                            return (
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 my-1 rounded-full bg-istara-100 dark:bg-istara-900/40 text-xs font-medium text-istara-700 dark:text-istara-300 border border-istara-200 dark:border-istara-800">
-                                <Loader2 size={12} className="animate-spin text-istara-600 dark:text-istara-400" />
-                                <span>⚡ Running: <span className="font-bold">{toolName}</span></span>
-                              </div>
-                            );
-                          }
-                          return <p className="my-1">{children}</p>;
-                        }
-                      }}
+              <div className="mr-auto max-w-3xl flex gap-2.5 message-enter w-full">
+                <div className="mt-1"><AgentAvatar name={streamAgentName} /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1 px-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{streamAgentName}</p>
+                    <button
+                      onClick={cancelStreaming}
+                      className="flex items-center gap-1 text-[11px] text-red-400 hover:text-red-500 transition-colors"
+                      aria-label="Cancel response"
                     >
-                      {streamingContent}
-                    </ReactMarkdown>
+                      <StopCircle size={12} /> Cancel
+                    </button>
                   </div>
+
+                  {/* Cognition disclosure during streaming */}
+                  {hasLiveCognition && (
+                    <AgentCognitionDisclosure
+                      thoughts={liveThoughts}
+                      toolCalls={liveTools}
+                      activeTool={activeStreamingTool}
+                      isStreaming={true}
+                      agentName={streamAgentName}
+                      defaultExpanded={!liveCleanContent}
+                    />
+                  )}
+
+                  {!liveCleanContent && !hasLiveCognition && (
+                    <div className="flex items-center gap-2 text-slate-400 px-3 py-2 text-xs">
+                      <Loader2 size={14} className="animate-spin text-istara-500" />
+                      <span>Thinking...</span>
+                    </div>
+                  )}
+
+                  {liveCleanContent && (
+                    <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                      <div className="streaming-cursor">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({ children }) => <p className="my-1">{children}</p>,
+                          }}
+                        >
+                          {liveCleanContent}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-            );
-          })()}
-
-          {streaming && !streamingContent && (() => {
-            const agentId = activeSession?.agent_id;
-            const thinkAgent = agentId ? agents.find((a) => a.id === agentId) : undefined;
-            const thinkAgentName = thinkAgent?.name || "Istara";
-            return (
-            <div className="mr-auto flex items-center gap-2.5 text-slate-400 px-4">
-              <div className="mt-0"><AgentAvatar name={thinkAgentName} /></div>
-              <Loader2 size={16} className="animate-spin" />
-              <span className="text-sm">Thinking...</span>
-              <button
-                onClick={cancelStreaming}
-                className="ml-2 flex items-center gap-1 text-xs text-red-400 hover:text-red-500"
-                aria-label="Cancel response"
-              >
-                <StopCircle size={12} /> Cancel
-              </button>
-            </div>
             );
           })()}
 

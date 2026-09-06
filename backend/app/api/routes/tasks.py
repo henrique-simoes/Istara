@@ -73,6 +73,7 @@ class TaskCreate(BaseModel):
     urls: list[str] = Field(default_factory=list, max_length=100)
     instructions: str = Field(default="", max_length=50000)
     labels: list[dict | str] = Field(default_factory=list, max_length=100)
+    codebook_id: str | None = Field(default=None, max_length=36)
     priority: str = "medium"
     agent_id: str | None = Field(default=None, max_length=100)
     lock_for_edit: bool = False
@@ -85,6 +86,7 @@ class TaskCreate(BaseModel):
         "instructions",
         "priority",
         "agent_id",
+        "codebook_id",
         mode="before",
     )
     @classmethod
@@ -124,6 +126,7 @@ class TaskUpdate(BaseModel):
     progress: float | None = Field(default=None, ge=0, le=1)
     position: int | None = Field(default=None, ge=0, le=1000000)
     agent_id: str | None = Field(default=None, max_length=100)
+    codebook_id: str | None = Field(default=None, max_length=36)
     priority: str | None = None
     input_document_ids: list[str] | None = Field(default=None, max_length=200)
     output_document_ids: list[str] | None = Field(default=None, max_length=200)
@@ -139,6 +142,7 @@ class TaskUpdate(BaseModel):
         "agent_notes",
         "user_context",
         "agent_id",
+        "codebook_id",
         "priority",
         "instructions",
         "what_to_review",
@@ -172,6 +176,7 @@ class TaskResponse(BaseModel):
     id: str
     project_id: str
     agent_id: str | None = None
+    codebook_id: str | None = None
     title: str
     description: str
     status: TaskStatus
@@ -433,6 +438,7 @@ async def create_task(data: TaskCreate, request: Request, db: AsyncSession = Dep
         instructions=data.instructions,
         priority=data.priority,
         agent_id=agent_id,
+        codebook_id=data.codebook_id,
         position=max_pos + 1,
         input_document_ids=json.dumps(input_document_ids),
         output_document_ids=json.dumps(output_document_ids),

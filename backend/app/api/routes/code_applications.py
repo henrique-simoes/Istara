@@ -1,14 +1,21 @@
-"""Code Application API — view and review code-to-source traceability records."""
+import json
+import uuid
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
-from sqlalchemy import select
+from pydantic import BaseModel, Field
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.permissions import get_subject, require_project_access
 from app.models.code_application import CodeApplication
 from app.models.database import get_db
+from app.models.research_validity import (
+    EvidenceUnit,
+    ReconciliationDecision,
+    ResearchEvidenceEdge,
+)
 from app.services.research_validity_service import (
     create_reconciliation_decision,
 )
@@ -18,6 +25,20 @@ from app.services.synthetic_reconciliation_service import (
 )
 
 router = APIRouter(prefix="/code-applications")
+
+
+class CreateCodeApplicationRequest(BaseModel):
+    code_id: str
+    codebook_version_id: str | None = None
+    source_document_id: str | None = None
+    source_text: str
+    source_location: str = ""
+    source_type: str = "document"
+    start_offset: int | None = None
+    end_offset: int | None = None
+    task_id: str | None = None
+    reasoning: str = ""
+    speaker: str = ""
 
 
 class ReviewAction(BaseModel):
@@ -54,9 +75,11 @@ async def get_project_code_applications(
     status: str | None = None,
     task_id: str | None = None,
     coding_run_id: str | None = None,
+    source_document_id: str | None = None,
+    code_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get project code applications, optionally scoped to one coding run."""
+    """Get project code applications, optionally scoped to one coding run, document, or code."""
     await require_project_access(db, request, project_id, min_role="viewer")
 
     query = select(CodeApplication).where(CodeApplication.project_id == project_id)
@@ -66,10 +89,147 @@ async def get_project_code_applications(
         query = query.where(CodeApplication.task_id == task_id)
     if coding_run_id:
         query = query.where(CodeApplication.coding_run_id == coding_run_id)
+    if source_document_id:
+        query = query.where(CodeApplication.source_document_id == source_document_id)
+    if code_id:
+        query = query.where(CodeApplication.code_id == code_id)
     query = query.order_by(CodeApplication.created_at.desc())
 
     result = await db.execute(query)
     return [ca.to_dict() for ca in result.scalars().all()]
+
+
+@router.post("/{project_id}")
+async def create_code_application(
+    project_id: str,
+    payload: CreateCodeApplicationRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a human qualitative code application grounded in the Research Spine."""
+    await require_project_access(db, request, project_id, min_role="researcher")
+    subject = get_subject(request)
+    username = subject.username or subject.id or "human_researcher"
+
+    unit_id = str(uuid.uuid4())
+    evidence_unit = EvidenceUnit(
+        id=unit_id,
+        project_id=project_id,
+        task_id=payload.task_id,
+        source_document_id=payload.source_document_id,
+        source_id=payload.source_document_id or "manual_span",
+        stable_id=f"eu-{uuid.uuid4().hex[:8]}",
+        unit_type="span",
+        source_type=payload.source_type,
+        method="manual_qualitative_coding",
+        speaker=payload.speaker,
+        source_text=payload.source_text,
+        source_location=payload.source_location,
+        start_offset=payload.start_offset,
+        end_offset=payload.end_offset,
+        metadata_json=json.dumps({
+            "coder": username,
+            "created_via": "qualitative_coding_studio",
+        }),
+    )
+    db.add(evidence_unit)
+
+    app_id = str(uuid.uuid4())
+    ca = CodeApplication(
+        id=app_id,
+        project_id=project_id,
+        task_id=payload.task_id,
+        codebook_version_id=payload.codebook_version_id,
+        code_id=payload.code_id,
+        evidence_unit_id=unit_id,
+        source_document_id=payload.source_document_id,
+        source_text=payload.source_text,
+        source_location=payload.source_location,
+        start_offset=payload.start_offset,
+        end_offset=payload.end_offset,
+        coder_id=username,
+        coder_type="human",
+        model_name="human",
+        confidence=1.0,
+        reasoning=payload.reasoning or "Manual qualitative coding by researcher",
+        reliability_status="reconciled",
+        reconciliation_status="reconciled",
+        promotion_status="accepted",
+        review_status="approved",
+        reviewed_by=username,
+        reviewed_at=datetime.now(UTC),
+    )
+    db.add(ca)
+
+    edge = ResearchEvidenceEdge(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        source_type="evidence_unit",
+        source_id=unit_id,
+        relation="coded_as",
+        target_type="code_application",
+        target_id=app_id,
+        evidence_unit_id=unit_id,
+        task_id=payload.task_id,
+        codebook_version_id=payload.codebook_version_id,
+        reliability_status="reconciled",
+        metadata_json=json.dumps({"coder_type": "human"}),
+    )
+    db.add(edge)
+
+    rec_decision = ReconciliationDecision(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        task_id=payload.task_id,
+        evidence_unit_id=unit_id,
+        code_application_id=app_id,
+        decision_type="human_coding",
+        source="human_review",
+        accepted_code_id=payload.code_id,
+        rationale=payload.reasoning or "Direct qualitative coding by researcher",
+        decided_by=username,
+    )
+    db.add(rec_decision)
+
+    await db.commit()
+    await db.refresh(ca)
+    return ca.to_dict()
+
+
+@router.delete("/{application_id}")
+async def delete_code_application(
+    application_id: str,
+    request: Request,
+    project_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a code application and its evidence links."""
+    await require_project_access(db, request, project_id, min_role="researcher")
+    result = await db.execute(
+        select(CodeApplication).where(
+            CodeApplication.id == application_id,
+            CodeApplication.project_id == project_id,
+        )
+    )
+    ca = result.scalar_one_or_none()
+    if not ca:
+        raise HTTPException(status_code=404, detail="Code application not found")
+
+    await db.execute(
+        delete(ResearchEvidenceEdge).where(
+            ResearchEvidenceEdge.project_id == project_id,
+            ResearchEvidenceEdge.target_id == application_id,
+        )
+    )
+    await db.execute(
+        delete(ReconciliationDecision).where(
+            ReconciliationDecision.project_id == project_id,
+            ReconciliationDecision.code_application_id == application_id,
+        )
+    )
+    await db.delete(ca)
+    await db.commit()
+    return {"deleted": True, "id": application_id}
 
 
 @router.get("/{project_id}/pending")

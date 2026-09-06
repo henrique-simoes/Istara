@@ -160,44 +160,50 @@ class ContextDAG:
                 return
 
             # Process in batches of batch_size
-            batches_created = 0
+            batches: list[list[Message]] = []
             for i in range(0, len(uncovered), self.batch_size):
                 batch = uncovered[i : i + self.batch_size]
-                if len(batch) < self.batch_size:
-                    # Don't create a partial batch unless it's the only one remaining
-                    break
+                if len(batch) >= self.batch_size:
+                    batches.append(batch)
 
-                batch_dicts = [
-                    {
-                        "id": m.id,
-                        "role": m.role,
-                        "content": m.content,
-                        "created_at": m.created_at.isoformat() if m.created_at else "",
-                    }
-                    for m in batch
-                ]
+            if not batches:
+                return
 
-                summary_text = await self._summarize_batch(batch_dicts)
+            sem = asyncio.Semaphore(4)
 
-                original_tokens = sum(len(m.content or "") // 4 for m in batch)
-                summary_tokens = len(summary_text) // 4
+            async def _process_single_batch(b: list[Message]) -> ContextDAGNode:
+                async with sem:
+                    batch_dicts = [
+                        {
+                            "id": m.id,
+                            "role": m.role,
+                            "content": m.content,
+                            "created_at": m.created_at.isoformat() if m.created_at else "",
+                        }
+                        for m in b
+                    ]
+                    summary_text = await self._summarize_batch(batch_dicts)
+                    original_tokens = sum(len(m.content or "") // 4 for m in b)
+                    summary_tokens = len(summary_text) // 4
+                    return ContextDAGNode(
+                        id=str(uuid.uuid4()),
+                        session_id=session_id,
+                        parent_id=None,
+                        depth=0,
+                        summary_text=summary_text,
+                        message_ids=json.dumps([m.id for m in b]),
+                        child_node_ids="[]",
+                        token_count=summary_tokens,
+                        original_token_count=original_tokens,
+                        message_count=len(b),
+                        time_range_start=b[0].created_at,
+                        time_range_end=b[-1].created_at,
+                    )
 
-                node = ContextDAGNode(
-                    id=str(uuid.uuid4()),
-                    session_id=session_id,
-                    parent_id=None,
-                    depth=0,
-                    summary_text=summary_text,
-                    message_ids=json.dumps([m.id for m in batch]),
-                    child_node_ids="[]",
-                    token_count=summary_tokens,
-                    original_token_count=original_tokens,
-                    message_count=len(batch),
-                    time_range_start=batch[0].created_at,
-                    time_range_end=batch[-1].created_at,
-                )
+            created_nodes = await asyncio.gather(*[_process_single_batch(b) for b in batches])
+            for node in created_nodes:
                 db.add(node)
-                batches_created += 1
+            batches_created = len(created_nodes)
 
             if batches_created > 0:
                 await db.commit()

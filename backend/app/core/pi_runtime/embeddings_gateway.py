@@ -115,7 +115,10 @@ class EmbeddingsGateway:
         if self._client is not None:
             return self._client
         if self._owned_client is None:
-            self._owned_client = httpx.AsyncClient(timeout=max(timeout_ms, 1000) / 1000)
+            total_sec = max(timeout_ms, 1000) / 1000
+            self._owned_client = httpx.AsyncClient(
+                timeout=httpx.Timeout(total_sec, connect=min(2.0, total_sec))
+            )
         return self._owned_client
 
     @staticmethod

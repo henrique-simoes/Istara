@@ -13,9 +13,11 @@ import {
   RotateCcw,
   ShieldCheck,
   ShieldAlert,
+  ChevronRight,
   X,
 } from "lucide-react";
 import { dgmhArchive, improvementGovernance, reasoningBank } from "@/lib/api";
+import ImprovementProposalDetailModal from "./ImprovementProposalDetailModal";
 import type { DGMHArchiveVariant } from "@/lib/dgmhArchiveTypes";
 import type {
   ImprovementFeatureContract,
@@ -75,6 +77,7 @@ export default function GovernedEvolutionView() {
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<ImprovementGovernanceSummary | null>(null);
   const [proposals, setProposals] = useState<ImprovementProposal[]>([]);
+  const [selectedProposal, setSelectedProposal] = useState<ImprovementProposal | null>(null);
   const [variants, setVariants] = useState<DGMHArchiveVariant[]>([]);
   const [reasoningSummary, setReasoningSummary] = useState<ReasoningBankSummary | null>(null);
   const [memories, setMemories] = useState<ReasoningMemoryItem[]>([]);
@@ -240,7 +243,11 @@ export default function GovernedEvolutionView() {
               (proposal.auto_apply_allowed && !["applied", "rejected", "reverted", "quarantined"].includes(proposal.status));
             const canRevert = proposal.status === "applied";
             return (
-              <article key={proposal.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+              <article
+                key={proposal.id}
+                onClick={() => setSelectedProposal(proposal)}
+                className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 hover:border-istara-400 dark:hover:border-istara-500 hover:shadow-md cursor-pointer transition-all group"
+              >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -251,9 +258,14 @@ export default function GovernedEvolutionView() {
                         {proposal.risk_level}
                       </span>
                       <span className="text-[11px] text-slate-400">{proposal.source_system}</span>
+                      <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-istara-600 dark:text-istara-400 group-hover:underline ml-auto">
+                        Inspect Proposal <ChevronRight size={12} />
+                      </span>
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-slate-900 dark:text-white">{proposal.title}</h4>
+                      <h4 className="text-sm font-medium text-slate-900 dark:text-white group-hover:text-istara-600 dark:group-hover:text-istara-400 transition-colors">
+                        {proposal.title}
+                      </h4>
                       <p className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{proposal.summary || proposal.rationale}</p>
                     </div>
                     <div className="flex flex-wrap gap-2 text-[11px] text-slate-500 dark:text-slate-400">
@@ -455,6 +467,17 @@ export default function GovernedEvolutionView() {
           ))}
         </div>
       )}
+
+      <ImprovementProposalDetailModal
+        isOpen={Boolean(selectedProposal)}
+        proposal={selectedProposal}
+        onClose={() => setSelectedProposal(null)}
+        onSandbox={(id) => runProposalAction(id, "sandbox")}
+        onApprove={(id) => runProposalAction(id, "approve")}
+        onApply={(id) => runProposalAction(id, "apply")}
+        onReject={(id) => runProposalAction(id, "reject")}
+        onRevert={(id) => runProposalAction(id, "revert")}
+      />
     </section>
   );
 }
@@ -487,7 +510,10 @@ function ActionButton({
 }) {
   return (
     <button
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       disabled={busy}
       title={label}
       className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -13,6 +16,7 @@ from app.models.context_dag import ContextDAGNode
 from app.models.database import get_db
 from app.models.session import ChatSession
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -184,8 +188,14 @@ async def force_compact(
     """Force DAG compaction for a session (creates summary nodes for uncovered messages)."""
     await _require_session_access(db, request, session_id, project_id, min_role="researcher")
     try:
-        await context_dag.compact_if_needed(session_id)
+        task = context_dag.schedule_compaction(session_id)
+        compacted = False
+        try:
+            await asyncio.wait_for(asyncio.shield(task), timeout=2.5)
+            compacted = True
+        except asyncio.TimeoutError:
+            logger.info("DAG compaction for %s continues in background", session_id)
         health = await context_dag.get_health(session_id)
-        return {"compacted": True, "status": "ok", "health": health}
+        return {"compacted": compacted, "status": "ok", "health": health, "scheduled": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

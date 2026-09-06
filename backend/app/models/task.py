@@ -45,6 +45,7 @@ class Task(Base):
     urls: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of URLs to fetch
     instructions: Mapped[str] = mapped_column(Text, default="")  # Specific instructions from user
     labels: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of task-management labels
+    codebook_id: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
 
     # Human review / reward signal state
     review_state: Mapped[str] = mapped_column(String(30), default="none")

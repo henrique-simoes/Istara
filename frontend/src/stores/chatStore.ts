@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { ChatMessage, ChatUsage, ThinkingMode } from "@/lib/types";
+import type { ChatMessage, ChatUsage, ThinkingMode, ToolCallExecution } from "@/lib/types";
 import { chat as chatApi, sessions as sessionsApi } from "@/lib/api";
 import { useAgentStore } from "@/stores/agentStore";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -10,6 +10,9 @@ interface ChatStore {
   messages: ChatMessage[];
   streaming: boolean;
   streamingContent: string;
+  streamingThoughts: string[];
+  streamingToolCalls: ToolCallExecution[];
+  activeStreamingTool: string | null;
   error: string | null;
   usage: ChatUsage | null;
   abortController: AbortController | null;
@@ -34,6 +37,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   messages: [],
   streaming: false,
   streamingContent: "",
+  streamingThoughts: [],
+  streamingToolCalls: [],
+  activeStreamingTool: null,
   error: null,
   usage: null,
   abortController: null,
@@ -110,6 +116,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       messages: [...s.messages, userMsg],
       streaming: true,
       streamingContent: "",
+      streamingThoughts: [],
+      streamingToolCalls: [],
+      activeStreamingTool: null,
       error: null,
     }));
 
@@ -117,6 +126,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       let fullContent = "";
       let messageId = "";
       let sources: any[] = [];
+      const thoughts: string[] = [];
+      const toolCalls: ToolCallExecution[] = [];
 
       const activeThinkingMode = thinkingMode || useSessionStore.getState().activeSession()?.thinking_mode;
       for await (const event of chatApi.send(
@@ -129,7 +140,53 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       )) {
         if (event.type === "chunk") {
           fullContent += event.content;
-          set({ streamingContent: fullContent });
+          set({ streamingContent: fullContent, activeStreamingTool: null });
+        } else if (event.type === "thought" || event.type === "thinking") {
+          const thoughtChunk = event.content || event.text || "";
+          if (thoughtChunk) {
+            thoughts.push(thoughtChunk);
+            set({ streamingThoughts: [...thoughts] });
+          }
+        } else if (event.type === "tool_call") {
+          const toolName = event.tool || event.name || "tool";
+          const callId = event.tool_call_id || `tc-${Date.now()}-${toolCalls.length}`;
+          const existing = toolCalls.find((t) => t.id === callId);
+          if (!existing) {
+            const newCall: ToolCallExecution = {
+              id: callId,
+              tool: toolName,
+              params: event.params || {},
+              status: "running",
+            };
+            toolCalls.push(newCall);
+          }
+          set({
+            streamingToolCalls: [...toolCalls],
+            activeStreamingTool: toolName,
+          });
+        } else if (event.type === "tool_result") {
+          const callId = event.tool_call_id;
+          const toolName = event.tool;
+          const target = toolCalls.find(
+            (t) => (callId && t.id === callId) || (t.tool === toolName && t.status === "running")
+          );
+          if (target) {
+            target.status = event.ok === false ? "error" : "completed";
+            if (event.result !== undefined) {
+              target.result = typeof event.result === "string" ? event.result : JSON.stringify(event.result);
+            }
+          } else if (toolName) {
+            toolCalls.push({
+              id: callId || `tc-${Date.now()}`,
+              tool: toolName,
+              result: event.result !== undefined ? (typeof event.result === "string" ? event.result : JSON.stringify(event.result)) : undefined,
+              status: event.ok === false ? "error" : "completed",
+            });
+          }
+          set({
+            streamingToolCalls: [...toolCalls],
+            activeStreamingTool: null,
+          });
         } else if (event.type === "done") {
           messageId = event.message_id;
           sources = event.sources || [];
@@ -151,7 +208,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             },
           }));
         } else if (event.type === "error") {
-          set({ error: event.message, streaming: false, abortController: null });
+          set({
+            error: event.message,
+            streaming: false,
+            streamingThoughts: [],
+            streamingToolCalls: [],
+            activeStreamingTool: null,
+            abortController: null,
+          });
           return;
         }
       }
@@ -172,6 +236,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         sources,
         agent_id: agentId ?? undefined,
         agent_name: agentName,
+        thoughts: thoughts.length > 0 ? thoughts : undefined,
+        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
       };
 
       const streamedLastTurn = get().usage?.last_turn;
@@ -187,15 +253,33 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         usage,
         streaming: false,
         streamingContent: "",
+        streamingThoughts: [],
+        streamingToolCalls: [],
+        activeStreamingTool: null,
         abortController: null,
       }));
       void useSessionStore.getState().fetchSessions(projectId);
     } catch (e: any) {
       if (e.name === "AbortError") {
-        set({ streaming: false, streamingContent: "", abortController: null });
+        set({
+          streaming: false,
+          streamingContent: "",
+          streamingThoughts: [],
+          streamingToolCalls: [],
+          activeStreamingTool: null,
+          abortController: null,
+        });
         return;
       }
-      set({ error: e.message, streaming: false, streamingContent: "", abortController: null });
+      set({
+        error: e.message,
+        streaming: false,
+        streamingContent: "",
+        streamingThoughts: [],
+        streamingToolCalls: [],
+        activeStreamingTool: null,
+        abortController: null,
+      });
     }
   },
 
@@ -203,9 +287,25 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const { abortController } = get();
     if (abortController) {
       abortController.abort();
-      set({ streaming: false, streamingContent: "", abortController: null });
+      set({
+        streaming: false,
+        streamingContent: "",
+        streamingThoughts: [],
+        streamingToolCalls: [],
+        activeStreamingTool: null,
+        abortController: null,
+      });
     }
   },
 
-  clearMessages: () => set({ messages: [], streamingContent: "", error: null, usage: null }),
+  clearMessages: () =>
+    set({
+      messages: [],
+      streamingContent: "",
+      streamingThoughts: [],
+      streamingToolCalls: [],
+      activeStreamingTool: null,
+      error: null,
+      usage: null,
+    }),
 }));

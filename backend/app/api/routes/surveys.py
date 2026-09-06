@@ -47,6 +47,12 @@ class SurveyCreateRequest(BaseModel):
     questions: list[dict] = []
 
 
+class DirectSurveyIngestRequest(BaseModel):
+    project_id: str
+    survey_name: str = "Research Survey Questionnaire"
+    responses: list[dict] = []
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -497,4 +503,45 @@ async def get_link_responses(
         "survey_name": link.external_survey_name,
         "responses": responses,
         "count": len(responses),
+    }
+
+
+@router.post("/surveys/responses/ingest")
+async def ingest_direct_survey_responses(
+    body: DirectSurveyIngestRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Directly ingest questionnaire responses into the Research Spine (Nuggets & Evidence Units)."""
+    await get_visible_project_or_404(db, request, body.project_id, min_role="researcher")
+    from app.services.survey_ingestion import ingest_responses
+
+    # Find or create a local SurveyLink for tracking
+    stmt = select(SurveyLink).where(
+        SurveyLink.project_id == body.project_id,
+        SurveyLink.external_survey_name == body.survey_name,
+    )
+    result = await db.execute(stmt)
+    link = result.scalar_one_or_none()
+    if not link:
+        link = SurveyLink(
+            id=str(uuid.uuid4()),
+            integration_id="local_studio",
+            project_id=body.project_id,
+            external_survey_id=f"local-{uuid.uuid4().hex[:8]}",
+            external_survey_name=body.survey_name,
+            response_count=0,
+            last_response_at=datetime.now(UTC),
+        )
+        db.add(link)
+        await db.flush()
+
+    res = await ingest_responses(db, link, body.responses, body.project_id)
+    await db.commit()
+    return {
+        "status": "ingested",
+        "project_id": body.project_id,
+        "survey_name": body.survey_name,
+        "link_id": link.id,
+        **res,
     }

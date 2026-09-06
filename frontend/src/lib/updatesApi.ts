@@ -21,6 +21,9 @@ export type UpdateInfo = {
   downloads?: Record<string, string>;
   method?: string;
   source_checkout_includes_latest_release?: boolean;
+  install_type?: "docker" | "git" | "package";
+  can_auto_update?: boolean;
+  docker_command?: string;
   message?: string;
   error?: string;
 };

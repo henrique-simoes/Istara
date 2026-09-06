@@ -78,4 +78,12 @@ export const memory = {
       `/api/memory/${encodeURIComponent(projectId)}/source/${encodeURIComponent(sourceName)}`,
       { method: "DELETE" }
     ),
+  sync: (projectId: string) =>
+    json<{
+      status: string;
+      project_id: string;
+      documents_indexed: number;
+      chunks_indexed: number;
+      sources: string[];
+    }>(`/api/memory/${encodeURIComponent(projectId)}/sync`, { method: "POST" }),
 };

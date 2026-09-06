@@ -20,10 +20,12 @@ import {
   Play,
   Search,
 } from "lucide-react";
-import { skills as skillsApi } from "@/lib/api";
+import { improvementGovernance, skills as skillsApi } from "@/lib/api";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
+import ImprovementProposalDetailModal from "@/components/settings/ImprovementProposalDetailModal";
+import type { ImprovementProposal } from "@/lib/improvementGovernanceTypes";
 import {
   HealthBadge,
   PHASE_COLORS,
@@ -45,6 +47,8 @@ export default function SkillsView() {
   const [expandedSkill, setExpandedSkill] = useState<string | null>(null);
   const [editingSkill, setEditingSkill] = useState<string | null>(null);
   const [proposals, setProposals] = useState<ProposalData[]>([]);
+  const [governedProposals, setGovernedProposals] = useState<ImprovementProposal[]>([]);
+  const [selectedProposal, setSelectedProposal] = useState<ImprovementProposal | null>(null);
   const [creationProposals, setCreationProposals] = useState<any[]>([]);
   const [phaseCounts, setPhaseCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -67,6 +71,47 @@ export default function SkillsView() {
   });
 
   const { activeProjectId, canWriteActiveProject } = useProjectStore();
+
+  const normalizeSkillProposal = useCallback(
+    (p: ProposalData): ImprovementProposal => ({
+      id: p.id,
+      source_system: "skills",
+      source_id: p.skill_name,
+      project_id: activeProjectId || "",
+      agent_id: "",
+      title: `Skill Tuning: ${p.skill_name} (${p.field})`,
+      summary: p.reason || `Automated performance improvement proposal for skill ${p.skill_name}`,
+      rationale:
+        p.reason ||
+        `Telemetry metrics and evaluations indicated that updating ${p.field} on skill ${p.skill_name} improves execution accuracy.`,
+      affected_surfaces: ["skills", p.skill_name],
+      risk_level: "low",
+      approval_policy: "human_review",
+      status: p.status,
+      before_state: { [p.field]: p.current_value },
+      proposed_change: { [p.field]: p.proposed_value },
+      rollback_plan: { restore_field: p.field, restore_value: p.current_value },
+      evidence: [],
+      metrics_before: {},
+      metrics_after: {},
+      evaluation_runs: [],
+      reasoning_memory_ids: [],
+      improvement_score: null,
+      confidence: p.confidence,
+      requires_human_approval: true,
+      auto_apply_allowed: false,
+      created_by: "istara-telemetry",
+      approved_by: "",
+      applied_by: "",
+      reverted_by: "",
+      created_at: p.created_at,
+      updated_at: p.reviewed_at,
+      approved_at: p.reviewed_at,
+      applied_at: null,
+      reverted_at: null,
+    }),
+    [activeProjectId]
+  );
 
   const fetchSkills = useCallback(async () => {
     setLoading(true);
@@ -95,12 +140,26 @@ export default function SkillsView() {
     setProposalsError(null);
     if (!activeProjectId) {
       setProposals([]);
+      setGovernedProposals([]);
       setProposalsLoading(false);
       return;
     }
     try {
-      const res = await skillsApi.proposals.all(activeProjectId);
+      const [res, govRes] = await Promise.all([
+        skillsApi.proposals.all(activeProjectId).catch(() => ({ proposals: [] })),
+        improvementGovernance
+          .proposals({ project_id: activeProjectId, limit: 30 })
+          .catch(() => ({ proposals: [] })),
+      ]);
       setProposals(res.proposals || []);
+      const skillGov = (govRes.proposals || []).filter(
+        (p: ImprovementProposal) =>
+          p.affected_surfaces?.some((s) => s.toLowerCase().includes("skill")) ||
+          p.source_system === "skills" ||
+          p.title?.toLowerCase().includes("skill") ||
+          p.rationale?.toLowerCase().includes("skill")
+      );
+      setGovernedProposals(skillGov.length > 0 ? skillGov : (govRes.proposals || []));
     } catch (e) {
       setProposalsError(e instanceof Error ? e.message : "Failed to load proposals");
     }
@@ -204,6 +263,37 @@ export default function SkillsView() {
       await fetchProposals();
     } catch (e) {
       console.error("Reject failed:", e);
+    }
+  };
+
+  const handleProposalAction = async (id: string, action: "approve" | "reject" | "apply" | "sandbox" | "revert") => {
+    if (!activeProjectId) return;
+    try {
+      const isSkillTuning = proposals.some((p) => p.id === id);
+      if (isSkillTuning) {
+        if (action === "approve") {
+          await handleApprove(id);
+        } else if (action === "reject") {
+          await handleReject(id);
+        }
+      } else {
+        if (action === "approve") {
+          await improvementGovernance.approve(id, activeProjectId, "Approved in skills evolution review");
+        } else if (action === "reject") {
+          await improvementGovernance.reject(id, activeProjectId, "Rejected in skills evolution review");
+        } else if (action === "apply") {
+          await improvementGovernance.apply(id, activeProjectId, { source: "skills_view" });
+        } else if (action === "sandbox") {
+          await improvementGovernance.sandboxEvaluation(id, activeProjectId, { evidence: { source: "skills_view" } });
+        } else if (action === "revert") {
+          await improvementGovernance.revert(id, activeProjectId, "Reverted in skills evolution review");
+        }
+        await fetchProposals();
+      }
+      setSelectedProposal(null);
+    } catch (e) {
+      console.error("Proposal action failed:", e);
+      showSkillToast("error", "Action Failed", e instanceof Error ? e.message : "Failed to execute proposal action");
     }
   };
 
@@ -688,7 +778,8 @@ export default function SkillsView() {
                 {pendingProposals.map((p) => (
                   <div
                     key={p.id}
-                    className="bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800 p-4 space-y-2"
+                    onClick={() => setSelectedProposal(normalizeSkillProposal(p))}
+                    className="cursor-pointer bg-amber-50 hover:bg-amber-100/60 dark:bg-amber-900/10 dark:hover:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 p-4 space-y-2 transition-all hover:shadow-sm"
                   >
                     <div className="flex items-start justify-between">
                       <div>
@@ -724,22 +815,72 @@ export default function SkillsView() {
                         </pre>
                       </div>
                     </div>
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex items-center justify-between pt-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleApprove(p.id)}
+                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700"
+                        >
+                          <CheckCircle2 size={12} /> Approve
+                        </button>
+                        <button
+                          onClick={() => handleReject(p.id)}
+                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-300"
+                        >
+                          <XCircle size={12} /> Reject
+                        </button>
+                      </div>
                       <button
-                        onClick={() => handleApprove(p.id)}
-                        className="flex items-center gap-1 px-3 py-1 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700"
+                        onClick={() => setSelectedProposal(normalizeSkillProposal(p))}
+                        className="text-xs text-amber-700 dark:text-amber-400 font-medium hover:underline flex items-center gap-1"
                       >
-                        <CheckCircle2 size={12} /> Approve
-                      </button>
-                      <button
-                        onClick={() => handleReject(p.id)}
-                        className="flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-300"
-                      >
-                        <XCircle size={12} /> Reject
+                        Inspect Details <ChevronRight size={12} />
                       </button>
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Governed Self-Evolution Proposals */}
+            {governedProposals.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <h4 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-amber-500" />
+                  Governed Evolution Proposals ({governedProposals.length})
+                </h4>
+                <div className="space-y-2">
+                  {governedProposals.map((gp) => (
+                    <div
+                      key={gp.id}
+                      onClick={() => setSelectedProposal(gp)}
+                      className="cursor-pointer rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-amber-400 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                          {gp.title}
+                        </span>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-[10px] font-medium uppercase",
+                          gp.status === "approved" || gp.status === "applied" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
+                          gp.status === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" :
+                          "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                        )}>
+                          {gp.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                        {gp.summary}
+                      </p>
+                      <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+                        <span>Risk: <strong className="font-medium text-slate-600 dark:text-slate-300">{gp.risk_level}</strong></span>
+                        <span className="text-amber-600 dark:text-amber-400 font-medium hover:underline flex items-center gap-1">
+                          Inspect Rationale & Diff <ChevronRight size={12} />
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -756,7 +897,8 @@ export default function SkillsView() {
                   .map((p) => (
                     <div
                       key={p.id}
-                      className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"
+                      onClick={() => setSelectedProposal(normalizeSkillProposal(p))}
+                      className="cursor-pointer flex items-center gap-3 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors"
                     >
                       {p.status === "approved" ? (
                         <CheckCircle2 size={14} className="text-green-500 shrink-0" />
@@ -776,6 +918,7 @@ export default function SkillsView() {
                           ? new Date(p.reviewed_at).toLocaleDateString()
                           : ""}
                       </span>
+                      <ChevronRight size={14} className="text-slate-400 shrink-0" />
                     </div>
                   ))}
               </div>
@@ -1028,6 +1171,18 @@ export default function SkillsView() {
           </div>
         </div>
       )}
+
+      {/* Improvement Proposal Inspector Modal */}
+      <ImprovementProposalDetailModal
+        isOpen={Boolean(selectedProposal)}
+        proposal={selectedProposal}
+        onClose={() => setSelectedProposal(null)}
+        onApprove={(id) => handleProposalAction(id, "approve")}
+        onApply={(id) => handleProposalAction(id, "apply")}
+        onSandbox={(id) => handleProposalAction(id, "sandbox")}
+        onReject={(id) => handleProposalAction(id, "reject")}
+        onRevert={(id) => handleProposalAction(id, "revert")}
+      />
     </div>
   );
 }

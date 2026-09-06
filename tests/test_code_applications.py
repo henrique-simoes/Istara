@@ -547,3 +547,69 @@ async def test_synthetic_reconciliation_requires_complete_run_and_provenance(
         )
     assert missing_provenance.status_code == 422
     assert "route evidence provenance" in missing_provenance.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_create_and_delete_qualitative_code_application(auth_headers):
+    """POST /api/code-applications/{project_id} creates a human code application,
+
+    and DELETE removes it along with evidence links.
+    """
+    await init_db()
+    project_id = f"qual-code-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Qualitative Coding Test"))
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        create_resp = await ac.post(
+            f"/api/code-applications/{project_id}",
+            json={
+                "code_id": "usability-friction",
+                "source_document_id": "interview-session-1.txt",
+                "source_text": "I had trouble finding where the export button is located.",
+                "source_type": "interview",
+                "start_offset": 12,
+                "end_offset": 68,
+                "reasoning": "Participant clearly struggled with information architecture.",
+            },
+            headers=auth_headers,
+        )
+        assert create_resp.status_code == 200
+        created = create_resp.json()
+        assert created["code_id"] == "usability-friction"
+        assert created["coder_type"] == "human"
+        assert created["review_status"] == "approved"
+        assert created["promotion_status"] == "accepted"
+        assert created["evidence_unit_id"] is not None
+        app_id = created["id"]
+
+        # Verify filtering by source_document_id
+        list_resp = await ac.get(
+            f"/api/code-applications/{project_id}",
+            params={"source_document_id": "interview-session-1.txt"},
+            headers=auth_headers,
+        )
+        assert list_resp.status_code == 200
+        items = list_resp.json()
+        assert len(items) == 1
+        assert items[0]["id"] == app_id
+
+        # Delete code application
+        del_resp = await ac.delete(
+            f"/api/code-applications/{app_id}",
+            params={"project_id": project_id},
+            headers=auth_headers,
+        )
+        assert del_resp.status_code == 200
+        assert del_resp.json()["deleted"] is True
+
+        # Verify it's gone
+        after_del = await ac.get(
+            f"/api/code-applications/{project_id}",
+            params={"source_document_id": "interview-session-1.txt"},
+            headers=auth_headers,
+        )
+        assert len(after_del.json()) == 0
+

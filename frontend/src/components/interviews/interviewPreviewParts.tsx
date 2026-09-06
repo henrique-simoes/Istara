@@ -19,6 +19,7 @@ import { API_BASE } from "@/lib/runtimeConfig";
 import { useAgentStore } from "@/stores/agentStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
+import QualitativeCodingText from "@/components/common/QualitativeCodingText";
 
 export function fileIcon(type: string) {
   if ([".mp3", ".wav", ".m4a", ".ogg"].includes(type)) return Volume2;
@@ -215,13 +216,13 @@ export function FilePreview({
                 </span>
               )}
             </div>
-            <pre
-              ref={preRef}
-              onMouseUp={handleMouseUp}
-              className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 select-text cursor-text"
-            >
-              {content}
-            </pre>
+            <QualitativeCodingText
+              projectId={projectId}
+              sourceDocumentId={filename}
+              sourceType="interview"
+              text={content}
+              className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800"
+            />
           </div>
         )}
       </div>
@@ -249,48 +250,16 @@ export function FilePreview({
     );
   }
 
-  const patterns: string[] = [];
-  if (activeTag) patterns.push(escapeRegex(activeTag));
-  if (highlightText) patterns.push(escapeRegex(highlightText));
-
-  if (patterns.length > 0) {
-    const regex = new RegExp(`(${patterns.join("|")})`, "gi");
-    const parts = content.split(regex);
-    return (
-      <pre
-        ref={preRef}
-        onMouseUp={handleMouseUp}
-        className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed p-4 select-text cursor-text"
-      >
-        {parts.map((part, i) =>
-          regex.test(part) ? (
-            <mark
-              key={i}
-              className={cn(
-                "rounded px-0.5",
-                highlightText && part.toLowerCase() === highlightText.toLowerCase()
-                  ? "bg-amber-200 dark:bg-amber-800/50 text-amber-900 dark:text-amber-200"
-                  : "bg-purple-200 dark:bg-purple-800/50 text-purple-900 dark:text-purple-200"
-              )}
-            >
-              {part}
-            </mark>
-          ) : (
-            <span key={i}>{part}</span>
-          )
-        )}
-      </pre>
-    );
-  }
-
   return (
-    <pre
-      ref={preRef}
-      onMouseUp={handleMouseUp}
-      className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed p-4 select-text cursor-text"
-    >
-      {content}
-    </pre>
+    <div className="p-4">
+      <QualitativeCodingText
+        projectId={projectId}
+        sourceDocumentId={filename}
+        sourceType="interview"
+        text={content}
+        className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800"
+      />
+    </div>
   );
 }
 

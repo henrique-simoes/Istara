@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, FileText, Globe, GripVertical, Plus, Trash2 } from "lucide-react";
+import { BookOpen, ChevronDown, FileText, Globe, GripVertical, Plus, Trash2 } from "lucide-react";
 import { useTaskStore } from "@/stores/taskStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAgentStore } from "@/stores/agentStore";
@@ -192,6 +192,12 @@ function TaskCard({ task, projectId, canWrite, onOpen, onDelete }: { task: Task;
             {task.review_state && task.review_state !== "none" && (
               <span className={cn("rounded px-1.5 py-0.5 text-[10px]", task.review_state === "approved" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : task.review_state === "awaiting_review" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300")}>
                 {task.review_state.replace(/_/g, " ")}
+              </span>
+            )}
+            {task.codebook_id && (
+              <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title={`Codebook: ${task.codebook_id}`}>
+                <BookOpen size={10} />
+                Codebook
               </span>
             )}
             {task.failure_streak > 0 && <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] text-red-700 dark:bg-red-950/40 dark:text-red-300">{task.failure_streak}x revision</span>}

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -54,8 +55,39 @@ def _require_update_confirmation(
         )
 
 
+def is_containerized() -> bool:
+    """Detect if running inside a container (Docker/Podman/Kubernetes)."""
+    if Path("/.dockerenv").is_file():
+        return True
+    if os.environ.get("CONTAINER") or os.environ.get("DOCKER_CONTAINER"):
+        return True
+    try:
+        cgroup = Path("/proc/1/cgroup")
+        if cgroup.is_file() and any(k in cgroup.read_text() for k in ("docker", "containerd", "kubepods")):
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _parse_calver(v: str) -> tuple[int, ...]:
+    """Parse a CalVer or SemVer string into a 4-element int tuple for exact ordering."""
+    if not v:
+        return ()
+    cleaned = v.strip().lstrip("v").split("-")[0].split("+")[0]
+    parts: list[int] = []
+    for part in cleaned.split("."):
+        try:
+            parts.append(int(part))
+        except ValueError:
+            break
+    while len(parts) < 4:
+        parts.append(0)
+    return tuple(parts[:4])
+
+
 def get_current_version() -> str:
-    """Read the current Istara version from the VERSION file."""
+    """Read the current Istara version from the VERSION file or git metadata."""
     for p in _CANDIDATES:
         try:
             if p.exists():
@@ -64,13 +96,26 @@ def get_current_version() -> str:
                     return v
         except Exception:
             continue
+
+    # Fallback to git tag if in a git repository
+    try:
+        install_dir = get_install_dir()
+        if install_dir and (install_dir / ".git").is_dir():
+            desc = _run_git(["describe", "--tags", "--match", "v*"], cwd=install_dir)
+            if desc:
+                base_tag = desc.split("-")[0].lstrip("v")
+                if base_tag:
+                    return base_tag
+    except Exception:
+        pass
+
     return "unknown"
 
 
 def _run_git(args: list[str], cwd: Path | None = None, timeout: int = 10) -> str:
     try:
         result = subprocess.run(
-            ["git", *args],
+            ["git", "-c", "safe.directory=*", *args],
             cwd=str(cwd) if cwd else None,
             capture_output=True,
             text=True,
@@ -103,20 +148,26 @@ def is_newer(latest: str, current: str) -> bool:
     if not current or current == "unknown":
         return True
 
+    latest_parts = _parse_calver(latest)
+    current_parts = _parse_calver(current)
+    if latest_parts and current_parts:
+        return latest_parts > current_parts
+
     try:
         from packaging.version import parse
 
         return parse(latest) > parse(current)
     except Exception:
-        # Fallback to string comparison if format is unexpected
         return latest > current
 
 
 def get_latest_release_version_from_git() -> str:
-    """Resolve the newest published release tag from git metadata."""
+    """Resolve the newest published release tag from git metadata without using GitHub REST API."""
     result = subprocess.run(
         [
             "git",
+            "-c",
+            "safe.directory=*",
             "ls-remote",
             "--tags",
             "--refs",
@@ -138,18 +189,18 @@ def get_remote_release_commit(tag: str, install_dir: Path | None = None) -> str:
     """Resolve the commit SHA behind a remote release tag without fetching local tags."""
     if not tag:
         return ""
-    remote = (
-        "origin"
-        if install_dir and (install_dir / ".git").is_dir()
-        else "https://github.com/henrique-simoes/Istara.git"
-    )
-    cwd = install_dir if remote == "origin" else None
-    peeled = _run_git(["ls-remote", remote, f"refs/tags/v{tag}^{{}}"], cwd=cwd)
-    if peeled:
-        return peeled.split()[0]
-    direct = _run_git(["ls-remote", remote, f"refs/tags/v{tag}"], cwd=cwd)
-    if direct:
-        return direct.split()[0]
+    remotes: list[tuple[str, Path | None]] = []
+    if install_dir and (install_dir / ".git").is_dir():
+        remotes.append(("origin", install_dir))
+    remotes.append(("https://github.com/henrique-simoes/Istara.git", None))
+
+    for remote, cwd in remotes:
+        peeled = _run_git(["ls-remote", remote, f"refs/tags/v{tag}^{{}}"], cwd=cwd)
+        if peeled:
+            return peeled.split()[0]
+        direct = _run_git(["ls-remote", remote, f"refs/tags/v{tag}"], cwd=cwd)
+        if direct:
+            return direct.split()[0]
     return ""
 
 
@@ -167,7 +218,7 @@ def head_includes_release(install_dir: Path, tag: str) -> bool | None:
         return True
     try:
         result = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", release_sha, "HEAD"],
+            ["git", "-c", "safe.directory=*", "merge-base", "--is-ancestor", release_sha, "HEAD"],
             cwd=str(install_dir),
             capture_output=True,
             timeout=10,
@@ -192,12 +243,20 @@ async def check_for_updates():
     """Check GitHub Releases for a newer version, with git-aware source-install fallback."""
     current = get_current_version()
     install_dir = get_install_dir()
+    containerized = is_containerized()
+    install_type = "docker" if containerized else ("git" if install_dir and (install_dir / ".git").is_dir() else "package")
+    docker_command = "docker compose pull && docker compose up -d" if containerized else None
+
     cache_key = "github_release"
     cached = _update_cache.get(cache_key)
     if cached and time.time() - cached["time"] < _CACHE_TTL:
         # Return cached response with fresh current_version
         result = {**cached["data"], "current_version": current}
         result["update_available"] = is_newer(result.get("latest_version", ""), current)
+        result["install_type"] = install_type
+        result["can_auto_update"] = (install_type == "git")
+        if docker_command:
+            result["docker_command"] = docker_command
         if install_dir and (install_dir / ".git").is_dir():
             source_status = await asyncio.to_thread(
                 head_includes_release, install_dir, result.get("latest_version", "")
@@ -209,93 +268,128 @@ async def check_for_updates():
                 result["source_checkout_includes_latest_release"] = source_status
         return result
 
+    # 1. Try querying GitHub REST API for releases list (not /latest which has stale make_latest pointers)
+    latest_release: dict | None = None
+    git_tag = ""
+
     try:
         import httpx
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
-                "https://api.github.com/repos/henrique-simoes/Istara/releases/latest",
+                "https://api.github.com/repos/henrique-simoes/Istara/releases?per_page=15",
                 headers={
                     "Accept": "application/vnd.github.v3+json",
                     "User-Agent": f"Istara/{current}",
                 },
             )
 
-            if resp.status_code == 404:
-                return {
-                    "update_available": False,
-                    "current_version": current,
-                    "latest_version": current,
-                    "message": "No releases published yet",
-                }
+            if resp.status_code == 200:
+                raw_releases = resp.json()
+                valid_releases = [
+                    r for r in raw_releases
+                    if not r.get("draft") and not r.get("prerelease") and r.get("tag_name")
+                ]
+                if valid_releases:
+                    def _key(rel: dict):
+                        return _parse_calver(rel.get("tag_name", "").lstrip("v"))
+                    latest_release = max(valid_releases, key=_key)
+            elif resp.status_code in (403, 404):
+                # Rate limited or not found — fallback to git tags
+                logger.info(f"GitHub API returned {resp.status_code}, falling back to git tags")
+                git_tag = await asyncio.to_thread(get_latest_release_version_from_git)
+    except Exception as exc:
+        logger.warning(f"GitHub Releases REST query failed: {exc}")
+        return {
+            "update_available": False,
+            "current_version": current,
+            "latest_version": current,
+            "install_type": install_type,
+            "can_auto_update": (install_type == "git"),
+            "docker_command": docker_command,
+            "error_code": "update_check_unavailable",
+            "error": "Update check is unavailable. Check the network connection and try again.",
+        }
 
-            if resp.status_code == 403:
-                # Rate limited — try git method or return graceful message
-                return {
-                    "update_available": False,
-                    "current_version": current,
-                    "error": "GitHub API rate limit reached. Try again in a few minutes, or run: istara update",
-                }
+    # 3. Determine the actual latest version
+    latest_tag = ""
+    latest_name = ""
+    published_at = ""
+    body = ""
+    html_url = ""
+    downloads: dict[str, str] = {}
+    method = "github_api"
 
-            if resp.status_code != 200:
-                return {
-                    "update_available": False,
-                    "current_version": current,
-                    "error": f"GitHub API returned {resp.status_code}",
-                }
-
-            release = resp.json()
-            latest_tag = release.get("tag_name", "").lstrip("v")
-            latest_name = release.get("name", "")
-            published_at = release.get("published_at", "")
-            body = release.get("body", "")
-            html_url = release.get("html_url", "")
-            update_available = is_newer(latest_tag, current)
-            source_status = None
-            if install_dir and (install_dir / ".git").is_dir():
-                source_status = await asyncio.to_thread(
-                    head_includes_release, install_dir, latest_tag
-                )
-                if source_status is True:
-                    update_available = False
-                    current = latest_tag or current
-
-            assets = release.get("assets", [])
-            downloads = {}
-            for asset in assets:
+    if latest_release:
+        rel_tag = latest_release.get("tag_name", "").lstrip("v")
+        if git_tag and is_newer(git_tag, rel_tag):
+            latest_tag = git_tag
+            latest_name = f"Istara {git_tag}"
+            html_url = f"https://github.com/henrique-simoes/Istara/releases/tag/v{git_tag}"
+            method = "git_ls_remote"
+        else:
+            latest_tag = rel_tag
+            latest_name = latest_release.get("name", f"Istara {rel_tag}")
+            published_at = latest_release.get("published_at", "")
+            body = latest_release.get("body", "")
+            html_url = latest_release.get("html_url", "")
+            method = "github_api"
+            for asset in latest_release.get("assets", []):
                 name = asset.get("name", "").lower()
                 url = asset.get("browser_download_url", "")
                 if ".dmg" in name:
                     downloads["macos"] = url
                 elif ".exe" in name or ".msi" in name:
                     downloads["windows"] = url
-
-            result = {
-                "update_available": update_available,
-                "current_version": current,
-                "latest_version": latest_tag,
-                "release_name": latest_name,
-                "published_at": published_at,
-                "changelog": body[:500] if body else "",
-                "release_url": html_url,
-                "downloads": downloads,
-                "method": "github_api",
-            }
-            if source_status is not None:
-                result["source_checkout_includes_latest_release"] = source_status
-
-            # Cache the result
-            _update_cache[cache_key] = {"data": result, "time": time.time()}
-            return result
-
-    except Exception as e:
-        logger.warning(f"Update check failed: {e}")
+    elif git_tag:
+        latest_tag = git_tag
+        latest_name = f"Istara {git_tag}"
+        html_url = f"https://github.com/henrique-simoes/Istara/releases/tag/v{git_tag}"
+        method = "git_ls_remote"
+    else:
+        # Neither succeeded (offline, no git, no network)
         return {
             "update_available": False,
             "current_version": current,
+            "latest_version": current,
+            "install_type": install_type,
+            "can_auto_update": (install_type == "git"),
+            "docker_command": docker_command,
             "error_code": "update_check_unavailable",
             "error": "Update check is unavailable. Check the network connection and try again.",
         }
+
+    update_available = is_newer(latest_tag, current)
+    source_status = None
+    if install_dir and (install_dir / ".git").is_dir():
+        source_status = await asyncio.to_thread(
+            head_includes_release, install_dir, latest_tag
+        )
+        if source_status is True:
+            update_available = False
+            current = latest_tag or current
+
+    result = {
+        "update_available": update_available,
+        "current_version": current,
+        "latest_version": latest_tag,
+        "release_name": latest_name,
+        "published_at": published_at,
+        "changelog": body[:1000] if body else "",
+        "release_url": html_url,
+        "downloads": downloads,
+        "method": method,
+        "install_type": install_type,
+        "can_auto_update": (install_type == "git"),
+    }
+    if docker_command:
+        result["docker_command"] = docker_command
+    if source_status is not None:
+        result["source_checkout_includes_latest_release"] = source_status
+
+    # Cache the result
+    _update_cache[cache_key] = {"data": result, "time": time.time()}
+    return result
 
 
 @router.post("/updates/prepare")
@@ -369,6 +463,16 @@ async def apply_update(
         expected=APPLY_UPDATE_CONFIRMATION,
         action="apply updates",
     )
+
+    if is_containerized():
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Istara is running inside a Docker container. "
+                "To update, pull the latest image or rebuild on your host machine: "
+                "docker compose pull && docker compose up -d"
+            ),
+        )
 
     install_dir = get_install_dir()
     if not install_dir:
