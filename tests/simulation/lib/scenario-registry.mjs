@@ -76,4 +76,5 @@ export const scenarioFiles = Object.freeze([
   "79-engine-selector",
   "75-participant-simulation",
   "74-2fa-login-flow",
+  "80-channels-and-surveys-live-integration",
 ]);

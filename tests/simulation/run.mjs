@@ -37,6 +37,9 @@ const RUNS_DIR = join(RESULTS_DIR, "runs");
 const args = process.argv.slice(2);
 const headless = !args.includes("--headless=false");
 const singleScenario = args.includes("--scenario") ? args[args.indexOf("--scenario") + 1] : null;
+const multiScenarios = args.includes("--scenarios")
+  ? args[args.indexOf("--scenarios") + 1].split(",").map((s) => s.trim()).filter(Boolean)
+  : null;
 const skipEval = args.includes("--skip-eval");
 const skipSkills = args.includes("--skip-skills");
 const scenarioTimeoutArgIndex = args.indexOf("--scenario-timeout-ms");
@@ -246,7 +249,23 @@ async function ensureBrowserScenarioState(page, { projectId = null, activeView =
   await page.evaluate(
     ({ token, userId, projectId: selectedProjectId, activeView: selectedView }) => {
       localStorage.setItem("istara_token", token);
-      localStorage.removeItem("istara_tour_state");
+      localStorage.setItem(
+        "istara_tour_state",
+        JSON.stringify({
+          active: false,
+          isOnboarding: false,
+          step: 16,
+          folderPath: "",
+          createdProjectId: selectedProjectId || "",
+          role: "admin",
+          hasExistingProjects: true,
+          teamModeEnabled: false,
+          connectionStringGenerated: true,
+          llmConnected: true,
+          llmProvider: "openai",
+          llmModel: "gpt-4o",
+        })
+      );
       if (userId) {
         localStorage.setItem("istara_auth_user_id", userId);
         localStorage.setItem(`istara_tour_completed_${userId}`, "true");
@@ -270,6 +289,7 @@ async function ensureBrowserScenarioState(page, { projectId = null, activeView =
     }
   );
   await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator('#main-content, main, nav').first().waitFor({ state: "visible", timeout: 15000 }).catch(() => {});
   return true;
 }
 
@@ -828,6 +848,7 @@ async function main() {
   const context = await browser.newContext({
     viewport: DESKTOP_VIEWPORT,
     colorScheme: "dark",
+    bypassCSP: true,
     // Thread the selected benchmark engine onto every frontend-originated API
     // request (benchmark task B0-2); unset means the dispatcher default engine.
     ...(liveEngineHeader
@@ -882,7 +903,7 @@ async function main() {
       ({ token, userId }) => {
         try {
           localStorage.setItem("istara_token", token);
-          localStorage.removeItem("istara_tour_state");
+          localStorage.setItem("istara_tour_state", JSON.stringify({ active: false, isOnboarding: false, step: 16, hasExistingProjects: true }));
           if (userId) {
             localStorage.setItem("istara_auth_user_id", userId);
             localStorage.setItem(`istara_tour_completed_${userId}`, "true");
@@ -904,7 +925,7 @@ async function main() {
     await page.goto(FRONTEND, { waitUntil: "domcontentloaded" });
     await page.evaluate(({ token, userId }) => {
       localStorage.setItem("istara_token", token);
-      localStorage.removeItem("istara_tour_state");
+      localStorage.setItem("istara_tour_state", JSON.stringify({ active: false, isOnboarding: false, step: 16, hasExistingProjects: true }));
       if (userId) {
         localStorage.setItem("istara_auth_user_id", userId);
         localStorage.setItem(`istara_tour_completed_${userId}`, "true");
@@ -1029,15 +1050,22 @@ async function main() {
   // ── Run ALL scenarios — never skip, never bail early ──────
   // Each scenario gets a generous timeout. If it exceeds the timeout, it is
   // marked as TIMEOUT (a failure) and the runner moves on to the next scenario.
-  console.log(`\nRunning ${singleScenario ? "scenario " + singleScenario : `${scenarios.length} scenarios`}...`);
+  const scenarioCountText = singleScenario
+    ? `scenario ${singleScenario}`
+    : multiScenarios
+    ? `selected scenarios (${multiScenarios.join(", ")})`
+    : `${scenarios.length} scenarios`;
+  console.log(`\nRunning ${scenarioCountText}...`);
   console.log(`  Per-scenario timeout: ${SCENARIO_TIMEOUT_MS / 60000} minutes\n`);
 
   const scenarioResults = [];
   const scenarioProgress = new Map();
 
   function recordScenarioProgress(scenarioId, partial = {}) {
+    const prev = scenarioProgress.get(scenarioId) || {};
     const snapshot = {
-      id: scenarioId,
+      ...prev,
+      scenarioId,
       updatedAt: new Date().toISOString(),
       ...partial,
     };
@@ -1052,6 +1080,7 @@ async function main() {
 
   for (const scenario of scenarios) {
     if (singleScenario && !scenario.id.includes(singleScenario)) continue;
+    if (multiScenarios && !multiScenarios.some((s) => scenario.id.includes(s))) continue;
 
     process.stdout.write(`  ${scenario.id}: ${scenario.name}... `);
     const scenarioStart = Date.now();

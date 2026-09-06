@@ -42,28 +42,18 @@ export async function run(ctx) {
 
   // 2. Mic button is visible and accessible in ChatView
   try {
-    await page.goto(ctx.frontendUrl, { waitUntil: "load", timeout: 15000 });
-    await page
-      .waitForFunction(() => localStorage.getItem("istara_auth_user_id"), {
-        timeout: 5000,
-      })
-      .catch(() => {});
-    await page.evaluate(() => {
-      const userId = localStorage.getItem("istara_auth_user_id") || "anonymous";
-      localStorage.setItem(`istara_tour_completed_${userId}`, "true");
-      localStorage.setItem("istara_tour_completed_anonymous", "true");
-      localStorage.removeItem("istara_tour_state");
-      localStorage.setItem("istara_active_view", "chat");
-    });
-    await page.reload({ waitUntil: "domcontentloaded", timeout: 15000 });
-    
-    // Ensure we are in the Chat view — click sidebar link if needed
+    // Ensure we are in Chat view and select persistent simulation project
+    const projectBtn = page.locator("text=[SIM]").first();
+    if (await projectBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await projectBtn.click();
+      await page.waitForTimeout(500);
+    }
     const chatLink = page
       .locator('button[aria-label="Chat"], nav a[href="/chat"], nav button:has-text("Chat")')
       .first();
-    if (await chatLink.isVisible()) {
-      await chatLink.click();
-      await page.waitForTimeout(2000);
+    if (await chatLink.isVisible().catch(() => false)) {
+      await chatLink.click().catch(() => {});
+      await page.waitForTimeout(1000);
     }
     
     // Wait for the voice button; idle state uses "Start recording".
@@ -73,6 +63,13 @@ export async function run(ctx) {
     await micButton.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
     
     const isVisible = await micButton.isVisible().catch(() => false);
+    if (!isVisible) {
+      try {
+        const fs = await import("fs");
+        await page.screenshot({ path: "/work/tests/simulation/.results/runs/debug-77.png" });
+        fs.writeFileSync("/work/tests/simulation/.results/runs/debug-77.html", await page.content());
+      } catch {}
+    }
     checks.push({
       name: "Mic button visible in chat",
       passed: isVisible,

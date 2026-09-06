@@ -15,10 +15,28 @@ const PLATFORMS = [
   { id: "typeform", label: "Typeform", color: "#262627", icon: FileType, description: "Import typeforms and results" },
 ] as const;
 
-const CREDENTIAL_FIELDS: Record<string, { label: string; placeholder: string; type: string }[]> = {
-  surveymonkey: [{ label: "Access Token", placeholder: "SurveyMonkey access token", type: "password" }],
-  google_forms: [{ label: "Service Account JSON", placeholder: "Paste Google service account JSON", type: "password" }],
-  typeform: [{ label: "Personal Access Token", placeholder: "Typeform personal access token", type: "password" }],
+type CredentialField = {
+  key: string;
+  label: string;
+  placeholder: string;
+  type: string;
+  required?: boolean;
+};
+
+const CREDENTIAL_FIELDS: Record<string, CredentialField[]> = {
+  surveymonkey: [
+    { key: "access_token", label: "Access Token", placeholder: "SurveyMonkey OAuth Bearer token", type: "password", required: true },
+    { key: "api_base", label: "API Base URL (optional)", placeholder: "https://api.surveymonkey.com/v3 (or local test server)", type: "text", required: false },
+  ],
+  google_forms: [
+    { key: "access_token", label: "OAuth Bearer Token", placeholder: "Google Forms OAuth access token", type: "password", required: true },
+    { key: "api_base", label: "API Base URL (optional)", placeholder: "https://forms.googleapis.com/v1 (or local test server)", type: "text", required: false },
+  ],
+  typeform: [
+    { key: "access_token", label: "Personal Access Token", placeholder: "Typeform personal access token", type: "password", required: true },
+    { key: "webhook_secret", label: "Webhook Secret (Optional)", placeholder: "Optional secret for webhook signatures", type: "password", required: false },
+    { key: "api_base", label: "API Base URL (optional)", placeholder: "https://api.typeform.com (or local test server)", type: "text", required: false },
+  ],
 };
 
 interface SurveySetupWizardProps {
@@ -63,7 +81,13 @@ export default function SurveySetupWizard({ onClose }: SurveySetupWizardProps) {
   const canProceed = () => {
     switch (currentStep) {
       case "platform": return !!selectedPlatform;
-      case "credentials": return Object.values(credentials).some((v) => v.trim());
+      case "credentials": {
+        if (!selectedPlatform) return false;
+        const fields = CREDENTIAL_FIELDS[selectedPlatform] || [];
+        return fields
+          .filter((f) => f.required)
+          .every((f) => (credentials[f.key] || "").trim().length > 0);
+      }
       case "test": return testResult === "success";
       default: return true;
     }
@@ -126,8 +150,8 @@ export default function SurveySetupWizard({ onClose }: SurveySetupWizardProps) {
                     <input
                       type={field.type}
                       placeholder={field.placeholder}
-                      value={credentials[field.label] || ""}
-                      onChange={(e) => setCredentials({ ...credentials, [field.label]: e.target.value })}
+                      value={credentials[field.key] || ""}
+                      onChange={(e) => setCredentials({ ...credentials, [field.key]: e.target.value })}
                       className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                     />
                   </div>

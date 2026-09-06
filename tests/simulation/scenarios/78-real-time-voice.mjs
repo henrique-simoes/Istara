@@ -21,6 +21,7 @@ export async function run(ctx) {
     await page.evaluate((projectId) => {
       localStorage.setItem("istara-active-project", projectId);
       localStorage.setItem("istara_active_view", "chat");
+      localStorage.setItem("istara_tour_state", JSON.stringify({ active: false, isOnboarding: false, step: 16, hasExistingProjects: true }));
     }, ctx.projectId).catch(() => {});
     await page.reload({ waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
     await page.waitForSelector('button[aria-label="Chat"], main', { timeout: 15000 }).catch(() => {});

@@ -26,7 +26,12 @@ class SurveyMonkeyAdapter(SurveyPlatformAdapter):
     # ------------------------------------------------------------------
 
     def _headers(self) -> dict[str, str]:
-        token = self.config.get("access_token", "")
+        token = (
+            self.config.get("access_token", "")
+            or self.config.get("token", "")
+            or self.config.get("api_key", "")
+            or self.config.get("Access Token", "")
+        )
         if not token:
             raise ValueError("SurveyMonkey access_token not configured")
         return {
@@ -42,7 +47,8 @@ class SurveyMonkeyAdapter(SurveyPlatformAdapter):
         json_body: dict | None = None,
         params: dict | None = None,
     ) -> dict:
-        url = f"{BASE_URL}{path}"
+        base = self.config.get("api_base") or self.config.get("base_url") or BASE_URL
+        url = f"{base.rstrip('/')}{path}"
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.request(
                 method, url, headers=self._headers(), json=json_body, params=params

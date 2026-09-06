@@ -6,6 +6,7 @@ const nextConfig = {
       "'self'",
       process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
       process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000",
+      "http://localhost:8000",
       "http://127.0.0.1:8000",
       "ws://localhost:8000",
       "ws://127.0.0.1:8000",

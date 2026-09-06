@@ -12,30 +12,94 @@ Required config keys (or environment fallbacks):
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import logging
 import os
+import time
+import httpx
 
 from app.channels.base import ChannelAdapter, IncomingMessage, OutgoingMessage
 from app.core.channel_resilience import CircuitBreaker
 
 logger = logging.getLogger(__name__)
 
-# Optional dependency -- graceful degradation if not installed.
+# Optional slack_bolt / slack_sdk dependencies -- graceful degradation
+_SOCKET_MODE_AVAILABLE = False
+_SLACK_SDK_CLIENT_AVAILABLE = False
 try:
     from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
     from slack_bolt.async_app import AsyncApp
-    from slack_sdk.web.async_client import AsyncWebClient
+    _SOCKET_MODE_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    pass
 
-    _SLACK_AVAILABLE = True
-except ImportError:
-    _SLACK_AVAILABLE = False
-    logger.warning(
-        "slack-bolt is not installed. Install with: pip install 'slack-bolt[async]>=1.20.0'"
-    )
+try:
+    from slack_sdk.web.async_client import AsyncWebClient
+    _SLACK_SDK_CLIENT_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    pass
+
+# Slack HTTP webhook mode is always available via httpx
+_SLACK_AVAILABLE = True
+
+
+class _HttpxSlackClient:
+    """Lightweight async Slack Web API client backed by httpx.
+
+    Avoids runtime failures when aiohttp or slack-bolt are not installed
+    in the execution environment while retaining full compatibility with
+    auth_test, chat_postMessage, and file uploads.
+    """
+
+    def __init__(self, token: str, base_url: str | None = None) -> None:
+        self.token = token
+        raw_base = (base_url or "https://slack.com/api").rstrip("/")
+        if not raw_base.endswith("/api") and "slack.com" in raw_base:
+            raw_base = f"{raw_base}/api"
+        self.base_url = raw_base
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json; charset=utf-8",
+        }
+
+    async def auth_test(self) -> dict:
+        url = f"{self.base_url}/auth.test"
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(url, headers=self._headers(), json={})
+            resp.raise_for_status()
+            data = resp.json()
+            if not data.get("ok"):
+                raise RuntimeError(data.get("error", "Slack auth.test failed"))
+            return data
+
+    async def chat_postMessage(self, **kwargs) -> dict:
+        url = f"{self.base_url}/chat.postMessage"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(url, headers=self._headers(), json=kwargs)
+            resp.raise_for_status()
+            data = resp.json()
+            if not data.get("ok"):
+                raise RuntimeError(data.get("error", "Slack chat_postMessage failed"))
+            return data
+
+    async def files_upload_v2(self, channel: str, file: str, thread_ts: str | None = None) -> dict:
+        url = f"{self.base_url}/files.upload"
+        headers = {"Authorization": f"Bearer {self.token}"}
+        data = {"channels": channel}
+        if thread_ts:
+            data["thread_ts"] = thread_ts
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            with open(file, "rb") as f:
+                resp = await client.post(url, headers=headers, data=data, files={"file": f})
+                resp.raise_for_status()
+                return resp.json()
 
 
 class SlackAdapter(ChannelAdapter):
-    """Slack channel adapter using slack-bolt async API."""
+    """Slack channel adapter using slack-bolt or httpx async API."""
 
     def __init__(self, instance_id: str = "", config: dict | None = None) -> None:
         super().__init__(instance_id, config)
@@ -44,8 +108,13 @@ class SlackAdapter(ChannelAdapter):
             "SLACK_SIGNING_SECRET", ""
         )
         self._app_token: str = self.config.get("app_token", "") or os.getenv("SLACK_APP_TOKEN", "")
-        self._slack_app = None  # slack_bolt AsyncApp
-        self._client: AsyncWebClient | None = None
+        self._base_url: str | None = (
+            self.config.get("base_url")
+            or self.config.get("api_base")
+            or os.getenv("SLACK_API_BASE")
+        )
+        self._slack_app = None
+        self._client = None
         self._socket_handler = None
         self._bg_task: asyncio.Task | None = None
         self._breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0)
@@ -60,41 +129,51 @@ class SlackAdapter(ChannelAdapter):
     def enabled(self) -> bool:
         return bool(self._bot_token and self._signing_secret) and _SLACK_AVAILABLE
 
+    def _create_client(self):
+        client_kwargs = {"token": self._bot_token}
+        if self._base_url:
+            client_kwargs["base_url"] = self._base_url
+        if _SLACK_SDK_CLIENT_AVAILABLE:
+            try:
+                return AsyncWebClient(**client_kwargs)
+            except Exception:
+                pass
+        return _HttpxSlackClient(self._bot_token, base_url=self._base_url)
+
     async def start(self) -> None:
-        """Start the Slack event listener."""
-        if not _SLACK_AVAILABLE:
-            raise RuntimeError(
-                "slack-bolt is not installed. Install with: pip install 'slack-bolt[async]>=1.20.0'"
-            )
+        """Start the Slack event listener or client."""
         if not self._bot_token or not self._signing_secret:
             raise RuntimeError("SlackAdapter is not enabled (missing bot_token or signing_secret)")
 
-        self._slack_app = AsyncApp(
-            token=self._bot_token,
-            signing_secret=self._signing_secret,
-        )
-        self._client = AsyncWebClient(token=self._bot_token)
+        self._client = self._create_client()
 
-        # Register event handlers
-        @self._slack_app.event("message")
-        async def handle_message(event, say, context):
-            await self._on_message_event(event)
-
-        @self._slack_app.event("app_mention")
-        async def handle_mention(event, say, context):
-            await self._on_message_event(event)
-
-        # Start Socket Mode if app_token is available
+        # Start Socket Mode if app_token is available and supported
         if self._app_token:
+            if not _SOCKET_MODE_AVAILABLE:
+                raise RuntimeError(
+                    "slack-bolt and aiohttp are required for Socket Mode. "
+                    "Install with: pip install 'slack-bolt[async]>=1.20.0' or use HTTP webhook mode."
+                )
+            self._slack_app = AsyncApp(
+                token=self._bot_token,
+                signing_secret=self._signing_secret,
+            )
+            @self._slack_app.event("message")
+            async def handle_message(event, say, context):
+                await self._on_message_event(event)
+
+            @self._slack_app.event("app_mention")
+            async def handle_mention(event, say, context):
+                await self._on_message_event(event)
+
             self._socket_handler = AsyncSocketModeHandler(self._slack_app, self._app_token)
             self._bg_task = asyncio.create_task(self._socket_handler.start_async())
             logger.info("Slack adapter started in Socket Mode (instance=%s).", self.name)
         else:
-            # HTTP mode: the app needs to be mounted externally or events
-            # routed via a webhook. We mark as running but note the limitation.
+            # HTTP mode: events routed via webhooks endpoint
             logger.info(
                 "Slack adapter started in HTTP mode (instance=%s). "
-                "Events must be routed externally via /slack/events.",
+                "Events are routed via /webhooks/slack/{instance_id}.",
                 self.name,
             )
 
@@ -188,6 +267,32 @@ class SlackAdapter(ChannelAdapter):
                 "platform": self.platform,
                 "error": str(exc),
             }
+
+    def verify_signature(self, raw_body: bytes, timestamp: str | None, signature: str | None) -> bool:
+        """Verify Slack HMAC SHA-256 webhook signature."""
+        if not self._signing_secret or not timestamp or not signature:
+            return False
+        try:
+            ts = float(timestamp)
+            if abs(time.time() - ts) > 300:
+                logger.warning("Slack webhook timestamp expired: %s", timestamp)
+                return False
+        except (ValueError, TypeError):
+            return False
+
+        sig_basestring = f"v0:{timestamp}:{raw_body.decode('utf-8', errors='replace')}"
+        computed = "v0=" + hmac.new(
+            self._signing_secret.encode("utf-8"),
+            sig_basestring.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        return hmac.compare_digest(computed, signature)
+
+    async def handle_webhook(self, payload: dict) -> None:
+        """Handle an incoming Slack event from an HTTP webhook."""
+        event = payload.get("event")
+        if event and isinstance(event, dict):
+            await self._on_message_event(event)
 
     # -- Internal handlers ----------------------------------------------------
 

@@ -49,6 +49,11 @@ class TelegramAdapter(ChannelAdapter):
         self._bot_token: str = self.config.get("bot_token", "") or os.getenv(
             "TELEGRAM_BOT_TOKEN", ""
         )
+        self._base_url: str | None = (
+            self.config.get("base_url")
+            or self.config.get("api_base")
+            or os.getenv("TELEGRAM_API_BASE")
+        )
         self._app = None  # telegram.ext.Application instance
         self._breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0)
 
@@ -140,7 +145,10 @@ class TelegramAdapter(ChannelAdapter):
                 "TelegramAdapter is not enabled (missing bot_token / TELEGRAM_BOT_TOKEN)"
             )
 
-        self._app = ApplicationBuilder().token(self._bot_token).build()
+        builder = ApplicationBuilder().token(self._bot_token)
+        if self._base_url:
+            builder = builder.base_url(self._base_url)
+        self._app = builder.build()
 
         # Register handlers for different message types
         self._app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_text))
@@ -177,7 +185,10 @@ class TelegramAdapter(ChannelAdapter):
 
         from app.core.channel_resilience import retry_with_backoff
 
-        chat_id = int(message.channel_id)
+        try:
+            chat_id: int | str = int(message.channel_id)
+        except (ValueError, TypeError):
+            chat_id = str(message.channel_id)
         metadata = message.metadata or {}
 
         # Handle attachments one at a time so a text-send failure does not resend files.
@@ -241,6 +252,37 @@ class TelegramAdapter(ChannelAdapter):
                 "platform": self.platform,
                 "error": str(exc),
             }
+
+    async def handle_webhook(self, data: dict) -> None:
+        """Handle incoming Telegram update from a webhook POST."""
+        if _TELEGRAM_AVAILABLE and self._app is not None:
+            update = Update.de_json(data, self._app.bot)
+            if update and update.message:
+                if update.message.text:
+                    msg = self._build_incoming(update, text=update.message.text)
+                    await self._dispatch(msg)
+                elif update.message.voice:
+                    await self._handle_voice(update, None)  # type: ignore[arg-type]
+                elif update.message.photo:
+                    await self._handle_photo(update, None)  # type: ignore[arg-type]
+                elif update.message.document:
+                    await self._handle_document(update, None)  # type: ignore[arg-type]
+        else:
+            message = data.get("message", {})
+            text = message.get("text", "")
+            chat = message.get("chat", {})
+            user = message.get("from", {})
+            if text and chat and user:
+                msg = IncomingMessage(
+                    channel="telegram",
+                    channel_id=str(chat.get("id", "")),
+                    sender_id=str(user.get("id", "")),
+                    sender_name=user.get("first_name", "") or str(user.get("id", "")),
+                    text=text,
+                    instance_id=self.instance_id,
+                    metadata={"content_type": "text"},
+                )
+                await self._dispatch(msg)
 
     # -- Internal handlers ----------------------------------------------------
 

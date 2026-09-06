@@ -26,7 +26,12 @@ class GoogleFormsAdapter(SurveyPlatformAdapter):
     # ------------------------------------------------------------------
 
     def _headers(self) -> dict[str, str]:
-        token = self.config.get("access_token", "")
+        token = (
+            self.config.get("access_token", "")
+            or self.config.get("token", "")
+            or self.config.get("Service Account JSON", "")
+            or self.config.get("OAuth Bearer Token", "")
+        )
         if not token:
             raise ValueError("Google Forms access_token not configured")
         return {

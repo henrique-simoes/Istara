@@ -75,6 +75,11 @@ class WhatsAppAdapter(ChannelAdapter):
         self._app_secret: str = self.config.get("app_secret", "") or os.getenv(
             "WHATSAPP_APP_SECRET", ""
         )
+        self._graph_api_base: str = (
+            self.config.get("graph_api_base")
+            or self.config.get("api_base")
+            or os.getenv("WHATSAPP_API_BASE", GRAPH_API_BASE)
+        ).rstrip("/")
         self._http: httpx.AsyncClient | None = None
         # Track last inbound timestamp per chat_id for 24-hour window
         self._last_inbound_at: dict[str, float] = {}
@@ -162,7 +167,7 @@ class WhatsAppAdapter(ChannelAdapter):
             raise RuntimeError("WhatsApp adapter is not running")
 
         self._ensure_download_size(declared_size, label)
-        metadata_resp = await self._http.get(f"{GRAPH_API_BASE}/{media_id}")
+        metadata_resp = await self._http.get(f"{self._graph_api_base}/{media_id}")
         metadata_resp.raise_for_status()
         media_metadata = metadata_resp.json()
 
@@ -225,7 +230,7 @@ class WhatsAppAdapter(ChannelAdapter):
         from app.core.channel_resilience import retry_with_backoff
 
         async def _do_send() -> None:
-            url = f"{GRAPH_API_BASE}/{self._phone_number_id}/messages"
+            url = f"{self._graph_api_base}/{self._phone_number_id}/messages"
             metadata = message.metadata or {}
 
             # Check 24-hour conversation window
@@ -266,7 +271,7 @@ class WhatsAppAdapter(ChannelAdapter):
         if self._http is None:
             return {"status": "stopped", "platform": self.platform}
         try:
-            url = f"{GRAPH_API_BASE}/{self._phone_number_id}"
+            url = f"{self._graph_api_base}/{self._phone_number_id}"
             resp = await self._http.get(url)
             resp.raise_for_status()
             data = resp.json()

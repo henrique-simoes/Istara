@@ -16,9 +16,11 @@ from app.models.channel_conversation import ChannelConversation
 from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
 from app.models.database import async_session
+from app.models.finding import Nugget
 from app.models.project import Project
 from app.models.research_deployment import ResearchDeployment
 from app.services.adaptive_interview import get_next_action, update_conversation_metadata
+from app.services.research_validity_service import persist_task_nugget_evidence_units
 
 logger = logging.getLogger(__name__)
 
@@ -247,6 +249,42 @@ async def process_inbound_channel_message(
             )
             return pi_response
 
+        # Research Spine Compliance: persist incoming participant answer as provisional Nugget & EvidenceUnits
+        if message.text and conversation.state in {"intro", "questions", "probing", "wrap_up"}:
+            questions = _safe_json_list(deployment.questions_json)
+            q_idx = conversation.current_question_index
+            if 0 < q_idx <= len(questions):
+                q_text = questions[q_idx - 1].get("text", f"Question {q_idx}")
+            elif questions:
+                q_text = questions[0].get("text", "Initial Question")
+            else:
+                q_text = "Research Question"
+
+            source_location = f"channel:{message.channel}:conv:{conversation.id}:msg:{inbound_msg.id}"
+            source_text = f"Q: {q_text}\nA: {message.text}"
+            nugget = Nugget(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                text=source_text,
+                source=f"channel:{message.channel}:{deployment.name}",
+                source_location=source_location,
+                tags=json.dumps([deployment.deployment_type, f"channel:{message.channel}", "channel-research"]),
+                phase="discover",
+            )
+            db.add(nugget)
+            await persist_task_nugget_evidence_units(
+                db,
+                project_id=project_id,
+                task_id=None,
+                nugget_id=nugget.id,
+                source_text=source_text,
+                source_location=source_location,
+                method=f"deployment:{deployment.deployment_type}",
+                phase="discover",
+                source_type="channel_response",
+                candidate_only=False,
+            )
+
         action = await get_next_action(conversation, deployment, message.text)
         action_state = _state_value(action.get("state"), conversation.state)
         conversation.state = action_state
@@ -284,6 +322,7 @@ async def process_inbound_channel_message(
 
         if action.get("action") == "complete":
             conversation.completed_at = now
+            deployment.current_responses = (deployment.current_responses or 0) + 1
 
         try:
             from app.core.improvement_governance import improvement_governance

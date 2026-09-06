@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 
@@ -16,6 +17,7 @@ from app.core.permissions import ProjectRole, get_visible_project_or_404
 from app.models.database import get_db
 from app.models.survey_integration import SurveyIntegration, SurveyLink
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 SUPPORTED_PLATFORMS = {"surveymonkey", "google_forms", "typeform"}
@@ -232,6 +234,46 @@ async def delete_integration(
     await db.commit()
 
 
+@router.get("/surveys/integrations/{integration_id}/health")
+async def health_check_survey_integration(
+    integration_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Run a live connectivity and credential health check on a survey platform integration."""
+    scoped_project_id, integration = await _get_project_integration_or_404(
+        db, request, integration_id, project_id, min_role="viewer"
+    )
+    if _is_demo_integration(integration):
+        return {
+            "healthy": True,
+            "platform": integration.platform,
+            "status": "healthy",
+            "demo": True,
+        }
+
+    adapter = _get_adapter(integration)
+    try:
+        result = await adapter.health_check()
+        result.setdefault("platform", integration.platform)
+        result.setdefault("status", "healthy" if result.get("healthy") else "unhealthy")
+        return result
+    except Exception as exc:
+        logger.warning(
+            "Survey integration health check failed for %s (%s): %s",
+            integration_id,
+            integration.platform,
+            exc,
+        )
+        return {
+            "healthy": False,
+            "platform": integration.platform,
+            "status": "unhealthy",
+            "error": str(exc),
+        }
+
+
 # ---------------------------------------------------------------------------
 # Platform survey listing / creation
 # ---------------------------------------------------------------------------
@@ -409,6 +451,7 @@ async def sync_responses(
         "status": "synced",
         "link_id": link_id,
         "project_id": scoped_project_id,
+        "responses_fetched": len(responses),
         **result,
     }
 
