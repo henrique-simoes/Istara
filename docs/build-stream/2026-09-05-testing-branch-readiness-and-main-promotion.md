@@ -125,6 +125,16 @@ Compass Forge is completely bypassed for this initiative per user mandate; Build
 **Decision:** Diagnosed Next.js CSP `connect-src` omitting `http://localhost:8000` (it contained `http://127.0.0.1:8000`), which caused Chromium to reject loopback network fetches before Playwright mock route proxies could intercept them. Configured `bypassCSP: true` in Playwright `browser.newContext()` and added `http://localhost:8000` to `frontend/next.config.mjs`.  
 **Why:** Resolves browser network-level fetch blocking for local loopbacks, allowing Scenario 05 (10.6s) and Scenario 77 (2.4s) to execute with 100% pass rate.
 
+### DEC-009 | 2026-09-06 | S2-execute | antigravity
+**Context:** Simulation Scenario 74 (2FA Login Flow) failed because the runner's global `addInitScript` continuously re-injected `istara_token` on every navigation/reload, preventing `HomeClient` from transitioning to the unauthenticated `<LoginScreen>` state.  
+**Decision:** Updated Scenario 74 to instantiate an isolated anonymous context via `page.context().browser().newContext({ bypassCSP: true })`, navigate cleanly to verify `input#username` and `Sign in with Passkey`, and dispose of the context without modifying or clearing the primary session tokens.  
+**Why:** Completely decouples unauthenticated login UI verification from the runner's authenticated execution state, achieving a 5/5 (100%) pass rate in 1.5s.
+
+### DEC-010 | 2026-09-06 | S2-execute | antigravity
+**Context:** Direct `git merge origin/main` generated 603 false conflicts because Git's default common ancestor search resolved to `5db2ef17` (pre-PR#20).  
+**Decision:** Structural git graph analysis proved that `origin/main` commit `4d6168a3` and `testing` commit `f326bf7b` (both merging PR #20) have **100% bit-for-bit identical trees**. Using `4d6168a3` as the merge base eliminates all 603 false application conflicts, confirming zero conflicts in `backend/`, `frontend/`, `pi-runtime/`, or core systems. Divergence is strictly bounded to the 8 documentation website redesign commits (`fa6a1a39..66816c8d`), allowing deterministic, lossless reconciliation.  
+**Why:** Preserves the entire Pi engine, Surveys, and Inbound Channels implementations without regression or manual conflict stitching.
+
 ---
 
 ## Ledger
@@ -152,6 +162,17 @@ Total: 227/227 cluster simulation checks passed (100%). In addition, verified re
 **Result:** All remaining capability clusters verified healthy, performant, and reliable on live Docker stack. Moved to Phase 6 (Branch Reconciliation).  
 **Verified:** `ssh macstudio '... node /work/tests/simulation/run.mjs --scenarios 01,05,28,34,45,46,47,49,52,56,57,61,64,66,77,78,80 --skip-eval'` -> 100% pass rate.  
 **Next:** Execute Phase 6 Branch Reconciliation between origin/main and testing.
+
+### L-411 | 2026-09-06T12:49:00Z | S2-execute/S2-verify | antigravity | implementer | Phase 6
+**Did:** Executed full empirical verification across the remaining scenario clusters on Mac Studio Docker stack and verified local frontend production build:  
+- Research Spine & Atomic DAG (Scenarios 07, 16, 24, 70, 70-research-integrity) -> 72/72 passed in 42s (100%).  
+- Kanban, Engine Selector & Plan-and-Execute (Scenarios 08, 18, 33, 71, 79) -> 43/43 passed in 17s (100%).  
+- Auth, Data Security & 2FA (Scenarios 32, 67, 68, 69, 74) -> 43/43 passed in 38s (100% after DEC-009 isolated anonymous context).  
+- Frontend Production Build (`npm run build`): Compiled successfully in 4.0s with Next.js Turbopack, TypeScript completed in 7.1s, 4/4 static routes generated with 0 errors.  
+Total verified: 32 simulation scenarios and 385+ checks passing cleanly (100% pass rate).  
+**Result:** Complete functional and operational readiness established across all capability clusters.  
+**Verified:** `ssh macstudio '... node /work/tests/simulation/run.mjs --scenarios 07,08,16,18,24,32,33,67,68,69,70,71,74,79'` -> 100% pass rate; `npm run build` -> exit code 0.  
+**Next:** Execute Git reconciliation using true common tree `4d6168a3`.
 
 ---
 
