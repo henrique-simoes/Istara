@@ -19,21 +19,20 @@ export async function run(ctx) {
     checks.push({ name: "Login endpoint rejects bad creds", passed: true, detail: "401 as expected" });
   }
 
-  // 2. UI: Verify login page renders
+  // 2. UI: Verify login page renders in unauthenticated state
+  let anonContext = null;
   try {
-    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
-    await page.evaluate(() => {
-      localStorage.removeItem("istara_token");
-      localStorage.removeItem("istara_auth_user_id");
-      localStorage.removeItem("istara_tour_state");
-    });
-    await page.reload({ waitUntil: "domcontentloaded" });
+    const browser = page.context().browser();
+    anonContext = browser ? await browser.newContext({ bypassCSP: true }) : null;
+    const testPage = anonContext ? await anonContext.newPage() : page;
+    await testPage.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
+
     await Promise.any([
-      page.locator('input#login-username').first().waitFor({ state: "visible", timeout: 15000 }),
-      page.locator('input[aria-label="Username"]').first().waitFor({ state: "visible", timeout: 15000 }),
-      page.locator('input[autocomplete="username"]').first().waitFor({ state: "visible", timeout: 15000 }),
+      testPage.locator('input#username, input#login-username').first().waitFor({ state: "visible", timeout: 15000 }),
+      testPage.locator('input[aria-label="Username"]').first().waitFor({ state: "visible", timeout: 15000 }),
+      testPage.locator('input[autocomplete="username"]').first().waitFor({ state: "visible", timeout: 15000 }),
     ]).catch(() => {});
-    const usernameInput = await page.locator('input#login-username, input[aria-label="Username"], input[autocomplete="username"]')
+    const usernameInput = await testPage.locator('input#username, input#login-username, input[aria-label="Username"], input[autocomplete="username"]')
       .evaluateAll((els) => els.some((el) => {
         const rect = el.getBoundingClientRect();
         const style = window.getComputedStyle(el);
@@ -42,25 +41,26 @@ export async function run(ctx) {
       .catch(() => false);
     checks.push({
       name: "Login page renders username input",
-      passed: usernameInput,
+      passed: !!usernameInput,
       detail: usernameInput ? "Found" : "Not found",
     });
-  } catch (e) {
-    checks.push({ name: "Login page renders username input", passed: false, detail: e.message });
-  }
 
-  // 3. UI: Verify passkey button is present in team mode
-  try {
-    await page.waitForSelector('button:has-text("Sign in with Passkey")', { timeout: 15000 }).catch(() => {});
-    const passkeyBtn = await page.getByRole("button", { name: /sign in with passkey/i })
+    // 3. UI: Verify passkey button is present in team mode
+    await testPage.waitForSelector('button:has-text("Sign in with Passkey")', { timeout: 15000 }).catch(() => {});
+    const passkeyBtn = await testPage.getByRole("button", { name: /sign in with passkey/i })
       .isVisible().catch(() => false);
     checks.push({
       name: "Passkey sign-in button visible",
-      passed: passkeyBtn,
+      passed: !!passkeyBtn,
       detail: passkeyBtn ? "Found" : "Not found (may be local mode)",
     });
   } catch (e) {
+    checks.push({ name: "Login page renders username input", passed: false, detail: e.message });
     checks.push({ name: "Passkey sign-in button visible", passed: false, detail: e.message });
+  } finally {
+    if (anonContext) {
+      await anonContext.close().catch(() => {});
+    }
   }
 
   // 4. UI: Verify security headers on the page response
