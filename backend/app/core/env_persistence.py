@@ -77,9 +77,29 @@ def _write_or_update_file(path: Path, key: str, value: str) -> None:
     path.write_text("".join(new_lines))
 
 
+def _is_shared_env_file(path: Path) -> bool:
+    """True when `path` is a shared-volume env file, not a private target.
+
+    The simulation-shared volume is mounted by more than one deployment,
+    so a secret written there can be read back by a different deployment —
+    the one file target the write-side denylist still protects. The explicit
+    ``ISTARA_ENV_FILE`` volume and the local ``.env`` fallback are
+    deployment-private and are safe write targets (the read-side precedence
+    rule in ``app.config`` already stops any file value from beating a
+    container-supplied secret).
+    """
+    return path in (
+        Path("/app/data/simulation-shared/runtime_overrides.env"),
+        Path("./data/simulation-shared/runtime_overrides.env"),
+    )
+
+
 # Server-auth and data-encryption secrets must never land in a shared env
-# file: memory + live settings only, so a stale/shared file cannot hijack
-# them on restart. Callers needing the distinction should read the return.
+# file: only the deployment-private primary target (explicit ISTARA_ENV_FILE
+# volume or local .env) receives them, never the shared-volume mirrors — so
+# a stale/shared file cannot become a cross-deployment secret channel, while
+# a runtime-generated secret still survives restarts (F-11/F-12). Callers
+# needing the distinction should read the return value.
 #
 # The list itself lives in the leaf module `app.core.env_secrets` and is
 # re-exported here: `app.config` needs the SAME boundary on the read side (a
@@ -93,8 +113,12 @@ def persist_env_value(key: str, value: str) -> bool:
     """Update process memory and the env file so the setting survives restarts.
 
     Returns True when the value was also written to file(s). Secrets in
-    ``SECRET_ENV_DENYLIST`` update memory and live settings only and return
-    False so callers can log custody honestly.
+    ``SECRET_ENV_DENYLIST`` are written to the deployment-private primary
+    target only (the explicit ``ISTARA_ENV_FILE`` volume, or the local
+    ``.env`` fallback) and never to the shared-volume mirror candidates; the
+    function returns False — memory and live settings only — solely when no
+    private target is configured and the primary itself resolves to a shared
+    file, so callers can log custody honestly.
     """
     # 1. Update os.environ immediately in memory
     os.environ[key] = value
@@ -110,14 +134,26 @@ def persist_env_value(key: str, value: str) -> bool:
     except Exception:
         pass
 
-    # Server-auth and data-encryption secrets must never land in a shared
-    # env file: memory + live settings only, so a stale/shared file cannot
-    # hijack them on restart.
+    # Server-auth and data-encryption secrets must never land in a
+    # shared-volume env file, where a stale copy could be read back by a
+    # different deployment — but they MUST reach the deployment-private
+    # primary target, or an auto-generated DATA_ENCRYPTION_KEY is regenerated
+    # on every restart and every field encrypted with the previous key
+    # becomes permanently unrecoverable (F-11/F-12). The read-side precedence
+    # rule in app.config (container environment wins for these keys) already
+    # neutralizes file-beats-operator hijack, which is what makes the private
+    # primary target safe to write.
+    primary_path = _env_file_path()
     if key in SECRET_ENV_DENYLIST:
-        return False
+        if not os.environ.get("ISTARA_ENV_FILE", "").strip() and _is_shared_env_file(primary_path):
+            return False
+        try:
+            _write_or_update_file(primary_path, key, value)
+        except Exception:
+            return False
+        return True
 
     # 3. Write to the primary env file
-    primary_path = _env_file_path()
     try:
         _write_or_update_file(primary_path, key, value)
     except Exception:

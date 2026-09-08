@@ -1,7 +1,9 @@
 """Runtime env-file precedence and persistent-path resolution.
 
 Pins the four behavioural hunks of `backend/app/config.py`'s import-time env
-loading (F-7/F-8/F-9). The loading runs at module import, so precedence is
+loading (F-7/F-8/F-9) plus the F-11/F-12 two-boot survival pins: a
+runtime-generated secret must still be in effect after a restart with no
+container-supplied key. The loading runs at module import, so precedence is
 exercised in a FRESH interpreter per case: importing the already-imported
 `app.config` in-process would prove nothing.
 """
@@ -244,3 +246,194 @@ def test_ephemeral_lance_db_warning_is_deferred_not_emitted_at_import(
     with caplog.at_level("WARNING"):
         resolved.log_storage_warnings()
     assert "LanceDB path is ephemeral" in caplog.text
+
+
+# --- F-11/F-12: runtime-generated secrets must survive a restart ------------
+
+
+def _run_boot(script: str, env: dict, cwd: Path, args=()) -> dict:
+    """Run `script` in a fresh interpreter; return its printed JSON object.
+
+    Same isolation as `_probe` (minimal base env, so no container secret
+    leaks in), but with a caller-supplied script and extra argv entries.
+    """
+    full_env = {
+        "PATH": os.environ.get("PATH", ""),
+        "HOME": os.environ.get("HOME", ""),
+        # Keep the fresh interpreter off the developer checkout's database.
+        "DATABASE_URL": "sqlite+aiosqlite:///:memory:",
+        **env,
+    }
+    proc = subprocess.run(
+        [sys.executable, "-c", script, str(_BACKEND), *args],
+        capture_output=True,
+        text=True,
+        cwd=str(cwd),
+        env=full_env,
+    )
+    assert proc.returncode == 0, f"boot probe failed:\n{proc.stderr}"
+    return json.loads(proc.stdout.strip().splitlines()[-1])
+
+
+_GENERATE_KEY_BOOT = textwrap.dedent(
+    """
+    import json, sys
+    sys.path.insert(0, sys.argv[1])
+    from app.config import settings
+    # Simulate a fresh deployment with no key configured anywhere. The
+    # developer checkout's backend/.env carries a dev key, which must not
+    # mask the generate-then-persist path under test.
+    settings.data_encryption_key = ""
+    from app.core.field_encryption import encrypt_field, ensure_encryption_key
+    key = ensure_encryption_key()
+    print(json.dumps({"key": key, "cipher": encrypt_field("f11-pin-plaintext")}))
+    """
+)
+
+_READ_KEY_BOOT = textwrap.dedent(
+    """
+    import json, sys
+    sys.path.insert(0, sys.argv[1])
+    from app.config import settings
+    from app.core.field_encryption import decrypt_field
+    print(json.dumps({
+        "key": settings.data_encryption_key,
+        "plain": decrypt_field(sys.argv[2]),
+    }))
+    """
+)
+
+
+def test_generated_data_encryption_key_survives_restart(tmp_path):
+    """F-11: an auto-generated key must still decrypt boot-1 rows after restart.
+
+    Two fresh interpreters, explicit ISTARA_ENV_FILE, no container-supplied
+    key — the docker-compose.vps.yml shape. Regression: the write-side
+    denylist kept the generated key memory-only, so boot 2 regenerated it
+    and boot-1 ciphertext decrypted to ''.
+    """
+    env_file = tmp_path / "runtime-state" / "env"
+    env = {"ISTARA_ENV_FILE": str(env_file)}
+
+    boot1 = _run_boot(_GENERATE_KEY_BOOT, env, tmp_path)
+    assert boot1["key"], "expected an auto-generated data encryption key"
+    assert env_file.is_file(), "generated key must reach the explicit ISTARA_ENV_FILE target"
+    assert f"DATA_ENCRYPTION_KEY={boot1['key']}" in env_file.read_text()
+
+    boot2 = _run_boot(_READ_KEY_BOOT, env, tmp_path, args=(boot1["cipher"],))
+    assert boot2["key"] == boot1["key"]
+    assert boot2["plain"] == "f11-pin-plaintext"
+
+
+_GENERATE_TOKEN_BOOT = textwrap.dedent(
+    """
+    import json, sys
+    sys.path.insert(0, sys.argv[1])
+    from app.api.routes.connections import _ensure_network_access_token
+    token, created = _ensure_network_access_token()
+    print(json.dumps({"token": token, "created": created}))
+    """
+)
+
+_READ_TOKEN_BOOT = textwrap.dedent(
+    """
+    import json, sys
+    sys.path.insert(0, sys.argv[1])
+    from app.config import settings
+    print(json.dumps({"token": settings.network_access_token}))
+    """
+)
+
+
+def test_generated_network_access_token_survives_restart(tmp_path):
+    """F-12: a lazily generated token must still be in effect after restart."""
+    env_file = tmp_path / "runtime-state" / "env"
+    env = {"ISTARA_ENV_FILE": str(env_file)}
+
+    boot1 = _run_boot(_GENERATE_TOKEN_BOOT, env, tmp_path)
+    assert boot1["created"] is True
+    assert boot1["token"], "expected a lazily generated network access token"
+    assert f"NETWORK_ACCESS_TOKEN={boot1['token']}" in env_file.read_text()
+
+    boot2 = _run_boot(_READ_TOKEN_BOOT, env, tmp_path)
+    assert boot2["token"] == boot1["token"]
+
+
+def test_network_middleware_installed_without_import_time_token(tmp_path):
+    """F-12: installation must not depend on a value that only exists post-import.
+
+    Team mode with no token at import (the vps shape after a restart that
+    lost the token) silently skipped the middleware under the old gate, so a
+    lazily generated token was never enforced until the next restart.
+    """
+    script = textwrap.dedent(
+        """
+        import json, sys
+        sys.path.insert(0, sys.argv[1])
+        from app.main import app
+        print(json.dumps({
+            "installed": [m.cls.__name__ for m in app.user_middleware],
+        }))
+        """
+    )
+    resolved = _run_boot(script, {"TEAM_MODE": "true"}, tmp_path)
+    assert "NetworkSecurityMiddleware" in resolved["installed"]
+
+
+def test_denylisted_secrets_never_land_in_shared_mirrors(tmp_path):
+    """F-11/F-12: with a private target AND a shared dir present, denylisted
+    keys reach the private file only; ordinary keys still mirror (which
+    proves the mirror path was live, making the negative assertion real)."""
+    shared = tmp_path / "data" / "simulation-shared"
+    shared.mkdir(parents=True)
+    env_file = tmp_path / "runtime-state" / "env"
+    script = textwrap.dedent(
+        """
+        import json, sys
+        sys.path.insert(0, sys.argv[1])
+        from app.core.env_persistence import persist_env_value
+        wrote_secret = persist_env_value("DATA_ENCRYPTION_KEY", "mirror-probe-secret")
+        wrote_plain = persist_env_value("LLM_PROVIDER", "mirror-probe-provider")
+        print(json.dumps({"wrote_secret": wrote_secret, "wrote_plain": wrote_plain}))
+        """
+    )
+    resolved = _run_boot(script, {"ISTARA_ENV_FILE": str(env_file)}, tmp_path)
+
+    assert resolved["wrote_secret"] is True
+    assert resolved["wrote_plain"] is True
+    assert "DATA_ENCRYPTION_KEY=mirror-probe-secret" in env_file.read_text()
+    mirror = shared / "runtime_overrides.env"
+    assert mirror.is_file()
+    assert "mirror-probe-provider" in mirror.read_text()
+    assert "mirror-probe-secret" not in mirror.read_text()
+
+
+def test_denylisted_secret_without_private_target_stays_memory_only(tmp_path):
+    """The residual write-side block: no ISTARA_ENV_FILE and a primary that
+    itself resolves to a shared-volume file — the secret stays memory-only so
+    a stale shared file can never become a cross-deployment secret channel."""
+    shared = tmp_path / "data" / "simulation-shared"
+    shared.mkdir(parents=True)
+    script = textwrap.dedent(
+        """
+        import json, sys
+        sys.path.insert(0, sys.argv[1])
+        from app.config import settings
+        from app.core.env_persistence import persist_env_value
+        wrote = persist_env_value("DATA_ENCRYPTION_KEY", "ephemeral-probe-secret")
+        import os
+        print(json.dumps({
+            "wrote": wrote,
+            "memory": os.environ.get("DATA_ENCRYPTION_KEY"),
+            "live_settings": settings.data_encryption_key,
+        }))
+        """
+    )
+    resolved = _run_boot(script, {}, tmp_path)
+
+    assert resolved["wrote"] is False
+    assert resolved["memory"] == "ephemeral-probe-secret"
+    assert resolved["live_settings"] == "ephemeral-probe-secret"
+    mirror = shared / "runtime_overrides.env"
+    if mirror.is_file():
+        assert "ephemeral-probe-secret" not in mirror.read_text()

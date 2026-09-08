@@ -13,6 +13,8 @@ from app.models.backup import BackupRecord
 from app.models.database import async_session, init_db
 from app.core.auth import create_token
 from app.core.backup_manager import BackupManager
+from app.core.backup_manager import _redact_env_content
+from app.core.env_persistence import persist_env_value
 
 
 @pytest.fixture(autouse=True)
@@ -248,3 +250,62 @@ def test_backup_copy_excludes_secret_and_local_model_artifacts(tmp_path):
     assert not (dest / "private.pem").exists()
     assert not (dest / "LLMs").exists()
     assert sorted(checksums) == ["archive/notes.txt"]
+
+
+def test_redact_env_content_redacts_url_userinfo(tmp_path, monkeypatch):
+    """DATABASE_URL credentials must not survive into backup archives."""
+    content = (
+        "DATABASE_URL=postgres://dbuser:s3cret@db.internal:5432/istara\n"
+        "PLAIN_HOST=db.internal\n"
+        "# comment=kept\n"
+    )
+    redacted = _redact_env_content(content)
+    assert "s3cret" not in redacted
+    assert "dbuser" not in redacted
+    assert redacted.splitlines()[0].startswith("DATABASE_URL=postgres://")
+    assert "PLAIN_HOST=db.internal" in redacted
+
+
+def test_persist_env_value_reports_file_custody(tmp_path, monkeypatch):
+    """Secrets reach the explicit private target; ordinary keys report True too.
+
+    F-11/F-12: with an explicit ISTARA_ENV_FILE volume, a denylisted secret
+    must be written there — keeping it memory-only regenerates it on every
+    restart and strands already-encrypted data. Memory-only (False) applies
+    solely when no private target is configured and the primary itself is a
+    shared-volume file (pinned in test_env_precedence.py).
+    """
+    from app.config import settings as app_settings
+
+    monkeypatch.setenv("ISTARA_ENV_FILE", str(tmp_path / "runtime.env"))
+    monkeypatch.setenv("DATA_ENCRYPTION_KEY", "orig-for-test")
+    monkeypatch.setenv("SOME_DISPLAY_NAME", "placeholder")
+    original_key = app_settings.data_encryption_key
+    try:
+        assert persist_env_value("DATA_ENCRYPTION_KEY", "test-key-value") is True
+        assert "DATA_ENCRYPTION_KEY=test-key-value" in (tmp_path / "runtime.env").read_text()
+        assert persist_env_value("SOME_DISPLAY_NAME", "shown") is True
+        assert "SOME_DISPLAY_NAME=shown" in (tmp_path / "runtime.env").read_text()
+    finally:
+        app_settings.data_encryption_key = original_key
+
+
+def test_persist_env_value_coerces_int_settings(tmp_path, monkeypatch):
+    """Persisting an int setting as a string must not poison numeric comparisons.
+
+    Regression: POST /api/backups/config stored BACKUP_RETENTION_COUNT via
+    setattr as the raw str, so the next create_backup crashed in
+    enforce_retention (int <= str). Coercion keeps the Settings type.
+    """
+    from app.config import settings as app_settings
+
+    monkeypatch.setenv("ISTARA_ENV_FILE", str(tmp_path / "runtime.env"))
+    original = app_settings.backup_retention_count
+    try:
+        assert persist_env_value("BACKUP_RETENTION_COUNT", "12") is True
+        assert app_settings.backup_retention_count == 12
+        assert isinstance(app_settings.backup_retention_count, int)
+        # The exact comparison that crashed must now hold.
+        assert 3 <= app_settings.backup_retention_count
+    finally:
+        app_settings.backup_retention_count = original

@@ -88,7 +88,7 @@ from app.core.audit_middleware import AuditLogMiddleware
 from app.core.backup_manager import backup_manager
 from app.core.file_watcher import FileWatcher
 from app.core.log_redaction import install_sensitive_log_redaction
-from app.core.network_security import NetworkSecurityMiddleware, requires_local_admin_network_guard
+from app.core.network_security import NetworkSecurityMiddleware
 from app.core.scheduler import scheduler
 from app.core.security_middleware import SecurityAuthMiddleware
 from app.core.version import read_istara_version
@@ -347,7 +347,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     _log.info("=" * 60)
                     _log.info("  ADMIN USER CREATED (first startup)")
                     _log.info(f"  Username: {admin_user}")
-                    _log.info("  Initial credentials saved to owner-only file: %s", credentials_path)
+                    _log.info(
+                        "  Initial credentials saved to owner-only file: %s", credentials_path
+                    )
                     _log.info("  Change this password after first login!")
                     _log.info("  Delete the credentials file after secure storage.")
                     _log.info("=" * 60)
@@ -748,13 +750,16 @@ app.add_middleware(
     ],
 )
 
-if app_settings.network_access_token or requires_local_admin_network_guard(app_settings):
-    app.add_middleware(NetworkSecurityMiddleware)
-    import logging
-
-    logging.getLogger(__name__).info(
-        "Network security enabled — non-localhost requests require access token or are denied"
-    )
+# Always installed: dispatch re-reads settings on every request and passes
+# through when no token is configured and no unsafe local-admin exposure
+# exists, so a NETWORK_ACCESS_TOKEN generated lazily at runtime (or restored
+# from the runtime env file on the next boot) takes effect without depending
+# on an import-time value (F-12). Gating installation on the token would
+# silently leave a token-enabled deployment unguarded until its next restart.
+app.add_middleware(NetworkSecurityMiddleware)
+__import__("logging").getLogger(__name__).info(
+    "Network security enabled — non-localhost requests require access token or are denied"
+)
 
 # Rate limiting
 if app_settings.rate_limit_enabled:
