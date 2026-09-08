@@ -6,10 +6,10 @@ item: pi-capability-inheritance
 branch: testing
 cf: { spec: CF-SPEC-29, tasks: [] }
 phase: "Phase 1 — Implementation waves (authority-and-boundary)"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
-last: { agent: claude-opus-5, at: 2026-09-08T10:47:29Z, ledger: L-20 }
+last: { agent: claude-opus-5, at: 2026-09-08T15:30:11Z, ledger: L-21 }
 next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
@@ -1124,12 +1124,12 @@ Why: votes={"a": {"candidate_id": "f2be3452af887bea5e0ee729b62bedf973b411b22c98b
 
 | ID | Severity | Where | Finding | CF task | Status |
 |----|----------|-------|---------|---------|--------|
-| F-1 | Blocker | `pi-runtime/src/provider.mjs` (`resolveCapabilities` transport gate) + `backend/app/core/pi_runtime/endpoint_policy.py` | `provider_transport_mismatch` makes 346/1352 catalog models unbindable (all 38 `openai`, 118 bedrock, 38 azure, 31 mistral, 41 google) because the derived `provider_kind` can never express `openai-responses` and friends; missed because the conformance harness passes `record.api` as the transport | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 | partially fixed (L-14) — derivation repaired, persisted endpoints still stranded; see F-4 |
+| F-1 | Blocker | `pi-runtime/src/provider.mjs` (`resolveCapabilities` transport gate) + `backend/app/core/pi_runtime/endpoint_policy.py` | `provider_transport_mismatch` makes 346/1352 catalog models unbindable (all 38 `openai`, 118 bedrock, 38 azure, 31 mistral, 41 google) because the derived `provider_kind` can never express `openai-responses` and friends; missed because the conformance harness passes `record.api` as the transport | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 | fixed (L-14) + F-4 (L-17), both verified (L-21) — derivation repaired AND persisted endpoints reconciled at bind |
 | F-2 | Major | `pi-runtime/src/worker.mjs:311` | `handlerTail` is declared inside the stdin `data` callback, so the claimed bind-before-prompt ordering invariant is per-chunk only; `supervisor.py:224-225` writes one frame per drain | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | fixed (L-13), verified (L-15) |
 | F-3 | Major | `pi-runtime/src/worker.mjs:311-330` (with `session.mjs:652-664`, `tools.mjs:24`) | The same chain adds a cross-session head-of-line block: a `session.close` blocked in `waitForIdle()` now starves every frame batched behind it; pre-change only its own session stalled | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | fixed (L-13), verified (L-15) |
-| F-4 | Blocker | `backend/app/core/pi_runtime/endpoint_policy.py` (`_apply_catalog_fields` call sites) + `backend/app/config.py` (`PiApiEndpoint.provider_kind`) | The F-1 fix repairs only the *derivation* of `provider_kind`. It is derived on POST/PUT alone, then persisted verbatim into `PI_API_ENDPOINTS` and reloaded verbatim — no load-time re-derivation, no backfill. Every OpenAI/xAI endpoint saved before the fix still carries `openai_compat` and still fails at bind (42 models: all 38 `openai/*`, all 4 `xai/*`). All four new transport-conformance tests derive the kind freshly, so none covers it | FIX-REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1-r2a | fixed (L-17) |
-| F-5 | Major | commit `a73b1a61`; commit `506dbb86` (`backend/app/config.py`) | `a73b1a61` ("remediate F-2/F-3…") contains only this lifecycle file — `worker.mjs`/`session.mjs`/`tools.mjs`/`test/worker.test.mjs` are uncommitted and `test/bind-ordering.test.mjs` is untracked, so HEAD carries the defective pre-fix runtime while L-13 claims both closed. Separately `506dbb86` swept ~50 unrelated `config.py` lines (`runtime_overrides.env` auto-load, `override=False`→`True`, `lance_db_path` validator, three new settings) whose consumers stay uncommitted | FIX-REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1-r2b | fixed (L-16) — r1b sources committed as cd1ff877 (5 pathed paths); config sweep routed to REV-pi-compat-20260908-config-sweep-506dbb86 (task 374) |
-| F-6 | Minor | `pi-runtime/src/session.mjs` (`CLOSE_WAIT_MS`), `pi-runtime/src/worker.mjs` (`shutdown()` drain) | The new bounds sit at or above their caller's budget: 5000 ms equals `supervisor.close_session`'s 5.0 s ack wait, and the 6000 ms tail drain exceeds `supervisor.shutdown`'s 5.0 s process wait — when the backstops fire the supervisor times out or `_force_stop`s instead of seeing the graceful path. Best-effort on the Python side, so nothing corrupts | FIX-REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1-auto | fixed (L-18) — CLOSE_WAIT_MS 3500, shutdown drain 4500, both < 5.0 s budgets |
+| F-4 | Blocker | `backend/app/core/pi_runtime/endpoint_policy.py` (`_apply_catalog_fields` call sites) + `backend/app/config.py` (`PiApiEndpoint.provider_kind`) | The F-1 fix repairs only the *derivation* of `provider_kind`. It is derived on POST/PUT alone, then persisted verbatim into `PI_API_ENDPOINTS` and reloaded verbatim — no load-time re-derivation, no backfill. Every OpenAI/xAI endpoint saved before the fix still carries `openai_compat` and still fails at bind (42 models: all 38 `openai/*`, all 4 `xai/*`). All four new transport-conformance tests derive the kind freshly, so none covers it | FIX-REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1-r2a | fixed (L-17), verified (L-21) |
+| F-5 | Major | commit `a73b1a61`; commit `506dbb86` (`backend/app/config.py`) | `a73b1a61` ("remediate F-2/F-3…") contains only this lifecycle file — `worker.mjs`/`session.mjs`/`tools.mjs`/`test/worker.test.mjs` are uncommitted and `test/bind-ordering.test.mjs` is untracked, so HEAD carries the defective pre-fix runtime while L-13 claims both closed. Separately `506dbb86` swept ~50 unrelated `config.py` lines (`runtime_overrides.env` auto-load, `override=False`→`True`, `lance_db_path` validator, three new settings) whose consumers stay uncommitted | FIX-REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1-r2b | fixed (L-16), verified (L-21) — r1b sources committed as cd1ff877 (5 pathed paths); config sweep routed to REV-pi-compat-20260908-config-sweep-506dbb86 (task 374), which reviewed (L-19) and remediated (L-20) it; the three swept `Settings` fields remain inert at HEAD |
+| F-6 | Minor | `pi-runtime/src/session.mjs` (`CLOSE_WAIT_MS`), `pi-runtime/src/worker.mjs` (`shutdown()` drain) | The new bounds sit at or above their caller's budget: 5000 ms equals `supervisor.close_session`'s 5.0 s ack wait, and the 6000 ms tail drain exceeds `supervisor.shutdown`'s 5.0 s process wait — when the backstops fire the supervisor times out or `_force_stop`s instead of seeing the graceful path. Best-effort on the Python side, so nothing corrupts | FIX-REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1-auto | fixed (L-18), verified (L-21) — CLOSE_WAIT_MS 3500, shutdown drain 4500, both < 5.0 s budgets; measured graceful shutdown 5-21 ms with a run in flight. Residual (accepted, no fix task): the drain and the per-session close bounds compose sequentially, so they exceed 5.0 s only in the pathological case where `waitForIdle` does not settle after `abort()` |
 | F-7 | Blocker | `backend/app/config.py:33-39` | `load_dotenv(ISTARA_ENV_FILE)` flipped `override=False`→`True`, inverting precedence so the persistent runtime env file beats container env for EVERY setting — including `ADMIN_PASSWORD`/`JWT_SECRET`/`NETWORK_ACCESS_TOKEN`/`DATA_ENCRYPTION_KEY`, all written to that file by HEAD's `persist_env_value` with no denylist, so rotating a secret via compose is a silent no-op. The mitigating `_FILE_WRITE_DENYLIST` is uncommitted, and being write-side only cannot neutralise files already written by earlier builds | FIX-REV-pi-compat-20260908-config-sweep-506dbb86-r1 | fixed (L-20) — read-side `SECRET_ENV_DENYLIST` guard in `config.py` + write-side denylist committed together; container env now wins for all four secrets |
 | F-8 | Major | `backend/app/config.py:14-26` | The import-time `runtime_overrides.env` auto-load is unconditional (no opt-in gate), `override=True`, CWD-relative, swallows all errors, and has no `break` so the LAST candidate wins — the reverse of `env_persistence._env_file_path()`'s first-match-wins. It runs before `ISTARA_ENV_FILE` is read (so the file can redirect its own target) and targets a `simulation-shared` path with zero provisioning anywhere in the repo | FIX-REV-pi-compat-20260908-config-sweep-506dbb86-r1 | fixed (L-20) — `ISTARA_RUNTIME_OVERRIDES` opt-in gate, first-match `break`, no file-sourced `ISTARA_ENV_FILE`, denylist applied, malformed file logged |
 | F-9 | Minor | `backend/app/config.py:464-484` | `_resolve_persistent_paths` guards only on `os.environ.get("LANCE_DB_PATH")`; pydantic-settings is case-insensitive, so a lowercase env var or a `.env`-file value equal to the default is silently rewritten, overriding a deliberate operator choice. Also warns at import time before logging is configured | FIX-REV-pi-compat-20260908-config-sweep-506dbb86-r1 | fixed (L-20) — guard is `model_fields_set`; warning deferred to `Settings.log_storage_warnings()` called from `main.py` lifespan |
@@ -1535,3 +1535,91 @@ Did: F-7 — `backend/app/config.py` now loads runtime env files through `_load_
 Result: F-7, F-8, F-9, F-10 flipped open → fixed (FIX-REV-pi-compat-20260908-config-sweep-506dbb86-r1). One fix-induced defect found and closed by my own new test: warning-and-continuing on a malformed runtime env file was not sufficient, because the same unparseable file was still handed to pydantic-settings' `env_file`, which re-raised the decode error and aborted startup — `_load_runtime_env_file()` now returns a bool and an unparseable file is withheld from `_BACKEND_ENV_FILES` (pinned by `test_malformed_runtime_env_file_does_not_break_import`). Behaviour change worth flagging to the re-reviewer: the developer checkout's `backend/.env` and `.env.local` both set `LANCE_DB_PATH=./data/lance_db`, which the old guard silently rewrote to `simulation-shared`; the F-9 fix now honours it, so a dev checkout with a `data/simulation-shared/` directory keeps the configured ephemeral path instead of being redirected. That is the intended F-9 semantics (a deliberate operator choice is never overridden), not a regression.
 Verified: `python3 -m pytest tests/test_env_precedence.py -q` → 14 passed in 1.24s. `python3 -m pytest tests/test_env_precedence.py tests/test_backup.py tests/pi_compat tests/test_settings.py tests/test_connections.py tests/test_field_encryption.py tests/test_mcp.py -q` → 118 passed in 32.31s. `python3 -m pytest tests/ -q -x --ignore=tests/simulation --ignore=tests/real_user_benchmark -k "config or env or settings or backup or encryption or auth"` → 341 passed, 1944 deselected in 131.05s. Direct F-7 repro (stale `ISTARA_ENV_FILE` holding `STALE` for all four secrets vs container env holding `OPERATOR`) → all four resolve to `OPERATOR` in both `os.environ` and `settings`, while `LLM_PROVIDER` still resolves to the file value, proving the override flip is preserved for ordinary settings. `python3 -m ruff check backend/app/config.py backend/app/core/env_persistence.py backend/app/main.py tests/test_env_precedence.py` → `config.py` 2 E501 identical to the HEAD baseline (the ACCEPTED `provider_kind` Literal line and the pre-existing `db_clean` line, neither touched), `env_persistence.py` and the new test file clean, `main.py`'s 2 errors both from the pre-existing uncommitted admin-bootstrap hunk. Scope respected: the three new `Settings` fields and the `PiApiEndpoint.provider_kind` Literal were not touched.
 Next: delta re-review of FIX-REV-pi-compat-20260908-config-sweep-506dbb86-r1 by pi-compat-20260908-code-reviewer.
+
+### L-21 | 2026-09-08T15:30:11Z | S3-review | claude-opus-5 | reviewer | Wave authority-and-boundary — delta re-review r2 <!-- bsc-ledger:REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r2 -->
+Did: delta re-review of the three completed fixes for round 1 of the authority-and-boundary wave —
+FIX-…-r1-r2a (F-4, commit `536f106f`), FIX-…-r1-r2b (F-5, commit `cd1ff877` + routing task 374) and
+FIX-…-r1-auto (F-6, commit `d66184e4`). Scope held to the fixes' own surface and immediate seams:
+`backend/app/core/pi_runtime/{endpoint_policy,endpoints,engine,model_manager}.py`, the two new
+`tests/pi_compat/test_transport_conformance.py` cases, `pi-runtime/src/{session,worker}.mjs`, and
+`backend/app/core/pi_runtime/supervisor.py` as the caller of the two changed constants. Broadened
+deliberately in two fix-induced directions, both stated here: (a) F-4 moved `provider_kind` from a
+*stored* value to a *derived* one on three hot paths, so I swept every remaining reader of
+`provider_kind` in `backend/` to find any consumer that now sees a different value than before —
+the embedding-endpoint filter (`model_manager.py:772,784`), `research_validity_route_evidence`'s
+DashScope discriminator, `PiEndpointResolver.describe`, and `agentic/model_source`'s codex
+exclusion; and (b) F-5's second half was *routed* rather than fixed, so I checked that the
+receiving track actually closed and that its accept rationale still holds against a HEAD that has
+moved twice since (`b1fe881e`, `7d218e73`).
+Result: **PASS**. All three cited findings are genuinely closed; no regression found on the changed
+surface; one accepted residual and two notes, none of them fix tasks.
+  **CONFIRMED FIXED — F-4.** `reconciled_provider_kind()` re-derives the kind from the catalog at
+  every layer that can reach the worker, and the coverage is complete rather than defence-in-depth
+  theatre: `PiEndpointResolver._build` is the only production constructor of a `ResolvedPiEndpoint`
+  from a stored `PiApiEndpoint`, `PiModelManager._materialize` routes `source == "settings"` back
+  through that resolver, and `engine._bind_payload` — the sole builder of the worker bind frame
+  (`engine.py:356,608`) — re-derives again for endpoints built outside the resolver. My probe over
+  nine cases: stale `openai/gpt-4o` and `xai/grok-4.3` both `openai_compat` → `openai_responses` at
+  the helper, resolver, catalog manager and bind payload; codex, anthropic and deepseek controls
+  unchanged; non-catalog gateway, `faux`, and unknown-model inputs all pass the stored kind through
+  untouched, so the AC-1 additive constraint holds. The r1 repro no longer reproduces end to end:
+  the node boundary still rejects the stale kind typed
+  (`provider_transport_mismatch:openai:gpt-4o:registry_api=openai-responses:configured=openai-completions`)
+  and binds the reconciled one, but Python no longer emits the stale kind at all. Unlike the four
+  F-1 tests, the two new tests start from a stored `PiApiEndpoint`, so the original blind spot is
+  now pinned. The `provider_kind`-reader sweep found no consumer that regresses: the embeddings
+  gateway picks its wire path from `_is_native_ollama`, not `provider_kind`, and the only settings
+  endpoints the reconciliation newly excludes from the embed pool are catalog *chat* models
+  (the `openai` catalog carries no embedding ids), which could never have served `/v1/embeddings`
+  under their own model name anyway; `describe()` has no callers.
+  **CONFIRMED FIXED — F-5.** Both halves. (a) `git status --porcelain` over `pi-runtime`, the four
+  changed `pi_runtime` modules and `tests/pi_compat` is empty, and the `worker/session/tools.mjs`
+  history now runs `c86ceeb1 → cd1ff877 → d66184e4`, so the pre-fix runtime that `a73b1a61` left in
+  HEAD is gone and L-13's claim is finally backed by HEAD. (b) The `config.py` sweep was routed to
+  `REV-pi-compat-20260908-config-sweep-506dbb86` (task 374) rather than split — the finding's own
+  stated alternative — and that track has since closed: reviewed at L-19 (fail, F-7..F-10) and
+  remediated at L-20 + `7d218e73`. I re-verified the load-bearing part of its accept rationale
+  against current HEAD: `git grep` for `keyword_index_dir`, `data_encryption_previous_keys` and
+  `session_max_inactive_minutes` outside `config.py` still returns nothing, so the three swept
+  fields remain inert and the deliberately uncommitted `keyword_index.py` / `auth_sessions.py` /
+  `field_encryption.py` consumers are a landing-order choice, not an unreviewed behaviour change.
+  **CONFIRMED FIXED — F-6, with an accepted residual.** `CLOSE_WAIT_MS` is 3500 and the shutdown
+  tail drain is 4500, both strictly under `supervisor.close_session`'s and `supervisor.shutdown`'s
+  5.0 s waits (`supervisor.py:587,603`; the uncommitted supervisor hunk in the tree adds only a
+  node-binary existence check and does not touch either budget). I measured the graceful path
+  rather than trusting the constants: a probe spawning the real worker, opening a session, binding
+  it to a never-responding loopback provider and prompting, then timing the `shutdown` frame to
+  process exit → **5–21 ms**, because `turn.prompt` is dispatched without `await` (so its tail
+  settles immediately) and `agent.abort()` unblocks `waitForIdle` long before the backstop. RESIDUAL
+  (accepted, no fix task): `shutdown()` runs the ≤4500 ms drain and *then* a sequential
+  `await session.close()` (≤3500 ms) per still-live session, so the two bounds compose above 5.0 s
+  in the pathological case where `waitForIdle` does not settle after `abort()`. L-18's argument
+  ("drain > close so one queued close can settle inside the drain") is correct for the drain phase
+  and is why the 4500 ms timer never fires in practice, but it does not cover the post-drain close
+  loop. Consequence is unchanged from the original F-6: the supervisor `_force_stop`s instead of
+  observing a graceful exit, all best-effort teardown, nothing corrupts. Recorded here so it is not
+  re-asserted as an unconditional guarantee.
+  **NOTE (no finding).** `reconciled_provider_kind` falls back to `auth_provider` when `pi_provider`
+  is empty, whereas `_apply_catalog_fields` keys on `pi_provider` alone. An endpoint with
+  `pi_provider=""`, `auth_provider="openai"` and `model="gpt-4o"` would therefore be reconciled by
+  the read path but was never catalog-managed by the write path. It is unreachable from the product:
+  `PiModelManagement.tsx:addModel` always sends `pi_provider`, and `_apply_catalog_fields` is what
+  populates `auth_provider` in the first place. Worth keeping the two predicates identical if either
+  is touched again.
+Verified: `cd pi-runtime && npm test` → 100 pass / 0 fail;
+`uv run --project backend --extra dev python -m pytest tests/pi_compat -q` → 11 passed;
+`… pytest tests/pi_production -q` → 475 passed — all three reproducing the fixer's numbers on the
+committed tree. F-4 probes (Python 9-case reconciliation matrix across helper/resolver/manager/bind;
+node `buildRealProvider` stale-vs-reconciled) both pass. F-5 checks: in-scope `git status` clean,
+`git log -- pi-runtime/src/{worker,session,tools}.mjs` ends at `d66184e4`, both config-sweep tasks
+`status: done`, zero HEAD consumers of the three accepted fields. F-6: source constants 3500/4500
+confirmed against `supervisor.py:587,603`, plus the 5–21 ms measured shutdown probe. CF rows on
+REREV-…-r2: 7 × `command`, 1 × `review_verdict` (pass), 1 × `self_report`. No repository file
+changed by this stage except this lifecycle file (register rows F-1/F-4/F-5/F-6, this entry, Status
+Block). Note: HEAD moved twice under me mid-review (`b1fe881e`, `7d218e73`, both the concurrent
+config-sweep track) in this shared worktree; every judgement above was re-checked against the
+current HEAD.
+Next: the authority-and-boundary wave has no open findings from this lineage — F-1..F-6 are all
+fixed and verified. Conductor may run the wave-boundary supervisor audit. Out of my scope but
+gating ship: `FIX-REV-pi-compat-20260908-config-sweep-506dbb86-r1` still awaits its own delta
+re-review (L-20's `Next`), and the three uncommitted durable-lane consumers must land with it.
