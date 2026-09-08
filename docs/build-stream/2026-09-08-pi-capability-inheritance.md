@@ -6,11 +6,11 @@ item: pi-capability-inheritance
 branch: testing
 cf: { spec: CF-SPEC-29, tasks: [] }
 phase: "Phase 1 — Implementation waves (authority-and-boundary)"
-stage: S3-review
+stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: claude-opus-5, at: 2026-09-08T10:07:37Z, ledger: L-12 }
-next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
+last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-08T10:13:34Z, ledger: L-13 }
+next_action: "Delta re-review FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b (F-2/F-3 surface); F-1 (r1) still open."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1125,8 +1125,8 @@ Why: votes={"a": {"candidate_id": "f2be3452af887bea5e0ee729b62bedf973b411b22c98b
 | ID | Severity | Where | Finding | CF task | Status |
 |----|----------|-------|---------|---------|--------|
 | F-1 | Blocker | `pi-runtime/src/provider.mjs` (`resolveCapabilities` transport gate) + `backend/app/core/pi_runtime/endpoint_policy.py` | `provider_transport_mismatch` makes 346/1352 catalog models unbindable (all 38 `openai`, 118 bedrock, 38 azure, 31 mistral, 41 google) because the derived `provider_kind` can never express `openai-responses` and friends; missed because the conformance harness passes `record.api` as the transport | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 | open |
-| F-2 | Major | `pi-runtime/src/worker.mjs:311` | `handlerTail` is declared inside the stdin `data` callback, so the claimed bind-before-prompt ordering invariant is per-chunk only; `supervisor.py:224-225` writes one frame per drain | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | open |
-| F-3 | Major | `pi-runtime/src/worker.mjs:311-330` (with `session.mjs:652-664`, `tools.mjs:24`) | The same chain adds a cross-session head-of-line block: a `session.close` blocked in `waitForIdle()` now starves every frame batched behind it; pre-change only its own session stalled | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | open |
+| F-2 | Major | `pi-runtime/src/worker.mjs:311` | `handlerTail` is declared inside the stdin `data` callback, so the claimed bind-before-prompt ordering invariant is per-chunk only; `supervisor.py:224-225` writes one frame per drain | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | fixed (L-13) |
+| F-3 | Major | `pi-runtime/src/worker.mjs:311-330` (with `session.mjs:652-664`, `tools.mjs:24`) | The same chain adds a cross-session head-of-line block: a `session.close` blocked in `waitForIdle()` now starves every frame batched behind it; pre-change only its own session stalled | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | fixed (L-13) |
 
 ## Append-Only Ledger
 - **L-001 | 2026-09-08 | S0-frame | pi | —**
@@ -1415,3 +1415,9 @@ cross-check -> 346/1352 models affected; `_apply_catalog_fields("openai","gpt-4o
 session.close is in flight, post-change session B never opens.
 Next: S4-remediate — pi-compat-20260908-fixer takes FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 and FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b; conductor dispatches one delta
 re-review to this role after both are terminal.
+
+### L-13 | 2026-09-08T10:13:34Z | S4-remediate | meta/muse-spark-1.3-contributor | remediator | Wave authority-and-boundary F-2+F-3 <!-- bsc-ledger:FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b -->
+Did: fixed the per-chunk `handlerTail` + cross-session head-of-line block as one construct. `pi-runtime/src/worker.mjs`: dropped the per-callback global chain; session-keyed frames now serialize on module-scope per-session tails (ordering survives chunk boundaries, sessions never share a tail), connection-level frames run immediately, `shutdown()` drains tails bounded (6s). `pi-runtime/src/session.mjs`: `bindProvider` tracks its in-flight promise on `_pendingBind` (set synchronously) and `prompt`/`providerTurn` await it — explicit cross-chunk bind-before-prompt that survives any dispatch batching; `close()` drains `_pendingTools` BEFORE `waitForIdle` and bounds the wait at 5s (`CLOSE_WAIT_MS`) so one session's close can never wedge its own queue. `pi-runtime/src/tools.mjs`: `execute` honours the pi-agent-core AbortSignal (3rd arg) — pre-aborted calls return `tool_aborted` without round-tripping, in-flight calls race the request against the abort event. Comments/claims rewritten to match what is enforced (per-session tails + pending-bind await, not a global chain). Regression tests: NEW `pi-runtime/test/bind-ordering.test.mjs` (3 deterministic F-2 unit pins: tracking, prompt-awaits-bind, providerTurn-awaits-bind) + 2 black-box tests in `test/worker.test.mjs` (cross-chunk bind->prompt ordering; blocked-close never starves session B). Findings F-2, F-3 flipped open -> fixed.
+Result: FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b complete — both findings closed; code comment and ledger claim now match the enforced mechanism.
+Verified: `cd pi-runtime && npm test` -> 92 pass / 0 fail (87 baseline + 5 new); negative control on pre-fix src -> bind-ordering 0/3 pass, F-3 black-box times out with session B never opening (15.2s, reproduces the reviewer's A/B); post-fix all green; `uv run pytest tests/pi_production -q` -> 475 passed. CF rows on FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b: 3 x `command`, 1 x `self_report`.
+Next: stage exit — delta re-review of FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b (reviewer verifies the changed surface: worker dispatch, session bind/close, tool abort, and the 5 new tests).
