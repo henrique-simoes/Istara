@@ -17,7 +17,6 @@ import {
   X,
 } from "lucide-react";
 import { piCatalogApi, piEndpoints, piOAuthApi } from "@/lib/api";
-import SeeMoreList from "@/components/common/SeeMoreList";
 import type { PiCatalogModel, PiCatalogProvider, PiEndpoint, PiOAuthFlow } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -781,13 +780,9 @@ export default function PiModelManagement() {
             <p className="mt-1 text-xs text-slate-500">The built-in Pi endpoint remains available; add a provider above to make another model selectable in Chat.</p>
           </div>
         ) : (
-          <SeeMoreList
-            items={endpoints}
-            noun="model"
-            listId="pi-connected-models"
-            listClassName="divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700"
-            renderItem={(endpoint) => (
-              <div role="listitem" key={endpoint.endpoint_id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+            {endpoints.map((endpoint) => (
+              <li key={endpoint.endpoint_id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">{endpoint.pi_model || endpoint.model}</p>
                   <p className="mt-1 truncate font-mono text-xs text-slate-500 dark:text-slate-400">{endpoint.pi_provider || endpoint.provider_kind} · {endpoint.endpoint_id}</p>
@@ -812,9 +807,9 @@ export default function PiModelManagement() {
                     <Trash2 size={17} />
                   </button>
                 </div>
-              </div>
-            )}
-          />
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
@@ -837,15 +832,11 @@ export default function PiModelManagement() {
             <p className="mt-1 text-xs leading-5 text-istara-700 dark:text-istara-300">No preference is set. The existing Research Spine selector chooses distinct healthy models for each governed run.</p>
           </div>
         ) : (
-          <SeeMoreList
-            items={researchEndpointIds}
-            noun="preference"
-            listId="pi-research-preferences"
-            listClassName="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700"
-            renderItem={(endpointId, index) => {
+          <ol className="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+            {researchEndpointIds.map((endpointId, index) => {
               const endpoint = endpoints.find((item) => item.endpoint_id === endpointId);
               return (
-                <div role="listitem" key={endpointId} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <li key={endpointId} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.1em] text-istara-700 dark:text-istara-300">{index === 0 ? "Primary preference" : `Preference ${index + 1}`}</p>
                     <p className="mt-1 truncate text-sm font-semibold text-slate-950 dark:text-white">{endpoint?.pi_model || endpoint?.model || endpointId}</p>
@@ -856,10 +847,10 @@ export default function PiModelManagement() {
                     <button type="button" className="ui-icon-button" disabled={index === researchEndpointIds.length - 1} onClick={() => moveResearchPreference(index, 1)} aria-label={`Move ${endpoint?.model || endpointId} later`}><ArrowDown size={16} /></button>
                     <button type="button" className="ui-icon-button text-slate-500 hover:text-red-700" onClick={() => setResearchEndpointIds((current) => current.filter((id) => id !== endpointId))} aria-label={`Remove ${endpoint?.model || endpointId} from research preferences`}><Trash2 size={16} /></button>
                   </div>
-                </div>
+                </li>
               );
-            }}
-          />
+            })}
+          </ol>
         )}
 
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">
