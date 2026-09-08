@@ -1,47 +1,114 @@
 """Istara application configuration."""
 
+import logging
 import os
 import re
 import subprocess
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 from pydantic_settings import BaseSettings
+
+from app.core.env_persistence import SECRET_ENV_DENYLIST
+
+_logger = logging.getLogger(__name__)
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
 
-# Persistent runtime overrides (e.g. model & ensemble preferences changed in UI)
-# take precedence over static container env on restarts
-for _candidate_override in [
-    Path("/app/data/simulation-shared/runtime_overrides.env"),
-    Path("./data/simulation-shared/runtime_overrides.env"),
-    Path(_BACKEND_DIR / "data/simulation-shared/runtime_overrides.env"),
-]:
-    if _candidate_override.is_file():
-        try:
-            from dotenv import load_dotenv
+# --- Runtime environment precedence -----------------------------------------
+# Highest wins:
+#   1. Process/container environment for the server-auth and data-encryption
+#      secrets in SECRET_ENV_DENYLIST. A runtime env file may only SUPPLY these
+#      when the environment does not already set them, so rotating a secret
+#      through docker-compose is never silently ignored. (Files written by
+#      earlier builds still carry these keys, which is why the write-side
+#      denylist in env_persistence is necessary but not sufficient.)
+#   2. Runtime env file named by ISTARA_ENV_FILE, for every other key. UI-changed
+#      model/ensemble preferences are persisted there and must survive a
+#      restart, so they DO override the container environment.
+#   3. Opt-in runtime_overrides.env (ISTARA_RUNTIME_OVERRIDES), loaded BEFORE
+#      the ISTARA_ENV_FILE target so the primary write target of
+#      env_persistence._env_file_path() wins on conflict — the same
+#      first-match-wins order the writer uses.
+#   4. Process/container environment for every non-denylisted key.
+#   5. Static backend .env / .env.local, via pydantic-settings (_BACKEND_ENV_FILES).
+#
+# ISTARA_ENV_FILE is never honoured FROM a file: a runtime env file must not be
+# able to redirect the runtime env target it was itself loaded from.
+_FILE_UNSETTABLE_KEYS = frozenset({"ISTARA_ENV_FILE"})
 
-            load_dotenv(str(_candidate_override), override=True)
-        except Exception:
-            pass
+
+def _load_runtime_env_file(path: Path) -> bool:
+    """Merge a runtime env file into os.environ under the precedence rules above.
+
+    Returns True when the file parsed. A False return means the file must also
+    be withheld from pydantic-settings' ``env_file``, which would otherwise
+    raise the very same decode error and abort startup.
+    """
+    try:
+        from dotenv import dotenv_values
+
+        values = dotenv_values(str(path))
+    except Exception:
+        # Never silently swallow: a runtime env file that does not parse is an
+        # operator-visible misconfiguration, not a no-op.
+        _logger.warning("Ignoring unreadable runtime env file %s", path, exc_info=True)
+        return False
+    for key, value in values.items():
+        if value is None or key in _FILE_UNSETTABLE_KEYS:
+            continue
+        if key in SECRET_ENV_DENYLIST and os.environ.get(key, "").strip():
+            # The container environment is authoritative for secrets.
+            continue
+        os.environ[key] = value
+    return True
+
+
+def _runtime_overrides_enabled() -> bool:
+    return os.environ.get("ISTARA_RUNTIME_OVERRIDES", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
 
 # ISTARA_ENV_FILE: writable runtime-env target for read-only containers
 # (deployed stacks persist pi endpoints / encryption keys there). When set it
 # is BOTH loaded at import (so runtime-persisted values reload on restart)
-# and used by env_persistence writers.
+# and used by env_persistence writers. Read it from the process environment
+# FIRST, so no file-sourced value can influence which file we then read.
 _RUNTIME_ENV_FILE = os.environ.get("ISTARA_ENV_FILE", "").strip()
-if _RUNTIME_ENV_FILE and Path(_RUNTIME_ENV_FILE).is_file():
-    try:
-        from dotenv import load_dotenv
 
-        load_dotenv(_RUNTIME_ENV_FILE, override=True)
-    except Exception:  # pragma: no cover - dotenv is a pydantic-settings dep
-        pass
+# `data/simulation-shared` is an external mount convention: nothing in this
+# repository provisions it (no compose volume, no script). The auto-load is
+# therefore opt-in via ISTARA_RUNTIME_OVERRIDES, so a stray CWD-relative
+# `./data/simulation-shared/runtime_overrides.env` cannot inject environment
+# into any process that merely happens to run from that directory.
+if _runtime_overrides_enabled():
+    for _candidate_override in (
+        Path("/app/data/simulation-shared/runtime_overrides.env"),
+        Path("./data/simulation-shared/runtime_overrides.env"),
+        _BACKEND_DIR / "data/simulation-shared/runtime_overrides.env",
+    ):
+        if _candidate_override.is_file():
+            _load_runtime_env_file(_candidate_override)
+            break  # first match wins, matching env_persistence._env_file_path()
+
+# The runtime file is also handed to pydantic-settings, where it ranks BELOW
+# os.environ. That is what makes rule 1 a precedence rule rather than erasure:
+# a denylisted secret still present in a file written by an earlier build keeps
+# working when the container supplies nothing, so already-encrypted data stays
+# decryptable — it just can no longer beat an operator-supplied value.
+_RUNTIME_ENV_FILE_USABLE = bool(_RUNTIME_ENV_FILE)
+if _RUNTIME_ENV_FILE and Path(_RUNTIME_ENV_FILE).is_file():
+    _RUNTIME_ENV_FILE_USABLE = _load_runtime_env_file(Path(_RUNTIME_ENV_FILE))
+
 _BACKEND_ENV_FILES = (
-    (str(_BACKEND_DIR / ".env"), str(_BACKEND_DIR / ".env.local"))
-    if not _RUNTIME_ENV_FILE
-    else (_RUNTIME_ENV_FILE, str(_BACKEND_DIR / ".env"), str(_BACKEND_DIR / ".env.local"))
+    (_RUNTIME_ENV_FILE, str(_BACKEND_DIR / ".env"), str(_BACKEND_DIR / ".env.local"))
+    if _RUNTIME_ENV_FILE_USABLE
+    else (str(_BACKEND_DIR / ".env"), str(_BACKEND_DIR / ".env.local"))
 )
 
 
@@ -460,10 +527,25 @@ class Settings(BaseSettings):
         "extra": "ignore",
     }
 
+    # Set by _resolve_persistent_paths; surfaced by log_storage_warnings() at
+    # startup rather than at import time (see F-9).
+    _ephemeral_lance_db: bool = PrivateAttr(default=False)
+
     @model_validator(mode="after")
     def _resolve_persistent_paths(self) -> "Settings":
-        """Ensure vector database paths resolve to persistent storage if available."""
-        if self.lance_db_path == "./data/lance_db" and not os.environ.get("LANCE_DB_PATH"):
+        """Ensure vector database paths resolve to persistent storage if available.
+
+        Only ever rewrites an UNSET ``lance_db_path``. ``model_fields_set`` is
+        the authoritative test: it covers every explicit source pydantic uses
+        (an env var in any case — pydantic-settings is case-insensitive, so a
+        lowercase ``lance_db_path`` counts — a ``.env`` entry, or an init
+        kwarg), where the old single-case ``os.environ["LANCE_DB_PATH"]`` probe
+        silently overrode a deliberate operator choice.
+        """
+        if "lance_db_path" in self.model_fields_set:
+            self._ephemeral_lance_db = False
+            return self
+        if self.lance_db_path == "./data/lance_db":
             if Path("/app/data/simulation-shared").is_dir():
                 self.lance_db_path = "/app/data/simulation-shared/lance_db"
             elif Path("./data/simulation-shared").is_dir():
@@ -473,16 +555,21 @@ class Settings(BaseSettings):
                 shared_dir = Path(db_clean).parent
                 if shared_dir.is_dir():
                     self.lance_db_path = str(shared_dir / "lance_db")
-            if self.lance_db_path == "./data/lance_db":
-                import logging
-
-                logging.getLogger(__name__).warning(
-                    "LanceDB path is ephemeral (%s); chunks will not survive "
-                    "container restarts. Mount persistent simulation-shared storage "
-                    "for the durable lane.",
-                    self.lance_db_path,
-                )
+            # Deferred, not emitted here: this validator runs at import time,
+            # before logging is configured, on every dev and test run.
+            # main.py's startup calls log_storage_warnings() once logging is up.
+            self._ephemeral_lance_db = self.lance_db_path == "./data/lance_db"
         return self
+
+    def log_storage_warnings(self) -> None:
+        """Emit deferred storage warnings once application logging is configured."""
+        if getattr(self, "_ephemeral_lance_db", False):
+            _logger.warning(
+                "LanceDB path is ephemeral (%s); chunks will not survive "
+                "container restarts. Mount persistent simulation-shared storage "
+                "for the durable lane.",
+                self.lance_db_path,
+            )
 
     def resolve_llm_fallback_api_key(self) -> str:
         """Return fallback API key from env first, then the configured keychain service."""

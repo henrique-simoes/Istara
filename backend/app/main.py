@@ -225,6 +225,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup
     app_settings.ensure_dirs()
     app_settings.ensure_secrets()
+    # Deferred from config import time, when logging is not yet configured.
+    app_settings.log_storage_warnings()
     try:
         from app.core.auth_origins import (
             production_security_configuration_issues,
@@ -311,34 +313,52 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     recovery_codes_hashed="",
                 )
                 db.add(user)
-                await replace_recovery_codes(
-                    db,
-                    user_id=user.id,
-                    codes=recovery_codes,
-                    created_by_user_id=user.id,
-                )
-                await db.commit()
-                _log = __import__("logging").getLogger(__name__)
-                credentials_path = _write_initial_admin_credentials_file(
-                    username=admin_user,
-                    password=admin_pass,
-                    recovery_codes=recovery_codes,
-                )
-                _log.info("=" * 60)
-                _log.info("  ADMIN USER CREATED (first startup)")
-                _log.info(f"  Username: {admin_user}")
-                _log.info("  Initial credentials saved to owner-only file: %s", credentials_path)
-                _log.info("  Change this password after first login!")
-                _log.info("  Delete the credentials file after secure storage.")
-                _log.info("=" * 60)
-                # Persist to the runtime env file if auto-generated
-                if not app_settings.admin_password:
-                    try:
-                        from app.core.env_persistence import persist_env_value
+                bootstrapped = True
+                try:
+                    await replace_recovery_codes(
+                        db,
+                        user_id=user.id,
+                        codes=recovery_codes,
+                        created_by_user_id=user.id,
+                    )
+                    await db.commit()
+                except Exception as _bootstrap_exc:
+                    # Concurrent startups race here: the username unique
+                    # constraint guarantees at most one first admin wins; the
+                    # loser rolls back instead of half-creating an account.
+                    await db.rollback()
+                    from sqlalchemy.exc import IntegrityError as _IntegrityError
 
-                        persist_env_value("ADMIN_PASSWORD", admin_pass)
-                    except Exception:
-                        pass
+                    if isinstance(_bootstrap_exc, _IntegrityError):
+                        _log = __import__("logging").getLogger(__name__)
+                        _log.info("Admin bootstrap already completed by a concurrent startup.")
+                        bootstrapped = False
+                    else:
+                        raise
+                if not bootstrapped:
+                    pass  # Lost the concurrent-startup race; nothing to report.
+                else:
+                    _log = __import__("logging").getLogger(__name__)
+                    credentials_path = _write_initial_admin_credentials_file(
+                        username=admin_user,
+                        password=admin_pass,
+                        recovery_codes=recovery_codes,
+                    )
+                    _log.info("=" * 60)
+                    _log.info("  ADMIN USER CREATED (first startup)")
+                    _log.info(f"  Username: {admin_user}")
+                    _log.info("  Initial credentials saved to owner-only file: %s", credentials_path)
+                    _log.info("  Change this password after first login!")
+                    _log.info("  Delete the credentials file after secure storage.")
+                    _log.info("=" * 60)
+                    # Persist to the runtime env file if auto-generated
+                    if not app_settings.admin_password:
+                        try:
+                            from app.core.env_persistence import persist_env_value
+
+                            persist_env_value("ADMIN_PASSWORD", admin_pass)
+                        except Exception:
+                            pass
     except Exception as e:
         __import__("logging").getLogger(__name__).warning(f"Admin bootstrap skipped: {e}")
     load_default_skills()

@@ -4,6 +4,36 @@ import os
 from pathlib import Path
 
 
+def _coerce_for_settings(attr: str, value: str):
+    """Coerce a persisted string to the Settings field type when safe.
+
+    Without this, ``setattr(settings, attr, "12")`` stores a str into an
+    int field (pydantic does not validate plain setattr), which later
+    crashes numeric comparisons (e.g. backup retention enforcement).
+    Unknown fields or unparseable values pass through unchanged.
+    """
+    try:
+        from app.config import Settings
+
+        annotation = str(Settings.model_fields.get(attr, {}).annotation or "")
+    except Exception:
+        return value
+    try:
+        if annotation == "<class 'int'>":
+            return int(str(value).strip())
+        if annotation == "<class 'float'>":
+            return float(str(value).strip())
+        if annotation == "<class 'bool'>":
+            lowered = str(value).strip().lower()
+            if lowered in ("1", "true", "yes", "on"):
+                return True
+            if lowered in ("0", "false", "no", "off"):
+                return False
+    except (ValueError, TypeError):
+        pass
+    return value
+
+
 def _env_file_path() -> Path:
     """Configurable .env target (ISTARA_ENV_FILE) for read-only containers.
 
@@ -12,19 +42,23 @@ def _env_file_path() -> Path:
     volume. Local checkouts keep the historical `.env` behavior.
     """
     configured = os.environ.get("ISTARA_ENV_FILE", "").strip()
-    return Path(configured) if configured else Path(".env")
+    if configured:
+        return Path(configured)
+    if Path("/app/data/simulation-shared").is_dir():
+        return Path("/app/data/simulation-shared/runtime_overrides.env")
+    if Path("./data/simulation-shared").is_dir():
+        return Path("./data/simulation-shared/runtime_overrides.env")
+    return Path(".env")
 
 
-def persist_env_value(key: str, value: str) -> None:
-    """Update the env file so the setting survives restarts."""
-    env_path = _env_file_path()
-    if not env_path.parent.exists():
-        env_path.parent.mkdir(parents=True, exist_ok=True)
-    if not env_path.exists():
-        env_path.write_text(f"{key}={value}\n")
+def _write_or_update_file(path: Path, key: str, value: str) -> None:
+    if not path.parent.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text(f"{key}={value}\n")
         return
 
-    lines = env_path.read_text().splitlines(keepends=True)
+    lines = path.read_text().splitlines(keepends=True)
     found = False
     new_lines = []
     for line in lines:
@@ -38,4 +72,70 @@ def persist_env_value(key: str, value: str) -> None:
         if new_lines and not new_lines[-1].endswith("\n"):
             new_lines[-1] += "\n"
         new_lines.append(f"{key}={value}\n")
-    env_path.write_text("".join(new_lines))
+    path.write_text("".join(new_lines))
+
+
+# Server-auth and data-encryption secrets must never land in a shared env
+# file: memory + live settings only, so a stale/shared file cannot hijack
+# them on restart. Callers needing the distinction should read the return.
+#
+# This is the CANONICAL list for both sides of the boundary: `app.config`
+# imports it to keep a runtime env file from overriding these keys when the
+# process environment already supplies them. A write-side denylist alone is
+# not sufficient, because files written by earlier builds already contain
+# them (F-7).
+SECRET_ENV_DENYLIST = frozenset(
+    {
+        "ADMIN_PASSWORD",
+        "DATA_ENCRYPTION_KEY",
+        "NETWORK_ACCESS_TOKEN",
+        "JWT_SECRET",
+    }
+)
+
+
+def persist_env_value(key: str, value: str) -> bool:
+    """Update process memory and the env file so the setting survives restarts.
+
+    Returns True when the value was also written to file(s). Secrets in
+    ``SECRET_ENV_DENYLIST`` update memory and live settings only and return
+    False so callers can log custody honestly.
+    """
+    # 1. Update os.environ immediately in memory
+    os.environ[key] = value
+
+    # 2. Update settings instance if matching attribute exists (coerced to
+    #    the field type so later numeric comparisons never see a raw str).
+    try:
+        from app.config import settings
+
+        attr = key.lower()
+        if hasattr(settings, attr):
+            setattr(settings, attr, _coerce_for_settings(attr, value))
+    except Exception:
+        pass
+
+    # Server-auth and data-encryption secrets must never land in a shared
+    # env file: memory + live settings only, so a stale/shared file cannot
+    # hijack them on restart.
+    if key in SECRET_ENV_DENYLIST:
+        return False
+
+    # 3. Write to the primary env file
+    primary_path = _env_file_path()
+    try:
+        _write_or_update_file(primary_path, key, value)
+    except Exception:
+        return False
+
+    # 4. Also mirror to persistent runtime_overrides.env in shared volume if present
+    for candidate in [
+        Path("/app/data/simulation-shared/runtime_overrides.env"),
+        Path("./data/simulation-shared/runtime_overrides.env"),
+    ]:
+        if candidate.parent.is_dir() and candidate != primary_path:
+            try:
+                _write_or_update_file(candidate, key, value)
+            except Exception:
+                pass
+    return True
