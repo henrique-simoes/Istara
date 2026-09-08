@@ -273,7 +273,40 @@ async function handleFrame(frame) {
   }
 }
 
+// Per-session handler tails (module scope, so ordering survives stdin chunk
+// boundaries). Setup frames for one session (open/bind/close) run in arrival
+// order; sessions never share a tail, so a blocked close on session A cannot
+// starve session B (no cross-session head-of-line block). Streaming turns
+// start without await inside their handlers, so runs still stream
+// concurrently. Bind-before-prompt across chunks is enforced explicitly as
+// well: PiSession.prompt/providerTurn await the session's pending bind.
+const sessionTails = new Map(); // session_key -> Promise
+
+function enqueueSessionFrame(sessionKey, frame, run) {
+  const tail = (sessionTails.get(sessionKey) || Promise.resolve())
+    .then(run)
+    .catch((err) => {
+      diag(`frame_handler_error:${err && err.message}`);
+      rejectFrame(frame, "frame_handler_error");
+    })
+    .finally(() => {
+      if (sessionTails.get(sessionKey) === tail) sessionTails.delete(sessionKey);
+    });
+  sessionTails.set(sessionKey, tail);
+}
+
 async function shutdown() {
+  // Let queued per-session frames settle (bounded): each tail is itself made
+  // of bounded handlers (close waits at most CLOSE_WAIT_MS), so this cannot
+  // hang on one wedged session.
+  try {
+    await Promise.race([
+      Promise.allSettled([...sessionTails.values()]),
+      new Promise((resolve) => setTimeout(resolve, 6000)),
+    ]);
+  } catch {
+    /* best-effort */
+  }
   for (const [key, session] of sessions) {
     try {
       await session.close();
@@ -302,13 +335,6 @@ function main() {
       }
       throw err;
     }
-    // Sequential handler dispatch: frame handlers are bounded (session.open
-    // awaits a close, provider.bind awaits the memoised capability
-    // resolution), and ordering matters — a provider.bind MUST be fully
-    // applied before a following turn.prompt starts a run on it. Long-running
-    // work (streaming turns) is started without await inside the handlers, so
-    // runs still stream concurrently; only the bounded setup steps chain.
-    let handlerTail = Promise.resolve();
     for (const frame of frames) {
       // Every inbound frame must speak this protocol version. Reject BEFORE
       // consuming the seq so a single mismatched frame does not wedge the
@@ -323,12 +349,19 @@ function main() {
         rejectFrame(frame, "protocol_seq_violation");
         continue;
       }
-      handlerTail = handlerTail
-        .then(() => handleFrame(frame))
-        .catch((err) => {
-          diag(`frame_handler_error:${err && err.message}`);
-          rejectFrame(frame, "frame_handler_error");
-        });
+      // Session-keyed frames serialize per session (module-scope tail, so
+      // cross-chunk too); connection-level frames run immediately.
+      if (typeof frame.session_key === "string") {
+        const key = frame.session_key;
+        enqueueSessionFrame(key, frame, () => handleFrame(frame));
+      } else {
+        Promise.resolve()
+          .then(() => handleFrame(frame))
+          .catch((err) => {
+            diag(`frame_handler_error:${err && err.message}`);
+            rejectFrame(frame, "frame_handler_error");
+          });
+      }
     }
   });
   process.stdin.on("end", () => {

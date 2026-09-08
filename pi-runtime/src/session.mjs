@@ -9,6 +9,12 @@ import { buildAgentTools } from "./tools.mjs";
 import { LIMITS, PROTOCOL_VERSION } from "./protocol.mjs";
 import { STRUCTURED_TOOL_NAME, captureParameters, mapToolChoiceForApi, normalizeToolChoice, translateOutputSchema } from "./structured.mjs";
 
+// Bound on close(): waitForIdle settles only when the agent loop finishes,
+// and an in-flight authority tool call settles only on tool.result — so an
+// unbounded wait can hang forever. The drain below plus the abort-aware tool
+// executor normally settle it in milliseconds; this is the backstop.
+const CLOSE_WAIT_MS = 5000;
+
 function nowTs() {
   return Date.now();
 }
@@ -104,6 +110,7 @@ export class PiSession {
     this._catalog = catalog || [];
     this._limits = limits || {}; // {max_turns?, max_wall_clock_ms?, max_cost_usd?}
     this._binding = null; // {models, model, params, stream, dispose}
+    this._pendingBind = null; // in-flight bindProvider promise, awaited by prompt/providerTurn
     this._agent = null;
     this._pendingTools = new Map(); // tool_call_id -> resolve
     this._run = null; // {runId, terminated, aborted, turns, maxTurns, budgetExceeded, forcedError}
@@ -136,16 +143,38 @@ export class PiSession {
   async bindProvider(endpoint) {
     const previous = this._binding;
     // Capability resolution may lazily import the pi-ai registry (once per
-    // process); the worker awaits this call and maps rejections to
-    // run.failed. Dispose the previous binding only after the new one is
-    // resolved so a failed re-bind keeps the old binding usable.
-    const binding = await buildProviderBinding(endpoint);
-    this._binding = binding;
-    if (previous && previous.dispose) previous.dispose();
-    if (!this._agent) {
-      this._buildAgent();
-    } else {
-      this._agent.state.model = this._binding.model;
+    // process). Track the in-flight bind so a turn.prompt / provider.turn
+    // that arrives in a later stdin chunk still waits for it (the worker
+    // additionally serializes setup frames per session; this await is the
+    // cross-chunk enforcement that survives any dispatch batching).
+    // Dispose the previous binding only after the new one is resolved so a
+    // failed re-bind keeps the old binding usable.
+    const bindPromise = (async () => {
+      const binding = await buildProviderBinding(endpoint);
+      this._binding = binding;
+      if (previous && previous.dispose) previous.dispose();
+      if (!this._agent) {
+        this._buildAgent();
+      } else {
+        this._agent.state.model = this._binding.model;
+      }
+    })();
+    this._pendingBind = bindPromise;
+    try {
+      await bindPromise;
+    } finally {
+      if (this._pendingBind === bindPromise) this._pendingBind = null;
+    }
+  }
+
+  /** Wait for an in-flight bind; a failed bind keeps the old binding. */
+  async _awaitPendingBind() {
+    const pending = this._pendingBind;
+    if (!pending) return;
+    try {
+      await pending;
+    } catch {
+      /* bind errors are reported by the bind caller; run with what we have */
     }
   }
 
@@ -271,6 +300,10 @@ export class PiSession {
   }
 
   async prompt(runId, text, options = {}) {
+    // Explicit bind-before-prompt: a bind arriving in an earlier stdin chunk
+    // may still be resolving (cold registry import); never start the run on
+    // a stale or missing binding.
+    await this._awaitPendingBind();
     if (!this._agent) {
       this._frame("run.failed", { run_id: runId, error: "no_provider_bound" });
       return;
@@ -339,6 +372,7 @@ export class PiSession {
    * raw tool calls return to the outer legacy loop for execution exactly once.
    */
   async providerTurn(runId, messages, tools = []) {
+    await this._awaitPendingBind();
     if (!this._binding) {
       this._frame("run.failed", { run_id: runId, error: "no_provider_bound" });
       return;
@@ -652,19 +686,37 @@ export class PiSession {
   async close() {
     if (this._run && this._run.directProvider && !this._run.terminated && this._run.controller) {
       this._run.aborted = true;
-      this._run.controller.abort();
-    }
-    if (this._agent && this._run && !this._run.terminated) {
-      this._agent.abort();
       try {
-        await this._agent.waitForIdle();
+        this._run.controller.abort();
       } catch {
         /* best-effort */
       }
     }
+    // Drain in-flight authority tool calls BEFORE waiting: each tool promise
+    // settles only on tool.result, so resolving after waitForIdle would hang
+    // forever when Python never answers (the tool executor also honours the
+    // abort signal below as a second unblock path). Draining first lets the
+    // agent loop observe the settlement and finish.
     for (const [id, resolve] of this._pendingTools) {
       resolve({ ok: false, error: "session_closed" });
       this._pendingTools.delete(id);
+    }
+    if (this._agent && this._run && !this._run.terminated) {
+      try {
+        this._agent.abort();
+      } catch {
+        /* best-effort */
+      }
+      try {
+        // Bounded: never let one session's close wedge its own queue, and
+        // (with per-session worker dispatch) never starve other sessions.
+        await Promise.race([
+          this._agent.waitForIdle(),
+          new Promise((resolve) => setTimeout(resolve, CLOSE_WAIT_MS)),
+        ]);
+      } catch {
+        /* best-effort */
+      }
     }
     if (this._binding && this._binding.dispose) this._binding.dispose();
     this._binding = null;

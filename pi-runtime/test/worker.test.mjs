@@ -198,6 +198,94 @@ test("prompt without provider binding fails closed", async (t) => {
   assert.equal(failed.error, "no_provider_bound");
 });
 
+test("cross-chunk bind->prompt ordering: prompt waits for an in-flight bind (F-2)", async (t) => {
+  // The bind is the first in this worker process, so it pays the cold
+  // once-per-process registry import while the prompt is already queued in a
+  // later stdin chunk. Without cross-chunk enforcement the prompt would run
+  // on a missing binding and fail with no_provider_bound.
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  h.send({ v: 2, type: "hello", protocol_version: 2 });
+  await h.waitFor((f) => f.type === "ready");
+  const key = "sess-bind-order";
+  h.send({ v: 2, type: "session.open", session_key: key, system_prompt: "s", history: [], revision: "r1", catalog: [] });
+  await h.waitFor((f) => f.type === "session.opened" && f.session_key === key);
+  h.send({
+    v: 2,
+    type: "provider.bind",
+    session_key: key,
+    endpoint: { endpoint_id: "faux-order", provider_kind: "faux", faux_responses: [{ text: "bound and ready." }] },
+  });
+  // Separate stdin chunk ~5ms later: long enough to guarantee a distinct
+  // `data` event (the worker drains the first write within a millisecond),
+  // short enough that the cold once-per-process registry import (~40ms)
+  // inside the bind above is still in flight — the exact cross-chunk race.
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  h.send({ v: 2, type: "turn.prompt", session_key: key, run_id: "order-1", text: "go" });
+  const terminal = await h.waitFor(
+    (f) => (f.type === "run.completed" || f.type === "run.failed") && f.run_id === "order-1",
+    15000,
+  );
+  assert.equal(terminal.type, "run.completed", `prompt must wait for the in-flight bind, got: ${JSON.stringify(terminal)}`);
+});
+
+test("a blocked close never starves an unrelated session (F-3)", async (t) => {
+  // Session A parks on an unanswered tool.call; session.close(A) then
+  // session.open(B) arrive batched behind it. B must still open promptly —
+  // pre-fix the shared dispatch chain starved every frame behind the close.
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  h.send({ v: 2, type: "hello", protocol_version: 2 });
+  await h.waitFor((f) => f.type === "ready");
+  const keyA = "sess-blocked-a";
+  h.send({
+    v: 2,
+    type: "session.open",
+    session_key: keyA,
+    system_prompt: "s",
+    history: [],
+    revision: "r1",
+    catalog: [{ name: "t_block", description: "d", parameters: { type: "object", properties: {} } }],
+  });
+  await h.waitFor((f) => f.type === "session.opened" && f.session_key === keyA);
+  h.send({
+    v: 2,
+    type: "provider.bind",
+    session_key: keyA,
+    endpoint: {
+      endpoint_id: "faux-blocked",
+      provider_kind: "faux",
+      faux_responses: [
+        { tool_calls: [{ name: "t_block", arguments: {} }], stop_reason: "toolUse" },
+        { text: "done." },
+      ],
+    },
+  });
+  h.send({ v: 2, type: "turn.prompt", session_key: keyA, run_id: "blocked-1", text: "go" });
+  // A is now parked: the tool promise settles only on tool.result, which we
+  // deliberately withhold.
+  await h.waitFor((f) => f.type === "tool.call" && f.run_id === "blocked-1", 15000);
+  // Batched behind the parked close: B must still open.
+  h.send({ v: 2, type: "session.close", session_key: keyA });
+  const keyB = "sess-unblocked-b";
+  h.send({ v: 2, type: "session.open", session_key: keyB, system_prompt: "s", history: [], revision: "r1", catalog: [] });
+  const openedB = await h.waitFor((f) => f.type === "session.opened" && f.session_key === keyB, 15000);
+  assert.ok(openedB, "unrelated session B must open while A's close is blocked");
+  // B is fully live: it binds and completes a turn of its own.
+  h.send({
+    v: 2,
+    type: "provider.bind",
+    session_key: keyB,
+    endpoint: { endpoint_id: "faux-b", provider_kind: "faux", faux_responses: [{ text: "b alive." }] },
+  });
+  h.send({ v: 2, type: "turn.prompt", session_key: keyB, run_id: "b-1", text: "go" });
+  const doneB = await h.waitFor(
+    (f) => (f.type === "run.completed" || f.type === "run.failed") && f.run_id === "b-1",
+    15000,
+  );
+  assert.equal(doneB.type, "run.completed", `B must complete while A is parked, got: ${JSON.stringify(doneB)}`);
+});
+
 test("provider-only turn returns raw tool calls without executing the Pi agent loop", async (t) => {
   const h = new WorkerHarness();
   t.after(() => h.close());

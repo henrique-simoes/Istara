@@ -21,7 +21,16 @@ export function buildAgentTools(catalog, requestToolCall) {
     // pi-agent-core accepts a raw JSON Schema object as `parameters` and
     // validates model-supplied arguments against it before `execute`.
     parameters: entry.parameters || { type: "object", properties: {}, additionalProperties: true },
-    execute: async (toolCallId, params) => {
+    execute: async (toolCallId, params, signal) => {
+      // Honour the AbortSignal pi-agent-core passes as the third argument
+      // (agent-loop.js): session.close() aborts the run, and an in-flight
+      // tool must settle instead of waiting forever for a tool.result frame
+      // that will never arrive. Both paths report a structured authority
+      // error so the run continues and is audited — never a throw.
+      if (signal?.aborted) {
+        const errorText = JSON.stringify({ error: "tool_aborted" });
+        return { content: [{ type: "text", text: errorText }], details: { error: "tool_aborted" } };
+      }
       const serialized = JSON.stringify(params ?? {});
       if (Buffer.byteLength(serialized, "utf8") > LIMITS.MAX_TOOL_ARGS_BYTES) {
         return {
@@ -29,7 +38,21 @@ export function buildAgentTools(catalog, requestToolCall) {
           details: { error: "tool_arguments_too_large" },
         };
       }
-      const outcome = await requestToolCall(toolCallId, entry.name, params ?? {});
+      let onAbort;
+      const abortPromise = signal
+        ? new Promise((resolve) => {
+            onAbort = () => resolve({ ok: false, error: "tool_aborted" });
+            signal.addEventListener("abort", onAbort, { once: true });
+          })
+        : null;
+      let outcome;
+      try {
+        outcome = abortPromise
+          ? await Promise.race([requestToolCall(toolCallId, entry.name, params ?? {}), abortPromise])
+          : await requestToolCall(toolCallId, entry.name, params ?? {});
+      } finally {
+        if (signal && onAbort) signal.removeEventListener?.("abort", onAbort);
+      }
       if (outcome && outcome.ok) {
         const text = typeof outcome.result === "string" ? outcome.result : JSON.stringify(outcome.result ?? {});
         return { content: [{ type: "text", text }], details: outcome.result ?? {} };
