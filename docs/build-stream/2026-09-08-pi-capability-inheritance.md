@@ -10,7 +10,7 @@ stage: S2-execute
 status: in-progress
 blocked_on: null
 last: { agent: zai/glm-5.3-flash-max, at: 2026-09-08T09:49:41Z, ledger: L-11 }
-next_action: "S3 review of pi-compat-20260908-WAVE-authority-and-boundary-IMPL; then W3 carry-through wave."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
