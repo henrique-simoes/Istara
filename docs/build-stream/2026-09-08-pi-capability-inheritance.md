@@ -10,7 +10,7 @@ stage: S4-remediate
 status: in-progress
 blocked_on: null
 last: { agent: claude-opus-5, at: 2026-09-08T10:47:29Z, ledger: L-20 }
-next_action: "F-7..F-10 remediated in config.py/env_persistence.py/main.py + tests/test_env_precedence.py; conductor to dispatch the delta re-review."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
