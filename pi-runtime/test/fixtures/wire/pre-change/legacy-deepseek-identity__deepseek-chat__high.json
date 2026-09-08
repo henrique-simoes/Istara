@@ -1,0 +1,36 @@
+{
+  "fixture_class": "fallback",
+  "captured_at": "2026-09-08T09:05:07.989Z",
+  "endpoint": {
+    "provider_kind": "openai_compat",
+    "pi_provider": "deepseek",
+    "model": "deepseek-chat",
+    "supports_reasoning": null,
+    "supports_vision": null,
+    "base_url_host": "api.deepseek.com"
+  },
+  "thinking_level": "high",
+  "request_body": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": [
+          {
+            "text": "fixture",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-chat",
+    "reasoning_effort": "high",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true
+    },
+    "thinking": {
+      "type": "enabled"
+    }
+  }
+}

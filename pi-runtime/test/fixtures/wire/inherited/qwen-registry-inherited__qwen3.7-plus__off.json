@@ -1,0 +1,33 @@
+{
+  "fixture_class": "inherited",
+  "captured_at": "2026-09-08T09:32:25.990Z",
+  "endpoint": {
+    "provider_kind": "openai_compat",
+    "pi_provider": "qwen-token-plan",
+    "model": "qwen3.7-plus",
+    "supports_reasoning": true,
+    "supports_vision": null,
+    "base_url_host": "qwen.test"
+  },
+  "thinking_level": "off",
+  "request_body": {
+    "enable_thinking": false,
+    "max_completion_tokens": 4096,
+    "messages": [
+      {
+        "content": [
+          {
+            "text": "fixture",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "qwen3.7-plus",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true
+    }
+  }
+}

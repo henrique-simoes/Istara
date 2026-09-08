@@ -133,9 +133,14 @@ export class PiSession {
     return true;
   }
 
-  bindProvider(endpoint) {
+  async bindProvider(endpoint) {
     const previous = this._binding;
-    this._binding = buildProviderBinding(endpoint);
+    // Capability resolution may lazily import the pi-ai registry (once per
+    // process); the worker awaits this call and maps rejections to
+    // run.failed. Dispose the previous binding only after the new one is
+    // resolved so a failed re-bind keeps the old binding usable.
+    const binding = await buildProviderBinding(endpoint);
+    this._binding = binding;
     if (previous && previous.dispose) previous.dispose();
     if (!this._agent) {
       this._buildAgent();

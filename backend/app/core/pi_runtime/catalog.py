@@ -1,14 +1,15 @@
 """Pi canonical model catalog — the single source for providers/models the
 settings UI offers for selection.
 
-The catalog mirrors the standalone Pi package's canonical
-``models.generated.js`` (about 39 providers and 1,267 models) and adds
-governed custom-provider snapshots when Istara must expose a provider that Pi
-loads from ``~/.pi/agent/models.json``.  The current regular DashScope
-snapshot contributes 40 Singapore OpenAI-compatible chat models.  The result
-is shipped as a static resource so the Istara backend never needs the pi-ai
-dependency at runtime.  Auth hints mirror ``docs/providers.md`` of the
-standalone Pi CLI:
+The shipped ``data/pi_models_catalog.json`` is a GENERATED, provenance-stamped
+projection of pi-ai's builtin registry (39 providers / 1,312 models at the
+0.84.3 pin), emitted by ``pi-runtime/scripts/emit-catalog.mjs`` and merged with
+governed custom-provider overlays under ``data/custom_providers/`` when Istara
+must expose a provider that Pi loads from ``~/.pi/agent/models.json``.  The
+current regular DashScope overlay contributes 40 Singapore OpenAI-compatible
+chat models.  The backend never needs the pi-ai dependency at runtime — it
+reads this projection.  Regenerate only via ``scripts/generate_pi_catalog.py``.
+Auth hints mirror ``docs/providers.md`` of the standalone Pi CLI:
 
 - OAuth/subscription providers (device-code / PKCE flows as in Pi's ``/login``)
 - API-key providers (env var or auth.json credential custody)
@@ -39,6 +40,13 @@ class PiCatalogModel:
     input: list[str] = field(default_factory=list)
     thinkingLevels: list[str] | None = None
     cost: dict | None = None
+    # Authority fields projected verbatim from pi-ai's registry by
+    # pi-runtime/scripts/emit-catalog.mjs (build-stream 2026-09-08
+    # pi-capability-inheritance, plan W1.6 / G8). ``thinkingLevelMap`` is the
+    # decisive per-level wire contract (null = unsupported, absent = default)
+    # and ``compat`` the pi-ai compatibility record; the menu consumers and
+    # the worker resolver treat these as tier-4 authority. Governed custom
+    # providers (tier 5 overlays) may leave both null.
 
 
 @dataclass(frozen=True)
@@ -220,9 +228,33 @@ def _display_name(provider_id: str) -> str:
 
 
 def load_catalog() -> dict[str, list[dict[str, Any]]]:
-    """Load the raw shipped catalog (provider -> models)."""
+    """Load the raw shipped catalog (provider -> models).
+
+    The shipped file also carries a ``__provenance`` header (see
+    :func:`catalog_provenance`); ``__``-prefixed keys are metadata, never
+    providers, so they are stripped here.
+    """
     with open(_CATALOG_PATH, encoding="utf-8") as fh:
-        return json.load(fh)
+        raw: dict[str, Any] = json.load(fh)
+    return {
+        provider_id: models
+        for provider_id, models in raw.items()
+        if not provider_id.startswith("__")
+    }
+
+
+def catalog_provenance() -> dict[str, Any]:
+    """Provenance of the generated projection (pi_ai_version, hashes, ...).
+
+    The projection is emitted by ``pi-runtime/scripts/emit-catalog.mjs`` and
+    must only change through ``scripts/generate_pi_catalog.py``; the
+    provenance header is what ties the shipped file to the installed pi-ai
+    pin (round-trip conformance asserts equality with ``EXPECTED_PINS``).
+    """
+    with open(_CATALOG_PATH, encoding="utf-8") as fh:
+        raw: dict[str, Any] = json.load(fh)
+    provenance = raw.get("__provenance")
+    return dict(provenance) if isinstance(provenance, dict) else {}
 
 
 def pi_catalog_providers() -> list[PiCatalogProvider]:

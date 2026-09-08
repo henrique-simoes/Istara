@@ -1,0 +1,42 @@
+{
+  "fixture_class": "inherited",
+  "captured_at": "2026-09-08T09:32:25.990Z",
+  "endpoint": {
+    "provider_kind": "openai_codex",
+    "pi_provider": "openai-codex",
+    "model": "gpt-5.6-luna",
+    "supports_reasoning": null,
+    "supports_vision": null,
+    "base_url_host": "chatgpt.com"
+  },
+  "thinking_level": "xhigh",
+  "request_body": {
+    "include": [
+      "reasoning.encrypted_content"
+    ],
+    "input": [
+      {
+        "content": [
+          {
+            "text": "fixture",
+            "type": "input_text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "instructions": "You are a helpful assistant.",
+    "model": "gpt-5.6-luna",
+    "parallel_tool_calls": true,
+    "reasoning": {
+      "effort": "xhigh",
+      "summary": "auto"
+    },
+    "store": false,
+    "stream": true,
+    "text": {
+      "verbosity": "low"
+    },
+    "tool_choice": "auto"
+  }
+}

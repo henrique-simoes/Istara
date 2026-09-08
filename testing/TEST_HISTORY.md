@@ -6,6 +6,24 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-08 - Pi Capability Authority Conformance Baseline (authority-and-boundary wave)
+
+Scope: pi-ai registry becomes the capability authority (worker resolver +
+generated catalog projection); routine-bump conformance machinery; deterministic
+wire fixtures. Suite topology change: new `pi-runtime/test/capability-inheritance.test.mjs`
+(33 tests) and `tests/pi_compat/test_catalog_conformance.py` (5 tests); two
+defect-pinning assertions in `pi-runtime/test/provider-params.test.mjs` flipped
+with in-file evidence (codex xhigh clamp, zai missing reasoning_effort).
+
+| Area | Result |
+| --- | --- |
+| pi-runtime suite | `cd pi-runtime && npm test` passed with `87 passed / 0 fail` (54 baseline + 33 conformance) |
+| Catalog conformance | `pytest tests/pi_compat -q` passed with `5 passed` (round-trip byte identity, provenance ≡ pin, overlay preservation, registry parity, authority equivalence over 1,312 models) |
+| Backend pi suites | `pytest tests/pi_production tests/pi_migration/test_version_provenance.py tests/test_model_source.py tests/test_pi_replacement_candidate.py -q` passed (475 + 66 + provenance) |
+| Pi benchmark | `pytest tests/pi_benchmark -q` passed with `245 passed, 5 skipped` |
+| Governance | `check_test_harness.py`, `check_integrity.py` passed; `security_benchmark.py --fail-on-threshold` 100.0 pass |
+| Residual risks | W3 carry-through (settings API/frontend/pricing preflight), W5 observability/UI scenarios, and W6 (0.85.1 bump) are later waves; UI-suite effort-journey coverage lands with W5.4–5.5 |
+
 ## 2026-09-04 - Empirical Three-Model Research Spine Baseline
 
 Scope: end-to-end live validation of Istara's Research Spine and Scenario 76 long-horizon trajectory using three frontier models: Luna (`gpt-5.6-luna`), Qwen 3.7 Max (`qwen3.7-max-2026-06-08`), and GLM 5.2 (`glm-5.2`). Ingested canonical CareNav transcript, performed independent qualitative coding, Fleiss' Kappa / Krippendorff's Alpha reliability evaluation, human reconciliation, atomic DAG promotion, task execution, steering injection, Done approval gate, and Minto SCQA report synthesis.

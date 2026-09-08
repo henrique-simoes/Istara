@@ -1,0 +1,33 @@
+{
+  "fixture_class": "fallback",
+  "captured_at": "2026-09-08T09:05:07.988Z",
+  "endpoint": {
+    "provider_kind": "openai_compat",
+    "pi_provider": "custom-gateway",
+    "model": "some-model",
+    "supports_reasoning": null,
+    "supports_vision": null,
+    "base_url_host": "gateway.test"
+  },
+  "thinking_level": "low",
+  "request_body": {
+    "max_completion_tokens": 4096,
+    "messages": [
+      {
+        "content": [
+          {
+            "text": "fixture",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "some-model",
+    "store": false,
+    "stream": true,
+    "stream_options": {
+      "include_usage": true
+    }
+  }
+}

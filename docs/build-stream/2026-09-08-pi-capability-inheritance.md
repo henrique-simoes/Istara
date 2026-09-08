@@ -5,12 +5,12 @@
 item: pi-capability-inheritance
 branch: testing
 cf: { spec: CF-SPEC-29, tasks: [] }
-phase: "Phase 0 — Owner-approved expanded frame; 3-architect planning"
-stage: S1-plan
+phase: "Phase 1 — Implementation waves (authority-and-boundary)"
+stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: zai/glm-5.3-flash, at: 2026-09-08T08:08:20Z, ledger: L-10 }
-next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
+last: { agent: zai/glm-5.3-flash-max, at: 2026-09-08T09:49:41Z, ledger: L-11 }
+next_action: "S3 review of pi-compat-20260908-WAVE-authority-and-boundary-IMPL; then W3 carry-through wave."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1321,3 +1321,54 @@ Did: read the two supplied immutable master candidates end-to-end (slot a: 16d7e
 Result: vote cast for slot b over slot a on verified deltas: S-E3 admission-time pricing preflight vs an unaddressed upstream-zero-pricing gap in A; labs/pi-replacement lockstep + corrected rollback absent from A; B equivalence test, round-trip drift test, model_field_set_hash + classification taxonomy, routine-bump runbook as AC-11; B named test flips vs A generic W0 classification; B source-level corrections of lifecycle evidence E1/E2/E4/E5. Trade-off recorded: A avoids the once-per-process 67ms/60MB registry import via generator-only + ephemeral server-built envelope; B mitigates via memoised accessor + measured budget and gains exact pi-ai fidelity at the worker seam. With VOTE-A -> b and VOTE-B -> c, candidate b holds a 2-of-3 majority pending conductor tally. No plan edited, no code touched. Note: file carried two L-7 entries (MASTER-C bold variant, MASTER-A); entries L-8/L-9 were appended concurrently by VOTE-B/VOTE-A; this entry is L-10.
 Verified: node --input-type=module registry walk over @earendil-works/pi-ai/providers/all -> passed (1312/119/109; zai zero-priced = glm-5.2-highspeed, glm-5.3, zai-coding-cn variants; glm-5.3-flash undefined); grep checks on labs/pi-replacement pins, test_version_provenance.py, provider-params.test.mjs -> passed; CF rows on pi-compat-20260908-VOTE-C: 2 x command, 1 x plan_vote (vote=b), 1 x self_report (satisfied=true). No test suite run: planning stage, zero code changes.
 Next: conductor tallies VOTE-A/VOTE-B/VOTE-C, declares the winning master plan, and holds at the owner-approval gate (DEC-O1..O6 / DEC-M1..M8 outstanding; implementation unauthorized until then).
+
+### L-11 | 2026-09-08T09:49:41Z | S2-execute | zai/glm-5.3-flash-max | executor | Wave authority-and-boundary (plan W1+W2+contracts) <!-- bsc-ledger:pi-compat-20260908-WAVE-authority-and-boundary-IMPL -->
+Did: implemented the capability authority boundary per the owner-approved consensus plan. NEW
+`pi-runtime/scripts/emit-catalog.mjs` (deterministic tier-4 projection emitter: verbatim registry fields +
+thinkingLevels via pi-ai's own getSupportedThinkingLevels (DEC-M2), provenance header with pi_ai_version /
+pi_ai_generated_at / emitter_sha256 / model_field_set_hash, governed-overlay merge with collision/schema/
+order rejection); NEW `scripts/generate_pi_catalog.py` operator entry (in-place regeneration, --check
+byte-identity drift gate, typed exit-3 not_runnable); NEW governed overlay
+`backend/app/core/pi_runtime/data/custom_providers/dashscope.json` (40 records extracted verbatim, wire
+fixtures referenced); regenerated `backend/app/core/pi_runtime/data/pi_models_catalog.json` (39 registry
+providers / 1,312 models + overlay; provenance-stamped); `backend/app/core/pi_runtime/catalog.py` gains
+PiCatalogModel.thinkingLevelMap/compat (G8), skips __-prefixed provenance keys, adds catalog_provenance();
+`pi-runtime/src/provider.mjs` adds memoised once-per-process registry accessor (W2.1), async
+resolveCapabilities (exact guarded getBuiltinModel, §1.2 per-field restriction merge, tier-5 URL
+developer-role default under tier 4, typed pre-network provider_transport_mismatch rejection with
+fixture-backed exception list W2.6), moves today's branches verbatim into exported
+legacyIdentityCapabilities (W2.3, modelCapabilities kept as deprecated alias), buildRealProvider is async,
+sets thinkingLevelMap and stops setting the dead thinkingLevels field (G3/W2.4), returns content-free
+capability_receipt; `pi-runtime/src/session.mjs` bindProvider is async (disposes previous binding only
+after the new one resolves) and `pi-runtime/src/worker.mjs` serializes frame-handler dispatch so a
+provider.bind is fully applied before a following turn.prompt; captured 9 pre-change wire fixtures
+(NEW scripts/capture-wire-fixtures.mjs + test/fixtures/wire/pre-change/) BEFORE the resolver landed;
+NEW `pi-runtime/test/capability-inheritance.test.mjs` (33 tests: AC-1 fallback byte-identity, 15
+inherited-class corrected fixtures, AC-2 codex xhigh/minimal→low, AC-3 zai reasoning_effort, AC-4 tier-2
+veto tri-state, transport-mismatch typed rejection, receipt hygiene negative test, registry memoisation);
+FLIPPED the two defect-pinning tests in `pi-runtime/test/provider-params.test.mjs` per G6/DEC-O3 (codex
+branch → resolveCapabilities record assertion with in-file justification; zai wire test → glm-5.3 with
+reasoning_effort:"low"; the previous zai test bound the non-existent glm-5.3-flash id, S-E2); NEW
+`tests/pi_compat/test_catalog_conformance.py` + dump helper `pi-runtime/scripts/dump-resolved-capabilities.mjs`
+(round-trip byte identity, provenance ≡ EXPECTED_PINS, overlay preservation, registry parity, authority
+equivalence projection ≡ resolver over all 1,312 registry models, typed not_runnable skips); NEW drift
+report `docs/build-stream/pi-compat-20260908-drift-report.md` (duplicated/stale knowledge inventory:
+81 added / 36 removed / 1,231 changed models, 1,225 wrong menus, 20 context, 63 cost models, 119 upstream
+zero-priced models incl. zai/glm-5.3); TESTING.md/TEST_HISTORY.md baseline entry (suite topology change).
+Result: $TASK complete — authority law, generator/projection, resolver, and conformance contracts in
+place; W3 carry-through (settings API/frontend/pricing preflight), W5 observability/UI scenarios, W6
+0.85.1 bump, W7 live acceptance remain later waves (dependencies recorded in plan §6.1).
+Verified: `cd pi-runtime && npm test` → 87 pass / 0 fail (54 baseline + 33 new; no network in tests);
+`node --test test/capability-inheritance.test.mjs` → 33 pass incl. 9 fallback bodies byte-identical to
+pre-change captures (AC-1); `python scripts/generate_pi_catalog.py --check` → byte-identical ok;
+`uv run --project backend --extra dev python -m pytest tests/pi_compat -q` → 5 passed (authority
+equivalence over 1,312 models); `pytest tests/pi_migration/test_version_provenance.py
+tests/pi_production/test_pi_catalog_ux.py tests/pi_production/test_engine_http_provider.py
+tests/test_model_source.py tests/test_pi_replacement_candidate.py -q` → 66 passed;
+`pytest tests/pi_production -q` → 475 passed; `pytest tests/pi_benchmark -q` → 245 passed, 5 skipped;
+`pytest tests/test_research_validity_contract.py` (inside pi_production run) green — Research Spine
+non-bypass; `python scripts/check_test_harness.py` → passed; `python scripts/check_integrity.py` →
+passed; `python scripts/security_benchmark.py --fail-on-threshold` → score 100.0, status pass;
+`docker compose -f docker-compose.qa.yml --profile contract config --quiet` → ok.
+Next: stage exit — S3 review of $TASK (reviewer: verify AC-1/2/3/4 wire fixtures, conformance gates, and
+that no Research Spine/security gate changed).

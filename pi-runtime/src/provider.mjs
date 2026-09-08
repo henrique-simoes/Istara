@@ -22,11 +22,13 @@
 // cost ceiling can fail closed. A real binding with no pricing is flagged so the
 // session fails a budgeted run closed rather than reporting an untrusted $0.
 
+import { readFileSync } from "node:fs";
 import {
   createModels,
   createProvider,
   createAssistantMessageEventStream,
   envApiKeyAuth,
+  getSupportedThinkingLevels,
   isRetryableAssistantError,
   fauxProvider,
   fauxAssistantMessage,
@@ -38,6 +40,75 @@ import { anthropicMessagesApi } from "@earendil-works/pi-ai/api/anthropic-messag
 import { openAICodexResponsesApi } from "@earendil-works/pi-ai/api/openai-codex-responses.lazy";
 
 let ENV_KEY_COUNTER = 0;
+
+// ---------------------------------------------------------------------------
+// Capability authority (tier law, build-stream 2026-09-08
+// pi-capability-inheritance §1.2):
+//
+//   pi-ai's generated registry is the SOLE authority for provider/model
+//   capability semantics. Istara may inherit it, RESTRICT it with operator or
+//   deployment truth pi-ai cannot know (tiers 1-3 restrict only — they may
+//   never silently enable a capability pi-ai denies), or read it through the
+//   generated catalog projection for non-worker consumers. Tiers 5-6 (Istara
+//   identity fallback, pi-ai URL detection) apply only when the registry
+//   misses.
+//
+//   A hand-written restatement of registry knowledge anywhere in this tree is
+//   architecture debt and fails the architecture_drift gate.
+// ---------------------------------------------------------------------------
+
+// Memoised per-process registry accessor (plan W2.1 / S-E4). The dynamic
+// import is module-registry cached, so a supervised per-session worker pays
+// the ~67 ms / ~60 MB cost once per process, never per turn. `getBuiltinModel`
+// and friends live at `@earendil-works/pi-ai/providers/all`, not the package
+// root (G1) — do not "fix" this import path.
+let piRegistryPromise = null;
+export function getPiRegistry() {
+  if (!piRegistryPromise) {
+    piRegistryPromise = import("@earendil-works/pi-ai/providers/all").then((module) => ({
+      getBuiltinModel: module.getBuiltinModel,
+      registryGeneratedAt: module.getBuiltinModelDataGeneratedAt() ?? null,
+    }));
+  }
+  return piRegistryPromise;
+}
+
+// Test-only seam: drop the memoised accessor so a test can observe a fresh
+// import. Never used on production paths.
+export function resetPiRegistryForTests() {
+  piRegistryPromise = null;
+}
+
+let piAiVersionCache = null;
+function piAiVersion() {
+  if (piAiVersionCache === null) {
+    for (const candidate of [
+      "../node_modules/@earendil-works/pi-ai/package.json",
+      "../../node_modules/@earendil-works/pi-ai/package.json",
+    ]) {
+      try {
+        const pkg = JSON.parse(readFileSync(new URL(candidate, import.meta.url), "utf8"));
+        if (pkg?.version) {
+          piAiVersionCache = String(pkg.version);
+          break;
+        }
+      } catch {
+        // try next candidate
+      }
+    }
+    if (piAiVersionCache === null) piAiVersionCache = "unknown";
+  }
+  return piAiVersionCache;
+}
+
+// Named, fixture-backed proxy exceptions to the typed transport-mismatch
+// rejection (plan W2.6 / R10). A registry record's `api` disagreeing with the
+// configured `provider_kind` transport means the request would be sent in a
+// shape pi-ai's record does not describe — a typed, pre-network rejection is
+// correct unless a proxy is KNOWN to translate. Every entry here MUST be
+// covered by a wire fixture in test/capability-inheritance.test.mjs proving
+// the translation is real. Empty by design: no such proxy is evidenced today.
+const PROXY_TRANSPORT_EXCEPTIONS = new Set();
 
 function apiForKind(kind) {
   if (kind === "openai_compat") return { api: openAICompletionsApi(), modelApi: "openai-completions" };
@@ -360,9 +431,10 @@ export function streamWithGuardedRetry(models, model, context, options, maxRetri
 
 /**
  * Build the `{models, model, params, stream, dispose}` binding for a real
- * endpoint. The returned `dispose()` clears the injected secret from the
- * environment. `stream` wraps models.streamSimple with the guarded retry
- * budget from endpoint.params.max_retries.
+ * endpoint. Async: capability resolution may lazily import the pi-ai registry
+ * (memoised, once per worker process). The returned `dispose()` clears the
+ * injected secret from the environment. `stream` wraps models.streamSimple
+ * with the guarded retry budget from endpoint.params.max_retries.
  */
 /**
  * Strip API-unsupported controls. The OpenAI Codex Responses API rejects
@@ -392,14 +464,15 @@ export function modelLimits(endpoint, params = {}) {
 }
 
 /**
- * Resolve provider-specific model semantics independently from the transport
- * protocol. Pi Model Management sends its non-secret provider identity because
- * an OpenAI-compatible URL alone is insufficient: DeepSeek requires an
- * explicit `thinking: {type: "disabled"}` whenever structured extraction
- * forces a tool choice. pi-ai emits that control only for a reasoning-capable
- * model with DeepSeek compatibility.
+ * Tier-5/6 identity fallback (plan W2.3): today's provider-identity handling,
+ * moved VERBATIM from the former `modelCapabilities`. Applied only when the
+ * pi-ai registry misses (governed custom providers like dashscope, unknown
+ * proxy gateways, legacy bindings, or registry models pi-ai does not list).
+ * This is the ONLY hand-written provider-knowledge list permitted in the tree;
+ * entries here must carry catalog provenance and a wire fixture
+ * (test/fixtures/wire/pre-change/ pins their behavior byte-identically).
  */
-export function modelCapabilities(endpoint, modelApi) {
+export function legacyIdentityCapabilities(endpoint, modelApi) {
   if (modelApi === "openai-codex-responses") {
     return {
       reasoning: true,
@@ -442,10 +515,168 @@ export function modelCapabilities(endpoint, modelApi) {
       compat: reasoning ? { thinkingFormat: "qwen", supportsReasoningEffort: false } : undefined,
     };
   }
+  // Zai/Zhipu GLM endpoints: pass our identity (thinkingFormat) through and
+  // let pi-ai own the support matrix — getCompat merges per-field, so an
+  // unspecified supportsReasoningEffort falls back to pi-ai's detected value
+  // (false for zai). We name the format because gateway/proxy base URLs may
+  // not reveal the provider; we never restate pi-ai's per-provider constants.
+  const zaiProviders = new Set(["zai", "zhipu", "zhipuai", "zhipu-ai", "bigmodel"]);
+  if (zaiProviders.has(provider)) {
+    return { reasoning, thinkingLevels: undefined, compat: reasoning ? { thinkingFormat: "zai" } : undefined };
+  }
   return { reasoning: false, thinkingLevels: undefined, compat: undefined };
 }
 
-export function buildRealProvider(endpoint) {
+/**
+ * Deprecated alias for the tier-5/6 identity fallback, kept for tests and any
+ * caller that has not migrated to the async resolver. New code MUST call
+ * {@link resolveCapabilities} — calling this on a registry-known model
+ * silently discards the authority record.
+ */
+export const modelCapabilities = legacyIdentityCapabilities;
+
+// DashScope/DeepSeek and non-OpenAI gateways reject the `developer` role.
+// When building a real OpenAI-compatible provider outside api.openai.com,
+// ensure `compat.supportsDeveloperRole` is explicitly false so system prompts
+// are sent as `role: "system"`. This URL rule is a tier-5 DEFAULT: on a
+// tier-4 registry hit it only fills fields the inherited compat does not name.
+function isCustomOpenAICompat(baseUrl, modelApi) {
+  return (
+    modelApi === "openai-completions" &&
+    baseUrl &&
+    !baseUrl.includes("api.openai.com") &&
+    !baseUrl.includes("azure.com")
+  );
+}
+
+/**
+ * Resolve the effective capability record for a real endpoint (plan W2.2,
+ * §1.2 per-field precedence law). Async because the registry is lazily
+ * imported once per process.
+ *
+ * Tiers 1-3 (safety overlay, operator endpoint overrides, catalog advertised
+ * restrictions) may only RESTRICT the tier-4 pi-ai record — never enable a
+ * capability the record denies. On a registry miss the tier-5/6 identity
+ * fallback applies unchanged. Every resolution returns a content-free receipt
+ * (observability evidence only — never a report or self-improvement signal).
+ */
+export async function resolveCapabilities(endpoint, modelApi) {
+  const provider = String(endpoint?.pi_provider || "").trim().toLowerCase();
+  const modelId = String(endpoint?.model || "").trim();
+  const baseUrl = String(endpoint?.base_url || "");
+  const receipt = {
+    capability_source: "legacy_detection",
+    pi_ai_version: piAiVersion(),
+    registry_generated_at: null,
+    pi_provider: provider || null,
+    model: modelId || null,
+    api: modelApi,
+    reasoning: false,
+    supported_pi_levels: ["off"],
+    applied_override_names: [],
+    fallback_reason: null,
+  };
+
+  let registry = null;
+  try {
+    registry = await getPiRegistry();
+  } catch {
+    registry = null; // guarded: a broken install degrades to legacy behavior
+  }
+  let record = null;
+  if (registry && provider && modelId) {
+    try {
+      // One exact, guarded lookup — no fuzzy matching, no normalization
+      // beyond trimming, no per-provider heuristics (plan W2.2).
+      record = registry.getBuiltinModel(provider, modelId) || null;
+    } catch {
+      record = null;
+    }
+  }
+
+  if (!record) {
+    const legacy = legacyIdentityCapabilities(endpoint, modelApi);
+    const urlDefault = isCustomOpenAICompat(baseUrl, modelApi);
+    // Exactly today's buildRealProvider semantics: the URL default sits UNDER
+    // the identity compat (identity compat wins when it names the field).
+    const compat = legacy.compat
+      ? { ...(urlDefault ? { supportsDeveloperRole: false } : {}), ...legacy.compat }
+      : urlDefault
+        ? { supportsDeveloperRole: false }
+        : undefined;
+    receipt.capability_source = legacy.compat || legacy.reasoning ? "legacy_identity" : "legacy_detection";
+    receipt.reasoning = Boolean(legacy.reasoning);
+    receipt.supported_pi_levels = getSupportedThinkingLevels({ reasoning: Boolean(legacy.reasoning) });
+    receipt.fallback_reason = !registry
+      ? "registry_unavailable"
+      : !provider || !modelId
+        ? "missing_provider_identity"
+        : "registry_miss";
+    if (registry?.registryGeneratedAt) receipt.registry_generated_at = registry.registryGeneratedAt;
+    return { capabilities: { ...legacy, compat }, receipt };
+  }
+
+  // Tier-4 hit. First gate: the record's transport must agree with the
+  // configured kind, or the request would be sent in a shape the record does
+  // not describe. Typed, pre-network rejection (W2.6) unless a named,
+  // fixture-backed proxy exception authorizes the translation.
+  if (record.api !== modelApi && !PROXY_TRANSPORT_EXCEPTIONS.has(`${provider}:${modelId}`)) {
+    throw new Error(
+      `provider_transport_mismatch:${provider}:${modelId}:registry_api=${record.api}:configured=${modelApi}`,
+    );
+  }
+
+  const appliedOverrideNames = [];
+  // `reasoning`: tier-4 authority, restricted by the tier-2/3 advertised
+  // tri-state. An explicit false restricts; null restricts nothing; true can
+  // never enable a record that denies reasoning (monotonic restriction).
+  let reasoning = Boolean(record.reasoning);
+  if (endpoint?.supports_reasoning === false) {
+    if (reasoning) appliedOverrideNames.push("supports_reasoning");
+    reasoning = false;
+  }
+  // `thinkingLevelMap`: verbatim from the record (tier 4). A tier-2
+  // reasoning restriction silences it on the wire — every pi-ai thinkingFormat
+  // branch gates on model.reasoning — so the record stays intact and the
+  // restriction is carried by `reasoning` alone (never hand-rewrite the map).
+  const thinkingLevelMap = record.thinkingLevelMap;
+  // `compat`: verbatim record (tier 4); the tier-5 URL default fills ONLY when
+  // the inherited compat does not name supportsDeveloperRole (§5.2).
+  let compat = record.compat ? { ...record.compat } : undefined;
+  if (isCustomOpenAICompat(baseUrl, modelApi) && !(compat && "supportsDeveloperRole" in compat)) {
+    compat = { ...(compat || {}), supportsDeveloperRole: false };
+    appliedOverrideNames.push("supportsDeveloperRole:url_default");
+  }
+  // `input`: seeded from the record (tier 4); the advertised vision tri-state
+  // restricts only — an explicit false narrows to text, null/true keep the
+  // record's modalities (an advertisement may never ADD a modality).
+  let input = Array.isArray(record.input) && record.input.length > 0 ? [...record.input] : ["text"];
+  if (endpoint?.supports_vision === false) {
+    if (input.includes("image")) appliedOverrideNames.push("supports_vision");
+    input = ["text"];
+  }
+
+  receipt.capability_source = "pi_builtin";
+  receipt.registry_generated_at = registry?.registryGeneratedAt ?? null;
+  receipt.reasoning = reasoning;
+  receipt.supported_pi_levels = getSupportedThinkingLevels({ reasoning, thinkingLevelMap });
+  receipt.applied_override_names = appliedOverrideNames;
+  return {
+    capabilities: {
+      reasoning,
+      thinkingLevelMap,
+      compat,
+      input,
+      // pi-ai computes the supported level menu; never reimplemented here
+      // (DEC-M2). Exposed for the receipt and tests, not set on the model —
+      // the `thinkingLevels` field is dead in pi-ai 0.84.x (G3).
+      supportedPiLevels: receipt.supported_pi_levels,
+    },
+    receipt,
+  };
+}
+
+export async function buildRealProvider(endpoint) {
   const { provider_kind: kind, base_url: baseUrl, model: modelId, api_key: apiKey } = endpoint;
   if (!baseUrl || !modelId || !apiKey) throw new Error("incomplete_provider_binding");
   const { api, modelApi } = apiForKind(kind);
@@ -462,27 +693,15 @@ export function buildRealProvider(endpoint) {
   // only for input/output settle at an untrusted $0.
   const cost = mapProviderPricing(endpoint.pricing);
   const limits = modelLimits(endpoint, params);
-  const capabilities = modelCapabilities(endpoint, modelApi);
+  // Capability authority: pi-ai's registry record when it knows the model
+  // (tier 4, restricted by advertised tri-states), else the tier-5/6 identity
+  // fallback. Throws a typed pre-network error on a builtin/endpoint transport
+  // disagreement. The receipt is content-free observability evidence only.
+  const { capabilities, receipt } = await resolveCapabilities(endpoint, modelApi);
 
   const providerId = `pi-endpoint-${endpoint.endpoint_id || "default"}`;
   const envVar = `PI_RUNTIME_KEY_${ENV_KEY_COUNTER++}`;
   process.env[envVar] = apiKey;
-
-  // DashScope, DeepSeek, and non-OpenAI gateways reject the `developer` role.
-  // When building a real OpenAI-compatible provider outside api.openai.com,
-  // ensure `compat.supportsDeveloperRole` is explicitly false so system prompts
-  // are sent as `role: "system"`.
-  const isCustomOpenAICompat =
-    modelApi === "openai-completions" &&
-    baseUrl &&
-    !baseUrl.includes("api.openai.com") &&
-    !baseUrl.includes("azure.com");
-  const compat = capabilities.compat
-    ? {
-        ...(isCustomOpenAICompat ? { supportsDeveloperRole: false } : {}),
-        ...capabilities.compat,
-      }
-    : (isCustomOpenAICompat ? { supportsDeveloperRole: false } : undefined);
 
   const model = {
     id: modelId,
@@ -491,12 +710,16 @@ export function buildRealProvider(endpoint) {
     provider: providerId,
     baseUrl,
     reasoning: capabilities.reasoning,
-    thinkingLevels: capabilities.thinkingLevels,
-    compat,
-    // Preserve the catalog's modality contract. Pi Model Management resolves
-    // `supports_vision` from the selected model; dropping it here makes a
-    // vision-capable Qwen/Codex model appear text-only to pi-agent-core.
-    input: endpoint.supports_vision ? ["text", "image"] : ["text"],
+    // pi-ai 0.84.x reads `thinkingLevelMap` and never reads `thinkingLevels`
+    // on the model record (G3) — the dead field is no longer set. pi-ai's own
+    // clampThinkingLevel + adapter mapping do all level translation at stream
+    // time (DEC-M2); Istara never pre-maps provider strings.
+    thinkingLevelMap: capabilities.thinkingLevelMap,
+    compat: capabilities.compat,
+    // Tier-4 hits inherit the record's modalities (restricted by the
+    // advertised tri-state); fallback bindings keep today's advertised-vision
+    // derivation byte-identically (AC-1).
+    input: capabilities.input ?? (endpoint.supports_vision ? ["text", "image"] : ["text"]),
     cost,
     contextWindow: limits.contextWindow,
     maxTokens: limits.maxTokens,
@@ -516,6 +739,7 @@ export function buildRealProvider(endpoint) {
     models,
     model: resolved,
     params,
+    capability_receipt: receipt,
     // Real network binding: usage is priced by `model.cost` above. `pricing` is
     // the per-category rate map the session checks against actual per-category
     // usage — a budgeted run that spent tokens in any $0-rated category fails
@@ -625,7 +849,7 @@ export function buildFauxProviderBinding(endpoint) {
   };
 }
 
-export function buildProviderBinding(endpoint) {
+export async function buildProviderBinding(endpoint) {
   if (endpoint.provider_kind === "faux") return buildFauxProviderBinding(endpoint);
   return buildRealProvider(endpoint);
 }

@@ -177,7 +177,7 @@ async function handleFrame(frame) {
         const endpoint = frame.endpoint || {};
         // Canonical location for generation/retry params is endpoint.params;
         // a top-level `params` object is accepted as an alias.
-        session.bindProvider({ ...endpoint, params: endpoint.params ?? frame.params });
+        await session.bindProvider({ ...endpoint, params: endpoint.params ?? frame.params });
       } catch (err) {
         write({ v: PROTOCOL_VERSION, type: "run.failed", session_key: frame.session_key, error: `provider_bind_failed:${err.message}` });
       }
@@ -302,6 +302,13 @@ function main() {
       }
       throw err;
     }
+    // Sequential handler dispatch: frame handlers are bounded (session.open
+    // awaits a close, provider.bind awaits the memoised capability
+    // resolution), and ordering matters — a provider.bind MUST be fully
+    // applied before a following turn.prompt starts a run on it. Long-running
+    // work (streaming turns) is started without await inside the handlers, so
+    // runs still stream concurrently; only the bounded setup steps chain.
+    let handlerTail = Promise.resolve();
     for (const frame of frames) {
       // Every inbound frame must speak this protocol version. Reject BEFORE
       // consuming the seq so a single mismatched frame does not wedge the
@@ -316,7 +323,7 @@ function main() {
         rejectFrame(frame, "protocol_seq_violation");
         continue;
       }
-      Promise.resolve()
+      handlerTail = handlerTail
         .then(() => handleFrame(frame))
         .catch((err) => {
           diag(`frame_handler_error:${err && err.message}`);
