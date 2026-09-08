@@ -339,3 +339,9 @@ Verified: `grep -n earendil-works pi-runtime/package.json labs/pi-replacement/pa
 Next: stage exit — vote recorded for slot c with reason and dissent. Conductor tallies
   MASTER-A vs MASTER-C, then holds at the winning-plan owner-approval gate
   (DEC-M1..M8 / DEC-O1..O6 outstanding). No implementation is authorized.
+
+### L-9 | 2026-09-08T08:04:46Z | S1-plan | gpt-5.6-sol | planner | pi-compat-20260908-architect-a <!-- bsc-ledger:pi-compat-20260908-VOTE-A -->
+Did: pi-compat-20260908-architect-a stage on task pi-compat-20260908-VOTE-A (harness fallback entry; the model did not append one).
+Result: task pi-compat-20260908-VOTE-A finished; worktree head 816bcee3.
+Verified: see Compass Forge evidence rows on pi-compat-20260908-VOTE-A (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
