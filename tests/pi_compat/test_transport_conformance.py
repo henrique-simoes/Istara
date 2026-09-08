@@ -212,3 +212,78 @@ def test_policy_derived_kind_binds_or_rejects_typed_on_worker():
             assert result["error"].startswith("provider_transport_mismatch:"), (
                 f"{provider}/{model_id} must reject TYPED pre-network, got: {result['error']}"
             )
+
+
+def test_stale_stored_kind_reconciles_before_worker_bind():
+    """F-4: an ALREADY-PERSISTED openai endpoint with the pre-F-1 stale kind
+    (``openai_compat``) must resolve — not throw ``provider_transport_mismatch``.
+
+    Starts from a stored ``PiApiEndpoint`` whose ``provider_kind`` predates the
+    F-1 fix (the path the four F-1 tests never exercised: they derived the
+    kind freshly via ``provider_kind_for_catalog_api`` / ``_apply_catalog_fields``).
+    Asserts the reconciliation at every Python layer that touches the worker
+    boundary: the pure helper, the resolver ``_build``, the catalog manager
+    entry, and the engine bind payload. The worker-side bind of the
+    RECONCILED kind is already covered by
+    ``test_policy_derived_kind_binds_or_rejects_typed_on_worker`` (openai/gpt-4o
+    binds ``pi_builtin``); what this test pins is that the stale stored value
+    never reaches the worker.
+    """
+    from app.config import PiApiEndpoint
+    from app.core.pi_runtime.endpoint_policy import reconciled_provider_kind
+    from app.core.pi_runtime.endpoints import PiEndpointResolver
+
+    stale = PiApiEndpoint(
+        endpoint_id="pi-openai-stale",
+        provider_kind="openai_compat",  # pre-F-1 stored value for an openai-responses record
+        base_url="https://api.openai.com/v1",
+        model="gpt-4o",
+        pi_provider="openai",
+        auth_provider="openai",
+        keychain_service="istara-pi-openai",
+    )
+    # 1. Pure helper re-derives from the catalog.
+    assert reconciled_provider_kind(
+        stale.provider_kind, stale.pi_provider, stale.model, stale.auth_provider
+    ) == "openai_responses"
+    # 2. Resolver bind path re-derives (no secret I/O: _build with a dummy key).
+    resolved = PiEndpointResolver(endpoints=[stale])._build(stale, "dummy-key")
+    assert resolved.provider_kind == "openai_responses", (
+        f"stale stored kind reached the resolver: {resolved.provider_kind} (F-4 recurrence)"
+    )
+    # 3. Catalog manager entry re-derives so admission sees the bound transport.
+    from app.core.pi_runtime.model_manager import PiModelManager
+
+    entry = PiModelManager._from_settings(stale)
+    assert entry.provider_kind == "openai_responses"
+    # 4. Engine bind payload re-derives as final defense.
+    from app.core.pi_runtime.engine import _bind_payload
+
+    payload = _bind_payload(resolved)
+    assert payload["provider_kind"] == "openai_responses"
+    # 5. A stale xAI endpoint reconciles identically (all 4 xai/* records share
+    #    the openai-responses api).
+    assert (
+        reconciled_provider_kind("openai_compat", "xai", "grok-4.3", "xai")
+        == "openai_responses"
+    )
+
+
+def test_reconciliation_preserves_non_catalog_endpoints():
+    """F-4 guard: custom gateways, local serving, and unknown models keep
+    their stored kind byte-identically (AC-1 additive constraint)."""
+    from app.core.pi_runtime.endpoint_policy import reconciled_provider_kind
+
+    # No catalog identity at all — untouched.
+    assert reconciled_provider_kind("openai_compat", "", "my-model", "") == "openai_compat"
+    # Unknown provider/model — fail safe to stored.
+    assert (
+        reconciled_provider_kind("openai_compat", "my-gateway", "my-model", "")
+        == "openai_compat"
+    )
+    assert (
+        reconciled_provider_kind("openai_compat", "openai", "no-such-model", "")
+        == "openai_compat"
+    )
+    # Faux / local test doubles — untouched.
+    assert reconciled_provider_kind("faux", "", "test", "") == "faux"

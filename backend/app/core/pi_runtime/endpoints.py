@@ -238,9 +238,21 @@ class PiEndpointResolver:
     def _build(self, endpoint: PiApiEndpoint, api_key: str) -> ResolvedPiEndpoint:
         if not api_key:
             raise PiEndpointResolutionError("missing_keychain_secret")
+        # F-4: catalog-managed endpoints persisted before the F-1 fix carry a
+        # stale stored kind (openai_compat for openai-responses records).
+        # Re-derive at bind so the stale value never reaches the worker; no
+        # migration required. Non-catalog endpoints pass through untouched.
+        from app.core.pi_runtime.endpoint_policy import reconciled_provider_kind
+
+        provider_kind = reconciled_provider_kind(
+            endpoint.provider_kind,
+            endpoint.pi_provider,
+            endpoint.model,
+            endpoint.auth_provider,
+        )
         return ResolvedPiEndpoint(
             endpoint_id=endpoint.endpoint_id,
-            provider_kind=endpoint.provider_kind,
+            provider_kind=provider_kind,
             base_url=endpoint.base_url.rstrip("/"),
             model=endpoint.model,
             api_key=api_key,

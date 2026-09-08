@@ -39,6 +39,62 @@ def provider_kind_for_catalog_api(api: str) -> str:
     return "openai_compat"
 
 
+def reconciled_provider_kind(
+    stored_kind: str,
+    pi_provider: str = "",
+    model: str = "",
+    auth_provider: str = "",
+) -> str:
+    """Re-derive ``provider_kind`` for a catalog-managed endpoint (FIX F-4).
+
+    F-1 repaired only the DERIVATION path (``_apply_catalog_fields`` on
+    POST/PUT). Endpoints persisted BEFORE that fix carry a stale stored kind
+    (``openai_compat`` for every ``openai-responses`` record) that would
+    otherwise reach the worker verbatim and trip the typed
+    ``provider_transport_mismatch`` rejection at bind time.
+
+    Catalog-managed means non-empty ``pi_provider`` (falling back to
+    ``auth_provider``) plus a non-empty ``model`` that resolves to a catalog
+    record. Non-catalog endpoints (custom gateways, local serving, Petals,
+    faux, LLMServer projections) return ``stored_kind`` untouched, preserving
+    byte-identical legacy behavior (AC-1). Unknown providers/models and
+    catalog-load failures also fail safe to ``stored_kind``.
+
+    This is the single reconciliation helper: the resolver, the catalog
+    manager, and the bind payload all funnel through it so a stale stored
+    kind can never reach the worker, with no data migration required.
+    """
+    stored = str(stored_kind or "openai_compat")
+    provider = str(pi_provider or auth_provider or "").strip().lower()
+    model_id = str(model or "").strip()
+    if not provider or not model_id:
+        return stored
+    try:
+        from app.core.pi_runtime.catalog import load_catalog
+
+        provider_models = load_catalog().get(provider)
+        if not provider_models:
+            return stored
+        match = next((m for m in provider_models if m.get("id") == model_id), None)
+        if not match:
+            return stored
+        api = str(match.get("api") or "").strip()
+        if not api:
+            return stored
+        derived = provider_kind_for_catalog_api(api)
+        if derived != stored:
+            logger.debug(
+                "pi endpoint: reconciled stale provider_kind %s -> %s for %s/%s",
+                stored,
+                derived,
+                provider,
+                model_id,
+            )
+        return derived
+    except Exception:
+        return stored
+
+
 def _apply_catalog_fields(payload: dict[str, Any]) -> None:
     provider = str(payload.get("pi_provider") or "").strip().lower()
     model_id = str(payload.get("pi_model") or "").strip()

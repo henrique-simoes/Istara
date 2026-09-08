@@ -156,9 +156,24 @@ class PiModelManager:
     # ── catalog sources ──────────────────────────────────────────────────
     @staticmethod
     def _from_settings(endpoint: PiApiEndpoint) -> _CatalogEntry:
+        # F-4: reconcile the stale stored kind at catalog-materialization time
+        # too, so capability admission (embed filter, distinct ensembles,
+        # default selection) sees the same transport the worker will bind.
+        # Non-catalog endpoints pass through untouched.
+        try:
+            from app.core.pi_runtime.endpoint_policy import reconciled_provider_kind
+
+            provider_kind = reconciled_provider_kind(
+                endpoint.provider_kind,
+                getattr(endpoint, "pi_provider", ""),
+                getattr(endpoint, "model", ""),
+                getattr(endpoint, "auth_provider", ""),
+            )
+        except Exception:
+            provider_kind = endpoint.provider_kind
         return _CatalogEntry(
             endpoint_id=endpoint.endpoint_id,
-            provider_kind=endpoint.provider_kind,
+            provider_kind=provider_kind,
             base_url=endpoint.base_url.rstrip("/"),
             model=endpoint.model,
             source="settings",

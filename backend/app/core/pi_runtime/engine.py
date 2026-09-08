@@ -137,9 +137,23 @@ def _bind_payload(
         if not scoped_project:
             raise PiEndpointResolutionError("petals_project_id_required")
         base_url = f"{base_url.rstrip('/')}/projects/{quote(scoped_project, safe='')}"
+    # F-4 final defense: a ResolvedPiEndpoint constructed outside the resolver
+    # (explicit test catalogs, deserialized fixtures) may still carry the
+    # pre-F-1 stale kind. Re-derive for catalog-managed identities so the
+    # worker never sees the mismatch; non-catalog kinds pass through untouched.
+    try:
+        from app.core.pi_runtime.endpoint_policy import reconciled_provider_kind
+
+        provider_kind = reconciled_provider_kind(
+            endpoint.provider_kind,
+            getattr(endpoint, "pi_provider", ""),
+            getattr(endpoint, "model", ""),
+        )
+    except Exception:
+        provider_kind = endpoint.provider_kind
     payload = {
         "endpoint_id": endpoint.endpoint_id,
-        "provider_kind": endpoint.provider_kind,
+        "provider_kind": provider_kind,
         "base_url": base_url,
         "model": endpoint.model,
         "api_key": endpoint.api_key,
@@ -155,7 +169,7 @@ def _bind_payload(
         # Canonical generation/retry knobs (worker-validated keys only:
         # temperature, max_tokens, thinking_level, timeout_ms, max_retries).
         payload["params"] = bind_params
-    if endpoint.provider_kind == "faux" and endpoint.faux_responses is not None:
+    if provider_kind == "faux" and endpoint.faux_responses is not None:
         # Test-only deterministic provider: never set by the production resolver.
         payload["faux_responses"] = list(endpoint.faux_responses)
         payload["faux_forced_tool_calls"] = list(endpoint.faux_forced_tool_calls or ())
