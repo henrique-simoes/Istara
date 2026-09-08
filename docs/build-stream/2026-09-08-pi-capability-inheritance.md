@@ -7,10 +7,10 @@ branch: testing
 cf: { spec: CF-SPEC-29, tasks: [] }
 phase: "Phase 1 — Implementation waves (runtime-and-provider-integration)"
 stage: S3-review
-status: changes-requested
+status: in-progress
 blocked_on: null
 last: { agent: claude-opus-5, at: 2026-09-08T17:01:11Z, ledger: L-26 }
-next_action: "Wave runtime-and-provider-integration review FAILED (F-13 Blocker, F-14 Major, F-15/F-16 Minor); remediate FIX-pi-compat-20260908-WAVE-runtime-and-provider-integration-REVIEW-r1 and -r1b, then delta re-review."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
