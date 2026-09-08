@@ -9,8 +9,8 @@ phase: "Phase 0 — Owner-approved expanded frame; 3-architect planning"
 stage: S1-plan
 status: in_progress
 blocked_on: null
-last: { agent: claude-opus-5, at: 2026-09-08T07:21:10Z, ledger: L-003 }
-next_action: "Generate the strict-wave 3-architect plan; hold implementation at the winning-plan owner-approval gate."
+last: { agent: claude-opus-5, at: 2026-09-08T07:42:47Z, ledger: L-6 }
+next_action: "Cross-vote the three MECE master candidates; then hold at the winning-plan owner-approval gate (DEC-O1..O6 outstanding)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -210,3 +210,42 @@ Did: pi-compat-20260908-architect-a stage on task pi-compat-20260908-PLAN-A (har
 Result: task pi-compat-20260908-PLAN-A finished; worktree head c09f0c42.
 Verified: see Compass Forge evidence rows on pi-compat-20260908-PLAN-A (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-6 | 2026-09-08T07:42:47Z | S1-plan | claude-opus-5 | architect-b (synthesis) | Phase 0 — 3-architect planning <!-- bsc-ledger:pi-compat-20260908-MASTER-B -->
+Did: MECE master-plan synthesis for slot b. Read all three immutable draft
+snapshots (A/gpt-5.6-sol 508 lines, B/claude-opus-5 685 lines, C/zai-glm-5.3-flash
+224 lines) and re-measured every disputed fact rather than averaging positions.
+Wrote `docs/build-stream/pi-compat-20260908-master-b.md` (one complete master candidate: authority law, resolved conflicts,
+unioned evidence, 8 dependency-ordered waves W0–W7, 11 acceptance criteria,
+change-classification taxonomy, verification ladder, 15 risks, rollback, coverage
+matrix, 6 owner decisions). No product code and no lifecycle plan body edited.
+Result: 4 substantive conflicts resolved on evidence — DEC-M1 dual-path authority
+(runtime `getBuiltinModel()` in the worker + generated projection for other
+consumers, bound by a new equivalence test) which REVERSES my own draft B's
+persisted-descriptor design in favour of A/C; DEC-M2 `getSupportedThinkingLevels`
+is the only correct derivation, rejecting C's non-null-map-keys rule (measured
+wrong in 3 of 4 live records); DEC-M3 pi-ai owns list price, operator owns
+contract price (A's rule over B's full replacement and C's no-inheritance);
+DEC-M4 version bump moves LAST behind conformance (B/C over A's bump-first), with
+A's lockstep-across-both-surfaces requirement and C's diff-proof-first step.
+Raised S-E3, a defect no draft caught: 119 of 1312 upstream models are zero-priced
+in pi-ai itself, including `zai/glm-5.3` (the live-probe model), so regenerating
+the mirror cannot fix `cost_budget_unpriced` — draft B's AC-6 was unachievable as
+written and is rewritten around an admission-time pricing preflight. Also
+confirmed lifecycle evidence E2 is wrong (`glm-5.3-flash` is absent from installed
+0.84.3). pi-compat-20260908-MASTER-B.
+Verified: `grep -n getSupportedThinkingLevels -A22 pi-runtime/node_modules/@earendil-works/pi-ai/dist/models.js`
+(models.js:547-559 — absent entry means supported for off/minimal/low/medium/high,
+while xhigh/max are opt-in) → passed; node evaluation of `getBuiltinModel` +
+`getSupportedThinkingLevels` over zai/glm-5.3, openai-codex/gpt-5.6-luna,
+anthropic/claude-opus-4-7, zai/glm-4.7 → passed (luna and opus-4-7 both support all
+7 levels where the non-null rule yields 3 and 2; mapless glm-4.7 supports 5 where
+the rule yields 0); `getBuiltinModel('zai','glm-5.3-flash')` → undefined → passed;
+registry walk over 39 providers / 1312 models counting zero-priced records → passed
+(119 zero-priced, 109 reasoning-capable); `grep -rn cost_budget_unpriced pi-runtime/src/`
++ `sed -n 525,545p pi-runtime/src/session.mjs` → passed (session.mjs:420,:539 fail
+closed when max_cost_usd is finite, the binding is real, and a spent category is
+$0-rated). All five recorded as CF `command` evidence on pi-compat-20260908-MASTER-B, alongside the
+`self_report`. No suite was run: this is a planning stage that touched no code.
+Next: conductor cross-vote on the master candidates, then stop at the winning-plan
+owner-approval gate. Six owner decisions (DEC-O1..O6) block implementation.
