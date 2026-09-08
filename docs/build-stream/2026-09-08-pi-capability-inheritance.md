@@ -9,7 +9,7 @@ phase: "Phase 0 — Owner-approved expanded frame; 3-architect planning"
 stage: S1-plan
 status: in_progress
 blocked_on: null
-last: { agent: claude-opus-5, at: 2026-09-08T07:42:47Z, ledger: L-6 }
+last: { agent: zai/glm-5.3-flash, at: 2026-09-08T07:53:33Z, ledger: L-7 }
 next_action: "Cross-vote the three MECE master candidates; then hold at the winning-plan owner-approval gate (DEC-O1..O6 outstanding)."
 ```
 <!-- /STATUS BLOCK -->
@@ -249,3 +249,25 @@ $0-rated). All five recorded as CF `command` evidence on pi-compat-20260908-MAST
 `self_report`. No suite was run: this is a planning stage that touched no code.
 Next: conductor cross-vote on the master candidates, then stop at the winning-plan
 owner-approval gate. Six owner decisions (DEC-O1..O6) block implementation.
+
+- **L-7 | 2026-09-08T07:53:33Z | S1-plan | zai/glm-5.3-flash | synthesizer | synthesize (rev 2) <!-- bsc-ledger:pi-compat-20260908-MASTER-C -->**
+  Did: read all three immutable draft snapshots (slots a/b/c) and spot re-verified the
+  load-bearing claims (glm-5.3-flash ABSENT from installed 0.84.3 — lifecycle E2 wrong;
+  luna map `minimal→"low"`; `providers/all` import 75ms/~61.6MB RSS; mirror zai cost zeros;
+  `PiCatalogModel` lacks thinkingLevelMap/compat; `./providers/*` wildcard subpaths exist);
+  wrote the MECE master-plan candidate `docs/build-stream/pi-compat-20260908-master-c.md`
+  (merged per-field authority law, waves W0–W7, coverage matrix, conflict register X1–X10,
+  DEC-M1..M7). Rev 2 after cross-reading L-6 (MASTER-B): independently re-measured and
+  adopted S-E3 — pi-ai itself prices 119/1312 models at $0 incl. `zai/glm-5.3`, so mirror
+  regeneration alone cannot fix `cost_budget_unpriced` (added G17, W1.7 pricing preflight,
+  R14, DEC-M8; rewrote acceptance row 8) — and verified the `getSupportedThinkingLevels`
+  semantics (absent map key = supported for the five standard levels; explicit null
+  excludes; xhigh/max opt-in: luna 7, glm-5.3 3, glm-4.7 5, opus-4-7 7), fixing W3.3 to
+  validate against the computed set rather than map-key presence.
+  Result: synthesis candidate rev 2 ready for cross-vote; 0 code files touched; 1 doc
+  created+amended; worker-side inheritance adopted primary with B's measured import-cost
+  gate (≤30MB) and descriptor contingency; bump-last with diff-proof-first.
+  Verified: CF command evidence ids 1265/1266 (snapshots + plan), 1268/1269 (S-E3 walk +
+  level semantics), self_report id 1267 (satisfied=true); plan sha256 re-hashed post-rev2.
+  Next: conductor cross-vote on the synthesized master candidates (MASTER-B, MASTER-C);
+  then stop at the winning-plan owner-approval gate (DEC-M1..M8 outstanding).
