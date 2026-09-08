@@ -6,11 +6,11 @@ item: pi-capability-inheritance
 branch: testing
 cf: { spec: CF-SPEC-29, tasks: [] }
 phase: "Phase 1 — Implementation waves (authority-and-boundary)"
-stage: S2-execute
-status: in-progress
+stage: S3-review
+status: changes-requested
 blocked_on: null
-last: { agent: zai/glm-5.3-flash-max, at: 2026-09-08T09:49:41Z, ledger: L-11 }
-next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
+last: { agent: claude-opus-5, at: 2026-09-08T10:07:37Z, ledger: L-12 }
+next_action: "Review FAILED (F-1 Blocker, F-2/F-3 Major). Fixer takes FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 and FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b; delta re-review after both are terminal."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1120,6 +1120,14 @@ Why: votes={"a": {"candidate_id": "f2be3452af887bea5e0ee729b62bedf973b411b22c98b
   approval authorizes planning only; implementation remains behind the
   conductor's winning-plan approval gate.
 
+## Findings register — Phase 1 wave `authority-and-boundary`
+
+| ID | Severity | Where | Finding | CF task | Status |
+|----|----------|-------|---------|---------|--------|
+| F-1 | Blocker | `pi-runtime/src/provider.mjs` (`resolveCapabilities` transport gate) + `backend/app/core/pi_runtime/endpoint_policy.py` | `provider_transport_mismatch` makes 346/1352 catalog models unbindable (all 38 `openai`, 118 bedrock, 38 azure, 31 mistral, 41 google) because the derived `provider_kind` can never express `openai-responses` and friends; missed because the conformance harness passes `record.api` as the transport | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 | open |
+| F-2 | Major | `pi-runtime/src/worker.mjs:311` | `handlerTail` is declared inside the stdin `data` callback, so the claimed bind-before-prompt ordering invariant is per-chunk only; `supervisor.py:224-225` writes one frame per drain | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | open |
+| F-3 | Major | `pi-runtime/src/worker.mjs:311-330` (with `session.mjs:652-664`, `tools.mjs:24`) | The same chain adds a cross-session head-of-line block: a `session.close` blocked in `waitForIdle()` now starves every frame batched behind it; pre-change only its own session stalled | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | open |
+
 ## Append-Only Ledger
 - **L-001 | 2026-09-08 | S0-frame | pi | —**
   Did: full investigation (pi-ai registry/exports/detection semantics,
@@ -1372,3 +1380,38 @@ passed; `python scripts/security_benchmark.py --fail-on-threshold` → score 100
 `docker compose -f docker-compose.qa.yml --profile contract config --quiet` → ok.
 Next: stage exit — S3 review of $TASK (reviewer: verify AC-1/2/3/4 wire fixtures, conformance gates, and
 that no Research Spine/security gate changed).
+
+### L-12 | 2026-09-08T10:07:37Z | S3-review | claude-opus-5 | reviewer | Wave authority-and-boundary (blind two-phase review) <!-- bsc-ledger:pi-compat-20260908-WAVE-authority-and-boundary-REVIEW -->
+Did: blind two-phase adversarial review of commit c86ceeb1 (43 files: emit-catalog.mjs, generate_pi_catalog.py,
+dashscope overlay, regenerated projection, catalog.py, provider.mjs, session.mjs, worker.mjs, capability-inheritance
+tests, wire fixtures, tests/pi_compat). Phase 1: froze a 10-row measurement sheet from my own runs before opening the
+work order, L-11, or any prior verdict. Built my own apparatus rather than reusing the implementer's — an NDJSON worker
+harness driving pi-runtime/src/worker.mjs, and an A/B rig that extracts the pre-change src tree from c86ceeb1^ so
+pre/post behaviour is compared directly. Reviewer scratch removed; no repository file changed except this lifecycle file.
+Result: **FAIL**. Three undisclosed defects, all A/B-proven against the pre-change tree. F-1 (Blocker): the wave's
+headline control, the typed `provider_transport_mismatch` rejection in `resolveCapabilities`, makes 346 of 1352 shipped
+catalog models unbindable — including all 38 `openai` models — because `endpoint_policy.py::_apply_catalog_fields`
+derives `provider_kind` through a three-way map and `apiForKind` emits only three transports, so records whose api is
+`openai-responses` / `bedrock-converse-stream` / `azure-openai-responses` / `mistral-conversations` /
+`google-generative-ai` / `google-vertex` can never agree. It went undetected because
+`scripts/dump-resolved-capabilities.mjs:63` passes `record.api` as the transport, making the mismatch branch
+structurally unreachable in the 1,312-model equivalence sweep. F-2 (Major): `worker.mjs:311` declares `handlerTail`
+inside the stdin `data` callback, so the ordering invariant L-11 claims ("a provider.bind is fully applied before a
+following turn.prompt") is per-chunk only, while `supervisor.py:224-225` writes one frame per drain. F-3 (Major): the
+same chain adds a cross-session head-of-line block — a `session.close` on a session with an in-flight tool call never
+completes (`tools.mjs:24` ignores the AbortSignal `agent-loop.js:457` passes) and now starves every frame batched behind
+it. Confirmed as sound: the tier-1..3 restriction law is monotonic (advertisements cannot enable or add a modality), and
+pi-ai 0.84.3 does gate every `thinkingFormat` branch on `model.reasoning`, so retaining `thinkingLevelMap` verbatim under
+a tier-2 reasoning restriction leaks nothing onto the wire. Fix tasks FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 (F-1) and FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b (F-2+F-3)
+created for pi-compat-20260908-fixer.
+Verified: independent re-runs, all reproducing the implementer's numbers — `cd pi-runtime && node --test test/*.test.mjs`
+-> 87 pass / 0 fail; `python scripts/generate_pi_catalog.py --check` -> byte-identical ok; `pytest tests/pi_compat -q`
+-> 5 passed; `pytest tests/pi_production -q` -> 475 passed; `pytest -k "pi_runtime or pi_compat or model_manager or
+endpoint" -q` -> 108 passed; `compass-forge gate after --new-only --target .` -> current.status = pass. Finding proofs:
+reviewer A/B on `buildRealProvider` for openai/gpt-4o -> PRE-change bound (model.api=openai-completions), POST-change
+threw `provider_transport_mismatch:openai:gpt-4o:registry_api=openai-responses:configured=openai-completions`; catalog
+cross-check -> 346/1352 models affected; `_apply_catalog_fields("openai","gpt-4o")` -> provider_kind=openai_compat
+(the exact input the gate rejects); reviewer A/B worker harness -> pre-change session B opens while a blocked
+session.close is in flight, post-change session B never opens.
+Next: S4-remediate — pi-compat-20260908-fixer takes FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 and FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b; conductor dispatches one delta
+re-review to this role after both are terminal.
