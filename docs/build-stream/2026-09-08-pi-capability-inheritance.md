@@ -10,7 +10,7 @@ stage: S4-remediate
 status: in-progress
 blocked_on: null
 last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-08T15:52:51Z, ledger: L-23 }
-next_action: "Delta re-review of FIX-REREV-REV-pi-compat-20260908-config-sweep-506dbb86-r1-secret-persistence-v2 (F-11/F-12 fix)."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
