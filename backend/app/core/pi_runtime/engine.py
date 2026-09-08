@@ -163,6 +163,12 @@ def _bind_payload(
         "context_window": endpoint.context_window,
         "max_tokens": endpoint.max_tokens,
         "supports_reasoning": endpoint.supports_reasoning,
+        # G12 (plan W3.2): the advertised vision tri-state was resolved but
+        # never crossed the boundary, so the worker's tier-2/3 modality
+        # restriction (provider.mjs reads ``supports_vision === false``) was
+        # unreachable from production bindings. Forward it; the worker still
+        # treats null/true as "keep the tier-4 record's modalities".
+        "supports_vision": endpoint.supports_vision,
     }
     bind_params = _turn_bind_params(params, endpoint)
     if bind_params:

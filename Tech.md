@@ -2067,6 +2067,16 @@ Pessimistic locking prevents multiple users/agents from working on the same task
 - **Agent awareness**: `_pick_next_task()` skips locked tasks.
 - **Endpoints**: `POST /tasks/{id}/lock`, `POST /tasks/{id}/unlock`.
 
+### Pi Capability Authority
+
+Pi/pi-ai is the authority for provider/model capability semantics; Istara inherits, restricts, or projects it — never restates it (build-stream `2026-09-08-pi-capability-inheritance`):
+
+- **Projection**: `backend/app/core/pi_runtime/data/pi_models_catalog.json` is a generated, provenance-stamped projection of pi-ai's registry (emit via `python scripts/generate_pi_catalog.py`; `--check` is a byte-identity drift gate). `PiCatalogModel` (`catalog.py`) declares `thinkingLevelMap`/`compat` so the tier-4 fields reach `/api/settings/pi-catalog` and the frontend menus; a new upstream model field fails `tests/pi_compat/test_capability_carry_through.py` loudly instead of being silently dropped.
+- **Restriction**: endpoint capability advertisements are tri-state and monotonic — an operator `supports_reasoning:false` veto survives POST and sparse PUT and beats the record; nothing may enable beyond the record; explicit `null` defers to tier 4. `endpoint_policy.prepare_pi_endpoint_payload` enforces the merge law.
+- **Pricing**: pi-ai owns list price; operator contract rates (tier 2) survive POST/PUT. Admission rejects a registry model whose input/output rates resolve to $0 (`pi_endpoint_unpriced`, naming the unpriced categories) unless tier-2 rates are supplied; governed overlays are exempt (hand-owned pricing) and the mid-run `cost_budget_unpriced` terminal remains as defense in depth.
+- **Effort vocabulary**: `llm_thinking.PI_THINKING_LEVEL_LADDER` mirrors pi-ai's `EXTENDED_THINKING_LEVELS`; `validate_model_effort` rejects non-ladder tokens (`unsupported_model_effort`) instead of letting the worker clamp silently, and a conformance test pins the ladder against the projection's `thinkingLevelMap` key union.
+- **Bind boundary**: `_bind_payload` forwards `supports_reasoning` AND `supports_vision` (the worker's modality restriction was unreachable before the vision signal was forwarded).
+
 ### LLM Router
 
 > **Note:** As of the ComputeRegistry unification, `llm_router.py` and `compute_pool.py` are thin wrappers over `compute_registry.py`. See the "ComputeRegistry — Single Source of Truth" section for the current architecture.

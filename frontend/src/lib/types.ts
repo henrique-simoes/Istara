@@ -344,6 +344,10 @@ export interface PiCatalogModel {
   reasoning?: boolean;
   input?: string[];
   thinkingLevels?: string[] | null;
+  /** pi-ai tier-4 per-level wire contract (null = unsupported, absent = default). */
+  thinkingLevelMap?: Record<string, string | null> | null;
+  /** pi-ai compatibility record (thinkingFormat, supportsReasoningEffort, ...). */
+  compat?: Record<string, unknown> | null;
   cost?: Record<string, number> | null;
 }
 

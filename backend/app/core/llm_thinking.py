@@ -39,6 +39,31 @@ def normalize_model_effort(value: str | None) -> str:
     return effort
 
 
+# pi-ai's EXTENDED_THINKING_LEVELS (pi-ai dist/models.js, 0.84.3 pin) — the
+# provider-neutral effort ladder the worker clamps against. The backend never
+# imports pi-ai (authority law E3); this tuple is the backend mirror and
+# ``tests/pi_compat/test_capability_carry_through.py`` pins it against the
+# shipped projection's ``thinkingLevelMap`` key union, so a future pi-ai
+# ladder change fails the backend gate loudly instead of clamping silently
+# (plan W5.1 — never silent wrongness).
+PI_THINKING_LEVEL_LADDER: tuple[str, ...] = (
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+)
+# Legacy non-reasoning prompt-mode controls: the ChatModelControls menu offers
+# auto/on for models without reasoning support, and those values remain legal
+# model-effort vocabulary even though they are outside pi-ai's ladder.
+_PROMPT_MODE_EFFORTS: frozenset[str] = frozenset({"auto", "on"})
+_MODEL_EFFORT_ALLOWLIST: frozenset[str] = (
+    frozenset(PI_THINKING_LEVEL_LADDER) | {"server_default"} | _PROMPT_MODE_EFFORTS
+)
+
+
 THINKING_MARKER_REGISTRY: dict[str, dict[str, Any]] = {
     "qwen": {"inline_blocks": [("<think>", "</think>")]},
     "deepseek": {"inline_blocks": [("<think>", "</think>")]},
@@ -68,10 +93,19 @@ _THINKING_DIRECTIVES: dict[ThinkingMode, str] = {
 
 
 def validate_model_effort(value: str | None) -> str:
-    """Validate a provider effort while blocking raw-reasoning directives."""
+    """Validate a provider effort while blocking raw-reasoning directives.
+
+    Two rejection classes (plan W5.1): marker-laden raw-reasoning directives
+    normalize to ``server_default`` and are rejected; well-formed tokens
+    outside pi-ai's effort ladder (plus the legacy prompt modes) are rejected
+    outright — the worker would otherwise silently clamp them to the lowest
+    supported level, which is silent wrongness.
+    """
     normalized = normalize_model_effort(value)
     original = (value or "server_default").strip().lower().replace("-", "_")
     if normalized == "server_default" and original != "server_default":
+        raise ValueError("unsupported_model_effort")
+    if normalized not in _MODEL_EFFORT_ALLOWLIST:
         raise ValueError("unsupported_model_effort")
     return normalized
 

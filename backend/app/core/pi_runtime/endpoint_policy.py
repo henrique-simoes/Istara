@@ -95,7 +95,35 @@ def reconciled_provider_kind(
         return stored
 
 
-def _apply_catalog_fields(payload: dict[str, Any]) -> None:
+def _apply_catalog_fields(
+    payload: dict[str, Any],
+    provided_fields: set[str] | None = None,
+    preserved_fields: set[str] | None = None,
+) -> None:
+    """Fill tier-4 catalog facts into a POST/PUT payload (plan W3.3).
+
+    Merge law per §1.2 of the consensus plan — per field, never per record:
+
+    - identity/transport fields (``provider_kind``, ``base_url``, ``model``,
+      ``context_window``, ``max_tokens``) are catalog-managed and overwritten
+      unconditionally — the bind-time reconciliation (F-4) independently
+      guards ``provider_kind``.
+    - capability advertisements (``supports_vision``, ``supports_reasoning``)
+      are TRI-STATE operator overrides: tiers 1-3 may only RESTRICT the tier-4
+      record, never enable beyond it, and an explicit value must survive POST
+      and sparse PUT (AC-4). ``supports_reasoning=None`` (explicit null) means
+      "defer to tier-4 authority" and is preserved, not collapsed.
+    - per-Mtok rates are tier-2 operator contract pricing (DEC-M3): a
+      provided or persisted operator rate always wins; the tier-4 list price
+      only fills what the operator did not state.
+
+    ``provided_fields`` are keys the client explicitly sent (pydantic
+    ``model_fields_set``); ``preserved_fields`` are keys backfilled from the
+    persisted endpoint on a sparse PUT. Both must survive verbatim — only the
+    unset remainder is filled from the catalog.
+    """
+    provided = provided_fields or set()
+    preserved = preserved_fields or set()
     provider = str(payload.get("pi_provider") or "").strip().lower()
     model_id = str(payload.get("pi_model") or "").strip()
     if not provider or not model_id:
@@ -116,14 +144,43 @@ def _apply_catalog_fields(payload: dict[str, Any]) -> None:
     payload["model"] = match["id"]
     payload["context_window"] = int(match.get("contextWindow") or 0)
     payload["max_tokens"] = int(match.get("maxTokens") or 0)
-    payload["supports_vision"] = "image" in (match.get("input") or [])
+    # ``supports_vision``: monotonic restriction (tier 3 over tier 4). An
+    # explicit operator value may narrow the record's modalities, never add
+    # one; unset falls to the catalog advertisement.
+    catalog_vision = "image" in (match.get("input") or [])
+    if "supports_vision" in provided or "supports_vision" in preserved:
+        payload["supports_vision"] = bool(payload.get("supports_vision")) and catalog_vision
+    else:
+        payload["supports_vision"] = catalog_vision
+    # ``supports_reasoning``: tri-state. Explicit false is a tier-2 veto that
+    # survives POST and sparse PUT (AC-4); explicit true cannot enable a
+    # record that denies reasoning (monotonic); explicit null defers to the
+    # tier-4 record and survives verbatim; unset fills from the record.
     if "reasoning" in match:
-        payload["supports_reasoning"] = bool(match["reasoning"])
+        catalog_reasoning = bool(match["reasoning"])
+        if "supports_reasoning" in provided or "supports_reasoning" in preserved:
+            advertised = payload.get("supports_reasoning")
+            if advertised is None:
+                payload["supports_reasoning"] = None
+            else:
+                payload["supports_reasoning"] = bool(advertised) and catalog_reasoning
+        else:
+            payload["supports_reasoning"] = catalog_reasoning
     cost = match.get("cost") or {}
-    payload["cost_input_per_mtok"] = float(cost.get("input") or 0.0)
-    payload["cost_output_per_mtok"] = float(cost.get("output") or 0.0)
-    payload["cost_cache_read_per_mtok"] = float(cost.get("cacheRead") or 0.0)
-    payload["cost_cache_write_per_mtok"] = float(cost.get("cacheWrite") or 0.0)
+    catalog_rates = {
+        "cost_input_per_mtok": float(cost.get("input") or 0.0),
+        "cost_output_per_mtok": float(cost.get("output") or 0.0),
+        "cost_cache_read_per_mtok": float(cost.get("cacheRead") or 0.0),
+        "cost_cache_write_per_mtok": float(cost.get("cacheWrite") or 0.0),
+    }
+    for rate_field, catalog_rate in catalog_rates.items():
+        if rate_field in provided or rate_field in preserved:
+            # Tier-2 operator contract pricing owns its fields outright
+            # (DEC-M3) — including an explicit 0.0, which the admission
+            # preflight below treats as unpriced rather than overwriting.
+            payload[rate_field] = float(payload.get(rate_field) or 0.0)
+        else:
+            payload[rate_field] = catalog_rate
     payload["pi_provider"] = provider
     payload["auth_provider"] = str(payload.get("auth_provider") or provider).strip()
     payload["auth_method"] = str(payload.get("auth_method") or "api_key").strip()
@@ -133,6 +190,73 @@ def _apply_catalog_fields(payload: dict[str, Any]) -> None:
             if payload["auth_method"].startswith("oauth")
             else f"istara-pi-{provider}"
         )
+
+
+# Every spend category the worker prices per run (pi-runtime/src/session.mjs
+# ``_hasUnpricedSpend``). input/output are spent by every real turn; cache
+# categories are conditional on provider caching behavior, so they cannot fail
+# admission by themselves — but they are NAMED in the error so an operator can
+# supply every needed tier-2 rate in one round-trip.
+_PRICING_CATEGORIES: tuple[tuple[str, str], ...] = (
+    ("cost_input_per_mtok", "input"),
+    ("cost_output_per_mtok", "output"),
+    ("cost_cache_read_per_mtok", "cache_read"),
+    ("cost_cache_write_per_mtok", "cache_write"),
+)
+
+
+def _governed_overlay_providers() -> set[str]:
+    """Provider ids owned by governed custom-provider overlays (tier 5).
+
+    Overlay pricing is hand-owned data (plan W1.2); its zero rates are a
+    known overlay gap, NOT S-E3's upstream zero-pricing, so overlay endpoints
+    keep today's admission behavior and the mid-run ``cost_budget_unpriced``
+    terminal as their guard. Repricing an overlay is an owner decision.
+    """
+    try:
+        from app.core.pi_runtime.catalog import catalog_provenance
+
+        return {
+            str(provider_id)
+            for provider_id in (catalog_provenance().get("governed_custom_providers") or [])
+        }
+    except Exception:
+        return set()
+
+
+def _enforce_budget_pricing_preflight(payload: dict[str, Any]) -> None:
+    """Admission-time pricing preflight for budgeted runs (plan W3.4 / S-E3).
+
+    The supervisor budgets every run (``max_cost_usd`` defaults finite), and
+    the worker fails a budgeted run closed when it spends tokens in a category
+    left at a $0 rate. 119 of 1,312 upstream registry models are themselves
+    zero-priced in pi-ai (including ``zai/glm-5.3``), so such an endpoint can
+    never serve a budgeted turn — the failure would only surface mid-run.
+    Admission instead fails here, naming the unpriced categories, unless the
+    operator supplies tier-2 contract rates. Governed overlays are exempt
+    (hand-owned pricing); non-catalog endpoints keep today's behavior.
+    """
+    provider = str(payload.get("pi_provider") or "").strip().lower()
+    if not provider or provider in _governed_overlay_providers():
+        return
+    unpriced = [
+        label
+        for field, label in _PRICING_CATEGORIES
+        if not (float(payload.get(field) or 0.0) > 0.0)
+    ]
+    guaranteed_unpriced = [label for label in unpriced if label in ("input", "output")]
+    if not guaranteed_unpriced:
+        return
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "pi_endpoint_unpriced: this model has no positive rate for budgeted runs "
+            "in: "
+            + ", ".join(unpriced)
+            + " — supply operator contract rates (USD per 1M tokens) for the "
+            "unpriced categories, or the run fails closed with cost_budget_unpriced"
+        ),
+    )
 
 
 def _validate_endpoint_fields(payload: dict[str, Any]) -> None:
@@ -159,14 +283,21 @@ def _validate_endpoint_fields(payload: dict[str, Any]) -> None:
 def prepare_pi_endpoint_payload(data: Any, existing: PiApiEndpoint | None = None) -> dict[str, Any]:
     """Resolve catalog fields and validate a POST or sparse PUT payload."""
     payload = data.model_dump()
+    provided_fields = set(getattr(data, "model_fields_set", set()))
+    preserved_fields: set[str] = set()
     if existing is not None:
-        provided_fields = set(getattr(data, "model_fields_set", set()))
         for field, value in existing.model_dump().items():
             if field not in provided_fields:
                 payload[field] = value
+                preserved_fields.add(field)
         payload["endpoint_id"] = existing.endpoint_id
-    _apply_catalog_fields(payload)
+    _apply_catalog_fields(
+        payload,
+        provided_fields=provided_fields,
+        preserved_fields=preserved_fields,
+    )
     _validate_endpoint_fields(payload)
+    _enforce_budget_pricing_preflight(payload)
     return payload
 
 

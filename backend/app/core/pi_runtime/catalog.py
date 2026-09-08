@@ -42,11 +42,17 @@ class PiCatalogModel:
     cost: dict | None = None
     # Authority fields projected verbatim from pi-ai's registry by
     # pi-runtime/scripts/emit-catalog.mjs (build-stream 2026-09-08
-    # pi-capability-inheritance, plan W1.6 / G8). ``thinkingLevelMap`` is the
-    # decisive per-level wire contract (null = unsupported, absent = default)
-    # and ``compat`` the pi-ai compatibility record; the menu consumers and
-    # the worker resolver treat these as tier-4 authority. Governed custom
-    # providers (tier 5 overlays) may leave both null.
+    # pi-capability-inheritance, plan W1.6/G8, carry-through W3.1). Declared
+    # here so the loader's ``__dataclass_fields__`` filter passes them through
+    # to ``pi_catalog_json()`` / ``/api/settings/pi-catalog`` — G8's defect was
+    # exactly this: the projection carried the decisive fields but the
+    # dataclass silently dropped them at load. ``thinkingLevelMap`` is the
+    # per-level wire contract (null = unsupported, absent = default) and
+    # ``compat`` the pi-ai compatibility record; menu consumers and the worker
+    # resolver treat both as tier-4 authority. Governed custom providers
+    # (tier 5 overlays) may leave both null.
+    thinkingLevelMap: dict | None = None  # noqa: N815 -- verbatim pi-ai JSON field name
+    compat: dict | None = None
 
 
 @dataclass(frozen=True)
