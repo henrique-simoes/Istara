@@ -1099,6 +1099,14 @@ winning-plan owner-approval gate; this artifact authorizes no implementation.*
 <!-- /consensus-winning-plan:pi-compat-20260908-825cb8a8a6dd53ca201ba89199ca22f5895bbf7d51271ba18b9dfde415b45a70 -->
 
 ## Decision log
+
+<!-- consensus-winner-decision:pi-compat-20260908-825cb8a8a6dd53ca201ba89199ca22f5895bbf7d51271ba18b9dfde415b45a70 -->
+DEC-consensus-winner | 2026-09-08 | S1-plan | conductor
+Context: three architect cross-votes completed
+Decision: slot b selected from pi-compat-20260908-MASTER-B
+Why: votes={"a": {"candidate_id": "f2be3452af887bea5e0ee729b62bedf973b411b22c98b9f1142199a26dd86609", "task": "pi-compat-20260908-VOTE-A", "vote": "b"}, "b": {"candidate_id": "6f928974f42da70a7ac7e86f86c93eafe32ba09df6340e4a23025926f0eb193a", "task": "pi-compat-20260908-VOTE-B", "vote": "c"}, "c": {"candidate_id": "f2be3452af887bea5e0ee729b62bedf973b411b22c98b9f1142199a26dd86609", "task": "pi-compat-20260908-VOTE-C", "vote": "b"}}; tiebreak_used=False; plan_file=docs/build-stream/pi-compat-20260908-master-b.md
+
+
 - **DEC-1 | pending | S0 | owner** — Awaiting approval for: (a) new-default
   semantics (unknown providers get detection, not hard-off), (b) 0.85.1 bump
   in the same change, (c) inheritance-over-duplication as the standing rule
