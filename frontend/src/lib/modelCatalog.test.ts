@@ -169,3 +169,153 @@ describe("merged model catalog", () => {
     expect(agentEngineLabel("legacy")).toBe("Istara");
   });
 });
+
+describe("inherited capability carry-through (pi-compat W3)", () => {
+  it("passes the tier-4 authority fields through to chat choices untouched", () => {
+    // The menu consumes emitted thinkingLevels as given (DEC-M2 — the filter
+    // is never reimplemented client-side); thinkingLevelMap/compat ride the
+    // same record. This pins the payload contract against a consumer that
+    // strips or reshapes the inherited fields.
+    const provider = {
+      id: "zai",
+      display_name: "Zai",
+      login_methods: ["api_key"],
+      oauth_flow: null,
+      env_var: "ZAI_API_KEY",
+      auth_json_key: null,
+      base_url: null,
+      models: [
+        {
+          id: "glm-5.3",
+          name: "GLM-5.3",
+          api: "openai-completions",
+          reasoning: true,
+          thinkingLevels: ["low", "high", "max"],
+          thinkingLevelMap: { off: null, minimal: null, low: "low", medium: null, high: "high", xhigh: null, max: "max" },
+          compat: { thinkingFormat: "zai", supportsReasoningEffort: true },
+        },
+      ],
+    } as any;
+    const configured: PiEndpointInfo[] = [
+      { endpoint_id: "pi-zai-glm53", model: "glm-5.3", provider_kind: "openai_compat", pi_provider: "zai", credential_status: "ready" },
+    ];
+    const choices = buildChatModelChoices({
+      providers: [provider],
+      configured,
+      legacyModels: [],
+      engine: "pi",
+    });
+    const choice = choices.find((c) => c.modelId === "glm-5.3");
+    expect(choice?.model?.thinkingLevels).toEqual(["low", "high", "max"]);
+    expect(choice?.model?.thinkingLevelMap?.max).toBe("max");
+    expect(choice?.model?.compat?.supportsReasoningEffort).toBe(true);
+  });
+
+  it("keeps mapless overlay models on the fallback menu shape", () => {
+    // Governed overlays carry null authority fields; the menu must fall back
+    // instead of rendering an empty/non-array level list.
+    const provider = {
+      id: "dashscope",
+      display_name: "DashScope",
+      login_methods: ["api_key"],
+      oauth_flow: null,
+      env_var: "DASHSCOPE_API_KEY",
+      auth_json_key: null,
+      base_url: null,
+      models: [{ id: "glm-5.1", name: "GLM-5.1", api: "openai-completions", reasoning: true, thinkingLevelMap: null, compat: null }],
+    } as any;
+    const choices = buildChatModelChoices({
+      providers: [provider],
+      configured: [],
+      legacyModels: [],
+      engine: "pi",
+    });
+    expect(choices[0]?.model?.thinkingLevelMap).toBeNull();
+    expect(choices[0]?.model?.compat).toBeNull();
+  });
+});
+
+describe("chat model choices (CF-SPEC-14)", () => {
+  const providers = [
+    {
+      id: "openai-codex",
+      display_name: "OpenAI Codex",
+      login_methods: ["oauth"],
+      oauth_flow: null,
+      env_var: null,
+      auth_json_key: null,
+      base_url: null,
+      models: [
+        { id: "gpt-5.6-luna", name: "Luna", api: "openai-codex-responses", thinkingLevels: ["low", "high"] },
+      ],
+    },
+    {
+      id: "zai",
+      display_name: "Zai",
+      login_methods: ["api_key"],
+      oauth_flow: null,
+      env_var: "ZAI_API_KEY",
+      auth_json_key: null,
+      base_url: null,
+      models: [{ id: "glm-5.2", name: "GLM 5.2", api: "openai-compatible" }],
+    },
+  ];
+
+  const configured: PiEndpointInfo[] = [
+    { endpoint_id: "pi-codex-luna", model: "gpt-5.6-luna", provider_kind: "openai_codex", pi_provider: "openai-codex", credential_status: "ready" },
+    { endpoint_id: "pi-zai-glm", model: "glm-5.3-flash", provider_kind: "openai_compat", pi_provider: "zai", credential_status: "ready" },
+    { endpoint_id: "pi-local", model: "custom-local:latest", provider_kind: "openai_compat", pi_provider: "", credential_status: "ready" },
+    { endpoint_id: "pi-dead", model: "glm-5.2", provider_kind: "openai_compat", pi_provider: "zai", credential_status: "missing" },
+  ];
+
+  it("normalizes provider ids across underscore/dash spellings", () => {
+    expect(normalizeProviderId("openai_codex")).toBe("openai-codex");
+    expect(normalizeProviderId(" OpenAI-Codex ")).toBe("openai-codex");
+  });
+
+  it("matches endpoints by normalized provider id with provider_kind fallback", () => {
+    const choices = buildChatModelChoices({ providers, configured, legacyModels: [], engine: "pi" });
+    const luna = choices.find((c) => c.endpointId === "pi-codex-luna");
+    // provider_kind openai_codex normalizes to the openai-codex catalog row
+    expect(luna?.enabled).toBe(true);
+    expect(luna?.configured).toBe(true);
+  });
+
+  it("surfaces ready endpoints missing from the catalog as standalone enabled choices", () => {
+    const choices = buildChatModelChoices({ providers, configured, legacyModels: [], engine: "pi" });
+    const zai = choices.find((c) => c.endpointId === "pi-zai-glm");
+    const local = choices.find((c) => c.endpointId === "pi-local");
+    expect(zai?.enabled).toBe(true);
+    expect(zai?.configured).toBe(true);
+    expect(local?.enabled).toBe(true);
+    expect(local?.configured).toBe(true);
+    // Ready choices sort before disabled catalog rows.
+    const firstDisabled = choices.findIndex((c) => !c.enabled);
+    expect(choices.findIndex((c) => c.endpointId === "pi-zai-glm")).toBeLessThan(firstDisabled);
+  });
+
+  it("keeps missing-credential endpoints disabled", () => {
+    const choices = buildChatModelChoices({ providers, configured, legacyModels: [], engine: "pi" });
+    const dead = choices.filter((c) => c.endpointId === "pi-dead");
+    expect(dead.length).toBeGreaterThan(0);
+    expect(dead.every((c) => c.enabled === false)).toBe(true);
+  });
+
+  it("prefers the default endpoint and falls back to the first enabled choice", () => {
+    const choices = buildChatModelChoices({ providers, configured, legacyModels: [], engine: "pi" });
+    expect(resolveChatModelChoice(choices, { configured, engine: "pi", defaultEndpointId: "pi-zai-glm" })?.endpointId).toBe("pi-zai-glm");
+    expect(resolveChatModelChoice(choices, { configured, engine: "pi", defaultEndpointId: "nope" })?.enabled).toBe(true);
+  });
+
+  it("lists ready Pi rows before disabled catalog rows on the legacy engine too", () => {
+    const choices = buildChatModelChoices({ providers, configured, legacyModels: ["legacy-a"], engine: "legacy" });
+    const withPi = choices.filter((c) => !c.key.startsWith("legacy:"));
+    expect(withPi[0]?.enabled).toBe(true);
+    expect(withPi[0]?.configured).toBe(true);
+    const standalone = choices.find((c) => c.endpointId === "pi-zai-glm");
+    expect(standalone?.enabled).toBe(true);
+    expect(choices.findIndex((c) => c.endpointId === "pi-zai-glm")).toBeLessThan(
+      choices.findIndex((c) => !c.enabled),
+    );
+  });
+});
