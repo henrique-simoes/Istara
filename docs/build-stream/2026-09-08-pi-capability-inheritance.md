@@ -6,10 +6,10 @@ item: pi-capability-inheritance
 branch: testing
 cf: { spec: CF-SPEC-29, tasks: [] }
 phase: "Phase 1 — Implementation waves (authority-and-boundary)"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
-last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-08T10:15:08Z, ledger: L-14 }
+last: { agent: claude-opus-5, at: 2026-09-08T10:52:00Z, ledger: L-15 }
 next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
@@ -1124,9 +1124,12 @@ Why: votes={"a": {"candidate_id": "f2be3452af887bea5e0ee729b62bedf973b411b22c98b
 
 | ID | Severity | Where | Finding | CF task | Status |
 |----|----------|-------|---------|---------|--------|
-| F-1 | Blocker | `pi-runtime/src/provider.mjs` (`resolveCapabilities` transport gate) + `backend/app/core/pi_runtime/endpoint_policy.py` | `provider_transport_mismatch` makes 346/1352 catalog models unbindable (all 38 `openai`, 118 bedrock, 38 azure, 31 mistral, 41 google) because the derived `provider_kind` can never express `openai-responses` and friends; missed because the conformance harness passes `record.api` as the transport | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 | fixed |
-| F-2 | Major | `pi-runtime/src/worker.mjs:311` | `handlerTail` is declared inside the stdin `data` callback, so the claimed bind-before-prompt ordering invariant is per-chunk only; `supervisor.py:224-225` writes one frame per drain | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | fixed (L-13) |
-| F-3 | Major | `pi-runtime/src/worker.mjs:311-330` (with `session.mjs:652-664`, `tools.mjs:24`) | The same chain adds a cross-session head-of-line block: a `session.close` blocked in `waitForIdle()` now starves every frame batched behind it; pre-change only its own session stalled | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | fixed (L-13) |
+| F-1 | Blocker | `pi-runtime/src/provider.mjs` (`resolveCapabilities` transport gate) + `backend/app/core/pi_runtime/endpoint_policy.py` | `provider_transport_mismatch` makes 346/1352 catalog models unbindable (all 38 `openai`, 118 bedrock, 38 azure, 31 mistral, 41 google) because the derived `provider_kind` can never express `openai-responses` and friends; missed because the conformance harness passes `record.api` as the transport | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 | partially fixed (L-14) — derivation repaired, persisted endpoints still stranded; see F-4 |
+| F-2 | Major | `pi-runtime/src/worker.mjs:311` | `handlerTail` is declared inside the stdin `data` callback, so the claimed bind-before-prompt ordering invariant is per-chunk only; `supervisor.py:224-225` writes one frame per drain | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | fixed (L-13), verified (L-15) |
+| F-3 | Major | `pi-runtime/src/worker.mjs:311-330` (with `session.mjs:652-664`, `tools.mjs:24`) | The same chain adds a cross-session head-of-line block: a `session.close` blocked in `waitForIdle()` now starves every frame batched behind it; pre-change only its own session stalled | FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b | fixed (L-13), verified (L-15) |
+| F-4 | Blocker | `backend/app/core/pi_runtime/endpoint_policy.py` (`_apply_catalog_fields` call sites) + `backend/app/config.py` (`PiApiEndpoint.provider_kind`) | The F-1 fix repairs only the *derivation* of `provider_kind`. It is derived on POST/PUT alone, then persisted verbatim into `PI_API_ENDPOINTS` and reloaded verbatim — no load-time re-derivation, no backfill. Every OpenAI/xAI endpoint saved before the fix still carries `openai_compat` and still fails at bind (42 models: all 38 `openai/*`, all 4 `xai/*`). All four new transport-conformance tests derive the kind freshly, so none covers it | FIX-REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1-r2a | open |
+| F-5 | Major | commit `a73b1a61`; commit `506dbb86` (`backend/app/config.py`) | `a73b1a61` ("remediate F-2/F-3…") contains only this lifecycle file — `worker.mjs`/`session.mjs`/`tools.mjs`/`test/worker.test.mjs` are uncommitted and `test/bind-ordering.test.mjs` is untracked, so HEAD carries the defective pre-fix runtime while L-13 claims both closed. Separately `506dbb86` swept ~50 unrelated `config.py` lines (`runtime_overrides.env` auto-load, `override=False`→`True`, `lance_db_path` validator, three new settings) whose consumers stay uncommitted | FIX-REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1-r2b | open |
+| F-6 | Minor | `pi-runtime/src/session.mjs` (`CLOSE_WAIT_MS`), `pi-runtime/src/worker.mjs` (`shutdown()` drain) | The new bounds sit at or above their caller's budget: 5000 ms equals `supervisor.close_session`'s 5.0 s ack wait, and the 6000 ms tail drain exceeds `supervisor.shutdown`'s 5.0 s process wait — when the backstops fire the supervisor times out or `_force_stop`s instead of seeing the graceful path. Best-effort on the Python side, so nothing corrupts | — (no fix task; fold into the next remediation) | open |
 
 ## Append-Only Ledger
 - **L-001 | 2026-09-08 | S0-frame | pi | —**
@@ -1427,3 +1430,73 @@ Did: closed the F-1 transport hole by ADDING the missing OpenAI-protocol transpo
 Result: FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 complete — sweep now resolves 1,084 models as pi_builtin and reports 228 loudly-unbindable natives (118 bedrock-converse-stream, 38 azure-openai-responses, 31 mistral-conversations, 28 google-generative-ai, 13 google-vertex); zero openai-responses strandings (was 346 total incl. all openai/*). TRADE-OFF (finding req c): scoped transport addition, NOT full six-transport support (bedrock needs AWS SigV4, google/vertex need GCP auth, azure records carry no base_url — PiApiEndpoint cannot model these, so the gate stays loud for them by design; future wave can add native transports or fixture-backed PROXY_TRANSPORT_EXCEPTIONS per adapter), NOT catalog restriction (the every-registry-model-projected parity invariant is load-bearing for the bump-diff deliverable; removing 228 menu rows is a product decision beyond a remediation; manual non-catalog endpoints keep a legacy-path escape hatch for OpenAI-compat proxies), NOT gate-scoping (binding Responses-canonical records over chat-completions would silently downgrade the authority's chosen wire contract — the old path now rejects intentionally, which is a deliberate behavior change from pre-c86ceeb1, justified because pre-change sent a body the record does not describe while dropping Responses-only semantics).
 Verified: `cd pi-runtime && npm test` -> 100 pass / 0 fail (87 wave baseline + 5 new fixture subtests + 3 new F-1 tests + 5 sibling F-2/F-3 tests, no network); reviewer's exact repro `buildRealProvider(openai/gpt-4o via derived openai_responses)` -> BOUND model.api=openai-responses pi_builtin (was provider_transport_mismatch); `python scripts/generate_pi_catalog.py --check` -> ok (catalog untouched); `uv run pytest tests/pi_compat -q` -> 9 passed; `pytest tests/pi_production -q` -> 475 passed; `python scripts/security_benchmark.py --fail-on-threshold` -> score 100.0 pass. CF rows on FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1: N x `command`, 1 x `self_report`.
 Next: stage exit — delta re-review of FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 (reviewer verifies the changed surface: provider.mjs transport, endpoint_policy map, dump derivation, transport conformance tests, 5 new fixtures).
+
+### L-15 | 2026-09-08T10:52:00Z | S3-review | claude-opus-5 | reviewer | Wave authority-and-boundary — delta re-review r1 <!-- bsc-ledger:REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 -->
+Did: delta re-review of the two completed fixes for the authority-and-boundary wave —
+FIX-…-r1 (F-1, commit 506dbb86) and FIX-…-r1b (F-2+F-3, ledger commit a73b1a61 + working tree).
+Scope held to the fixes' own surface and immediate seams: `pi-runtime/src/{provider,worker,session,tools}.mjs`,
+`scripts/dump-resolved-capabilities.mjs`, `backend/app/core/pi_runtime/endpoint_policy.py`,
+`backend/app/config.py`, `tests/pi_compat/test_transport_conformance.py`, the extended
+`test_catalog_conformance.py`, `test/bind-ordering.test.mjs`, the new `worker.test.mjs` tests, and the
+5 new Responses wire fixtures. Broadened deliberately in two directions, both fix-induced and stated here:
+(a) `provider_kind` is a **persisted** field, so adding a fourth enum value changes what already-stored
+endpoints mean — I swept every Python/TS reader of `provider_kind` and traced the persistence path
+(`_persist_pi_endpoints` → `PI_API_ENDPOINTS` → `Settings.pi_api_endpoints`); (b) the F-2/F-3 fix introduces
+new timeout constants that the Python supervisor is the caller of, so I checked them against
+`supervisor.close_session` / `supervisor.shutdown`.
+Result: **FAIL**. F-1, F-2 and F-3 as cited are each genuinely closed, but the F-1 remediation is only half
+complete and the r1b remediation is not in HEAD.
+  **CONFIRMED FIXED — F-2.** The per-callback `handlerTail` is gone; `worker.mjs` now keys module-scope
+  `sessionTails` on `frame.session_key`, so setup-frame ordering survives stdin chunk boundaries, and
+  `session.mjs` assigns `_pendingBind` synchronously in `bindProvider` with `prompt`/`providerTurn` awaiting
+  it — cross-chunk bind-before-prompt that holds independent of dispatch batching. The tail-eviction identity
+  check in `.finally()` is correct: a tail is deleted only while it is still the current one, so a chained
+  successor is never orphaned. Comment and ledger claim now match the enforced mechanism, as the finding required.
+  **CONFIRMED FIXED — F-3.** Sessions no longer share a tail, so a blocked close on A cannot starve B;
+  `tools.mjs execute` takes the `AbortSignal` third argument, short-circuits a pre-aborted call and races
+  `requestToolCall` against the abort event; `close()` drains `_pendingTools` *before* `agent.abort()` +
+  bounded `waitForIdle`, with no `await` between the drain and the abort so the loop cannot make a provider
+  call in the gap.
+  **CONFIRMED SOUND — the F-1 trade-off.** The 228 residual typed-unbindable models are not functional
+  regressions: I checked each residual provider's `baseUrl` myself — `amazon-bedrock` is a SigV4
+  `bedrock-runtime` host, `azure-openai-responses` records carry an empty `baseUrl`, `google` is
+  `generativelanguage/v1beta` (the OpenAI-compat path is `/v1beta/openai`), `mistral` is `https://api.mistral.ai`
+  with no `/v1`. None would have served a chat-completions POST on the pre-change path, so keeping the gate
+  loud for them is a strict improvement, and L-14 states the trade-off as finding requirement (c) asked.
+  **F-4 (Blocker, new).** The F-1 fix repairs the *derivation* of `provider_kind`, not persisted state.
+  `_apply_catalog_fields` runs only from `prepare_pi_endpoint_payload` (POST/PUT); `provider_kind` is written
+  verbatim into `PI_API_ENDPOINTS` and reloaded verbatim, with no load-time re-derivation and no backfill
+  anywhere in `backend/`. Every OpenAI/xAI endpoint an operator already saved carries the stored value
+  `openai_compat` and still fails at bind — 42 catalog models, all 38 `openai/*` and all 4 `xai/*`. None of the
+  four new transport-conformance tests can catch it: every one of them builds `provider_kind` freshly from the
+  catalog, which is the same shape of blind spot as F-1's original root cause.
+  **F-5 (Major, new).** Commit `a73b1a61`, whose subject is "remediate F-2/F-3: per-session dispatch +
+  pending-bind await + abort-aware tools", contains only this lifecycle file. `worker.mjs`, `session.mjs`,
+  `tools.mjs` and `test/worker.test.mjs` are uncommitted and `test/bind-ordering.test.mjs` is untracked, so
+  HEAD still carries the defective pre-fix runtime while L-13 asserts both findings closed. Separately,
+  `506dbb86` (F-1) swept ~50 unrelated lines into `backend/app/config.py` — `runtime_overrides.env` auto-load,
+  `load_dotenv(ISTARA_ENV_FILE)` flipped `override=False` → `override=True`, a `lance_db_path` model_validator,
+  and three new settings — whose consumers (`keyword_index.py`, `auth_sessions.py`, `field_encryption.py`)
+  remain uncommitted. Neither condition is visible from the ledger.
+  **F-6 (Minor, new, no fix task).** The new bounds sit at or above their caller's budget: `CLOSE_WAIT_MS = 5000`
+  equals `supervisor.close_session`'s 5.0 s ack wait, and `shutdown()`'s new 6000 ms tail drain exceeds
+  `supervisor.shutdown`'s 5.0 s process wait. When the backstops actually fire the supervisor times out or
+  `_force_stop`s instead of seeing the graceful path the fix added. Both are best-effort on the Python side,
+  so nothing corrupts — but the constants should sit strictly under the caller's budget.
+Verified: `cd pi-runtime && npm test` → 100 pass / 0 fail (incl. the F-2 cross-chunk and F-3 blocked-close
+black-box tests); `uv run --project backend --extra dev python -m pytest tests/pi_compat -q` → 9 passed;
+`… pytest tests/pi_production -q` → 475 passed; `node pi-runtime/scripts/dump-resolved-capabilities.mjs
+--mode resolved` → 1,084 resolved / 228 typed-unbindable, zero `openai-responses` strandings. F-4 proof
+(node, no network): `buildRealProvider({provider_kind:"openai_compat", pi_provider:"openai", model:"gpt-4o",
+base_url:"https://api.openai.com/v1"})` → `provider_transport_mismatch:openai:gpt-4o:registry_api=openai-responses:configured=openai-completions`,
+while the identical endpoint with `provider_kind:"openai_responses"` → BOUND `model.api=openai-responses`.
+F-5 proof: `git show --stat a73b1a61` → 1 file (this ledger); `git log --oneline -- pi-runtime/src/{worker,session,tools}.mjs`
+→ ends at `c86ceeb1`; `git show 506dbb86 -- backend/app/config.py` → the unrelated hunks. CF rows on
+REREV-…-r1: 6 × `command`, 1 × `review_verdict` (fail), 1 × `self_report` (satisfied=true). No repository file
+changed except this lifecycle file. Recording note: `task import` silently dropped the task payload on both new
+fix tasks and `merge_policy: preserve` blocks a corrective re-import, so each fix task carries its findings as a
+`review_finding` evidence row plus a comment; the findings are duplicated verbatim in the verdict and above.
+Next: S4-remediate — pi-compat-20260908-fixer takes
+FIX-REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1-r2a (F-4) and
+FIX-REREV-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1-r2b (F-5); the conductor waits for both to
+be terminal and then creates the round-2 delta re-review. I did not create it.
