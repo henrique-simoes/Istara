@@ -198,3 +198,9 @@ non-helper references; captured-fetch wire diff on `zai/glm-5.3` -> istara paylo
 `providers/all` import -> 67.2 ms, 60.4 MB RSS, 39 providers / 1312 models.
 Four `command` evidence rows recorded on pi-compat-20260908-PLAN-B.
 Next: stage exit — draft written to `plan_file`; awaiting the synthesis phase.
+
+### L-4 | 2026-09-08T07:25:42Z | S1-plan | zai/glm-5.3-flash | planner | pi-compat-20260908-architect-c <!-- bsc-ledger:pi-compat-20260908-PLAN-C -->
+Did: pi-compat-20260908-architect-c stage on task pi-compat-20260908-PLAN-C (harness fallback entry; the model did not append one).
+Result: task pi-compat-20260908-PLAN-C finished; worktree head efdcb372.
+Verified: see Compass Forge evidence rows on pi-compat-20260908-PLAN-C (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
