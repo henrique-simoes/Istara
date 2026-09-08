@@ -19,6 +19,26 @@ from app.config import PiApiEndpoint, _read_pi_endpoint_secret
 logger = logging.getLogger(__name__)
 
 
+def provider_kind_for_catalog_api(api: str) -> str:
+    """Map a pi-ai registry ``api`` value onto the Istara ``provider_kind``.
+
+    Worker-side mirror: ``pi-runtime/src/provider.mjs::providerKindForRegistryApi``.
+    The two tables MUST agree on every pi-ai KnownApi value —
+    ``tests/pi_compat/test_transport_conformance.py::test_kind_mapping_parity_node_python``
+    fails the gate on drift. Registry apis with no Istara transport fall through
+    to the legacy rule so the worker's typed ``provider_transport_mismatch``
+    rejection (not a misshapen request) is what surfaces at bind time.
+    """
+    normalized = str(api or "").lower()
+    if normalized == "openai-codex-responses":
+        return "openai_codex"
+    if normalized == "openai-responses":
+        return "openai_responses"
+    if "anthropic" in normalized:
+        return "anthropic_compat"
+    return "openai_compat"
+
+
 def _apply_catalog_fields(payload: dict[str, Any]) -> None:
     provider = str(payload.get("pi_provider") or "").strip().lower()
     model_id = str(payload.get("pi_model") or "").strip()
@@ -34,14 +54,8 @@ def _apply_catalog_fields(payload: dict[str, Any]) -> None:
     if not match:
         raise HTTPException(status_code=400, detail=f"unknown pi model: {model_id}")
 
-    api = str(match.get("api", "")).lower()
-    payload["provider_kind"] = (
-        "openai_codex"
-        if api == "openai-codex-responses"
-        else "anthropic_compat"
-        if "anthropic" in api
-        else "openai_compat"
-    )
+    api = str(match.get("api", "").lower())
+    payload["provider_kind"] = provider_kind_for_catalog_api(api)
     payload["base_url"] = match.get("baseUrl") or payload.get("base_url")
     payload["model"] = match["id"]
     payload["context_window"] = int(match.get("contextWindow") or 0)

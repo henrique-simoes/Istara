@@ -143,8 +143,16 @@ def test_projection_registry_parity_no_upstream_deletion():
 
 
 def test_authority_equivalence_projection_matches_worker_resolver():
-    """For every registry model the projected capability fields equal what the
-    worker resolver computes from the live registry (W4.1 / DEC-M1)."""
+    """For every BINDABLE registry model the projected capability fields equal
+    what the worker resolver computes from the live registry (W4.1 / DEC-M1).
+
+    The dump derives the CONFIGURED transport exactly as the backend endpoint
+    policy does (``providerKindForRegistryApi`` mirrors
+    ``provider_kind_for_catalog_api``) — never the record's own api. Feeding
+    ``record.api`` back in made the transport-mismatch branch structurally
+    unreachable and hid 346 unbindable models (review F-1); this shape makes
+    that miss impossible: every model lands in exactly one of the two lists.
+    """
     if not _node_env_ready():
         _not_runnable("node or the installed pi-ai package is unavailable")
     dump = json.loads(
@@ -162,6 +170,13 @@ def test_authority_equivalence_projection_matches_worker_resolver():
     for entry in dump["resolved"]:
         models = {m["id"]: m for m in projected[entry["pi_provider"]]}
         model = models[entry["model"]]
+        # The dump's configured transport must BE the record's registry api for
+        # every resolved model — otherwise the sweep drifted off the production
+        # derivation (F-1 root cause) and the comparison below is vacuous.
+        assert entry["configured_model_api"] == model["api"], (
+            f"sweep transport != catalog api for {entry['pi_provider']}/{entry['model']}: "
+            f"{entry['configured_model_api']} vs {model['api']}"
+        )
         assert model["reasoning"] == entry["reasoning"], f"reasoning drift: {entry['pi_provider']}/{entry['model']}"
         assert model["thinkingLevels"] == entry["supported_pi_levels"], (
             f"menu drift: {entry['pi_provider']}/{entry['model']} — "
@@ -189,4 +204,41 @@ def test_authority_equivalence_projection_matches_worker_resolver():
                 f"compat drift: {entry['pi_provider']}/{entry['model']}"
             )
         compared += 1
+    # Models with no Istara transport must reject LOUDLY on the policy-derived
+    # bind path — never bind a misshapen body, never vanish from the sweep.
+    # (F-1: bedrock/google/mistral/azure natives need auth/URL shapes
+    # PiApiEndpoint does not model — AWS SigV4, GCP OAuth, Azure resource URLs.)
+    unbindable = dump.get("unbindable", [])
+    assert unbindable, (
+        "expected the natively-transported models to be reported as unbindable — "
+        "an empty list means the sweep is feeding record.api back in (F-1 recurrence)"
+    )
+    for entry in unbindable:
+        assert entry["rejection"].startswith("provider_transport_mismatch:"), (
+            f"unexpected rejection for {entry['pi_provider']}/{entry['model']}: {entry['rejection']}"
+        )
+        assert entry["configured_model_api"] != entry["registry_api"]
+    # The fixed regression: no openai-responses record may be unbindable —
+    # openai/* and xai/* bind through the openai_responses transport.
+    stranded = [
+        f"{e['pi_provider']}/{e['model']}"
+        for e in unbindable
+        if e["registry_api"] == "openai-responses"
+    ]
+    assert not stranded, f"openai-protocol models unbindable (F-1 recurrence): {stranded[:8]}"
+    # Full coverage: resolved + unbindable == registry inventory.
+    inventory = json.loads(
+        subprocess.run(
+            ["node", str(DUMP_SCRIPT), "--mode", "inventory"],
+            cwd=str(REPO_ROOT / "pi-runtime"),
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=300,
+        ).stdout
+    )["inventory"]
+    total = sum(len(models) for models in inventory.values())
+    assert compared + len(unbindable) == total, (
+        f"sweep covered {compared + len(unbindable)} of {total} registry models"
+    )
     assert compared >= 1000, f"equivalence walked only {compared} models — dump truncated?"

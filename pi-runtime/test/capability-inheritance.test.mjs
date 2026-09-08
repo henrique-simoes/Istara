@@ -166,6 +166,33 @@ const ENDPOINTS = {
     },
     levels: ["low", "xhigh"],
   },
+  // --- F-1: openai-responses transport (registry hits, corrected tier-4) ---
+  "openai-registry-inherited__gpt-4o": {
+    fixture_class: "inherited",
+    endpoint: {
+      endpoint_id: "fixture-openai-responses",
+      provider_kind: "openai_responses",
+      pi_provider: "openai",
+      base_url: "https://api.openai.com/v1",
+      model: "gpt-4o",
+      api_key: "test-key",
+      params: {},
+    },
+    levels: ["off", "low", "max"],
+  },
+  "xai-registry-inherited__grok-4.3": {
+    fixture_class: "inherited",
+    endpoint: {
+      endpoint_id: "fixture-xai-responses",
+      provider_kind: "openai_responses",
+      pi_provider: "xai",
+      base_url: "https://api.x.ai/v1",
+      model: "grok-4.3",
+      api_key: "test-key",
+      params: {},
+    },
+    levels: ["low", "high"],
+  },
 };
 
 async function captureBody(endpoint, level) {
@@ -322,6 +349,79 @@ test("builtin/endpoint transport disagreement is a typed pre-network rejection (
       ),
     /^Error: provider_transport_mismatch:anthropic:claude-opus-4-7:registry_api=anthropic-messages:configured=openai-completions$/,
   );
+});
+
+test("F-1: openai-responses records bind through the openai_responses transport (regression)", async () => {
+  // The reviewer's exact repro: _apply_catalog_fields("openai", "gpt-4o")
+  // derives provider_kind=openai_responses, and the worker must bind it as
+  // pi_builtin — pre-fix this threw provider_transport_mismatch because the
+  // derived kind could never express the record's api.
+  const { providerKindForRegistryApi } = await import("../src/provider.mjs");
+  assert.equal(providerKindForRegistryApi("openai-responses"), "openai_responses");
+  const spec = ENDPOINTS["openai-registry-inherited__gpt-4o"];
+  const { capabilities, receipt } = await resolveCapabilities(spec.endpoint, "openai-responses");
+  assert.equal(receipt.capability_source, "pi_builtin");
+  assert.equal(capabilities.reasoning, false);
+  const binding = await buildRealProvider({ ...spec.endpoint, params: { thinking_level: "low" } });
+  try {
+    assert.equal(binding.model.api, "openai-responses");
+    assert.equal(binding.capability_receipt.capability_source, "pi_builtin");
+  } finally {
+    binding.dispose();
+  }
+  // The pre-change downgrade path (Responses-canonical record over the chat
+  // transport) stays closed: it would silently send a body the record does
+  // not describe. This rejection is intentional, not a recurrence.
+  await assert.rejects(
+    () =>
+      resolveCapabilities(
+        { pi_provider: "openai", model: "gpt-4o", base_url: "https://api.openai.com/v1" },
+        "openai-completions",
+      ),
+    /^Error: provider_transport_mismatch:openai:gpt-4o:registry_api=openai-responses:configured=openai-completions$/,
+  );
+});
+
+test("F-1: reasoning openai-responses models transmit effort per level (xai)", async () => {
+  const spec = ENDPOINTS["xai-registry-inherited__grok-4.3"];
+  for (const [level, effort] of [["low", "low"], ["high", "high"]]) {
+    const body = await captureBody(spec.endpoint, level);
+    assert.equal(body.reasoning.effort, effort, `xai ${level} must carry its reasoning effort`);
+    assert.ok(Array.isArray(body.input), "Responses transport sends the input-array envelope");
+  }
+  // Third-party OpenAI-protocol host: the tier-5 developer-role URL default
+  // fires exactly as on the pre-change chat path (role contract unchanged by
+  // the transport upgrade); api.openai.com stays excluded (see openai fixture).
+  const { receipt } = await (async () => {
+    const { resolveCapabilities: resolve } = await import("../src/provider.mjs");
+    const outcome = await resolve(spec.endpoint, "openai-responses");
+    return { receipt: outcome.receipt };
+  })();
+  assert.ok(receipt.applied_override_names.includes("supportsDeveloperRole:url_default"));
+});
+
+test("F-1: native-transport records reject typed on the policy-derived kind", async () => {
+  // bedrock/google/mistral/azure records have no Istara transport: the policy
+  // derives openai_compat and the worker must reject LOUDLY pre-network —
+  // never send a misshapen body to a native endpoint. Table mirrors
+  // tests/pi_compat/test_transport_conformance.py CASES (non-bindable rows).
+  const { providerKindForRegistryApi } = await import("../src/provider.mjs");
+  const cases = [
+    ["amazon-bedrock", "amazon.nova-lite-v1:0", "bedrock-converse-stream"],
+    ["mistral", "codestral-latest", "mistral-conversations"],
+    ["google", "gemini-2.5-flash", "google-generative-ai"],
+  ];
+  for (const [provider, model, registryApi] of cases) {
+    const kind = providerKindForRegistryApi(registryApi);
+    assert.equal(kind, "openai_compat");
+    await assert.rejects(
+      () =>
+        resolveCapabilities({ pi_provider: provider, model, base_url: "https://native.test/v1" }, "openai-completions"),
+      (error) =>
+        String(error?.message) ===
+        `provider_transport_mismatch:${provider}:${model}:registry_api=${registryApi}:configured=openai-completions`,
+    );
+  }
 });
 
 test("capability receipts are content-free: no URLs, keys, or fingerprints (AC-8 negative)", async () => {

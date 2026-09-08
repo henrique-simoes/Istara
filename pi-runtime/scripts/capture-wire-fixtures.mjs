@@ -170,6 +170,37 @@ const INHERITED_ENDPOINTS = [
     },
     levels: ["low", "xhigh"],
   },
+  {
+    name: "openai-registry-inherited",
+    endpoint: {
+      endpoint_id: "fixture-openai-responses",
+      provider_kind: "openai_responses",
+      pi_provider: "openai",
+      // Public OpenAI host so pi-ai's URL detection matches production:
+      // api.openai.com is EXCLUDED from the tier-5 developer-role URL default
+      // (the record's own compat governs the role contract).
+      base_url: "https://api.openai.com/v1",
+      model: "gpt-4o",
+      api_key: "fixture-key",
+      params: {},
+    },
+    levels: ["off", "low", "max"],
+  },
+  {
+    name: "xai-registry-inherited",
+    endpoint: {
+      endpoint_id: "fixture-xai-responses",
+      provider_kind: "openai_responses",
+      pi_provider: "xai",
+      // Third-party OpenAI-protocol host: the tier-5 developer-role URL
+      // default fires here exactly as on the pre-change chat path.
+      base_url: "https://api.x.ai/v1",
+      model: "grok-4.3",
+      api_key: "fixture-key",
+      params: {},
+    },
+    levels: ["low", "high"],
+  },
 ];
 
 const ENDPOINTS = fixtureClass === "fallback" ? FALLBACK_ENDPOINTS : INHERITED_ENDPOINTS;

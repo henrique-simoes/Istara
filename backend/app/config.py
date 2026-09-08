@@ -6,20 +6,36 @@ import subprocess
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
+
+# Persistent runtime overrides (e.g. model & ensemble preferences changed in UI)
+# take precedence over static container env on restarts
+for _candidate_override in [
+    Path("/app/data/simulation-shared/runtime_overrides.env"),
+    Path("./data/simulation-shared/runtime_overrides.env"),
+    Path(_BACKEND_DIR / "data/simulation-shared/runtime_overrides.env"),
+]:
+    if _candidate_override.is_file():
+        try:
+            from dotenv import load_dotenv
+
+            load_dotenv(str(_candidate_override), override=True)
+        except Exception:
+            pass
+
 # ISTARA_ENV_FILE: writable runtime-env target for read-only containers
 # (deployed stacks persist pi endpoints / encryption keys there). When set it
 # is BOTH loaded at import (so runtime-persisted values reload on restart)
 # and used by env_persistence writers.
 _RUNTIME_ENV_FILE = os.environ.get("ISTARA_ENV_FILE", "").strip()
-if _RUNTIME_ENV_FILE:
+if _RUNTIME_ENV_FILE and Path(_RUNTIME_ENV_FILE).is_file():
     try:
         from dotenv import load_dotenv
 
-        load_dotenv(_RUNTIME_ENV_FILE, override=False)
+        load_dotenv(_RUNTIME_ENV_FILE, override=True)
     except Exception:  # pragma: no cover - dotenv is a pydantic-settings dep
         pass
 _BACKEND_ENV_FILES = (
@@ -37,7 +53,7 @@ class PiApiEndpoint(BaseModel):
     """
 
     endpoint_id: str
-    provider_kind: Literal["openai_compat", "anthropic_compat", "openai_codex"] = "openai_compat"
+    provider_kind: Literal["openai_compat", "openai_responses", "anthropic_compat", "openai_codex"] = "openai_compat"
     base_url: str
     model: str
     keychain_service: str
@@ -200,6 +216,13 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./data/istara.db"
     lance_db_path: str = "./data/lance_db"
+    # Optional override for the keyword FTS index directory (KEYWORD_INDEX_DIR).
+    # When unset, it stays beside data_dir; durable lanes point it at shared
+    # storage so chunks survive container recreates alongside LanceDB.
+    keyword_index_dir: str | None = None
+    # Previous data-encryption keys (comma-separated, oldest last, max 3 kept)
+    # so rows encrypted before a rotation stay readable. Never logged.
+    data_encryption_previous_keys: str = ""
     sqlite_busy_timeout_ms: int = 30000
 
     # Files
@@ -221,6 +244,10 @@ class Settings(BaseSettings):
     team_mode: bool = False
     jwt_secret: str = ""  # Auto-generated on first run if empty
     jwt_expire_minutes: int = 1440  # 24 hours
+    # Idle timeout for bound sessions (minutes). A session with no validated
+    # request inside this window is revoked on next use, bounding the theft
+    # window of a stolen token well below the absolute JWT expiry.
+    session_max_inactive_minutes: int = 480  # 8 hours
 
     # WebAuthn / passkeys. RP ID must match the production host domain.
     webauthn_rp_id: str = "localhost"
@@ -432,6 +459,30 @@ class Settings(BaseSettings):
         "env_file_encoding": "utf-8",
         "extra": "ignore",
     }
+
+    @model_validator(mode="after")
+    def _resolve_persistent_paths(self) -> "Settings":
+        """Ensure vector database paths resolve to persistent storage if available."""
+        if self.lance_db_path == "./data/lance_db" and not os.environ.get("LANCE_DB_PATH"):
+            if Path("/app/data/simulation-shared").is_dir():
+                self.lance_db_path = "/app/data/simulation-shared/lance_db"
+            elif Path("./data/simulation-shared").is_dir():
+                self.lance_db_path = "./data/simulation-shared/lance_db"
+            elif "simulation-shared" in str(self.database_url):
+                db_clean = self.database_url.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
+                shared_dir = Path(db_clean).parent
+                if shared_dir.is_dir():
+                    self.lance_db_path = str(shared_dir / "lance_db")
+            if self.lance_db_path == "./data/lance_db":
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "LanceDB path is ephemeral (%s); chunks will not survive "
+                    "container restarts. Mount persistent simulation-shared storage "
+                    "for the durable lane.",
+                    self.lance_db_path,
+                )
+        return self
 
     def resolve_llm_fallback_api_key(self) -> str:
         """Return fallback API key from env first, then the configured keychain service."""

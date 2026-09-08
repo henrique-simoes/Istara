@@ -88,5 +88,35 @@
     "pi_provider": "anthropic",
     "model": "claude-opus-4-7",
     "level": "xhigh"
+  },
+  {
+    "file": "openai-registry-inherited__gpt-4o__off.json",
+    "pi_provider": "openai",
+    "model": "gpt-4o",
+    "level": "off"
+  },
+  {
+    "file": "openai-registry-inherited__gpt-4o__low.json",
+    "pi_provider": "openai",
+    "model": "gpt-4o",
+    "level": "low"
+  },
+  {
+    "file": "openai-registry-inherited__gpt-4o__max.json",
+    "pi_provider": "openai",
+    "model": "gpt-4o",
+    "level": "max"
+  },
+  {
+    "file": "xai-registry-inherited__grok-4.3__low.json",
+    "pi_provider": "xai",
+    "model": "grok-4.3",
+    "level": "low"
+  },
+  {
+    "file": "xai-registry-inherited__grok-4.3__high.json",
+    "pi_provider": "xai",
+    "model": "grok-4.3",
+    "level": "high"
   }
 ]

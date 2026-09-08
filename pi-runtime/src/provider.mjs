@@ -36,6 +36,7 @@ import {
   fauxToolCall,
 } from "@earendil-works/pi-ai";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
+import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
 import { anthropicMessagesApi } from "@earendil-works/pi-ai/api/anthropic-messages.lazy";
 import { openAICodexResponsesApi } from "@earendil-works/pi-ai/api/openai-codex-responses.lazy";
 
@@ -110,8 +111,40 @@ function piAiVersion() {
 // the translation is real. Empty by design: no such proxy is evidenced today.
 const PROXY_TRANSPORT_EXCEPTIONS = new Set();
 
-function apiForKind(kind) {
+/**
+ * Map a pi-ai registry `api` value onto the Istara `provider_kind` whose
+ * transport speaks it (FIX F-1). This is the worker-side mirror of
+ * `backend/app/core/pi_runtime/endpoint_policy.py::provider_kind_for_catalog_api`:
+ * the two tables MUST agree on every pi-ai KnownApi value, and
+ * `tests/pi_compat/test_transport_conformance.py::test_kind_mapping_parity_node_python`
+ * fails the gate if they drift. Registry apis with no Istara transport
+ * (bedrock-converse-stream, azure-openai-responses, mistral-conversations,
+ * google-generative-ai, google-vertex, pi-messages) fall through to the legacy
+ * three-way rule, so a catalog endpoint for them still derives a kind — and the
+ * typed `provider_transport_mismatch` rejection in resolveCapabilities fires at
+ * bind time, loudly, instead of sending a misshapen body. That is deliberate:
+ * those transports need native auth/URL shapes (AWS SigV4, GCP OAuth,
+ * Azure resource URLs) PiApiEndpoint does not model; see the F-1 ledger entry.
+ */
+export function providerKindForRegistryApi(api) {
+  const normalized = String(api || "").toLowerCase();
+  if (normalized === "openai-codex-responses") return "openai_codex";
+  if (normalized === "openai-responses") return "openai_responses";
+  if (normalized.includes("anthropic")) return "anthropic_compat";
+  return "openai_compat";
+}
+
+// Exported for scripts/dump-resolved-capabilities.mjs (F-1 regression sweep):
+// the dump must derive the CONFIGURED transport exactly as the backend
+// endpoint policy does, never feed the record's own api back in.
+export function apiForKind(kind) {
   if (kind === "openai_compat") return { api: openAICompletionsApi(), modelApi: "openai-completions" };
+  // OpenAI-protocol Responses transport (FIX F-1): records whose registry api
+  // is `openai-responses` (openai/*, xai/*, and gateway-proxied OpenAI models)
+  // bind through pi-ai's own Responses adapter on the same host + Bearer-key
+  // auth shape — the pre-change chat-completions binding for these models was
+  // functional but silently downgraded the record's canonical wire contract.
+  if (kind === "openai_responses") return { api: openAIResponsesApi(), modelApi: "openai-responses" };
   if (kind === "anthropic_compat") return { api: anthropicMessagesApi(), modelApi: "anthropic-messages" };
   if (kind === "openai_codex") return { api: openAICodexResponsesApi(), modelApi: "openai-codex-responses" };
   throw new Error(`unsupported_provider_kind:${kind}`);
@@ -536,13 +569,17 @@ export function legacyIdentityCapabilities(endpoint, modelApi) {
 export const modelCapabilities = legacyIdentityCapabilities;
 
 // DashScope/DeepSeek and non-OpenAI gateways reject the `developer` role.
-// When building a real OpenAI-compatible provider outside api.openai.com,
+// When building a real OpenAI-protocol provider outside api.openai.com,
 // ensure `compat.supportsDeveloperRole` is explicitly false so system prompts
 // are sent as `role: "system"`. This URL rule is a tier-5 DEFAULT: on a
 // tier-4 registry hit it only fills fields the inherited compat does not name.
+// It covers BOTH OpenAI-protocol transports (FIX F-1): third-party hosts
+// serving `openai-responses` records (xai, gateways) keep the exact pre-change
+// chat-path default, so the transport upgrade changes the envelope, not the
+// role contract. api.openai.com stays excluded on both (inherits the record).
 function isCustomOpenAICompat(baseUrl, modelApi) {
   return (
-    modelApi === "openai-completions" &&
+    (modelApi === "openai-completions" || modelApi === "openai-responses") &&
     baseUrl &&
     !baseUrl.includes("api.openai.com") &&
     !baseUrl.includes("azure.com")
@@ -619,7 +656,11 @@ export async function resolveCapabilities(endpoint, modelApi) {
   // Tier-4 hit. First gate: the record's transport must agree with the
   // configured kind, or the request would be sent in a shape the record does
   // not describe. Typed, pre-network rejection (W2.6) unless a named,
-  // fixture-backed proxy exception authorizes the translation.
+  // fixture-backed proxy exception authorizes the translation. Reachable only
+  // for registry apis with no Istara transport (bedrock/google/mistral/azure
+  // natives — F-1 keeps this loud by design) or a genuinely misconfigured
+  // kind; same-protocol pairs (e.g. openai-responses records) have their own
+  // kind via providerKindForRegistryApi and never reach this throw.
   if (record.api !== modelApi && !PROXY_TRANSPORT_EXCEPTIONS.has(`${provider}:${modelId}`)) {
     throw new Error(
       `provider_transport_mismatch:${provider}:${modelId}:registry_api=${record.api}:configured=${modelApi}`,

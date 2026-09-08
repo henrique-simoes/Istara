@@ -17,7 +17,7 @@
 // consumers) and this resolver (worker binding) must agree for every model.
 
 import { getBuiltinModel, getBuiltinModels, getBuiltinProviders } from "@earendil-works/pi-ai/providers/all";
-import { resolveCapabilities } from "../src/provider.mjs";
+import { apiForKind, providerKindForRegistryApi, resolveCapabilities } from "../src/provider.mjs";
 
 const mode = (() => {
   const index = process.argv.indexOf("--mode");
@@ -44,6 +44,13 @@ if (mode === "inventory") {
 }
 
 const resolved = [];
+// Registry records whose api has no Istara transport (bedrock/google/mistral
+// natives, azure): the endpoint policy still derives a kind for them, and the
+// worker rejects the bind loudly. The dump records those rejections instead of
+// crashing so the conformance sweep covers the REAL bind path for every model
+// (FIX F-1: feeding record.api back in as the transport made the mismatch
+// branch structurally unreachable and hid 346 unbindable models).
+const unbindable = [];
 for (const provider of providers.sort()) {
   for (const record of getBuiltinModels(provider)) {
     const endpoint = {
@@ -58,11 +65,28 @@ for (const provider of providers.sort()) {
       supports_reasoning: null,
       supports_vision: null,
     };
+    // Derive the CONFIGURED transport exactly as the backend endpoint policy
+    // does (providerKindForRegistryApi mirrors endpoint_policy.py), never the
+    // record's own api — that is the production bind path under test.
+    const derivedKind = providerKindForRegistryApi(record.api);
+    const { modelApi: configuredTransport } = apiForKind(derivedKind);
     let outcome;
     try {
-      outcome = await resolveCapabilities(endpoint, record.api);
+      outcome = await resolveCapabilities(endpoint, configuredTransport);
     } catch (error) {
-      console.error(`resolve_failed:${provider}:${record.id}:${error?.message || error}`);
+      const message = String(error?.message || error);
+      if (message.startsWith("provider_transport_mismatch:")) {
+        unbindable.push({
+          pi_provider: provider,
+          model: record.id,
+          registry_api: record.api,
+          derived_provider_kind: derivedKind,
+          configured_model_api: configuredTransport,
+          rejection: message,
+        });
+        continue;
+      }
+      console.error(`resolve_failed:${provider}:${record.id}:${message}`);
       process.exit(1);
     }
     resolved.push({
@@ -77,7 +101,11 @@ for (const provider of providers.sort()) {
       ),
       capability_source: outcome.receipt.capability_source,
       applied_override_names: outcome.receipt.applied_override_names,
+      // The policy-derived bind path, pinned per model so the sweep can never
+      // silently drift off the production derivation again (F-1).
+      derived_provider_kind: derivedKind,
+      configured_model_api: configuredTransport,
     });
   }
 }
-process.stdout.write(JSON.stringify({ resolved }));
+process.stdout.write(JSON.stringify({ resolved, unbindable }));
