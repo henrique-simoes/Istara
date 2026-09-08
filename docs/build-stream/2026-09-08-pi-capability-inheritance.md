@@ -9,8 +9,8 @@ phase: "Phase 0 — Owner-approved expanded frame; 3-architect planning"
 stage: S1-plan
 status: in_progress
 blocked_on: null
-last: { agent: claude-opus-5, at: 2026-09-08T08:02:49Z, ledger: L-8 }
-next_action: "Cross-vote complete (VOTE-B -> slot c). Conductor tallies MASTER-A vs MASTER-C, then holds at the winning-plan owner-approval gate (DEC-M1..M8 / DEC-O1..O6 outstanding)."
+last: { agent: zai/glm-5.3-flash, at: 2026-09-08T08:08:20Z, ledger: L-10 }
+next_action: "All three votes recorded (VOTE-A -> b, VOTE-B -> c, VOTE-C -> b): candidate b holds 2/3 pending conductor tally; then hold at the winning-plan owner-approval gate (DEC-O1..O6 / DEC-M1..M8 outstanding)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -345,3 +345,8 @@ Did: pi-compat-20260908-architect-a stage on task pi-compat-20260908-VOTE-A (har
 Result: task pi-compat-20260908-VOTE-A finished; worktree head 816bcee3.
 Verified: see Compass Forge evidence rows on pi-compat-20260908-VOTE-A (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+### L-10 | 2026-09-08T08:08:20Z | S1-plan | zai/glm-5.3-flash | architect-c (cross-vote) | Phase 0 — 3-architect planning <!-- bsc-ledger:pi-compat-20260908-VOTE-C -->
+Did: read the two supplied immutable master candidates end-to-end (slot a: 16d7e698..., gpt-5.6-sol; slot b: f2be3452..., claude-opus-5); spot re-verified the vote-decisive claims against the repo (S-E2 getBuiltinModel('zai','glm-5.3-flash') undefined on 0.84.3; S-E3 registry walk 1312 models / 119 zero-priced / 109 reasoning-capable, zai zeros incl. glm-5.3; G10 both pi surfaces pinned 0.84.3 with tests/pi_migration/test_version_provenance.py asserting both; G6 provider-params.test.mjs 121-131/192-200 pin the defective behavior as expected); recorded plan_vote for candidate slot b (candidate_id f2be3452af887bea5e0ee729b62bedf973b411b22c98b9f1142199a26dd86609, round 438f30bed0c2576cad62).
+Result: vote cast for slot b over slot a on verified deltas: S-E3 admission-time pricing preflight vs an unaddressed upstream-zero-pricing gap in A; labs/pi-replacement lockstep + corrected rollback absent from A; B equivalence test, round-trip drift test, model_field_set_hash + classification taxonomy, routine-bump runbook as AC-11; B named test flips vs A generic W0 classification; B source-level corrections of lifecycle evidence E1/E2/E4/E5. Trade-off recorded: A avoids the once-per-process 67ms/60MB registry import via generator-only + ephemeral server-built envelope; B mitigates via memoised accessor + measured budget and gains exact pi-ai fidelity at the worker seam. With VOTE-A -> b and VOTE-B -> c, candidate b holds a 2-of-3 majority pending conductor tally. No plan edited, no code touched. Note: file carried two L-7 entries (MASTER-C bold variant, MASTER-A); entries L-8/L-9 were appended concurrently by VOTE-B/VOTE-A; this entry is L-10.
+Verified: node --input-type=module registry walk over @earendil-works/pi-ai/providers/all -> passed (1312/119/109; zai zero-priced = glm-5.2-highspeed, glm-5.3, zai-coding-cn variants; glm-5.3-flash undefined); grep checks on labs/pi-replacement pins, test_version_provenance.py, provider-params.test.mjs -> passed; CF rows on pi-compat-20260908-VOTE-C: 2 x command, 1 x plan_vote (vote=b), 1 x self_report (satisfied=true). No test suite run: planning stage, zero code changes.
+Next: conductor tallies VOTE-A/VOTE-B/VOTE-C, declares the winning master plan, and holds at the owner-approval gate (DEC-O1..O6 / DEC-M1..M8 outstanding; implementation unauthorized until then).
