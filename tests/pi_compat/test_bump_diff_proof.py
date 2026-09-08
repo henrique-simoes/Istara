@@ -386,6 +386,41 @@ def test_verify_rejects_non_upstream_lockfile_provenance(
     assert mod.cmd_verify(type("A", (), {})()) == 1
 
 
+def test_verify_rejects_evil_host_with_correct_tarball_name(
+    mod, tmp_path, monkeypatch
+):
+    """F-26: an evil host serving the right tarball filename must fail.
+
+    The pre-F-26 leg was `tarball in resolved` plus a `sha512-` prefix, so
+    `https://evil.attacker.example/.../pi-ai-0.85.1.tgz` with any sha512
+    string cleared the gate. The host leg is isolated here: integrity is
+    valid, the filename is exactly right, only the origin is wrong.
+    """
+    surface = _fake_surface(tmp_path / "s")
+    lock_path = surface / "package-lock.json"
+    lock = json.loads(lock_path.read_text(encoding="utf-8"))
+    for short in ("pi-ai", "pi-agent-core"):
+        key = f"node_modules/@earendil-works/{short}"
+        lock["packages"][key]["resolved"] = (
+            f"https://evil.attacker.example/@earendil-works/{short}/"
+            f"-/{short}-0.85.1.tgz"
+        )
+    lock_path.write_text(json.dumps(lock), encoding="utf-8")
+    monkeypatch.setattr(mod, "SURFACES_ROOTS", (("fake", surface),))
+    monkeypatch.setattr(mod, "CATALOG_PATH", _fake_catalog(tmp_path))
+    assert mod.cmd_verify(type("A", (), {})()) == 1
+
+
+def test_verify_rejects_missing_integrity_with_upstream_host(
+    mod, tmp_path, monkeypatch
+):
+    """F-26: the integrity leg isolated — upstream host, no sha512."""
+    surface = _fake_surface(tmp_path / "s", resolved_ok=True, integrity_ok=False)
+    monkeypatch.setattr(mod, "SURFACES_ROOTS", (("fake", surface),))
+    monkeypatch.setattr(mod, "CATALOG_PATH", _fake_catalog(tmp_path))
+    assert mod.cmd_verify(type("A", (), {})()) == 1
+
+
 def test_verify_fails_closed_without_installed_modules(
     mod, tmp_path, monkeypatch, capsys
 ):

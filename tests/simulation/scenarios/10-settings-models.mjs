@@ -255,16 +255,25 @@ export async function run(ctx) {
         const listbox = page.locator('#chat-model-listbox').first();
         const triggers = page.locator('button[aria-haspopup="listbox"]');
         const triggerCount = await triggers.count().catch(() => 0);
-        let listboxVisible = false;
-        for (let i = 0; i < triggerCount && !listboxVisible; i++) {
-          await triggers.nth(i).click().catch(() => {});
-          await page.waitForTimeout(300);
-          listboxVisible = await listbox.isVisible({ timeout: 1500 }).catch(() => false);
-          if (!listboxVisible) {
+        // F-25: ModelPicker unmounts the whole `{open && ...}` panel on
+        // select (`onClick={() => { onSelect(choice); setOpen(false); }}` in
+        // ChatModelControls.tsx), and `query` state outlives the panel — so
+        // the listbox MUST be reopened at the top of EVERY loop iteration
+        // and the stale query cleared before `fill`, or iteration 2 can
+        // never assert and degrades into a false declared skip.
+        const openListbox = async () => {
+          if (await listbox.isVisible({ timeout: 500 }).catch(() => false)) return true;
+          const n = await triggers.count().catch(() => 0);
+          for (let i = 0; i < n; i++) {
+            await triggers.nth(i).click().catch(() => {});
+            await page.waitForTimeout(300);
+            if (await listbox.isVisible({ timeout: 1500 }).catch(() => false)) return true;
             await page.keyboard.press("Escape").catch(() => {});
             await page.waitForTimeout(200);
           }
-        }
+          return await listbox.isVisible({ timeout: 500 }).catch(() => false);
+        };
+        let listboxVisible = await openListbox();
         if (triggerCount === 0) {
           checks.push({ name: "Chat model listbox opens", passed: true, skipped: true, detail: "not_runnable: no listbox trigger in this lane (no active chat composer)" });
         } else {
@@ -272,12 +281,32 @@ export async function run(ctx) {
         }
         if (listboxVisible) {
           for (const [modelId, expectedCount] of [["glm-5.3", mappedCount], ["glm-4.7", maplessCount]]) {
+            // F-25: the previous iteration's select closed the picker —
+            // reopen it here so this iteration's probe can execute.
+            const reopened = await openListbox();
+            if (!reopened) {
+              checks.push({
+                name: `Effort badge reflects inherited count for ${modelId}`,
+                passed: true,
+                skipped: true,
+                detail: "not_runnable: chat model picker did not reopen in this lane; catalog count asserted above",
+              });
+              continue;
+            }
             if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+              // Clear the stale query left over from the previous iteration
+              // (`query` state outlives the unmounted panel) before filtering.
+              await searchInput.fill("");
+              await page.waitForTimeout(200);
               await searchInput.fill(modelId);
               await page.waitForTimeout(400);
             }
             const option = page.locator('#chat-model-listbox [role="option"]', { hasText: modelId }).first();
-            if (await option.isVisible({ timeout: 2500 }).catch(() => false)) {
+            // F-25: the listbox is open here by construction, so an absent
+            // option genuinely means the model is not offered — only then is
+            // the declared not_runnable skip honest.
+            const listboxOpen = await listbox.isVisible({ timeout: 500 }).catch(() => false);
+            if (listboxOpen && await option.isVisible({ timeout: 2500 }).catch(() => false)) {
               await option.click();
               await page.waitForTimeout(500);
               const badgeText = await page
@@ -289,6 +318,13 @@ export async function run(ctx) {
                 name: `Effort badge reflects inherited count for ${modelId}`,
                 passed: Boolean(badgeText && badgeText.includes(`${expectedCount} provider-native levels`)),
                 detail: `badge="${(badgeText || "").trim().slice(0, 80)}", expected ${expectedCount} levels`,
+              });
+            } else if (!listboxOpen) {
+              checks.push({
+                name: `Effort badge reflects inherited count for ${modelId}`,
+                passed: true,
+                skipped: true,
+                detail: "not_runnable: chat model picker closed before the option probe in this lane; catalog count asserted above",
               });
             } else {
               // Credential-free QA lane: no configured endpoints -> no picker

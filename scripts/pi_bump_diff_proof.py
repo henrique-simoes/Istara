@@ -67,6 +67,12 @@ CATALOG_PATH = REPO_ROOT / "backend" / "app" / "core" / "pi_runtime" / "data" / 
 
 PIN_PACKAGES = ("@earendil-works/pi-ai", "@earendil-works/pi-agent-core")
 
+# F-26: provenance is a registry ORIGIN, not a filename. A tarball basename
+# plus a `sha512-` prefix never proves upstream origin — an attacker host can
+# serve the same filename with any sha512 string. The gate therefore requires
+# the upstream registry origin below.
+UPSTREAM_REGISTRY_ORIGIN = "https://registry.npmjs.org/"
+
 # Dist surfaces the worker/projection actually consume (provider.mjs imports
 # plus the registry model-data files the catalog generator reads). A change
 # here is a WIRE- or REGISTRY-behavior change and must be classified (§8)
@@ -454,11 +460,17 @@ def cmd_verify(args: argparse.Namespace) -> int:
                 reasons.append(f"{label} lockfile resolves {package}={locked!r}, expected {pins[package]!r}")
             # F-23: `version` alone does not prove provenance — a lockfile
             # pointing at a non-upstream tarball at the pinned version must
-            # not clear the dependency-provenance gate.
+            # not clear the dependency-provenance gate. F-26: the origin
+            # check must be on the registry HOST, not the tarball basename —
+            # `tarball in resolved` plus a `sha512-` prefix passes an evil
+            # host serving the same filename with any sha512 string.
             resolved = str(locked_entry.get("resolved") or "")
             integrity = str(locked_entry.get("integrity") or "")
             tarball = f"{package.split('/')[-1]}-{pins[package]}.tgz"
-            if not resolved or tarball not in resolved:
+            if (
+                not resolved.startswith(UPSTREAM_REGISTRY_ORIGIN)
+                or tarball not in resolved
+            ):
                 reasons.append(
                     f"{label} lockfile {package} has no upstream resolved tarball for "
                     f"{pins[package]!r} (resolved={resolved!r}); refusing non-upstream provenance"
