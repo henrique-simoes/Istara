@@ -7,10 +7,10 @@ branch: testing
 cf: { spec: CF-SPEC-29, tasks: [] }
 phase: "Phase 1 — Implementation waves (authority-and-boundary)"
 stage: S3-review
-status: changes-requested
+status: in-progress
 blocked_on: null
 last: { agent: claude-opus-5, at: 2026-09-08T10:07:37Z, ledger: L-12 }
-next_action: "Review FAILED (F-1 Blocker, F-2/F-3 Major). Fixer takes FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1 and FIX-pi-compat-20260908-WAVE-authority-and-boundary-REVIEW-r1b; delta re-review after both are terminal."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
