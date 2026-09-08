@@ -7,10 +7,10 @@ branch: testing
 cf: { spec: CF-SPEC-29, tasks: [] }
 phase: "Phase 0 — Owner-approved expanded frame; 3-architect planning"
 stage: S1-plan
-status: awaiting-owner-approval
-blocked_on: "owner approval of MECE master plan (slot b)"
+status: in-progress
+blocked_on: null
 last: { agent: zai/glm-5.3-flash, at: 2026-09-08T08:08:20Z, ledger: L-10 }
-next_action: "Owner approval required: approve selected MECE master plan (slot b) before implementation dispatch."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
