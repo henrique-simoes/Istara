@@ -299,10 +299,13 @@ async function shutdown() {
   // Let queued per-session frames settle (bounded): each tail is itself made
   // of bounded handlers (close waits at most CLOSE_WAIT_MS), so this cannot
   // hang on one wedged session.
+  // F-6: kept strictly under supervisor.shutdown's 5.0 s proc wait so the
+  // Python caller observes the graceful exit instead of SIGTERMing via
+  // _force_stop while the drain is still running.
   try {
     await Promise.race([
       Promise.allSettled([...sessionTails.values()]),
-      new Promise((resolve) => setTimeout(resolve, 6000)),
+      new Promise((resolve) => setTimeout(resolve, 4500)),
     ]);
   } catch {
     /* best-effort */

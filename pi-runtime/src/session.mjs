@@ -13,7 +13,9 @@ import { STRUCTURED_TOOL_NAME, captureParameters, mapToolChoiceForApi, normalize
 // and an in-flight authority tool call settles only on tool.result — so an
 // unbounded wait can hang forever. The drain below plus the abort-aware tool
 // executor normally settle it in milliseconds; this is the backstop.
-const CLOSE_WAIT_MS = 5000;
+// F-6: kept strictly under supervisor.close_session's 5.0 s ack wait so the
+// Python caller observes the graceful close instead of timing out on it.
+const CLOSE_WAIT_MS = 3500;
 
 function nowTs() {
   return Date.now();
