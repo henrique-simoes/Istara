@@ -240,8 +240,9 @@ def _enforce_budget_pricing_preflight(payload: dict[str, Any]) -> None:
 
     The supervisor budgets every run (``max_cost_usd`` defaults finite), and
     the worker fails a budgeted run closed when it spends tokens in a category
-    left at a $0 rate. 121 of 1,312 upstream registry models are themselves
-    zero-priced in pi-ai (including ``zai/glm-5.3``), so such an endpoint can
+    left at a $0 rate. 115 of 1,354 upstream registry models are themselves
+    zero-priced in pi-ai (no positive input or output rate, including
+    ``zai/glm-5.3-highspeed``; governed overlay records excluded), so such an endpoint can
     never serve a budgeted turn — the failure would only surface mid-run.
     Admission instead fails here, naming the unpriced categories, unless the
     operator supplies tier-2 contract rates. Governed overlays are exempt

@@ -897,52 +897,367 @@
     "removal_classifications": [
       {
         "provider": "cloudflare-ai-gateway",
-        "model": null,
+        "model": "gpt-4",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-4-turbo",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5-pro",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.2",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.2-chat-latest",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.2-pro",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.3-chat-latest",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.3-codex",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.3-codex-spark",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.6",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "o1",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "o1-pro",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "o3-pro",
         "classification": "intended-upstream"
       },
       {
         "provider": "fireworks",
-        "model": null,
+        "model": "accounts/fireworks/models/deepseek-v4-flash",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/models/deepseek-v4-pro",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/models/gpt-oss-20b",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/models/minimax-m2p7",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/routers/kimi-k2p6-fast",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/routers/kimi-k2p6-turbo",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/routers/kimi-k2p7-code-fast",
         "classification": "intended-upstream"
       },
       {
         "provider": "github-copilot",
-        "model": null,
+        "model": "claude-opus-4.5",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "claude-opus-4.6",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "claude-sonnet-4",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "claude-sonnet-4.5",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "gemini-3.1-pro-preview",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "gpt-4.1",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "gpt-5.2",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "gpt-5.2-codex",
         "classification": "intended-upstream"
       },
       {
         "provider": "google",
-        "model": null,
+        "model": "gemini-robotics-er-1.6-preview",
         "classification": "intended-upstream"
       },
       {
         "provider": "nvidia",
-        "model": null,
+        "model": "meta/llama-3.1-70b-instruct",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.1-8b-instruct",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.3-70b-instruct",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-nano-30b-a3b",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-nano-12b-v2-vl",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nvidia-nemotron-nano-9b-v2",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-120b",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "stepfun-ai/step-3.7-flash",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "thinkingmachines/inkling",
         "classification": "intended-upstream"
       },
       {
         "provider": "opencode",
-        "model": null,
+        "model": "hy3-free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "opencode",
+        "model": "x-preview-f-free",
         "classification": "intended-upstream"
       },
       {
         "provider": "opencode-go",
-        "model": null,
+        "model": "grok-4.5",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "opencode-go",
+        "model": "ox-alpha-free",
         "classification": "intended-upstream"
       },
       {
         "provider": "openrouter",
-        "model": null,
+        "model": "anthropic/claude-opus-4.7-fast",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-4.8-fast",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-5-fast",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "arcee-ai/virtuoso-large",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "ibm-granite/granite-4.1-8b",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "kwaipilot/kat-coder-air-v2.5",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "moonshotai/kimi-k2.7-code:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "nvidia/nemotron-3-ultra-550b-a55b:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "nvidia/nemotron-nano-12b-v2-vl:free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "nvidia/nemotron-nano-9b-v2:free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "openai/gpt-5-codex:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "openai/o1:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "openai/o3-mini-high:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "openai/o3-pro:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "openai/o4-mini-high:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "qwen/qwen-plus-2025-07-28:thinking",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "qwen/qwen3.8-max",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "stealth/ox-alpha",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "z-ai/glm-5.2:batch",
         "classification": "intended-upstream"
       },
       {
         "provider": "vercel-ai-gateway",
-        "model": null,
+        "model": "arcee-ai/trinity-mini",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "vercel-ai-gateway",
+        "model": "deepseek/deepseek-v3",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "vercel-ai-gateway",
+        "model": "mistral/magistral-medium",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "vercel-ai-gateway",
+        "model": "mistral/magistral-small",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "vercel-ai-gateway",
+        "model": "nvidia/nemotron-3.5-lightning-free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "vercel-ai-gateway",
+        "model": "openai/o3-deep-research",
         "classification": "intended-upstream"
       },
       {
         "provider": "xai",
-        "model": null,
+        "model": "grok-build-0.1",
         "classification": "intended-upstream"
       }
     ]
@@ -958,5 +1273,6 @@
     }
   ],
   "gate_passed": true,
-  "gate_reasons": []
+  "gate_reasons": [],
+  "expansion_note": "F-22 (2026-09-08): the 10 provider-wide removal_classifications rows from the live proof run were expanded into one explicit row per removed model using the report own measured model_deltas (no new measurement; gate outcome unchanged). Future proof runs emit this shape directly via apply_removal_classifications."
 }

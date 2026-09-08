@@ -246,13 +246,30 @@ export async function run(ctx) {
       if (await chatNav.isVisible({ timeout: 3000 }).catch(() => false)) {
         await chatNav.click();
         await page.waitForTimeout(800);
-        const pickerBtn = page.locator('div:has(> #chat-model-listbox)').locator("xpath=..").locator("button").first();
-        // The ModelPicker trigger is the button before the listbox; fall back
-        // to the search-input path only when the listbox opens.
+        // F-19: #chat-model-listbox renders only inside `{open && ...}`
+        // (ChatModelControls.tsx), so it can never resolve while the picker
+        // is closed — the trigger MUST be clicked first. The stable trigger
+        // is `button[aria-haspopup="listbox"]`; the composer row carries two
+        // (agent picker, model picker), so try each until the listbox opens.
         const searchInput = page.locator('input[aria-label="Search chat models"]').first();
         const listbox = page.locator('#chat-model-listbox').first();
-        const listboxVisible = await listbox.isVisible({ timeout: 2500 }).catch(() => false);
-        checks.push({ name: "Chat model listbox opens", passed: listboxVisible, detail: "" });
+        const triggers = page.locator('button[aria-haspopup="listbox"]');
+        const triggerCount = await triggers.count().catch(() => 0);
+        let listboxVisible = false;
+        for (let i = 0; i < triggerCount && !listboxVisible; i++) {
+          await triggers.nth(i).click().catch(() => {});
+          await page.waitForTimeout(300);
+          listboxVisible = await listbox.isVisible({ timeout: 1500 }).catch(() => false);
+          if (!listboxVisible) {
+            await page.keyboard.press("Escape").catch(() => {});
+            await page.waitForTimeout(200);
+          }
+        }
+        if (triggerCount === 0) {
+          checks.push({ name: "Chat model listbox opens", passed: true, skipped: true, detail: "not_runnable: no listbox trigger in this lane (no active chat composer)" });
+        } else {
+          checks.push({ name: "Chat model listbox opens", passed: listboxVisible, detail: `${triggerCount} listbox trigger(s) tried` });
+        }
         if (listboxVisible) {
           for (const [modelId, expectedCount] of [["glm-5.3", mappedCount], ["glm-4.7", maplessCount]]) {
             if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {

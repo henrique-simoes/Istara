@@ -39,7 +39,7 @@ def normalize_model_effort(value: str | None) -> str:
     return effort
 
 
-# pi-ai's EXTENDED_THINKING_LEVELS (pi-ai dist/models.js, 0.84.3 pin) — the
+# pi-ai's EXTENDED_THINKING_LEVELS (pi-ai dist/models.js, 0.85.1 pin) — the
 # provider-neutral effort ladder the worker clamps against. The backend never
 # imports pi-ai (authority law E3); this tuple is the backend mirror and
 # ``tests/pi_compat/test_capability_carry_through.py`` pins it against the

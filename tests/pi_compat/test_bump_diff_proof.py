@@ -233,8 +233,9 @@ def test_expected_pins_parse_from_provenance_source(mod):
 def test_verify_accepts_current_repository_state(mod, capsys):
     """The wave's core contract: pin == lockfile == installed == catalog provenance.
 
-    Typed skip when the repo has no installed node_modules (credential-free
-    lane), pass/fail otherwise — never a silent skip.
+    Skips itself when the repo has no installed node_modules (credential-free
+    lane); F-23 pins the no-install behavior separately as fail-closed in
+    ``test_verify_fails_closed_without_installed_modules`` — never a silent skip.
     """
     installed_any = any(
         (root / "node_modules" / "@earendil-works" / "pi-ai").exists() for _, root in mod.SURFACES_ROOTS
@@ -261,3 +262,145 @@ def test_script_cli_wiring():
     assert result.returncode in (0, 1, 3)
     if result.returncode == 3:
         assert "not_runnable" in (result.stderr + result.stdout)
+
+
+# ---------------------------------------------------------------------------
+# F-22/F-23 remediation pins (FIX-pi-compat-20260908-WAVE-update-and-release-proof-REVIEW-r1)
+# ---------------------------------------------------------------------------
+
+
+def _fake_surface(
+    base: Path,
+    *,
+    pin: str = "0.85.1",
+    resolved_ok: bool = True,
+    integrity_ok: bool = True,
+    installed: bool = True,
+) -> Path:
+    """A synthetic bundled surface: manifest pin + lockfile + optional install."""
+    base.mkdir(parents=True, exist_ok=True)
+
+    def entry(package: str, short: str) -> dict:
+        resolved = (
+            f"https://registry.npmjs.org/{package}/-/{short}-{pin}.tgz"
+            if resolved_ok
+            else "https://mirror.example.com/evil.tgz"
+        )
+        integrity = (
+            "sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+            if integrity_ok
+            else ""
+        )
+        return {"version": pin, "resolved": resolved, "integrity": integrity}
+
+    (base / "package.json").write_text(
+        json.dumps(
+            {
+                "dependencies": {
+                    "@earendil-works/pi-ai": pin,
+                    "@earendil-works/pi-agent-core": pin,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    (base / "package-lock.json").write_text(
+        json.dumps(
+            {
+                "packages": {
+                    "node_modules/@earendil-works/pi-ai": entry(
+                        "@earendil-works/pi-ai", "pi-ai"
+                    ),
+                    "node_modules/@earendil-works/pi-agent-core": entry(
+                        "@earendil-works/pi-agent-core", "pi-agent-core"
+                    ),
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    if installed:
+        for short in ("pi-ai", "pi-agent-core"):
+            package_dir = base / "node_modules" / "@earendil-works" / short
+            package_dir.mkdir(parents=True, exist_ok=True)
+            (package_dir / "package.json").write_text(
+                json.dumps({"version": pin}), encoding="utf-8"
+            )
+    return base
+
+
+def _fake_catalog(base: Path, version: str = "0.85.1") -> Path:
+    path = base / "catalog.json"
+    path.write_text(
+        json.dumps({"__provenance": {"pi_ai_version": version}}), encoding="utf-8"
+    )
+    return path
+
+
+def test_provider_wide_removal_classification_expands_to_named_models(mod):
+    """F-22: a blanket PROVIDER=CLASS names every covered model explicitly."""
+    inventory = {
+        "providers_added": [],
+        "providers_removed": [],
+        "model_deltas": {"zai": {"added": [], "removed": ["old-a", "old-b"]}},
+        "total_models_old": 2,
+        "total_models_new": 0,
+        "removal_classifications": [],
+    }
+    mod.apply_removal_classifications(inventory, ["zai=intended-upstream"])
+    rows = inventory["removal_classifications"]
+    assert {(row["provider"], row["model"]) for row in rows} == {
+        ("zai", "old-a"),
+        ("zai", "old-b"),
+    }
+    assert all(row["classification"] == "intended-upstream" for row in rows)
+    passed, reasons = mod.gate_result([], inventory, [], None)
+    assert passed, reasons
+
+
+def test_whole_provider_removal_keeps_single_null_row(mod):
+    """F-22: a genuinely removed provider keeps one model:null row (no deltas)."""
+    inventory = {
+        "providers_added": [],
+        "providers_removed": ["legacy"],
+        "model_deltas": {},
+        "total_models_old": 1,
+        "total_models_new": 0,
+        "removal_classifications": [],
+    }
+    mod.apply_removal_classifications(inventory, ["legacy=intended-upstream"])
+    assert inventory["removal_classifications"] == [
+        {"provider": "legacy", "model": None, "classification": "intended-upstream"}
+    ]
+    passed, reasons = mod.gate_result([], inventory, [], None)
+    assert passed, reasons
+
+
+def test_verify_rejects_non_upstream_lockfile_provenance(
+    mod, tmp_path, monkeypatch
+):
+    """F-23: version-right but provenance-wrong lockfiles fail the gate."""
+    surface = _fake_surface(tmp_path / "s", resolved_ok=False, integrity_ok=False)
+    monkeypatch.setattr(mod, "SURFACES_ROOTS", (("fake", surface),))
+    monkeypatch.setattr(mod, "CATALOG_PATH", _fake_catalog(tmp_path))
+    assert mod.cmd_verify(type("A", (), {})()) == 1
+
+
+def test_verify_fails_closed_without_installed_modules(
+    mod, tmp_path, monkeypatch, capsys
+):
+    """F-23: no installed tree fails the gate (run npm ci), never note+pass."""
+    surface = _fake_surface(tmp_path / "s", installed=False)
+    monkeypatch.setattr(mod, "SURFACES_ROOTS", (("fake", surface),))
+    monkeypatch.setattr(mod, "CATALOG_PATH", _fake_catalog(tmp_path))
+    assert mod.cmd_verify(type("A", (), {})()) == 1
+    assert "npm ci" in capsys.readouterr().err
+
+
+def test_verify_accepts_well_formed_surface(mod, tmp_path, monkeypatch, capsys):
+    """F-23: a fully provenanced surface still passes (no over-tightening)."""
+    surface = _fake_surface(tmp_path / "s")
+    monkeypatch.setattr(mod, "SURFACES_ROOTS", (("fake", surface),))
+    monkeypatch.setattr(mod, "CATALOG_PATH", _fake_catalog(tmp_path))
+    assert mod.cmd_verify(type("A", (), {})()) == 0
+    assert "PASSED" in capsys.readouterr().out

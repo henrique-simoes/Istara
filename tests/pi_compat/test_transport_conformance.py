@@ -47,7 +47,7 @@ CASES = [
     ("openai-codex-responses", "openai-codex", "gpt-5.6-luna", "openai_codex", True),
 ]
 
-# Every transport pi-ai 0.84.3 can emit (KnownApi minus pi-messages, which has
+# Every transport pi-ai 0.85.1 can emit (KnownApi minus pi-messages, which has
 # no builtin models in this pin). Both mapping tables must agree on all of these.
 KNOWN_APIS = [
     "openai-completions",

@@ -55,7 +55,9 @@ CATALOG_PATH = (
 # input 1.4 / output 4.4 / cacheRead 0.26 (intended-upstream, classified in
 # docs/build-stream/pi-compat-20260908-0851-diff-proof.json). The proof moves
 # to glm-5.3-highspeed, still $0 in every category in 0.85.1 — the preflight
-# now guards 153 zero-priced registry records (was 119).
+# now guards 115 zero-priced upstream registry records (was 121) — counted
+# under the admission code's own predicate (input or output rate not positive,
+# governed `dashscope` overlay records excluded).
 ZAI_ZERO_PRICED_MODEL = "glm-5.3-highspeed"
 ZAI_PARTIAL_PRICED_MODEL = "glm-4.7"  # priced input/output, cacheWrite $0
 

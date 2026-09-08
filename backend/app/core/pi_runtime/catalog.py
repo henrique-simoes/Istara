@@ -2,8 +2,8 @@
 settings UI offers for selection.
 
 The shipped ``data/pi_models_catalog.json`` is a GENERATED, provenance-stamped
-projection of pi-ai's builtin registry (39 providers / 1,312 models at the
-0.84.3 pin), emitted by ``pi-runtime/scripts/emit-catalog.mjs`` and merged with
+projection of pi-ai's builtin registry (39 providers / 1,354 models at the
+0.85.1 pin), emitted by ``pi-runtime/scripts/emit-catalog.mjs`` and merged with
 governed custom-provider overlays under ``data/custom_providers/`` when Istara
 must expose a provider that Pi loads from ``~/.pi/agent/models.json``.  The
 current regular DashScope overlay contributes 40 Singapore OpenAI-compatible

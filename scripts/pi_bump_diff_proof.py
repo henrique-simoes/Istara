@@ -30,7 +30,8 @@ mechanical:
 ``verify``
     Post-bump offline acceptance: both bundled surfaces agree with each
     other and with ``tests/pi_migration/test_version_provenance.py``
-    EXPECTED_PINS on package.json pins, lockfile resolution, and the
+    EXPECTED_PINS on package.json pins, lockfile resolution (version plus the
+    upstream ``resolved`` tarball and sha512 ``integrity``, F-23), and the
     actually-installed node_modules versions, and the catalog projection's
     ``__provenance.pi_ai_version`` equals the pin (a bump without
     regeneration fails here, AC-5).
@@ -249,7 +250,15 @@ def apply_classifications(entries: list[dict], class_args: list[str]) -> None:
 
 def apply_removal_classifications(inventory: dict, class_args: list[str]) -> None:
     """Attach §8 classifications to registry removals (G7: deletions cannot
-    pass *unnoticed* — they must be classified, not silently tolerated)."""
+    pass *unnoticed* — they must be classified, not silently tolerated).
+
+    A provider-wide ``PROVIDER=CLASS`` waiver is expanded into one explicit
+    row per removed model under that provider (F-22), so the report names
+    every waived model id instead of absorbing future breaking removals
+    silently: on the next bump a genuinely breaking removal appears as a NEW
+    named row in ``removal_classifications`` rather than hiding inside an old
+    blanket. Whole-provider removals keep a single ``model: null`` row.
+    """
     recorded = inventory.setdefault("removal_classifications", [])
     for arg in class_args:
         if "=" not in arg:
@@ -266,7 +275,14 @@ def apply_removal_classifications(inventory: dict, class_args: list[str]) -> Non
         in_providers = not model and provider in inventory.get("providers_removed", [])
         if not (in_deltas or in_providers):
             raise SystemExit(f"usage error: --classify-removal {key!r} is not in the measured inventory delta")
-        recorded.append({"provider": provider, "model": model or None, "classification": classification})
+        if model or provider in inventory.get("providers_removed", []):
+            recorded.append({"provider": provider, "model": model or None, "classification": classification})
+        else:
+            # Provider-wide waiver over per-model removals: name each covered
+            # model explicitly (F-22). The gate's provider fallback still
+            # honours pre-expansion reports carrying only the blanket row.
+            for removed in inventory["model_deltas"][provider].get("removed", []):
+                recorded.append({"provider": provider, "model": removed, "classification": classification})
 
 
 def gate_result(entries: list[dict], inventory: dict | None, expect_models: list[str], new_probe: dict | None) -> tuple[bool, list[str]]:
@@ -432,9 +448,26 @@ def cmd_verify(args: argparse.Namespace) -> int:
             except (OSError, json.JSONDecodeError):
                 reasons.append(f"{label}/package-lock.json unreadable")
                 continue
-            locked = ((lock.get("packages") or {}).get(f"node_modules/{package}") or {}).get("version")
+            locked_entry = ((lock.get("packages") or {}).get(f"node_modules/{package}") or {})
+            locked = locked_entry.get("version")
             if locked != pins[package]:
                 reasons.append(f"{label} lockfile resolves {package}={locked!r}, expected {pins[package]!r}")
+            # F-23: `version` alone does not prove provenance — a lockfile
+            # pointing at a non-upstream tarball at the pinned version must
+            # not clear the dependency-provenance gate.
+            resolved = str(locked_entry.get("resolved") or "")
+            integrity = str(locked_entry.get("integrity") or "")
+            tarball = f"{package.split('/')[-1]}-{pins[package]}.tgz"
+            if not resolved or tarball not in resolved:
+                reasons.append(
+                    f"{label} lockfile {package} has no upstream resolved tarball for "
+                    f"{pins[package]!r} (resolved={resolved!r}); refusing non-upstream provenance"
+                )
+            if not integrity.startswith("sha512-"):
+                reasons.append(
+                    f"{label} lockfile {package} has no sha512 integrity for "
+                    f"{pins[package]!r}; refusing unverifiable provenance"
+                )
             installed = root / "node_modules" / package / "package.json"
             if installed.exists():
                 try:
@@ -447,7 +480,12 @@ def cmd_verify(args: argparse.Namespace) -> int:
                         "(node_modules drifted from the pin; run npm ci)"
                     )
             else:
-                print(f"note: {label} has no installed {package} (surface not built); installed-version check skipped")
+                # F-23: fail closed — without the installed tree the
+                # "installed == pin" claim is unverifiable, not satisfied.
+                reasons.append(
+                    f"{label} has no installed {package} (surface not built); "
+                    "installed-version leg unverifiable — run npm ci"
+                )
     try:
         catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
         provenance_version = (catalog.get("__provenance") or {}).get("pi_ai_version")
@@ -474,7 +512,7 @@ def main(argv: list[str] | None = None) -> int:
     proof.add_argument("--classify", action="append", metavar="SURFACE=CLASS",
                        help=f"classify a changed surface (§8 classes: {', '.join(VALID_CLASSES)}); repeatable")
     proof.add_argument("--classify-removal", action="append", metavar="PROVIDER[/MODEL]=CLASS",
-                       help="classify a registry provider/model removal (G7); repeatable")
+                       help="classify a registry provider/model removal (G7); a provider-wide entry expands to one explicit row per removed model (F-22); repeatable")
     proof.add_argument("--expect-model", action="append", metavar="PROVIDER/MODEL",
                        help="assert a model is present in the candidate registry (e.g. zai/glm-5.3-flash); repeatable")
     proof.add_argument("--scratch-dir", help="use this scratch dir instead of a temp dir (kept on failure)")
