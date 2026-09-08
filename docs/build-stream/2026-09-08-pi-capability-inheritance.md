@@ -10,7 +10,7 @@ stage: S4-remediate
 status: in-progress
 blocked_on: null
 last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-08T10:33:37Z, ledger: L-16 }
-next_action: "F-5 done (r1b sources in HEAD, config sweep routed to REV-pi-compat-20260908-config-sweep-506dbb86 task 374); r2a (F-4) in flight; conductor creates round-2 delta re-review when both terminal."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
