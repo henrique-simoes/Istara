@@ -9,6 +9,179 @@ export interface MergedModelCatalogEntry {
   [key: string]: unknown;
 }
 
+import type {
+  PiCatalogModel,
+  PiCatalogProvider,
+  PiEndpointInfo,
+} from "./types";
+
+/** Normalize a provider identity across underscore/dash/case spellings. */
+export function normalizeProviderId(value: string | null | undefined): string {
+  return (value || "").trim().toLowerCase().replace(/_/g, "-");
+}
+
+/**
+ * A chat-picker row. `configured` marks rows backed by a Settings Pi endpoint
+ * so the UI can highlight what the user already set up; `model` stays null for
+ * configured endpoints whose model id is absent from the shipped catalog.
+ */
+export interface ChatModelChoice {
+  key: string;
+  provider: PiCatalogProvider | null;
+  model: PiCatalogModel | null;
+  modelId: string;
+  endpointId?: string;
+  label: string;
+  providerLabel: string;
+  enabled: boolean;
+  configured: boolean;
+}
+
+function endpointMatchesProvider(
+  endpoint: Pick<PiEndpointInfo, "pi_provider" | "auth_provider" | "provider_kind">,
+  providerId: string,
+): boolean {
+  const target = normalizeProviderId(providerId);
+  if (!target) return false;
+  return [endpoint.pi_provider, endpoint.auth_provider, endpoint.provider_kind].some(
+    (candidate) => candidate != null && normalizeProviderId(candidate) === target,
+  );
+}
+
+/**
+ * Build the chat model picker rows: every catalog model (ready ones enabled),
+ * plus every credential-ready configured endpoint whose model id is absent from
+ * the catalog as a standalone enabled row. Ready rows sort first so what the
+ * user set up in Settings is highlighted at the top.
+ */
+export function buildChatModelChoices(args: {
+  providers: PiCatalogProvider[];
+  configured: PiEndpointInfo[];
+  legacyModels: string[];
+  engine: "pi" | "legacy";
+  modelOverride?: string | null;
+  endpointOverride?: string | null;
+}): ChatModelChoice[] {
+  const { providers, configured, legacyModels, engine, modelOverride, endpointOverride } = args;
+  const result: ChatModelChoice[] = [];
+  for (const provider of providers) {
+    for (const model of provider.models) {
+      const endpoint = configured.find(
+        (candidate) => candidate.model === model.id && endpointMatchesProvider(candidate, provider.id),
+      );
+      const ready = endpoint != null && isPiEndpointReady(endpoint);
+      result.push({
+        key: `${provider.id}:${model.id}`,
+        provider,
+        model,
+        modelId: model.id,
+        endpointId: endpoint?.endpoint_id,
+        label: model.name || model.id,
+        providerLabel: provider.display_name,
+        enabled: ready,
+        configured: ready,
+      });
+    }
+  }
+  // Configured endpoints with no catalog row stay selectable instead of
+  // vanishing: custom/local model ids are never in the shipped catalog.
+  for (const endpoint of configured) {
+    if (!isPiEndpointReady(endpoint)) continue;
+    const covered = result.some(
+      (choice) => choice.enabled && choice.endpointId === endpoint.endpoint_id,
+    );
+    if (covered) continue;
+    const providerLabel =
+      providers.find((p) => endpointMatchesProvider(endpoint, p.id))?.display_name ||
+      endpoint.pi_provider ||
+      endpoint.provider_kind ||
+      "Configured endpoint";
+    result.push({
+      key: `configured:${endpoint.endpoint_id}`,
+      provider: null,
+      model: null,
+      modelId: endpoint.model,
+      endpointId: endpoint.endpoint_id,
+      label: endpoint.model,
+      providerLabel,
+      enabled: true,
+      configured: true,
+    });
+  }
+  const legacyChoices: ChatModelChoice[] = engine === "legacy"
+    ? legacyModels.map((modelId) => ({
+        key: `legacy:${modelId}`,
+        provider: null,
+        model: null,
+        modelId,
+        label: modelId,
+        providerLabel: "Istara local/server",
+        enabled: true,
+        configured: false,
+      }))
+    : [];
+  // Legacy engine keeps the Istara transport rows first (parity), but ready
+  // Pi rows — matched or standalone — always precede disabled catalog rows so
+  // everything configured in Settings stays visible while browsing.
+  const enabledPi = result.filter((c) => c.enabled);
+  const disabledPi = result.filter((c) => !c.enabled);
+  const ordered =
+    engine === "legacy"
+      ? [...legacyChoices, ...enabledPi, ...disabledPi]
+      : [...enabledPi, ...disabledPi];
+  const overrideReady =
+    engine === "legacy" || isPiSessionOverrideReady(configured, modelOverride, endpointOverride);
+  if (
+    modelOverride &&
+    overrideReady &&
+    !ordered.some(
+      (c) =>
+        c.modelId === modelOverride &&
+        (!endpointOverride || c.endpointId === endpointOverride),
+    )
+  ) {
+    ordered.unshift({
+      key: `current:${modelOverride}`,
+      provider: null,
+      model: null,
+      endpointId: endpointOverride || undefined,
+      modelId: modelOverride,
+      label: modelOverride,
+      providerLabel: "Current session model",
+      enabled: true,
+      configured: false,
+    });
+  }
+  return ordered;
+}
+
+/** Resolve the selected row: session override, then default, then first enabled. */
+export function resolveChatModelChoice(
+  choices: ChatModelChoice[],
+  args: {
+    configured: PiEndpointInfo[];
+    engine: "pi" | "legacy";
+    modelOverride?: string | null;
+    endpointOverride?: string | null;
+    defaultEndpointId?: string | null;
+  },
+): ChatModelChoice | null {
+  const { configured, engine, modelOverride, endpointOverride, defaultEndpointId } = args;
+  const overrideReady =
+    engine === "legacy" || isPiSessionOverrideReady(configured, modelOverride, endpointOverride);
+  if (overrideReady) {
+    const selected =
+      (endpointOverride ? choices.find((c) => c.endpointId === endpointOverride) : undefined) ||
+      choices.find((c) => c.modelId === modelOverride);
+    if (selected) return selected;
+  }
+  if (defaultEndpointId) {
+    const preferred = choices.find((c) => c.endpointId === defaultEndpointId && c.enabled);
+    if (preferred) return preferred;
+  }
+  return choices.find((c) => c.enabled) || null;
+}
+
 /**
  * Evidence-backed, provisional comparative summary for the engine selector.
  *

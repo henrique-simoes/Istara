@@ -4,14 +4,18 @@ import {
   ENGINE_COMPARATIVE_SUMMARIES,
   ENGINE_SELECTOR_OPTIONS,
   SHARED_EMBEDDING_IDENTITY_LABEL,
+  buildChatModelChoices,
   isPiEndpointReady,
   isPiSessionOverrideReady,
   mergeModelCatalogs,
+  normalizeProviderId,
+  resolveChatModelChoice,
   settingsDefaultChatModel,
   settingsLlmReadiness,
   isChatSendReady,
 } from "./modelCatalog";
 import { agentEngineLabel } from "./utils";
+import type { PiEndpointInfo } from "./types";
 
 describe("engine comparative summaries (W3 selector slice)", () => {
   it("covers exactly the two canonical engines with provisional, provenance-cited summaries", () => {
