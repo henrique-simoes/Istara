@@ -264,8 +264,8 @@ If you add a new `reports` view:
 | Chat controls | generation-only temperature/thinking/effort controls | chat/session contract tests |
 | Engine selector | explicit accessible Pi/Istara routing choice with evidence-backed provisional comparative summaries + shared embed identity in safe metadata | model catalog and project settings tests, scenario 79 |
 | Pi capability carry-through | catalog `thinkingLevels`/`thinkingLevelMap`/`compat` reach `/api/settings/pi-catalog` and the chat menu verbatim (menus never reimplement pi-ai's level filter); serializer declares every shipped field | `tests/pi_compat/test_capability_carry_through.py` |
-| Pi endpoint advertisement merge | tri-state `supports_reasoning`/`supports_vision` survive POST and sparse PUT; operator vetoes beat the pi-ai record; nothing enables beyond it | `tests/pi_compat/test_capability_carry_through.py` |
-| Pi endpoint budget pricing | operator contract rates (tier 2) survive POST/PUT; upstream zero-priced registry models fail admission `pi_endpoint_unpriced` naming categories; overlays exempt | `tests/pi_compat/test_capability_carry_through.py` |
+| Pi endpoint advertisement merge | tri-state `supports_reasoning`/`supports_vision` survive POST and sparse PUT; operator vetoes beat the pi-ai record; nothing enables beyond it; on a `pi_provider`/`pi_model` switch a persisted value equal to the OLD record is a tier-4 fill and refreshes (F-14) | `tests/pi_compat/test_capability_carry_through.py` |
+| Pi endpoint budget pricing | operator contract rates (tier 2) survive POST/PUT; upstream zero-priced registry models fail admission `pi_endpoint_unpriced` naming categories and the API path; overlays exempt; model-switch PUTs re-resolve rates before the preflight (F-14) | `tests/pi_compat/test_capability_carry_through.py` |
 | Effort vocabulary | `validate_model_effort` allowlist = pi-ai ladder + `server_default`/`auto`/`on`; unsupported efforts rejected, never silently clamped; ladder pinned to the projection | `tests/pi_compat/test_capability_carry_through.py`, chat/session contract tests |
 
 ### Example 3: Change task status logic

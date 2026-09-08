@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { piCatalogApi, piEndpoints, piOAuthApi } from "@/lib/api";
+import SeeMoreList from "@/components/common/SeeMoreList";
 import type { PiCatalogModel, PiCatalogProvider, PiEndpoint, PiOAuthFlow } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -242,6 +243,13 @@ export default function PiModelManagement() {
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  // Operator contract rates (USD per 1M tokens) for the AC-6 admission
+  // preflight (F-16): upstream zero-priced catalog models refuse admission
+  // unless tier-2 rates are supplied. Empty = use the catalog list price.
+  const [costInput, setCostInput] = useState("");
+  const [costOutput, setCostOutput] = useState("");
+  const [costCacheRead, setCostCacheRead] = useState("");
+  const [costCacheWrite, setCostCacheWrite] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const canManage = !teamMode || user?.role === "admin";
 
@@ -328,6 +336,10 @@ export default function PiModelManagement() {
     setActiveOAuth(null);
     setManualOAuthInput("");
     setApiKey("");
+    setCostInput("");
+    setCostOutput("");
+    setCostCacheRead("");
+    setCostCacheWrite("");
     setOauthError(null);
     if (provider?.login_methods.includes("api_key")) setAuthMode("api_key");
     else setAuthMode("oauth");
@@ -342,6 +354,10 @@ export default function PiModelManagement() {
     setCompletedOAuthFlowId(null);
     setActiveOAuth(null);
     setManualOAuthInput("");
+    setCostInput("");
+    setCostOutput("");
+    setCostCacheRead("");
+    setCostCacheWrite("");
     setOauthError(null);
     if (selectedProvider && authMode === "oauth" && selectedProvider.oauth_model_ids?.length && !selectedProvider.oauth_model_ids.includes(model?.id || "")) {
       setAuthMode("api_key");
@@ -412,6 +428,13 @@ export default function PiModelManagement() {
         : selectedProvider.id;
       const selectedAuthMethod = authMode === "oauth" ? `oauth_${oauthMethod}` : "api_key";
       const endpointId = normaliseEndpointId(`${catalogProviderId}-${selectedModel.id}-${selectedAuthMethod}`);
+      const parseRate = (raw: string): number | undefined => {
+        const trimmed = raw.trim();
+        if (!trimmed) return undefined;
+        const parsed = Number(trimmed);
+        if (!Number.isFinite(parsed) || parsed < 0) throw new Error("Contract rates must be non-negative numbers (USD per 1M tokens).");
+        return parsed;
+      };
       await piEndpoints.add({
         endpoint_id: endpointId,
         provider_kind: "openai_compat",
@@ -424,6 +447,12 @@ export default function PiModelManagement() {
         auth_method: selectedAuthMethod,
         oauth_flow_id: authMode === "oauth" ? (completedOAuthFlowId || "") : undefined,
         api_key: authMode === "api_key" ? apiKey.trim() : "",
+        // F-16: operator contract rates admit upstream zero-priced models.
+        // Omitted (undefined) = use the catalog list price.
+        cost_input_per_mtok: parseRate(costInput),
+        cost_output_per_mtok: parseRate(costOutput),
+        cost_cache_read_per_mtok: parseRate(costCacheRead),
+        cost_cache_write_per_mtok: parseRate(costCacheWrite),
       });
       setShowAdd(false);
       setSelectedProvider(null);
@@ -431,13 +460,19 @@ export default function PiModelManagement() {
       setProviderQuery("");
       setModelQuery("");
       setApiKey("");
+      setCostInput("");
+      setCostOutput("");
+      setCostCacheRead("");
+      setCostCacheWrite("");
       setCredentialReady(false);
       await fetchAll();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not add this model.";
       setAddError(message.includes("pi_api_key_required")
         ? "Enter this provider's API key, or configure the matching credential on the server first."
-        : message);
+        : message.includes("pi_endpoint_unpriced")
+          ? `${message} Enter operator contract rates below (or PUT cost_*_per_mtok to /api/settings/pi-endpoints/{endpoint_id} for an existing endpoint).`
+          : message);
     } finally {
       setAdding(false);
     }
@@ -691,6 +726,32 @@ export default function PiModelManagement() {
           )}
 
           {selectedProvider && selectedModel && (
+            <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-700">
+              <h3 className="font-semibold text-slate-900 dark:text-white">Operator contract rates <span className="font-normal text-slate-500">(optional)</span></h3>
+              <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                USD per 1M tokens. Leave empty to use the catalog list price. Required when the catalog lists this model at $0 — the server refuses such a model for budgeted runs unless contract rates are supplied (see the catalog cost below).
+                {selectedModel.cost && (Number(selectedModel.cost.input || 0) <= 0 || Number(selectedModel.cost.output || 0) <= 0) && (
+                  <span className="font-semibold text-amber-700 dark:text-amber-300"> This model is $0-priced in the catalog{selectedModel.cost.input === 0 && selectedModel.cost.output === 0 ? " (input + output)" : ""}; enter contract rates to admit it.</span>
+                )}
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">Input / 1M tokens
+                  <input id="pi-cost-input" type="number" min="0" step="any" inputMode="decimal" value={costInput} onChange={(event) => setCostInput(event.target.value)} placeholder={selectedModel.cost?.input != null ? String(selectedModel.cost.input) : "catalog"} className="ui-control mt-1 w-full px-3 text-sm" autoComplete="off" />
+                </label>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">Output / 1M tokens
+                  <input id="pi-cost-output" type="number" min="0" step="any" inputMode="decimal" value={costOutput} onChange={(event) => setCostOutput(event.target.value)} placeholder={selectedModel.cost?.output != null ? String(selectedModel.cost.output) : "catalog"} className="ui-control mt-1 w-full px-3 text-sm" autoComplete="off" />
+                </label>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">Cache read / 1M
+                  <input id="pi-cost-cache-read" type="number" min="0" step="any" inputMode="decimal" value={costCacheRead} onChange={(event) => setCostCacheRead(event.target.value)} placeholder={selectedModel.cost?.cacheRead != null ? String(selectedModel.cost.cacheRead) : "catalog"} className="ui-control mt-1 w-full px-3 text-sm" autoComplete="off" />
+                </label>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">Cache write / 1M
+                  <input id="pi-cost-cache-write" type="number" min="0" step="any" inputMode="decimal" value={costCacheWrite} onChange={(event) => setCostCacheWrite(event.target.value)} placeholder={selectedModel.cost?.cacheWrite != null ? String(selectedModel.cost.cacheWrite) : "catalog"} className="ui-control mt-1 w-full px-3 text-sm" autoComplete="off" />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {selectedProvider && selectedModel && (
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5 dark:border-slate-700">
               <div>
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">3. Add this model to Istara</p>
@@ -720,9 +781,13 @@ export default function PiModelManagement() {
             <p className="mt-1 text-xs text-slate-500">The built-in Pi endpoint remains available; add a provider above to make another model selectable in Chat.</p>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
-            {endpoints.map((endpoint) => (
-              <li key={endpoint.endpoint_id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <SeeMoreList
+            items={endpoints}
+            noun="model"
+            listId="pi-connected-models"
+            listClassName="divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700"
+            renderItem={(endpoint) => (
+              <div role="listitem" key={endpoint.endpoint_id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">{endpoint.pi_model || endpoint.model}</p>
                   <p className="mt-1 truncate font-mono text-xs text-slate-500 dark:text-slate-400">{endpoint.pi_provider || endpoint.provider_kind} · {endpoint.endpoint_id}</p>
@@ -747,9 +812,9 @@ export default function PiModelManagement() {
                     <Trash2 size={17} />
                   </button>
                 </div>
-              </li>
-            ))}
-          </ul>
+              </div>
+            )}
+          />
         )}
       </div>
 
@@ -772,11 +837,15 @@ export default function PiModelManagement() {
             <p className="mt-1 text-xs leading-5 text-istara-700 dark:text-istara-300">No preference is set. The existing Research Spine selector chooses distinct healthy models for each governed run.</p>
           </div>
         ) : (
-          <ol className="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
-            {researchEndpointIds.map((endpointId, index) => {
+          <SeeMoreList
+            items={researchEndpointIds}
+            noun="preference"
+            listId="pi-research-preferences"
+            listClassName="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700"
+            renderItem={(endpointId, index) => {
               const endpoint = endpoints.find((item) => item.endpoint_id === endpointId);
               return (
-                <li key={endpointId} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div role="listitem" key={endpointId} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.1em] text-istara-700 dark:text-istara-300">{index === 0 ? "Primary preference" : `Preference ${index + 1}`}</p>
                     <p className="mt-1 truncate text-sm font-semibold text-slate-950 dark:text-white">{endpoint?.pi_model || endpoint?.model || endpointId}</p>
@@ -787,10 +856,10 @@ export default function PiModelManagement() {
                     <button type="button" className="ui-icon-button" disabled={index === researchEndpointIds.length - 1} onClick={() => moveResearchPreference(index, 1)} aria-label={`Move ${endpoint?.model || endpointId} later`}><ArrowDown size={16} /></button>
                     <button type="button" className="ui-icon-button text-slate-500 hover:text-red-700" onClick={() => setResearchEndpointIds((current) => current.filter((id) => id !== endpointId))} aria-label={`Remove ${endpoint?.model || endpointId} from research preferences`}><Trash2 size={16} /></button>
                   </div>
-                </li>
+                </div>
               );
-            })}
-          </ol>
+            }}
+          />
         )}
 
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end">

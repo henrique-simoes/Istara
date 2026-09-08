@@ -121,6 +121,17 @@ def _apply_catalog_fields(
     ``model_fields_set``); ``preserved_fields`` are keys backfilled from the
     persisted endpoint on a sparse PUT. Both must survive verbatim — only the
     unset remainder is filled from the catalog.
+
+    Provenance on identity change (FIX F-14): when a sparse PUT switches
+    ``pi_provider``/``pi_model``, a persisted value that merely equals the
+    OLD catalog record is a tier-4 fill, not a tier-2 operator override, and
+    must NOT survive — otherwise the old model's rates/vision freeze and the
+    AC-6 preflight is bypassed. ``prepare_pi_endpoint_payload`` strips such
+    fills from ``preserved_fields`` before calling here (comparing the
+    persisted endpoint against the old record); only a persisted value that
+    DIFFERS from the old record (a genuine operator veto/contract rate) or a
+    value in ``provided_fields`` survives. Same-model PUTs keep full
+    preservation (AC-4).
     """
     provided = provided_fields or set()
     preserved = preserved_fields or set()
@@ -229,7 +240,7 @@ def _enforce_budget_pricing_preflight(payload: dict[str, Any]) -> None:
 
     The supervisor budgets every run (``max_cost_usd`` defaults finite), and
     the worker fails a budgeted run closed when it spends tokens in a category
-    left at a $0 rate. 119 of 1,312 upstream registry models are themselves
+    left at a $0 rate. 121 of 1,312 upstream registry models are themselves
     zero-priced in pi-ai (including ``zai/glm-5.3``), so such an endpoint can
     never serve a budgeted turn — the failure would only surface mid-run.
     Admission instead fails here, naming the unpriced categories, unless the
@@ -254,7 +265,11 @@ def _enforce_budget_pricing_preflight(payload: dict[str, Any]) -> None:
             "in: "
             + ", ".join(unpriced)
             + " — supply operator contract rates (USD per 1M tokens) for the "
-            "unpriced categories, or the run fails closed with cost_budget_unpriced"
+            "unpriced categories via cost_input_per_mtok/cost_output_per_mtok "
+            "(+ cost_cache_read/write_per_mtok) on POST /api/settings/pi-endpoints "
+            "(or PUT /api/settings/pi-endpoints/{endpoint_id} for an existing "
+            "endpoint; the Settings > Pi Model Management form exposes the same "
+            "contract-rate fields), or the run fails closed with cost_budget_unpriced"
         ),
     )
 
@@ -280,6 +295,75 @@ def _validate_endpoint_fields(payload: dict[str, Any]) -> None:
         )
 
 
+# Catalog-managed fields whose persisted value needs provenance on a model
+# switch (FIX F-14). Identity/transport fields are always overwritten by
+# ``_apply_catalog_fields`` so they need no filtering; these are the fields
+# where "persisted" is ambiguous between a tier-2 operator override and a
+# tier-4 fill of the previous model.
+_CATALOG_MANAGED_PROVENANCE_FIELDS: tuple[str, ...] = (
+    "cost_input_per_mtok",
+    "cost_output_per_mtok",
+    "cost_cache_read_per_mtok",
+    "cost_cache_write_per_mtok",
+    "supports_vision",
+    "supports_reasoning",
+)
+
+_COST_FIELD_TO_CATALOG_KEY: dict[str, str] = {
+    "cost_input_per_mtok": "input",
+    "cost_output_per_mtok": "output",
+    "cost_cache_read_per_mtok": "cacheRead",
+    "cost_cache_write_per_mtok": "cacheWrite",
+}
+
+
+def _lookup_catalog_record(provider: str, model_id: str) -> dict[str, Any] | None:
+    """Return the catalog record for ``provider/model_id`` or ``None``."""
+    try:
+        from app.core.pi_runtime.catalog import load_catalog
+
+        provider_models = load_catalog().get(str(provider or "").strip().lower())
+        if not provider_models:
+            return None
+        return next(
+            (m for m in provider_models if m.get("id") == model_id),
+            None,
+        )
+    except Exception:
+        return None
+
+
+def _persisted_equals_old_catalog(
+    field: str, persisted_value: Any, old_record: dict[str, Any] | None
+) -> bool:
+    """True when the persisted value is a tier-4 fill of the OLD record.
+
+    A fill must be refreshed from the NEW record on a model switch; only a
+    value that DIFFERS from the old record is a genuine tier-2 override that
+    survives the switch. ``None`` old record (legacy/unknown old model)
+    cannot prove tier-2, so it counts as a fill (refresh).
+    """
+    if old_record is None:
+        return True
+    if field in _COST_FIELD_TO_CATALOG_KEY:
+        old_rate = float((old_record.get("cost") or {}).get(_COST_FIELD_TO_CATALOG_KEY[field]) or 0.0)
+        try:
+            persisted_rate = float(persisted_value or 0.0)
+        except (TypeError, ValueError):
+            return False
+        return persisted_rate == old_rate
+    if field == "supports_vision":
+        old_vision = "image" in (old_record.get("input") or [])
+        return bool(persisted_value) == old_vision
+    if field == "supports_reasoning":
+        if persisted_value is None:
+            return False  # explicit defer-to-tier-4 intent always survives
+        if "reasoning" not in old_record:
+            return False  # no old authority to compare against; keep verbatim
+        return bool(persisted_value) == bool(old_record.get("reasoning"))
+    return False
+
+
 def prepare_pi_endpoint_payload(data: Any, existing: PiApiEndpoint | None = None) -> dict[str, Any]:
     """Resolve catalog fields and validate a POST or sparse PUT payload."""
     payload = data.model_dump()
@@ -291,6 +375,39 @@ def prepare_pi_endpoint_payload(data: Any, existing: PiApiEndpoint | None = None
                 payload[field] = value
                 preserved_fields.add(field)
         payload["endpoint_id"] = existing.endpoint_id
+    if existing is not None:
+        old_provider = str(
+            getattr(existing, "pi_provider", "")
+            or getattr(existing, "auth_provider", "")
+            or ""
+        ).strip().lower()
+        old_model = str(getattr(existing, "model", "") or "").strip()
+        new_provider = str(payload.get("pi_provider") or "").strip().lower()
+        new_model = str(payload.get("pi_model") or "").strip()
+        provider_switched = "pi_provider" in provided_fields and new_provider != old_provider
+        model_switched = "pi_model" in provided_fields and new_model != old_model
+        if provider_switched and "pi_model" not in provided_fields:
+            # Provider-only switch: keep the model id so the new provider's
+            # record is resolved instead of skipping the catalog entirely.
+            payload["pi_model"] = old_model
+            new_model = old_model
+        if provider_switched or model_switched:
+            old_record = (
+                _lookup_catalog_record(old_provider, old_model)
+                if old_provider and old_model
+                else None
+            )
+            existing_dump = existing.model_dump()
+            for field in _CATALOG_MANAGED_PROVENANCE_FIELDS:
+                if field in provided_fields or field not in preserved_fields:
+                    continue  # explicit in this PUT always wins; nothing to do
+                if _persisted_equals_old_catalog(
+                    field, existing_dump.get(field), old_record
+                ):
+                    # Tier-4 fill of the previous model — refresh from the new
+                    # record (and let the AC-6 preflight judge the new rates).
+                    preserved_fields.discard(field)
+                # else: genuine tier-2 override (veto/contract rate) survives.
     _apply_catalog_fields(
         payload,
         provided_fields=provided_fields,

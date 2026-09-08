@@ -321,6 +321,128 @@ def test_explicit_reasoning_veto_survives_sparse_put():
     assert payload["cost_output_per_mtok"] == 8.0
 
 
+def _real_post(provider: str, model_id: str, **extra):
+    """POST via the real pydantic models (F-14: the _FakeRequest harness hid
+    the sparse-PUT merge-law regression, so model-switch coverage uses the
+    real ``PiEndpointRequest``/``PiApiEndpoint`` pair)."""
+    from app.api.routes.settings import PiEndpointRequest
+    from app.config import PiApiEndpoint
+    from app.core.pi_runtime.endpoint_policy import prepare_pi_endpoint_payload
+
+    payload = prepare_pi_endpoint_payload(
+        PiEndpointRequest(
+            endpoint_id=f"pi-{provider}-{model_id}".replace(".", "-"),
+            keychain_service=f"istara-pi-{provider}",
+            pi_provider=provider,
+            pi_model=model_id,
+            api_key="offline-test-key",
+            **extra,
+        )
+    )
+    persisted = PiApiEndpoint(
+        **{k: v for k, v in payload.items() if k in PiApiEndpoint.model_fields}
+    )
+    return payload, persisted
+
+
+def _real_sparse_put(persisted, **extra):
+    """Sparse PUT via the real request model (only ``extra`` is provided)."""
+    from app.api.routes.settings import PiEndpointRequest
+    from app.core.pi_runtime.endpoint_policy import prepare_pi_endpoint_payload
+
+    return prepare_pi_endpoint_payload(
+        PiEndpointRequest(endpoint_id=persisted.endpoint_id, **extra),
+        existing=persisted,
+    )
+
+
+def test_sparse_put_switch_priced_to_zero_priced_is_refused():
+    """F-14: glm-4.7 (0.6/2.2) -> glm-5.3 ($0) must refuse like a direct POST."""
+    _, persisted = _real_post("zai", "glm-4.7")
+    assert persisted.cost_input_per_mtok == 0.6
+    with pytest.raises(HTTPException) as excinfo:
+        _real_sparse_put(persisted, pi_model="glm-5.3")
+    assert excinfo.value.status_code == 400
+    assert str(excinfo.value.detail).startswith("pi_endpoint_unpriced")
+
+
+def test_sparse_put_switch_to_zero_priced_admits_with_explicit_rates():
+    """F-14: the same switch admits when the PUT states tier-2 rates."""
+    _, persisted = _real_post("zai", "glm-4.7")
+    payload = _real_sparse_put(
+        persisted,
+        pi_model="glm-5.3",
+        cost_input_per_mtok=1.0,
+        cost_output_per_mtok=3.0,
+        cost_cache_read_per_mtok=0.2,
+        cost_cache_write_per_mtok=0.4,
+    )
+    assert payload["model"] == "glm-5.3"
+    assert payload["context_window"] == 1000000  # new record's transport
+    assert payload["cost_input_per_mtok"] == 1.0
+    assert payload["cost_output_per_mtok"] == 3.0
+
+
+def test_sparse_put_switch_zero_priced_to_priced_refreshes_rates():
+    """F-14 reverse: a contracted $0 endpoint switching to a priced model."""
+    _, persisted = _real_post(
+        "zai",
+        "glm-5.3",
+        cost_input_per_mtok=1.0,
+        cost_output_per_mtok=3.0,
+        cost_cache_read_per_mtok=0.2,
+        cost_cache_write_per_mtok=0.4,
+    )
+    # Genuine tier-2 contract rates survive the switch (they differ from the
+    # old $0 record), and the new record's transport is adopted.
+    payload = _real_sparse_put(persisted, pi_model="glm-4.7")
+    assert payload["model"] == "glm-4.7"
+    assert payload["context_window"] == 204800
+    assert payload["cost_input_per_mtok"] == 1.0
+    assert payload["cost_output_per_mtok"] == 3.0
+
+
+def test_sparse_put_switch_refreshes_vision_and_pricing_both_directions():
+    """F-14: gpt-4 (text-only, 30/60) <-> gpt-4-turbo (vision, 10/30)."""
+    _, persisted = _real_post("openai", "gpt-4")
+    assert persisted.supports_vision is False
+    forward = _real_sparse_put(persisted, pi_model="gpt-4-turbo")
+    assert forward["model"] == "gpt-4-turbo"
+    assert forward["supports_vision"] is True
+    assert forward["cost_input_per_mtok"] == 10.0
+    assert forward["cost_output_per_mtok"] == 30.0
+    assert forward["context_window"] == 128000
+
+    from app.config import PiApiEndpoint
+
+    persisted_forward = PiApiEndpoint(
+        **{k: v for k, v in forward.items() if k in PiApiEndpoint.model_fields}
+    )
+    backward = _real_sparse_put(persisted_forward, pi_model="gpt-4")
+    assert backward["model"] == "gpt-4"
+    assert backward["supports_vision"] is False
+    assert backward["cost_input_per_mtok"] == 30.0
+    assert backward["cost_output_per_mtok"] == 60.0
+
+
+def test_sparse_put_switch_preserves_genuine_operator_veto():
+    """F-14: an explicit veto (differs from the old record) survives a switch."""
+    _, persisted = _real_post(
+        "deepseek",
+        "deepseek-v4-pro",
+        supports_reasoning=False,
+        cost_input_per_mtok=8.0,
+        cost_output_per_mtok=8.0,
+        cost_cache_read_per_mtok=8.0,
+        cost_cache_write_per_mtok=8.0,
+    )
+    assert persisted.supports_reasoning is False
+    payload = _real_sparse_put(persisted, pi_model="deepseek-v4-flash")
+    assert payload["model"] == "deepseek-v4-flash"
+    assert payload["supports_reasoning"] is False
+    assert payload["cost_input_per_mtok"] == 8.0
+
+
 def test_explicit_reasoning_null_defers_and_survives():
     """Tri-state: explicit null means 'defer to tier 4' and is not collapsed."""
     payload = _prepare(
