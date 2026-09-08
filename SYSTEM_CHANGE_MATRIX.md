@@ -267,6 +267,7 @@ If you add a new `reports` view:
 | Pi endpoint advertisement merge | tri-state `supports_reasoning`/`supports_vision` survive POST and sparse PUT; operator vetoes beat the pi-ai record; nothing enables beyond it; on a `pi_provider`/`pi_model` switch a persisted value equal to the OLD record is a tier-4 fill and refreshes (F-14) | `tests/pi_compat/test_capability_carry_through.py` |
 | Pi endpoint budget pricing | operator contract rates (tier 2) survive POST/PUT; upstream zero-priced registry models fail admission `pi_endpoint_unpriced` naming categories and the API path; overlays exempt; model-switch PUTs re-resolve rates before the preflight (F-14) | `tests/pi_compat/test_capability_carry_through.py` |
 | Effort vocabulary | `validate_model_effort` allowlist = pi-ai ladder + `server_default`/`auto`/`on`; unsupported efforts rejected, never silently clamped; ladder pinned to the projection | `tests/pi_compat/test_capability_carry_through.py`, chat/session contract tests |
+| Pi upstream bump gate | a pi-ai/pi-agent-core version bump ships only with a classified diff-proof (no unclassified/blocked consumed-surface or registry-removal diff) and exact lockstep pins + lockfiles + installed modules across `pi-runtime` and `labs/pi-replacement` | `tests/pi_compat/test_bump_diff_proof.py`, `tests/pi_migration/test_version_provenance.py` |
 
 ### Example 3: Change task status logic
 

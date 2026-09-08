@@ -9,7 +9,7 @@ the SAME exact upstream releases of `@earendil-works/pi-agent-core` and
 `@earendil-works/pi-ai`, and their lockfiles must agree with their
 `package.json` manifests so a fresh `npm ci` is reproducible:
 
-1. ``EXPECTED_PINS`` — the exact versions the wave pinned (0.84.3/0.84.3).
+1. ``EXPECTED_PINS`` — the exact versions the wave pinned (0.85.1/0.85.1).
 2. Each surface's ``package.json`` pins both packages with exact versions
    (no ``^``/``~`` ranges).
 3. Each surface's ``package-lock.json`` root dependencies equal the
@@ -26,14 +26,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 PI_PACKAGES = ("@earendil-works/pi-agent-core", "@earendil-works/pi-ai")
 
-# Exact pins approved for this wave (verified upstream 0.84.3/0.84.3).
+# Exact pins approved for this wave (verified upstream 0.85.1/0.85.1; the
+# 0.84.3 -> 0.85.1 lockstep bump is gated by the classified diff-proof
+# docs/build-stream/pi-compat-20260908-0851-diff-proof.json).
 EXPECTED_PINS = {
-    "@earendil-works/pi-agent-core": "0.84.3",
-    "@earendil-works/pi-ai": "0.84.3",
+    "@earendil-works/pi-agent-core": "0.85.1",
+    "@earendil-works/pi-ai": "0.85.1",
 }
 
 # lockfileVersion 3 is what `npm install` produces for current npm; treat it
@@ -56,7 +60,7 @@ def _deps_for(manifest: dict) -> dict:
 
 
 def test_bundled_surfaces_pin_exact_approved_versions():
-    """Both pi-runtime and labs/pi-replacement pin 0.84.3 with exact specs."""
+    """Both pi-runtime and labs/pi-replacement pin 0.85.1 with exact specs."""
     for label, root in SURFACES:
         manifest = _load_json(root / "package.json")
         pins = _deps_for(manifest)
@@ -73,7 +77,7 @@ def test_bundled_surfaces_pin_exact_approved_versions():
 
 
 def test_lockfiles_match_manifests_and_resolve_pins():
-    """package-lock root deps == package.json deps and resolve to 0.84.3."""
+    """package-lock root deps == package.json deps and resolve to 0.85.1."""
     for label, root in SURFACES:
         manifest = _load_json(root / "package.json")
         lock = _load_json(root / "package-lock.json")
@@ -123,4 +127,27 @@ def test_lockfile_entries_are_consistent():
             assert entry.get("version") == EXPECTED_PINS[name], (
                 f"{label}/package-lock.json resolves {name} to "
                 f"{entry.get('version')!r}, expected {EXPECTED_PINS[name]!r}."
+            )
+
+
+def test_installed_packages_match_pins():
+    """The installed node_modules copies must equal the approved pins.
+
+    Catches the 'npm install without commit' drift where the worker would run
+    a different upstream release than the manifest/lockfile/catalog provenance
+    all assert (wave update-and-release-proof: lockfile/provenance checks).
+    A surface without node_modules is a typed not_runnable — the offline lane
+    must never silently skip (AGENTS.md), and scripts/pi_bump_diff_proof.py
+    verify re-asserts the same equality post-install.
+    """
+    for label, root in SURFACES:
+        for name in PI_PACKAGES:
+            installed_manifest = root / "node_modules" / name / "package.json"
+            if not installed_manifest.exists():
+                pytest.skip(f"not_runnable: {label} has no installed {name} (surface not built)")
+            installed = _load_json(installed_manifest).get("version")
+            assert installed == EXPECTED_PINS[name], (
+                f"{label}/node_modules has {name}={installed!r}, expected "
+                f"{EXPECTED_PINS[name]!r}; node_modules drifted from the pin — "
+                "run `npm ci` in that surface before shipping."
             )

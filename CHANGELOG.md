@@ -15,7 +15,8 @@ now lives in `Tech.md`, `TESTING.md`, `testing/TEST_HISTORY.md`, and Compass
 Forge evidence.
 
 ### Added
-- **Team RBAC Permission Contract**: Added central permission behavior documenting global admin, project admin, researcher, viewer, `404` concealment, and `403` forbidden-operation semantics.
+- **Pi Compatibility Authority Runbook**: Added `docs/architecture/pi-compatibility-authority.md` — the authority law, the projection gates, and the routine pi-ai bump runbook (diff-proof, §8 classification, lockstep pins, rollback).
+- **Pi Bump Diff-Proof Gate**: Added `scripts/pi_bump_diff_proof.py` (proof / verify-report / verify) with offline unit tests; a version bump now fails the gate while any consumed-surface or registry-removal diff is unclassified or blocked, and `EXPECTED_PINS` keeps both bundled surfaces in exact lockstep. Added central permission behavior documenting global admin, project admin, researcher, viewer, `404` concealment, and `403` forbidden-operation semantics.
 - **Compass Forge Planning Evidence**: Future plans, deferred hardening, and feature candidates now live in Compass Forge specs/tasks/evidence or domain strategy docs instead of root scratch ledgers.
 - **Admin Dashboard Foundation**: Added admin-only `/api/admin/*` aggregation endpoints and an admin-only dashboard for global users, project, access, compute, usage, and connection-string visibility.
 - **System-Wide RBAC Hardening Pass**: Extended central project/admin authorization checks across Files, Memory, Context DAG, Metrics, UX Laws compliance, Reports, Code Applications, Codebook Versions, Deployments, MCP clients, Agents, Context hierarchy, Channels, Surveys, Loops, Autoresearch, Notifications, Backup, Scheduler, and Audit routes.
@@ -42,6 +43,7 @@ Forge evidence.
 - **Self-Evolution Verification**: Skill proposal promotion now surfaces verification state and blocks approval when verification fails.
 - **Interfaces Markdown Rendering**: Design Chat assistant output and streaming text render Markdown/GFM like the main Chat menu.
 - **Generated Document Preview**: Markdown-like Documents now render as formatted Markdown instead of monospaced raw text in the Documents preview.
+- **Pi Upstream Lockstep Bump 0.84.3 → 0.85.1**: `@earendil-works/pi-ai` and `@earendil-works/pi-agent-core` bumped in lockstep across `pi-runtime` and `labs/pi-replacement`; catalog projection regenerated (115 models added, 73 removed upstream, `zai/glm-5.3` now priced — the unpriced-admission proof moved to `zai/glm-5.3-highspeed`); all 36 changed upstream surfaces and 73 registry removals classified `intended-upstream` with request-wire fixtures passing unchanged.
 
 ### Fixed
 - **Onboarding File Step**: "Add research files" now routes to Documents upload instead of remaining in Settings.

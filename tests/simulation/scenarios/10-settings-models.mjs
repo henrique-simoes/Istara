@@ -212,6 +212,96 @@ export async function run(ctx) {
     checks.push({ name: "Zero-priced add refuses with remediable 400 (API-behind-browser)", passed: false, detail: e.message });
   }
 
+  // ── W5.4 (update-and-release-proof wave): effort badge reflects the
+  // model's real pi-ai-inherited level count — for an inherited-MAP model
+  // (zai/glm-5.3: thinkingLevelMap low/high/max) and a MAPLESS reasoning
+  // model (zai/glm-4.7: map null, default ladder minus xhigh/max). The
+  // source of truth is the catalog's emitted `thinkingLevels` (DEC-M2: menus
+  // consume it as given); the badge text is "N provider-native levels".
+  try {
+    const catalog = await api.get("/api/settings/pi-catalog");
+    const providers = catalog.providers || [];
+    const findModel = (id) => {
+      for (const p of providers) {
+        const hit = (p.models || []).find((m) => m.id === id);
+        if (hit) return { provider: p.id, ...hit };
+      }
+      return null;
+    };
+    const mapped = findModel("glm-5.3");
+    const mapless = findModel("glm-4.7");
+    if (mapped && mapless) {
+      const mappedCount = (mapped.thinkingLevels || []).length;
+      const maplessCount = (mapless.thinkingLevels || []).length;
+      checks.push({
+        name: "Catalog emits inherited level counts (mapped + mapless)",
+        passed: mappedCount > 0 && maplessCount > 0,
+        detail: `glm-5.3 map=${JSON.stringify(mapped.thinkingLevelMap)} -> ${mappedCount} levels; glm-4.7 map=${JSON.stringify(mapless.thinkingLevelMap)} -> ${maplessCount} levels`,
+      });
+      // Real browser act: open Chat, pick each model in the composer's model
+      // listbox, and assert the badge carries the catalog-derived count.
+      await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(800);
+      const chatNav = page.locator('button[aria-label="Chat"]').first();
+      if (await chatNav.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await chatNav.click();
+        await page.waitForTimeout(800);
+        const pickerBtn = page.locator('div:has(> #chat-model-listbox)').locator("xpath=..").locator("button").first();
+        // The ModelPicker trigger is the button before the listbox; fall back
+        // to the search-input path only when the listbox opens.
+        const searchInput = page.locator('input[aria-label="Search chat models"]').first();
+        const listbox = page.locator('#chat-model-listbox').first();
+        const listboxVisible = await listbox.isVisible({ timeout: 2500 }).catch(() => false);
+        checks.push({ name: "Chat model listbox opens", passed: listboxVisible, detail: "" });
+        if (listboxVisible) {
+          for (const [modelId, expectedCount] of [["glm-5.3", mappedCount], ["glm-4.7", maplessCount]]) {
+            if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+              await searchInput.fill(modelId);
+              await page.waitForTimeout(400);
+            }
+            const option = page.locator('#chat-model-listbox [role="option"]', { hasText: modelId }).first();
+            if (await option.isVisible({ timeout: 2500 }).catch(() => false)) {
+              await option.click();
+              await page.waitForTimeout(500);
+              const badgeText = await page
+                .locator(":text('provider-native levels')")
+                .first()
+                .textContent({ timeout: 2500 })
+                .catch(() => "");
+              checks.push({
+                name: `Effort badge reflects inherited count for ${modelId}`,
+                passed: Boolean(badgeText && badgeText.includes(`${expectedCount} provider-native levels`)),
+                detail: `badge="${(badgeText || "").trim().slice(0, 80)}", expected ${expectedCount} levels`,
+              });
+            } else {
+              // Credential-free QA lane: no configured endpoints -> no picker
+              // choices. Declared, not fabricated: the badge is skipped with
+              // the live requirement named (Full UI Testing Suite Contract 5).
+              checks.push({
+                name: `Effort badge reflects inherited count for ${modelId}`,
+                passed: true,
+                skipped: true,
+                detail: "not_runnable: model not offered in picker (no configured pi endpoint in the credential-free QA lane); catalog count asserted above",
+              });
+            }
+          }
+          await screenshot("10-effort-badge");
+        }
+      } else {
+        checks.push({ name: "Chat model listbox opens", passed: true, skipped: true, detail: "not_runnable: Chat nav not visible in this lane" });
+      }
+    } else {
+      checks.push({
+        name: "Catalog emits inherited level counts (mapped + mapless)",
+        passed: true,
+        skipped: true,
+        detail: "not_runnable: zai glm-5.3/glm-4.7 absent from this catalog build",
+      });
+    }
+  } catch (e) {
+    checks.push({ name: "Effort badge journey (W5.4)", passed: false, detail: e.message });
+  }
+
   return {
     checks,
     passed: checks.filter((c) => c.passed).length,

@@ -6,7 +6,32 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
-## 2026-09-08 - Pi Capability Authority Conformance Baseline (authority-and-boundary wave)
+## 2026-09-08 - Pi Upstream Lockstep Bump 0.84.3→0.85.1 + Release Acceptance (update-and-release-proof wave)
+
+Scope: lockstep pi-ai/pi-agent-core pin 0.84.3 → 0.85.1 across `pi-runtime` and
+`labs/pi-replacement` (package.json exact pins, regenerated lockfiles, installed
+node_modules, labs adapter manifest); catalog projection regenerated from the 0.85.1
+registry; routine-bump diff-proof gate (`scripts/pi_bump_diff_proof.py` + 13 offline
+tests in `tests/pi_compat/test_bump_diff_proof.py`); installed-vs-pin provenance test
+in `tests/pi_migration/test_version_provenance.py`; AC-6 unpriced-admission proof moved
+to `zai/glm-5.3-highspeed` (upstream priced `zai/glm-5.3` in 0.85.1 — intended-upstream,
+classified in `docs/build-stream/pi-compat-20260908-0851-diff-proof.json`); UI journeys
+W5.4 (effort badge, scenario 10) and W5.5 (effort persistence, scenario 05).
+Suite topology change: new `tests/pi_compat/test_bump_diff_proof.py`; scenario 05/10
+extended.
+
+| Area | Result |
+| --- | --- |
+| Diff-proof gate | `python scripts/pi_bump_diff_proof.py proof 0.85.1 --report docs/build-stream/pi-compat-20260908-0851-diff-proof.json` — 36 changed surfaces + 73 registry removals, all classified `intended-upstream`, gate PASSED; `zai/glm-5.3-flash` + `zai/glm-5.3` present in candidate (expect-models) |
+| pi-runtime suite | `cd pi-runtime && npm test` passed with `100 pass / 0 fail` against 0.85.1 — AC-1 fallback fixtures byte-identical, inherited wire fixtures unchanged (API diffs are response-side assembly) |
+| Conformance + provenance | `pytest tests/pi_compat tests/pi_migration -q` passed with `74 passed` (projection ≡ resolver over all 1,394 records, provenance ≡ pin 0.85.1, pin/lockfile/installed lockstep) |
+| Backend pi suites | `pytest tests/pi_production -q` → `475 passed`; `pytest tests/pi_benchmark -q` → `245 passed, 5 skipped` |
+| Second surface | `cd labs/pi-replacement && npm install && npm run validate` → `5 pass / 0 fail` on 0.85.1 |
+| Frontend | `npx vitest run src/lib/modelCatalog.test.ts src/lib/modelProviders.test.ts` → `24 passed`; `npx tsc --noEmit` clean |
+| Governance | `check_test_harness.py`, `check_integrity.py`, `check_qa_capabilities.py` passed; `feature_docs.py --check` passed (86 features); `security_benchmark.py --fail-on-threshold` 100.0 pass; `docker compose --profile contract config --quiet` ok |
+| UI container lane | `not_runnable` — Docker daemon unreachable (`unix:///Users/user/.docker/run/docker.sock`); resume: start Docker, then `docker compose -f docker-compose.qa.yml --profile ui up -d` (loopback only) and `node tests/simulation/run.mjs --scenario 10-settings-models,05-chat-interaction`; scenario static checks `npm run test:static` → 17 pass |
+| Live acceptance (W7.1–7.3) | `not_runnable` — owner authorization required (AGENTS.md Live LLM and Model Loading Safety; DEC-O6); no live probe, model load, or benchmark spend was performed |
+| Residual risks | live reconciliation evidence (receipt → captured body → served identity) pending owner-authorized run; scenarios authored but not yet executed in a container |
 
 Scope: pi-ai registry becomes the capability authority (worker resolver +
 generated catalog projection); routine-bump conformance machinery; deterministic

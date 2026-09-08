@@ -50,7 +50,13 @@ CATALOG_PATH = (
     / "pi_models_catalog.json"
 )
 
-ZAI_ZERO_PRICED_MODEL = "glm-5.3"  # S-E3: zero-priced in pi-ai 0.84.3 itself
+# S-E3/AC-6 unpriced-admission proof model. pi-ai 0.84.3 priced glm-5.3 at
+# $0 across every category; upstream 0.85.1 repriced it to
+# input 1.4 / output 4.4 / cacheRead 0.26 (intended-upstream, classified in
+# docs/build-stream/pi-compat-20260908-0851-diff-proof.json). The proof moves
+# to glm-5.3-highspeed, still $0 in every category in 0.85.1 — the preflight
+# now guards 153 zero-priced registry records (was 119).
+ZAI_ZERO_PRICED_MODEL = "glm-5.3-highspeed"
 ZAI_PARTIAL_PRICED_MODEL = "glm-4.7"  # priced input/output, cacheWrite $0
 
 
@@ -357,11 +363,12 @@ def _real_sparse_put(persisted, **extra):
 
 
 def test_sparse_put_switch_priced_to_zero_priced_is_refused():
-    """F-14: glm-4.7 (0.6/2.2) -> glm-5.3 ($0) must refuse like a direct POST."""
+    """F-14: glm-4.7 (0.6/2.2) -> glm-5.3-highspeed ($0) must refuse like a
+    direct POST. (Switched from glm-5.3: upstream 0.85.1 priced it.)"""
     _, persisted = _real_post("zai", "glm-4.7")
     assert persisted.cost_input_per_mtok == 0.6
     with pytest.raises(HTTPException) as excinfo:
-        _real_sparse_put(persisted, pi_model="glm-5.3")
+        _real_sparse_put(persisted, pi_model="glm-5.3-highspeed")
     assert excinfo.value.status_code == 400
     assert str(excinfo.value.detail).startswith("pi_endpoint_unpriced")
 
@@ -371,13 +378,13 @@ def test_sparse_put_switch_to_zero_priced_admits_with_explicit_rates():
     _, persisted = _real_post("zai", "glm-4.7")
     payload = _real_sparse_put(
         persisted,
-        pi_model="glm-5.3",
+        pi_model="glm-5.3-highspeed",
         cost_input_per_mtok=1.0,
         cost_output_per_mtok=3.0,
         cost_cache_read_per_mtok=0.2,
         cost_cache_write_per_mtok=0.4,
     )
-    assert payload["model"] == "glm-5.3"
+    assert payload["model"] == "glm-5.3-highspeed"
     assert payload["context_window"] == 1000000  # new record's transport
     assert payload["cost_input_per_mtok"] == 1.0
     assert payload["cost_output_per_mtok"] == 3.0
@@ -501,7 +508,9 @@ def test_operator_tier2_rates_win_and_catalog_fills_the_rest():
 
 
 def test_upstream_zero_priced_model_fails_admission_naming_categories():
-    """AC-6: zai/glm-5.3 is $0-priced in pi-ai itself — admission fails."""
+    """AC-6: zai/glm-5.3-highspeed is $0-priced in pi-ai itself — admission
+    fails. (glm-5.3 held this role until upstream 0.85.1 priced it; see the
+    ZAI_ZERO_PRICED_MODEL note.)"""
     with pytest.raises(HTTPException) as excinfo:
         _prepare("zai", ZAI_ZERO_PRICED_MODEL)
     assert excinfo.value.status_code == 400
