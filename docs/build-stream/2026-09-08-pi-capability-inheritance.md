@@ -204,3 +204,9 @@ Did: pi-compat-20260908-architect-c stage on task pi-compat-20260908-PLAN-C (har
 Result: task pi-compat-20260908-PLAN-C finished; worktree head efdcb372.
 Verified: see Compass Forge evidence rows on pi-compat-20260908-PLAN-C (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-5 | 2026-09-08T07:33:52Z | S1-plan | gpt-5.6-sol | planner | pi-compat-20260908-architect-a <!-- bsc-ledger:pi-compat-20260908-PLAN-A -->
+Did: pi-compat-20260908-architect-a stage on task pi-compat-20260908-PLAN-A (harness fallback entry; the model did not append one).
+Result: task pi-compat-20260908-PLAN-A finished; worktree head c09f0c42.
+Verified: see Compass Forge evidence rows on pi-compat-20260908-PLAN-A (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
