@@ -10,7 +10,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
-from app.core.env_persistence import SECRET_ENV_DENYLIST
+from app.core.env_secrets import SECRET_ENV_DENYLIST
 
 _logger = logging.getLogger(__name__)
 

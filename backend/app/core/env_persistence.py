@@ -3,6 +3,8 @@
 import os
 from pathlib import Path
 
+from app.core.env_secrets import SECRET_ENV_DENYLIST
+
 
 def _coerce_for_settings(attr: str, value: str):
     """Coerce a persisted string to the Settings field type when safe.
@@ -79,19 +81,12 @@ def _write_or_update_file(path: Path, key: str, value: str) -> None:
 # file: memory + live settings only, so a stale/shared file cannot hijack
 # them on restart. Callers needing the distinction should read the return.
 #
-# This is the CANONICAL list for both sides of the boundary: `app.config`
-# imports it to keep a runtime env file from overriding these keys when the
-# process environment already supplies them. A write-side denylist alone is
-# not sufficient, because files written by earlier builds already contain
-# them (F-7).
-SECRET_ENV_DENYLIST = frozenset(
-    {
-        "ADMIN_PASSWORD",
-        "DATA_ENCRYPTION_KEY",
-        "NETWORK_ACCESS_TOKEN",
-        "JWT_SECRET",
-    }
-)
+# The list itself lives in the leaf module `app.core.env_secrets` and is
+# re-exported here: `app.config` needs the SAME boundary on the read side (a
+# write-side denylist alone is not sufficient, because files written by
+# earlier builds already contain these keys — F-7), and importing it from
+# this module would make configuration and persistence import each other.
+__all__ = ["SECRET_ENV_DENYLIST", "persist_env_value"]
 
 
 def persist_env_value(key: str, value: str) -> bool:
