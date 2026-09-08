@@ -7,10 +7,10 @@ branch: testing
 cf: { spec: CF-SPEC-29, tasks: [] }
 phase: "Phase 1 — Implementation waves (update-and-release-proof)"
 stage: S3-review
-status: blocked
-blocked_on: "F-19 (Blocker) + F-20/F-21/F-22 (Major) on wave update-and-release-proof; FIX-pi-compat-20260908-WAVE-update-and-release-proof-REVIEW-r1"
+status: in-progress
+blocked_on: null
 last: { agent: claude-opus-5, at: 2026-09-08T19:10:00Z, ledger: L-35 }
-next_action: "S4-remediate — pi-compat-20260908-fixer takes FIX-pi-compat-20260908-WAVE-update-and-release-proof-REVIEW-r1 (F-19..F-24). F-19 acceptance needs a live-lane scenario run, not a static check. W7.1-7.3 bounded live acceptance remains PENDING (owner authorization)."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
