@@ -9,8 +9,8 @@ phase: "Phase 0 — Owner-approved expanded frame; 3-architect planning"
 stage: S1-plan
 status: in_progress
 blocked_on: null
-last: { agent: zai/glm-5.3-flash, at: 2026-09-08T07:53:33Z, ledger: L-7 }
-next_action: "Cross-vote the three MECE master candidates; then hold at the winning-plan owner-approval gate (DEC-O1..O6 outstanding)."
+last: { agent: claude-opus-5, at: 2026-09-08T08:02:49Z, ledger: L-8 }
+next_action: "Cross-vote complete (VOTE-B -> slot c). Conductor tallies MASTER-A vs MASTER-C, then holds at the winning-plan owner-approval gate (DEC-M1..M8 / DEC-O1..O6 outstanding)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -277,3 +277,65 @@ Did: pi-compat-20260908-architect-a stage on task pi-compat-20260908-MASTER-A (h
 Result: task pi-compat-20260908-MASTER-A finished; worktree head 7188ab25.
 Verified: see Compass Forge evidence rows on pi-compat-20260908-MASTER-A (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-8 | 2026-09-08T08:02:49Z | S1-plan | claude-opus-5 | architect-b (cross-vote) | Phase 0 — 3-architect planning <!-- bsc-ledger:pi-compat-20260908-VOTE-B -->
+Did: cross-vote stage on task pi-compat-20260908-VOTE-B, round `438f30bed0c2576cad62`, voter
+  slot b. Read the two supplied master candidates in full from their immutable snapshots —
+  slot a (`16d7e698…`, gpt-5.6-sol, 816 lines) and slot c (`6f928974…`, zai/glm-5.3-flash
+  rev 2, 494 lines) — plus CF-SPEC-29. Did not vote for my own slot; no plan or lifecycle
+  plan section edited; no code touched. Independently re-measured candidate C's load-bearing
+  claims rather than accepting either plan's prose: lockstep `@earendil-works/pi-ai@0.84.3`
+  pins in BOTH `pi-runtime/package.json:13-14` and `labs/pi-replacement/package.json:17-18`;
+  `EXPECTED_PINS` at `tests/pi_migration/test_version_provenance.py:34`; `cost_budget_unpriced`
+  fail-closed in `pi-runtime/src/session.mjs` (~536-544); `PiCatalogModel`
+  (`backend/app/core/pi_runtime/catalog.py:31-41`) carries no `thinkingLevelMap`/`compat`;
+  mirror zai entries `thinkingLevels: null` with `cost {0,0,0,0}`; upstream 0.84.3 registry
+  = 39 providers / 1312 models with a large zero-priced cohort **including `zai/glm-5.3`**,
+  and `getBuiltinModel('zai','glm-5.3-flash')` → undefined. `zai/glm-5.3`'s map is
+  `{off:null, minimal:null, low:"low", medium:null, high:"high", xhigh:null, max:"max"}` —
+  i.e. supported = `[low, high, max]`, matching C's corrected `getSupportedThinkingLevels`
+  semantics exactly.
+Result: **voted slot c** (candidate_id `6f928974f42da70a7ac7e86f86c93eafe32ba09df6340e4a23025926f0eb193a`)
+  for task pi-compat-20260908-VOTE-B. Both candidates are buildable, dependency-ordered and
+  MECE; C wins on four grounds. (1) Every C anchor I checked held exactly, while A explicitly
+  defers remeasurement to W0 and carries far fewer checkable anchors. (2) C alone establishes
+  that **pi-ai itself** prices ~120 models at $0 (`zai/glm-5.3` included), so mirror
+  regeneration can never repair budget integrity — hence its W1.7 admission-time pricing
+  preflight (`pricing: "unknown"` + typed fail-closed error naming the unpriced categories).
+  A treats generated pi-ai prices as sound reconciliation defaults and keeps only the generic
+  unpriced floor (AC-08/AC-09), which is safe but not actionable. (3) C alone corrects the
+  rollback scope: A's W3 rollback restores a single `package.json`/lockfile, which would leave
+  `test_version_provenance.py` red because `labs/pi-replacement` is a second bundled pi
+  surface — verified above. (4) On the central conflict (where the authority is read), A
+  hard-decides the server-built descriptor transport, departing from the owner's own acceptance
+  wording (`getBuiltinModel(pi_provider, model)` resolves at bind → that record's
+  `{reasoning, thinkingLevelMap, compat}` is used); C satisfies it literally by default and
+  converts the measured import cost into a quantified gate (≤30 MB sustained RSS delta per
+  worker process) with the descriptor pre-designed as the contingency — same engineering,
+  decided on measurement rather than a planning-time estimate. C's §8 conflict register
+  (X1–X11) also does the synthesis job the phase asks for, and it ships the routine bump
+  runbook (§12), architecture-debt register (§15) and terminal states (§16).
+  **Where A is better and the winner should absorb it:** A's explicit T0–T12 task DAG with
+  parallelism/dependency notes is cleaner for wave execution than C's wave tables, and A's
+  monotonic invariant (advertised endpoint flags may *narrow* a builtin capability, never
+  enable one) is safer than C's DEC-M6 loud bidirectional operator override — DEC-M6 is the
+  item most deserving owner scrutiny at the approval gate.
+  **Honest discrepancy recorded, not smoothed over:** C states 119/1312 upstream zero-priced
+  (109 reasoning-capable); my count under a slightly different zero-rule gave 121/1312 (111).
+  Directionally confirmed; the exact rule and count must be pinned by the W1 generator and its
+  conformance test, not by either plan's prose. I also could **not** confirm C's G5 codex/luna
+  `minimal→"low"` map: my id regex matched no luna/terra/sol record in installed 0.84.3, so the
+  codex provider/model ids both plans assume remain unverified by me and W0 must establish them.
+Verified: `grep -n earendil-works pi-runtime/package.json labs/pi-replacement/package.json`
+  → both 0.84.3 (passed); `grep -rn EXPECTED_PINS tests/pi_migration/test_version_provenance.py`
+  → line 34 (passed); `sed -n 530,548p pi-runtime/src/session.mjs` and
+  `sed -n 28,45p backend/app/core/pi_runtime/catalog.py` (passed); node import of
+  `@earendil-works/pi-ai/providers/all` → 39 providers / 1312 models / 121 zero-priced
+  (111 reasoning), `zai/glm-5.3` cost all-zero, `zai/glm-5.3-flash` undefined (passed);
+  `python3` inspection of `pi_models_catalog.json` → zai `thinkingLevels: null`,
+  `cost {0,0,0,0}` (passed). CF rows on pi-compat-20260908-VOTE-B: 3 × `command`,
+  1 × `plan_vote` (vote=c), 1 × `self_report` (satisfied=true). No test suite was run — a vote
+  stage changes no code; no plan file, lifecycle plan section, or product file was edited.
+Next: stage exit — vote recorded for slot c with reason and dissent. Conductor tallies
+  MASTER-A vs MASTER-C, then holds at the winning-plan owner-approval gate
+  (DEC-M1..M8 / DEC-O1..O6 outstanding). No implementation is authorized.
