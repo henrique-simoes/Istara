@@ -4,14 +4,13 @@
 ```yaml
 item: testing-to-main-convergence
 branch: testing
-cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL] }
 phase: "Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth"
-stage: S2-execute
-status: in-progress
-blocked_on: null
+stage: S3-review
+status: blocked
+blocked_on: [FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1, FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B]
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-09T17:25:13Z, ledger: L-19 }
-next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
+last: { agent: gpt-5.6-sol, at: 2026-09-09T17:33:25Z, ledger: L-20 }
+next_action: "S4 remediate F-W2-R1-1 and F-W2-R1-2, then delta re-review before W3."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1076,6 +1075,14 @@ verification path now remains usable without weakening the mandatory canonical p
 mirror drift remains fail-closed; the dossier reconciles to 192 rows (24 lifecycle / 166 product /
 2 hygiene). No fix-induced adjacent defect was found.
 
+
+### W2 review findings (S3-review, 2026-09-09T17:33:25Z, reviewer `gpt-5.6-sol`)
+
+| ID | Sev | Where | Finding | CF task | Status |
+|---|---|---|---|---|---|
+| **F-W2-R1-1** | Major | `docs/promotion/2026-09-09-control-plane-triage.tsv`, dossier §4 | Blanket zero-blocker classification includes current release acceptance/convergence prerequisites. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1` | open |
+| **F-W2-R1-2** | Major | convergence lifecycle Status Block + roadmap | Duplicate `cf` key and stale stage/next-action/phase statuses contradict current wave truth. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B` | open |
+
 ## Decision log
 
 <!-- consensus-winner-decision:testing-to-main-20260909-a38efd495d2d7124756699d0d630f44a66cf2ac1260bbd6d9ad74649d8228bb8 -->
@@ -1243,3 +1250,9 @@ Did: W2 control-plane-lifecycle in the shared worktree, scoped to docs/.compass-
 Result: Git, Build Stream, Compass Forge, and CI tell one provable story: reconciliation table in `docs/promotion/2026-09-09-control-plane-lifecycle.md` gives every recent initiative exactly one status (two M-08 claims found already stale and recorded as such); `task list --status open` holds zero release-blocking rows with per-row citations; CF-SPEC-29's 13 tasks carried with the owner-gated live-lane debt flagged for W6; M-10 migration recorded as DEC-2; testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL.
 Verified: `gate before` 0 new issues; `verify_wave_manifest.py` exit 0 (pinned 8601a1fc); `check_integrity.py` coherent; `git diff --check` clean on all touched files; `audit()` 2 baseline findings only (W2 adds none); `pytest test_public_repo_quality + test_verify_wave_manifest` 3 passed / 1 failed-baseline (AGENTS.md leak preserved for W3a per M-02 ordering); 7 `command` evidence rows on the IMPL task.
 Next: conductor dispatches the code-reviewer delta-free comprehensive review (`testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW`); W3 consumes the obligation matrix and the preserved-dirty backend/frontend surface.
+
+### L-20 | 2026-09-09T17:33:25Z | S3-review | gpt-5.6-sol | reviewer | Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth <!-- bsc-ledger:testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW -->
+Did: Completed a blind two-phase comprehensive review of W2 commit `872ca5cb`; independently measured task state, TSV counts, architecture gate, focused backend/frontend tests, security benchmark, and the governance trust boundary. No product code was edited.
+Result: **fail** — raised Major findings F-W2-R1-1 and F-W2-R1-2; created two fixer tasks. Scoped commit is correct and checks are green, but release-blocker classification and the lifecycle's own status truth are not acceptable as-is.
+Verified: `backend/.venv/bin/python -m pytest -q <11 focused files>` → 153 passed; `cd frontend && npm run test:unit -- --run` → 22 files/89 tests passed; `python scripts/security_benchmark.py --fail-on-threshold` → 100%; review `gate after` → baseline present/0 new failures; independent TSV parse → 182 rows and native state → 181 open + this review claimed; lifecycle inspection → duplicate/stale status fields.
+Next: S4-remediate both findings, then one delta re-review before W3.
