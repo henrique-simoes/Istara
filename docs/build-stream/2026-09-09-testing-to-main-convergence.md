@@ -9,8 +9,8 @@ stage: S4-remediate
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor-xhigh, at: 2026-09-09T18:48:38Z, ledger: L-29 }
-next_action: "F2 re-asserted (L-29): stale daemon replaced by stage-aware image; endurance proof next."
+last: { agent: meta/muse-spark-1.3-contributor-xhigh, at: 2026-09-09T18:53:00Z, ledger: L-30 }
+next_action: "R3 delta re-review pass (L-30): F-W2-R3-1 verified fixed under stage-aware daemon; conductor close-out next."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1322,3 +1322,9 @@ Did: Re-asserted S4-remediate remediation truth after the fifth sync overwrite (
 Result: Status Block reads S4-remediate remediation truth with last.ledger L-29 resolving to exactly one heading; green at this commit under the stage-aware daemon image.
 Verified: `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → OK; `python3 scripts/verify_control_plane_triage.py` → OK; `backend/.venv/bin/python -m pytest -q tests/test_verify_build_stream_status.py tests/test_verify_control_plane_triage.py` → 8 passed; `git diff --check` on the lifecycle path → clean; post-restart tick log shows `dispatched: []` with this FIX session active and no new `sync consensus owner-approval gate` commit; 45s two-interval endurance watch below proves no re-clobber.
 Next: conductor-created delta re-review of F-W2-R3-1; no further fixer action remains on this task.
+
+### L-30 | 2026-09-09T18:53:00Z | S3-review | meta/muse-spark-1.3-contributor | reviewer | Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth <!-- bsc-ledger:REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r3 -->
+Did: Delta re-reviewed F-W2-R3-1 against source fix FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r2-F1 and its six verification_evidence rows. Inspected only the fix seams: the stage-aware `_sync_consensus_lifecycle_gate` in `build-stream-conductor/scripts/conductor.py`, the new `approved_sync_preserves_remediation_next_action` regression in `test_consensus_planning.py`, and the convergence lifecycle Status Block/ledger. No full-review repeat, no code corrections. Findings register already marks F-W2-R3-1 fixed, so it is left untouched.
+Result: **pass** — the fix removes the overwrite path instead of re-asserting around it: approved ticks preserve `next_action` under S3-review/S4-remediate headers and commit nothing when only it differs. The fourth/fifth overwrites (22cb0056, 3cc77893) are fully explained as ticks from the stale pre-fix daemon image (PID 7664), which the fixer then retired and replaced with the stage-aware image (PID 38047, pidfile matches, `ps` confirms). Status Block reads S4-remediate review truth with last.ledger L-30 resolving to exactly one heading; both L-21 headings remain byte-identical and unambiguous for the current pointer.
+Verified: `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → OK; `python3 scripts/verify_control_plane_triage.py` → OK; `backend/.venv/bin/python -m pytest -q tests/test_verify_build_stream_status.py tests/test_verify_control_plane_triage.py` → 8 passed; `python3 build-stream-conductor/scripts/test_consensus_planning.py` → PASS incl. new stage-aware regression; independent temp-copy approved-tick probe → True, 0 commits, remediation `next_action` preserved in header; HEAD a9e4b9af unchanged ~180s (~9 x 20s daemon ticks, far beyond the 13–23s recurrence interval) with verifiers still OK; CF command evidence ids 1997/1998 on task 436. (Id 1996 is a reviewer CLI probe, not evidence.)
+Next: conductor close-out of F-W2-R3-1 and the control-plane-lifecycle wave; reviewer creates no re-review and no fix task.
