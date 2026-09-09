@@ -11,7 +11,7 @@ status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
 last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-09T17:25:13Z, ledger: L-19 }
-next_action: "Reviewer takes testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW; W3 consumes the obligation matrix."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
