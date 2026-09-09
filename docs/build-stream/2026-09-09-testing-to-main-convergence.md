@@ -5,11 +5,11 @@
 item: testing-to-main-convergence
 branch: testing
 phase: "Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth"
-stage: S3-review
+stage: S4-remediate
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
-last: { agent: gpt-5.6-sol-low, at: 2026-09-09T17:41:26Z, ledger: L-22 }
+last: { agent: meta/muse-spark-1.3-contributor-xhigh, at: 2026-09-09T18:37:00Z, ledger: L-24 }
 next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
@@ -1082,7 +1082,7 @@ mirror drift remains fail-closed; the dossier reconciles to 192 rows (24 lifecyc
 |---|---|---|---|---|---|
 | **F-W2-R1-1** | Major | `docs/promotion/2026-09-09-control-plane-triage.tsv`, dossier §4 | Blanket zero-blocker classification includes current release acceptance/convergence prerequisites. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1` | fixed |
 | **F-W2-R1-2** | Major | convergence lifecycle Status Block + roadmap | Duplicate `cf` key and stale stage/next-action/phase statuses contradict current wave truth. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B` | fixed |
-| **F-W2-R2-1** | Major | convergence lifecycle Status Block + status verifier | Commit `71574d8b` reintroduced the stale implementation-dispatch action after the fixer passed; the tracked lifecycle now fails its own verifier, and duplicate `L-21` ledger identifiers leave the prior `last.ledger` reference ambiguous. | `FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-F1` | open |
+| **F-W2-R2-1** | Major | convergence lifecycle Status Block + status verifier | Commit `71574d8b` reintroduced the stale implementation-dispatch action after the fixer passed; the tracked lifecycle now fails its own verifier, and duplicate `L-21` ledger identifiers leave the prior `last.ledger` reference ambiguous. | `FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-F1` | fixed |
 
 ## Decision log
 
@@ -1278,3 +1278,16 @@ Did: Delta re-reviewed both W2 fixes against their command evidence and inspecte
 Result: **fail** — raised Major F-W2-R2-1 and created `FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-F1`. This scope broadened only to the adjacent ledger identifier because it directly affects the corrected Status Block's resumability contract.
 Verified: `backend/.venv/bin/python -m pytest -q tests/test_verify_control_plane_triage.py tests/test_verify_build_stream_status.py` → 4 passed; `python3 scripts/verify_control_plane_triage.py` → OK; `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → FAIL before this review ledger/status update with `review/remediation status has stale implementation next_action`; `git show 71574d8b -- docs/build-stream/2026-09-09-testing-to-main-convergence.md` proves the post-fix regression.
 Next: fixer removes the stale-action overwrite path, makes ledger identity/current pointer unambiguous without erasing history, extends focused regression coverage as needed, and reruns the two lifecycle checks before conductor-created delta re-review.
+
+### L-23 | 2026-09-09T17:49:25Z | S3-review | meta/muse-spark-1.3-contributor | reviewer | Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth
+<!-- bsc-ledger:REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1 -->
+Did: Second independent delta re-review of the same W2 fixes on unchanged HEAD truth: re-ran both verifiers, both focused test files, TSV bucket aggregation, post-fix `git log` on every fix seam, dossier §4/TSV row spot checks, and `git diff --check`. Inspected only the triage/dossier invariant plus lifecycle status/verifier seams; no code corrections, no new finding tasks.
+Result: **fail (confirmed)** — F-W2-R1-1 holds (triage OK, 9 acceptance-prerequisite / 1 promotion-prerequisite / 172 open-not-release-blocking, no post-fix seam edits); F-W2-R1-2 still regressed at HEAD (sync commits `71574d8b`+`a1def9ab` restored S3-review with implementation-dispatch `next_action`; file FAILs `verify_build_stream_status.py`; duplicate `L-21` headings persist). Regression remains owned by open `FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-F1`, so no duplicate finding task was created. Findings register left unchanged (still accurate); Status Block `stage`/`next_action`/roadmap deliberately untouched so the FAIL signal stays reproducible for the F1 fixer — only the `last` pointer advances to this entry.
+Verified: `python3 scripts/verify_control_plane_triage.py` → OK; `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → FAIL `review/remediation status has stale implementation next_action`; `backend/.venv/bin/python -m pytest -q tests/test_verify_control_plane_triage.py tests/test_verify_build_stream_status.py` → 4 passed; CF evidence ids 1955 (command), 1956 (review_verdict fail), 1957 (self_report) on task 432.
+Next: F1 fixer lands, then conductor-created delta re-review; no reviewer action remains on this task.
+
+### L-24 | 2026-09-09T18:37:00Z | S4-remediate | meta/muse-spark-1.3-contributor | remediator | Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth <!-- bsc-ledger:FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-F1 -->
+Did: Fixed F-W2-R2-1 without rewriting history. Replaced the stale owner-sync overwrite in the Status Block (S3-review plus implementation-dispatch text restored by commits 71574d8b/a1def9ab after the F-W2-R1-2 fix) with current S4-remediate remediation truth pointing at this entry. Left both L-21 headings byte-identical and recorded their disambiguation here instead: the first L-21 owns the FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1 triage evidence, the second owns the FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B status evidence, distinguished by their bsc-ledger markers. A repo-wide search finds no in-repo sync script emitting that overwrite, so it came from the owner-side consensus-sync process outside the repo; the durable guard is regression coverage that fails closed on any recurrence. Hardened scripts/verify_build_stream_status.py so a last.ledger pointer matching zero or multiple headings fails closed, and extended tests/test_verify_build_stream_status.py with the exact overwrite-text rejection, an ambiguous-pointer rejection, and a checked-in-file proof that this lifecycle passes after stage finalization and status-sync writes.
+Result: F-W2-R2-1 flipped open → fixed for FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-F1; the Status Block is resumable from this entry and last.ledger L-24 resolves to exactly one heading.
+Verified: `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → OK; `python3 scripts/verify_control_plane_triage.py` → OK; `backend/.venv/bin/python -m pytest -q tests/test_verify_build_stream_status.py tests/test_verify_control_plane_triage.py` → 8 passed; `git diff --check` on the three touched files → clean.
+Next: conductor-created delta re-review of F-W2-R2-1; no further fixer action remains on this task.
