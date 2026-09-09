@@ -13,9 +13,10 @@ Usage:
         [--manifest <path>]
 
 Exit 0 when the manifest parses, carries schema_version 1, contains exactly
-the conductor's six wave ids in order, matches the pinned canonical hash,
-and the tracked mirror equals the conductor source manifest. Prints the
-canonical hash in all cases.
+the conductor's six wave ids in order, and matches the pinned canonical hash.
+When the ignored conductor source manifest is present, the tracked mirror must
+also equal it; clean checkouts without that local source print a warning and
+skip only the mirror comparison. Prints the canonical hash in all cases.
 """
 
 from __future__ import annotations
@@ -90,13 +91,24 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         tracked_obj = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
-        conductor_obj = json.loads(CONDUCTOR_MANIFEST.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        print(f"FAIL: cannot compare tracked and conductor manifests: {exc}")
+        print(f"FAIL: cannot parse tracked manifest for mirror comparison: {exc}")
         return 1
-    if tracked_obj != conductor_obj:
-        print(f"FAIL: tracked manifest differs from {CONDUCTOR_MANIFEST}")
+
+    try:
+        conductor_obj = json.loads(CONDUCTOR_MANIFEST.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(
+            f"WARNING: conductor manifest absent at {CONDUCTOR_MANIFEST}; "
+            "skipping local mirror comparison"
+        )
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"FAIL: cannot parse conductor manifest for mirror comparison: {exc}")
         return 1
+    else:
+        if tracked_obj != conductor_obj:
+            print(f"FAIL: tracked manifest differs from {CONDUCTOR_MANIFEST}")
+            return 1
 
     print("OK: wave manifest verified")
     return 0

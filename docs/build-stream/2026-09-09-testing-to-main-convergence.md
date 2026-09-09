@@ -9,8 +9,8 @@ phase: "Phase 0 — three-architect consensus planning"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-sol, at: 2026-09-09T16:15:45Z, ledger: L-16 }
-next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
+last: { agent: gpt-5.6-sol, at: 2026-09-09T16:17:21Z, ledger: L-17 }
+next_action: "Delta re-review G-1 and the manifest verifier clean-checkout seam."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -294,7 +294,7 @@ F-01…F-05 all confirmed **fixed** on re-measurement. Two defects on the remedi
 
 | ID | Sev | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|
-| **G-1** | S2 | `scripts/verify_wave_manifest.py`; `tests/test_verify_wave_manifest.py` | The F-03 fix reads `CONDUCTOR_MANIFEST` (`.compass-forge/…`, gitignored per `.gitignore:142`) unconditionally and returns 1 on `OSError`, with no flag to run the pinned-hash check alone — so a fresh clone, CI, W4 `ci-enforcement` and W6 `promotion-certification` all get exit 1, contradicting the docstring's "any agent can verify the manifest" and §7's exit-0 evidence row. Both new tests monkeypatch `verifier.CONDUCTOR_MANIFEST` to a `tmp_path` file, so neither exercises the real constant and both pass green where the script itself fails | `FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A` | open |
+| **G-1** | S2 | `scripts/verify_wave_manifest.py`; `tests/test_verify_wave_manifest.py` | The F-03 fix reads `CONDUCTOR_MANIFEST` (`.compass-forge/…`, gitignored per `.gitignore:142`) unconditionally and returns 1 on `OSError`, with no flag to run the pinned-hash check alone — so a fresh clone, CI, W4 `ci-enforcement` and W6 `promotion-certification` all get exit 1, contradicting the docstring's "any agent can verify the manifest" and §7's exit-0 evidence row. Both new tests monkeypatch `verifier.CONDUCTOR_MANIFEST` to a `tmp_path` file, so neither exercises the real constant and both pass green where the script itself fails | `FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A` | fixed |
 | **G-2** | S3 | `docs/promotion/2026-09-09-candidate-boundary.md` §3/§6 | §3 states `INCLUDE-LIFECYCLE` 25 / `INCLUDE-HYGIENE` 1 against an actual TSV of 24 / 2: fix A's +1 for the convergence row and fix B's `run-blind-review.sh` LIFECYCLE→HYGIENE reclassification cancel inside the 192 total and mask each other. §6 line 93 still reads "(191 rows)" — the exact stale number F-04 was raised against — and §3's `INCLUDE-HYGIENE` description still names only `docs/features/site/manifest.json`. W2 consumes this dossier with the TSV as the candidate inventory, so per-bucket counts must reconcile, not merely sum | `FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-B` | fixed |
 
 ## C. Strict-wave manifest
@@ -1206,3 +1206,9 @@ Did: Fixed G-2 in `docs/promotion/2026-09-09-candidate-boundary.md`: reconciled 
 Result: G-2 fixed for `FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-B`; the dossier and machine-readable inventory now agree per bucket and in total.
 Verified: `awk -F'\t' 'NR>1{print $2}' docs/promotion/2026-09-09-candidate-classification.tsv | sort | uniq -c` → 2 INCLUDE-HYGIENE, 24 INCLUDE-LIFECYCLE, 166 INCLUDE-PRODUCT; `sed -n '52,56p;93p' docs/promotion/2026-09-09-candidate-boundary.md` → matching bucket rows and 192-row declaration; `git diff --check -- docs/promotion/2026-09-09-candidate-boundary.md docs/build-stream/2026-09-09-testing-to-main-convergence.md` → passed.
 Next: stage exit: delta re-review G-2 and its immediate dossier/TSV accounting seam.
+
+### L-17 | 2026-09-09T16:17:21Z | S4-remediate | gpt-5.6-sol | remediator | Phase 1 — Freeze and reconcile the testing release candidate <!-- bsc-ledger:FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A -->
+Did: Fixed G-1 in `scripts/verify_wave_manifest.py` and `tests/test_verify_wave_manifest.py`: the mandatory pinned canonical-hash check remains unconditional; an absent gitignored conductor mirror now emits an explicit warning and skips only local mirror equality, while a present malformed or divergent mirror still fails. Added a subprocess regression fixture whose copied script resolves its real module-level `CONDUCTOR_MANIFEST` into a clean checkout where `.compass-forge/` is absent. Flipped G-1 open → fixed in this register.
+Result: Clean-clone/CI verification is restored without weakening F-03's mandatory default pin or present-mirror drift detection; `FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A`.
+Verified: `backend/.venv/bin/python -m pytest -q tests/test_verify_wave_manifest.py` → 3 passed; `python3 scripts/verify_wave_manifest.py --expected-hash 8601a1fc7cc2373909234cf8bcf6534e0f8a7f7e46c731c1f4f9ad864e142c3c` → exit 0; `git diff --check -- scripts/verify_wave_manifest.py tests/test_verify_wave_manifest.py` → passed; Compass Forge `gate after --task FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A --summary` → 0 new failures.
+Next: stage exit: delta re-review G-1 and its immediate verifier/test seams.
