@@ -112,3 +112,9 @@ Did: Read all three frozen architect snapshots in full and wrote the MECE master
 Result: testing-to-main-20260909-MASTER-C synthesis complete; master candidate c ready for cross-vote; no code, branch, threshold, or lifecycle-plan content changed.
 Verified: artifact self-check clean (0 machine-local paths, 0 trailing whitespace; public-quality audit shows only the 2 pre-existing findings); measured-state re-confirmation (refs unchanged; HEAD 85f64e4d->50c4d493 explained as the three draft-plan commits; 155 modified / +4712/-977 / 119 untracked / 17 untracked lifecycle files / 295 whitespace findings); eslint arbitration (233 reported errors are .stryker-tmp sandbox contamination; source tree has exactly 1 error at ChatModelControls.tsx:20); CF arbitration (bare impact/graph not_yet_native; intelligence impact --path returns tree-sitter/high; index_version 12 is current Rust output with warnings []); CF evidence rows 1761-1765 + self_report recorded on testing-to-main-20260909-MASTER-C.
 Next: cross-vote phase — vote on the two other master candidates; stop at the owner-approval gate before W1 candidate-boundary.
+
+### L-8 | 2026-09-09T15:27:41Z | S1-plan | gpt-5.6-sol | planner | testing-to-main-20260909-architect-a <!-- bsc-ledger:testing-to-main-20260909-VOTE-A -->
+Did: testing-to-main-20260909-architect-a stage on task testing-to-main-20260909-VOTE-A (harness fallback entry; the model did not append one).
+Result: task testing-to-main-20260909-VOTE-A finished; worktree head 08ed60a5.
+Verified: see Compass Forge evidence rows on testing-to-main-20260909-VOTE-A (command + self_report + stage_attribution).
+Next: conductor advances the pipeline on evidence.
