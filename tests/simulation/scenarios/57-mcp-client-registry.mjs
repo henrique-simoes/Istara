@@ -6,9 +6,16 @@
 export const name = "MCP Client Registry";
 export const id = "57-mcp-client-registry";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "integrations",
+    navLabel: "Integrations",
+    markers: ["Overview", "Integrations"],
+    screenshot: "57-integrations-view",
+  });
   const cleanup = { serverIds: [] };
   const projectId = ctx.projectId;
   const projectQuery = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";

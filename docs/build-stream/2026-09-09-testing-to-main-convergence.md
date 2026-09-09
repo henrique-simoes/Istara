@@ -4,13 +4,13 @@
 ```yaml
 item: testing-to-main-convergence
 branch: testing
-cf: { spec: CF-SPEC-30, tasks: [] }
+cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL] }
 phase: "Phase 0 — three-architect consensus planning"
-stage: S1-plan
+stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: claude-opus-5, at: 2026-09-09T15:29:01Z, ledger: L-10 }
-next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
+last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-09T15:50:05Z, ledger: L-11 }
+next_action: "W1 scoped candidate frozen; W2 control-plane-lifecycle reconciles CF tasks and lifecycle truth."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1151,3 +1151,9 @@ Result: **Voted c** (`candidate_id 453a2af45d83d595018878324de9a2edd022f3d997db7
 Verified: 8 of c's arbitrations re-measured independently, all held — `git diff --shortstat HEAD` → 155 files, +4712/−977; `git rev-list --left-right --count origin/main...origin/testing` → 0 994; `git grep -l tokenStore HEAD -- frontend/src` → 0 vs `grep -rl "@/lib/tokenStore" frontend/src` → 22, and `git ls-files --error-unmatch frontend/src/lib/tokenStore.ts` → not tracked; `frontend/.stryker-tmp/sandbox-2OnHq3` present and `frontend/eslint.config.mjs` has no `ignores` entry; `ChatModelControls.tsx:20` → `interface ModelChoice extends ChatModelChoice {}`; `cd backend && python -m ruff check . --select F821,F811,F822` → Found 2 errors (incl. `token_counter.py:105` `BudgetAllocation`); `compass-forge impact --path …` → `not_yet_native` while `intelligence impact --path …` → tree-sitter/high and `index status` → `index_version 12`, kernel rust, 941 files; `git diff --check origin/main | wc -l` → 295; `research-validity-contract.md:3` → `CF-SPEC-124 / CF-1590` (nonexistent). Not re-run (cost): full eslint, full pytest, `npm run test:mutation`, security benchmark, `gh` branch-protection and remote-CI reads.
 Next: stage exit: vote recorded for slot c with cited comparison. Awaiting the third voter and the conductor's `consensus_result`; then the owner-approval gate before W0/W1 candidate-boundary. Conductor should apply two corrections to the winner before W2 if c prevails — drop `E999` from the ruff selector, and re-measure all counts at W0 per c's own K3 rule.
 
+
+### L-11 | 2026-09-09T15:50:05Z | S2-execute | meta/muse-spark-1.3-contributor | executor | Phase 1 — Freeze and reconcile the testing release candidate <!-- bsc-ledger:testing-to-main-20260909-WAVE-candidate-boundary-IMPL -->
+Did: Scoped W1 freeze of the in-scope candidate surface (docs/scripts/tests): classified 75 tracked modifications + 116 untracked files into INCLUDE buckets with per-path sha256 (`docs/promotion/2026-09-09-candidate-classification.tsv`, 191 rows, zero UNDECIDED); preserved all out-of-scope ambient edits dirty in place (32 backend, 43 frontend modified, 4 frontend untracked closure files, 5 root/config files); left `Model_Finetuning/` ignored/untouched (`LLMs/` absent); created local-only `backup/pre-candidate-20260909` + `quarantine/ambient-20260909` at wave-start SHA; exported the conductor wave manifest to a tracked path with its canonical-hash recipe and `scripts/verify_wave_manifest.py` (M-14); documented surfaces, dispositions, and deferred reds in `docs/promotion/2026-09-09-candidate-boundary.md`. Staged by explicit pathspec only; no push, no merge, no deletion.
+Result: Scoped candidate frozen at the commit below; testing-to-main-20260909-WAVE-candidate-boundary-IMPL
+Verified: `verify_wave_manifest.py --expected-hash 8601a1fc…` exit 0 (canonical hash reproduces the task-payload pin — not tampering); `git fsck --full` clean (dangling trees only); `pytest tests/test_public_repo_quality.py -q` still 1 failed on the out-of-scope `AGENTS.md` leak, preserved for W3a per M-02 ordering; `git diff --check` on wave files clean; `git stash list` unchanged (0); wave-start SHA 63cf6dacf667c0e16c5edff6905afc6202029c9d; end SHA recorded by the commit itself.
+Next: W2 control-plane-lifecycle consumes the TSV + tracked manifest + boundary dossier; W3 repairs the preserved backend/frontend surface and the public-quality text defect.

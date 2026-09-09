@@ -23,11 +23,18 @@ import { selectCanonicalCorpus } from "../../document_corpus/shared-corpus.mjs";
 export const name = "Real User Simulation (Live APIs)";
 export const id = "48-real-user-simulation";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "interfaces",
+    navLabel: "Interfaces",
+    markers: ["Design Chat", "Interfaces"],
+    screenshot: "48-interfaces-view",
+  });
   const cleanup = {
     screenIds: [],
     decisionIds: [],

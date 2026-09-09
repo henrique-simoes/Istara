@@ -551,3 +551,120 @@ async def test_global_notification_websocket_events_are_admin_only():
 
     assert [event["type"] for event in admin_ws.sent] == ["resource_throttle"]
     assert project_ws.sent == []
+
+
+# ---------------------------------------------------------------------------
+# WebSocket MFA-claim parity with HTTP
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_websocket_rejects_pre_mfa_session_after_enrollment():
+    """A pre-MFA JWT must not subscribe to /ws once TOTP is enabled (HTTP: 403)."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    from starlette.testclient import TestClient
+
+    from app.core.auth import hash_password
+    from app.core.field_encryption import hash_field
+    from app.main import app
+    from app.models.user import User
+
+    uid = f"wsmfa-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(
+            User(
+                id=uid,
+                username=f"wsmfauser-{uid[-8:]}",
+                email=f"{uid}@example.com",
+                email_hash=hash_field(f"{uid}@example.com"),
+                password_hash=hash_password("xK9#mP2$vL7nQ4@wR1!"),
+                role="admin",
+                totp_enabled=True,
+            )
+        )
+        await db.commit()
+
+    stale = create_token(uid, "wsmfauser", "admin", mfa_verified=False)
+    fresh = create_token(uid, "wsmfauser", "admin", mfa_verified=True)
+    client = TestClient(app)
+    with pytest.raises(Exception) as excinfo:
+        with client.websocket_connect(f"/ws?token={stale}"):
+            pass
+    assert getattr(excinfo.value, "code", None) == 4001
+    with client.websocket_connect(f"/ws?token={fresh}") as ws:
+        first = ws.receive_json()
+        assert first["type"] == "connected"
+
+
+# ---------------------------------------------------------------------------
+# F-001/F-002: WS handshake accept/deny matrix (systemwide audit coverage)
+# ---------------------------------------------------------------------------
+
+
+async def test_ws_rejects_missing_and_invalid_token():
+    """F-001: /ws closes 4001 with no token or a garbage token."""
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    from starlette.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    with pytest.raises(Exception) as excinfo:
+        with client.websocket_connect("/ws"):
+            pass
+    assert getattr(excinfo.value, "code", None) == 4001
+    with pytest.raises(Exception) as excinfo:
+        with client.websocket_connect("/ws?token=garbage-token"):
+            pass
+    assert getattr(excinfo.value, "code", None) == 4001
+
+
+async def test_ws_denies_nonmember_project_with_4003():
+    """F-001: /ws closes 4003 when a non-member subscribes to a project."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    from starlette.testclient import TestClient
+
+    from app.main import app
+
+    project_id = f"wsdeny-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="WS Deny Project"))
+        await db.commit()
+
+    stranger = create_token("ws-stranger", "wsstranger", "viewer")
+    client = TestClient(app)
+    with pytest.raises(Exception) as excinfo:
+        with client.websocket_connect(f"/ws?token={stranger}&project_id={project_id}"):
+            pass
+    assert getattr(excinfo.value, "code", None) == 4003
+
+
+async def test_relay_rejects_unauthenticated_and_accepts_network_token():
+    """F-002: /ws/relay closes 4001 with no credentials, accepts network token."""
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    original_network_token = settings.network_access_token
+    settings.network_access_token = "test-relay-token"
+    try:
+        from starlette.testclient import TestClient
+
+        from app.main import app
+
+        client = TestClient(app)
+        with pytest.raises(Exception) as excinfo:
+            with client.websocket_connect("/ws/relay"):
+                pass
+        assert getattr(excinfo.value, "code", None) == 4001
+        with client.websocket_connect("/ws/relay?access_token=test-relay-token"):
+            pass
+    finally:
+        settings.network_access_token = original_network_token

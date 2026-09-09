@@ -3,9 +3,16 @@
 export const name = "A2A Debate & Report Pipeline";
 export const id = "73-a2a-debate-and-reports";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "agents",
+    navLabel: "Agents",
+    markers: ["A2A Messages", "Agents"],
+    screenshot: "73-agents-view",
+  });
   let projectId = ctx.projectId;
 
   // 1. Ensure project

@@ -3,9 +3,17 @@
 export const name = "Plan-and-Execute Architecture";
 export const id = "71-plan-and-execute";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "chat",
+    navLabel: "Chat",
+    markers: ["Chat"],
+    selectors: ['textarea[placeholder*="Ask about"]'],
+    screenshot: "71-chat-view",
+  });
   let projectId = ctx.projectId;
 
   if (!projectId) {

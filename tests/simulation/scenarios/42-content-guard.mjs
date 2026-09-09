@@ -3,9 +3,17 @@
 export const name = "Content Guard & Prompt Injection Protection";
 export const id = "42-content-guard";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "chat",
+    navLabel: "Chat",
+    markers: ["Chat"],
+    selectors: ['textarea[placeholder*="Ask about"]'],
+    screenshot: "42-chat-view",
+  });
 
   // ── 1. System is running ──
   try {

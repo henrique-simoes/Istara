@@ -1,14 +1,23 @@
 /** Scenario 61 — Autoresearch Isolation: verifies experiment isolation, rate limits, persona locks.
  *
- *  Exercises: /api/autoresearch/*
+ *  Exercises: /api/autoresearch/* (router prefix /autoresearch + mount /api;
+ *  verified against live openapi 2026-09-08 — this IS the serving shape).
  */
 
 export const name = "Autoresearch Isolation";
 export const id = "61-autoresearch-isolation";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "autoresearch",
+    navLabel: "Autoresearch",
+    markers: ["Experiments", "Autoresearch"],
+    screenshot: "61-autoresearch-view",
+  });
   if (!ctx.projectId) {
     return [{ name: "Project available for autoresearch isolation", passed: false, detail: "No persistent project from runner" }];
   }

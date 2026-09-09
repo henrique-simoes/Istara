@@ -651,3 +651,50 @@ async def test_settings_audio_model_invalid_mode_fails_closed(auth_headers):
         "type": "audio_profile_invalid",
         "reason": "local_whisper_remote_mode",
     }
+
+
+@pytest.mark.asyncio
+async def test_data_encryption_rotation_keeps_old_rows_readable(auth_headers):
+    """POST /settings/data-encryption/rotate keeps previous keys for reads."""
+    from cryptography.fernet import Fernet
+
+    from app.core.field_encryption import (
+        decrypt_field,
+        encrypt_field,
+        reset_field_encryption_for_tests,
+    )
+
+    await init_db()
+    original_key = settings.data_encryption_key
+    original_previous = settings.data_encryption_previous_keys
+    settings.data_encryption_key = Fernet.generate_key().decode()
+    settings.data_encryption_previous_keys = ""
+    reset_field_encryption_for_tests()
+    try:
+        old_row = encrypt_field("pre-rotation-secret")
+        old_key = settings.data_encryption_key
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            denied = await ac.post(
+                "/api/settings/data-encryption/rotate",
+                json={"confirm_rotation": True, "confirm_memory_only": False},
+                headers=auth_headers,
+            )
+            assert denied.status_code == 400
+            response = await ac.post(
+                "/api/settings/data-encryption/rotate",
+                json={"confirm_rotation": True, "confirm_memory_only": True},
+                headers=auth_headers,
+            )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["status"] == "rotated"
+        assert body["previous_key_count"] == 1
+        assert body["custody"] == "memory_only_unless_injected_externally"
+        assert settings.data_encryption_key != old_key
+        assert decrypt_field(old_row) == "pre-rotation-secret"
+        assert decrypt_field(encrypt_field("post-rotation-secret")) == "post-rotation-secret"
+    finally:
+        settings.data_encryption_key = original_key
+        settings.data_encryption_previous_keys = original_previous
+        reset_field_encryption_for_tests()

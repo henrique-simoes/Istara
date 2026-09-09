@@ -3,9 +3,16 @@
 export const name = "2FA Login Flow";
 export const id = "74-2fa-login-flow";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api, page, report } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "settings",
+    navLabel: "Settings",
+    markers: ["System Status", "Settings"],
+    screenshot: "74-settings-view",
+  });
 
   // 1. Check that the backend returns requires_2fa structure
   try {

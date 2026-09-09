@@ -6,9 +6,16 @@
 export const name = "Research Deployment";
 export const id = "58-research-deployment";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "integrations",
+    navLabel: "Integrations",
+    markers: ["Overview", "Integrations"],
+    screenshot: "58-integrations-view",
+  });
   const cleanup = { deploymentIds: [], channelIds: [] };
   if (!ctx.projectId) {
     return [{ name: "Project available for research deployment", passed: false, detail: "No persistent project from runner" }];

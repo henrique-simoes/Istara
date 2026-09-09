@@ -1,0 +1,394 @@
+{
+ "version": "2026-09-08",
+ "lane": "qa-ui-loopback",
+ "views": {
+  "chat": {
+   "scenarios": [
+    "05-chat-interaction",
+    "12-chat-sessions",
+    "76-long-horizon-trajectory",
+    "79-engine-selector"
+   ],
+   "sub_features": [
+    "send/stream/stop/regenerate",
+    "sessions persist",
+    "model + engine switch",
+    "citations",
+    "empty/loading/error"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-09-03",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "42 10/10 + 70mid 11/11 + 71 7/7"
+  },
+  "findings": {
+   "scenarios": [
+    "07-findings-chain",
+    "16-findings-population"
+   ],
+   "sub_features": [
+    "nugget>fact>insight>recommendation chain",
+    "Done-gate blocking",
+    "evidence links"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-26",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "17 24/24 + 47 32/32 + 70res 18/18"
+  },
+  "laws": {
+   "scenarios": [
+    "65-laws-of-ux"
+   ],
+   "sub_features": [
+    "compliance scoring",
+    "guidance display"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-06",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "65 prior browser"
+  },
+  "tasks": {
+   "scenarios": [
+    "08-kanban-workflow",
+    "13-task-agent-assignment",
+    "18-task-verification",
+    "33-task-locking"
+   ],
+   "sub_features": [
+    "board move/approve",
+    "agent assignment",
+    "verification flow",
+    "locking",
+    "Done gates"
+   ],
+   "drive": "mixed",
+   "newest_scenario_change": "2026-05-20",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "18 10/10 + 33 9/9"
+  },
+  "interviews": {
+   "scenarios": [
+    "75-participant-simulation"
+   ],
+   "sub_features": [
+    "transcripts",
+    "process plan",
+    "evidence extraction"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-20",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "75 6/6"
+  },
+  "documents": {
+   "scenarios": [
+    "29-documents-system",
+    "19-file-preview"
+   ],
+   "sub_features": [
+    "upload/list",
+    "preview per type",
+    "sync",
+    "stats"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-09-04",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "15 8/8"
+  },
+  "context": {
+   "scenarios": [
+    "24-context-dag"
+   ],
+   "sub_features": [
+    "DAG render",
+    "guardrails",
+    "project context"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-20",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "23/24 prior browser"
+  },
+  "skills": {
+   "scenarios": [
+    "06-skill-execution",
+    "20-all-skills-comprehensive",
+    "41-skill-creation"
+   ],
+   "sub_features": [
+    "catalog",
+    "execute each skill",
+    "creation",
+    "error states"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-09-03",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "28 38/38"
+  },
+  "agents": {
+   "scenarios": [
+    "10-agent-architecture",
+    "11-agents-system",
+    "21-agent-work-simulation",
+    "27-agent-identity-system",
+    "40-agent-identity-editing"
+   ],
+   "sub_features": [
+    "system agents",
+    "A2A messaging",
+    "identity",
+    "work simulation"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-09-04",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "22 30/30 + 38 13/13 + 44 12/12 + 73 15/15"
+  },
+  "memory": {
+   "scenarios": [
+    "23-memory-view"
+   ],
+   "sub_features": [
+    "knowledge list",
+    "inspect",
+    "reindex states"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-06",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "23 prior browser"
+  },
+  "interfaces": {
+   "scenarios": [
+    "45-interfaces-menu",
+    "46-stitch-figma-integration"
+   ],
+   "sub_features": [
+    "design chat",
+    "figma import/export",
+    "stitch configure",
+    "handoff briefs"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-20",
+   "live_verdict": "pass (batch2 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "Batch 2 live in nifty_dirac, all PASS first try."
+  },
+  "integrations": {
+   "scenarios": [
+    "59-agent-integration-knowledge"
+   ],
+   "sub_features": [
+    "overview",
+    "recent activity",
+    "deployments tab"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-09-03",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "56 17/17 + 57 13/13 + 58 22/22 + 66 13/13 + 48 browser-only (live skips)"
+  },
+  "loops": {
+   "scenarios": [
+    "49-loops-schedule"
+   ],
+   "sub_features": [
+    "schedule CRUD",
+    "fire/pause/trigger",
+    "executions",
+    "health"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-20",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "batch pilot"
+  },
+  "settings": {
+   "scenarios": [
+    "10-settings-models",
+    "36-llm-servers"
+   ],
+   "sub_features": [
+    "model catalog",
+    "endpoint switch",
+    "strict routing",
+    "telemetry",
+    "security-integrity"
+   ],
+   "drive": "mixed",
+   "newest_scenario_change": "2026-09-03",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "25 14/14 + 26 17/17 + 36 8/8 + 43 13/13 + 64 19/19 + 68 12/12 + 74 8/8"
+  },
+  "admin": {
+   "scenarios": [
+    "69-user-management-ui"
+   ],
+   "sub_features": [
+    "users",
+    "invites",
+    "roles"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-08",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "67 18/18"
+  },
+  "autoresearch": {
+   "scenarios": [
+    "61-autoresearch-isolation"
+   ],
+   "sub_features": [
+    "start/stop",
+    "budgets",
+    "fail-closed",
+    "config"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-20",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "batch pilot"
+  },
+  "backup": {
+   "scenarios": [
+    "51-backup-system"
+   ],
+   "sub_features": [
+    "create/verify/restore round-trip",
+    "download",
+    "config",
+    "estimate"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-09-03",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "39 15/15"
+  },
+  "meta-hyperagent": {
+   "scenarios": [
+    "52-meta-hyperagent"
+   ],
+   "sub_features": [
+    "proposals",
+    "runs",
+    "governance"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-19",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "52 15/15"
+  },
+  "compute": {
+   "scenarios": [
+    "34-compute-pool"
+   ],
+   "sub_features": [
+    "donate/register",
+    "scopes",
+    "relay nodes",
+    "model warnings"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-19",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "batch pilot"
+  },
+  "ensemble": {
+   "scenarios": [
+    "35-ensemble-validation",
+    "37-ensemble-health-view"
+   ],
+   "sub_features": [
+    "validation",
+    "health",
+    "model intelligence"
+   ],
+   "drive": "mixed",
+   "newest_scenario_change": "2026-08-23",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "35 8/8"
+  },
+  "quality": {
+   "scenarios": [
+    "70-research-integrity"
+   ],
+   "sub_features": [
+    "methodology dashboard",
+    "gates",
+    "traceability"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-21",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "70res 18/18"
+  },
+  "project-settings": {
+   "scenarios": [],
+   "sub_features": [
+    "spine health",
+    "members",
+    "danger zone"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": null,
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "81 5/5"
+  },
+  "history": {
+   "scenarios": [
+    "30-event-wiring-audit"
+   ],
+   "sub_features": [
+    "activity feed",
+    "audit",
+    "git commits"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-09-03",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "30 static-by-design"
+  },
+  "notifications": {
+   "scenarios": [
+    "50-notifications"
+   ],
+   "sub_features": [
+    "preferences",
+    "delivery",
+    "history"
+   ],
+   "drive": "browser",
+   "newest_scenario_change": "2026-05-20",
+   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-08",
+   "notes": "batch2"
+  }
+ }
+}

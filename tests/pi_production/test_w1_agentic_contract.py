@@ -845,6 +845,20 @@ async def test_worker_handshake_fatal_is_rejected_typed(tmp_path):
     assert supervisor.is_running is False
 
 
+async def test_worker_missing_node_runtime_fails_typed(tmp_path):
+    """A missing node runtime surfaces PiWorkerError, never a raw OSError."""
+    fake = tmp_path / "fake_worker.mjs"
+    fake.write_text("process.stdin.pause();\n", encoding="utf-8")
+    supervisor = PiRuntimeSupervisor(
+        worker_entry=fake,
+        node_path="definitely-not-a-node-binary-xyz",
+        handshake_timeout=5.0,
+    )
+    with pytest.raises(PiWorkerError, match="worker_runtime_missing"):
+        await supervisor.ensure_started()
+    assert supervisor.is_running is False
+
+
 # ── armed ratchet stays consistent and only ratchets downward ─────────────
 
 

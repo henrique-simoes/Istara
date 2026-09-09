@@ -5,11 +5,11 @@ item: debt-remediation-and-user-simulation-qa
 branch: testing
 cf: { spec: CF-SPEC-6, task: CF-47, gate_baseline: 431 }
 phase: "Phase 1 — Wave A: branch quality debt remediation (adopted PLAN-A)"
-stage: S2-execute
-status: in-progress
+stage: S5-ship
+status: completed
 blocked_on: null
 last: { agent: antigravity, at: 2026-09-04T15:40:00Z, ledger: L-405 }
-next_action: "Await user instructions for feature documentation and site regeneration (docs/features/)."
+next_action: "Consolidated and reconciled into docs/build-stream/2026-09-06-systemwide-remaining-surfaces-and-design-hardening.md."
 ```
 
 ### L-405 | 2026-09-04T15:40:00Z | S2-execute/S2-verify | antigravity | Public scientific audit publication, SteeringQueue test fix, and candidate path mapping

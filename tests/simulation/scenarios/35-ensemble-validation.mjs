@@ -3,9 +3,16 @@
 export const name = "Ensemble Validation";
 export const id = "35-ensemble-validation";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "ensemble",
+    navLabel: "Ensemble Health",
+    markers: ["Model Intelligence", "Ensemble"],
+    screenshot: "35-ensemble-view",
+  });
 
   // Use persistent simulation project
   let projectId = ctx.projectId;

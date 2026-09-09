@@ -179,6 +179,7 @@ def test_static_research_artifact_constructors_stay_inside_approved_boundaries()
         "backend/app/core/agent_research.py",
         "backend/app/core/report_manager.py",
         "backend/app/services/deployment_service.py",
+        "backend/app/services/inbound_processor.py",
         "backend/app/services/survey_ingestion.py",
         "backend/app/skills/design_tools.py",
     }

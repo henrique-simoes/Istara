@@ -3,9 +3,16 @@
 export const name = "Task Locking";
 export const id = "33-task-locking";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "tasks",
+    navLabel: "Tasks",
+    markers: ["Backlog", "In Progress"],
+    screenshot: "33-tasks-view",
+  });
 
   // Use persistent simulation project
   let projectId = ctx.projectId;

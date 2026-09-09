@@ -3,9 +3,16 @@
 export const name = "Pi Model Authority & Session Persistence";
 export const id = "26-model-session-persistence";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "settings",
+    navLabel: "Settings",
+    markers: ["System Status", "Settings"],
+    screenshot: "26-settings-view",
+  });
   const fixedTestModel = ctx.fixedTestModel || process.env.ISTARA_FIXED_LLM_TEST_MODEL || null;
 
   // ── 1. Compatibility inventory remains readable without write authority ──

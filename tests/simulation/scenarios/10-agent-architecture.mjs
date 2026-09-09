@@ -6,9 +6,17 @@
 export const name = "Agent Architecture Verification";
 export const id = "10-agent-architecture";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "agents",
+    navLabel: "Agents",
+    markers: ["System Agents", "Agents"],
+    screenshot: "10-agents-view",
+  });
   if (!ctx.projectId) {
     return { checks: [{ name: "Simulation project required", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
   }

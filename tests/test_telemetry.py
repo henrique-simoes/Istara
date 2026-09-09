@@ -387,6 +387,53 @@ class TestEnhancedToolAndSteeringTelemetry:
             assert span.task_id == "task-123"
 
     @pytest.mark.asyncio
+    async def test_tool_audit_metadata_persists_content_free_handles(self):
+        from app.core.telemetry import telemetry_recorder
+        from app.models.database import async_session, init_db
+        from app.models.telemetry_span import TelemetrySpan
+        from sqlalchemy import select
+
+        await init_db()
+        project_id = f"proj-tool-audit-{uuid.uuid4().hex[:8]}"
+
+        await telemetry_recorder.record_tool_call(
+            tool_name="search_documents",
+            duration_ms=18.0,
+            success=True,
+            project_id=project_id,
+            arguments_summary="query, phase",
+            reasoning_bank_id="lesson-123",
+        )
+
+        async with async_session() as session:
+            span = (
+                await session.execute(
+                    select(TelemetrySpan).where(
+                        TelemetrySpan.project_id == project_id,
+                        TelemetrySpan.operation == "tool_call",
+                    )
+                )
+            ).scalar_one()
+
+            assert span.arguments_summary == "query, phase"
+            assert span.reasoning_bank_id == "lesson-123"
+
+    def test_content_free_arguments_summary_never_includes_values(self):
+        from app.skills.system_actions import _content_free_arguments_summary
+
+        summary = _content_free_arguments_summary(
+            {
+                "query": "elderly accessibility constraints",
+                "phase": "discover",
+                "_trace_id": "secret-trace",
+                "_model_name": "secret-model",
+            }
+        )
+        assert summary == "phase, query"
+        assert "elderly" not in summary
+        assert "secret" not in summary
+
+    @pytest.mark.asyncio
     async def test_record_steering_event_persists_action_and_queue_depth(self):
         from app.core.telemetry import telemetry_recorder
         from app.models.database import async_session, init_db

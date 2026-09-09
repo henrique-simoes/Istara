@@ -977,6 +977,109 @@ async def test_login_with_totp_code_succeeds():
 
 
 @pytest.mark.asyncio
+async def test_mfa_factor_changes_require_step_up():
+    """Password alone must not rotate/disable MFA once TOTP is active."""
+    await init_db()
+    await _clear_auth_accounts()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    username = f"stepup_{uuid.uuid4().hex[:8]}"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        reg = await ac.post(
+            "/api/auth/register",
+            json={"username": username, "email": f"{username}@example.com", "password": password},
+        )
+        assert reg.status_code == 200
+        token = reg.json()["token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        setup = await ac.post(
+            "/api/auth/totp/setup", json={"current_password": password}, headers=headers
+        )
+        assert setup.status_code == 200
+        import pyotp
+
+        secret = setup.json()["secret"]
+        verify = await ac.post(
+            "/api/auth/totp/verify", json={"totp_code": pyotp.TOTP(secret).now()}, headers=headers
+        )
+        assert verify.status_code == 200
+
+        # Rotation / disable / recovery-generate with password only → 403.
+        for path, body in [
+            ("/api/auth/totp/setup", {"current_password": password}),
+            ("/api/auth/totp/disable", {"current_password": password}),
+            ("/api/auth/recovery-codes/generate", {"current_password": password}),
+        ]:
+            resp = await ac.post(path, json=body, headers=headers)
+            assert resp.status_code == 403, f"{path} allowed password-only factor change"
+
+        # With a fresh step-up code, disable succeeds.
+        import time as _time
+
+        disable = await ac.post(
+            "/api/auth/totp/disable",
+            json={
+                "current_password": password,
+                "totp_code": pyotp.TOTP(secret).at(int(_time.time()) + 30),
+            },
+            headers=headers,
+        )
+        assert disable.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_pre_mfa_session_rejected_after_enrollment():
+    """A session minted before MFA enrollment dies once TOTP is enabled."""
+    await init_db()
+    await _clear_auth_accounts()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    from app.core.auth import create_token
+
+    username = f"premfa_{uuid.uuid4().hex[:8]}"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        reg = await ac.post(
+            "/api/auth/register",
+            json={"username": username, "email": f"{username}@example.com", "password": password},
+        )
+        assert reg.status_code == 200
+        user_id = reg.json()["user"]["id"]
+        stale = create_token(user_id, username, "researcher", mfa_verified=False)
+
+        setup = await ac.post(
+            "/api/auth/totp/setup",
+            json={"current_password": password},
+            headers={"Authorization": f"Bearer {reg.json()['token']}"},
+        )
+        import pyotp
+
+        await ac.post(
+            "/api/auth/totp/verify",
+            json={"totp_code": pyotp.TOTP(setup.json()["secret"]).now()},
+            headers={"Authorization": f"Bearer {reg.json()['token']}"},
+        )
+
+        me = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {stale}"})
+        assert me.status_code == 403
+        assert "Multi-factor" in me.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_totp_code_replay_is_rejected():
     """Accepted TOTP counters should not be reusable inside the tolerance window."""
     await init_db()
@@ -1241,3 +1344,49 @@ async def test_security_headers_present():
         assert headers.get("x-frame-options") == "DENY"
         assert "strict-transport-security" in headers
         assert "content-security-policy" in headers
+
+
+@pytest.mark.asyncio
+async def test_idle_session_revoked_after_inactivity_window():
+    """A bound session idle beyond session_max_inactive_minutes dies uniformly."""
+    from datetime import datetime, timezone
+
+    from app.core.auth import verify_token
+    from app.models.auth_session import AuthSession
+    from app.models.database import async_session
+
+    await init_db()
+    await _clear_auth_accounts()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    username = f"idle_{uuid.uuid4().hex[:8]}"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        reg = await ac.post(
+            "/api/auth/register",
+            json={"username": username, "email": f"{username}@example.com", "password": password},
+        )
+        assert reg.status_code == 200
+        token = reg.json()["token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        assert (await ac.get("/api/auth/me", headers=headers)).status_code == 200
+
+        # Backdate activity beyond the 8h default window.
+        payload = verify_token(token)
+        async with async_session() as db:
+            session = await db.get(AuthSession, payload["sid"])
+            assert session is not None
+            session.last_seen_at = datetime(2020, 1, 1, tzinfo=timezone.utc)
+            await db.commit()
+
+        # Every surface must now agree: 401 here (session layer), never 200.
+        for path in ("/api/auth/me", "/api/auth/sessions", "/api/projects"):
+            resp = await ac.get(path, headers=headers)
+            assert resp.status_code in (401, 403, 404), f"{path} accepted an idle-dead session"
+        assert (await ac.get("/api/auth/me", headers=headers)).status_code == 401

@@ -7,9 +7,17 @@
 export const name = "Agent Integration Knowledge";
 export const id = "59-agent-integration-knowledge";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "integrations",
+    navLabel: "Integrations",
+    markers: ["Overview", "Integrations"],
+    screenshot: "59-integrations-view",
+  });
   if (!ctx.projectId) {
     return [{ name: "Project available for integration knowledge", passed: false, detail: "No persistent project from runner" }];
   }

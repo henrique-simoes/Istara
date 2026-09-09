@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Istara Agentic Engine — A Code-Level Engineering Guide</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --rule:#2d3644;
+    --ink:#e6edf3; --muted:#9aa7b8; --subtle:#6b7889;
+    --accent:#3fb950; --accent-dim:#1a5c2a; --amber:#d29922; --red:#f85149;
+    --blue:#58a6ff; --purple:#bc8cff; --code-bg:#0a0d12;
+    --radius:12px; --max:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 22px 120px}
+  header.hero{padding:72px 0 30px;border-bottom:1px solid var(--rule)}
+  .kicker{color:var(--accent);font-weight:700;letter-spacing:.14em;font-size:12px;text-transform:uppercase}
+  h1{font-size:42px;line-height:1.15;margin:.35em 0 .3em}
+  h2{font-size:27px;margin:64px 0 14px;padding-top:26px;border-top:1px solid var(--rule)}
+  h3{font-size:19px;margin:30px 0 10px;color:var(--blue)}
+  h4{font-size:16px;margin:22px 0 8px}
+  p,li{color:var(--ink)}
+  .lede{font-size:19px;color:var(--muted);max-width:62ch}
+  nav.toc{background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);
+    padding:20px 24px;margin:34px 0}
+  nav.toc ol{margin:8px 0 0;padding-left:22px;columns:2;column-gap:36px}
+  nav.toc li{margin:5px 0;font-size:14.5px}
+  nav.toc a{color:var(--blue);text-decoration:none}
+  nav.toc a:hover{text-decoration:underline}
+  .phase{display:inline-block;background:var(--accent-dim);color:#d8f3dc;font-weight:700;
+    font-size:12.5px;letter-spacing:.08em;padding:4px 12px;border-radius:999px;margin-bottom:6px}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{color:var(--muted);font-weight:600;background:var(--panel)}
+  code,tt{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    background:var(--panel2);padding:1px 6px;border-radius:6px;font-size:.86em;color:#ffd7a8}
+  pre{background:var(--code-bg);border:1px solid var(--rule);border-radius:var(--radius);
+    padding:18px 20px;overflow-x:auto;font-size:13.5px;line-height:1.6}
+  pre code{background:none;padding:0;color:var(--ink)}
+  .c-k{color:#ff7b72}.c-s{color:#a5d6ff}.c-c{color:#8b949e;font-style:italic}.c-f{color:#d2a8ff}.c-n{color:#79c0ff}
+  .callout{border:1px solid var(--rule);border-left:4px solid var(--accent);
+    background:var(--panel);border-radius:8px;padding:14px 18px;margin:18px 0;font-size:15px}
+  .callout.warn{border-left-color:var(--amber)}
+  .callout.bad{border-left-color:var(--red)}
+  .callout b{color:#fff}
+  .fig{background:var(--panel);border:1px solid var(--rule);border-radius:var(--radius);
+    padding:22px;margin:20px 0;font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:13px;line-height:1.75;overflow-x:auto;white-space:pre}
+  .fig .hl{color:var(--accent);font-weight:700}
+  .fig .dim{color:var(--subtle)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}nav.toc ol{columns:1}h1{font-size:32px}}
+  .pill{display:inline-block;font-size:12px;border:1px solid var(--rule);border-radius:999px;
+    padding:2px 10px;margin:2px 4px 2px 0;color:var(--muted)}
+  .pill.ok{color:var(--accent);border-color:var(--accent-dim)}
+  .pill.stop{color:var(--red);border-color:#5c2222}
+  footer{margin-top:70px;color:var(--subtle);font-size:13px;border-top:1px solid var(--rule);padding-top:20px}
+  a{color:var(--blue)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">Istara · AI Engineering Study</div>
+  <h1>The Agentic Engine, End to End</h1>
+  <p class="lede">How a chat message becomes a multi-step, tool-using, budgeted,
+  provenance-tracked answer — traced file by file through the real codebase, with the
+  exact constants that decide how <em>long and hard</em> the engine works on your question,
+  and a concrete plan for longer-horizon reasoning that keeps Istara's philosophy intact.</p>
+  <p style="color:var(--subtle);font-size:14px">Branch <code>testing</code> · September 2026 ·
+  Every claim below names its file and line. Open the code beside this page.</p>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <b>Twelve phases + two appendices</b>
+  <ol>
+    <li><a href="#p0">What the engine is (60 seconds)</a></li>
+    <li><a href="#p1">Entry: POST /api/chat</a></li>
+    <li><a href="#p2">Context assembly: identity, RAG, budget, history</a></li>
+    <li><a href="#p3">The dispatcher: one door, two planes</a></li>
+    <li><a href="#p4">The legacy ReAct loop, line by line</a></li>
+    <li><a href="#p5">The Pi plane: supervisor, worker, sessions</a></li>
+    <li><a href="#p6">Tools: catalog, execution, idempotency, audit</a></li>
+    <li><a href="#p7">Secrets: how credentials never leak</a></li>
+    <li><a href="#p8">Money and memory: usage ledger + telemetry</a></li>
+    <li><a href="#p9">Why answers feel fast (the budget autopsy)</a></li>
+    <li><a href="#p10">Long-horizon upgrade plan (12 proposals)</a></li>
+    <li><a href="#p11">Glossary of the moving parts</a></li>
+    <li><a href="#apA">Appendix A — literature grounding</a></li>
+    <li><a href="#apB">Appendix B — hard evidence log</a></li>
+  </ol>
+</nav>
+
+<!-- ==================== P0 ==================== -->
+<h2 id="p0"><span class="phase">PHASE 0</span><br>What the engine is (60 seconds)</h2>
+<p>Istara's "agentic engine" is not one program. It is a <b>dispatch architecture</b>:
+a thin router (<code>backend/app/core/agentic/dispatcher.py</code>) that sends each turn to one
+of two execution planes, both of which ultimately call the <em>same</em> provider layer and the
+<em>same</em> tool executors:</p>
+<div class="fig"><span class="dim">                          ┌─────────────────────────┐</span>
+  POST /api/chat <span class="hl">────────▶│  AgenticDispatcher      │</span>  <span class="dim">dispatcher.py:175</span>
+<span class="dim">                          │  .chat_turn()             │</span>
+<span class="dim">                          └────────┬────────────────┘</span>
+<span class="dim">                        resolve_engine() │</span>  <span class="dim">header → project → global default</span>
+<span class="dim">                ┌────────────────┴───────────────┐</span>
+<span class="dim">                ▼                                ▼</span>
+  <span class="hl">LEGACY plane</span>                        <span class="hl">PI plane</span>
+  Python ReAct loop                     Node worker + sessions
+  <span class="dim">agentic/legacy.py</span>                     <span class="dim">pi_runtime/engine.py → supervisor.py</span>
+  <span class="dim">→ worker.mjs</span>
+<span class="dim">                │                                │</span>
+<span class="dim">                └────────────────┬───────────────┘</span>
+<span class="dim">                                 ▼</span>
+              provider call + <span class="hl">execute_tool()</span> + usage ledger + telemetry</div>
+<p>The core AI-engineering idea: <b>separate <i>thinking in loops</i> from <i>calling models</i></b>.
+The loop (how many steps, when to use tools, when to stop) lives in Python or in the Node
+session driver; the model itself only ever sees "here is the conversation, reply or emit tool calls."
+Everything else — budgets, secrets, retries, cost caps, audit — wraps around that split. Keep this
+picture in mind; every phase below zooms into one box.</p>
+<div class="callout"><b>Teaching lens:</b> this is the classic <b>ReAct</b> pattern
+(Reason + Act, Yao et al. 2022): <i>thought → action → observation → thought…</i> until done.
+Istara runs <b>two ReAct implementations</b> — one in Python (legacy, tool loop owned locally),
+one in Node (Pi, tool loop owned by the worker session) — behind one router, so behavior,
+budgets, and receipts stay comparable.</div>
+
+<!-- ==================== P1 ==================== -->
+<h2 id="p1"><span class="phase">PHASE 1</span><br>Entry: POST /api/chat</h2>
+<p>File: <code>backend/app/api/routes/chat.py</code>, function <code>chat()</code> at line 907.
+A chat turn is a <b>Server-Sent Events stream</b>, not a single JSON reply, so tokens,
+tool calls, and usage frames arrive incrementally. The handler does eleven things before any
+model is touched:</p>
+<ol>
+  <li><b>Authorize the project</b> (<code>:913</code>) — <code>get_visible_project_or_404</code>.
+    No project access, no turn. Multi-tenancy starts here.</li>
+  <li><b>Bind an optional task</b> (<code>:924</code>) — a turn may belong to a Kanban task, but only
+    inside the same project (causal lineage for the usage ledger).</li>
+  <li><b>Resolve the engine</b> (<code>:940</code>) — header <code>x-istara-agent-engine</code> →
+    project setting → global default (<code>legacy</code>). Same precedence the UI advertises.</li>
+  <li><b>Resolve or create the chat session</b> (<code>:965</code>) — sessions carry
+    <code>model_override</code>, <code>endpoint_override</code>, <code>thinking_mode</code>,
+    inference presets. This is why an old session can show a different model than a new one:
+    the choice is <em>persisted per session</em>.</li>
+  <li><b>Persist the user message first</b> (<code>:990</code>) — the turn is on record even if
+    generation later fails.</li>
+  <li><b>Load session inference settings</b> (<code>:1020</code>) — temperature, max tokens,
+    model/endpoint overrides, effort.</li>
+  <li><b>Compose the agent identity</b> (<code>:1060/1088</code>) — <code>compose_dynamic_prompt</code>
+    (Prompt-RAG: retrieves only the persona sections relevant to this query, not whole files).</li>
+  <li><b>Retrieve RAG context</b> (<code>:1098</code>) — hybrid vector + keyword search over the
+    project's stores.</li>
+  <li><b>Budget + compress</b> (<code>:1107</code>) — <code>budget_coordinator</code> and
+    <code>compress_rag_chunks</code> fit retrieval into the context window.</li>
+  <li><b>Assemble history</b> (<code>:1171</code>) — prior turns, then
+    <code>context_summarizer</code> + <code>ContextWindowGuard</code> (<code>:1190</code>) keep it
+    inside limits (old turns get summarized, not silently dropped).</li>
+  <li><b>Prepend system + thinking control</b> (<code>:1228</code>) — then enter
+    <code>generate()</code> (<code>:1231</code>).</li>
+</ol>
+<p>Inside <code>generate()</code> the route picks a generator. This is the most important
+branch in the chat path:</p>
+<pre><code><span class="c-c"># chat.py — which generator runs your message?</span>
+<span class="c-k">if</span> pi_candidate_available:          <span class="c-c"># :1259 — Pi endpoint resolved?</span>
+    <span class="c-k">yield from</span> <span class="c-f">_generate_pi_runtime</span>(..., max_turns=<span class="c-n">PI_MODEL_TURN_BUDGET</span>)  <span class="c-c"># :1282, budget = 24</span>
+<span class="c-k">else</span>:
+    <span class="c-k">yield from</span> <span class="c-f">_generate_native_tools</span>(..., max_turns=<span class="c-n">MAX_TOOL_ITERATIONS</span>)   <span class="c-c"># :1299, budget = 8</span>
+<span class="c-c"># fallbacks: :1312 bad-request/tool-unsupported/no-compute → :1358 _generate_text_fallback</span>
+<span class="c-c"># every path ends at :1390 persist + :1432 done{sources, tools_used}</span></code></pre>
+<div class="callout warn"><b>Note the asymmetry:</b> Pi chat gets <b>24 model turns</b>
+(<code>PI_MODEL_TURN_BUDGET = MAX_TOOL_ITERATIONS * 3</code>, <code>chat.py:84–90</code>),
+legacy chat gets <b>8 tool iterations</b> (<code>:690</code>). Same question, different stamina,
+depending on the engine chip in the toolbar.</div>
+
+<!-- ==================== P2 ==================== -->
+<h2 id="p2"><span class="phase">PHASE 2</span><br>Context assembly: identity, RAG, budget, history</h2>
+<p>Before the loop starts, the engine builds the model's world. Four subsystems, each with one job:</p>
+<table>
+  <tr><th>Subsystem</th><th>Job</th><th>Key file</th></tr>
+  <tr><td><b>Prompt-RAG identity</b></td><td>Load only the persona sections relevant to this query
+    (<code>CORE.md / SKILLS.md / PROTOCOLS.md / MEMORY.md</code> per agent) instead of whole files.</td>
+    <td><code>core/prompt_rag.py</code></td></tr>
+  <tr><td><b>Hybrid retrieval</b></td><td>Vector cosine + BM25 keyword fused by RRF; degrades to
+    keyword-only when embeddings are down. Every hit carries source/page/evidence-unit handles.</td>
+    <td><code>core/rag.py:516–591</code></td></tr>
+  <tr><td><b>Budget + compression</b></td><td>Allocate tokens across identity, retrieval, history;
+    compress chunks; protects protocol/codebook blocks from being summarized away.</td>
+    <td><code>core/budget_coordinator.py</code>, <code>core/prompt_compressor.py</code></td></tr>
+  <tr><td><b>History + guard</b></td><td>Prior turns in, oldest compacted by the summarizer under a
+    window guard. Cap: <code>MAX_HISTORY_MESSAGES = 200</code>.</td>
+    <td><code>core/context_summarizer.py</code>, <code>protocol.py:25</code></td></tr>
+</table>
+<p>Plus <b>thinking control</b> (<code>core/llm_thinking.py</code>): the effort menu
+(<code>server_default / off / auto / on</code>, or provider-native levels like
+<code>xhigh / max / minimal</code>) is translated into a system-prompt directive and a
+<code>thinking_level</code> transport knob — two separate concerns (request intent vs. output
+safety), deliberately decoupled so raw reasoning never leaks as assistant text.</p>
+
+<!-- ==================== P3 ==================== -->
+<h2 id="p3"><span class="phase">PHASE 3</span><br>The dispatcher: one door, two planes</h2>
+<p>File: <code>backend/app/core/agentic/dispatcher.py</code>. Every agentic verb —
+<code>chat_turn</code> (:175), <code>completion</code> (:272), <code>structured</code> (:345),
+<code>react</code> (:425), <code>ensemble</code> (:515), <code>embed</code> (:611) — flows through
+engine resolution (:118–172) with this precedence:</p>
+<ol>
+  <li>Per-call <code>engine=</code> argument (benchmarks, A2A).</li>
+  <li>Request header <code>x-istara-agent-engine</code> (only the values in
+    <code>PI_ENGINE_VALUES</code> select Pi; anything else → legacy).</li>
+  <li>The project's <code>agentic_engine</code> (read-only DB lookup).</li>
+  <li>Global default <code>agentic_engine_default = "legacy"</code> (<code>config.py:427</code>).</li>
+</ol>
+<p>Then: Pi → <code>_collect_pi_stream</code> over <code>_pi.run_chat_turn</code>;
+legacy → <code>_legacy_outcome</code> into <code>legacy_executor</code>.
+<b>There is no silent fallback</b> — an exception records a failure row and re-raises
+(<code>:716–745</code>). A turn that cannot run fails loudly as a typed error, never as a
+confident hallucination. That fail-closed reflex is the spine philosophy in one habit.</p>
+
+<!-- ==================== P4 ==================== -->
+<h2 id="p4"><span class="phase">PHASE 4</span><br>The legacy ReAct loop, line by line</h2>
+<p>File: <code>backend/app/core/agentic/legacy.py</code>, <code>_react_loop</code> at line 271.
+This is the clearest ReAct implementation in the repo — the whole loop fits in ~220 lines.
+Annotated pseudocode (line numbers are real):</p>
+<pre><code><span class="c-c"># legacy.py — the loop that thinks in turns</span>
+budget = params.max_turns <span class="c-k">or</span> <span class="c-n">8</span>              <span class="c-c"># :284-288  (chat passes 8, skill tasks pass 5)</span>
+history = messages + [user_text]            <span class="c-c"># :296-299</span>
+
+<span class="c-k">for</span> iteration <span class="c-k">in</span> <span class="c-f">range</span>(budget + <span class="c-n">1</span>):             <span class="c-c"># :357 — note the +1: 9 provider calls max</span>
+    outcome = <span class="c-k">await</span> <span class="c-f">run_provider_turn</span>(       <span class="c-c"># :363 — the ONLY model call; tools=None in</span>
+        system, history,                       <span class="c-c">#     text-fallback mode (:369)</span>
+        tools=tools, stream_cb=...)            <span class="c-c"># stream only when native tools (:371)</span>
+    <span class="c-k">if</span> outcome.status != <span class="c-s">"success"</span>: <span class="c-k">raise</span> AgenticDispatchError  <span class="c-c"># :373 — fail, don't improvise</span>
+    message = {assistant, content, tool_calls} <span class="c-c"># :380-388</span>
+
+    <span class="c-c"># --- PATH A: text fallback (models without function calling) ---</span>
+    <span class="c-k">if</span> text_fallback:                       <span class="c-c"># :390 — regex-extract {"tool":..} blocks</span>
+        call, before, _ = extractor(turn_text)  <span class="c-c"># :391 (_TOOL_CALL_BLOCK_RE :236)</span>
+        <span class="c-k">if</span> call <span class="c-k">and</span> iteration &lt; budget:
+            result = <span class="c-k">await</span> <span class="c-f">tool_executor</span>(name, args, project, agent)  <span class="c-c"># :402</span>
+            history += assistant:<span class="c-s">"[Tool:name]"</span>            <span class="c-c"># :407 — observation re-enters</span>
+            history += user:<span class="c-s">"[Tool result:name]:\n{result}\n\n{followup}"</span>  <span class="c-c"># :417</span>
+            <span class="c-k">continue</span>
+        <span class="c-k">return</span> <span class="c-f">_outcome</span>(stop <span class="c-k">or</span> turn_budget_exceeded)  <span class="c-c"># :428-435</span>
+
+    <span class="c-c"># --- PATH B: native function calling ---</span>
+    raw_calls = <span class="c-f">filter</span>(hallucinated_names, allowed_names)  <span class="c-c"># :441-456 — a model that</span>
+                                                     <span class="c-c"># invents tools gets filtered, mined for</span>
+                                                     <span class="c-c"># text, and carries on</span>
+    <span class="c-k">if</span> <span class="c-k">not</span> raw_calls <span class="c-k">or</span> iteration &gt;= budget <span class="c-k">or</span> executor <span class="c-k">is None</span>:  <span class="c-c"># :458</span>
+        <span class="c-k">return</span> <span class="c-f">_outcome</span>(stop <span class="c-k">if</span> quiet <span class="c-k">else</span> turn_budget_exceeded)  <span class="c-c"># :466</span>
+    history += message                       <span class="c-c"># :474 — assistant turn re-enters</span>
+    <span class="c-k">for</span> call <span class="c-k">in</span> raw_calls:                <span class="c-c"># :475 — SEQUENTIAL, one at a time</span>
+        result = <span class="c-k">await</span> <span class="c-f">tool_executor</span>(...)        <span class="c-c"># :479</span>
+        history += {role:tool, id, name, content}  <span class="c-c"># :480-487 — observation re-enters</span>
+<span class="c-k">raise</span> AssertionError  <span class="c-c"># :488 — provably unreachable; the loop always returns</span></code></pre>
+<p>Three design decisions to notice:</p>
+<ul>
+  <li><b>Observations re-enter as history.</b> Tool results are appended as <code>tool</code> (or
+    <code>user</code> in fallback) messages, so the next provider call literally <em>reads its own
+    notes</em>. That append-only conversation <em>is</em> the agent's working memory.</li>
+  <li><b>Hallucinated tools are filtered, not fatal.</b> A model inventing a tool name gets that
+    call dropped and its text mined — robustness over purity.</li>
+  <li><b>The loop always terminates with a named reason</b> — <code>stop</code> vs
+    <code>turn_budget_exceeded</code>. Callers (and telemetry) can tell "done" from "ran out of steps."</li>
+</ul>
+<div class="callout warn"><b>Teaching lens — the stopping rule is the whole ballgame.</b>
+Line 458 is where "answers too fast" lives: <em>the first iteration with zero tool calls returns
+immediately.</em> There is no planner, no critic, no "are you sure?" pass. One ReAct pass, then done.</div>
+
+<!-- ==================== P5 ==================== -->
+<h2 id="p5"><span class="phase">PHASE 5</span><br>The Pi plane: supervisor, worker, sessions</h2>
+<p>Files: <code>backend/app/core/pi_runtime/engine.py</code> (Python side),
+<code>supervisor.py</code> (process owner),
+<code>pi-runtime/src/worker.mjs</code> + <code>session.mjs</code> (Node side).
+Where legacy keeps the loop in Python and calls the model per step, Pi moves the loop
+<em>into a long-lived Node child process</em> and speaks to it over versioned NDJSON frames
+on stdin/stdout (<code>supervisor.py:1–12</code>).</p>
+<div class="fig">Python <span class="hl">PiExecutionService</span>  <span class="dim">(engine.py:217 — owns resolve/bind/telemetry)</span>
+   │ <span class="f">manager.resolve(endpoint|model|vision|project)</span>  <span class="dim">admission, fail-closed</span>
+   │ <span class="f">open_session(key, system, history[-200], revision, catalog)</span>
+   │ <span class="f">bind_provider(key, {endpoint, api_key, params})</span>  <span class="dim">← secrets cross HERE only</span>
+   │ <span class="f">sup.run_turn(key, text, tool_handler, schema, max_turns)</span>
+   ▼
+<span class="hl">PiRuntimePool</span> (2 workers) → sticky <span class="dim">blake2b(session_key) % N</span>  <span class="dim">pool.py:24-50</span>
+   ▼
+<span class="hl">PiRuntimeSupervisor</span>  <span class="dim">one `node` child per backend process</span>
+   │ hello → ready <span class="dim">(PROTOCOL_VERSION=2 both sides, 15s handshake)</span>
+   ▼
+<span class="hl">worker.mjs</span> → <span class="hl">PiSession</span>  <span class="dim">session.mjs — the actual ReAct driver</span>
+   │ frames: <span class="dim">assistant.delta · thinking.delta · tool.call · tool.result → run.completed</span>
+   │ tool calls round-trip to Python <span class="f">tool_handler</span> <span class="dim">(engine.py:297 — re-injects</span>
+   │ <span class="dim">project/agent, rejects out-of-catalog with audit row)</span></div>
+<p>The worker enforces its own budgets per run (<code>session.mjs:170–179, 280–314</code>):
+<code>max_turns</code> → <code>turn_budget_exceeded</code>; wall-clock timer →
+<code>wall_clock_budget_exceeded</code>; cumulative priced spend → <code>cost_budget_exceeded</code>
+(and <em>unpriced</em> real spend fails closed rather than running blind). Steering
+(<code>turn.steer / follow_up / abort</code>) is pumped on a 50&nbsp;ms loop
+(<code>engine.py:392–421</code>) — the seed of longer-horizon control: a run can be nudged
+mid-flight today.</p>
+<table>
+  <tr><th>Knob</th><th>Value</th><th>Where</th><th>What it caps</th></tr>
+  <tr><td><code>run_timeout</code></td><td>120 s</td><td><code>supervisor.py:76</code></td><td>one worker run</td></tr>
+  <tr><td><code>max_cost_usd</code></td><td>$1.00</td><td><code>supervisor.py:78</code></td><td>priced spend per run</td></tr>
+  <tr><td>pool size</td><td>2 workers</td><td><code>config.py:400</code></td><td>concurrent Pi runs</td></tr>
+  <tr><td>max sessions</td><td>10 / 8</td><td><code>supervisor.py:79</code> / worker</td><td>sessions per worker</td></tr>
+  <tr><td>history window</td><td>200 msgs</td><td><code>protocol.py:25</code></td><td>context per session open</td></tr>
+  <tr><td>handshake</td><td>15 s</td><td><code>supervisor.py:75</code></td><td>worker readiness</td></tr>
+</table>
+
+<!-- ==================== P6 ==================== -->
+<h2 id="p6"><span class="phase">PHASE 6</span><br>Tools: catalog, execution, idempotency, audit</h2>
+<p>Both planes call the <b>same</b> tools through <code>execute_tool()</code>
+(<code>backend/app/skills/system_actions.py</code>). The pipeline around every call:</p>
+<ol>
+  <li><b>Catalog admission</b> — the worker only sees the tools in its session catalog; the Python
+    handler re-checks membership and rejects out-of-catalog calls with a <code>tool_not_allowed</code>
+    audit row (<code>engine.py:297–322</code>). The model cannot talk itself into new powers.</li>
+  <li><b>Project/agent re-injection</b> — the handler stamps the current <code>project_id</code> /
+    <code>agent_id</code> server-side. Tool calls are always executed <em>as</em> someone,
+    <em>somewhere</em>.</li>
+  <li><b>Idempotent execution</b> — <code>execute_with_idempotency</code> (
+    <code>engine.py:310–321</code>) so retried frames don't double-apply mutations.</li>
+  <li><b>Canonical telemetry span</b> — every call records
+    <code>operation="tool_call"</code> with name, duration, success, model, agent, task
+    (<code>telemetry.py:record_tool_call</code>). This is what powers the Tool Audit Trail,
+    per-model reliability stats, and the security benchmark's tool-visibility controls.</li>
+  <li><b>Content-free summaries</b> — the audit trail stores parameter <em>names</em>, never values;
+    lesson links are opaque IDs. Observability without surveillance.</li>
+</ol>
+<p>Fixed tool subsets scope special verbs: delegation, channel, and autoresearch turns each get a
+narrowed catalog (<code>engine.py:62–100</code>) — least privilege per mission type.</p>
+
+<!-- ==================== P7 ==================== -->
+<h2 id="p7"><span class="phase">PHASE 7</span><br>Secrets: how credentials never leak</h2>
+<div class="grid2">
+<div class="callout"><b>At rest:</b> OAuth blobs are Fernet-encrypted in the DB; API keys live in
+env first, then macOS Keychain (<code>config.py:159–183</code>); a 60&nbsp;s TTL cache bounds
+Keychain reads (<code>endpoints.py:29</code>).</div>
+<div class="callout"><b>In flight:</b> secrets cross exactly one boundary — the local stdin pipe
+inside <code>provider.bind</code> — into per-session <code>PI_RUNTIME_KEY_N</code> env vars that
+are deleted on dispose (<code>provider.mjs</code>). Worker logs are secret-free by construction;
+telemetry carries endpoint <em>identities</em> (ids, hashed account handles), never keys.</div>
+</div>
+<p>Model resolution itself (<code>model_manager.resolve</code>) is an <b>admission predicate</b>,
+not a search: endpoint id, model name, min context, vision need, project scope — anything
+unmatched fails closed (<code>unknown / model_mismatch / no_matching / insufficient_distinct</code>).
+Single-endpoint setups honestly report <code>not_runnable</code> for ensemble methods instead of
+faking multi-model consensus.</p>
+
+<!-- ==================== P8 ==================== -->
+<h2 id="p8"><span class="phase">PHASE 8</span><br>Money and memory: usage ledger + telemetry</h2>
+<p>Exactly <b>one</b> <code>AgenticUsageRow</code> per dispatch
+(<code>usage_ledger.py:279–341</code>): model served, latency, tool count, turns, exact-vs-estimated
+usage, error type — plus an identity span. Exactness rules are strict: Pi needs every sample receipt;
+legacy accumulates all-or-nothing; anything else is labeled <em>estimate</em> or zeroed. Research-spine
+telemetry (coding runs, reliability, reconciliation, retrieval modes, donor lifecycle) rides the same
+span bus as content-free handles — which is why the Quality and Ensemble dashboards can show
+per-model truth without ever storing a prompt.</p>
+
+<!-- ==================== P9 ==================== -->
+<h2 id="p9"><span class="phase">PHASE 9</span><br>Why answers feel fast (the budget autopsy)</h2>
+<p>Your observation is correct, and it is structural, not a bug. Count what one complex question gets:</p>
+<table>
+  <tr><th>Surface</th><th>Steps granted</th><th>Plans?</th><th>Critic?</th><th>Continues?</th></tr>
+  <tr><td>Chat, legacy engine</td><td><b>8 tool iterations</b> (9 provider calls)</td><td>No</td><td>No</td><td>No</td></tr>
+  <tr><td>Chat, Pi engine</td><td><b>24 model turns</b></td><td>No</td><td>No</td><td>No</td></tr>
+  <tr><td>Skill task</td><td>5 iterations + 600 s + 120 s validation</td><td>No</td><td>Yes — validation methods</td><td>No</td></tr>
+</table>
+<p>Five compounding reasons for speed:</p>
+<ol>
+  <li><b>Single ReAct pass.</b> One loop per turn, no decomposition into subgoals. A 6-part question
+    gets the same machinery as "what time is it".</li>
+  <li><b>First-quiet-turn wins.</b> The moment the model replies with no tool call, the loop returns
+    (<code>legacy.py:458</code>). There is no "sleep on it" pass.</li>
+  <li><b>Sequential tools.</b> Independent calls run one at a time (<code>:475</code>); wall-clock
+    pressure discourages broad evidence gathering.</li>
+  <li><b>No cross-turn plan state.</b> Sessions persist overrides and history, but nothing records
+    <em>"step 2 of 5, hypothesis X pending"</em> — each turn re-derives intent from scratch.</li>
+  <li><b>Validation exists — but beside the loop, not inside it.</b> Adversarial review, debate,
+    ensembles all run as <em>post-hoc task validation</em>, never as mid-chat self-correction.</li>
+</ol>
+<div class="callout"><b>The good news:</b> every prerequisite for longer horizons already exists —
+sessions with revisions, steering mid-run, usage/cost accounting, validation methods, task promotion,
+compaction. The engine needs <em>orchestration between</em> its parts, not new parts.</div>
+
+<!-- ==================== P10 ==================== -->
+<h2 id="p10"><span class="phase">PHASE 10</span><br>Long-horizon upgrade plan (12 proposals)</h2>
+<p>Constraints honored throughout: fail-closed errors, project scoping, content-free telemetry,
+provider/model authority in Pi Model Management, no silent fallbacks. Ordered by leverage.
+Proposals 1–8 came from the code study; 9–12 were added with the literature and live-measurement
+research in Appendix A/B. Each names the repo seam it reuses — nothing here needs new machinery,
+only orchestration <em>between</em> existing parts.</p>
+<h3>1. Budget-aware continuation <span class="pill ok">highest leverage · small</span></h3>
+<p>Surface <code>stop_reason</code> in the UI ("used 8 of 8 steps — <i>keep going?</i>"). A Continue
+re-opens the <em>same session revision</em> with the accumulated history, granting a fresh budget.
+Implementation: one button + one route param; the worker already supports rehydrate
+(<code>session.open</code> revision, <code>worker.mjs:143–150</code>). Turns a cliff into a ramp.</p>
+<h3>2. Plan-then-execute for complex questions <span class="pill ok">high leverage · medium</span></h3>
+<p>A lightweight planner pass (structured output: subgoals with tool hints) runs first for questions
+classified complex; each subgoal executes as a chained turn in the same session; a final synthesis
+turn answers. State = an append-only plan ledger (mirrors the existing usage ledger pattern).
+Spine gates stay: subgoals are provisional until the normal validation passes.</p>
+<h3>3. Mid-run critic <span class="pill ok">high leverage · medium</span></h3>
+<p>Move one existing validation method <em>inside</em> long runs: after N tool observations, run a
+<code>validation.judge</code> pass (already built for adversarial review) asking "is this on track?
+what's missing?" — feed the verdict back as an observation. No new models, no new prompts family.</p>
+<h3>4. Parallel tool fan-out <span class="pill">medium · small</span></h3>
+<p>Independent calls (search ×3, fetch ×2) dispatch concurrently with a barrier join — the same
+fan-out/barrier discipline the repo's own multi-agent orchestration uses. Wall-clock per evidence
+unit drops; budgets buy breadth instead of waiting.</p>
+<h3>5. Explicit plan state in sessions <span class="pill">medium · medium</span></h3>
+<p>Extend the session revision payload with <code>plan: {goal, steps[], done[], open_questions[]}</code>,
+compacted alongside history. Stops the "re-derive intent every turn" tax and makes steering
+surgical ("redo step 3").</p>
+<h3>6. Promote-to-task bridge <span class="pill">medium · small</span></h3>
+<p>Chat already binds turns to tasks (<code>chat.py:924</code>). Offer "keep working on this as a
+task" when a turn exhausts budget: the 600 s / validation-equipped task machinery takes over, and
+results stream back to the chat. Uses existing rails end to end.</p>
+<h3>7. Budget escalation UX <span class="pill">medium · small</span></h3>
+<p>Show live budget (steps, wall-clock, spend vs the $1.00 cap) in the chat chrome, with
+per-question budget selection. Users who want depth opt into it; default stays snappy.</p>
+<h3>8. Ensemble spot-checks on hard answers <span class="pill">lower · medium</span></h3>
+<p>For high-stakes or low-confidence answers, run a second model pass and show agreement —
+<code>resolve_distinct</code> already fails closed on single-endpoint setups, so this degrades
+honestly where it can't run.</p>
+<h3>9. Complexity-routed effort tiers <span class="pill ok">high leverage · small</span></h3>
+<p>Classify the question <em>before</em> spending: trivial → today's budgets; complex →
+escalated turn/time/cost caps with the planner engaged. Evidence E1 is the smoking gun — a
+3-part question consumed 3 of 24 turns while a one-liner gets the same ceiling; fixed budgets
+starve the hard and indulge the trivial equally. Routing rule lives beside engine resolution
+(<code>dispatcher.py:118–172</code>), tiers reuse existing <code>TurnParams.max_turns</code> and
+the $1.00 cost cap, and the tier label joins the usage row so spend stays auditable. Why it is
+safe: it only <em>selects</em> budgets that already exist; the fail-closed machinery is untouched.
+Literature: adaptive-compute / complexity routing — spend inference where uncertainty is highest.</p>
+<h3>10. ReWOO-style decoupled planner <span class="pill ok">high leverage · medium</span></h3>
+<p>One planner call emits the <em>entire</em> tool-call plan upfront (steps + which tool + with
+what arguments); plain executors then run it with <b>zero per-step LLM calls</b>, substituting
+variables as evidence arrives. On evidence-heavy questions this collapses a 12-call ReAct trace
+into ~2 model calls with identical tool coverage — cheaper, faster, and more predictable than
+looping. Seams: the tool catalog + <code>execute_with_idempotency</code>
+(<code>engine.py:310–321</code>) already support exactly this shape, and the forced
+<code>emit_structured_output</code> capture (<code>engine.py:742</code>) is the plan-envelope
+format waiting to happen. Guardrail: the plan itself is validated like any structured output,
+and every step still executes through the audited <code>execute_tool</code> front door.
+Literature: ReWOO (decoupling reasoning from observations).</p>
+<h3>11. Persistent plan memory with compaction guard <span class="pill">medium · medium</span></h3>
+<p>Extend the session revision payload (the structure the worker already rehydrates,
+<code>worker.mjs:143–150</code>) with <code>plan: {goal, steps[], done[], open_questions[],
+hypotheses[]}</code>, compacted <em>alongside</em> history by the existing summarizer — with the
+same protected-block treatment the prompt compressor already gives protocol/codebook spans, so
+compaction can never summarize the plan away. This ends the "re-derive intent every turn" tax
+measured in Phase 9 and makes steering surgical ("redo step 3", "drop hypothesis B"). Telemetry
+stays content-free: plan <em>counts and statuses</em>, never plan text.</p>
+<h3>12. Depth eval harness: today's probe, automated <span class="pill ok">enabler · small</span></h3>
+<p>Turn Evidence E1 into a standing scenario suite: multi-part tool questions with asserted
+expectations on <code>turns-used</code>, <code>tools-used</code>, subgoal coverage, and terminal
+reason (must be <code>stop</code> with all parts answered, or a typed budget frame — never a
+quiet partial). Run pre/post on every engine-affecting change next to the accepted benchmark
+bundle (<code>comparison-Istara-pi/…/scorecard.json</code>), whose verdict
+(<code>no_significant_difference</code>: Tool Calling pi 0.8077 vs legacy 0.8312; Quality 6.75
+vs 6.6364) is the parity bar no proposal may regress. This is how "works longer" becomes a
+number instead of a feeling. Literature: the SWE-bench / τ-bench / BFCL ethos — task-success
+harnesses, not vibes; deterministic industry scores already feed the bundle's first axis.</p>
+<div class="callout warn"><b>What NOT to do:</b> raise the raw budgets alone (more steps ≠ deeper
+thought — single-pass ReAct just wanders longer); add an unlogged shadow planner (breaks the
+evidence chain); let the worker fetch tools outside its catalog (breaks least privilege); mix
+vector spaces across engines (breaks the embedding invariant).</div>
+
+<!-- ==================== AP-A ==================== -->
+<h2 id="apA"><span class="phase">APPENDIX A</span><br>Literature grounding — why these designs</h2>
+<p>External results <em>inform</em>; repo evidence <em>decides</em>. Each line maps a published
+result to the proposal it supports and the Istara seam that makes it cheap. These are the
+standard, widely-cited works in agentic reasoning — summarized here so a future implementer
+knows <em>which idea</em> each proposal borrows and <em>why it fits this codebase</em>:</p>
+<table>
+  <tr><th>Work</th><th>Idea in one line</th><th>Supports</th><th>Istara seam</th></tr>
+  <tr><td>ReAct (Yao et al., 2022)</td><td>Interleave reasoning traces with actions; observations re-enter context.</td><td>Foundation (all)</td><td><code>legacy.py:271–488</code> already is ReAct; proposals extend orchestration around it.</td></tr>
+  <tr><td>Reflexion (Shinn et al., 2023)</td><td>Verbal self-reflection stored in episodic memory beats repeating mistakes, no weight updates.</td><td>P3 critic</td><td><code>validation.judge</code> verdict → history-append (<code>legacy.py:474–487</code>).</td></tr>
+  <tr><td>Plan-and-Solve / Plan-and-Execute</td><td>Explicit plan first, then execute plan steps; outperforms direct answering on multi-step tasks.</td><td>P2 planner</td><td>Structured output + chained same-session turns + plan ledger (mirrors usage ledger).</td></tr>
+  <tr><td>ReWOO (Xu et al., 2023)</td><td>Decouple reasoning from observations: full tool plan upfront, then parameter-free execution.</td><td>P10</td><td>Tool catalog + <code>execute_with_idempotency</code>; <code>emit_structured_output</code> envelope.</td></tr>
+  <tr><td>Self-Refine (Madaan et al., 2023)</td><td>Iterative generate → feedback → refine loop with the same model.</td><td>P3 variant</td><td>Bounded to 1 repair, mirroring structured output (<code>engine.py:742</code>).</td></tr>
+  <tr><td>Self-Consistency (Wang et al., 2022)</td><td>Sample multiple reasoning paths, take the majority answer.</td><td>P8</td><td><code>run_ensemble</code> + <code>resolve_distinct</code> fail-closed.</td></tr>
+  <tr><td>Multi-agent debate (Du et al., 2023)</td><td>Cross-critique between agents converges on truer answers.</td><td>P3 critic engine</td><td>Already Istara's <code>debate_rounds</code> validation method.</td></tr>
+  <tr><td>Process supervision (OpenAI, "Let's Verify Step by Step", 2023)</td><td>Rewarding correct intermediate steps beats rewarding only outcomes.</td><td>P9-adjacent, P12 metrics</td><td>Reliability metrics + per-turn telemetry spans as step signals.</td></tr>
+  <tr><td>Tree of Thoughts (Yao et al., 2023)</td><td>Search over thought branches with evaluation and backtracking.</td><td>Explicitly <b>deferred</b></td><td>Cost/complexity exceed appetite; revisit only via P12 numbers.</td></tr>
+  <tr><td>Task-success harnesses (SWE-bench, τ-bench, BFCL)</td><td>Agentic progress is measured by asserted task suites, not demos.</td><td>P12</td><td>Extends the accepted bundle pattern already in <code>comparison-Istara-pi/</code>.</td></tr>
+</table>
+<div class="callout"><b>How to use this table:</b> when implementing a proposal, re-read its row
+first. If the implementation drifts from the mapped seam (new machinery instead of reuse), that
+drift itself needs a DEC entry in the plan file — the seam mapping is the scope contract.</div>
+
+<!-- ==================== AP-B ==================== -->
+<h2 id="apB"><span class="phase">APPENDIX B</span><br>Hard evidence log</h2>
+<table>
+  <tr><th>ID</th><th>Evidence</th><th>Numbers</th><th>Where recorded</th></tr>
+  <tr><td>E1</td><td>Live single-pass probe, QA stack, 2026-09-08: 3-part tool question on Pi <code>glm-5.3-flash</code> (<code>pi-zai-glm</code>), session override restored to <code>gpt-5.6-luna</code> after.</td><td><code>turns: 3</code>, 4 sequential tool calls, <code>stop_reason: "stop"</code>, usage exact (<code>estimate: false</code>); total_tokens 26307.</td><td>Plan file L-002; session <code>3673fc34</code> history.</td></tr>
+  <tr><td>E2</td><td>Accepted benchmark bundle verdict.</td><td><code>no_significant_difference</code>: Tool Calling pi 0.8077 vs legacy 0.8312 (CI [−0.1429, 0.0909]); Quality 6.75 vs 6.6364; Spine 1.0 vs 0.8095; Skills/A2A 1.0 vs 1.0.</td><td><code>comparison-Istara-pi/reports/20260801T010602Z/scorecard.json</code></td></tr>
+  <tr><td>E3</td><td>Budget constants, grep-verified on <code>testing</code>.</td><td>Legacy chat 8 · Pi chat 24 · skill tasks 5; <code>range(budget+1)</code>; 120 s run timeout; 15 s handshake; $1.00 cap; pool 2; sessions 10/8; history 200.</td><td>Phase 5 table + Phase 9 autopsy on this page.</td></tr>
+  <tr><td>E4</td><td>Reusable seams (code exists today).</td><td>Session revision rehydrate; 50 ms steering pump; <code>validation.judge</code>; <code>resolve_distinct</code>; chat→task binding; compaction + window guard.</td><td>Phases 4–6 on this page with line refs.</td></tr>
+  <tr><td>E5</td><td>Honest provider behavior during probing.</td><td>Typed rate-limit (luna) and quota-exhaustion (dashscope) errors surfaced; no silent model substitution.</td><td>Probe transcript, plan file L-002.</td></tr>
+</table>
+
+<!-- ==================== P11 ==================== -->
+<h2 id="p11"><span class="phase">PHASE 11</span><br>Glossary of the moving parts</h2>
+<table>
+  <tr><th>Term</th><th>File</th><th>One line</th></tr>
+  <tr><td>Dispatcher</td><td><code>core/agentic/dispatcher.py</code></td><td>Routes every verb to Pi or legacy; records usage/failure exactly once.</td></tr>
+  <tr><td>Legacy executor</td><td><code>core/agentic/legacy.py</code></td><td>Python ReAct loop; tool calls executed locally, model called per step.</td></tr>
+  <tr><td>PiExecutionService</td><td><code>core/pi_runtime/engine.py</code></td><td>Resolves endpoints, binds providers, drives worker turns, records telemetry.</td></tr>
+  <tr><td>Supervisor / pool</td><td><code>core/pi_runtime/supervisor.py</code>, <code>pool.py</code></td><td>Owns Node child processes; sticky session routing; restarts with backoff.</td></tr>
+  <tr><td>Worker / PiSession</td><td><code>pi-runtime/src/worker.mjs</code>, <code>session.mjs</code></td><td>Node-side ReAct driver; frames, budgets, cost gates, steering.</td></tr>
+  <tr><td>TurnParams</td><td><code>core/agentic/types.py</code></td><td>The single knob object: model, effort, budgets, timeouts, endpoint.</td></tr>
+  <tr><td>execute_tool</td><td><code>skills/system_actions.py</code></td><td>The one tool front door both planes share; audited per call.</td></tr>
+  <tr><td>Usage ledger</td><td><code>core/agentic/usage_ledger.py</code></td><td>One exact-or-estimated row per dispatch; money + turns + model proof.</td></tr>
+  <tr><td>Validation</td><td><code>core/validation_executor.py</code>, <code>core/validation.py</code></td><td>Post-hoc quality gates (judge, debate, ensembles) — currently beside the loop.</td></tr>
+  <tr><td>Steering</td><td><code>engine.py:392–421</code>, chat <code>steering_binding</code></td><td>Mid-run steer/follow-up/abort pump — today's hook for tomorrow's planner.</td></tr>
+</table>
+
+<footer>
+  Istara agentic-engine study · generated from the <code>testing</code> branch, September 2026 ·
+  Numbers cite <code>backend/app/…</code> and <code>pi-runtime/src/…</code> line ranges current at writing;
+  re-verify with grep before quoting in a new revision. Research-spine rule: benchmarks stay provisional.
+</footer>
+
+</div>
+</body>
+</html>

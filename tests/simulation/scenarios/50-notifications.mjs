@@ -8,9 +8,17 @@
 export const name = "Notifications";
 export const id = "50-notifications";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "notifications",
+    navLabel: "Notifications",
+    markers: ["Notifications", "Preferences"],
+    screenshot: "50-notifications-view",
+  });
   const cleanup = { notificationIds: [], taskIds: [] };
 
   // ── Helper: ensure we have a project ──

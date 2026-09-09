@@ -5,11 +5,11 @@ item: long-horizon-engine-comparison-and-main-promotion
 branch: testing
 cf: { spec: CF-SPEC-10, task: CF-90 }
 phase: "Phase 2 — Verification & Audit Complete; Ready for Main Promotion"
-stage: S3-review
-status: ready-for-review
+stage: S5-ship
+status: completed
 blocked_on: null
 last: { agent: antigravity, at: 2026-09-05T00:55:00Z, ledger: L-405 }
-next_action: "Review scorecard artifact at docs/scientific_audit/long-horizon-agentic-engine-audit.md, commit testing branch changes, and open candidate promotion PR to origin/main."
+next_action: "Consolidated and reconciled into docs/build-stream/2026-09-06-systemwide-remaining-surfaces-and-design-hardening.md."
 ```
 
 ## Plan Overview & Roadmap

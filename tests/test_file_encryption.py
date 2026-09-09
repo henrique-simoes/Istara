@@ -83,3 +83,34 @@ def test_encrypted_backup_archive_verifies_with_configured_key(tmp_path):
     assert is_encrypted_file(encrypted_archive)
     result = BackupManager()._verify_sync(str(encrypted_archive))
     assert result["valid"] is True
+
+
+@pytest.mark.asyncio
+async def test_file_rotation_rewrites_existing_enc_backups(tmp_path, monkeypatch):
+    """Rotation must not strand existing .enc backup archives."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.services.file_encryption_migration import rotate_existing_project_content
+
+    old_key = resolve_file_encryption_key(create=True)
+    monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
+    backup_root = tmp_path / "backups"
+    backup_root.mkdir(parents=True, exist_ok=True)
+    archive = backup_root / "istara_backup_test.tar.gz.enc"
+    archive.write_bytes(encrypt_bytes(b"backup-bytes", key=old_key))
+
+    fake_scalars = MagicMock()
+    fake_scalars.all.return_value = []
+    fake_result = MagicMock()
+    fake_result.scalars.return_value = fake_scalars
+    fake_db = AsyncMock()
+    fake_db.execute.return_value = fake_result
+
+    result = await rotate_existing_project_content(fake_db)
+    assert result["backups_rotated"] == 1
+    # Archive decrypts under the NEW key, not the old one.
+    from app.core.file_encryption import decrypt_bytes
+
+    new_key = resolve_file_encryption_key(create=False)
+    assert new_key != old_key
+    assert decrypt_bytes(archive.read_bytes(), key=new_key) == b"backup-bytes"

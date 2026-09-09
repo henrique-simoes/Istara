@@ -551,6 +551,25 @@ def test_security_benchmark_detects_context_hierarchy_project_scope_paths() -> N
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_audit_metrics_evidence_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/api/routes/audit.py",
+        "backend/app/api/routes/metrics.py",
+        "backend/app/core/audit_middleware.py",
+        "backend/app/core/telemetry.py",
+        "backend/app/models/telemetry_span.py",
+        "frontend/src/components/common/VersionHistory.tsx",
+        "frontend/src/components/settings/ProjectSettingsView.tsx",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_blocks_failed_control() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
     modified = copy.deepcopy(matrix)

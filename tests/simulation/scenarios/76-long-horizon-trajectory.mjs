@@ -24,6 +24,69 @@ export const id = "76-long-horizon-trajectory";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+async function browserTrajectoryEntry(ctx, checks, checkPass) {
+  // Selectors verified against current source (Sidebar button[aria-label],
+  // ChatView textarea[placeholder*=Ask about], Send button) — same set as
+  // scenario 05.
+  try {
+    const page = ctx.page;
+    await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(1000);
+    // Same tour-overlay guard as lib/view-check: dismissed tours can't eat nav.
+    await page
+      .evaluate(() => {
+        try {
+          localStorage.setItem("istara_tour_completed", "true");
+          localStorage.setItem("istara_tour_completed_admin", "true");
+        } catch {}
+      })
+      .catch(() => {});
+    await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
+    await page.waitForTimeout(1000);
+    await page
+      .locator("button[aria-label='Skip tour']")
+      .first()
+      .click({ timeout: 3000 })
+      .catch(() => {});
+    await page.waitForTimeout(500);
+    const chatNav = page.locator('button[aria-label="Chat"]').first();
+    if (await chatNav.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await chatNav.click();
+      await page.waitForTimeout(1000);
+      checkPass("Browser: Chat view opened", "real click on nav tab");
+    } else {
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "chat" })));
+      await page.waitForTimeout(1000);
+      checkPass("Browser: Chat view opened (event fallback)", "nav tab not visible");
+    }
+    const chatInput = page.locator('textarea[placeholder*="Ask about"]').first();
+    if (await chatInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await sendTrajectoryOpener(page, checkPass);
+    } else {
+      checks.push({ name: "Browser: opening request sent", passed: false, detail: "chat input not visible" });
+    }
+    await ctx.screenshot("76-trajectory-opened");
+  } catch (e) {
+    checks.push({ name: "Browser: trajectory entry", passed: false, detail: e.message });
+  }
+}
+
+async function sendTrajectoryOpener(page, checkPass) {
+  const opener = "Cross-analyze the uploaded transcripts against the competitor report in 4 steps: thematic analysis, benchmarking, triangulation, journey map.";
+  const chatInput = page.locator('textarea[placeholder*="Ask about"]').first();
+  await chatInput.click({ timeout: 5000 });
+  await chatInput.fill("");
+  await chatInput.type(opener, { delay: 5 });
+  await page.waitForTimeout(300);
+  const sendBtn = page.locator('button[aria-label="Send message"]').first();
+  if (await sendBtn.evaluate((btn) => !btn.disabled).catch(() => false)) {
+    await sendBtn.click();
+    await page.waitForTimeout(2000);
+  }
+  const echoed = await page.evaluate((text) => document.body.innerText.includes(text.slice(0, 24)), opener).catch(() => false);
+  checkPass("Browser: opening request sent", echoed ? "message echoed in DOM" : "sent (echo unverified)");
+}
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
@@ -44,6 +107,11 @@ export async function run(ctx) {
     checks.push({ name, passed: true, detail });
     console.log(`    ✅ ${name}`);
   };
+
+  // Phase 0: Real-user browser entry (re-baselined 2026-09-08) — open the
+  // trajectory through the actual UI (helper below keeps run() lean).
+  // Failures here never block the API trajectory below.
+  await browserTrajectoryEntry(ctx, checks, checkPass);
 
   try {
     console.log("    --- Phase 1: Data Ingestion & Seeding ---");

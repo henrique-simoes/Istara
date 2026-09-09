@@ -144,3 +144,32 @@ async def test_laws_match_rejects_unbounded_top_k(auth_headers):
             headers=auth_headers,
         )
         assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_laws_evaluate_compliance_tags_nuggets(auth_headers):
+    """POST /api/laws/compliance/{project_id}/evaluate should scan nuggets and enrich with ux-law tags."""
+    await init_db()
+    project_id = f"law-eval-{uuid.uuid4()}"
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/findings/nuggets",
+            json={
+                "project_id": project_id,
+                "text": "The small tap target is hard to click on mobile device.",
+                "source": "usability-test",
+                "tags": [],
+            },
+            headers=auth_headers,
+        )
+        assert created.status_code == 201
+
+        eval_resp = await ac.post(
+            f"/api/laws/compliance/{project_id}/evaluate",
+            headers=auth_headers,
+        )
+        assert eval_resp.status_code == 200
+        data = eval_resp.json()
+        assert data["evaluated"] is True
+        assert data["newly_tagged_nuggets"] >= 1

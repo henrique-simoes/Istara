@@ -9,8 +9,8 @@ cf:
   spec: CF-SPEC-2
   tasks: [CF-48]
 phase: "Phase 3 — UX convergence"
-stage: S2-execute
-status: in-progress
+stage: S5-ship
+status: completed
 blocked_on: null
 approval_holds:
   - id: vps-acceptance-deployment
@@ -23,7 +23,7 @@ last:
   agent: pi (deepseek-v4-flash)
   at: 2026-08-23T09:00:00Z
   ledger: L-52
-next_action: "Complete the chat/session usage contract, run the independent UI review at 320/375/414/768/1280, then deploy only to testing for browser verification."
+next_action: "UX review and responsive breakpoint tasks consolidated into docs/build-stream/2026-09-06-systemwide-remaining-surfaces-and-design-hardening.md."
 ```
 
 ## Plan overview

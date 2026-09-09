@@ -11,6 +11,7 @@ import {
   CANONICAL_CORPUS_SLICES,
   selectCanonicalCorpus,
 } from "../../document_corpus/shared-corpus.mjs";
+import { browserViewCheck } from "../lib/view-check.mjs";
 
 export const name = "Comprehensive Skills Test (All Registered Skills)";
 export const id = "20-all-skills-comprehensive";
@@ -342,6 +343,12 @@ async function scenario20SkillSelection({ api, projectId, registeredSkills = [],
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "skills",
+    navLabel: "Skills",
+    markers: ["Catalog", "Skills"],
+    screenshot: "20-skills-view",
+  });
   const skillResults = { total: 0, passed: 0, failed: 0, errors: 0, skipped: 0 };
   const phaseResults = {};
   const skillMetrics = [];

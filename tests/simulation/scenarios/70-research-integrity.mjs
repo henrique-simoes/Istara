@@ -13,9 +13,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export const name = "Research Integrity System";
 export const id = "70-research-integrity";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "findings",
+    navLabel: "Findings",
+    markers: ["Evidence", "Findings"],
+    screenshot: "70-findings-view",
+  });
   const cleanup = { nuggetIds: [], factIds: [], insightIds: [], recIds: [] };
 
   // ── 1. Health check ──

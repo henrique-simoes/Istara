@@ -1212,3 +1212,61 @@ async def test_pi_runtime_error_event_carries_a_user_visible_message(monkeypatch
         '"message": "configured endpoint credential is unavailable"' in event
         for event in events
     )
+
+
+@pytest.mark.asyncio
+async def test_native_tools_threads_thinking_mode_to_provider_and_usage(monkeypatch):
+    """F-M1: thinking_mode must reach TurnParams and the usage envelope.
+
+    Regression: _generate_native_tools dropped thinking_mode (provider ran at
+    default effort) while the usage event hard-coded effort=server_default.
+    """
+    authority = _bind_provider_authority(monkeypatch, [{"text": "low effort answer"}])
+    parts: list[str] = []
+    tools: list[dict] = []
+    events = [
+        event
+        async for event in chat_route._generate_native_tools(
+            [{"role": "user", "content": "hi"}],
+            parts,
+            tools,
+            SimpleNamespace(project_id="effort-project"),
+            "istara-main",
+            None,
+            0.1,
+            128,
+            thinking_mode="low",
+        )
+    ]
+    assert authority.calls, "provider turn never ran"
+    assert authority.calls[0]["params"].thinking_mode == "low"
+    usage_events = [json.loads(e.split("data: ", 1)[1]) for e in events if '"type": "usage"' in e]
+    assert usage_events, "no usage envelope emitted"
+    assert usage_events[0]["effort"] == "low"
+
+
+@pytest.mark.asyncio
+async def test_text_fallback_threads_thinking_mode_to_provider_and_usage(monkeypatch):
+    """F-M1 twin: same contract for _generate_text_fallback."""
+    authority = _bind_provider_authority(monkeypatch, [{"text": "fallback low answer"}])
+    parts: list[str] = []
+    tools: list[dict] = []
+    events = [
+        event
+        async for event in chat_route._generate_text_fallback(
+            [{"role": "user", "content": "hi"}],
+            parts,
+            tools,
+            SimpleNamespace(project_id="effort-project"),
+            "istara-main",
+            None,
+            0.1,
+            128,
+            thinking_mode="low",
+        )
+    ]
+    assert authority.calls, "provider turn never ran"
+    assert authority.calls[0]["params"].thinking_mode == "low"
+    usage_events = [json.loads(e.split("data: ", 1)[1]) for e in events if '"type": "usage"' in e]
+    assert usage_events, "no usage envelope emitted"
+    assert usage_events[0]["effort"] == "low"

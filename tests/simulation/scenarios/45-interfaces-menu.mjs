@@ -9,9 +9,17 @@
 export const name = "Interfaces Menu";
 export const id = "45-interfaces-menu";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "interfaces",
+    navLabel: "Interfaces",
+    markers: ["Design Chat", "Interfaces"],
+    screenshot: "45-interfaces-view",
+  });
   const cleanup = { screenIds: [], decisionIds: [] };
 
   // ── Helper: ensure we have a project ──

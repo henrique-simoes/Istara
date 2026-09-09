@@ -10,9 +10,16 @@
 export const name = "Self-Evolution & Prompt Compression";
 export const id = "28-self-evolution-prompt-compression";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "skills",
+    navLabel: "Skills",
+    markers: ["Catalog", "Skills"],
+    screenshot: "28-skills-view",
+  });
   if (!ctx.projectId) {
     return { checks: [{ name: "Simulation project required", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
   }

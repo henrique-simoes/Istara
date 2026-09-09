@@ -99,3 +99,34 @@ test("validateDonorModelSandbox blocks missing Q4 evidence and missing local mod
   assert.ok(issues.some((issue) => issue.code === "model-root-missing"));
   assert.ok(issues.some((issue) => issue.code === "llamacpp-model-file-required"));
 });
+
+test("buildDonorModelSandboxConfig creates a pi-managed donor with no container", () => {
+  const config = buildDonorModelSandboxConfig({}, 1, {
+    donorId: "Pi Donor",
+    runId: "test-run",
+    env: {
+      ISTARA_BENCHMARK_DONOR_1_MODEL_SERVER: "pi-managed",
+      ISTARA_BENCHMARK_DONOR_1_PI_ENDPOINT_ID: "pi-deepseek-default",
+      ISTARA_BENCHMARK_DONOR_1_HOST_URL: "http://macstudio.local:11434",
+    },
+  });
+
+  assert.equal(config.requested, true);
+  assert.equal(config.kind, "pi-managed");
+  assert.equal(config.provider, "pi");
+  assert.equal(config.managedBy, "pi-model-manager");
+  assert.equal(config.endpointId, "pi-deepseek-default");
+  assert.equal(config.containerName, "");
+  assert.equal(config.hostProbeUrl, "http://macstudio.local:11434");
+});
+
+test("validateDonorModelSandbox requires endpoint id and host url for pi-managed", () => {
+  const missing = validateDonorModelSandbox({ requested: true, kind: "pi-managed", endpointId: "", hostUrl: "" });
+  assert.deepEqual(missing.map((issue) => issue.code), ["pi-endpoint-id-required", "pi-host-url-required"]);
+  const ok = validateDonorModelSandbox({ requested: true, kind: "pi-managed", endpointId: "e1", hostUrl: "http://x:11434" });
+  assert.deepEqual(ok, []);
+});
+
+test("dockerArgsForDonorModelSandbox returns no container args for pi-managed", () => {
+  assert.deepEqual(dockerArgsForDonorModelSandbox({ kind: "pi-managed" }, ["--network", "x"]), []);
+});

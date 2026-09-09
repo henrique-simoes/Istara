@@ -25,6 +25,7 @@ import {
   exerciseResearchSpineValidation,
   exerciseSelfImprovementGovernance,
 } from "./lib/research-spine-probes.mjs";
+import { exerciseModelManagement } from "./lib/model-management-probes.mjs";
 import {
   benchmarkExitCode,
   benchmarkWorkloadForProfile,
@@ -1097,6 +1098,8 @@ const featureResults = {
   interfaces: false,
   multiDonorCompute: false,
   distinctDonorEndpoints: false,
+  piManagedEndpointCatalogued: false,
+  petalsBridgeStatus: false,
   researcherUi: false,
   adminUiRoleContract: false,
   multiUserCollaboration: false,
@@ -1954,6 +1957,28 @@ async function startDonorModelSandbox(donor) {
 
   const daemon = ensureClientDockerDaemon(`donor-model-${donor.id}`);
   if (!daemon.ok) return { ok: false, skipped: true };
+  if (config.kind === "pi-managed") {
+    // Operator-managed Pi endpoint: no container lifecycle. Readiness is the
+    // probe below; catalog membership is cross-checked by model-management probes.
+    logger.action("sandbox.donor_model.managed", {
+      donor_id: donor.id,
+      kind: config.kind,
+      endpoint_id: config.endpointId,
+      host_url: hostSummary(config.hostUrl),
+    });
+    sandbox.modelServerStartedCount += 1;
+    const readiness = await waitForDonorModelEndpoint(donor);
+    if (!readiness.ok) {
+      blockers.push(`Donor ${donor.id} Pi-managed endpoint did not become ready.`);
+      logger.issue({
+        area: "compute-donation",
+        severity: "critical",
+        title: "Pi-managed donor endpoint readiness failed",
+        detail: readiness.error || "managed endpoint did not respond",
+      });
+    }
+    return { ok: Boolean(readiness.ok), managed: true, readiness };
+  }
   if (keepDonorModelContainers) {
     const inspect = runCommand(`docker-inspect-donor-model-${donor.id}`, "docker", [
       "inspect",
@@ -4706,6 +4731,42 @@ async function main() {
     // merely because its donor list is empty (`[].distinct === true`).
     featureResults.distinctDonorEndpoints = workload.petals && endpointDiversity.ok;
     logger.writeJson("donor-endpoint-diversity.json", endpointDiversity);
+    // Kind-awareness: generated strings must decode to their expected kind
+    // (current connection_string kinds: user_invite / compute_donation).
+    for (const [expectedKind, items] of [["user_invite", connectionStrings.userInvites || []], ["compute_donation", connectionStrings.computeDonations || []]]) {
+      for (const item of items) {
+        const decodedKind = String(decodeConnectionStringPayloadUnsafe(item?.connection_string)?.payload?.kind || "");
+        logger.action("connection.kind.assert", { expected: expectedKind, decoded: decodedKind, id: item?.id || "" });
+        if (decodedKind && decodedKind !== expectedKind) {
+          blockers.push(`Connection string kind mismatch: expected ${expectedKind}, decoded ${decodedKind}.`);
+          logger.issue({
+            area: "connection-string",
+            severity: "high",
+            title: "Connection string kind mismatch",
+            detail: `Expected ${expectedKind}, decoded ${decodedKind} (id ${item?.id || "unknown"}).`,
+          });
+        }
+      }
+    }
+    // Pi Model Management cross-check: donor endpoint ids must resolve in the
+    // live model catalog; petals bridge status recorded (admin-gated).
+    if (mode !== "plan-only") {
+      const piEndpointIds = selectedDonorProfiles
+        .filter((profile) => profile?.modelSandbox?.kind === "pi-managed")
+        .map((profile) => profile.modelSandbox.endpointId)
+        .filter(Boolean);
+      try {
+        await exerciseModelManagement({
+          api,
+          projectId: project.id,
+          logger,
+          featureResults,
+          donorEndpointIds: piEndpointIds,
+        });
+      } catch (error) {
+        logger.action("model_management.probe", { step: "runner", ok: false, error: error.message });
+      }
+    }
     logger.action("compute.donor.endpoint_diversity", endpointDiversity);
     if (!endpointDiversity.ok && requireDistinctDonorEndpoints) {
       blockers.push("Required compute donors do not resolve to distinct runnable LLM endpoints.");

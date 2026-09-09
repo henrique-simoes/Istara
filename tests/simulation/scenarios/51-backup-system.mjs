@@ -7,9 +7,17 @@
 export const name = "Backup System";
 export const id = "51-backup-system";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "backup",
+    navLabel: "Backup",
+    markers: ["Create Full Backup", "Backup"],
+    screenshot: "51-backup-view",
+  });
   const cleanup = { backupIds: [] };
 
   // ── 1. GET /api/backups/config — returns config fields ──
@@ -208,7 +216,8 @@ export async function run(ctx) {
     const newRetention = (config?.backup_retention_count || 10) + 5;
     const result = await api.post("/api/backups/config", { backup_retention_count: newRetention });
     const updated = await api.get("/api/backups/config");
-    const passed = updated.backup_retention_count === newRetention;
+    // Backend may echo numbers as strings; compare numerically.
+    const passed = Number(updated.backup_retention_count) === Number(newRetention);
     checks.push({
       name: "POST /api/backups/config updates settings (retention_count)",
       passed,

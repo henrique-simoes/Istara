@@ -194,26 +194,57 @@ class TestValidationExecutor:
         }
 
     async def test_debate_rounds_with_insights(self, executor):
-        """debate_rounds with 2+ insights -> passes."""
+        """debate_rounds with grounded insights -> passes via stability."""
         output = MagicMock()
         output.insights = [
-            {"text": "Insight one"},
-            {"text": "Insight two"},
+            {"text": "Users struggle with navigation in settings"},
+            {"text": "Navigation in settings confuses users"},
         ]
+        output.facts = [{"text": "5 of 6 users failed to find navigation in settings"}]
+        output.nuggets = [{"text": "users struggle with navigation in settings menu"}]
 
         result = await executor._debate_rounds(output)
         assert result.passed is True
         assert result.method == "debate_rounds"
-        assert result.confidence == 0.6
+        assert result.confidence >= 0.4
 
     async def test_debate_rounds_single_insight(self, executor):
-        """debate_rounds with < 2 insights -> passes with 0.7 confidence."""
+        """debate_rounds without premises fails closed (ungrounded)."""
         output = MagicMock()
         output.insights = [{"text": "Only one"}]
+        output.facts = []
+        output.nuggets = []
 
         result = await executor._debate_rounds(output)
+        assert result.passed is False
+        assert result.confidence == 0.0
+
+    async def test_debate_rounds_recommendations_without_premises_fail_closed(
+        self, executor
+    ):
+        """debate_rounds with recs-only output fails closed (F3)."""
+        output = MagicMock()
+        output.insights = []
+        output.facts = []
+        output.nuggets = []
+        output.recommendations = [{"text": "Ship the redesign immediately"}]
+
+        result = await executor._debate_rounds(output)
+        assert result.passed is False
+        assert result.confidence == 0.0
+
+    async def test_full_ensemble_high_overlap_passes(self, executor):
+        """full_ensemble with high tag overlap passes."""
+        output = MagicMock()
+        output.nuggets = [
+            {"text": "Finding 1", "tags": ["nav", "ux", "perf"]},
+            {"text": "Finding 2", "tags": ["nav", "ux", "design"]},
+        ]
+
+        result = await executor._full_ensemble(output)
+        assert isinstance(result, ValidationResult)
+        assert result.method == "full_ensemble"
         assert result.passed is True
-        assert result.confidence == 0.7
 
     def test_validation_result_dataclass_defaults(self):
         """ValidationResult has correct defaults."""

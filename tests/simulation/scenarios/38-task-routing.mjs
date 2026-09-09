@@ -3,9 +3,16 @@
 export const name = "Multi-Agent Task Routing";
 export const id = "38-task-routing";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "agents",
+    navLabel: "Agents",
+    markers: ["System Agents", "Agents"],
+    screenshot: "38-agents-view",
+  });
 
   if (!ctx.projectId) {
     return { checks: [{ name: "Skip — no project", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };

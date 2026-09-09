@@ -8,9 +8,16 @@
 export const name = "Atomic Research Design Extension";
 export const id = "47-atomic-research-design";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "findings",
+    navLabel: "Findings",
+    markers: ["Evidence", "Findings"],
+    screenshot: "47-findings-view",
+  });
   const cleanup = { screenIds: [], decisionIds: [], recIds: [], insightIds: [], factIds: [], nuggetIds: [], briefIds: [] };
 
   // ── Helper: ensure we have a project ──

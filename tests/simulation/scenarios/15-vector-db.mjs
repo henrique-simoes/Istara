@@ -3,9 +3,16 @@
 export const name = "Vector Database & RAG";
 export const id = "15-vector-db";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "documents",
+    navLabel: "Documents",
+    markers: ["Upload", "Documents"],
+    screenshot: "15-documents-view",
+  });
 
   if (!ctx.projectId) {
     return { checks: [{ name: "Skip — no project", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };

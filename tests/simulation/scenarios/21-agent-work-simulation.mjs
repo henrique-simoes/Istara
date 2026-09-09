@@ -6,9 +6,17 @@
 export const name = "Agent Work Simulation (Multi-Agent)";
 export const id = "21-agent-work-simulation";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "agents",
+    navLabel: "Agents",
+    markers: ["System Agents", "Agents"],
+    screenshot: "21-agents-view",
+  });
   const cleanup = { agents: [], tasks: [] };
 
   async function safeCheck(checkName, fn) {

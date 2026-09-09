@@ -6,11 +6,18 @@
 export const name = "Model Management & Provenance";
 export const id = "36-llm-servers";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 import { authHeaders, getApiBase } from "../lib/api-client.mjs";
 
 export async function run(ctx) {
   const { api, screenshot } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "settings",
+    navLabel: "Settings",
+    markers: ["System Status", "Settings"],
+    screenshot: "36-settings-view",
+  });
   let projectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
 
   // 1. Retired surface stays retired: the management API answers 404/405.

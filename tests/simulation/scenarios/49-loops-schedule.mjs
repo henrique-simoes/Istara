@@ -8,9 +8,17 @@
 export const name = "Loops & Schedule";
 export const id = "49-loops-schedule";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "loops",
+    navLabel: "Loops",
+    markers: ["Schedules", "Loops"],
+    screenshot: "49-loops-view",
+  });
   const cleanup = { scheduleIds: [], customLoopIds: [] };
   const scopedSkipDetail = "[skipped] No active project id; scoped endpoint not called";
   const normalizeProjectId = (value) => (typeof value === "string" ? value.trim() : "");

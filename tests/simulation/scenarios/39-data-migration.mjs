@@ -3,9 +3,16 @@
 export const name = "Data Migration & Integrity";
 export const id = "39-data-migration";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "backup",
+    navLabel: "Backup",
+    markers: ["Create Full Backup", "Backup"],
+    screenshot: "39-backup-view",
+  });
 
   // ── 1. Data integrity check endpoint ──
   try {

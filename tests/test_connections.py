@@ -162,7 +162,7 @@ async def test_compute_donation_string_validates_but_cannot_redeem_user_account(
             json={
                 "connection_string": conn_str,
                 "username": "donor",
-                "password": "password123",
+                "password": "xK9#mP2$vL7nQ4@wR1!",
             },
         )
 
@@ -229,7 +229,7 @@ async def test_connection_string_lifecycle_tracks_validation_and_redemption(
                 json={
                     "connection_string": conn_str,
                     "username": "first_redeemer",
-                    "password": "password123",
+                    "password": "xK9#mP2$vL7nQ4@wR1!",
                 },
             )
             assert redemption.status_code == 200
@@ -241,7 +241,7 @@ async def test_connection_string_lifecycle_tracks_validation_and_redemption(
                 json={
                     "connection_string": conn_str,
                     "username": "second_redeemer",
-                    "password": "password123",
+                    "password": "xK9#mP2$vL7nQ4@wR1!",
                 },
             )
             assert second_redemption.status_code == 400
@@ -482,3 +482,33 @@ def json_dumps(value):
     import json
 
     return json.dumps(value, sort_keys=True)
+
+
+@pytest.mark.asyncio
+async def test_invite_redeem_rejects_breached_password(auth_headers):
+    """Invite redemption enforces the same breach bar as registration."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        generated = await ac.post(
+            "/api/connections/generate",
+            headers=auth_headers,
+            json={
+                "server_url": "http://server.test:3000",
+                "ws_url": "ws://server.test:8000/ws/relay",
+                "label": "Breach Probe",
+                "expires_hours": 24,
+            },
+        )
+        assert generated.status_code == 200
+        conn_str = generated.json()["connection_string"]
+        redemption = await ac.post(
+            "/api/connections/redeem",
+            json={
+                "connection_string": conn_str,
+                "username": "breach_redeemer",
+                "password": "password123",
+            },
+        )
+        assert redemption.status_code == 400
+        assert "breach" in redemption.json()["detail"].lower()

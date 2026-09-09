@@ -246,7 +246,7 @@ def test_backend_deployments_enforce_project_owned_channels_and_conversations() 
     assert (
         "await require_project_access(db, request, scoped_project_id, min_role=min_role)"
         in route
-        and 'await get_active_project_or_404(\n        db, request, scoped_project_id, min_role="researcher"'
+        and 'await get_active_project_or_404(db, request, scoped_project_id, min_role="researcher"'
         in route
     )
     assert "async def _get_deployment_or_404" not in route
@@ -604,7 +604,7 @@ def test_integrations_messaging_detail_panels_require_active_project_scope() -> 
     assert "async def _get_project_channel_or_404" in route
     assert (
         "scoped_project_id = _require_project_id(project_id)" in route
-        and 'await get_active_project_or_404(\n        db, request, scoped_project_id, min_role="project_admin"'
+        and 'await get_active_project_or_404(db, request, scoped_project_id, min_role="project_admin"'
         in route
     )
     assert (
@@ -613,7 +613,7 @@ def test_integrations_messaging_detail_panels_require_active_project_scope() -> 
     )
     assert "instance is None or instance.project_id != scoped_project_id" in route
     assert (
-        'project_id: Optional[str] = Query(None, description="Active project")' in route
+        'project_id: str | None = Query(None, description="Active project")' in route
     )
     assert "project_id=scoped_project_id" in route
 
@@ -816,7 +816,7 @@ def test_task_kanban_requires_active_project_scope() -> None:
         "disabled={!canMarkDone}",
         "disabled={!canSendToReport}",
         "accepted_after_reconciliation",
-        "Run a coding pass and accept or reconcile coded evidence before marking this research task Done.",
+        "Human approval marks this task Done. Note: Findings remain gated from Reports until qualitative coding and reconciliation pass.",
         "Run a coding pass and accept or reconcile coded evidence before reporting.",
     )
     assert all(marker in editor for marker in gate_markers)
@@ -1652,8 +1652,8 @@ def test_loops_views_and_api_require_active_project_scope() -> None:
         'project_id: str | None = Query(None, description="Active project")'
         in scheduler_route
     )
-    assert "source_ids: Optional[list[str]] = None" in service
-    assert "project_id: Optional[str] = None" in service
+    assert "source_ids: list[str] | None = None" in service
+    assert "project_id: str | None = None" in service
     assert "LoopExecution.project_id == scoped_project_id" in service
     assert "def _execution_matches_project" in service
     assert (
