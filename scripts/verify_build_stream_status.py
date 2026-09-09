@@ -9,6 +9,8 @@ from pathlib import Path
 STATUS_RE = re.compile(r"<!-- STATUS BLOCK -->\s*```yaml\n(?P<body>.*?)\n```\s*<!-- /STATUS BLOCK -->", re.S)
 ROADMAP_RE = re.compile(r"^\|\s*(?P<number>\d+)\s*\|.*?\|\s*(?P<status>planned|in-progress|done)\s*\|\s*$", re.M)
 KEY_RE = re.compile(r"^(?P<key>[A-Za-z_][\w-]*):", re.M)
+LEDGER_RE = re.compile(r"^###\s+(?P<id>L-\d+)\b", re.M)
+LAST_LEDGER_RE = re.compile(r"ledger:\s*(?P<id>L-\d+)")
 
 
 def verify(text: str) -> list[str]:
@@ -45,6 +47,20 @@ def verify(text: str) -> list[str]:
     next_action = values.get("next_action", "")
     if stage in {"S3-review", "S4-remediate"} and "dispatch implementation" in next_action.lower():
         errors.append("review/remediation status has stale implementation next_action")
+
+    last_ledger = LAST_LEDGER_RE.search(body)
+    if last_ledger:
+        headings = LEDGER_RE.findall(text)
+        if headings:
+            ref = last_ledger.group("id")
+            count = headings.count(ref)
+            if count == 0:
+                errors.append(f"status last.ledger {ref} matches no ledger entry")
+            elif count > 1:
+                errors.append(
+                    f"status last.ledger {ref} is ambiguous "
+                    f"({count} entries share the identifier)"
+                )
     return errors
 
 
