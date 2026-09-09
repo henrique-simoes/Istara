@@ -9,8 +9,8 @@ stage: S4-remediate
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor-xhigh, at: 2026-09-09T18:37:00Z, ledger: L-24 }
-next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
+last: { agent: meta/muse-spark-1.3-contributor-xhigh, at: 2026-09-09T18:38:35Z, ledger: L-25 }
+next_action: "F1 remediation landed (L-24); conductor-created delta re-review of F-W2-R2-1 next."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1291,3 +1291,9 @@ Did: Fixed F-W2-R2-1 without rewriting history. Replaced the stale owner-sync ov
 Result: F-W2-R2-1 flipped open → fixed for FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-F1; the Status Block is resumable from this entry and last.ledger L-24 resolves to exactly one heading.
 Verified: `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → OK; `python3 scripts/verify_control_plane_triage.py` → OK; `backend/.venv/bin/python -m pytest -q tests/test_verify_build_stream_status.py tests/test_verify_control_plane_triage.py` → 8 passed; `git diff --check` on the three touched files → clean.
 Next: conductor-created delta re-review of F-W2-R2-1; no further fixer action remains on this task.
+
+### L-25 | 2026-09-09T18:38:35Z | S4-remediate | meta/muse-spark-1.3-contributor | remediator | Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth <!-- bsc-ledger:FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-F1 -->
+Did: Re-asserted the F-W2-R2-1 next_action after owner-side sync commit b4d253a8 force-wrote the stale implementation-dispatch template back into the Status Block 20 seconds after L-24 verified OK. b4d253a8 preserved every other byte of this fix (S4-remediate stage, L-24 pointer, register flip, L-23/L-24 entries, both L-21 headings untouched) and rewrote only next_action, so this entry changes only next_action and advances last.ledger to L-25. No in-repo sync script exists; the overwrite path is the owner-side consensus-sync process, which must stop force-writing next_action or preserve remediation truth, or every future remediation will race the same way.
+Result: Status Block again reads S4-remediate remediation truth with last.ledger L-25 resolving to exactly one heading; no other file touched by this entry.
+Verified: `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → OK; `backend/.venv/bin/python -m pytest -q tests/test_verify_build_stream_status.py tests/test_verify_control_plane_triage.py` → 8 passed; committed scripts/tests verifier hardening (6d880e54) re-checked green against this file.
+Next: conductor-created delta re-review of F-W2-R2-1; owner action required on the consensus-sync overwrite path.
