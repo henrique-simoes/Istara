@@ -10,7 +10,7 @@ stage: S4-remediate
 status: in-progress
 blocked_on: null
 last: { agent: gpt-5.6-sol, at: 2026-09-09T16:15:45Z, ledger: L-16 }
-next_action: "Complete G-1 if still open, then dispatch round 2 delta re-review of G-1/G-2."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
