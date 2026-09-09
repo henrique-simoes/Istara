@@ -1,7 +1,8 @@
 #!/bin/bash
 # Blind reviewer runner: reads ONLY the blind pack, writes ONLY the measurement sheet.
 # Run: nohup bash docs/build-stream/run-blind-review.sh > /tmp/blind-review.log 2>&1 &
-cd /Users/user/Documents/Istara-main || exit 1
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+cd "$SCRIPT_DIR/../.." || exit 1
 SHEET=docs/build-stream/2026-09-08-systemwide-audit-coverage.measurement.md
 {
 echo "# Measurement Sheet (blind — frozen before comparison)"

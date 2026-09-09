@@ -18,7 +18,7 @@ On 2026-09-09 this synthesis measured:
 - `origin/testing=9961fa3dbd2ce03a6e1d8cc3e303478edaf17a79`; local HEAD is 67 commits ahead and 0 behind.
 - `origin/main=fa6a1a391b5a1089690eb8fed5d179ce146ec9e9`; `origin/testing` is 994 commits ahead and 0 behind.
 - The tree remains extensively dirty across backend, frontend, tests, workflows/contracts, security evidence, lifecycle documents, plus many untracked files. Counts must be re-measured at W0, never copied from this plan.
-- Pinned Compass Forge SHA-256 is `559af310d332ab72ceeb75bdd057b54f43b185ce875b93f7b3943d988b5be2c1`; runtime is Rust-only and reports target `/Users/user/Documents/Istara-main`, workspace identity `/Users/user/Documents/compass-forge`.
+- Pinned Compass Forge SHA-256 is `559af310d332ab72ceeb75bdd057b54f43b185ce875b93f7b3943d988b5be2c1`; runtime is Rust-only and reports target `<REPO_ROOT>`, workspace identity `/Users/user/Documents/compass-forge`.
 - CF-SPEC-30 is active; CF-SPEC-29 and older tasks require evidence-based reconciliation. The supplied graph output is only a starting map and must not be treated as a complete inventory.
 
 ### Reconciliation algorithm

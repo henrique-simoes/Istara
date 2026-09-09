@@ -13,8 +13,9 @@ Usage:
         [--manifest <path>]
 
 Exit 0 when the manifest parses, carries schema_version 1, contains exactly
-the conductor's six wave ids in order, and (when --expected-hash is given)
-the canonical hash matches. Prints the canonical hash in all cases.
+the conductor's six wave ids in order, matches the pinned canonical hash,
+and the tracked mirror equals the conductor source manifest. Prints the
+canonical hash in all cases.
 """
 
 from __future__ import annotations
@@ -25,6 +26,10 @@ import json
 import sys
 from pathlib import Path
 
+PINNED_CANONICAL_SHA256 = (
+    "8601a1fc7cc2373909234cf8bcf6534e0f8a7f7e46c731c1f4f9ad864e142c3c"
+)
+
 EXPECTED_WAVE_IDS = [
     "candidate-boundary",
     "control-plane-lifecycle",
@@ -34,11 +39,18 @@ EXPECTED_WAVE_IDS = [
     "promotion-certification",
 ]
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST = (
-    Path(__file__).resolve().parent.parent
+    REPO_ROOT
     / "docs"
     / "build-stream"
     / "2026-09-09-testing-to-main-waves-manifest.json"
+)
+CONDUCTOR_MANIFEST = (
+    REPO_ROOT
+    / ".compass-forge"
+    / "conductor"
+    / "testing-to-main-20260909-waves.json"
 )
 
 
@@ -49,7 +61,7 @@ def canonical_hash(obj: object) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--expected-hash", default=None)
+    parser.add_argument("--expected-hash", default=PINNED_CANONICAL_SHA256)
     parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
     args = parser.parse_args(argv)
 
@@ -72,8 +84,18 @@ def main(argv: list[str] | None = None) -> int:
     digest = canonical_hash(obj)
     print(f"canonical_sha256={digest}")
 
-    if args.expected_hash and digest != args.expected_hash.lower():
+    if digest != args.expected_hash.lower():
         print(f"FAIL: expected {args.expected_hash.lower()}, got {digest}")
+        return 1
+
+    try:
+        tracked_obj = json.loads(DEFAULT_MANIFEST.read_text(encoding="utf-8"))
+        conductor_obj = json.loads(CONDUCTOR_MANIFEST.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"FAIL: cannot compare tracked and conductor manifests: {exc}")
+        return 1
+    if tracked_obj != conductor_obj:
+        print(f"FAIL: tracked manifest differs from {CONDUCTOR_MANIFEST}")
         return 1
 
     print("OK: wave manifest verified")

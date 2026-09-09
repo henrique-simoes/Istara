@@ -16,7 +16,7 @@ The release invariant is: every claim, command, artifact, and GitHub check names
 
 ### Measured state
 
-Measured read-only on 2026-09-09 from `/Users/user/Documents/Istara-main`:
+Measured read-only on 2026-09-09 from `<REPO_ROOT>`:
 
 | Surface | Exact state | Meaning |
 |---|---|---|

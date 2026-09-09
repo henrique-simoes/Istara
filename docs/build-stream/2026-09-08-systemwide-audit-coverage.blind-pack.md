@@ -51,7 +51,7 @@ files (other dirty files in the worktree belong to other agents — ignore them)
 
 ## Procedure
 
-1. Run every command yourself in `/Users/user/Documents/Istara-main`.
+1. Run every command yourself in `<REPO_ROOT>`.
    Do NOT start servers, touch the network, or load models. pytest, vitest
    (frontend navigation test only), ruff, git, and grep are allowed.
 2. Write your answers to `docs/build-stream/2026-09-08-systemwide-audit-coverage.measurement.md`
