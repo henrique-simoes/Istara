@@ -78,4 +78,7 @@ export const scenarioFiles = Object.freeze([
   "74-2fa-login-flow",
   "80-channels-and-surveys-live-integration",
   "81-project-settings",
+  "82-quality-dashboard",
+  "83-chat-model-controls",
+  "84-token-session-lifecycle",
 ]);
