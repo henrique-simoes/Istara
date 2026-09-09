@@ -6,11 +6,11 @@ item: testing-to-main-convergence
 branch: testing
 phase: "Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth"
 stage: S3-review
-status: blocked
-blocked_on: [FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1, FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B]
+status: in-progress
+blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
 last: { agent: gpt-5.6-sol, at: 2026-09-09T17:33:25Z, ledger: L-20 }
-next_action: "S4 remediate F-W2-R1-1 and F-W2-R1-2, then delta re-review before W3."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
