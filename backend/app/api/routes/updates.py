@@ -63,7 +63,9 @@ def is_containerized() -> bool:
         return True
     try:
         cgroup = Path("/proc/1/cgroup")
-        if cgroup.is_file() and any(k in cgroup.read_text() for k in ("docker", "containerd", "kubepods")):
+        if cgroup.is_file() and any(
+            k in cgroup.read_text() for k in ("docker", "containerd", "kubepods")
+        ):
             return True
     except Exception:
         pass
@@ -244,7 +246,11 @@ async def check_for_updates():
     current = get_current_version()
     install_dir = get_install_dir()
     containerized = is_containerized()
-    install_type = "docker" if containerized else ("git" if install_dir and (install_dir / ".git").is_dir() else "package")
+    install_type = (
+        "docker"
+        if containerized
+        else ("git" if install_dir and (install_dir / ".git").is_dir() else "package")
+    )
     docker_command = "docker compose pull && docker compose up -d" if containerized else None
 
     cache_key = "github_release"
@@ -254,7 +260,7 @@ async def check_for_updates():
         result = {**cached["data"], "current_version": current}
         result["update_available"] = is_newer(result.get("latest_version", ""), current)
         result["install_type"] = install_type
-        result["can_auto_update"] = (install_type == "git")
+        result["can_auto_update"] = install_type == "git"
         if docker_command:
             result["docker_command"] = docker_command
         if install_dir and (install_dir / ".git").is_dir():
@@ -287,12 +293,15 @@ async def check_for_updates():
             if resp.status_code == 200:
                 raw_releases = resp.json()
                 valid_releases = [
-                    r for r in raw_releases
+                    r
+                    for r in raw_releases
                     if not r.get("draft") and not r.get("prerelease") and r.get("tag_name")
                 ]
                 if valid_releases:
+
                     def _key(rel: dict):
                         return _parse_calver(rel.get("tag_name", "").lstrip("v"))
+
                     latest_release = max(valid_releases, key=_key)
             elif resp.status_code in (403, 404):
                 # Rate limited or not found — fallback to git tags
@@ -362,9 +371,7 @@ async def check_for_updates():
     update_available = is_newer(latest_tag, current)
     source_status = None
     if install_dir and (install_dir / ".git").is_dir():
-        source_status = await asyncio.to_thread(
-            head_includes_release, install_dir, latest_tag
-        )
+        source_status = await asyncio.to_thread(head_includes_release, install_dir, latest_tag)
         if source_status is True:
             update_available = False
             current = latest_tag or current

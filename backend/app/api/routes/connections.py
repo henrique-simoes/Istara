@@ -14,7 +14,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.core.auth import create_token, generate_recovery_codes, hash_password
+from app.core.auth import (
+    create_token,
+    generate_recovery_codes,
+    hash_password,
+    is_password_breached,
+)
 from app.core.auth_sessions import issue_auth_session_token
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
 from app.core.connection_string import (
@@ -420,6 +425,16 @@ async def redeem_connection_string(
         raise HTTPException(status_code=400, detail="Username is required")
     if not data.password or len(data.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    # Same breach bar as registration and password change: weak invite
+    # passwords must not enter through the invite path.
+    if await is_password_breached(data.password):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This password has appeared in a known data breach. "
+                "Please choose a different password."
+            ),
+        )
 
     # Create user account (team mode must be enabled for this)
     if not settings.team_mode:

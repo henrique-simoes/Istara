@@ -12,6 +12,11 @@ from app.models.database import get_db
 from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.message import Message
 from app.models.method_metric import MethodMetric
+from app.models.code_application import CodeApplication
+from app.models.research_validity import (
+    EvidenceUnit,
+    ReconciliationDecision,
+)
 from app.models.task import Task, TaskStatus
 
 router = APIRouter()
@@ -181,6 +186,48 @@ async def get_project_metrics(
 
     task_completion_rate = round(done_tasks / max(total_tasks, 1) * 100, 1)
 
+    # Research Spine Evidence Chain Health
+    evidence_units_count = (
+        await db.execute(
+            select(func.count(EvidenceUnit.id)).where(EvidenceUnit.project_id == project_id)
+        )
+    ).scalar() or 0
+
+    coding_apps_count = (
+        await db.execute(
+            select(func.count(CodeApplication.id)).where(CodeApplication.project_id == project_id)
+        )
+    ).scalar() or 0
+
+    reconciliation_count = (
+        await db.execute(
+            select(func.count(ReconciliationDecision.id)).where(
+                ReconciliationDecision.project_id == project_id
+            )
+        )
+    ).scalar() or 0
+
+    grounded_nuggets_count = (
+        await db.execute(
+            select(func.count(Nugget.id)).where(
+                Nugget.project_id == project_id,
+                Nugget.source != "",
+                Nugget.source.isnot(None),
+            )
+        )
+    ).scalar() or 0
+    grounding_ratio = round(grounded_nuggets_count / max(nugget_count, 1), 3)
+
+    accepted_nuggets = (
+        await db.execute(
+            select(func.count(Nugget.id)).where(
+                Nugget.project_id == project_id,
+                Nugget.confidence >= 0.70,
+            )
+        )
+    ).scalar() or 0
+    provisional_nuggets = max(0, nugget_count - accepted_nuggets)
+
     return {
         "project_id": project_id,
         "findings": {
@@ -199,6 +246,17 @@ async def get_project_metrics(
         "quality": {
             "avg_confidence": round(avg_confidence, 2),
             "messages": msg_count,
+        },
+        "evidence_chain": {
+            "evidence_units": evidence_units_count,
+            "coding_applications": coding_apps_count,
+            "reconciliations": reconciliation_count,
+            "grounding_ratio": grounding_ratio,
+            "accepted_nuggets": accepted_nuggets,
+            "provisional_nuggets": provisional_nuggets,
+            "is_healthy": (
+                evidence_units_count > 0 and coding_apps_count > 0 and reconciliation_count > 0
+            ),
         },
         "by_phase": phases,
     }

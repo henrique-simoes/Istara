@@ -315,6 +315,10 @@ async def init_db() -> None:
             "ALTER TABLE telemetry_spans ADD COLUMN codebook_version_id VARCHAR(36) "
             "NOT NULL DEFAULT ''",
             "ALTER TABLE telemetry_spans ADD COLUMN reliability_score FLOAT",
+            # Content-free tool audit handles: parameter names and lesson IDs only.
+            "ALTER TABLE telemetry_spans ADD COLUMN arguments_summary VARCHAR(500) "
+            "NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN reasoning_bank_id VARCHAR(100)",
             # Project-scoped model/skill learning. Global stats must not steer
             # another project's research process.
             "ALTER TABLE model_skill_stats ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",

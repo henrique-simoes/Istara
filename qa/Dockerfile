@@ -12,9 +12,16 @@
 # here so the QA runtime stays a faithful superset.
 
 # Stage 1: Builder — install deps with build tools
+# Pi 0.84.x requires Node >=22.19 (mirrors backend/Dockerfile): the Pi worker
+# entry ships inside this image so provider turns never depend on host node.
+FROM node:24-slim AS node-runtime
 FROM python:3.12-slim AS builder
 WORKDIR /build
 ARG INSTALL_WHISPER=true
+COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-runtime /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl git libmagic1 build-essential && rm -rf /var/lib/apt/lists/*
 COPY backend/requirements.txt .
@@ -24,23 +31,32 @@ RUN if [ "$INSTALL_WHISPER" = "true" ]; then \
         sed '/^openai-whisper/d' requirements.txt > /tmp/requirements-no-whisper.txt \
         && pip install --no-cache-dir --prefix=/install -r /tmp/requirements-no-whisper.txt; \
     fi
+COPY pi-runtime ./pi-runtime
+RUN cd pi-runtime && npm ci --engine-strict --omit=dev --ignore-scripts
 COPY backend/ /build/backend/
 
 # Stage 2: Runtime — lean image
 FROM python:3.12-slim
 WORKDIR /app
+COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl git libmagic1 && rm -rf /var/lib/apt/lists/*
 RUN useradd --system --no-create-home istara
 COPY --from=builder /install /usr/local
 COPY --from=builder /build/backend /app
+COPY --from=builder /build/pi-runtime ./pi-runtime
 # QA tooling: seeder/auditor/resetter scripts + canonical synthetic corpora.
 COPY qa /app/qa
 COPY scripts/istara-qa.sh /app/scripts/istara-qa.sh
 RUN mkdir -p data/uploads data/projects data/lance_db data/backups data/channel_audio \
-    && chown -R istara:istara data qa scripts
+    runtime-state \
+    && chown -R istara:istara data runtime-state qa scripts
 USER istara
 EXPOSE 8000
+ENV PI_RUNTIME_ROOT=/app
+# Container layout: /app is the backend dir, so the depth-derived repo root
+# would resolve to "/". Pin the shipped worker entry explicitly.
+ENV PI_WORKER_ENTRY=/app/pi-runtime/src/worker.mjs
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD ["curl", "-f", "http://localhost:8000/api/health"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

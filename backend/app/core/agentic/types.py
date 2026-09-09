@@ -54,6 +54,7 @@ class TurnResult:
     stop_reason: str | None = None
     endpoint_id: str | None = None
     status: str = "success"
+    error: str | None = None
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     model: str | None = None
     # Provider-reported response identity. This is distinct from `model`,

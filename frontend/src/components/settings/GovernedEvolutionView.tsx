@@ -28,6 +28,7 @@ import type {
 import type { ReasoningBankSummary, ReasoningMemoryItem } from "@/lib/reasoningBankTypes";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { useProjectStore } from "@/stores/projectStore";
+import SeeMoreList from "@/components/common/SeeMoreList";
 import { cn, formatDate } from "@/lib/utils";
 
 type Tab = "proposals" | "archive" | "reasoning" | "contract";
@@ -233,10 +234,16 @@ export default function GovernedEvolutionView() {
       {!projectId && <EmptyState label="Select a project to view governed evolution." />}
 
       {projectId && tab === "proposals" && (
-        <div className="space-y-3">
+        <>
           {proposals.length === 0 && <EmptyState label="No proposals found." />}
-          {proposals.map((proposal) => {
-            const sandbox = latestSandbox(proposal);
+          {proposals.length > 0 && (
+            <SeeMoreList
+              items={proposals}
+              noun="proposal"
+              listId="evolution-proposals"
+              listClassName="space-y-3"
+              renderItem={(proposal) => {
+                const sandbox = latestSandbox(proposal);
             const canApprove = ["draft", "proposed"].includes(proposal.status);
             const canApply =
               proposal.status === "approved" ||
@@ -331,14 +338,22 @@ export default function GovernedEvolutionView() {
                 </div>
               </article>
             );
-          })}
-        </div>
+          }}
+        />
+      )}
+      </>
       )}
 
       {projectId && tab === "archive" && (
-        <div className="space-y-3">
+        <>
           {variants.length === 0 && <EmptyState label="No archive variants found." />}
-          {variants.map((variant) => (
+          {variants.length > 0 && (
+            <SeeMoreList
+              items={variants}
+              noun="variant"
+              listId="evolution-archive"
+              listClassName="space-y-3"
+              renderItem={(variant) => (
             <article key={variant.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 space-y-2">
@@ -404,8 +419,10 @@ export default function GovernedEvolutionView() {
                 </div>
               </div>
             </article>
-          ))}
-        </div>
+          )}
+        />
+      )}
+      </>
       )}
 
       {projectId && tab === "reasoning" && (
@@ -416,7 +433,14 @@ export default function GovernedEvolutionView() {
             <Metric label="24h" value={reasoningSummary?.recent_24h || 0} tone="blue" />
           </div>
           {memories.length === 0 && <EmptyState label="No ReasoningBank memories found." />}
-          {memories.map((memory) => (
+          {memories.length > 0 && (
+            <SeeMoreList
+              items={memories}
+              noun="memory"
+              pluralNoun="memories"
+              listId="evolution-reasoning"
+              listClassName="space-y-3"
+              renderItem={(memory) => (
             <article key={memory.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", badgeTone(memory.outcome))}>
@@ -440,13 +464,19 @@ export default function GovernedEvolutionView() {
                 ))}
               </div>
             </article>
-          ))}
+          )}
+        />
+      )}
         </div>
       )}
 
       {projectId && tab === "contract" && (
-        <div className="grid gap-3 md:grid-cols-2">
-          {featureContract.map((feature) => (
+        <SeeMoreList
+          items={featureContract}
+          noun="feature"
+          listId="evolution-contract"
+          listClassName="grid gap-3 md:grid-cols-2"
+          renderItem={(feature) => (
             <article key={feature.feature} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
               <div className="flex items-start gap-2">
                 <Archive size={15} className="mt-0.5 shrink-0 text-slate-400" />
@@ -464,8 +494,8 @@ export default function GovernedEvolutionView() {
                 ))}
               </ul>
             </article>
-          ))}
-        </div>
+          )}
+        />
       )}
 
       <ImprovementProposalDetailModal

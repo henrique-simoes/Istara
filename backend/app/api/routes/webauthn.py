@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
-from sqlalchemy import select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -94,6 +94,19 @@ async def _store_challenge(
 ) -> None:
     """Store a challenge for a user with a TTL."""
     now = datetime.now(UTC)
+    # Hygiene: bound table growth by purging this user's consumed challenges
+    # and anything expired more than an hour ago (rate limiter already bounds
+    # creation at 20/min/IP).
+    await db.execute(
+        delete(WebAuthnChallenge).where(
+            WebAuthnChallenge.user_id == user_id,
+            WebAuthnChallenge.purpose == purpose,
+            (
+                (WebAuthnChallenge.consumed_at.is_not(None))
+                | (WebAuthnChallenge.expires_at < now - timedelta(hours=1))
+            ),
+        )
+    )
     await db.execute(
         update(WebAuthnChallenge)
         .where(
@@ -347,6 +360,11 @@ async def webauthn_register_start(
         )
     )
     existing_credentials = result.scalars().all()
+    if len(existing_credentials) >= 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Passkey limit reached (10). Revoke an unused passkey first.",
+        )
     exclude_credentials = [_credential_descriptor(c) for c in existing_credentials]
 
     try:
@@ -437,7 +455,7 @@ async def webauthn_register_finish(
         return {"success": True, "message": "Passkey registered and verified"}
     except Exception as e:
         logger.error(f"WebAuthn registration verification failed: {e}")
-        raise HTTPException(status_code=400, detail=f"Credential verification failed: {str(e)}")
+        raise HTTPException(status_code=400, detail="Credential verification failed")
 
 
 @router.post("/webauthn/authenticate/start")
@@ -454,18 +472,21 @@ async def webauthn_authenticate_start(
 
     result = await db.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    result = await db.execute(
-        select(WebAuthnCredential).where(
-            WebAuthnCredential.user_id == user.id,
-            WebAuthnCredential.revoked.is_(False),
+    result = (
+        await db.execute(
+            select(WebAuthnCredential).where(
+                WebAuthnCredential.user_id == (user.id if user else "__none__"),
+                WebAuthnCredential.revoked.is_(False),
+            )
         )
+        if user
+        else None
     )
-    credentials = result.scalars().all()
-    if not credentials:
-        raise HTTPException(status_code=400, detail="No passkeys registered for this user")
+    credentials = result.scalars().all() if result is not None else []
+    if not user or not credentials:
+        # Unified response: do not reveal whether the username exists or
+        # merely lacks passkeys (enumeration resistance).
+        raise HTTPException(status_code=400, detail="No passkeys available for this user")
 
     allow_credentials = [_credential_descriptor(c) for c in credentials]
 
@@ -574,7 +595,7 @@ async def webauthn_authenticate_finish(
         raise
     except Exception as e:
         logger.error(f"WebAuthn authentication verification failed: {e}")
-        raise HTTPException(status_code=401, detail=f"Authentication verification failed: {str(e)}")
+        raise HTTPException(status_code=401, detail="Authentication verification failed")
 
 
 @router.get("/webauthn/credentials")
@@ -632,4 +653,19 @@ async def revoke_credential(
     credential.revoked = True
     credential.revoked_at = datetime.now(UTC)
     await db.commit()
+
+    # Clear the account-level flag when no active passkeys remain so the
+    # login UI stops offering a dead passkey path.
+    remaining = await db.execute(
+        select(WebAuthnCredential).where(
+            WebAuthnCredential.user_id == token_data.get("sub"),
+            WebAuthnCredential.revoked.is_(False),
+        )
+    )
+    if remaining.scalars().first() is None:
+        owner = await db.execute(select(User).where(User.id == token_data.get("sub")))
+        user = owner.scalar_one_or_none()
+        if user is not None and user.passkey_enabled:
+            user.passkey_enabled = False
+            await db.commit()
     return {"success": True, "message": "Passkey revoked"}

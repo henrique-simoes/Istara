@@ -6,6 +6,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import type { WSEvent } from "@/lib/types";
 
 import { API_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 
 type FrontendRuntimeFreshness = {
   stale?: boolean;
@@ -84,7 +85,8 @@ function useServerHealth() {
     let cancelled = false;
     const checkHealth = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/health`, { cache: "no-store" });
+        const res = await fetch(`${API_BASE}/api/health`, {
+        credentials: "include", cache: "no-store" });
         if (!cancelled) setServerOnline(res.ok);
       } catch {
         if (!cancelled) setServerOnline(false);
@@ -109,9 +111,10 @@ function useLlmHealth() {
     let cancelled = false;
     const checkLLM = async () => {
       try {
-        const token = localStorage.getItem("istara_token");
+        const token = getToken();
         const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
         const res = await fetch(`${API_BASE}/api/settings/status`, {
+        credentials: "include",
           cache: "no-store",
           headers,
         });

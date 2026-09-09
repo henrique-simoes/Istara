@@ -994,7 +994,11 @@ async def test_mfa_factor_changes_require_step_up():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         reg = await ac.post(
             "/api/auth/register",
-            json={"username": username, "email": f"{username}@example.com", "password": password},
+            json={
+                "username": username,
+                "email": f"{username}@example.com",
+                "password": password,
+            },
         )
         assert reg.status_code == 200
         token = reg.json()["token"]
@@ -1008,7 +1012,9 @@ async def test_mfa_factor_changes_require_step_up():
 
         secret = setup.json()["secret"]
         verify = await ac.post(
-            "/api/auth/totp/verify", json={"totp_code": pyotp.TOTP(secret).now()}, headers=headers
+            "/api/auth/totp/verify",
+            json={"totp_code": pyotp.TOTP(secret).now()},
+            headers=headers,
         )
         assert verify.status_code == 200
 
@@ -1019,7 +1025,9 @@ async def test_mfa_factor_changes_require_step_up():
             ("/api/auth/recovery-codes/generate", {"current_password": password}),
         ]:
             resp = await ac.post(path, json=body, headers=headers)
-            assert resp.status_code == 403, f"{path} allowed password-only factor change"
+            assert resp.status_code == 403, (
+                f"{path} allowed password-only factor change"
+            )
 
         # With a fresh step-up code, disable succeeds.
         import time as _time
@@ -1055,7 +1063,11 @@ async def test_pre_mfa_session_rejected_after_enrollment():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         reg = await ac.post(
             "/api/auth/register",
-            json={"username": username, "email": f"{username}@example.com", "password": password},
+            json={
+                "username": username,
+                "email": f"{username}@example.com",
+                "password": password,
+            },
         )
         assert reg.status_code == 200
         user_id = reg.json()["user"]["id"]
@@ -1370,7 +1382,11 @@ async def test_idle_session_revoked_after_inactivity_window():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         reg = await ac.post(
             "/api/auth/register",
-            json={"username": username, "email": f"{username}@example.com", "password": password},
+            json={
+                "username": username,
+                "email": f"{username}@example.com",
+                "password": password,
+            },
         )
         assert reg.status_code == 200
         token = reg.json()["token"]
@@ -1388,5 +1404,40 @@ async def test_idle_session_revoked_after_inactivity_window():
         # Every surface must now agree: 401 here (session layer), never 200.
         for path in ("/api/auth/me", "/api/auth/sessions", "/api/projects"):
             resp = await ac.get(path, headers=headers)
-            assert resp.status_code in (401, 403, 404), f"{path} accepted an idle-dead session"
+            assert resp.status_code in (401, 403, 404), (
+                f"{path} accepted an idle-dead session"
+            )
         assert (await ac.get("/api/auth/me", headers=headers)).status_code == 401
+
+
+def test_mfa_exempt_prefix_boundary_rejects_evil_siblings():
+    """F-W5-R1-3: exact-or-slash-boundary matching for MFA exemptions.
+
+    Regression for the startswith hole where `/api/auth/webauthn-evil` and
+    `/api/auth/logout-evil` wrongly satisfied the MFA exemption.
+    """
+    from app.core.auth_sessions import mfa_claim_satisfied
+
+    no_mfa = {"mfa": False, "sub": "u1"}
+    # Sanity: MFA-claimed tokens pass anywhere; empty payloads never pass.
+    assert mfa_claim_satisfied({"mfa": True}, "/api/projects") is True
+    assert mfa_claim_satisfied(None, "/api/auth/logout") is False
+    assert mfa_claim_satisfied({}, "/api/auth/logout") is False
+    # Genuine exemptions still hold (exact + trailing-slash + sub-path).
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/logout") is True
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/logout/") is True
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/login") is True
+    assert mfa_claim_satisfied(no_mfa, "/api/health") is True
+    assert mfa_claim_satisfied(no_mfa, "/api/webauthn/authenticate/start") is True
+    # Evil siblings must NOT be exempt.
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/webauthn-evil") is False
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/logout-evil") is False
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/login-evil") is False
+    assert mfa_claim_satisfied(no_mfa, "/api/healthcheck") is False
+    # WebAuthn registration enforces MFA (not exempt).
+    assert mfa_claim_satisfied(no_mfa, "/api/webauthn/register/start") is False
+    assert mfa_claim_satisfied(no_mfa, "/api/webauthn/register/finish") is False
+    assert mfa_claim_satisfied(no_mfa, "/api/webauthn/credentials") is False
+    # Non-exempt product paths still require MFA.
+    assert mfa_claim_satisfied(no_mfa, "/api/projects") is False
+    assert mfa_claim_satisfied(no_mfa, "/a2a") is False

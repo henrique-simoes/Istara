@@ -1,9 +1,9 @@
 # Architect A — testing-to-main convergence plan
 
-Plan slot: `a`  
-Task: `testing-to-main-20260909-PLAN-A`  
-Spec: `CF-SPEC-30`  
-Prepared: 2026-09-09  
+Plan slot: `a`
+Task: `testing-to-main-20260909-PLAN-A`
+Spec: `CF-SPEC-30`
+Prepared: 2026-09-09
 Disposition: independent S1 draft; no implementation or promotion authorization
 
 ## Executive decision

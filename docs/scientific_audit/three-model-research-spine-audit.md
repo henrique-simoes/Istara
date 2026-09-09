@@ -1,12 +1,12 @@
 # Methodological & Qualitative Audit: Frontier Three-Model Research Spine
 
-**Document ID:** `docs/scientific_audit/three-model-research-spine-audit.md`  
-**Evaluation Standard:** Istara Research Validity Contract (`docs/architecture/research-validity-contract.md`)  
-**Ensemble Configuration:**  
-- **Model 1 (Rater A):** Luna (`gpt-5.6-luna`) via embedded runtime binding  
-- **Model 2 (Rater B):** Qwen 3.7 Max (`qwen3.7-max-2026-06-08`) via remote API binding  
-- **Model 3 (Rater C):** GLM 5.2 (`glm-5.2`) via remote API binding  
-**Corpus Ingested:** Canonical CareNav Healthcare Navigation Transcript (`CR-001-interview-01.md`, Participant P-01)  
+**Document ID:** `docs/scientific_audit/three-model-research-spine-audit.md`
+**Evaluation Standard:** Istara Research Validity Contract (`docs/architecture/research-validity-contract.md`)
+**Ensemble Configuration:**
+- **Model 1 (Rater A):** Luna (`gpt-5.6-luna`) via embedded runtime binding
+- **Model 2 (Rater B):** Qwen 3.7 Max (`qwen3.7-max-2026-06-08`) via remote API binding
+- **Model 3 (Rater C):** GLM 5.2 (`glm-5.2`) via remote API binding
+**Corpus Ingested:** Canonical CareNav Healthcare Navigation Transcript (`CR-001-interview-01.md`, Participant P-01)
 **Status:** Validated, Verified Live, Reconciled, and Audited
 
 ---

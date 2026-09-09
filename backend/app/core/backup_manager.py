@@ -26,6 +26,7 @@ from sqlalchemy import delete, select
 
 from app.config import settings
 from app.core.file_encryption import decrypted_file_path, encrypt_file_to_path
+from app.core.keyword_index import keyword_index_dir
 from app.models.backup import BackupRecord
 from app.models.database import async_session
 
@@ -73,12 +74,19 @@ def _redact_env_content(content: str) -> str:
     """Replace API key / secret values in .env content with [REDACTED]."""
     redacted_lines: list[str] = []
     sensitive_patterns = re.compile(r"(key|secret|token|password|credential)", re.IGNORECASE)
+    userinfo_pattern = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.-]*://)[^/@\s]+@")
     for line in content.splitlines(keepends=True):
         stripped = line.strip()
         if stripped and not stripped.startswith("#") and "=" in stripped:
             key, _, value = stripped.partition("=")
             if sensitive_patterns.search(key):
                 redacted_lines.append(f"{key}=[REDACTED]\n")
+                continue
+            # Credentials embedded in URLs (e.g. DATABASE_URL=postgres://user:pass@host/db)
+            # are not caught by key-name matching; redact the userinfo part.
+            cleaned = userinfo_pattern.sub(r"\1[REDACTED]@", value.strip(), count=1)
+            if cleaned != value.strip():
+                redacted_lines.append(f"{key}={cleaned}\n")
                 continue
         redacted_lines.append(line)
     return "".join(redacted_lines)
@@ -462,7 +470,7 @@ class BackupManager:
                 components["lance_db"] = {"stores": stores}
 
             # ── 4. BM25 keyword indexes ──
-            kw_src = "./data/keyword_index"
+            kw_src = str(keyword_index_dir())
             if Path(kw_src).is_dir():
                 kw_dest = tmp / "data" / "keyword_index"
                 self._copy_dir(
@@ -810,7 +818,7 @@ class BackupManager:
             # Restore directories
             dir_mappings = {
                 "data/lance_db": "./data/lance_db",
-                "data/keyword_index": "./data/keyword_index",
+                "data/keyword_index": str(keyword_index_dir()),
                 "data/uploads": settings.upload_dir,
                 "data/projects": settings.projects_dir,
                 "backend/app/agents/personas": "./backend/app/agents/personas",
@@ -982,7 +990,7 @@ class BackupManager:
         # Directories
         dir_paths = {
             "lance_db": "./data/lance_db",
-            "keyword_index": "./data/keyword_index",
+            "keyword_index": str(keyword_index_dir()),
             "uploads": settings.upload_dir,
             "projects": settings.projects_dir,
             "personas": "./backend/app/agents/personas",

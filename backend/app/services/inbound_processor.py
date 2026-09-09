@@ -260,7 +260,9 @@ async def process_inbound_channel_message(
             else:
                 q_text = "Research Question"
 
-            source_location = f"channel:{message.channel}:conv:{conversation.id}:msg:{inbound_msg.id}"
+            source_location = (
+                f"channel:{message.channel}:conv:{conversation.id}:msg:{inbound_msg.id}"
+            )
             source_text = f"Q: {q_text}\nA: {message.text}"
             nugget = Nugget(
                 id=str(uuid.uuid4()),
@@ -268,7 +270,9 @@ async def process_inbound_channel_message(
                 text=source_text,
                 source=f"channel:{message.channel}:{deployment.name}",
                 source_location=source_location,
-                tags=json.dumps([deployment.deployment_type, f"channel:{message.channel}", "channel-research"]),
+                tags=json.dumps(
+                    [deployment.deployment_type, f"channel:{message.channel}", "channel-research"]
+                ),
                 phase="discover",
             )
             db.add(nugget)

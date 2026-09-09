@@ -1,7 +1,7 @@
 # HB-UX-07 — Usability session: Elena Vasquez (owner)
 
 > SYNTHETIC FIXTURE. Moderated remote session, 60 minutes. Consent CO-P16-UX.
-> Participant setup: Vasquez Catering (7 staff, screen-reader user), Denver. 
+> Participant setup: Vasquez Catering (7 staff, screen-reader user), Denver.
 
 ## T-A: deposit a $4,200 check on mobile
 - Outcome: **success** in 112s, 2 assists.

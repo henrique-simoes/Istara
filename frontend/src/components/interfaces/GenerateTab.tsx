@@ -18,8 +18,8 @@ const DEVICE_TYPES = [
 ];
 
 const MODELS = [
-  { value: "GEMINI_3_FLASH", label: "Gemini 3 Flash" },
-  { value: "GEMINI_3_PRO", label: "Gemini 3 Pro" },
+  { value: "GEMINI_3_FLASH", label: "Fast Layout Engine" },
+  { value: "GEMINI_3_PRO", label: "Advanced Layout Engine" },
 ];
 
 export default function GenerateTab() {
@@ -62,15 +62,15 @@ export default function GenerateTab() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center max-w-md">
           <Wand2 size={40} className="mx-auto mb-4 text-slate-300 dark:text-slate-600" />
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Stitch Not Configured</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Generative Engine Not Configured</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            Screen generation requires Stitch (Google Gemini) to be configured. Set up your API key in the onboarding wizard or Configuration tab settings.
+            Screen generation requires a Generative Design API key to be configured. Set up your API key in the Configuration tab or onboarding wizard.
           </p>
           <button
             onClick={() => useInterfacesStore.getState().setActiveTab("figma")}
             className="px-4 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 transition-colors"
           >
-            Configure Stitch
+            Configure Engine
           </button>
         </div>
       </div>
@@ -82,7 +82,7 @@ export default function GenerateTab() {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Privacy warning */}
         {!privacyAcknowledged && (
-          <PrivacyWarningBanner service="Stitch" onAcknowledge={acknowledgePrivacy} />
+          <PrivacyWarningBanner service="Generative Engine" onAcknowledge={acknowledgePrivacy} />
         )}
 
         <div>

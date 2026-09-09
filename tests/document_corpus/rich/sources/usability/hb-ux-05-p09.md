@@ -1,7 +1,7 @@
 # HB-UX-05 — Usability session: Jenny Lindqvist (bookkeeper)
 
 > SYNTHETIC FIXTURE. Moderated remote session, 60 minutes. Consent CO-P09-UX.
-> Participant setup: in-house, Dahl Marine, Seattle. 
+> Participant setup: in-house, Dahl Marine, Seattle.
 
 ## T-A: deposit a $4,200 check on mobile
 - Outcome: **success** in 417s, 1 assists.

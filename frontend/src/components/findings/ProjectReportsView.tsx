@@ -458,14 +458,14 @@ export default function ProjectReportsView({
                   {slideInstructions.title}
                 </h3>
               </div>
-              <button 
+              <button
                 onClick={() => setSlideInstructions(null)}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
                 Close
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto bg-slate-50 dark:bg-slate-950 flex-1">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -484,7 +484,7 @@ export default function ProjectReportsView({
                     onClick={copyToClipboard}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                      copied 
+                      copied
                         ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                         : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-istara-500"
                     )}
@@ -498,7 +498,7 @@ export default function ProjectReportsView({
                 {slideInstructions.content}
               </pre>
             </div>
-            
+
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-center">
               <p className="text-[11px] text-slate-400">
                 Paste these instructions into another AI to generate a professional executive slide deck.

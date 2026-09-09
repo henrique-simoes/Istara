@@ -77,7 +77,9 @@ services:
       # reserved for explicit relay/compute probes; the Browser path does not
       # receive or require it, and production credentials must never be used.
       NETWORK_ACCESS_TOKEN: ${QA_NETWORK_ACCESS_TOKEN:-}
-      CORS_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+      # Interpolatable so loopback-port-collision-free local UI runs can add
+      # their own loopback origin; the default is unchanged for CI.
+      CORS_ORIGINS: ${QA_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       JWT_SECRET: ${QA_JWT_SECRET:-qa-only-not-a-production-secret}
       DATA_ENCRYPTION_KEY: ${QA_DATA_ENCRYPTION_KEY:-istara-qa-only-field-encryption-key-rotate-on-real-data}
       DATABASE_URL: ${QA_DATABASE_URL:-sqlite+aiosqlite:////tmp/istara-qa.db}

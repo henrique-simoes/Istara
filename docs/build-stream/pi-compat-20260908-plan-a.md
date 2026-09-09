@@ -1,8 +1,8 @@
 # Plan A — Pi capability inheritance and compatibility authority
 
-**Candidate:** A  
-**Task:** `pi-compat-20260908-PLAN-A`  
-**Planning phase:** independent draft  
+**Candidate:** A
+**Task:** `pi-compat-20260908-PLAN-A`
+**Planning phase:** independent draft
 **Scope:** planning only; no implementation is authorized by this artifact
 
 ## 1. Executive decision

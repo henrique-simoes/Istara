@@ -46,7 +46,7 @@ export default function InterfacesView() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <ViewOnboarding viewId="interfaces" title="Design Tools" description="Generate UI screens, import from Figma, create design briefs and developer handoff specs. Powered by Stitch AI." chatPrompt="How do I generate screens?" />
+      <ViewOnboarding viewId="interfaces" title="Design Tools" description="Generate UI screens, import design systems, create design briefs and developer handoff specs." chatPrompt="How do I generate screens?" />
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto">
         {TABS.map((tab) => (

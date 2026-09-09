@@ -25,6 +25,56 @@ SESSION_ID_CLAIM = "sid"
 SESSION_BOUND_CLAIM = "session_bound"
 _LAST_SEEN_UPDATE_SECONDS = 300
 
+# Paths where a session WITHOUT the MFA claim may still operate. Login mints
+# the claim; the TOTP setup/verify ceremonies and logout must stay reachable
+# so a user can complete or abandon enrollment. Factor-change endpoints are
+# included because they enforce their own in-body TOTP step-up proof.
+#
+# Security note: matching is exact-or-slash-boundary (see
+# _exempt_prefix_matches). A bare startswith would let
+# `/api/auth/logout-evil` ride the `/api/auth/logout` exemption.
+#
+# WebAuthn: only the passkey *login* ceremony (`/api/webauthn/authenticate`)
+# is exempt — it mints `mfa_verified=True` and is the second factor itself.
+# Registration (`/api/webauthn/register/*`), credential listing, and
+# revocation REQUIRE a prior MFA claim when the account has TOTP enabled.
+# The historic `/api/auth/webauthn` entry matched no mounted route (the
+# router mounts at `/api/webauthn/*`) and is intentionally absent.
+MFA_EXEMPT_PREFIXES = (
+    "/api/auth/login",
+    "/api/auth/totp/setup",
+    "/api/auth/totp/verify",
+    "/api/auth/totp/disable",
+    "/api/auth/recovery-codes/generate",
+    "/api/auth/logout",
+    "/api/webauthn/authenticate",
+    "/api/health",
+)
+
+
+def _exempt_prefix_matches(path: str, prefix: str) -> bool:
+    """Return whether ``path`` falls under an MFA-exempt ``prefix``.
+
+    Exact-or-slash-boundary matching: ``/api/auth/logout`` matches
+    ``/api/auth/logout`` and ``/api/auth/logout/`` (and any sub-path), but
+    NOT ``/api/auth/logout-evil``. Query strings never reach here
+    (Starlette ``request.url.path``), so only the `/` boundary matters.
+    """
+    if not path or not prefix:
+        return False
+    if path == prefix:
+        return True
+    return path.startswith(prefix.rstrip("/") + "/")
+
+
+def mfa_claim_satisfied(payload: dict[str, Any] | None, path: str) -> bool:
+    """Return whether a token payload may access ``path`` without MFA proof."""
+    if not payload:
+        return False
+    if payload.get("mfa"):
+        return True
+    return any(_exempt_prefix_matches(path or "", prefix) for prefix in MFA_EXEMPT_PREFIXES)
+
 
 def is_session_bound(payload: dict[str, Any] | None) -> bool:
     """Return whether a token is bound to a server-side auth session."""
@@ -156,6 +206,11 @@ async def validate_auth_session(
             return False
 
         last_seen = _aware(session.last_seen_at)
+        max_inactive = max(60, int(getattr(settings, "session_max_inactive_minutes", 480))) * 60
+        if last_seen is not None and (now - last_seen).total_seconds() > max_inactive:
+            session.revoked_at = now
+            await db.commit()
+            return False
         if last_seen is None or time.time() - last_seen.timestamp() >= _LAST_SEEN_UPDATE_SECONDS:
             session.last_seen_at = now
             await db.commit()
@@ -228,6 +283,7 @@ def _session_to_public_dict(session: AuthSession, current_session_id: str) -> di
         "auth_method": session.auth_method,
         "mfa_verified": bool(session.mfa_verified),
         "ip_address": session.ip_address,
+        "ip_preview": _mask_ip(session.ip_address or ""),
         "ip_hash": _sha256_preview(session.ip_address or ""),
         "user_agent": session.user_agent,
         "user_agent_hash": _sha256_preview(session.user_agent or ""),
@@ -237,6 +293,21 @@ def _session_to_public_dict(session: AuthSession, current_session_id: str) -> di
         "expires_at": session.expires_at.isoformat() if session.expires_at else None,
         "current": session.id == current_session_id,
     }
+
+
+def _mask_ip(value: str) -> str:
+    """Privacy-preserving IP preview: network part only, never the host part."""
+    text = (value or "").strip()
+    if not text:
+        return "unknown IP"
+    if "." in text and ":" not in text:
+        parts = text.split(".")
+        if len(parts) == 4:
+            return ".".join([*parts[:3], "*"])
+    if ":" in text:
+        head = text.split(":")[:4]
+        return ":".join(head) + "::"
+    return _sha256_preview(text)[:12]
 
 
 async def list_active_auth_sessions(

@@ -209,8 +209,13 @@ class SecurityAuthMiddleware(BaseHTTPMiddleware):
 
         # Verify JWT
         from app.core.auth import verify_token
-        from app.core.auth_sessions import current_user_context_for_payload, validate_auth_session
+        from app.core.auth_sessions import (
+            current_user_context_for_payload,
+            mfa_claim_satisfied,
+            validate_auth_session,
+        )
         from app.models.database import async_session
+        from app.models.user import User
 
         payload = verify_token(token)
         if not payload:
@@ -231,6 +236,19 @@ class SecurityAuthMiddleware(BaseHTTPMiddleware):
                     status_code=401,
                     content={"detail": "Authenticated user no longer exists."},
                 )
+            # Enforce the MFA claim globally: sessions minted before MFA
+            # enrollment must not survive once the account requires it.
+            if not mfa_claim_satisfied(payload, path):
+                from sqlalchemy import select as _select
+
+                _user = (
+                    await db.execute(_select(User).where(User.id == str(payload.get("sub") or "")))
+                ).scalar_one_or_none()
+                if _user is not None and getattr(_user, "totp_enabled", False):
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "Multi-factor authentication required."},
+                    )
 
         # Attach user info to request state for downstream use
         request.state.user = user_context

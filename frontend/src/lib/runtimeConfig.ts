@@ -34,7 +34,9 @@ function alignLoopbackUrlWithBrowser(value: string): string {
       return normalized;
     }
 
-    configured.hostname = browserHostname;
+    configured.hostname = browserHostname.includes(":")
+      ? `[${browserHostname}]` // WHATWG URL requires bracketed form for IPv6 hosts
+      : browserHostname.trim().toLowerCase();
     configured.protocol = window.location.protocol === "https:"
       ? configured.protocol === "ws:" || configured.protocol === "wss:" ? "wss:" : "https:"
       : configured.protocol === "ws:" || configured.protocol === "wss:" ? "ws:" : "http:";
@@ -53,7 +55,7 @@ function browserOriginWithPort(port: string): string | null {
   // assuming a fixed backend port. Falls back to the provided port when the
   // browser URL has no explicit port.
   const effectivePort = currentPort || port;
-  return `${protocol}//${hostname}${effectivePort ? `:${effectivePort}` : ""}`;
+  return `${protocol}//${hostname}:${effectivePort}`;
 }
 
 export function getApiBase(): string {
@@ -71,7 +73,7 @@ export function getWsBase(): string {
     if (hostname) {
       const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
       const effectivePort = port || DEFAULT_BACKEND_PORT;
-      return `${wsProtocol}//${hostname}${effectivePort ? `:${effectivePort}` : ""}`;
+      return `${wsProtocol}//${hostname}:${effectivePort}`;
     }
   }
 

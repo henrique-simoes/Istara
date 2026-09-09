@@ -5,6 +5,7 @@ import { Eye, EyeOff, Loader2, Brain } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 
 import { API_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 
 /**
  * "What I know" preview — shows the composed context the agent sees.
@@ -22,10 +23,10 @@ export default function ContextPreview() {
     setLoading(true);
     setError(null);
     try {
-      const _tk = localStorage.getItem("istara_token");
+      const _tk = getToken();
       const _hd: Record<string, string> = {};
       if (_tk) _hd["Authorization"] = `Bearer ${_tk}`;
-      const res = await fetch(`${API_BASE}/api/contexts/composed/${activeProjectId}`, { headers: _hd });
+      const res = await fetch(`${API_BASE}/api/contexts/composed/${activeProjectId}`, { credentials: "include", headers: _hd });
       if (!res.ok) throw new Error("Failed to load");
       const data = await res.json();
       setComposedContext(data.composed_context || "No context configured yet.");

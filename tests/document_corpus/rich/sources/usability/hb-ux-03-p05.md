@@ -1,7 +1,7 @@
 # HB-UX-03 — Usability session: Grace Okafor (owner)
 
 > SYNTHETIC FIXTURE. Moderated remote session, 60 minutes. Consent CO-P05-UX.
-> Participant setup: Okafor Childcare (15 staff), Atlanta. 
+> Participant setup: Okafor Childcare (15 staff), Atlanta.
 
 ## T-A: deposit a $4,200 check on mobile
 - Outcome: **fail** in 688s, 1 assists.

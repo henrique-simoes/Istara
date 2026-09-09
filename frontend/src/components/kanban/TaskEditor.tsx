@@ -2,7 +2,7 @@
 
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertTriangle, BookOpen, Bot, CheckCircle2, ClipboardList, FileStack, FileText, Globe, Network, Plus, RotateCcw, Save, Send, ShieldCheck, Tags, Trash2, User, X, Zap } from "lucide-react";
+import { AlertTriangle, ArrowLeft, BookOpen, Bot, CheckCircle2, ClipboardList, FileStack, FileText, Globe, Network, PlayCircle, Plus, RotateCcw, Save, Send, ShieldCheck, Tags, Trash2, User, X, Zap } from "lucide-react";
 import { useTaskStore } from "@/stores/taskStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { codebookVersions as codebookApi, documents as documentsApi, taskLocking, tasks as tasksApi } from "@/lib/api";
@@ -321,6 +321,52 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
     if (!(await releaseLock())) return;
     onClose();
   };
+  const resumeInProgress = async () => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return;
+    if (!(await saveDraft())) return;
+    try {
+      await requestRevision(
+        task.id,
+        {
+          what_to_review: whatToReview.trim() || "Resumed in progress by researcher.",
+          next_status: "in_progress",
+          labels,
+          skill_name: skillName,
+          input_document_ids: inputDocs,
+          urls,
+        },
+        activeProjectId
+      );
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not resume this task.");
+      return;
+    }
+    if (!(await releaseLock())) return;
+    onClose();
+  };
+  const returnToBacklog = async () => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return;
+    if (!(await saveDraft())) return;
+    try {
+      await requestRevision(
+        task.id,
+        {
+          what_to_review: whatToReview.trim() || "Returned to backlog by researcher.",
+          next_status: "backlog",
+          labels,
+          skill_name: skillName,
+          input_document_ids: inputDocs,
+          urls,
+        },
+        activeProjectId
+      );
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not return this task to backlog.");
+      return;
+    }
+    if (!(await releaseLock())) return;
+    onClose();
+  };
   const sendReport = async () => {
     if (!activeProjectId || activeProjectId !== task.project_id) return;
     if (!(await saveDraft())) return;
@@ -389,12 +435,12 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         : acceptedCodeApplicationCount === 0
           ? "Accept or reconcile coded evidence before reporting."
           : "";
-  const doneGateReason = needsCodingBeforeReport
-    ? "Run a coding pass and accept or reconcile coded evidence before marking this research task Done."
+  const doneGateAdvisory = needsCodingBeforeReport
+    ? "Human approval marks this task Done. Note: Findings remain gated from Reports until qualitative coding and reconciliation pass."
     : researchValidityBlocked
-      ? "Resolve low-agreement or unreconciled coded evidence before marking this research task Done."
+      ? "Human approval marks this task Done. Note: Low-agreement or unreconciled evidence must be resolved before downstream reporting."
       : "";
-  const canMarkDone = !researchValidityBlocked;
+  const canMarkDone = task.status === "in_review";
   const traceSummary = traceability?.summary || {};
   const traceReportDependencyCount = traceability?.report_dependencies?.length || 0;
   const traceLowAgreementCount = traceSummary.low_agreement_dependency_count || traceability?.low_agreement_dependencies?.length || 0;
@@ -561,27 +607,46 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
                       </div>
                     </details>
                   )}
-                  <p className="text-xs font-medium text-slate-500">Send unsuccessful work back to:</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => setRevisionTarget("backlog")} className={revisionTarget === "backlog" ? "review-choice-active" : "review-choice"}>Return to Backlog</button>
-                    <button onClick={() => setRevisionTarget("in_progress")} className={revisionTarget === "in_progress" ? "review-choice-active" : "review-choice"}>Resume In Progress</button>
-                  </div>
                   {task.status === "in_review" && (
-                    <button
-                      onClick={approve}
-                      disabled={!canMarkDone}
-                      title={canMarkDone ? "Approve this task as Done." : doneGateReason}
-                      className="primary-action disabled:opacity-40"
-                    >
-                      <CheckCircle2 size={16} /> Mark Done
-                    </button>
+                    <div className="space-y-2 pt-1">
+                      <button
+                        onClick={approve}
+                        disabled={!canMarkDone}
+                        title="Human approve this task as Done."
+                        className="primary-action w-full flex items-center justify-center gap-2 py-2"
+                      >
+                        <CheckCircle2 size={16} /> Approve as Done
+                      </button>
+                      {doneGateAdvisory && (
+                        <p className="rounded bg-sky-50 px-2.5 py-1.5 text-xs text-sky-800 dark:bg-sky-950/40 dark:text-sky-200">
+                          {doneGateAdvisory}
+                        </p>
+                      )}
+                      <p className="text-xs font-medium text-slate-500 pt-1">Direct task actions:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={resumeInProgress}
+                          className="secondary-action flex items-center justify-center gap-1.5 py-2 text-xs font-medium"
+                          title="Directly resume task in progress"
+                        >
+                          <PlayCircle size={14} /> Resume In Progress
+                        </button>
+                        <button
+                          onClick={returnToBacklog}
+                          className="secondary-action flex items-center justify-center gap-1.5 py-2 text-xs font-medium"
+                          title="Directly return task to backlog"
+                        >
+                          <ArrowLeft size={14} /> Return to Backlog
+                        </button>
+                      </div>
+                      <p className="text-xs font-medium text-slate-500 pt-1">Or request agent revision with notes:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => setRevisionTarget("backlog")} className={revisionTarget === "backlog" ? "review-choice-active" : "review-choice"}>Target: Backlog</button>
+                        <button onClick={() => setRevisionTarget("in_progress")} className={revisionTarget === "in_progress" ? "review-choice-active" : "review-choice"}>Target: In Progress</button>
+                      </div>
+                      <button onClick={flagRevision} disabled={!whatToReview.trim()} className="secondary-action w-full flex items-center justify-center gap-2 disabled:opacity-40" title={whatToReview.trim() ? "Submit written feedback for agent revision" : "Enter notes in 'What to Review' above"}><RotateCcw size={16} /> Request Revision with Notes</button>
+                    </div>
                   )}
-                  {task.status === "in_review" && !canMarkDone && (
-                    <p className="rounded bg-amber-50 px-2 py-1.5 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                      {doneGateReason}
-                    </p>
-                  )}
-                  <button onClick={flagRevision} disabled={!whatToReview.trim()} className="secondary-action disabled:opacity-40"><RotateCcw size={16} /> Request Revision</button>
                   {task.status === "done" && task.review_state === "approved" && (
                     <button
                       onClick={sendReport}

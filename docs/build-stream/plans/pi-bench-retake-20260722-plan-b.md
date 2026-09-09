@@ -1,9 +1,9 @@
 # Independent Plan B — Fresh Pi Benchmark Retake
 
-**Task:** `PI-BENCH-RETAKE-20260722-PLAN-B`  
-**Spec:** `CF-SPEC-9`  
-**Role:** `pi-bench-retake-20260722-architect-b`  
-**Status:** candidate plan; planning only; no live calls authorized  
+**Task:** `PI-BENCH-RETAKE-20260722-PLAN-B`
+**Spec:** `CF-SPEC-9`
+**Role:** `pi-bench-retake-20260722-architect-b`
+**Status:** candidate plan; planning only; no live calls authorized
 **Authority:** the fresh-retake work order and
 `docs/build-stream/conductor-instructions/pi-benchmark-deepseek-moa-execution.md`.
 Older benchmark/recovery plans, approvals, reports, and consensus state are historical

@@ -31,9 +31,7 @@ class KnowledgeSyncService:
         chunks appropriately, and updates both the BM25 keyword index and
         LanceDB vector store.
         """
-        result = await db.execute(
-            select(Document).where(Document.project_id == project_id)
-        )
+        result = await db.execute(select(Document).where(Document.project_id == project_id))
         documents = result.scalars().all()
 
         store = VectorStore(project_id)

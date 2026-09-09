@@ -120,7 +120,9 @@ class PiApiEndpoint(BaseModel):
     """
 
     endpoint_id: str
-    provider_kind: Literal["openai_compat", "openai_responses", "anthropic_compat", "openai_codex"] = "openai_compat"
+    provider_kind: Literal[
+        "openai_compat", "openai_responses", "anthropic_compat", "openai_codex"
+    ] = "openai_compat"
     base_url: str
     model: str
     keychain_service: str
@@ -551,7 +553,9 @@ class Settings(BaseSettings):
             elif Path("./data/simulation-shared").is_dir():
                 self.lance_db_path = "./data/simulation-shared/lance_db"
             elif "simulation-shared" in str(self.database_url):
-                db_clean = self.database_url.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
+                db_clean = self.database_url.replace("sqlite+aiosqlite:///", "").replace(
+                    "sqlite:///", ""
+                )
                 shared_dir = Path(db_clean).parent
                 if shared_dir.is_dir():
                     self.lance_db_path = str(shared_dir / "lance_db")

@@ -425,8 +425,13 @@ async def websocket_endpoint(websocket: WebSocket):
             token = auth_header[7:]
     if token:
         from app.core.auth import verify_token
-        from app.core.auth_sessions import current_user_context_for_payload, validate_auth_session
+        from app.core.auth_sessions import (
+            current_user_context_for_payload,
+            mfa_claim_satisfied,
+            validate_auth_session,
+        )
         from app.models.database import async_session
+        from app.models.user import User
 
         payload = verify_token(token)
         if not payload:
@@ -439,6 +444,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     reason="Invalid or revoked authentication session",
                 )
                 return
+            if not mfa_claim_satisfied(payload, websocket.url.path or "/ws"):
+                from sqlalchemy import select as _select
+
+                _user = (
+                    await db.execute(_select(User).where(User.id == str(payload.get("sub") or "")))
+                ).scalar_one_or_none()
+                if _user is not None and getattr(_user, "totp_enabled", False):
+                    await websocket.close(code=4001, reason="Multi-factor authentication required")
+                    return
             user_context = await current_user_context_for_payload(db, payload)
             if not user_context:
                 await websocket.close(code=4001, reason="Authenticated user no longer exists")

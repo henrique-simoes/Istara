@@ -14,19 +14,10 @@ import {
   Zap,
 } from "lucide-react";
 import type { ChatSession, ChatUsage, PiCatalogModel, PiCatalogProvider, PiEndpointInfo } from "@/lib/types";
-import { isPiEndpointReady, isPiSessionOverrideReady } from "@/lib/modelCatalog";
+import { buildChatModelChoices, resolveChatModelChoice, type ChatModelChoice } from "@/lib/modelCatalog";
 import { cn } from "@/lib/utils";
 
-interface ModelChoice {
-  key: string;
-  provider: PiCatalogProvider | null;
-  model: PiCatalogModel | null;
-  modelId: string;
-  endpointId?: string;
-  label: string;
-  providerLabel: string;
-  enabled: boolean;
-}
+type ModelChoice = ChatModelChoice;
 
 function formatTokens(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return "0";
@@ -116,7 +107,7 @@ function ModelPicker({
               />
               <button type="button" className="ui-icon-button !min-h-[36px] !min-w-[36px]" onClick={() => { setQuery(""); setOpen(false); }} aria-label="Close model menu"><X size={15} /></button>
             </div>
-            <p className="mt-2 px-1 text-[11px] text-slate-500">{query ? `${filtered.length} matches` : "Browse enabled Pi models; type to narrow the catalog."}</p>
+            <p className="mt-2 px-1 text-[11px] text-slate-500">{query ? `${filtered.length} matches` : "Configured models first; type to narrow the full catalog."}</p>
           </div>
           <div id="chat-model-listbox" role="listbox" aria-label="Chat models" className="max-h-80 overflow-y-auto p-2">
             {filtered.length === 0 ? (
@@ -139,6 +130,11 @@ function ModelPicker({
                   <span className="flex items-center gap-2">
                     <span className="truncate text-sm font-semibold">{choice.label}</span>
                     {selected?.key === choice.key && <Check size={15} className="shrink-0 text-istara-600" aria-hidden="true" />}
+                    {choice.configured && choice.enabled && (
+                      <span className="shrink-0 rounded-full bg-istara-100 px-2 py-0.5 text-[10px] font-semibold text-istara-700 dark:bg-istara-950/60 dark:text-istara-300">
+                        Configured
+                      </span>
+                    )}
                   </span>
                   <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{choice.providerLabel} · {choice.modelId}</span>
                 </span>
@@ -247,56 +243,24 @@ export default function ChatModelControls({
   const [agentOpen, setAgentOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
 
-  const choices = useMemo<ModelChoice[]>(() => {
-    const result: ModelChoice[] = [];
-    for (const provider of providers) {
-      for (const model of provider.models) {
-        const endpoint = configured.find((candidate) =>
-          candidate.model === model.id &&
-          (!candidate.pi_provider || candidate.pi_provider === provider.id || candidate.auth_provider === provider.id)
-        );
-        result.push({
-          key: `${provider.id}:${model.id}`,
-          provider,
-          model,
-          modelId: model.id,
-          endpointId: endpoint?.endpoint_id,
-          label: model.name || model.id,
-          providerLabel: provider.display_name,
-          enabled: Boolean(endpoint && isPiEndpointReady(endpoint)),
-        });
-      }
-    }
-    const legacyChoices: ModelChoice[] = engine === "legacy"
-      ? legacyModels.map((modelId) => ({ key: `legacy:${modelId}`, provider: null, model: null, modelId, label: modelId, providerLabel: "Istara local/server", enabled: true }))
-      : [];
-    const ordered = engine === "legacy"
-      ? [...legacyChoices, ...result]
-      : [...result.filter((choice) => choice.enabled), ...result.filter((choice) => !choice.enabled)];
-    const override = activeSession?.model_override;
-    const overrideReady = engine === "legacy" || isPiSessionOverrideReady(
-      configured,
-      override,
-      activeSession?.endpoint_override,
-    );
-    if (override && overrideReady && !ordered.some((choice) => choice.modelId === override && (!activeSession?.endpoint_override || choice.endpointId === activeSession.endpoint_override))) {
-      ordered.unshift({ key: `current:${override}`, provider: null, model: null, endpointId: activeSession?.endpoint_override || undefined, modelId: override, label: override, providerLabel: "Current session model", enabled: true });
-    }
-    return ordered;
-  }, [activeSession, configured, engine, legacyModels, providers]);
+  const choices = useMemo<ModelChoice[]>(() => buildChatModelChoices({
+    providers,
+    configured,
+    legacyModels,
+    engine,
+    modelOverride: activeSession?.model_override,
+    endpointOverride: activeSession?.endpoint_override,
+  }), [activeSession, configured, engine, legacyModels, providers]);
 
   if (!activeSession) return null;
 
-  const activeOverrideReady = engine === "legacy" || isPiSessionOverrideReady(
+  const selected = resolveChatModelChoice(choices, {
     configured,
-    activeSession.model_override,
-    activeSession.endpoint_override,
-  );
-  const selectedOverride = activeOverrideReady
-    ? ((activeSession.endpoint_override ? choices.find((choice) => choice.endpointId === activeSession.endpoint_override) : undefined)
-      || choices.find((choice) => choice.modelId === activeSession.model_override))
-    : undefined;
-  const selected = selectedOverride || (defaultEndpointId ? choices.find((choice) => choice.endpointId === defaultEndpointId && choice.enabled) : undefined) || choices.find((choice) => choice.enabled) || null;
+    engine,
+    modelOverride: activeSession.model_override,
+    endpointOverride: activeSession.endpoint_override,
+    defaultEndpointId,
+  });
   const effortLevels = modelEffortLevels(selected?.model || null);
   const currentEffort = effortLevels.includes(activeSession.thinking_mode || "") ? activeSession.thinking_mode : effortLevels[0];
   const assignedAgent = agents.find((agent: any) => agent.id === activeSession.agent_id);

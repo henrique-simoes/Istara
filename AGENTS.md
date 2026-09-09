@@ -1,59 +1,3 @@
-<!-- compass-forge:start -->
-# Compass Forge Agent Workflow
-
-Compass Forge is the control plane for this repository.
-
-- Project root: this repository checkout (`<repo-root>`)
-- Recipe: `istararustgraphtrial`
-- MCP server: `python -m compass_forge.cli --workspace <compass-forge-root> mcp --target <repo-root> --recipe istararustgraphtrial`
-
-Before editing, run `compass-forge status` and `compass-forge agent-brief --request "<user request>"`.
-For Standard, Full, or uncertain changes, create a durable spec first: `compass-forge spec create "<user request>"`, then `spec plan` and `spec tasks`.
-Use `compass-forge intelligence impact --request "<user request>"` or `--path <path>` before touching important files.
-If tasks exist, use `compass-forge work-order --role implementer --task CF-N`.
-Run `compass-forge gate before` and `compass-forge gate after` for meaningful changes.
-Attach command, gate, and review evidence before marking tasks done.
-UI/menu/route/store/agent/skill/model/test behavior changes must update Istara's living feature documentation under `docs/features/`, regenerate the site/manifests with `python scripts/feature_docs.py --seed-missing --generate-site --check`, and attach that output as Compass Forge evidence.
-Do not silently mutate external repos, global agent config, or generated integration files.
-
-### Required Compass Forge repo-intelligence usage
-
-Understand dependencies, relationships, and structure through Compass Forge's graph —
-never by grep-and-guess alone. This is mandatory, not optional:
-
-1. **Orient first, every session:** `compass-forge status` → `compass-forge next`. If
-   staleness is flagged, run `compass-forge refresh` and `compass-forge index refresh`
-   BEFORE trusting any graph answer — stale graphs lie.
-2. **Before editing any non-trivial file, run BOTH:**
-   - `compass-forge intelligence impact --path <path> --request "<the request>"` —
-     must/should-inspect ranking, affected tests/contracts/routes, ownership/hotspot risk.
-   - `compass-forge intelligence why <path>` — why the file exists: importers, graph
-     links, routes, models, decisions, docs, recent git. If you cannot explain a file's
-     role after `why`, you are not ready to edit it.
-3. **Map relationships structurally:** use `compass-forge intelligence related
-   --path <p>` (or `--symbol <s>`) for grounded dependency lists,
-   `compass-forge intelligence code-graph` for the full file/symbol/edge graph,
-   `compass-forge intelligence report` for repo-level structure,
-   `compass-forge intelligence ownership`, `intelligence dead-code`,
-   `intelligence git-history <path>`, and `intelligence trends` as the question demands.
-4. **Context packs before raw file dumps:** `compass-forge context "<request>"
-   --pack-type standard` (BM25 + graph, byte-budgeted; prefer `signature`/`summary`
-   resolutions; escalate to `--pack-type full`/`review` only when needed). Do not read
-   dozens of files raw when a pack answers the question.
-5. **Pick verification from the graph:** `compass-forge intelligence test-impact
-   --path <p>` and `compass-forge suggest-tests "<request>"` choose the tests that
-   actually cover a change; run them and attach as command evidence.
-6. **Unsure which CF tool fits:** `compass-forge classify "<request>"` for process
-   level; `forge.suggest_tools {request}` (MCP) for the ranked tool. An empty
-   `suggest_tools` result means off-topic — do not pad and retry.
-7. **Cost ladder — cheapest tool that answers the question:** `status`/`next` →
-   `intelligence impact`/`why`/`related` → `context` packs → `agent-brief` (once per
-   session, `--compact` when possible) → `code-graph`/`report` (targeted queries only).
-8. **Durable choices:** record architecture/process decisions with
-   `compass-forge decision record --title "…" --body "…"` on Full-scope work so the
-   next agent inherits the reasoning.
-<!-- compass-forge:end -->
-
 ## Istara Research Spine Contract
 
 Istara is a research system. Every product feature that ingests, creates,
@@ -128,6 +72,21 @@ Do not start live backend/frontend servers, send chat-completion probes, or trig
 
 Use gitignored environment files, process environment, or macOS Keychain for live LLM endpoints and tokens. Never commit or paste private LLM server URLs, tokens, connection strings, or endpoint fingerprints that could identify a private server.
 
+## Full UI Testing Suite Contract
+
+Every novel feature, sub-feature, addition, or behavior change must ship with coverage in the container-first user-journey suite (`tests/simulation/` scenarios + `tests/real_user_benchmark/` where long-form/team/donation flows apply). A feature is not done until the suite drives it the way a real user would, through a container, with dated verdicts.
+
+When adding or changing product behavior, the author must:
+
+1. **Add or extend a Playwright scenario** in `tests/simulation/scenarios/` (registered in `lib/scenario-registry.mjs`) that performs the feature's real browser acts — navigate, click, fill, upload, send — not API calls with a screenshot attached. API-behind-browser steps must be labeled as such in the scenario.
+2. **Cover the matrix**: roles (admin/researcher/viewer/stranger where auth-adjacent), light/dark, 375px reflow, keyboard Tab + visible focus, and loading/error/empty states. Mutations use synthetic data only — never golden data, no destructive ops.
+3. **Record the verdict** in the scenario's summary plus the coverage map (`tests/simulation/lib/scenario-registry.mjs` and any `coverage-matrix.json`): pass/fail with date, screenshots/HAR paths, and the QA lane used (`docker-compose.qa.yml` `ui` profile, loopback publish only).
+4. **Extend the long-form layers when the feature touches them**: team/role flows → `tests/real_user_benchmark/lib/persona.mjs`; donated-compute/model paths → donor/model-management probes; Research Spine paths → spine probes (gates stay non-bypassable, evidence stays provisional until Done-task acceptance).
+5. **Keep it green without live dependencies**: new scenarios must pass in the credential-free lane or declare their live requirements (donors, models, third-party keys) and fail closed with `not_runnable` — never silently skip, never fabricate.
+6. **Attach suite evidence** as Compass Forge command evidence (scenario command + verdict summary) before finishing the feature's tasks, and update `TESTING.md`/`testing/TEST_HISTORY.md` when the suite topology or release-relevant behavior changes.
+
+Stale scenarios are architecture debt: if a feature change breaks a scenario's selectors, copy, or flow, updating that scenario is part of the feature — not a follow-up.
+
 <!-- BEGIN SKILLS-LIBRARY (managed by skills-librarian) -->
 ## Skills library
 
@@ -176,3 +135,19 @@ refresh):
 | `transcribe-gpt` | Use this to transcribe any audio or video file (mp4, mov, mkv, mp3, wav, m4a, ogg, …) into a single speaker-diarized Markdown transcript with OpenAI's gpt-4o-transcribe-diarize model. The skill always asks the user for the API key, the file to transcribe, and the output destination (default ~/Desktop), then handles everything else itself: ffmpeg audio extraction, splitting under the 25 MB upload cap, model settings (diarized_json, chunking_strategy=auto), known-speaker references for consistent labels across chunks, retries, resumable per-chunk cache, reference-style Markdown output, and a total elapsed-time report. Trigger on requests to transcribe / diarize / speech-to-text a recording with OpenAI, "gpt-4o-transcribe-diarize", "speaker diarization transcript", or /transcribe-gpt. |
 | `vps` | Use this to safely inspect, deploy, update, or retire repositories on the managed VPS with Dokploy and Docker, especially when strict workload isolation, minimal public ports, firewall verification, keychain-backed SSH access, and tamper-evident action auditing are required. |
 <!-- END SKILLS-LIBRARY (managed by skills-librarian) -->
+
+<!-- compass-forge:start -->
+# Compass Forge Agent Workflow
+
+Project root: `<REPO_ROOT>` (repo-relative; the literal checkout path must never be committed — see `scripts/public_repo_quality_audit.py` rule `machine_checkout_path`)
+Recipe: `istara-main`
+Runtime: Rust-only (`compass-forge mcp`).
+
+1. Call `forge.status`, then `forge.agent_brief` for the user's request.
+2. For meaningful changes create, clarify, plan, and task a durable spec.
+3. Use impact, graph, model, zones, context packs, and a role-specific work order before editing.
+4. Run gates before and after; attach command, gate, and review evidence.
+5. Preserve independent blind review: freeze the reviewer sheet before revealing implementation evidence, then reconcile.
+6. Never invoke a legacy runtime or silently mutate global configuration.
+
+<!-- compass-forge:end -->

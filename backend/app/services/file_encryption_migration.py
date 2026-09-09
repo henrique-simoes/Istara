@@ -82,11 +82,33 @@ async def rotate_existing_project_content(db) -> dict[str, int | str]:
         if changed:
             docs_rotated += 1
 
+    # Existing encrypted backup archives use the same file key: rewrite them
+    # so rotation does not strand the recovery path the UI confirmation
+    # asks about. Plain (unencrypted) backups are left untouched.
+    from pathlib import Path
+
+    from app.config import settings as _settings
+
+    backups_rotated = 0
+    backups_skipped = 0
+    backup_root = Path(_settings.backup_dir)
+    if backup_root.is_dir():
+        for archive in sorted(backup_root.glob("*.tar.gz.enc")):
+            try:
+                if rewrite_encrypted_file(archive, old_key=old_key, new_key=new_key):
+                    backups_rotated += 1
+                else:
+                    backups_skipped += 1
+            except Exception:
+                backups_skipped += 1
+
     replace_file_encryption_key(new_key)
     if docs_rotated:
         await db.commit()
     return {
         "files_rotated": files_rotated,
         "documents_rotated": docs_rotated,
+        "backups_rotated": backups_rotated,
+        "backups_skipped": backups_skipped,
         "key_fingerprint": key_fingerprint(new_key),
     }

@@ -1,7 +1,7 @@
 # Master plan A — testing to main convergence
 
-Synthesis round: `b35539f4f7bdabc5be5f`  
-Status: planning candidate only; implementation and promotion require owner approval  
+Synthesis round: `b35539f4f7bdabc5be5f`
+Status: planning candidate only; implementation and promotion require owner approval
 Target: `testing -> main`
 
 ## Executive decision

@@ -483,7 +483,7 @@ export default function ChatView() {
                   {liveCleanContent && (
                     <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                       <div className="streaming-cursor">
-                        <ReactMarkdown 
+                        <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
                             p: ({ children }) => <p className="my-1">{children}</p>,
@@ -538,7 +538,7 @@ export default function ChatView() {
                 enabled={capabilities.canUseSteering}
               />
             )}
-            
+
             {/* Pending file chips */}
             {(pendingFiles.length > 0 || pendingDocRefs.length > 0) && (
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -610,7 +610,7 @@ export default function ChatView() {
                 {isRecording && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <button 
+                    <button
                       onClick={cancelRecording}
                       className="text-xs text-slate-400 hover:text-red-500"
                     >
@@ -627,7 +627,7 @@ export default function ChatView() {
                 aria-label={isRecording ? "Stop recording" : "Start recording"}
                 className={cn(
                   "p-2.5 rounded-lg transition-colors",
-                  isRecording 
+                  isRecording
                     ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 animate-pulse"
                     : isTranscribing
                     ? "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"

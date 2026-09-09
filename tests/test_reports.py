@@ -122,7 +122,7 @@ async def test_slide_instructions_caching_and_persistence(auth_headers):
     transport = ASGITransport(app=app)
     mock_turn = AsyncMock()
     mock_turn.text = "Generated high-impact slide instructions."
-    
+
     with patch("app.api.routes.presentation.agentic.completion", return_value=mock_turn) as mock_comp:
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             # 1. First call: generates and caches
@@ -160,4 +160,3 @@ async def test_slide_instructions_caching_and_persistence(auth_headers):
             assert r3.json()["cached"] is False
             assert r3.json()["instructions"] == "Regenerated fresh slide instructions."
             assert mock_comp.call_count == 2
-

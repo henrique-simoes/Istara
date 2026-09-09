@@ -15,7 +15,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Settings2, Target, CheckCircle, Loader2,
   Users, UserPlus, MoreVertical, Trash2, Pause, Play, FolderOpen,
-  Download, AlertTriangle, X, Pencil, Check, Send,
+  Download, AlertTriangle, X, Pencil, Check, Send, Shield,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAuthStore } from "@/stores/authStore";
@@ -27,6 +27,7 @@ import AgenticCoreSection from "@/components/settings/AgenticCoreSection";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 import { API_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 
 // ── Types ──
 
@@ -34,6 +35,15 @@ interface ProjectMetrics {
   findings: { nuggets: number; facts: number; insights: number; recommendations: number; total: number };
   tasks: { total: number; done: number; in_progress: number; completion_rate: number };
   quality: { avg_confidence: number; messages: number };
+  evidence_chain?: {
+    evidence_units: number;
+    coding_applications: number;
+    reconciliations: number;
+    grounding_ratio: number;
+    accepted_nuggets: number;
+    provisional_nuggets: number;
+    is_healthy: boolean;
+  };
   by_phase: Record<string, { nuggets: number; facts: number; insights: number; recommendations: number; total: number }>;
 }
 
@@ -51,7 +61,7 @@ interface MemberInfo {
 // ── Helpers ──
 
 function _authHeaders(): Record<string, string> {
-  const t = localStorage.getItem("istara_token");
+  const t = getToken();
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
@@ -86,6 +96,7 @@ export default function ProjectSettingsView() {
   // Metrics
   const [metrics, setMetrics] = useState<ProjectMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
 
   // Members
   const [members, setMembers] = useState<MemberInfo[]>([]);
@@ -112,10 +123,17 @@ export default function ProjectSettingsView() {
   useEffect(() => {
     if (!activeProjectId) return;
     setMetricsLoading(true);
-    fetch(`${API_BASE}/api/metrics/${activeProjectId}`, { headers: _authHeaders() })
-      .then((r) => r.ok ? r.json() : null)
+    setMetricsError(null);
+    fetch(`${API_BASE}/api/metrics/${activeProjectId}`, { credentials: "include", headers: _authHeaders() })
+      .then((r) => {
+        if (!r.ok) throw new Error(`Metrics request failed (${r.status})`);
+        return r.json();
+      })
       .then(setMetrics)
-      .catch(() => setMetrics(null))
+      .catch((e) => {
+        setMetrics(null);
+        setMetricsError(e instanceof Error ? e.message : "Could not load metrics");
+      })
       .finally(() => setMetricsLoading(false));
   }, [activeProjectId]);
 
@@ -124,7 +142,7 @@ export default function ProjectSettingsView() {
     if (!activeProjectId || !teamMode) return;
     setMembersLoading(true);
     try {
-      const data = await fetch(`${API_BASE}/api/projects/${activeProjectId}/members`, { headers: _authHeaders() }).then((r) => r.json());
+      const data = await fetch(`${API_BASE}/api/projects/${activeProjectId}/members`, { credentials: "include", headers: _authHeaders() }).then((r) => r.json());
       setMembers(data.members || []);
     } catch {
       setMembers([]);
@@ -219,6 +237,7 @@ export default function ProjectSettingsView() {
     if (!activeProjectId) return;
     try {
       await fetch(`${API_BASE}/api/projects/${activeProjectId}/members`, {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json", ..._authHeaders() },
         body: JSON.stringify({ user_id: userId, role: "researcher" }),
@@ -231,6 +250,7 @@ export default function ProjectSettingsView() {
   const handleRemoveMember = async (userId: string) => {
     if (!activeProjectId) return;
     await fetch(`${API_BASE}/api/projects/${activeProjectId}/members/${userId}`, {
+        credentials: "include",
       method: "DELETE",
       headers: _authHeaders(),
     });
@@ -241,6 +261,7 @@ export default function ProjectSettingsView() {
   const handleChangeRole = async (userId: string, newRole: string) => {
     if (!activeProjectId) return;
     await fetch(`${API_BASE}/api/projects/${activeProjectId}/members/${userId}`, {
+        credentials: "include",
       method: "PATCH",
       headers: { "Content-Type": "application/json", ..._authHeaders() },
       body: JSON.stringify({ role: newRole }),
@@ -426,6 +447,11 @@ export default function ProjectSettingsView() {
           <div className="flex items-center justify-center py-12 text-slate-400">
             <Loader2 size={20} className="animate-spin mr-2" /> Loading metrics...
           </div>
+        ) : metricsError ? (
+          <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+            <span>Could not load research metrics: {metricsError}</span>
+          </div>
         ) : metrics ? (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -437,6 +463,81 @@ export default function ProjectSettingsView() {
                 color={metrics.quality.avg_confidence >= 0.7 ? "border-green-500" : "border-yellow-500"} />
               <MetricCard emoji="💬" label="Messages" value={metrics.quality.messages} color="border-blue-500" />
             </div>
+
+            {/* Research Spine Evidence Chain Health */}
+            {metrics.evidence_chain && (
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
+                    <Shield size={16} className="text-istara-600 dark:text-istara-400" />
+                    Research Spine Evidence-Chain Health
+                  </h3>
+                  <span
+                    className={cn(
+                      "text-xs px-2.5 py-0.5 rounded-full font-medium",
+                      metrics.evidence_chain.is_healthy
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                        : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                    )}
+                  >
+                    {metrics.evidence_chain.is_healthy ? "Spine Grounded" : "Needs Coding"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Evidence Units</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                      {metrics.evidence_chain.evidence_units}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Raw source spans</p>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Coding Apps</p>
+                    <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                      {metrics.evidence_chain.coding_applications}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Multi-model codes</p>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Reconciliations</p>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+                      {metrics.evidence_chain.reconciliations}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Consensus receipts</p>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Grounding Ratio</p>
+                    <p
+                      className={cn(
+                        "text-2xl font-bold mt-1",
+                        metrics.evidence_chain.grounding_ratio >= 0.8
+                          ? "text-green-600 dark:text-green-400"
+                          : metrics.evidence_chain.grounding_ratio >= 0.5
+                            ? "text-yellow-600 dark:text-yellow-400"
+                            : "text-red-600 dark:text-red-400"
+                      )}
+                    >
+                      {(metrics.evidence_chain.grounding_ratio * 100).toFixed(0)}%
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Source grounded</p>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 col-span-2 sm:col-span-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Accepted Atoms</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+                      {metrics.evidence_chain.accepted_nuggets}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {metrics.evidence_chain.provisional_nuggets} provisional
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Atomic Research Breakdown */}
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
@@ -606,7 +707,8 @@ export default function ProjectSettingsView() {
               {canManageProject && (
                 <button
                   onClick={async () => {
-                    await fetch(`${API_BASE}/api/projects/${activeProjectId}/unlink-folder`, { method: "POST", headers: { "Content-Type": "application/json", ..._authHeaders() } });
+                    await fetch(`${API_BASE}/api/projects/${activeProjectId}/unlink-folder`, {
+credentials: "include", method: "POST", headers: { "Content-Type": "application/json", ..._authHeaders() } });
                     await updateProject(activeProjectId!, { watch_folder_path: null });
                     window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "info", title: "Folder Unlinked", message: "Project folder has been unlinked." } }));
                   }}
@@ -628,6 +730,7 @@ export default function ProjectSettingsView() {
                   setLinkingFolder(true);
                   try {
                     const res = await fetch(`${API_BASE}/api/projects/${activeProjectId}/link-folder`, {
+        credentials: "include",
                       method: "POST",
                       headers: { "Content-Type": "application/json", ..._authHeaders() },
                       body: JSON.stringify({ folder_path: folderInput.trim() }),
@@ -650,6 +753,7 @@ export default function ProjectSettingsView() {
                   setLinkingFolder(true);
                   try {
                     const res = await fetch(`${API_BASE}/api/projects/${activeProjectId}/link-folder`, {
+        credentials: "include",
                       method: "POST",
                       headers: { "Content-Type": "application/json", ..._authHeaders() },
                       body: JSON.stringify({ folder_path: folderInput.trim() }),
@@ -705,7 +809,8 @@ export default function ProjectSettingsView() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => {
-                  fetch(`${API_BASE}/api/projects/${activeProjectId}/export`, { method: "POST", headers: _authHeaders() })
+                  fetch(`${API_BASE}/api/projects/${activeProjectId}/export`, {
+                credentials: "include", method: "POST", headers: _authHeaders() })
                     .then(() => window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "success", title: "Exported", message: "Project exported to data/exports/" } })))
                     .catch(() => window.dispatchEvent(new CustomEvent("istara:toast", { detail: { type: "warning", title: "Export Failed", message: "Could not export project." } })));
                 }}

@@ -246,6 +246,27 @@ class TestValidationExecutor:
         assert result.method == "full_ensemble"
         assert result.passed is True
 
+    async def test_full_ensemble_single_input_baseline_is_provisional(self, executor):
+        """F-W5-R1-4: single-input baseline must not claim 3-model consensus."""
+        output = MagicMock()
+        output.nuggets = [{"text": "Only finding", "tags": ["nav", "ux"]}]
+
+        result = await executor._full_ensemble(output)
+        assert result.method == "full_ensemble"
+        # Baseline still passes (weak gate) but reports honestly.
+        assert result.passed is True
+        assert result.details["model_count"] == 1
+        assert result.details["model_count"] != 3
+        assert result.details["mode"] == "baseline_provisional_single_input"
+        assert result.details["provisional"] is True
+        assert "NOT multi-model consensus" in result.details["warning"]
+
+        empty = MagicMock()
+        empty.nuggets = []
+        empty_result = await executor._full_ensemble(empty)
+        assert empty_result.details["model_count"] == 0
+        assert empty_result.details["provisional"] is True
+
     def test_validation_result_dataclass_defaults(self):
         """ValidationResult has correct defaults."""
         vr = ValidationResult(passed=True, method="test")

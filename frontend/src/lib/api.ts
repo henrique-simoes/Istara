@@ -207,6 +207,8 @@ export const validation = {
   modelIntelligence: (projectId: string, limit = 50) =>
     request<{
       project_id: string;
+      status?: string;
+      error_type?: string;
       leaderboard: Array<{
         skill_name: string;
         model_name: string;
@@ -216,6 +218,16 @@ export const validation = {
         executions: number;
         source: string;
       }>;
+      model_activity?: Array<{
+        model: string;
+        model_name: string;
+        total_calls: number;
+        success_count: number;
+        success_rate: number;
+        avg_duration_ms: number;
+        quality_ema: number;
+        operations: string[];
+      }>;
       error_taxonomy: Record<string, Array<{ skill_name: string; model_name: string; duration_ms: number }>>;
       tool_success_rates: Array<{
         tool: string;
@@ -224,7 +236,43 @@ export const validation = {
         avg_duration_ms: number;
         p50_duration_ms: number;
         p90_duration_ms: number;
+        p95_duration_ms?: number;
+        p99_duration_ms?: number;
+        min_duration_ms?: number;
+        max_duration_ms?: number;
         error_types: Record<string, number>;
+        agents?: string[];
+        models?: string[];
+      }>;
+      tool_summary?: {
+        total_calls?: number;
+        overall_success_rate?: number;
+        distinct_tools?: number;
+        avg_duration_ms?: number;
+        error_types_observed?: string[];
+      };
+      tool_audit_trail?: Array<{
+        id: string;
+        tool_name: string;
+        status: "success" | "failure";
+        duration_ms: number;
+        model_name: string;
+        agent_id: string;
+        task_id: string;
+        skill_name: string;
+        timestamp: string | null;
+        arguments_summary: string;
+        reasoning_bank_id?: string | null;
+        error_type?: string | null;
+      }>;
+      steering_summary?: {
+        total_events: number;
+        action_counts: Record<string, number>;
+      };
+      json_parse_success_rates?: Array<{
+        model: string;
+        json_parse_success_rate: number;
+        total_parses: number;
       }>;
       latency_percentiles: Array<{
         model: string;
@@ -262,7 +310,11 @@ export const findings = {
       insight: "insights",
       recommendation: "recommendations",
     };
-    return fetch(`${API_BASE}/api/findings/${plural[type]}/${id}?project_id=${encodeURIComponent(projectId)}`, { method: "DELETE", headers: { ..._getAuthHeaders() } });
+    return fetch(`${API_BASE}/api/findings/${plural[type]}/${id}?project_id=${encodeURIComponent(projectId)}`, {
+      credentials: "include",
+      method: "DELETE",
+      headers: { ..._getAuthHeaders() },
+    });
   },
 };
 
@@ -273,6 +325,7 @@ export const files = {
     const formData = new FormData();
     formData.append("file", file);
     const res = await fetch(`${API_BASE}/api/files/upload/${projectId}`, {
+      credentials: "include",
       method: "POST",
       headers: { ..._getAuthHeaders() },
       body: formData,
@@ -741,6 +794,7 @@ export const interfaces = {
       const payload: Record<string, unknown> = { message, project_id: projectId };
       if (sessionId) payload.session_id = sessionId;
       const res = await fetch(`${API_BASE}/api/interfaces/design-chat`, {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json", ..._getAuthHeaders() },
         body: JSON.stringify(payload),
@@ -1103,6 +1157,7 @@ export const laws = {
   match: (query: string, topK?: number) =>
     get<LawMatch[]>(`/api/laws/match?query=${encodeURIComponent(query)}&top_k=${topK || 5}`),
   compliance: (projectId: string) => get<ComplianceProfile>(`/api/laws/compliance/${projectId}`),
+  evaluateCompliance: (projectId: string) => post<ComplianceProfile>(`/api/laws/compliance/${projectId}/evaluate`),
   radar: (projectId: string) => get<RadarChartData>(`/api/laws/compliance/${projectId}/radar`),
 };
 
@@ -1294,4 +1349,93 @@ export const piEndpoints = {
       method: "PUT",
       body: JSON.stringify({ endpoint_ids: endpointIds }),
     }),
+};
+
+export const audit = {
+  logs: (params?: {
+    limit?: number;
+    offset?: number;
+    project_id?: string;
+    user_id?: string;
+    method?: string;
+    path_prefix?: string;
+    event_type?: string;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.user_id) searchParams.set("user_id", params.user_id);
+    if (params?.method) searchParams.set("method", params.method);
+    if (params?.path_prefix) searchParams.set("path_prefix", params.path_prefix);
+    if (params?.event_type) searchParams.set("event_type", params.event_type);
+    const qs = searchParams.toString();
+    return request<{
+      total: number;
+      limit: number;
+      offset: number;
+      entries: Array<{
+        id: string;
+        timestamp: string;
+        user_id: string;
+        method: string;
+        path: string;
+        status_code: number;
+        duration_ms: number;
+        ip_address: string;
+        project_id?: string;
+        event_type?: string;
+        details?: Record<string, any>;
+      }>;
+    }>(`/api/audit/logs${qs ? `?${qs}` : ""}`);
+  },
+  spans: (params?: {
+    limit?: number;
+    offset?: number;
+    project_id?: string;
+    operation?: string;
+    model_name?: string;
+    status?: string;
+    skill_name?: string;
+    agent_id?: string;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.operation) searchParams.set("operation", params.operation);
+    if (params?.model_name) searchParams.set("model_name", params.model_name);
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.skill_name) searchParams.set("skill_name", params.skill_name);
+    if (params?.agent_id) searchParams.set("agent_id", params.agent_id);
+    const qs = searchParams.toString();
+    return request<{
+      total: number;
+      limit: number;
+      offset: number;
+      entries: Array<{
+        id: string;
+        trace_id: string;
+        parent_id?: string;
+        operation: string;
+        skill_name?: string;
+        model_name?: string;
+        agent_id?: string;
+        started_at: string;
+        duration_ms: number;
+        status: string;
+        quality_score?: number;
+        consensus_score?: number;
+        reliability_score?: number;
+        error_type?: string;
+        error_message?: string;
+        project_id?: string;
+        task_id?: string;
+        tool_name?: string;
+        tool_success?: boolean;
+        tool_duration_ms?: number;
+        source?: string;
+      }>;
+    }>(`/api/audit/spans${qs ? `?${qs}` : ""}`);
+  },
 };

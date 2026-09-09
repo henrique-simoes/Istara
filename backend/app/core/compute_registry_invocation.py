@@ -9,10 +9,9 @@ from collections.abc import AsyncGenerator
 
 from app.config import settings
 from app.core.compute_capacity import compute_capacity_envelope
-from app.core.compute_node import ComputeNode
+from app.core.compute_node import ComputeNode, _hydrate_local_resources
 from app.core.compute_registry_helpers import (
     TRANSIENT_CHAT_MAX_ATTEMPTS,
-    _hydrate_local_resources,
     _looks_like_context_length_error,
     _looks_like_model_availability_error,
     _server_endpoint_identity,

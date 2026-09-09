@@ -633,7 +633,7 @@ petals" — one identity/config/telemetry plane, even where pi-the-library can't
   change embedding space, or every stored vector is invalidated.
 - UX parity: `api/routes/llm_servers.py` CRUD keeps working (legacy plane) AND projects
   into the Pi catalog (§5.2.2); `api/routes/settings.py` model pickers read merged
-  catalog info; `network_discovery.py` results feed BOTH planes (discovered server → 
+  catalog info; `network_discovery.py` results feed BOTH planes (discovered server →
   LLMServer row → auto-projection). Frontend `Sidebar.tsx`/settings views get an engine
   indicator + per-project engine selector (single new store field; simulation scenario
   added — Layer 3 mandate).

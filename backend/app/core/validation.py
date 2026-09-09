@@ -91,6 +91,7 @@ async def _dispatch_ensemble(
     minimum_n: int | None = None,
     project_id: str | None = None,
     max_tokens: int | None = None,
+    effort: str | None = None,
 ) -> tuple[list[str], list[dict], list[str]]:
     """W7 AgenticDispatcher ensemble branch (master plan §8 W7).
 
@@ -112,7 +113,12 @@ async def _dispatch_ensemble(
         distinct=distinct,
         temperatures=temperatures,
         minimum_n=minimum_n,
-        params=TurnParams(model=model, temperature=0.7, max_tokens=max_tokens),
+        params=TurnParams(
+            model=model,
+            temperature=0.7,
+            max_tokens=max_tokens,
+            thinking_mode=effort,
+        ),
         spine_phase="review",
     )
     responses: list[str] = []
@@ -123,7 +129,12 @@ async def _dispatch_ensemble(
         ) or ""
         if sample.status != "success" or not sample.text:
             logger.warning(
-                "Ensemble %s: sample %d failed (status=%s)", purpose, index, sample.status
+                "Ensemble %s: sample %d failed (status=%s, endpoint=%s, error=%s)",
+                purpose,
+                index,
+                sample.status,
+                endpoint_id or "unresolved",
+                (getattr(sample, "error", None) or "")[:200],
             )
             continue
         responses.append(sample.text)
@@ -146,6 +157,7 @@ async def dual_run(
     model: str | None = None,
     project_id: str | None = None,
     max_tokens: int | None = None,
+    effort: str | None = None,
 ) -> ValidationResult:
     """Run the same prompt on two distinct endpoints and compare.
 
@@ -167,6 +179,7 @@ async def dual_run(
             model=model,
             project_id=project_id,
             max_tokens=max_tokens,
+            effort=effort,
         )
     except PiEndpointResolutionError:
         return await self_moa(
@@ -219,6 +232,7 @@ async def adversarial_review(
     system: str = "",
     model: str | None = None,
     project_id: str | None = None,
+    effort: str | None = None,
     coding_run_id: str | None = None,
     evidence_unit_ids: list[str] | None = None,
     codebook_version_id: str | None = None,
@@ -247,7 +261,7 @@ async def adversarial_review(
             project_id=project_id or "",
             system=system or None,
             messages=[{"role": "user", "content": review_prompt}],
-            params=TurnParams(model=model, temperature=0.3),
+            params=TurnParams(model=model, temperature=0.3, thinking_mode=effort),
             spine_phase="review",
         )
         review = outcome.text or ""
@@ -255,6 +269,8 @@ async def adversarial_review(
             {
                 "endpoint_id": outcome.endpoint_id or "",
                 "route_kind": "agentic_completion",
+                "model": getattr(outcome, "model", None) or "",
+                "served_model": getattr(outcome, "served_model", None) or "",
             }
         ]
     except Exception as e:
@@ -314,6 +330,7 @@ async def full_ensemble(
     min_responses: int = 3,
     project_id: str | None = None,
     max_tokens: int | None = None,
+    effort: str | None = None,
 ) -> ValidationResult:
     """Run prompt across 3+ models/endpoints for full ensemble consensus.
 
@@ -337,6 +354,7 @@ async def full_ensemble(
             model=model,
             project_id=project_id,
             max_tokens=max_tokens,
+            effort=effort,
         )
     except PiEndpointResolutionError:
         return await dual_run(
@@ -408,6 +426,7 @@ async def self_moa(
     n: int = 3,
     project_id: str | None = None,
     max_tokens: int | None = None,
+    effort: str | None = None,
 ) -> ValidationResult:
     """Self Mixture-of-Agents: same model, different temperatures.
 
@@ -431,6 +450,7 @@ async def self_moa(
             model=model,
             project_id=project_id,
             max_tokens=max_tokens,
+            effort=effort,
         )
     except Exception as exc:
         logger.warning("Self-MoA dispatch failed: %s", exc)
@@ -464,6 +484,7 @@ async def debate_rounds(
     model: str | None = None,
     rounds: int = 2,
     project_id: str | None = None,
+    effort: str | None = None,
     coding_run_id: str | None = None,
     evidence_unit_ids: list[str] | None = None,
     codebook_version_id: str | None = None,
@@ -490,7 +511,7 @@ async def debate_rounds(
             project_id=project_id or "",
             system=system or None,
             messages=messages,
-            params=TurnParams(model=model, temperature=0.7),
+            params=TurnParams(model=model, temperature=0.7, thinking_mode=effort),
             spine_phase="review",
         )
         current = outcome.text or ""
@@ -536,7 +557,7 @@ async def debate_rounds(
                 project_id=project_id or "",
                 system=system or None,
                 messages=debate_messages,
-                params=TurnParams(model=model, temperature=0.5),
+                params=TurnParams(model=model, temperature=0.5, thinking_mode=effort),
                 spine_phase="review",
             )
             current = outcome.text or ""
@@ -545,6 +566,8 @@ async def debate_rounds(
                 {
                     "endpoint_id": outcome.endpoint_id or "",
                     "route_kind": "agentic_completion",
+                    "model": getattr(outcome, "model", None) or "",
+                    "served_model": getattr(outcome, "served_model", None) or "",
                 }
             )
         except Exception as e:

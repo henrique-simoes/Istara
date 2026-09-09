@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, AlertTriangle, ExternalLink, Loader2 } from "lucide-react";
 import { detectLocalLLM, providerLabel } from "@/lib/modelProviders";
+import { getToken } from "@/lib/tokenStore";
 
 /**
  * Onboarding step: check if a local LLM provider is running.
@@ -17,9 +18,10 @@ export default function LLMCheckStep() {
     async function detect() {
       // Proxy through backend to avoid CORS issues (Enhancement Plan Step 3)
       try {
-        const token = localStorage.getItem("istara_token");
+        const token = getToken();
         const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-        const res = await fetch("/api/settings/models", { headers, signal: AbortSignal.timeout(5000) });
+        const res = await fetch("/api/settings/models", {
+        credentials: "include", headers, signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
           if (data.status === "online" && data.models.length > 0) {

@@ -30,18 +30,18 @@ Following comprehensive user verification on the live stack, 9 specific architec
 ### Working Backwards PRFAQ / One-Pager
 
 #### Press Release
-**Heading:** Istara Research Core: Uncompromised Human-in-the-Loop Governance, Persistent Multi-Vector Memory, and Enterprise Audit Transparency.  
-**Subheading:** Restoring human researcher authority at the Done gate, grounding qualitative coding across document boundaries, and delivering end-to-end telemetry for autonomous agent actions.  
-**Summary:** Istara today announces critical architectural hardening across the Research Spine. Human researchers can now review and approve tasks as Done with 1-click workflows, coding runs automatically locate source-grounded evidence units across all associated artifacts, qualitative interview analysis features a master-detail transcription workbench with phrase highlighting, and agentic tool invocations are fully auditable down to individual arguments and execution traces.  
-**Problem:** AI-driven research platforms often lock human operators out of lifecycle approvals due to artificial automated barriers, lose qualitative coding connections when evidence units lack explicit task pointers, and fail to preserve vector index chunks across ephemeral container restarts.  
+**Heading:** Istara Research Core: Uncompromised Human-in-the-Loop Governance, Persistent Multi-Vector Memory, and Enterprise Audit Transparency.
+**Subheading:** Restoring human researcher authority at the Done gate, grounding qualitative coding across document boundaries, and delivering end-to-end telemetry for autonomous agent actions.
+**Summary:** Istara today announces critical architectural hardening across the Research Spine. Human researchers can now review and approve tasks as Done with 1-click workflows, coding runs automatically locate source-grounded evidence units across all associated artifacts, qualitative interview analysis features a master-detail transcription workbench with phrase highlighting, and agentic tool invocations are fully auditable down to individual arguments and execution traces.
+**Problem:** AI-driven research platforms often lock human operators out of lifecycle approvals due to artificial automated barriers, lose qualitative coding connections when evidence units lack explicit task pointers, and fail to preserve vector index chunks across ephemeral container restarts.
 **Solution:** Istara enforces the immutable Research Spine contract: human researchers hold ultimate approval authority at the In Review gate, downstream reporting is strictly fail-closed against ungrounded findings, vector indices persist in shared Docker volumes, and every tool call and ensemble consensus evaluation is recorded in durable telemetry.
 
 #### Internal FAQ
-- **How does the Task Done gate respect the Research Spine?**  
+- **How does the Task Done gate respect the Research Spine?**
   Under `AGENTS.md`, `Human-Approved Done` is an explicit human verification stage. In `TaskEditor.tsx`, `canMarkDone` must allow human researchers to approve tasks as Done or resume In Progress work. However, the downstream "Send to Report" gate remains strictly blocked until multi-model coding, reliability, and reconciliation gates have validated the findings.
-- **Why were coding runs finding 0 evidence units?**  
+- **Why were coding runs finding 0 evidence units?**
   `EvidenceUnit` records are ingested at the source document level, meaning `task_id` is often null. `_load_units` in `research_validity_evidence_units.py` only queried `EvidenceUnit.task_id == task_id`. We broaden unit discovery to include input/output documents of the task, task findings, and Sharon DAG evidence edges.
-- **How is Knowledge Base persistence guaranteed?**  
+- **How is Knowledge Base persistence guaranteed?**
   The Docker container mounts an in-memory `tmpfs` at `/app/data`, while `/app/data/simulation-shared` is backed by host storage. Setting `LANCE_DB_PATH` to `/app/data/simulation-shared/lance_db` ensures chunks and embeddings permanently survive container restarts.
 
 ---

@@ -24,6 +24,7 @@ import { validation, telemetry } from "@/lib/api";
 import { useProjectStore } from "@/stores/projectStore";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
+import ToolAuditTrailTable, { ToolAuditEntry } from "@/components/common/ToolAuditTrailTable";
 
 interface MethodStatRow {
   method: string;
@@ -515,6 +516,9 @@ function ModelIntelligenceSection({ projectId }: ModelIntelligenceSectionProps) 
   const [selfHealingIssues, setSelfHealingIssues] = useState<
     Array<{ trigger: string; severity: string; message: string }>
   >([]);
+  const [toolAuditTrail, setToolAuditTrail] = useState<ToolAuditEntry[]>([]);
+  const [toolSummary, setToolSummary] = useState<any>(null);
+  const [intelUnavailable, setIntelUnavailable] = useState(false);
   const [loadingIntel, setLoadingIntel] = useState(false);
 
   useEffect(() => {
@@ -531,6 +535,9 @@ function ModelIntelligenceSection({ projectId }: ModelIntelligenceSectionProps) 
     validation.modelIntelligence(projectId).then((d) => {
       setLeaderboard(d.leaderboard);
       setToolStats(d.tool_success_rates);
+      setToolAuditTrail(d.tool_audit_trail || []);
+      setToolSummary(d.tool_summary || null);
+      setIntelUnavailable((d as any).status === "unavailable");
       setLatencyData(d.latency_percentiles);
       setLoadingIntel(false);
     }).catch(() => setLoadingIntel(false));
@@ -571,6 +578,11 @@ function ModelIntelligenceSection({ projectId }: ModelIntelligenceSectionProps) 
         <p className="text-sm text-slate-500 mt-1">
           Model performance, tool reliability, and latency insights
         </p>
+        {intelUnavailable && (
+          <p role="status" className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+            Model intelligence temporarily unavailable; figures below may be incomplete.
+          </p>
+        )}
       </div>
 
       {/* Telemetry Controls */}
@@ -750,6 +762,9 @@ function ModelIntelligenceSection({ projectId }: ModelIntelligenceSectionProps) 
           </div>
         </div>
       )}
+
+      {/* Interactive Tool Audit Trail */}
+      <ToolAuditTrailTable entries={toolAuditTrail} summary={toolSummary} />
 
       {/* Latency Percentiles */}
       {latencyData.length > 0 && (

@@ -1,26 +1,26 @@
 # Methodological & Empirical Audit: Long-Horizon Agentic Engine Comparison
 
-**Document ID:** `docs/scientific_audit/long-horizon-agentic-engine-audit.md`  
-**Evaluation Standard:** Istara Research Validity Contract (`docs/architecture/research-validity-contract.md`)  
-**Execution Environment:** Isolated Container Runtime in Docker (`istara-testing-backend:latest`) via SSH orchestration  
-**Comparative Targets:**  
-- **Engine A:** Pi Agentic Engine (`agentic_engine="pi"`, Node.js `pi-agent-core` runtime, multi-session, streaming, prompt caching)  
-- **Engine B:** Istara Legacy ReAct Engine (`agentic_engine="legacy"`, Python-driven ReAct loop)  
-**Live Frontier Models:**  
-- **Orchestration Agent (Cleo):** Qwen 3.7 Max (`qwen3.7-max-2026-06-08`) via Alibaba DashScope OpenAI-compatible API  
-- **Spine Multi-Model Ensemble:** Luna (`gpt-5.6-luna`), Qwen 3.7 Max (`qwen3.7-max-2026-06-08`), GLM 5.2 (`glm-5.2`)  
+**Document ID:** `docs/scientific_audit/long-horizon-agentic-engine-audit.md`
+**Evaluation Standard:** Istara Research Validity Contract (`docs/architecture/research-validity-contract.md`)
+**Execution Environment:** Isolated Container Runtime in Docker (`istara-testing-backend:latest`) via SSH orchestration
+**Comparative Targets:**
+- **Engine A:** Pi Agentic Engine (`agentic_engine="pi"`, Node.js `pi-agent-core` runtime, multi-session, streaming, prompt caching)
+- **Engine B:** Istara Legacy ReAct Engine (`agentic_engine="legacy"`, Python-driven ReAct loop)
+**Live Frontier Models:**
+- **Orchestration Agent (Cleo):** Qwen 3.7 Max (`qwen3.7-max-2026-06-08`) via Alibaba DashScope OpenAI-compatible API
+- **Spine Multi-Model Ensemble:** Luna (`gpt-5.6-luna`), Qwen 3.7 Max (`qwen3.7-max-2026-06-08`), GLM 5.2 (`glm-5.2`)
 **Status:** Executed Live, Reconciled, Formally Audited, and Reproducible
 
 ---
 
 ## 1. Executive Summary & The Central Empirical Question
 
-> **The Central Question:**  
+> **The Central Question:**
 > *Are Istara's agentic engines actually working for real? Are they capable of maintaining long-horizon coherence, multi-step tool-calling chains, dynamic mid-turn user steering, and cross-source reasoning across RAG retrieval, active codebooks, survey sentiment data, and Sharon Atomic DAG promotion without hallucination or ungrounded leaps?*
 
 ### The Empirical Verdict: **YES (Verified with High Methodological Rigor)**
 
-Across a live 8-phase research trajectory inspired by Scenario 76, both the **Pi Agentic Engine** and the **Istara Legacy ReAct Engine** successfully executed full end-to-end qualitative workflows against live frontier LLMs inside an isolated Docker environment. 
+Across a live 8-phase research trajectory inspired by Scenario 76, both the **Pi Agentic Engine** and the **Istara Legacy ReAct Engine** successfully executed full end-to-end qualitative workflows against live frontier LLMs inside an isolated Docker environment.
 
 Crucially, the new **Pi Agentic Engine** demonstrated significant operational superiority over the Legacy engine:
 1. **13.2% Faster Total Execution:** Pi completed the entire 6-turn conversational research lifecycle in **47.30 seconds** compared to **54.46 seconds** for Legacy ReAct.
@@ -117,22 +117,22 @@ Crucially, the new **Pi Agentic Engine** demonstrated significant operational su
 
 > **Verdict: "A Transformative Breakthrough in Grounded Research Automation"**
 
-1. **True Codebook Governance Over Ungrounded Tagging:**  
+1. **True Codebook Governance Over Ungrounded Tagging:**
    Most AI research tools generate superficial keywords ("frustrated", "confused", "slow") without methodology. When asked *"what's in the codebook now?"*, Istara did not invent tags; it retrieved the authoritative inclusion/exclusion rules and evaluated evidence strictly against defined constructs (`caregiver-privacy`, `readiness-transparency`).
-2. **Proper Separation of Data, Inference, and Action (Sharon Atomic Research):**  
+2. **Proper Separation of Data, Inference, and Action (Sharon Atomic Research):**
    In UX research, a quote is not a fact, and an insight is not a recommendation. Istara strictly prevents models from jumping from raw participant quotes directly to design prescriptions. The 4-tier DAG ensures that every recommendation is supported by an insight, which is grounded in aggregated facts, which are anchored in verified nuggets.
-3. **Handling Contradictory and Divergent Sentiment:**  
+3. **Handling Contradictory and Divergent Sentiment:**
    When the mid-turn steering injected survey data, the agent did not erase the interview findings or manufacture false unanimity. It recognized that qualitative interviews provide depth on *why* caregivers worry about privacy, while quantitative survey responses establish *how widespread* that concern is across the patient population.
 
 ### 4.2 What Would a Research Spine / Methodological Specialist Say?
 
 > **Verdict: "Statistically Defensible, Auditable, and Mathematically Sound"**
 
-1. **Statistical Reliability Before Consensus:**  
+1. **Statistical Reliability Before Consensus:**
    Ensemble LLM voting is often flawed because naive voting models agree on hallucinations. Istara calculates real inter-coder reliability: Fleiss' Kappa ($\kappa$) measures nominal agreement above chance, and Krippendorff's Alpha ($\alpha$) accounts for missing data and magnitude. The observed scores ($\kappa = 0.69$, $\alpha = 0.933$) prove genuine cross-model convergence across OpenAI (Luna), Alibaba (Qwen), and Zhipu (GLM) architectures.
-2. **The Zero-Trust Human Review Seam:**  
+2. **The Zero-Trust Human Review Seam:**
    The HTTP 409 enforcement on `move_task(status="done")` is the cornerstone of research integrity. No AI model—regardless of capability or confidence score—can unilaterally declare a research task complete or publish a report. The human reviewer retains final authority.
-3. **Minto SCQA Synthesis with Provenance:**  
+3. **Minto SCQA Synthesis with Provenance:**
    The Barbara Minto Pyramid Principle requires that executive summaries lead with the core recommendation supported by MECE groupings. Istara achieves this while preserving a 56-edge backward traceability path: an executive reading the final recommendation can click directly back to the exact participant quote that prompted it.
 
 ---
@@ -163,11 +163,11 @@ Crucially, the new **Pi Agentic Engine** demonstrated significant operational su
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Subprocess Protocol Stability:**  
+1. **Subprocess Protocol Stability:**
    The Pi runtime operates via a dedicated Node.js supervisor (`@earendil-works/pi-agent-core` v0.84.2) using JSONL Protocol v2.0 over standard I/O. It guarantees session isolation, monotonic frame sequencing, and graceful error recovery.
-2. **Prompt Caching Efficiency:**  
+2. **Prompt Caching Efficiency:**
    Pi's prompt structure preserves exact prefix stability across conversational turns. In this benchmark, **72.2% of prompt tokens (25,344 tokens)** were served directly from cache, yielding faster turn turnaround and substantially lower cost ($0.013 USD).
-3. **Idempotent Tool Execution:**  
+3. **Idempotent Tool Execution:**
    All mutating actions pass through `execute_with_idempotency` with durable SHA-256 hashes, ensuring network hiccups or client retries never create duplicate research tasks or corrupted graph nodes.
 
 ---

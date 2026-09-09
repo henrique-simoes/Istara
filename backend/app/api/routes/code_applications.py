@@ -127,10 +127,12 @@ async def create_code_application(
         source_location=payload.source_location,
         start_offset=payload.start_offset,
         end_offset=payload.end_offset,
-        metadata_json=json.dumps({
-            "coder": username,
-            "created_via": "qualitative_coding_studio",
-        }),
+        metadata_json=json.dumps(
+            {
+                "coder": username,
+                "created_via": "qualitative_coding_studio",
+            }
+        ),
     )
     db.add(evidence_unit)
 

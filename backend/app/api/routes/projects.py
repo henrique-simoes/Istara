@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.field_encryption import safe_decrypt_field
+from app.core.keyword_index import keyword_index_dir
 from app.core.permissions import (
     get_project_role,
     get_subject,
@@ -138,8 +139,8 @@ def _remove_managed_project_artifacts(project_id: str) -> None:
             "project_versions",
         ),
         (
-            Path(settings.data_dir) / "keyword_index",
-            Path(settings.data_dir) / "keyword_index" / f"{normalized_id}.db",
+            keyword_index_dir(),
+            keyword_index_dir() / f"{normalized_id}.db",
             "keyword_index",
         ),
     )

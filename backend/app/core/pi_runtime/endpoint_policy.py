@@ -347,7 +347,9 @@ def _persisted_equals_old_catalog(
     if old_record is None:
         return True
     if field in _COST_FIELD_TO_CATALOG_KEY:
-        old_rate = float((old_record.get("cost") or {}).get(_COST_FIELD_TO_CATALOG_KEY[field]) or 0.0)
+        old_rate = float(
+            (old_record.get("cost") or {}).get(_COST_FIELD_TO_CATALOG_KEY[field]) or 0.0
+        )
         try:
             persisted_rate = float(persisted_value or 0.0)
         except (TypeError, ValueError):
@@ -377,11 +379,13 @@ def prepare_pi_endpoint_payload(data: Any, existing: PiApiEndpoint | None = None
                 preserved_fields.add(field)
         payload["endpoint_id"] = existing.endpoint_id
     if existing is not None:
-        old_provider = str(
-            getattr(existing, "pi_provider", "")
-            or getattr(existing, "auth_provider", "")
-            or ""
-        ).strip().lower()
+        old_provider = (
+            str(
+                getattr(existing, "pi_provider", "") or getattr(existing, "auth_provider", "") or ""
+            )
+            .strip()
+            .lower()
+        )
         old_model = str(getattr(existing, "model", "") or "").strip()
         new_provider = str(payload.get("pi_provider") or "").strip().lower()
         new_model = str(payload.get("pi_model") or "").strip()
@@ -402,9 +406,7 @@ def prepare_pi_endpoint_payload(data: Any, existing: PiApiEndpoint | None = None
             for field in _CATALOG_MANAGED_PROVENANCE_FIELDS:
                 if field in provided_fields or field not in preserved_fields:
                     continue  # explicit in this PUT always wins; nothing to do
-                if _persisted_equals_old_catalog(
-                    field, existing_dump.get(field), old_record
-                ):
+                if _persisted_equals_old_catalog(field, existing_dump.get(field), old_record):
                     # Tier-4 fill of the previous model — refresh from the new
                     # record (and let the AC-6 preflight judge the new rates).
                     preserved_fields.discard(field)

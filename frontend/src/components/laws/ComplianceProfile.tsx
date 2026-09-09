@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { AlertCircle, BarChart3, ChevronDown, ChevronRight, ArrowUpDown } from "lucide-react";
+import { AlertCircle, BarChart3, ChevronDown, ChevronRight, ArrowUpDown, RefreshCw, Wand2 } from "lucide-react";
 import { useLawsStore } from "@/stores/lawsStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
@@ -49,10 +49,27 @@ function scoreBarColor(score: number): string {
 }
 
 export default function ComplianceProfile() {
-  const { compliance, loading, error, fetchCompliance } = useLawsStore();
+  const { compliance, loading, error, fetchCompliance, evaluateCompliance } = useLawsStore();
   const { activeProjectId } = useProjectStore();
   const [sortAsc, setSortAsc] = useState(true);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [evaluating, setEvaluating] = useState(false);
+  const [evalSuccess, setEvalSuccess] = useState<string | null>(null);
+
+  const handleEvaluate = async () => {
+    if (!activeProjectId || evaluating) return;
+    setEvaluating(true);
+    setEvalSuccess(null);
+    try {
+      await evaluateCompliance(activeProjectId);
+      setEvalSuccess("UX Law evaluation complete!");
+      setTimeout(() => setEvalSuccess(null), 4000);
+    } catch (err: any) {
+      console.error("Evaluation failed", err);
+    } finally {
+      setEvaluating(false);
+    }
+  };
 
   useEffect(() => {
     if (activeProjectId) {
@@ -138,6 +155,30 @@ export default function ComplianceProfile() {
                   <p className="text-amber-700 dark:text-amber-300">UX Law tags</p>
                 </div>
               </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={handleEvaluate}
+                  disabled={evaluating}
+                  className="inline-flex items-center gap-2 rounded-lg bg-istara-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-istara-700 disabled:opacity-50 transition-colors"
+                >
+                  {evaluating ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Evaluating Findings...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 size={14} />
+                      <span>Run UX Law Compliance Audit</span>
+                    </>
+                  )}
+                </button>
+                {evalSuccess && (
+                  <span className="text-xs font-medium text-green-700 dark:text-green-400 animate-fade-in">
+                    ✓ {evalSuccess}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -150,20 +191,38 @@ export default function ComplianceProfile() {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-6">
       {/* Overall score */}
-      <div className="flex items-center gap-4 p-4 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-        <div className="text-center">
-          <p className={cn("text-4xl font-bold", scoreColor(compliance.overall_score))}>
-            {Math.round(compliance.overall_score)}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Overall Score</p>
-        </div>
-        <div className="flex-1">
-          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-            <div
-              className={cn("h-full rounded-full transition-all", scoreBarColor(compliance.overall_score))}
-              style={{ width: `${Math.min(100, compliance.overall_score)}%` }}
-            />
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+        <div className="flex items-center gap-4 flex-1 min-w-[240px]">
+          <div className="text-center">
+            <p className={cn("text-4xl font-bold", scoreColor(compliance.overall_score))}>
+              {Math.round(compliance.overall_score)}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Overall Score</p>
           </div>
+          <div className="flex-1">
+            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className={cn("h-full rounded-full transition-all", scoreBarColor(compliance.overall_score))}
+                style={{ width: `${Math.min(100, compliance.overall_score)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleEvaluate}
+            disabled={evaluating}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+            title="Re-run compliance evaluation against project findings"
+          >
+            <RefreshCw size={13} className={cn(evaluating && "animate-spin")} />
+            <span>{evaluating ? "Auditing..." : "Re-evaluate UX Laws"}</span>
+          </button>
+          {evalSuccess && (
+            <span className="text-xs font-medium text-green-600 dark:text-green-400">
+              ✓ {evalSuccess}
+            </span>
+          )}
         </div>
       </div>
 

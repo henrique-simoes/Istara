@@ -322,9 +322,9 @@ async def test_health_check_discovers_lmstudio_capabilities_without_loaded_model
 
 
 def test_local_compute_node_hydrates_hardware_resources(monkeypatch):
-    import app.core.compute_registry_helpers as compute_registry_helpers
+    import app.core.compute_node as compute_node_module
 
-    monkeypatch.setattr(compute_registry_helpers, "_LOCAL_RESOURCE_SNAPSHOT", None)
+    monkeypatch.setattr(compute_node_module, "_LOCAL_RESOURCE_SNAPSHOT", None)
     profile = SimpleNamespace(
         total_ram_gb=64.0,
         available_ram_gb=42.5,

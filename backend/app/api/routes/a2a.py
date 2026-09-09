@@ -126,6 +126,31 @@ async def _authorize_agent_card_request(request: Request) -> dict | JSONResponse
                 status_code=401,
                 content={"detail": "Invalid or revoked authentication session."},
             )
+        # Defense-in-depth MFA enforcement (F-W5-R1-3): the card endpoint
+        # lives outside the /api middleware namespace and performs its own
+        # auth, so it must enforce the MFA claim itself.
+        from app.core.auth_sessions import mfa_claim_satisfied
+
+        if not mfa_claim_satisfied(payload, request.url.path or ""):
+            from sqlalchemy import select as _select
+
+            from app.models.user import User as _User
+
+            _row = (
+                await db.execute(_select(_User).where(_User.id == str(payload.get("sub") or "")))
+            ).scalar_one_or_none()
+            if _row is not None and getattr(_row, "totp_enabled", False):
+                await _record_a2a_event(
+                    request,
+                    "a2a.agent_card.denied",
+                    user_id=str(payload.get("sub", "")),
+                    status_code=403,
+                    details={"reason": "mfa_required"},
+                )
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Multi-factor authentication required."},
+                )
         user_context = await current_user_context_for_payload(db, payload)
         if not user_context:
             await _record_a2a_event(
@@ -206,6 +231,21 @@ async def _authorize_a2a_request(request: Request) -> dict | JSONResponse:
     async with async_session() as db:
         if not await validate_auth_session(db, payload, request):
             return _a2a_jsonrpc_error(401, -32000, "Invalid or revoked authentication session.")
+        # Defense-in-depth MFA enforcement (F-W5-R1-3): JSON-RPC auth is
+        # route-level (outside /api middleware), so the MFA claim must be
+        # enforced here — the global middleware never sees this decision.
+        from app.core.auth_sessions import mfa_claim_satisfied as _mfa_ok
+
+        if not _mfa_ok(payload, request.url.path or ""):
+            from sqlalchemy import select as _select2
+
+            from app.models.user import User as _User2
+
+            _row2 = (
+                await db.execute(_select2(_User2).where(_User2.id == str(payload.get("sub") or "")))
+            ).scalar_one_or_none()
+            if _row2 is not None and getattr(_row2, "totp_enabled", False):
+                return _a2a_jsonrpc_error(403, -32003, "Multi-factor authentication required.")
         user_context = await current_user_context_for_payload(db, payload)
         if not user_context:
             return _a2a_jsonrpc_error(401, -32000, "Authenticated user no longer exists.")

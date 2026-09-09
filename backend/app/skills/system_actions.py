@@ -791,6 +791,15 @@ def _classify_exception(exc: Exception) -> str:
     return _classify_tool_error(str(exc))
 
 
+def _content_free_arguments_summary(params: dict[str, Any]) -> str:
+    """Return parameter names only, never values, for content-free telemetry."""
+    try:
+        keys = sorted(str(k) for k in (params or {}).keys() if not str(k).startswith("_"))
+    except Exception:
+        return ""
+    return ", ".join(keys)[:500]
+
+
 async def execute_tool(
     tool_name: str,
     params: dict[str, Any],
@@ -814,6 +823,7 @@ async def execute_tool(
     resolved_trace_id = trace_id or params.get("_trace_id") or uuid.uuid4().hex[:36]
     resolved_task_id = task_id or params.get("task_id") or params.get("target_task_id")
     resolved_model_name = model_name or str(params.get("_model_name") or "")
+    arguments_summary = _content_free_arguments_summary(params)
     if resolved_task_id is not None:
         resolved_task_id = str(resolved_task_id)[:36]
 
@@ -834,6 +844,7 @@ async def execute_tool(
                 parent_id=parent_id,
                 error_type="unknown_tool",
                 error_message=err_msg,
+                arguments_summary=arguments_summary,
                 session=session,
             )
         except Exception as tel_err:
@@ -898,6 +909,7 @@ async def execute_tool(
                 parent_id=parent_id,
                 error_type=error_type,
                 error_message=error_message,
+                arguments_summary=arguments_summary,
                 session=session,
             )
         except Exception as tel_err:
@@ -925,6 +937,7 @@ async def execute_tool(
                 parent_id=parent_id,
                 error_type=error_type,
                 error_message=error_msg,
+                arguments_summary=arguments_summary,
                 session=session,
             )
         except Exception as tel_err:

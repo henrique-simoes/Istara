@@ -78,6 +78,11 @@ class FileEncryptionRotateRequest(BaseModel):
     confirm_rotation: bool = False
 
 
+class DataEncryptionRotateRequest(BaseModel):
+    confirm_rotation: bool = False
+    confirm_memory_only: bool = False
+
+
 def _persist_env(key: str, value: str) -> bool:
     """Persist a runtime setting when storage is writable.
 
@@ -379,6 +384,47 @@ async def rotate_file_encryption_key(
 
     result = await rotate_existing_project_content(db)
     return {"status": "rotated", **result}
+
+
+@router.post("/settings/data-encryption/rotate")
+async def rotate_data_encryption_key_route(
+    data: DataEncryptionRotateRequest,
+    request: Request,
+):
+    """Rotate the field-level data-encryption key with backward-compatible reads.
+
+    Old rows stay decryptable via retained previous keys (bounded to 3), so no
+    bulk re-encryption is required. The new key is returned ONCE and, like
+    other server secrets, is memory-only unless injected externally — the
+    caller must confirm they understand custody.
+    """
+    require_global_role(request, "admin")
+    if not data.confirm_rotation or not data.confirm_memory_only:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm key rotation and memory-only custody of the new key.",
+        )
+    from app.core.field_encryption import (
+        CRYPTO_AVAILABLE,
+        FieldEncryptionUnavailable,
+        rotate_data_encryption_key,
+    )
+
+    if not CRYPTO_AVAILABLE:
+        raise HTTPException(status_code=503, detail="cryptography is required for key rotation")
+    try:
+        result = rotate_data_encryption_key()
+    except FieldEncryptionUnavailable as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return {
+        "status": "rotated",
+        "key_id": result["key_id"],
+        "previous_key_count": result["previous_key_count"],
+        "fingerprint": result["fingerprint"],
+        "new_key": result["new_key"],
+        "custody": "memory_only_unless_injected_externally",
+        "warning": "Store the new key in a secrets manager or env injection; restart without it strands newly written rows.",
+    }
 
 
 @router.get("/settings/models")

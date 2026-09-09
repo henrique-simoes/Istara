@@ -43,6 +43,7 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
 import { API_BASE } from "@/lib/runtimeConfig";
 import { VIEW_NAMES, isKnownView, isProjectRequiredView, isViewAllowed } from "@/lib/navigation";
+import { getToken } from "@/lib/tokenStore";
 
 const VIEW_STORAGE_KEY = "istara_active_view";
 
@@ -98,7 +99,7 @@ export default function HomeClient() {
     const authStore = useAuthStore.getState();
     const status = await authStore.checkTeamStatus();
 
-    const token = localStorage.getItem("istara_token");
+    const token = getToken();
     if (!token && !status.team_mode && !status.insecure) {
       await authStore.login("local", "");
       setAuthenticated(true);
@@ -134,7 +135,7 @@ export default function HomeClient() {
         const authStore = useAuthStore.getState();
         const status = await authStore.checkTeamStatus();
 
-        const token = localStorage.getItem("istara_token");
+        const token = getToken();
         if (!token) {
           if (!status.team_mode && !status.insecure) {
             await authStore.login("local", "");
@@ -195,7 +196,8 @@ export default function HomeClient() {
       // loads before backend, causing empty project list and wrong tour state.
       for (let i = 0; i < 15; i++) {
         try {
-          const res = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(2000) });
+          const res = await fetch(`${API_BASE}/api/health`, {
+          credentials: "include", signal: AbortSignal.timeout(2000) });
           if (res.ok) break;
         } catch {
           // Backend not ready yet

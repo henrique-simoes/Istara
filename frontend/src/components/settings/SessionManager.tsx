@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Clock, LogOut, MonitorSmartphone, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import SeeMoreList from "@/components/common/SeeMoreList";
 import { useAuthStore, type AuthSession } from "@/stores/authStore";
 
 type PendingAction =
@@ -73,10 +74,7 @@ export default function SessionManager() {
     fetchSessions();
   }, [fetchSessions]);
 
-  const otherSessionCount = useMemo(
-    () => sessions.filter((session) => !session.current).length,
-    [sessions]
-  );
+  const otherSessionCount = sessions.filter((session) => !session.current).length;
 
   const confirmTitle = pending?.kind === "others"
     ? "Revoke Other Sessions"
@@ -160,8 +158,11 @@ export default function SessionManager() {
           No active sessions.
         </div>
       ) : (
-        <div className="space-y-2">
-          {sessions.map((session) => (
+        <SeeMoreList
+          items={sessions}
+          noun="session"
+          listId="active-sessions"
+          renderItem={(session) => (
             <div
               key={session.id}
               className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-3"
@@ -187,7 +188,7 @@ export default function SessionManager() {
                     )}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                    <span className="font-mono">{session.ip_address || "unknown IP"}</span>
+                    <span className="font-mono">{session.ip_preview || session.ip_address || "unknown IP"}</span>
                     <span>{session.auth_method}</span>
                     <span className="inline-flex items-center gap-1">
                       <Clock size={12} />
@@ -207,8 +208,8 @@ export default function SessionManager() {
                 {session.current ? "Sign Out" : "Revoke"}
               </button>
             </div>
-          ))}
-        </div>
+          )}
+        />
       )}
 
       <ConfirmDialog

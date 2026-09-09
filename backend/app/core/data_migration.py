@@ -15,6 +15,7 @@ from sqlalchemy import inspect, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.keyword_index import keyword_index_dir
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ async def export_full_database(db: AsyncSession) -> dict:
 
     # Catalog filesystem references
     lance_path = Path(settings.lance_db_path)
-    keyword_path = Path("./data/keyword_index")
+    keyword_path = keyword_index_dir()
     upload_path = Path(settings.upload_dir)
     persona_path = Path(__file__).parent.parent / "agents" / "personas"
 

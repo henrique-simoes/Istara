@@ -1,7 +1,7 @@
 # HB-UX-06 — Usability session: Robert Chen (teller)
 
 > SYNTHETIC FIXTURE. Moderated remote session, 60 minutes. Consent CO-P12-UX.
-> Participant setup: Northloop Branch 03, Austin. 
+> Participant setup: Northloop Branch 03, Austin.
 
 ## T-A: deposit a $4,200 check on mobile
 - Outcome: **fail** in 567s, 3 assists.

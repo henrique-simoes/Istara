@@ -1,13 +1,15 @@
 import { API_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 import type { ChatUsage, PiCatalogProvider, PiEndpointInfo, ThinkingMode } from "@/lib/types";
 
 function authHeaders(): Record<string, string> {
-  const token = typeof window === "undefined" ? "" : localStorage.getItem("istara_token");
+  const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function json<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...authHeaders(), ...options?.headers },
     ...options,
   });
@@ -30,6 +32,7 @@ export const chat = {
     if (thinkingMode) payload.thinking_mode = thinkingMode;
     const res = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         ...authHeaders(),
@@ -104,6 +107,7 @@ export const chat = {
     if (language) formData.append("language", language);
 
     const res = await fetch(`${API_BASE}/api/chat/voice`, {
+      credentials: "include",
       method: "POST",
       headers: authHeaders(),
       body: formData,

@@ -32,7 +32,11 @@ async def get_current_user(request: Request) -> dict:
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
 
-    from app.core.auth_sessions import current_user_context_for_payload, validate_auth_session
+    from app.core.auth_sessions import (
+        current_user_context_for_payload,
+        mfa_claim_satisfied,
+        validate_auth_session,
+    )
     from app.models.database import async_session
 
     async with async_session() as db:
@@ -41,6 +45,21 @@ async def get_current_user(request: Request) -> dict:
                 status_code=401,
                 detail="Invalid or revoked authentication session.",
             )
+        # Defense-in-depth MFA enforcement (F-W5-R1-3): the global
+        # SecurityAuthMiddleware is the primary HTTP gate, but it skips
+        # WebSocket upgrades — per-handler checks are the only WS
+        # enforcement. Enforcing here as well keeps route-level
+        # `Depends(get_current_user)` safe even if middleware ordering
+        # changes or a new transport bypasses it.
+        if not mfa_claim_satisfied(payload, request.url.path or ""):
+            from app.models.user import User
+
+            _user = await db.get(User, str(payload.get("sub") or ""))
+            if _user is not None and getattr(_user, "totp_enabled", False):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Multi-factor authentication required.",
+                )
         user_context = await current_user_context_for_payload(db, payload)
         if not user_context:
             raise HTTPException(status_code=401, detail="Authenticated user no longer exists.")

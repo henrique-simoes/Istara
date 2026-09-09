@@ -432,7 +432,9 @@ async def _generate_pi_runtime(
             elif etype in ("thought", "thinking"):
                 thought_text = event.get("content") or event.get("text", "")
                 if thought_text:
-                    yield "data: " + json.dumps({"type": "thought", "content": thought_text}) + "\n\n"
+                    yield (
+                        "data: " + json.dumps({"type": "thought", "content": thought_text}) + "\n\n"
+                    )
             elif etype == "tool_call":
                 yield (
                     "data: "
@@ -482,18 +484,13 @@ async def _generate_pi_runtime(
                 result = event.get("result")
                 if result is not None:
                     yield (
-                        "data: "
-                        + json.dumps(
-                            {
-                                "type": "usage",
-                                "usage": result.usage or {},
-                                "model": result.model or model or "",
-                                "endpoint_id": result.endpoint_id,
-                                "stop_reason": result.stop_reason,
-                                "effort": thinking_mode or "server_default",
-                            }
+                        _sse_usage_frame(
+                            usage=result.usage,
+                            model=result.model or model,
+                            endpoint_id=result.endpoint_id,
+                            stop_reason=result.stop_reason,
+                            effort=thinking_mode,
                         )
-                        + "\n\n"
                     )
                 if result is not None and result.status != "success" and status == "success":
                     # Terminal abort/error without a streamed error event still
@@ -585,6 +582,24 @@ def _extract_tool_call(text: str) -> tuple[dict | None, str, str]:
         return None, text, ""
 
 
+def _sse_usage_frame(*, usage, model, endpoint_id, stop_reason, effort):
+    """Single builder for SSE usage envelopes (one reporting rule everywhere)."""
+    return (
+        "data: "
+        + json.dumps(
+            {
+                "type": "usage",
+                "usage": usage or {},
+                "model": model or "",
+                "endpoint_id": endpoint_id,
+                "stop_reason": stop_reason,
+                "effort": effort or "server_default",
+            }
+        )
+        + "\n\n"
+    )
+
+
 async def _generate_native_tools(
     conversation: list[dict],
     all_text_parts: list[str],
@@ -597,6 +612,7 @@ async def _generate_native_tools(
     *,
     pi_candidate: bool = False,
     endpoint_id: str | None = None,
+    thinking_mode: str | None = None,
 ):
     """Native tool-calling loop via the AgenticDispatcher (W2).
 
@@ -635,12 +651,14 @@ async def _generate_native_tools(
     async def _tool_exec(name, params, project_id, agent):
         tool_started = datetime.now(UTC)
         tool_call_id = f"tc-{uuid.uuid4().hex[:8]}"
-        await queue.put({
-            "type": "tool_call",
-            "tool": name,
-            "params": params,
-            "tool_call_id": tool_call_id,
-        })
+        await queue.put(
+            {
+                "type": "tool_call",
+                "tool": name,
+                "params": params,
+                "tool_call_id": tool_call_id,
+            }
+        )
         result = await execute_tool(name, params, project_id, agent_id=agent)
         if pi_metrics:
             pi_metrics.observe_tool_call()
@@ -659,13 +677,19 @@ async def _generate_native_tools(
         else:
             result_text = str(result)
         tool_results.append({"tool": name, "result": result_text})
-        await queue.put({
-            "type": "tool_result",
-            "tool": name,
-            "tool_call_id": tool_call_id,
-            "result": result_text,
-            "ok": "error" not in result if isinstance(result, dict) else True,
-        })
+        # F-W2-R1-1: queued content event drained by the main SSE loop, which
+        # appends it to all_text_parts once, in stream order (never append here).
+        result_display = f"**{name}**: {result_text}\n\n"
+        await queue.put({"type": "content", "text": result_display})
+        await queue.put(
+            {
+                "type": "tool_result",
+                "tool": name,
+                "tool_call_id": tool_call_id,
+                "result": result_text,
+                "ok": "error" not in result if isinstance(result, dict) else True,
+            }
+        )
         return result
 
     try:
@@ -691,6 +715,7 @@ async def _generate_native_tools(
                 stream_tokens=True,
                 strict_model_routing=True if pi_candidate else None,
                 endpoint_id=endpoint_id,
+                thinking_mode=thinking_mode,
             ),
             engine="legacy",
         ):
@@ -712,19 +737,12 @@ async def _generate_native_tools(
             elif etype == "_complete":
                 result = event.get("result")
                 if result is not None:
-                    yield (
-                        "data: "
-                        + json.dumps(
-                            {
-                                "type": "usage",
-                                "usage": result.usage or {},
-                                "model": effective_model or "",
-                                "endpoint_id": result.endpoint_id,
-                                "stop_reason": result.stop_reason,
-                                "effort": "server_default",
-                            }
-                        )
-                        + "\n\n"
+                    yield _sse_usage_frame(
+                        usage=result.usage,
+                        model=effective_model,
+                        endpoint_id=result.endpoint_id,
+                        stop_reason=result.stop_reason,
+                        effort=thinking_mode,
                     )
     except Exception as exc:
         if pi_metrics:
@@ -747,6 +765,7 @@ async def _generate_text_fallback(
     *,
     pi_candidate: bool = False,
     endpoint_id: str | None = None,
+    thinking_mode: str | None = None,
 ):
     """Legacy text-based tool parsing loop via the AgenticDispatcher (W2).
 
@@ -782,12 +801,14 @@ async def _generate_text_fallback(
 
     async def _tool_exec(name, params, project_id, agent):
         tool_call_id = f"tc-{uuid.uuid4().hex[:8]}"
-        await queue.put({
-            "type": "tool_call",
-            "tool": name,
-            "params": params,
-            "tool_call_id": tool_call_id,
-        })
+        await queue.put(
+            {
+                "type": "tool_call",
+                "tool": name,
+                "params": params,
+                "tool_call_id": tool_call_id,
+            }
+        )
         result = await execute_tool(name, params, project_id, agent_id=agent)
         if pi_metrics:
             pi_metrics.observe_tool_call()
@@ -796,13 +817,19 @@ async def _generate_text_fallback(
         else:
             result_text = str(result)
         tool_results.append({"tool": name, "result": result_text})
-        await queue.put({
-            "type": "tool_result",
-            "tool": name,
-            "tool_call_id": tool_call_id,
-            "result": result_text,
-            "ok": "error" not in result if isinstance(result, dict) else True,
-        })
+        # F-W2-R1-1: queued content event drained by the main SSE loop, which
+        # appends it to all_text_parts once, in stream order (never append here).
+        result_display = f"**{name}**: {result_text}\n\n"
+        await queue.put({"type": "content", "text": result_display})
+        await queue.put(
+            {
+                "type": "tool_result",
+                "tool": name,
+                "tool_call_id": tool_call_id,
+                "result": result_text,
+                "ok": "error" not in result if isinstance(result, dict) else True,
+            }
+        )
         return result
 
     try:
@@ -827,6 +854,7 @@ async def _generate_text_fallback(
                 strict_model_routing=True if pi_candidate else None,
                 tool_call_extractor=_extract_tool_call,
                 endpoint_id=endpoint_id,
+                thinking_mode=thinking_mode,
             ),
             engine="legacy",
         ):
@@ -846,20 +874,12 @@ async def _generate_text_fallback(
             elif etype == "_complete":
                 result = event.get("result")
                 if result is not None:
-                    yield (
-                        "data: "
-                        + json.dumps(
-                            {
-                                "type": "usage",
-                                "usage": result.usage or {},
-                                "model": (pi_chat_model(llm_model) if pi_candidate else llm_model)
-                                or "",
-                                "endpoint_id": result.endpoint_id,
-                                "stop_reason": result.stop_reason,
-                                "effort": "server_default",
-                            }
-                        )
-                        + "\n\n"
+                    yield _sse_usage_frame(
+                        usage=result.usage,
+                        model=pi_chat_model(llm_model) if pi_candidate else llm_model,
+                        endpoint_id=result.endpoint_id,
+                        stop_reason=result.stop_reason,
+                        effort=thinking_mode,
                     )
     except Exception as exc:
         if pi_metrics:
@@ -1307,6 +1327,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                         llm_max_tokens,
                         pi_candidate=pi_candidate,
                         endpoint_id=llm_endpoint_id,
+                        thinking_mode=llm_effort,
                     ):
                         yield event
                 except Exception as native_err:
@@ -1366,6 +1387,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                     llm_max_tokens,
                     pi_candidate=pi_candidate,
                     endpoint_id=llm_endpoint_id,
+                    thinking_mode=llm_effort,
                 ):
                     yield event
 
@@ -1469,6 +1491,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                 except Exception:
                     pass
         except Exception as e:
+            _chat_log.exception("Chat stream failed for project %s", request.project_id)
             error_data = json.dumps({"type": "error", "message": str(e)})
             yield f"data: {error_data}\n\n"
 
@@ -1478,6 +1501,7 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
             async for event in generate():
                 yield event
         except Exception as e:
+            _chat_log.exception("Chat safe_generate failed for project %s", request.project_id)
             error_data = json.dumps({"type": "error", "message": str(e)})
             yield f"data: {error_data}\n\n"
 

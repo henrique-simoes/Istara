@@ -1,8 +1,8 @@
 # Independent architecture plan — Istara Pi model-management migration
 
-**Task:** `ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-C`  
-**Role:** `istara-pi-model-migration-20260822-architect-c`  
-**Spec:** `CF-SPEC-1`  
+**Task:** `ISTARA-PI-MODEL-MIGRATION-20260822-PLAN-C`
+**Role:** `istara-pi-model-migration-20260822-architect-c`
+**Spec:** `CF-SPEC-1`
 **Phase:** `draft`; implementation is prohibited until consensus and owner approval.
 
 ## 1. Decision and boundary

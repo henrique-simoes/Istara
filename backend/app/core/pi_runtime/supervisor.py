@@ -19,6 +19,7 @@ import contextvars
 import json
 import logging
 import os
+import shutil
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -126,6 +127,10 @@ class PiRuntimeSupervisor:
             self._restart_times.append(now)
             if not self._worker_entry.exists():
                 raise PiWorkerError(f"worker_entry_missing:{self._worker_entry}")
+            if shutil.which(self._node_path) is None:
+                raise PiWorkerError(
+                    f"worker_runtime_missing:node binary {self._node_path!r} not found"
+                )
             worker_env = dict(os.environ)
             worker_env["PI_MAX_SESSIONS"] = str(self._max_sessions)
             self._proc = await asyncio.create_subprocess_exec(

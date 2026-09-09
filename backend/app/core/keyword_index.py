@@ -29,6 +29,19 @@ def _fts_or_query(query: str) -> str:
     return " OR ".join(f'"{term}"' for term in terms)
 
 
+def keyword_index_dir() -> Path:
+    """Resolve the keyword FTS index directory.
+
+    Honors the optional ``KEYWORD_INDEX_DIR`` setting so durable lanes can
+    keep the index on shared storage; otherwise stays beside ``data_dir``.
+    Read dynamically (never cached) so tests and runtime overrides apply.
+    """
+    override = getattr(settings, "keyword_index_dir", None)
+    if override:
+        return Path(override)
+    return Path(settings.data_dir) / "keyword_index"
+
+
 class KeywordResult:
     """A single keyword search result."""
 
@@ -69,7 +82,7 @@ class KeywordIndex:
 
     def __init__(self, project_id: str) -> None:
         self.project_id = project_id
-        db_dir = Path(settings.data_dir) / "keyword_index"
+        db_dir = keyword_index_dir()
         db_dir.mkdir(parents=True, exist_ok=True)
         self.db_path = str(db_dir / f"{project_id}.db")
 

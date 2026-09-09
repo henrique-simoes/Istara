@@ -265,16 +265,148 @@ async def _load_units(
     evidence_unit_ids: list[str] | None,
     limit: int,
 ) -> list[EvidenceUnit]:
-    query = select(EvidenceUnit).where(EvidenceUnit.project_id == project_id)
-    if task_id:
-        query = query.where(EvidenceUnit.task_id == task_id)
+    max_limit = max(1, min(limit, 200))
     if evidence_unit_ids:
-        query = query.where(EvidenceUnit.id.in_(evidence_unit_ids))
-    query = query.order_by(EvidenceUnit.source_id, EvidenceUnit.unit_index).limit(
-        max(1, min(limit, 200))
-    )
-    result = await db.execute(query)
-    return list(result.scalars().all())
+        query = (
+            select(EvidenceUnit)
+            .where(
+                EvidenceUnit.project_id == project_id,
+                EvidenceUnit.id.in_(evidence_unit_ids),
+            )
+            .order_by(EvidenceUnit.source_id, EvidenceUnit.unit_index)
+            .limit(max_limit)
+        )
+        result = await db.execute(query)
+        return list(result.scalars().all())
+
+    units: list[EvidenceUnit] = []
+    seen_unit_ids: set[str] = set()
+
+    if task_id:
+        # 1. Direct units tagged with this task_id
+        q1 = (
+            select(EvidenceUnit)
+            .where(
+                EvidenceUnit.project_id == project_id,
+                EvidenceUnit.task_id == task_id,
+            )
+            .order_by(EvidenceUnit.source_id, EvidenceUnit.unit_index)
+            .limit(max_limit)
+        )
+        res1 = await db.execute(q1)
+        for u in res1.scalars().all():
+            if u.id not in seen_unit_ids:
+                seen_unit_ids.add(u.id)
+                units.append(u)
+
+        # 2. Units linked via ResearchEvidenceEdge for this task
+        if len(units) < max_limit:
+            edge_q = select(ResearchEvidenceEdge).where(
+                ResearchEvidenceEdge.project_id == project_id,
+                ResearchEvidenceEdge.task_id == task_id,
+            )
+            edge_res = await db.execute(edge_q)
+            edge_unit_ids: list[str] = []
+            for edge in edge_res.scalars().all():
+                if edge.evidence_unit_id and edge.evidence_unit_id not in seen_unit_ids:
+                    edge_unit_ids.append(edge.evidence_unit_id)
+                elif edge.target_type == "evidence_unit" and edge.target_id not in seen_unit_ids:
+                    edge_unit_ids.append(edge.target_id)
+
+            if edge_unit_ids:
+                eq_units = (
+                    select(EvidenceUnit)
+                    .where(
+                        EvidenceUnit.project_id == project_id,
+                        EvidenceUnit.id.in_(edge_unit_ids[:max_limit]),
+                    )
+                    .order_by(EvidenceUnit.source_id, EvidenceUnit.unit_index)
+                )
+                eq_res = await db.execute(eq_units)
+                for u in eq_res.scalars().all():
+                    if u.id not in seen_unit_ids:
+                        seen_unit_ids.add(u.id)
+                        units.append(u)
+
+        # 3. Units from attached input/output documents of the task
+        if len(units) < max_limit:
+            from app.models.task import Task
+
+            task = await db.get(Task, task_id)
+            if task:
+                doc_ids = task.get_input_document_ids() + task.get_output_document_ids()
+                if doc_ids:
+                    doc_q = (
+                        select(EvidenceUnit)
+                        .where(
+                            EvidenceUnit.project_id == project_id,
+                            EvidenceUnit.source_document_id.in_(doc_ids),
+                        )
+                        .order_by(EvidenceUnit.source_id, EvidenceUnit.unit_index)
+                        .limit(max_limit - len(units))
+                    )
+                    doc_res = await db.execute(doc_q)
+                    for u in doc_res.scalars().all():
+                        if u.id not in seen_unit_ids:
+                            seen_unit_ids.add(u.id)
+                            units.append(u)
+
+        # 4. Units from task findings/nuggets
+        if len(units) < max_limit:
+            from app.models.finding import Nugget
+
+            nuggets_q = select(Nugget).where(
+                Nugget.project_id == project_id,
+                Nugget.task_id == task_id,
+            )
+            nuggets_res = await db.execute(nuggets_q)
+            task_nuggets = list(nuggets_res.scalars().all())
+            if task_nuggets:
+                nugget_source_ids = [f"nugget:{n.id}" for n in task_nuggets] + [
+                    f"task:{task_id}:nugget:{n.id}" for n in task_nuggets
+                ]
+                nu_q = (
+                    select(EvidenceUnit)
+                    .where(
+                        EvidenceUnit.project_id == project_id,
+                        EvidenceUnit.source_id.in_(nugget_source_ids),
+                    )
+                    .order_by(EvidenceUnit.source_id, EvidenceUnit.unit_index)
+                    .limit(max_limit - len(units))
+                )
+                nu_res = await db.execute(nu_q)
+                for u in nu_res.scalars().all():
+                    if u.id not in seen_unit_ids:
+                        seen_unit_ids.add(u.id)
+                        units.append(u)
+
+                # Persist candidate units for unsegmented task nuggets if needed
+                if not units:
+                    for n in task_nuggets[:max_limit]:
+                        persisted = await persist_task_nugget_evidence_units(
+                            db,
+                            project_id=project_id,
+                            task_id=task_id,
+                            nugget_id=n.id,
+                            source_text=n.text,
+                            source_location=n.source_location,
+                            method="qualitative_coding",
+                            phase=n.phase or "discover",
+                            source_type="candidate_atom",
+                            candidate_only=False,
+                        )
+                        for pu in persisted:
+                            if pu.id not in seen_unit_ids:
+                                seen_unit_ids.add(pu.id)
+                                units.append(pu)
+                    if units:
+                        await db.commit()
+
+    # No project-wide fallback: coding unrelated project units as task
+    # coverage would contaminate the task's evidence chain. Return
+    # task-scoped units only; callers must surface an honest 0-unit state
+    # (attach source / run segmentation) instead of silent cross-task coding.
+    return units[:max_limit]
 
 
 def _is_qa_provisional_unit(unit: Any) -> bool:

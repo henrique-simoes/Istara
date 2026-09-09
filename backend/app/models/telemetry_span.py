@@ -69,6 +69,10 @@ class TelemetrySpan(Base):
     tool_name: Mapped[str | None] = mapped_column(String(100), nullable=True, default=None)
     tool_success: Mapped[bool | None] = mapped_column(Integer, nullable=True, default=None)
     tool_duration_ms: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    # Content-free tool audit handles: parameter names only, never values;
+    # reasoning-bank lesson handles, never lesson content.
+    arguments_summary: Mapped[str] = mapped_column(String(500), default="")
+    reasoning_bank_id: Mapped[str | None] = mapped_column(String(100), nullable=True, default=None)
 
     source: Mapped[str] = mapped_column(String(40), default="production")
     # Provenance class such as "production", "autoresearch", or a governed

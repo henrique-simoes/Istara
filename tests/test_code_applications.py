@@ -612,4 +612,3 @@ async def test_create_and_delete_qualitative_code_application(auth_headers):
             headers=auth_headers,
         )
         assert len(after_del.json()) == 0
-

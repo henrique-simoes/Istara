@@ -752,7 +752,7 @@ async def run_independent_coding_run(
     reliability = evaluate_reliability_gate(
         gate_applications,
         threshold=threshold,
-        minimum_distinct_models=max_coders,
+        minimum_distinct_models=max(1, min(len(coders), max_coders)) if coders else max_coders,
         require_rater_provenance=True,
     )
     promotion_status = reliability["promotion_status"]

@@ -23,18 +23,18 @@ Our objective is to systematically upgrade, design-harden, and verify all remain
 ### Working Backwards PRFAQ / One-Pager
 
 #### Press Release
-**Heading:** Istara Enterprise Release: Universal Research Validity, Governed Autonomous Systems, and Human-Centered Interface Refinement.  
-**Subheading:** Delivering end-to-end qualitative rigor, automated research laboratories, and accessible, responsive design across every menu and workflow.  
-**Summary:** Istara today announces the systemwide hardening of its entire research platform. From multi-model consensus dashboards and 30 UX Laws compliance evaluations, to external MCP tool discovery, automated research experimentation, generative design token synchronization, and comprehensive administrative controls, Istara ensures that every screen is accessible, intuitive, and grounded in raw evidence.  
-**Problem:** Enterprise research platforms often provide isolated feature silos: qualitative coding is detached from design generation, automated experimentation lacks audit trails, and administrative dashboards offer poor accessibility and confusing states.  
+**Heading:** Istara Enterprise Release: Universal Research Validity, Governed Autonomous Systems, and Human-Centered Interface Refinement.
+**Subheading:** Delivering end-to-end qualitative rigor, automated research laboratories, and accessible, responsive design across every menu and workflow.
+**Summary:** Istara today announces the systemwide hardening of its entire research platform. From multi-model consensus dashboards and 30 UX Laws compliance evaluations, to external MCP tool discovery, automated research experimentation, generative design token synchronization, and comprehensive administrative controls, Istara ensures that every screen is accessible, intuitive, and grounded in raw evidence.
+**Problem:** Enterprise research platforms often provide isolated feature silos: qualitative coding is detached from design generation, automated experimentation lacks audit trails, and administrative dashboards offer poor accessibility and confusing states.
 **Solution:** Istara bridges raw empirical data directly to executive decision-making. Every finding traces to verified sources, every automated loop runs under sandboxed governance, and the entire user interface respects WCAG 2.2 AA accessibility with seamless dark/light modes.
 
 #### Internal FAQ
-- **How will we verify these remaining surfaces?**  
+- **How will we verify these remaining surfaces?**
   We will verify each surface in the live container on Mac Studio (`http://127.0.0.1:3000`) using Playwright browser automation simulating authentic researcher sessions. Every interaction option (tab switching, modals, filters, inputs, mutations) will be exercised, and real screenshots will be captured and cataloged.
-- **How do we enforce interface design standards?**  
+- **How do we enforce interface design standards?**
   We apply the `/interface-design` skill guidelines: semantic color tokens (Tailwind/CSS variables), strict 4.5:1 text contrast for WCAG 2.2 AA, 44px touch targets, systematic spacing scales (4px grid), unambiguous loading/empty/error states, and full parity between light and dark themes.
-- **How does this connect to the Research Spine?**  
+- **How does this connect to the Research Spine?**
   All qualitative evaluation features (UX Laws, Quality Dashboard, Ensemble Health, Interview Transcripts) must strictly preserve Sharon DAG provenance: `Sources -> Evidence Units -> Multi-Model Coding -> Reconciliation -> Nuggets -> Facts -> Insights -> Recommendations -> Human Done Gates -> Reports`.
 
 ---
@@ -84,13 +84,13 @@ To ensure absolute continuity, all open next actions and lingering tasks from pr
 ## Decision Log
 
 ### DEC-001 | 2026-09-06 | S0-frame | antigravity
-**Context:** The operator requested a comprehensive Build Stream plan addressing all remaining untouched menus, sub-menus, features, and UI/UX design hardening across the entire application before promoting `testing` to `main`.  
-**Decision:** We structure this initiative into 8 sequential, independently verifiable phases recorded in `docs/build-stream/2026-09-06-systemwide-remaining-surfaces-and-design-hardening.md`. Compass Forge is completely bypassed per user mandate; Build Stream serves as the sole process spine.  
+**Context:** The operator requested a comprehensive Build Stream plan addressing all remaining untouched menus, sub-menus, features, and UI/UX design hardening across the entire application before promoting `testing` to `main`.
+**Decision:** We structure this initiative into 8 sequential, independently verifiable phases recorded in `docs/build-stream/2026-09-06-systemwide-remaining-surfaces-and-design-hardening.md`. Compass Forge is completely bypassed per user mandate; Build Stream serves as the sole process spine.
 **Why:** Maintains absolute process integrity, prevents scope drift, and provides a durable, resumable handoff across agent turns.
 
 ### DEC-002 | 2026-09-06 | S0-frame | antigravity
-**Context:** User interfaces across secondary views have inconsistent spacing, empty states, and contrast differences between light and dark modes.  
-**Decision:** We apply the `/interface-design` skill standards: WCAG 2.2 AA contrast minimums (4.5:1 normal, 3:1 large), 44x44px minimum interactive targets, semantic design tokens (Tailwind CSS variables), explicit loading skeletons and empty states, and strict brand neutrality (zero third-party commercial brand names).  
+**Context:** User interfaces across secondary views have inconsistent spacing, empty states, and contrast differences between light and dark modes.
+**Decision:** We apply the `/interface-design` skill standards: WCAG 2.2 AA contrast minimums (4.5:1 normal, 3:1 large), 44x44px minimum interactive targets, semantic design tokens (Tailwind CSS variables), explicit loading skeletons and empty states, and strict brand neutrality (zero third-party commercial brand names).
 **Why:** Guarantees enterprise aesthetic and accessibility consistency across every single surface.
 
 ---
@@ -156,7 +156,3 @@ Did: Executed comprehensive Phase 8 regression and promotion gate. Ran tracked S
 Result: All 8 phases completed, verified, and design-hardened. The `testing` branch is 100% green, fully documented, visually proven, and ready for immediate promotion merge to `main`.
 Verified: Security Benchmark 100.0% (28/28); Feature Docs Site 100% (86 features, 224 artifacts); Core Pytest 75/75 passed; Vitest 74/74 passed; 57 screenshots cataloged.
 Next: Present comprehensive walkthrough and hand over to user for final branch merge.
-
-
-
-

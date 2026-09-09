@@ -11,6 +11,7 @@ import {
   providerLabel,
   type LocalLLMDetection,
 } from "@/lib/modelProviders";
+import { getToken } from "@/lib/tokenStore";
 
 function browserTotalRamGb() {
   return Number((navigator as any).deviceMemory || 0);
@@ -120,7 +121,7 @@ export default function DonateComputeToggle() {
       return;
     }
 
-    const token = localStorage.getItem("istara_token");
+    const token = getToken();
     const url = `${WS_BASE}/ws/relay${token ? `?token=${token}` : ""}`;
 
     const ws = new WebSocket(url);

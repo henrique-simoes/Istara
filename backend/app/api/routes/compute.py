@@ -228,9 +228,31 @@ async def relay_websocket(ws: WebSocket):
             if not await validate_auth_session(db, jwt_payload):
                 jwt_payload = None
             else:
-                jwt_user_context = await current_user_context_for_payload(db, jwt_payload)
-                if jwt_user_context is None:
-                    jwt_payload = None
+                # Same MFA bar as HTTP + /ws: a pre-enrollment JWT must not
+                # subscribe a relay identity once the account requires MFA.
+                from app.core.auth_sessions import mfa_claim_satisfied
+
+                from app.models.user import User
+
+                if not mfa_claim_satisfied(jwt_payload, "/ws/relay"):
+                    from sqlalchemy import select as _select
+
+                    _user = (
+                        await db.execute(
+                            _select(User).where(User.id == str(jwt_payload.get("sub") or ""))
+                        )
+                    ).scalar_one_or_none()
+                    if _user is not None and getattr(_user, "totp_enabled", False):
+                        jwt_payload = None
+                        jwt_user_context = None
+                    else:
+                        jwt_user_context = await current_user_context_for_payload(db, jwt_payload)
+                        if jwt_user_context is None:
+                            jwt_payload = None
+                else:
+                    jwt_user_context = await current_user_context_for_payload(db, jwt_payload)
+                    if jwt_user_context is None:
+                        jwt_payload = None
     if not has_valid_network_token and jwt_payload is None:
         await ws.close(code=4001, reason="Authentication required for relay connections")
         return

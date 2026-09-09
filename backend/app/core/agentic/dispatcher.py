@@ -594,6 +594,7 @@ class AgenticDispatcher:
                 stop_reason=sample.get("stop_reason"),
                 endpoint_id=sample.get("endpoint_id"),
                 status=sample.get("status", "success"),
+                error=sample.get("error"),
                 tool_calls=sample.get("tool_calls") or [],
                 model=sample.get("model"),
                 served_model=sample.get("served_model"),

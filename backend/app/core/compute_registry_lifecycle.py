@@ -8,9 +8,8 @@ import time
 from urllib.parse import urlparse
 
 from app.config import settings
-from app.core.compute_node import ComputeNode
+from app.core.compute_node import ComputeNode, _hydrate_local_resources
 from app.core.compute_registry_helpers import (
-    _hydrate_local_resources,
     _looks_like_model_availability_error,
     _positive_number,
     _redacted_endpoint_for_log,

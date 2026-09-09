@@ -71,6 +71,8 @@ class TelemetryRecorder:
         tool_name: str | None = None,
         tool_success: bool | None = None,
         tool_duration_ms: float | None = None,
+        arguments_summary: str = "",
+        reasoning_bank_id: str | None = None,
         source: str = "production",
         session: AsyncSession | None = None,
     ) -> None:
@@ -104,6 +106,8 @@ class TelemetryRecorder:
             tool_name=tool_name,
             tool_success=int(tool_success) if tool_success is not None else None,
             tool_duration_ms=tool_duration_ms,
+            arguments_summary=(arguments_summary or "")[:500],
+            reasoning_bank_id=(reasoning_bank_id or "")[:100] or None,
             source=source,
         )
         if session is not None:
@@ -222,6 +226,8 @@ class TelemetryRecorder:
         parent_id: str | None = None,
         error_type: str | None = None,
         error_message: str | None = None,
+        arguments_summary: str = "",
+        reasoning_bank_id: str | None = None,
         source: str = "production",
         session: AsyncSession | None = None,
     ) -> None:
@@ -241,6 +247,8 @@ class TelemetryRecorder:
             task_id=task_id,
             error_type=error_type,
             error_message=error_message,
+            arguments_summary=arguments_summary,
+            reasoning_bank_id=reasoning_bank_id,
             source=source,
             session=session,
         )
@@ -566,6 +574,24 @@ class TelemetryRecorder:
                         }
                     )
 
+                tool_audit_trail = [
+                    {
+                        "id": s.id,
+                        "tool_name": s.tool_name or "unknown",
+                        "status": "success" if s.tool_success else "failure",
+                        "duration_ms": round(s.tool_duration_ms or s.duration_ms or 0, 1),
+                        "model_name": s.model_name or "unknown",
+                        "agent_id": s.agent_id or "",
+                        "task_id": s.task_id or "",
+                        "skill_name": s.skill_name or "",
+                        "timestamp": s.created_at.isoformat() if s.created_at else None,
+                        "arguments_summary": s.arguments_summary or "",
+                        "reasoning_bank_id": s.reasoning_bank_id,
+                        "error_type": s.error_type if not s.tool_success else None,
+                    }
+                    for s in tool_spans[:100]
+                ]
+
                 latency_stmt = (
                     select(TelemetrySpan)
                     .where(
@@ -662,11 +688,13 @@ class TelemetryRecorder:
 
                 return {
                     "project_id": project_id,
+                    "status": "ok",
                     "leaderboard": leaderboard,
                     "model_activity": model_activity,
                     "error_taxonomy": error_taxonomy,
                     "tool_success_rates": tool_success_rates,
                     "tool_summary": tool_summary,
+                    "tool_audit_trail": tool_audit_trail,
                     "steering_summary": steering_summary,
                     "json_parse_success_rates": json_parse_success_rates,
                     "latency_percentiles": latency_percentiles,
@@ -676,10 +704,13 @@ class TelemetryRecorder:
             logger.warning(f"Model intelligence query failed: {e}")
             return {
                 "project_id": project_id,
+                "status": "unavailable",
+                "error_type": "telemetry_query_failed",
                 "leaderboard": [],
                 "model_activity": [],
                 "error_taxonomy": {},
                 "tool_success_rates": [],
+                "tool_audit_trail": [],
                 "tool_summary": {
                     "total_calls": 0,
                     "overall_success_rate": 0.0,

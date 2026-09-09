@@ -30,12 +30,14 @@ _SLACK_SDK_CLIENT_AVAILABLE = False
 try:
     from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
     from slack_bolt.async_app import AsyncApp
+
     _SOCKET_MODE_AVAILABLE = True
 except (ImportError, ModuleNotFoundError):
     pass
 
 try:
     from slack_sdk.web.async_client import AsyncWebClient
+
     _SLACK_SDK_CLIENT_AVAILABLE = True
 except (ImportError, ModuleNotFoundError):
     pass
@@ -158,6 +160,7 @@ class SlackAdapter(ChannelAdapter):
                 token=self._bot_token,
                 signing_secret=self._signing_secret,
             )
+
             @self._slack_app.event("message")
             async def handle_message(event, say, context):
                 await self._on_message_event(event)
@@ -268,7 +271,9 @@ class SlackAdapter(ChannelAdapter):
                 "error": str(exc),
             }
 
-    def verify_signature(self, raw_body: bytes, timestamp: str | None, signature: str | None) -> bool:
+    def verify_signature(
+        self, raw_body: bytes, timestamp: str | None, signature: str | None
+    ) -> bool:
         """Verify Slack HMAC SHA-256 webhook signature."""
         if not self._signing_secret or not timestamp or not signature:
             return False
@@ -281,11 +286,14 @@ class SlackAdapter(ChannelAdapter):
             return False
 
         sig_basestring = f"v0:{timestamp}:{raw_body.decode('utf-8', errors='replace')}"
-        computed = "v0=" + hmac.new(
-            self._signing_secret.encode("utf-8"),
-            sig_basestring.encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest()
+        computed = (
+            "v0="
+            + hmac.new(
+                self._signing_secret.encode("utf-8"),
+                sig_basestring.encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
+        )
         return hmac.compare_digest(computed, signature)
 
     async def handle_webhook(self, payload: dict) -> None:

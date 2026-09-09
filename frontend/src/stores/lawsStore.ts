@@ -19,6 +19,7 @@ interface LawsStore {
   setActiveTab: (tab: LawsTab) => void;
   fetchLaws: (category?: string) => Promise<void>;
   fetchCompliance: (projectId: string) => Promise<void>;
+  evaluateCompliance: (projectId: string) => Promise<void>;
   selectLaw: (id: string | null) => void;
   setCategoryFilter: (cat: LawCategory | null) => void;
   setSearchQuery: (q: string) => void;
@@ -50,6 +51,16 @@ export const useLawsStore = create<LawsStore>((set) => ({
     set({ loading: true, error: null });
     try {
       const profile = await laws.compliance(projectId);
+      set({ compliance: profile, loading: false });
+    } catch (e: any) {
+      set({ loading: false, error: e.message });
+    }
+  },
+
+  evaluateCompliance: async (projectId) => {
+    set({ loading: true, error: null });
+    try {
+      const profile = await laws.evaluateCompliance(projectId);
       set({ compliance: profile, loading: false });
     } catch (e: any) {
       set({ loading: false, error: e.message });

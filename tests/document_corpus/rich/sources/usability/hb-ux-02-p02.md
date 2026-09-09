@@ -1,7 +1,7 @@
 # HB-UX-02 — Usability session: Devon Park (owner)
 
 > SYNTHETIC FIXTURE. Moderated remote session, 60 minutes. Consent CO-P02-UX.
-> Participant setup: Park Bike Repair (4 staff), Austin. 
+> Participant setup: Park Bike Repair (4 staff), Austin.
 
 ## T-A: deposit a $4,200 check on mobile
 - Outcome: **success** in 211s, 2 assists.

@@ -1,7 +1,7 @@
 # HB-UX-04 — Usability session: Henrik Dahl (owner)
 
 > SYNTHETIC FIXTURE. Moderated remote session, 60 minutes. Consent CO-P06-UX.
-> Participant setup: Dahl Marine Supply (6 staff), Seattle. 
+> Participant setup: Dahl Marine Supply (6 staff), Seattle.
 
 ## T-A: deposit a $4,200 check on mobile
 - Outcome: **success** in 186s, 2 assists.

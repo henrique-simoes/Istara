@@ -396,4 +396,3 @@ async def test_inbound_active_deployment_persists_evidence_units_and_nuggets():
     assert len(evidence_units) >= 1
     assert any("export modal takes too long" in eu.source_text for eu in evidence_units)
     assert deployment.current_responses == 1
-

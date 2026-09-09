@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 
-export default function PrivacyWarningBanner({ service, onAcknowledge }: { service: "Stitch" | "Figma"; onAcknowledge: () => void }) {
+export default function PrivacyWarningBanner({ service, onAcknowledge }: { service: string; onAcknowledge: () => void }) {
   return (
     <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
       <div className="flex items-start gap-3">

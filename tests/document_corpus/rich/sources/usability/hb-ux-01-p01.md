@@ -1,7 +1,7 @@
 # HB-UX-01 — Usability session: Mara Ellison (owner)
 
 > SYNTHETIC FIXTURE. Moderated remote session, 60 minutes. Consent CO-P01-UX.
-> Participant setup: Ellison Bakery (12 staff), Portland. 
+> Participant setup: Ellison Bakery (12 staff), Portland.
 
 ## T-A: deposit a $4,200 check on mobile
 - Outcome: **fail** in 401s, 2 assists.
