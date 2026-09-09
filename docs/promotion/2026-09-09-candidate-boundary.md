@@ -51,9 +51,9 @@ all 196 paths in candidate commit `3de70bfc`.
 
 | Bucket | Rows | Meaning |
 |---|---|---|
-| `INCLUDE-LIFECYCLE` | 25 | `docs/build-stream` narrative, including this initiative's convergence lifecycle, plus the architecture study |
+| `INCLUDE-LIFECYCLE` | 24 | `docs/build-stream` narrative, including this initiative's convergence lifecycle, plus the architecture study |
 | `INCLUDE-PRODUCT` | 166 | `tests` modifications (69) and new fixtures/probes/corpus files (97), `tests/` only |
-| `INCLUDE-HYGIENE` | 1 | `docs/features/site/manifest.json` docs-site rebuild artifact (`generated_at` refresh) |
+| `INCLUDE-HYGIENE` | 2 | `docs/features/site/manifest.json` docs-site rebuild artifact (`generated_at` refresh) and checkout-relative executable hygiene tooling (`docs/build-stream/run-blind-review.sh`) |
 | `QUARANTINE` / `UNDECIDED` in scope | 0 | Every in-scope path is traced to evidence; nothing defaults to silent inclusion |
 | Wave-produced files (§6) | 4 | This dossier, the TSV, the tracked manifest export, `verify_wave_manifest.py` — `INCLUDE-HYGIENE` by construction, committed via the same pathspec |
 | **Total candidate paths** | **196** | **192 TSV rows + 4 wave-produced files; no silent inclusion** |
@@ -90,7 +90,7 @@ no clean, no stash drop, no amend, no rebase, no force-push.
 ## 6. Wave-produced files (this commit)
 
 - `docs/promotion/2026-09-09-candidate-boundary.md` (this dossier)
-- `docs/promotion/2026-09-09-candidate-classification.tsv` (191 rows)
+- `docs/promotion/2026-09-09-candidate-classification.tsv` (192 rows)
 - `docs/build-stream/2026-09-09-testing-to-main-waves-manifest.json` (tracked export of the conductor manifest)
 - `scripts/verify_wave_manifest.py` (M-14 canonical-hash verifier, stdlib only)
 
