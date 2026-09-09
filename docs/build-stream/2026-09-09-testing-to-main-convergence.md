@@ -5,12 +5,13 @@
 item: testing-to-main-convergence
 branch: testing
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL] }
-phase: "Phase 0 — three-architect consensus planning"
-stage: S3-review
+phase: "Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth"
+stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-sol, at: 2026-09-09T17:06:45Z, ledger: L-18 }
-next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
+cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
+last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-09T17:25:13Z, ledger: L-19 }
+next_action: "Reviewer takes testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW; W3 consumes the obligation matrix."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -277,25 +278,6 @@ re-filed as M-10 per K-3; draft a's "scanner/input discrepancy requires diagnosi
 M-02's root cause per K-4.
 
 ---
-
-### W1 review findings (S3-review, 2026-09-09T16:01:58Z, reviewer `claude-opus-5`)
-
-| ID | Sev | Where | Finding | CF task | Status |
-|---|---|---|---|---|---|
-| **F-01** | S2 | `docs/promotion/2026-09-09-candidate-boundary.md` §2/§7; frozen SHA `3de70bfc` | Clean checkout of the candidate SHA fails 5 committed security tests (quarantine serving, MFA step-up, pre-MFA session, idle-session revocation, WS pre-MFA); they pass only with uncommitted `backend/`. §2 Surface C's "test/probe/corpus graph closes within the candidate" is falsified by the same import-closure argument used to reject Surface B; §7 never ran the committed tests on the frozen surface | `FIX-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A` | fixed |
-| **F-02** | S2 | IMPL command evidence; ledger L-11; boundary dossier preamble | Public-quality impact misreported: evidence says "scan-surface growth added no new findings", L-11 says "still 1 failed on the out-of-scope AGENTS.md leak", preamble says "No absolute machine path appears in any committed artifact in this wave". Measured `audit()` 2 → **9**; this commit added **7** `machine_checkout_path` violations. The "1 failed" is a pytest test-function count masking the finding-count regression. Confirms M-02's prediction | `FIX-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-B` |fixed |
-| **F-03** | S3 | `scripts/verify_wave_manifest.py` | Default invocation is a no-op integrity check: without `--expected-hash` it prints "OK: wave manifest verified" and exits 0 on a manifest whose `scope` and `instructions` were rewritten. Also never compares the tracked mirror to the `.compass-forge` conductor manifest, so mirror drift is undetectable | `FIX-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-B` |fixed |
-| **F-04** | S3 | `docs/promotion/2026-09-09-candidate-classification.tsv`; dossier §3/§6 | 191 TSV rows + 4 §6 wave-produced = 195 vs 196 files committed; `2026-09-09-testing-to-main-convergence.md` has no TSV row and is absent from §6, contradicting §3's "nothing defaults to silent inclusion". W2 consumes the TSV as the candidate inventory | `FIX-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A` | fixed |
-| **F-05** | S3 | `docs/build-stream/run-blind-review.sh` (TSV row) | Classified `INCLUDE-LIFECYCLE` "recent Build Stream narrative", but it is an executable (0755) script from the prior 2026-09-08 initiative that hardcodes a machine-local checkout and `eval`s command strings; it is one of F-02's 7 new violations and is inoperable on any other checkout | `FIX-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-B` |fixed |
-
-### W1 delta re-review findings, round 1 (S3-review, 2026-09-09T16:13:38Z, reviewer `claude-opus-5`)
-
-F-01…F-05 all confirmed **fixed** on re-measurement. Two defects on the remediation's own seams:
-
-| ID | Sev | Where | Finding | CF task | Status |
-|---|---|---|---|---|---|
-| **G-1** | S2 | `scripts/verify_wave_manifest.py`; `tests/test_verify_wave_manifest.py` | The F-03 fix reads `CONDUCTOR_MANIFEST` (`.compass-forge/…`, gitignored per `.gitignore:142`) unconditionally and returns 1 on `OSError`, with no flag to run the pinned-hash check alone — so a fresh clone, CI, W4 `ci-enforcement` and W6 `promotion-certification` all get exit 1, contradicting the docstring's "any agent can verify the manifest" and §7's exit-0 evidence row. Both new tests monkeypatch `verifier.CONDUCTOR_MANIFEST` to a `tmp_path` file, so neither exercises the real constant and both pass green where the script itself fails | `FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A` | fixed |
-| **G-2** | S3 | `docs/promotion/2026-09-09-candidate-boundary.md` §3/§6 | §3 states `INCLUDE-LIFECYCLE` 25 / `INCLUDE-HYGIENE` 1 against an actual TSV of 24 / 2: fix A's +1 for the convergence row and fix B's `run-blind-review.sh` LIFECYCLE→HYGIENE reclassification cancel inside the 192 total and mask each other. §6 line 93 still reads "(191 rows)" — the exact stale number F-04 was raised against — and §3's `INCLUDE-HYGIENE` description still names only `docs/features/site/manifest.json`. W2 consumes this dossier with the TSV as the candidate inventory, so per-bucket counts must reconcile, not merely sum | `FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-B` | fixed |
 
 ## C. Strict-wave manifest
 
@@ -1063,6 +1045,37 @@ promotion to `main` remains a separate, later, owner-gated decision.*
 
 <!-- /consensus-winning-plan:testing-to-main-20260909-a38efd495d2d7124756699d0d630f44a66cf2ac1260bbd6d9ad74649d8228bb8 -->
 
+### Historical W1 review findings (preserved outside the immutable winning-plan block)
+
+The following append-only review record is intentionally outside the frozen plan marker. Moving it
+here preserves the plan snapshot while retaining the evidence trail for the fixes and delta review.
+
+#### W1 review findings (S3-review, 2026-09-09T16:01:58Z, reviewer `claude-opus-5`)
+
+| ID | Sev | Finding | CF task | Status |
+|---|---|---|---|---|
+| **F-01** | S2 | Clean candidate SHA failed five committed security tests; the dirty worktree passed only because uncommitted `backend/` changes were present. | `FIX-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A` | fixed |
+| **F-02** | S2 | Public-quality audit findings grew from 2 to 9, including seven new machine-local path findings, contradicting the implementation evidence. | `FIX-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-B` | fixed |
+| **F-03** | S3 | Manifest verification was a no-op without `--expected-hash` and did not detect tracked/conductor mirror drift. | `FIX-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-B` | fixed |
+| **F-04** | S3 | The TSV inventory plus wave-produced paths accounted for 195 of 196 committed files; the lifecycle file was omitted. | `FIX-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A` | fixed |
+| **F-05** | S3 | `run-blind-review.sh` was misclassified as lifecycle content despite executable, checkout-specific behavior. | `FIX-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-B` | fixed |
+
+#### W1 delta re-review findings, round 1 (S3-review, 2026-09-09T16:13:38Z, reviewer `claude-opus-5`)
+
+F-01 through F-05 were confirmed fixed. The remediation seam exposed two additional defects:
+
+| ID | Sev | Finding | CF task | Status |
+|---|---|---|---|---|
+| **G-1** | S2 | The clean-checkout verifier failed whenever the gitignored conductor mirror was absent, so fresh clones and CI could not verify the pinned manifest. | `FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A` | fixed |
+| **G-2** | S3 | The dossier bucket counts and the §6 row count disagreed with the 192-row TSV inventory. | `FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-B` | fixed |
+
+#### W1 delta re-review, round 2 (Sol reviewer, 2026-09-09)
+
+Result: **pass** — G-1 and G-2 were independently re-measured and confirmed fixed. The clean-clone
+verification path now remains usable without weakening the mandatory canonical pin, while present
+mirror drift remains fail-closed; the dossier reconciles to 192 rows (24 lifecycle / 166 product /
+2 hygiene). No fix-induced adjacent defect was found.
+
 ## Decision log
 
 <!-- consensus-winner-decision:testing-to-main-20260909-a38efd495d2d7124756699d0d630f44a66cf2ac1260bbd6d9ad74649d8228bb8 -->
@@ -1072,6 +1085,11 @@ Decision: slot b selected from testing-to-main-20260909-MASTER-B
 Why: votes={"a": {"candidate_id": "d0cdeb7b447017a087f263ee9b213489d08a73d82e468441732cb03de6b5ad1e", "task": "testing-to-main-20260909-VOTE-A", "vote": "b"}, "b": {"candidate_id": "453a2af45d83d595018878324de9a2edd022f3d997db7f83947dcad4d2262f73", "task": "testing-to-main-20260909-VOTE-B", "vote": "c"}, "c": {"candidate_id": "d0cdeb7b447017a087f263ee9b213489d08a73d82e468441732cb03de6b5ad1e", "task": "testing-to-main-20260909-VOTE-C", "vote": "b"}}; tiebreak_used=False; plan_file=docs/build-stream/plans/testing-to-main-20260909-master-b.md
 
 
+
+DEC-2 | 2026-09-09 | S2-execute | testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL
+Context: bare `impact` is not_yet_native in the R2 runtime; drafts a/c inherited an unexecutable refresh-until-usable wave (K-3/M-10).
+Decision: waves call `intelligence impact --path <p>` and read confidence + corpus.source; freshness via `index status`; index_version/kernel recorded as observed, never chased.
+Why: verified this wave — 6/6 surfaces answer (5 high, 1 low-expected on docs), index id 38 fresh with warnings []; later agents must not re-derive this.
 
 DEC-1 | 2026-09-09 | S1 | owner pending
 Context: testing is substantially ahead of main but has divergent local work, red CI, contradictory lifecycle state, stale CF indexing, and under-protective main branch settings.
@@ -1219,3 +1237,9 @@ Did: Performed the bounded round-2 delta re-review of G-1 and G-2 against both s
 Result: **pass** — G-1 and G-2 are fixed. A missing gitignored conductor manifest now produces an explicit warning and exit 0 only after the tracked manifest passes schema, wave-order, and mandatory canonical-pin checks; a present divergent or malformed mirror remains fail-closed. The dossier now exactly matches the 192-row TSV at 24 lifecycle / 166 product / 2 hygiene and names both hygiene artifacts. No fix-induced adjacent defect was found, so scope was not broadened.
 Verified: `backend/.venv/bin/python -m pytest -q tests/test_verify_wave_manifest.py` → **3 passed**; fresh `git archive HEAD` checkout with no `.compass-forge/` plus `python3 scripts/verify_wave_manifest.py --expected-hash 8601a1fc7cc2373909234cf8bcf6534e0f8a7f7e46c731c1f4f9ad864e142c3c` → warning, **exit 0**; local verifier invocation with the same pin → **exit 0**; independent `awk` aggregation → `INCLUDE-LIFECYCLE 24`, `INCLUDE-PRODUCT 166`, `INCLUDE-HYGIENE 2`; TSV data-row assertion → **192**; dossier `sed` inspection matched all values and named `run-blind-review.sh`; scoped `git diff --check` for both fix commits → clean.
 Next: Conductor may converge the candidate-boundary wave and dispatch W2 `control-plane-lifecycle`; no follow-up fixer task is required.
+
+### L-19 | 2026-09-09T17:25:13Z | S2-execute | meta/muse-spark-1.3-contributor | executor | Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth <!-- bsc-ledger:testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL -->
+Did: W2 control-plane-lifecycle in the shared worktree, scoped to docs/.compass-forge/scripts. Deliberately refreshed the native index (id 38, created 2026-09-09T17:19:20Z newer than HEAD 5845d2de, index_version 12 as observed, kernel rust, warnings []); ran `intelligence impact --path` on six changed surfaces (high confidence on all code surfaces, low-expected on the contract doc) plus a manual string-keyed/middleware dependency follow; built the 182-row triage TSV (0 release-blocking, 182 open-not-release-blocking, 0 closures — no open task sits under an accepted spec) and the 284-row obligation matrix (every changed path owned; one ambient junk file quarantined in place); corrected the M-21 contract header to a repo-rooted pointer; appended correcting entries L-42 (pi-capability: next_action contamination fixed, CF-344..356 populated) and L-012 (benchmark-modernization: resolved to S2-execute/in-progress); wrote the W2 dossier. No code, CI, branch, threshold, or gate touched; no history rewritten; no deletion.
+Result: Git, Build Stream, Compass Forge, and CI tell one provable story: reconciliation table in `docs/promotion/2026-09-09-control-plane-lifecycle.md` gives every recent initiative exactly one status (two M-08 claims found already stale and recorded as such); `task list --status open` holds zero release-blocking rows with per-row citations; CF-SPEC-29's 13 tasks carried with the owner-gated live-lane debt flagged for W6; M-10 migration recorded as DEC-2; testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL.
+Verified: `gate before` 0 new issues; `verify_wave_manifest.py` exit 0 (pinned 8601a1fc); `check_integrity.py` coherent; `git diff --check` clean on all touched files; `audit()` 2 baseline findings only (W2 adds none); `pytest test_public_repo_quality + test_verify_wave_manifest` 3 passed / 1 failed-baseline (AGENTS.md leak preserved for W3a per M-02 ordering); 7 `command` evidence rows on the IMPL task.
+Next: conductor dispatches the code-reviewer delta-free comprehensive review (`testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW`); W3 consumes the obligation matrix and the preserved-dirty backend/frontend surface.

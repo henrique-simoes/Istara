@@ -1,6 +1,10 @@
 # Research-Validity Architecture Contract
 
-Spec: CF-SPEC-124 / CF-1590
+Governance: repo-rooted contract (this file). Prior header cited an external
+spec/task numbering with no corresponding object in this repository's
+Compass Forge state (corrected 2026-09-09, W2 control-plane-lifecycle, M-21;
+content otherwise untouched). Spine compliance is enforced per AGENTS.md and
+this release proceeds under CF-SPEC-30.
 
 This contract is non-negotiable for future Istara changes. It turns the
 scientific research workflow into a product architecture contract, not a

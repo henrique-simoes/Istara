@@ -5,12 +5,12 @@
 item: benchmark-modernization-full-ui-suite
 branch: testing
 cf: { spec: CF-SPEC-21, tasks: [CF-221, CF-222, CF-223, CF-224, CF-225, CF-226, CF-227, CF-228, CF-229, CF-230, CF-231, CF-232, CF-233, CF-234] }
-phase: "Phase 0 — Frame + drift map (this file)"
-stage: S0-frame
+phase: "Phase 1 — Batch execution (frame complete; Batch 3 done under CF-SPEC-24)"
+stage: S2-execute
 status: in_progress
 blocked_on: owner-approval
-last: { agent: pi, at: 2026-09-08T03:40:00Z, ledger: L-010 }
-next_action: "Done. CF-SPEC-24 accepted 18/18. Suite complete per matrix; 30 static-by-design, 48 live-skips honest."
+last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-09T17:25:00Z, ledger: L-012 }
+next_action: "Judge full-run verdicts; wire rich corpus into scenarios/runners (CF-SPEC-25); live lanes owner-gated. Corrected 2026-09-09 W2 L-012: prior next_action scoped Done to CF-SPEC-24 only."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -204,3 +204,9 @@ Test-only files; revert = file-scoped revert. No product behavior touched.
   Gate-after CF-287 0/0. Full 79-scenario run in progress in nifty_dirac.
   Verified: generation ×3, selector smoke, node--check, diff-check.
   Next: judge full-run verdicts; wire rich corpus into scenarios/runners.
+
+- **L-012 | 2026-09-09 | S2-execute | meta/muse-spark-1.3-contributor | W2 control-plane-lifecycle status reconciliation (M-08)**
+  Did: appended this correcting entry without altering prior content. Resolved the file's two-stage/two-verdict contradiction to exactly one status: the Status Block (`S0-frame / in_progress / blocked_on owner-approval`) and `next_action` ("Done. CF-SPEC-24 accepted 18/18 ...") disagreed, and the ledger itself mixes S5-ship (L-010, Batch 3) with S2-execute (L-011, rich corpus). Re-measured: CF-SPEC-21 and CF-SPEC-24 are accepted (their task sets CF-221..CF-234 closed — zero open rows in the W2 triage); CF-SPEC-25 is tasked with 13 open tasks (CF-287 family incl. rich corpus + full-run verdicts, L-011 Next still pending). So "Done" was scoped to the CF-SPEC-24 batch, not to this file's initiative.
+  Result: operative status is **S2-execute / in-progress** — frame and Batch 3 complete (CF-SPEC-24 accepted 18/18), rich-corpus wiring + full-run verdicts pending under tasked CF-SPEC-25; `blocked_on: owner-approval` retained for the live lanes. W2 triage cites this file's spec family as open-not-release-blocking, deferred to CF-SPEC-25.
+  Verified: `spec list` CF-SPEC-21/CF-SPEC-24 accepted, CF-SPEC-25 tasked; triage TSV shows 0 open rows for CF-SPEC-21/24 and 13 for CF-SPEC-25; L-010/L-011 re-read.
+  Next: judge full-run verdicts; wire rich corpus into scenarios/runners; live lanes stay owner-gated.
