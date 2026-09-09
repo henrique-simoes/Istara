@@ -7,10 +7,10 @@ branch: testing
 cf: { spec: CF-SPEC-30, tasks: [] }
 phase: "Phase 0 — three-architect consensus planning"
 stage: S1-plan
-status: in-progress
-blocked_on: owner approval after consensus winner
+status: awaiting-owner-approval
+blocked_on: "owner approval of MECE master plan (slot b)"
 last: { agent: claude-opus-5, at: 2026-09-09T15:29:01Z, ledger: L-10 }
-next_action: "Cross-vote in progress (slot b voted c). Await remaining votes and the conductor consensus_result, then stop at the owner-approval gate before W0/W1 candidate-boundary."
+next_action: "Owner approval required: approve selected MECE master plan (slot b) before implementation dispatch."
 ```
 <!-- /STATUS BLOCK -->
 
