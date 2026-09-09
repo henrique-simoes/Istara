@@ -9,8 +9,8 @@ stage: S4-remediate
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor-xhigh, at: 2026-09-09T18:45:45Z, ledger: L-27 }
-next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
+last: { agent: meta/muse-spark-1.3-contributor-xhigh, at: 2026-09-09T18:47:04Z, ledger: L-28 }
+next_action: "F2 re-asserted (L-28) after pre-fix daemon tick 22cb0056; stage-aware gate on disk, daemon restart pending; delta re-review next."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1310,3 +1310,9 @@ Did: Fixed F-W2-R3-1 at its source instead of re-asserting around it. Made the c
 Result: F-W2-R3-1 flipped open → fixed for FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r2-F1; Status Block reads S4-remediate remediation truth with last.ledger L-27 resolving to exactly one heading; future approved consensus ticks cannot reintroduce the stale dispatch text over S3/S4 headers.
 Verified: `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → OK; `python3 scripts/verify_control_plane_triage.py` → OK; `backend/.venv/bin/python -m pytest -q tests/test_verify_build_stream_status.py tests/test_verify_control_plane_triage.py` → 8 passed; `python3 /Users/user/Documents/Skills/build-stream-conductor/scripts/test_consensus_planning.py` → PASS (incl. new stage-aware regression); `git diff --check` on the lifecycle path → clean.
 Next: conductor-created delta re-review of F-W2-R3-1; no further fixer action remains on this task.
+
+### L-28 | 2026-09-09T18:47:04Z | S4-remediate | meta/muse-spark-1.3-contributor | remediator | Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth <!-- bsc-ledger:FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r2-F1 -->
+Did: Re-asserted S4-remediate remediation truth after a FOURTH sync overwrite (22cb0056, 13s after the 855ebb3d fix commit, next_action-only rewrite preserving L-27 pointer/register/entries). Root cause of the recurrence is now proven to be a stale live image, not missing code: the running conductor daemon (PID 7664, started 2:05PM, `--interval 20.0`) imported `_sync_consensus_lifecycle_gate` before the stage-aware fix landed on disk, so its ticks still execute the pre-fix force-write. The on-disk gate is fixed and regression-tested (L-27 entry); a fresh approved tick against this file is a verified no-op (True, no commit, verifier still OK). Both L-21 headings left byte-identical; F-W2-R2-1 stays fixed as history; F-W2-R3-1 stays fixed (code fix committed at 855ebb3d's companion Skills change) with this entry as its endurance proof pending daemon restart.
+Result: Status Block reads S4-remediate remediation truth with last.ledger L-28 resolving to exactly one heading; green at this commit. Durability requires one owner action outside this repo: restart the conductor daemon (same `conductor.py start --project-root <REPO_ROOT> --cast <REPO_ROOT>/.compass-forge/conductor/testing-to-main-20260909-cast.json --interval 20.0` invocation) so its ticks load the stage-aware gate; until then pre-fix ticks re-clobber green HEADs within ~20s and no lifecycle commit can endure.
+Verified: `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → OK; `python3 scripts/verify_control_plane_triage.py` → OK; `backend/.venv/bin/python -m pytest -q tests/test_verify_build_stream_status.py tests/test_verify_control_plane_triage.py` → 8 passed; `git diff --check` on the lifecycle path → clean; `git show 22cb0056 -- docs/build-stream/2026-09-09-testing-to-main-convergence.md` proves the post-fix overwrite came from the still-running pre-fix daemon image.
+Next: OWNER restarts the conductor daemon, then conductor-created delta re-review of F-W2-R3-1; no further fixer action remains on this task.
