@@ -6,10 +6,10 @@ item: testing-to-main-convergence
 branch: testing
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL] }
 phase: "Phase 0 — three-architect consensus planning"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
-last: { agent: gpt-5.6-sol, at: 2026-09-09T16:17:21Z, ledger: L-17 }
+last: { agent: gpt-5.6-sol, at: 2026-09-09T17:06:45Z, ledger: L-18 }
 next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
@@ -1212,3 +1212,10 @@ Did: Fixed G-1 in `scripts/verify_wave_manifest.py` and `tests/test_verify_wave_
 Result: Clean-clone/CI verification is restored without weakening F-03's mandatory default pin or present-mirror drift detection; `FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A`.
 Verified: `backend/.venv/bin/python -m pytest -q tests/test_verify_wave_manifest.py` → 3 passed; `python3 scripts/verify_wave_manifest.py --expected-hash 8601a1fc7cc2373909234cf8bcf6534e0f8a7f7e46c731c1f4f9ad864e142c3c` → exit 0; `git diff --check -- scripts/verify_wave_manifest.py tests/test_verify_wave_manifest.py` → passed; Compass Forge `gate after --task FIX-REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r1-A --summary` → 0 new failures.
 Next: stage exit: delta re-review G-1 and its immediate verifier/test seams.
+
+### L-18 | 2026-09-09T17:06:45Z | S3-review | gpt-5.6-sol | reviewer | Phase 1 — Freeze and reconcile the testing release candidate
+<!-- bsc-ledger:REREV-testing-to-main-20260909-WAVE-candidate-boundary-REVIEW-r2 -->
+Did: Performed the bounded round-2 delta re-review of G-1 and G-2 against both source-fix commits and their cited evidence. Inspected only the changed verifier/test and dossier/inventory seams. Independently exercised the clean-checkout path from a fresh `git archive HEAD`, checked that the mandatory pinned hash remains enforced before the optional local-mirror comparison, reran the focused verifier tests, and reconciled the TSV bucket counts and row total to the dossier. No product code was edited; only this append-only ledger and Status Block were updated.
+Result: **pass** — G-1 and G-2 are fixed. A missing gitignored conductor manifest now produces an explicit warning and exit 0 only after the tracked manifest passes schema, wave-order, and mandatory canonical-pin checks; a present divergent or malformed mirror remains fail-closed. The dossier now exactly matches the 192-row TSV at 24 lifecycle / 166 product / 2 hygiene and names both hygiene artifacts. No fix-induced adjacent defect was found, so scope was not broadened.
+Verified: `backend/.venv/bin/python -m pytest -q tests/test_verify_wave_manifest.py` → **3 passed**; fresh `git archive HEAD` checkout with no `.compass-forge/` plus `python3 scripts/verify_wave_manifest.py --expected-hash 8601a1fc7cc2373909234cf8bcf6534e0f8a7f7e46c731c1f4f9ad864e142c3c` → warning, **exit 0**; local verifier invocation with the same pin → **exit 0**; independent `awk` aggregation → `INCLUDE-LIFECYCLE 24`, `INCLUDE-PRODUCT 166`, `INCLUDE-HYGIENE 2`; TSV data-row assertion → **192**; dossier `sed` inspection matched all values and named `run-blind-review.sh`; scoped `git diff --check` for both fix commits → clean.
+Next: Conductor may converge the candidate-boundary wave and dispatch W2 `control-plane-lifecycle`; no follow-up fixer task is required.
