@@ -10,7 +10,7 @@ status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
 last: { agent: zai/glm-5.3-flash, at: 2026-09-09T20:06:24Z, ledger: L-31 }
-next_action: "W3 review (L-31): correctness-quality delta review of the triage path fix, node pin, hook line, runtimeConfig tests and survivor taxonomy; conductor close-out next."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
