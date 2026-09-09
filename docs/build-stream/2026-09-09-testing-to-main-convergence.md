@@ -9,8 +9,8 @@ phase: "Phase 0 — three-architect consensus planning"
 stage: S1-plan
 status: in-progress
 blocked_on: owner approval after consensus winner
-last: { agent: zai/glm-5.3-flash, at: 2026-09-09T15:04:57Z, ledger: L-4 }
-next_action: "Freeze the three architect drafts, synthesize one MECE master candidate per architect, cross-vote, then stop at the owner-approval gate."
+last: { agent: claude-opus-5, at: 2026-09-09T15:20:19Z, ledger: L-6 }
+next_action: "Master candidates a/b synthesized. Complete remaining synthesis, run the cross-vote, then stop at the owner-approval gate before W1 candidate-boundary."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -100,3 +100,9 @@ Did: testing-to-main-20260909-architect-a stage on task testing-to-main-20260909
 Result: task testing-to-main-20260909-MASTER-A finished; worktree head 50c4d493.
 Verified: see Compass Forge evidence rows on testing-to-main-20260909-MASTER-A (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-6 | 2026-09-09T15:20:19Z | S1-plan | claude-opus-5 | planner | Phase 0 — three-architect consensus planning <!-- bsc-ledger:testing-to-main-20260909-MASTER-B -->
+Did: Synthesized one MECE master plan from all three immutable draft snapshots (a: gpt-5.6-sol-low, b: claude-opus-5-high, c: zai/glm-5.3-flash-max) into `docs/build-stream/plans/testing-to-main-20260909-master-b.md` (1006 lines). Read every snapshot in full, then re-measured the four facts on which the drafts materially disagreed rather than averaging them. Corrected M-08 in-flight after finding this lifecycle file had been committed mid-planning (3bdea267). No product code, branch state, lifecycle plan, or threshold was touched.
+Result: Master candidate for slot `b`, task testing-to-main-20260909-MASTER-B. Unified register: 24 findings (8×S1, 8×S2, 7×S3, 1×S4) deduplicated across the drafts, each attributed to its source. Four cross-draft conflicts adjudicated by measurement — K-1: draft c is right that local-committed `testing` is unbuildable, and understated it (22 tracked-modified files import untracked `@/lib/tokenStore`, not 8), so the candidate must include classified untracked files and dependency closure becomes a W1 acceptance test. K-2: draft a's "233 blocking frontend lint errors" is an artifact — 232 of them live in a leftover `.stryker-tmp/sandbox-2OnHq3` created today at 11:12; the real product count is 1, a ~200x scoping correction, and the trap itself is filed as new finding M-16 (gitignored but not eslint-ignored). K-3: the brief's blocker #4 is false and drafts a and c each inherited an unexecutable wave — bare `impact` is `not_yet_native` but `intelligence impact --path` works (confidence high, tree-sitter, graph_version 2), and `index_version 12` is what the current Rust kernel writes, so no schema-21 refresh target exists. K-4: draft b's root cause (`machine_checkout_path` is the rule name, not the literal) composes with draft c's leak sites, neutralizing the brief's highest-risk misdirection. Draft c's four-way wave split preserved as internal W3a/W3b and W4a/W4b phase boundaries without breaking the conductor's six manifest ids. Escalated `governance` direct-push-to-main from S4 to S2 blocking-before-W4b, since branch protection will break it.
+Verified: `git grep -l tokenStore HEAD -- frontend/src` empty + 22 worktree importers; `npm run lint` 233 errors attributed by file (232 in sandbox, 1 real); `compass-forge intelligence impact --path` and `index status` via the pinned native binary from repo root; `public_repo_quality_audit.audit()` 2 findings (unchanged by me); `ruff>=0.8.0` floating pin and `ci.yml:87 git push origin HEAD:main` confirmed; plan file self-compliance `grep -c /Users/user` = 0 and GLOBAL_FORBIDDEN scan NONE. Five `command` evidence rows plus `self_report` recorded on testing-to-main-20260909-MASTER-B.
+Next: stage exit — synthesis complete. Awaits the cross-vote phase (architects vote on the two master candidates they did not author), then the owner-approval gate before W1.
