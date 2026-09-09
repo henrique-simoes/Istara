@@ -6,7 +6,10 @@ Scope of this commit: `docs`, `scripts`, `tests` (`.compass-forge` is
 gitignored and cannot be committed; its state is referenced, never moved).
 
 All repository paths below are relative to the checkout root (`<REPO_ROOT>`).
-No absolute machine path appears in any committed artifact in this wave.
+The initial freeze accidentally committed seven artifacts containing the local
+checkout path, increasing the tracked public-quality audit from 2 to 9 findings.
+Remediation scrubbed those seven paths; the remaining tracked finding predates
+this wave, while the ambient `AGENTS.md` finding remains uncommitted.
 
 ## 1. Frozen refs (measured 2026-09-09, this session)
 
@@ -32,24 +35,28 @@ code outside this scope stays dirty in the worktree, preserved untouched
 |---|---|---|---|
 | A — `origin/testing` `9961fa3d` | 994 commits over `main` | Rejected | Missing 78 local commits and every worktree change; CI red on it. |
 | B — local committed `testing` alone | A + 78 commits | Rejected | Import closure fails: tracked-modified files import modules that exist only as untracked worktree files (e.g. `@/lib/tokenStore`); this surface cannot typecheck or build. |
-| C (scoped) — local commits + classified in-scope worktree | B + `INCLUDE-*` paths under `docs`/`scripts`/`tests` | Selected for this wave | The only committable surface in scope whose test/probe/corpus graph closes within the candidate; out-of-scope product files are preserved dirty, never swept in. |
+| C (scoped) — local commits + classified in-scope worktree | B + `INCLUDE-*` paths under `docs`/`scripts`/`tests` | Selected as a boundary freeze; not independently promotable | The in-scope inventory is explicit, but five committed tests depend on excluded `backend/` changes. The scoped candidate therefore does **not** close its test graph and remains red pending W3; out-of-scope product files are preserved dirty, never swept in. |
 
 Full surface C (including `backend`/`frontend`) is assembled by W3 on top of
-this commit; nothing here pre-empts that classification.
+this commit. W3 owns the missing implementation closure; this wave records the
+known red rather than sweeping those files into the freeze or claiming closure.
 
 ## 3. Classification (in scope)
 
 Machine-readable manifest:
 `docs/promotion/2026-09-09-candidate-classification.tsv`
-(one row per path: `path · bucket · evidence citation · owning ref · sha256`).
+(one row per pre-existing classified path: `path · bucket · evidence citation · owning ref · sha256`).
+Together with the four wave-produced files enumerated in §6, it accounts for
+all 196 paths in candidate commit `3de70bfc`.
 
 | Bucket | Rows | Meaning |
 |---|---|---|
-| `INCLUDE-LIFECYCLE` | 24 | `docs/build-stream` narrative (5 tracked status reconciliations + 19 untracked records) and 1 architecture study |
+| `INCLUDE-LIFECYCLE` | 25 | `docs/build-stream` narrative, including this initiative's convergence lifecycle, plus the architecture study |
 | `INCLUDE-PRODUCT` | 166 | `tests` modifications (69) and new fixtures/probes/corpus files (97), `tests/` only |
 | `INCLUDE-HYGIENE` | 1 | `docs/features/site/manifest.json` docs-site rebuild artifact (`generated_at` refresh) |
 | `QUARANTINE` / `UNDECIDED` in scope | 0 | Every in-scope path is traced to evidence; nothing defaults to silent inclusion |
 | Wave-produced files (§6) | 4 | This dossier, the TSV, the tracked manifest export, `verify_wave_manifest.py` — `INCLUDE-HYGIENE` by construction, committed via the same pathspec |
+| **Total candidate paths** | **196** | **192 TSV rows + 4 wave-produced files; no silent inclusion** |
 
 Commit rule used: `git add --pathspec-from-file` with the explicit
 `INCLUDE-*` path list only. No `git add -A`, no pathless commit, no reset,
@@ -101,9 +108,10 @@ exactly; `verify_wave_manifest.py --expected-hash` exits 0 (see §7).
 | `git status` residue after commit | Only §4 excluded/preserved paths remain; each accounted for above |
 | `git stash list` | Unchanged (0 entries before and after) |
 | Protected dirs | `Model_Finetuning/` still ignored/untouched; `LLMs/` absent |
-| `pytest tests/test_public_repo_quality.py -q` | Still 1 failed (the `AGENTS.md:142` leak is out of scope and preserved for W3a per M-02 ordering); scan surface grows at freeze exactly as M-02/M-22 predict, so W3 must re-run post-repair and W6 re-verifies |
+| `pytest tests/test_public_repo_quality.py -q` / direct `audit()` count | The freeze expanded the tracked scan surface and regressed direct findings **2 → 9** by adding seven `machine_checkout_path` violations (not merely one failed pytest function). This remediation scrubs all seven; the focused audit must return to the two-finding baseline before re-review. |
 | `git diff --check` on wave-produced files | Clean (no new whitespace findings from this wave) |
 | CF `index status` / `intelligence impact --path` | Deferred to W2 per M-10 (no schema-21 chase, no bare `impact`) |
+| Committed tests on candidate `3de70bfc`: `python -m pytest tests/test_files.py tests/test_websocket.py tests/test_auth_security.py -q` in a clean detached worktree | **5 failed, 61 passed**. Failures: quarantined-file serving; WebSocket rejection of a pre-MFA session after enrollment; MFA factor-change step-up; HTTP rejection of a pre-MFA session after enrollment; idle-session revocation. The same tests pass only with the preserved dirty `backend/` implementation, so this is a known deferred W3 condition, not closed candidate evidence. |
 | `npx tsc --noEmit` dependency closure | Deferred to W3: the full closure spans the out-of-scope `frontend/` untracked modules, which this scoped wave preserves but does not commit |
 
 ## 8. Residual risks and handoff
