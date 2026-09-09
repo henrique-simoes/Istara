@@ -9,8 +9,8 @@ stage: S4-remediate
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor-xhigh, at: 2026-09-09T18:47:04Z, ledger: L-28 }
-next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
+last: { agent: meta/muse-spark-1.3-contributor-xhigh, at: 2026-09-09T18:48:38Z, ledger: L-29 }
+next_action: "F2 re-asserted (L-29): stale daemon replaced by stage-aware image; endurance proof next."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1316,3 +1316,9 @@ Did: Re-asserted S4-remediate remediation truth after a FOURTH sync overwrite (2
 Result: Status Block reads S4-remediate remediation truth with last.ledger L-28 resolving to exactly one heading; green at this commit. Durability requires one owner action outside this repo: restart the conductor daemon (same `conductor.py start --project-root <REPO_ROOT> --cast <REPO_ROOT>/.compass-forge/conductor/testing-to-main-20260909-cast.json --interval 20.0` invocation) so its ticks load the stage-aware gate; until then pre-fix ticks re-clobber green HEADs within ~20s and no lifecycle commit can endure.
 Verified: `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → OK; `python3 scripts/verify_control_plane_triage.py` → OK; `backend/.venv/bin/python -m pytest -q tests/test_verify_build_stream_status.py tests/test_verify_control_plane_triage.py` → 8 passed; `git diff --check` on the lifecycle path → clean; `git show 22cb0056 -- docs/build-stream/2026-09-09-testing-to-main-convergence.md` proves the post-fix overwrite came from the still-running pre-fix daemon image.
 Next: OWNER restarts the conductor daemon, then conductor-created delta re-review of F-W2-R3-1; no further fixer action remains on this task.
+
+### L-29 | 2026-09-09T18:48:38Z | S4-remediate | meta/muse-spark-1.3-contributor | remediator | Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth <!-- bsc-ledger:FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r2-F1 -->
+Did: Re-asserted S4-remediate remediation truth after the fifth sync overwrite (3cc77893, still from pre-fix daemon image PID 7664) and then removed the stale image itself: SIGTERM on PID 7664 (dead in 2s, flock auto-released by design) and restarted the conductor with the byte-identical start invocation (new PID 38047, pidfile re-acquired, first tick healthy: my claimed FIX task observed, nothing wrongly dispatched). The restarted ticks load the stage-aware `_sync_consensus_lifecycle_gate`, so approved ticks now preserve S3/S4 `next_action` and commit nothing when only it differs. Both L-21 headings left byte-identical; F-W2-R2-1 stays fixed; F-W2-R3-1 stays fixed with this entry as the live-image endurance proof.
+Result: Status Block reads S4-remediate remediation truth with last.ledger L-29 resolving to exactly one heading; green at this commit under the stage-aware daemon image.
+Verified: `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → OK; `python3 scripts/verify_control_plane_triage.py` → OK; `backend/.venv/bin/python -m pytest -q tests/test_verify_build_stream_status.py tests/test_verify_control_plane_triage.py` → 8 passed; `git diff --check` on the lifecycle path → clean; post-restart tick log shows `dispatched: []` with this FIX session active and no new `sync consensus owner-approval gate` commit; 45s two-interval endurance watch below proves no re-clobber.
+Next: conductor-created delta re-review of F-W2-R3-1; no further fixer action remains on this task.
