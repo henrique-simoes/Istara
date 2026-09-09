@@ -10,7 +10,7 @@ status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
 last: { agent: zai/glm-5.3-flash, at: 2026-09-09T21:14:13Z, ledger: L-36 }
-next_action: "W4 ci-enforcement implemented (L-36); conductor dispatches testing-to-main-20260909-WAVE-ci-enforcement-REVIEW."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
