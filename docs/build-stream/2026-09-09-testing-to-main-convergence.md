@@ -5,11 +5,11 @@
 item: testing-to-main-convergence
 branch: testing
 phase: "Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
-last: { agent: gpt-5.6-sol, at: 2026-09-09T17:42:00Z, ledger: L-21 }
+last: { agent: gpt-5.6-sol-low, at: 2026-09-09T17:41:26Z, ledger: L-22 }
 next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
@@ -1082,6 +1082,7 @@ mirror drift remains fail-closed; the dossier reconciles to 192 rows (24 lifecyc
 |---|---|---|---|---|---|
 | **F-W2-R1-1** | Major | `docs/promotion/2026-09-09-control-plane-triage.tsv`, dossier §4 | Blanket zero-blocker classification includes current release acceptance/convergence prerequisites. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1` | fixed |
 | **F-W2-R1-2** | Major | convergence lifecycle Status Block + roadmap | Duplicate `cf` key and stale stage/next-action/phase statuses contradict current wave truth. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B` | fixed |
+| **F-W2-R2-1** | Major | convergence lifecycle Status Block + status verifier | Commit `71574d8b` reintroduced the stale implementation-dispatch action after the fixer passed; the tracked lifecycle now fails its own verifier, and duplicate `L-21` ledger identifiers leave the prior `last.ledger` reference ambiguous. | `FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-F1` | open |
 
 ## Decision log
 
@@ -1270,3 +1271,10 @@ Did: Fixed F-W2-R1-2 in the convergence lifecycle: normalized the Status Block t
 Result: F-W2-R1-2 flipped open → fixed for `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B`; the lifecycle is resumable from Status Block + this ledger entry.
 Verified: `python -m pytest -q tests/test_verify_build_stream_status.py` → 2 passed; `python scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → passed; `git diff --check -- scripts/verify_build_stream_status.py tests/test_verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → passed.
 Next: stage exit: delta re-review F-W2-R1-2 and its immediate lifecycle-status verification seam.
+
+### L-22 | 2026-09-09T17:41:26Z | S3-review | gpt-5.6-sol | reviewer | Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth
+<!-- bsc-ledger:REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1 -->
+Did: Delta re-reviewed both W2 fixes against their command evidence and inspected only the triage/dossier invariant plus lifecycle status/verifier seams. F-W2-R1-1 remains correctly fixed. F-W2-R1-2 regressed after its fixer commit: later commit `71574d8b` restored the stale implementation-dispatch action; the lifecycle also contains two `L-21` headings, making the former Status Block ledger pointer ambiguous.
+Result: **fail** — raised Major F-W2-R2-1 and created `FIX-REREV-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-F1`. This scope broadened only to the adjacent ledger identifier because it directly affects the corrected Status Block's resumability contract.
+Verified: `backend/.venv/bin/python -m pytest -q tests/test_verify_control_plane_triage.py tests/test_verify_build_stream_status.py` → 4 passed; `python3 scripts/verify_control_plane_triage.py` → OK; `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → FAIL before this review ledger/status update with `review/remediation status has stale implementation next_action`; `git show 71574d8b -- docs/build-stream/2026-09-09-testing-to-main-convergence.md` proves the post-fix regression.
+Next: fixer removes the stale-action overwrite path, makes ledger identity/current pointer unambiguous without erasing history, extends focused regression coverage as needed, and reruns the two lifecycle checks before conductor-created delta re-review.
