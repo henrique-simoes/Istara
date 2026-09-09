@@ -1046,6 +1046,14 @@ promotion to `main` remains a separate, later, owner-gated decision.*
 
 ## Decision log
 
+<!-- consensus-winner-decision:testing-to-main-20260909-a38efd495d2d7124756699d0d630f44a66cf2ac1260bbd6d9ad74649d8228bb8 -->
+DEC-consensus-winner | 2026-09-09 | S1-plan | conductor
+Context: three architect cross-votes completed
+Decision: slot b selected from testing-to-main-20260909-MASTER-B
+Why: votes={"a": {"candidate_id": "d0cdeb7b447017a087f263ee9b213489d08a73d82e468441732cb03de6b5ad1e", "task": "testing-to-main-20260909-VOTE-A", "vote": "b"}, "b": {"candidate_id": "453a2af45d83d595018878324de9a2edd022f3d997db7f83947dcad4d2262f73", "task": "testing-to-main-20260909-VOTE-B", "vote": "c"}, "c": {"candidate_id": "d0cdeb7b447017a087f263ee9b213489d08a73d82e468441732cb03de6b5ad1e", "task": "testing-to-main-20260909-VOTE-C", "vote": "b"}}; tiebreak_used=False; plan_file=docs/build-stream/plans/testing-to-main-20260909-master-b.md
+
+
+
 DEC-1 | 2026-09-09 | S1 | owner pending
 Context: testing is substantially ahead of main but has divergent local work, red CI, contradictory lifecycle state, stale CF indexing, and under-protective main branch settings.
 Decision: Pending the three-architect MECE consensus and owner approval; no implementation, push, PR, merge, live model loading, or destructive cleanup is authorized by this planning run.
