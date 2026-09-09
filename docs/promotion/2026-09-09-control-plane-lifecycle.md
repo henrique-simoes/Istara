@@ -63,22 +63,28 @@ table records rather than conceals.
 Rule applied throughout: ledgers are append-only; corrections are new entries
 (L-42, L-012, L-19), never rewrites. No file claims two stages after this wave.
 
-## 4. Task triage (M-09 — 182 open, zero release-blocking)
+## 4. Task triage (M-09 — 182 open, stage-aware prerequisites)
 
 Artifact: `docs/promotion/2026-09-09-control-plane-triage.tsv` (182 data rows,
 one per open task, each with bucket + evidence citation).
 
 | Bucket | Rows | Rule |
-|---|---|---|
-| release-blocking | **0** | nothing open blocks this promotion (justifications below) |
-| open-not-release-blocking | 182 | deferred to a named spec/run with cited parent status |
+|---|---:|---|
+| release-blocking | **0** | no unrelated open task is classified as an immediate release blocker |
+| promotion-prerequisite | **1** | mandatory current-wave independent review; blocks wave convergence and promotion until its latest verdict passes |
+| acceptance-prerequisite | **9** | CF-SPEC-30 acceptance children; must be evidenced and terminal before SC-002 acceptance |
+| open-not-release-blocking | 172 | deferred to a named spec/run with cited parent status |
 | stale-administrative | 0 | **zero closures executed**: no open task sits under an accepted spec, so no row meets the bar (parent accepted + work evidenced elsewhere). Proving the empty set is the honest result of "staleness must be proven, not assumed". |
 
+The zero `release-blocking` count is therefore not a promotion-ready claim: the ten
+stage-aware prerequisite rows remain blocking at their respective convergence/acceptance
+gates. `python3 scripts/verify_control_plane_triage.py` fails if current-spec acceptance
+children or the mandatory current-wave review are blanket-labeled non-blocking.
+
 Group justifications (each row cites its own):
-- CF-SPEC-30 template children CF-402..CF-410 (9): this release proceeds via
-  wave tasks (boundary IMPL/REVIEW done; this IMPL claimed; REVIEW next);
-  template scaffolding closes at spec acceptance per SC-002 — closing now
-  would falsify acceptance later.
+- CF-SPEC-30 acceptance children CF-402..CF-410 (9) remain open
+  `acceptance-prerequisite` rows until each is evidenced and terminal; SC-002 forbids
+  accepting the spec while any linked child is incomplete.
 - CF-SPEC-29 children CF-344..CF-356 (13): parent tasked; wave review PASS
   (L-41); single carried live-lane badge-execution debt is owner-gated and
   pending-not-passing — flagged for W6/owner, not silently closed.
@@ -103,8 +109,9 @@ children at acceptance.
 - CF-SPEC-28 draft: no open children in triage — nothing to dispose.
 - CF-SPEC-29 tasked: wave review passed, live-lane debt carried (§4) — hard
   dependency of SC-002 tracked, not hidden.
-- CF-SPEC-30 tasked (this release): wave tasks are the execution path; template
-  children held for acceptance.
+- CF-SPEC-30 tasked (this release): wave tasks are the execution path; its nine
+  children are acceptance prerequisites, and the current wave review is a promotion
+  prerequisite. Neither class may be treated as blanket non-blocking.
 
 ## 6. Obligation matrix (W3/W5 input)
 
@@ -135,6 +142,8 @@ header numbering and the historical `CF-SPEC-124` citations in
   `index_version`/`kernel` recorded as observed (§1).
 - Six `intelligence impact --path` runs with confidence + corpus recorded (§2).
 - `python3 scripts/verify_wave_manifest.py` exit 0 (M-14 still holds post-W2).
+- `python3 scripts/verify_control_plane_triage.py` exit 0; focused regression test
+  rejects blanket non-blocking relabeling of all ten prerequisites.
 - `python3 scripts/check_integrity.py` green.
 - `pytest tests/test_public_repo_quality.py`: expected outcome is the standing
   baseline (tracked `AGENTS.md` leak preserved for W3a per M-02 ordering; W2

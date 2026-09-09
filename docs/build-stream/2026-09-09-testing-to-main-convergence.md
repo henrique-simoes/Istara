@@ -1080,7 +1080,7 @@ mirror drift remains fail-closed; the dossier reconciles to 192 rows (24 lifecyc
 
 | ID | Sev | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|
-| **F-W2-R1-1** | Major | `docs/promotion/2026-09-09-control-plane-triage.tsv`, dossier §4 | Blanket zero-blocker classification includes current release acceptance/convergence prerequisites. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1` | open |
+| **F-W2-R1-1** | Major | `docs/promotion/2026-09-09-control-plane-triage.tsv`, dossier §4 | Blanket zero-blocker classification includes current release acceptance/convergence prerequisites. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1` | fixed |
 | **F-W2-R1-2** | Major | convergence lifecycle Status Block + roadmap | Duplicate `cf` key and stale stage/next-action/phase statuses contradict current wave truth. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B` | open |
 
 ## Decision log
@@ -1256,3 +1256,10 @@ Did: Completed a blind two-phase comprehensive review of W2 commit `872ca5cb`; i
 Result: **fail** — raised Major findings F-W2-R1-1 and F-W2-R1-2; created two fixer tasks. Scoped commit is correct and checks are green, but release-blocker classification and the lifecycle's own status truth are not acceptable as-is.
 Verified: `backend/.venv/bin/python -m pytest -q <11 focused files>` → 153 passed; `cd frontend && npm run test:unit -- --run` → 22 files/89 tests passed; `python scripts/security_benchmark.py --fail-on-threshold` → 100%; review `gate after` → baseline present/0 new failures; independent TSV parse → 182 rows and native state → 181 open + this review claimed; lifecycle inspection → duplicate/stale status fields.
 Next: S4-remediate both findings, then one delta re-review before W3.
+
+
+### L-21 | 2026-09-09T17:35:38Z | S4-remediate | gpt-5.6-sol | remediator | Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth <!-- bsc-ledger:FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1 -->
+Did: Fixed F-W2-R1-1 in the W2 dossier and triage TSV: CF-SPEC-30's nine acceptance children are now `acceptance-prerequisite`, and the mandatory current-wave review is `promotion-prerequisite`; added a reusable verifier plus regression tests that reject blanket non-blocking labels.
+Result: F-W2-R1-1 flipped open → fixed for `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1`; the zero unrelated-release-blocker count no longer implies readiness while stage-aware gates remain open.
+Verified: `backend/.venv/bin/python -m pytest -q tests/test_verify_control_plane_triage.py` → 2 passed; `python3 scripts/verify_control_plane_triage.py` → OK; independent TSV aggregation → 9 acceptance-prerequisite / 1 promotion-prerequisite / 172 open-not-release-blocking; scoped `git diff --check` → passed.
+Next: delta re-review F-W2-R1-1 and the dossier/TSV/invariant seams; sibling F-W2-R1-2 remains owned by its separate fixer task.
