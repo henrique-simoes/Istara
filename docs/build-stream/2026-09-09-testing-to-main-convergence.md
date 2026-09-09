@@ -9,8 +9,8 @@ phase: "Phase 0 — three-architect consensus planning"
 stage: S1-plan
 status: in-progress
 blocked_on: owner approval after consensus winner
-last: { agent: zai/glm-5.3-flash, at: 2026-09-09T15:22:44Z, ledger: L-7 }
-next_action: "All three master candidates synthesized (a/b/c). Run the cross-vote, then stop at the owner-approval gate before W1 candidate-boundary."
+last: { agent: zai/glm-5.3-flash, at: 2026-09-09T15:28:35Z, ledger: L-9 }
+next_action: "Cross-vote in progress: slot-c architect voted for slot b (plan_vote on testing-to-main-20260909-VOTE-C). Conductor tallies votes, then stops at the owner-approval gate before W1 candidate-boundary."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -118,3 +118,9 @@ Did: testing-to-main-20260909-architect-a stage on task testing-to-main-20260909
 Result: task testing-to-main-20260909-VOTE-A finished; worktree head 08ed60a5.
 Verified: see Compass Forge evidence rows on testing-to-main-20260909-VOTE-A (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-9 | 2026-09-09T15:28:35Z | S1-plan | zai/glm-5.3-flash | architect | vote <!-- bsc-ledger:testing-to-main-20260909-VOTE-C -->
+Did: Read both master candidates in full from their immutable consensus snapshots (slot a 64cc4e5f..., slot b d0cdeb7b...), spot-checked slot b's two most load-bearing, vote-discriminating claims with fresh read-only commands, then cast the slot-c vote for slot b via a plan_vote evidence row on testing-to-main-20260909-VOTE-C. No plan file, code, branch, threshold, or lifecycle-plan content was edited.
+Result: Vote recorded: slot b (claude-opus-5, effort=high, candidate d0cdeb7b447017a087f263ee9b213489d08a73d82e468441732cb03de6b5ad1e). Decisive, self-verified grounds: (1) K-2/M-16 — frontend/.stryker-tmp/sandbox-2OnHq3 exists, gitignored (.gitignore:64) but not eslint-ignored, so slot a's 233-error lint posture would mis-scope W3 ~200x; the real product error is 1. (2) K-3/M-10 — bare impact is not_yet_native while intelligence impact --path returns confidence=high (kernel rust, source tree-sitter); slot a's refresh-index-until-usable posture chases an unexecutable target. (3) M-13 ordering — governance currently pushes to main, so enforce_admins/linear-history must land after that fix; slot b sequences it, slot a does not. (4) Slot b preserves the conductor's six wave-manifest ids verbatim (internal W3a/b, W4a/b phases), slot a introduces an 8-wave W0..W7 manifest. (5) Concrete acceptance tests: tsc dependency-closure proof as the W1 gate, get_type_hints probe for the F821 fixes, post-commit public-quality re-run as the scan surface grows, required-checks manifest contract. (6) Moving surface confirmed live: HEAD advanced again to 08ed60a5 beyond both syntheses' 50c4d493 — slot b freezes before it measures (M-19). Residual concern recorded: slot b's density (1007 lines) and measured numbers aging; mitigated by its freeze-first, SHA-stamped evidence rules.
+Verified: `git rev-parse HEAD origin/testing origin/main` -> 08ed60a5 / 9961fa3d / fa6a1a39; `ls frontend/.stryker-tmp/` -> sandbox-2OnHq3 present; `grep -n stryker .gitignore` -> line 64; eslint config has no stryker-tmp ignore; pinned-binary `impact --path` -> not_yet_native vs `intelligence impact --path backend/app/core/report_manager.py` -> confidence high / tree-sitter. Evidence rows on testing-to-main-20260909-VOTE-C: command (spot-check), plan_vote (vote b), self_report.
+Next: stage exit — vote phase complete for slot c. Conductor tallies the cross-vote (a vs b per architect) and stops at the owner-approval gate before W1 candidate-boundary.
