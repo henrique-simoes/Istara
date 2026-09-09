@@ -5,12 +5,12 @@
 item: testing-to-main-convergence
 branch: testing
 phase: "Phase 4 — Align CI and main protection with the changed architecture"
-stage: S3-review
+stage: S4-remediate
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-09T21:21:10Z, ledger: L-37 }
-next_action: "Conductor close-out of the ci-enforcement wave on the S3 pass verdict (L-37); W5 owns the ui-journeys stack run."
+last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-09T23:38:20Z, ledger: L-39 }
+next_action: "S4-remediate FIX-testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW-r1 (browser proof + ship hygiene + MFA prefix), then conductor-created delta re-review (L-39 fail)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1376,3 +1376,9 @@ Did: testing-to-main-20260909-implementer stage on task testing-to-main-20260909
 Result: task testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL finished; worktree head 11ee4d26.
 Verified: see Compass Forge evidence rows on testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-39 | 2026-09-09T23:38:20Z | S3-review | meta/muse-spark-1.3-contributor | reviewer | Phase 5 — Prove changed behavior through real container-first journeys <!-- bsc-ledger:testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW -->
+Did: Blind two-phase review of W5 browser-spine-acceptance IMPL. Froze measurement sheet before opening work order/ledger/IMPL evidence. Independently re-ran auth_security (35 passed), sessions+webauthn (24 passed), adaptive/contract/evidence (42 passed), tsc clean, ruff clean, security_benchmark 100pct with changed paths (61 triggered), gate after --new-only exit 0, plus own-harness MFA prefix probe and validation_executor baseline/ungrounded probes. No product code edited. Reconciled against IMPL evidence (7 rows: only harness fallback git-log + invalid-stage fallback self_report, gate warn + new-only passed, contract 1 error) and L-38 fallback ledger.
+Result: **fail** — raised Blocker F-W5-R1-1 (zero implementer verification evidence; no container-first browser journeys, screenshots/HAR, dated verdicts — acceptance requires real browser proof), Major F-W5-R1-2 (82/83/84 scenarios untracked while registry refs them; 127 dirty vs gate delta 13 stale; recipe scaffolding + duplicate EXPOSE), Major F-W5-R1-3 (MFA_EXEMPT startswith hole: /api/auth/webauthn-evil + /api/auth/logout-evil pass; get_current_user + A2A lack MFA check), Minor F-W5-R1-4 (full_ensemble baseline True/0.8 claiming model_count 3). Created FIX-testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW-r1 for testing-to-main-20260909-fixer. testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW
+Verified: pytest tests/test_auth_security.py → 35 passed; pytest tests/test_sessions.py tests/test_webauthn.py → 24 passed; pytest tests/test_adaptive_validation.py tests/test_research_validity_contract.py tests/test_validation_evidence.py → 42 passed; frontend tsc --noEmit → clean; ruff check on auth/validation/evidence files → clean; security_benchmark with paths → pass 100.0 auth_change True 61 triggered; mfa_claim_satisfied evil-prefix → True (hole); full_ensemble single-tag → True/0.8 baseline_consensus, debate ungrounded → False/0.0; gate after --new-only → exit 0. CF command (8 rows) + review_verdict fail + self_report recorded on task 444.
+Next: S4-remediate FIX-testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW-r1 (browser proof + ship hygiene + MFA prefix), then conductor-created delta re-review; no reviewer re-review created.
