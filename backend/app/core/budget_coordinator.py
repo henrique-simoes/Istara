@@ -25,9 +25,15 @@ References:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 
 from app.config import settings
+
+# ``BudgetAllocation`` is defined in ``token_counter`` — the leaf of the compute
+# dependency chain (compute_registry_routing imports ``count_tokens``). Keeping
+# the dataclass there prevents a top-level token_counter -> budget_coordinator
+# edge from closing a six-module import cycle through compute_pool; it is
+# re-exported here for API stability.
+from app.core.token_counter import BudgetAllocation
 
 logger = logging.getLogger(__name__)
 
@@ -35,23 +41,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Budget allocation
 # ---------------------------------------------------------------------------
-
-
-@dataclass
-class BudgetAllocation:
-    """Per-component token budget for a single LLM request."""
-
-    identity_tokens: int  # Prompt RAG + agent identity
-    rag_tokens: int  # RAG context chunks
-    history_tokens: int  # Conversation history
-    reply_reserve: int  # Reserved for model output
-    buffer_tokens: int  # Safety overflow
-    total_tokens: int  # Full context window
-
-    @property
-    def available_for_input(self) -> int:
-        """Tokens available for identity + RAG + history (excludes reply + buffer)."""
-        return self.identity_tokens + self.rag_tokens + self.history_tokens
 
 
 class BudgetCoordinator:

@@ -151,6 +151,50 @@ def test_budget_coordinator_allocates_tokens():
     assert budget.identity_tokens > 0
 
 
+def test_token_counter_does_not_import_budget_coordinator():
+    """Regression: token_counter is a leaf — importing it must not pull budget_coordinator.
+
+    A top-level ``token_counter -> budget_coordinator`` edge closes a six-module
+    import cycle (budget_coordinator -> compute_pool -> compute_registry ->
+    compute_registry_core -> compute_registry_routing -> token_counter ->
+    budget_coordinator) that fails the architecture gate. The dependency
+    direction is coordinator -> leaf, never the reverse.
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    backend_dir = Path(__file__).resolve().parents[1] / "backend"
+    probe = (
+        "import sys; import app.core.token_counter; "
+        "sys.exit(0 if 'app.core.budget_coordinator' not in sys.modules else 1)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=str(backend_dir),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (
+        "token_counter must stay a leaf: importing it resolved "
+        "app.core.budget_coordinator (import cycle reintroduced)."
+    )
+
+
+def test_context_window_guard_budget_annotation_resolves():
+    """``ContextWindowGuard``'s ``budget`` annotation must resolve via get_type_hints
+    without an import cycle: BudgetAllocation lives in token_counter and is
+    re-exported from budget_coordinator."""
+    from typing import get_args, get_type_hints
+
+    from app.core.budget_coordinator import BudgetAllocation as Reexported
+    from app.core.token_counter import BudgetAllocation, ContextWindowGuard
+
+    assert Reexported is BudgetAllocation
+    hints = get_type_hints(ContextWindowGuard.__init__)
+    assert BudgetAllocation in get_args(hints["budget"])
+
+
 # ---------------------------------------------------------------------------
 # Keyword Index
 # ---------------------------------------------------------------------------
