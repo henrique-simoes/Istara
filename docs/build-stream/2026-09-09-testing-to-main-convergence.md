@@ -5,12 +5,12 @@
 item: testing-to-main-convergence
 branch: testing
 phase: "Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth"
-stage: S3-review
+stage: S4-remediate
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-candidate-boundary-IMPL, testing-to-main-20260909-WAVE-candidate-boundary-REVIEW, testing-to-main-20260909-WAVE-control-plane-lifecycle-IMPL, testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW] }
-last: { agent: gpt-5.6-sol, at: 2026-09-09T17:33:25Z, ledger: L-20 }
-next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
+last: { agent: gpt-5.6-sol, at: 2026-09-09T17:42:00Z, ledger: L-21 }
+next_action: "Delta re-review F-W2-R1-2 and its lifecycle-status verification seam."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -23,9 +23,9 @@ security, mutation, and real-browser evidence converge. The strict wave manifest
 
 | Phase | Goal (one line) | Acceptance / verify | Status |
 |-------|-----------------|---------------------|--------|
-| 0 | Three independent architects produce, synthesize, and cross-vote a MECE master plan | conductor consensus reaches `AWAITING-OWNER-APPROVAL` | in-progress |
-| 1 | Freeze and reconcile the candidate boundary | exact candidate SHA and worktree disposition | planned |
-| 2 | Reconcile lifecycle and Compass Forge control-plane truth | fresh index, linked evidence, no hidden release blocker | planned |
+| 0 | Three independent architects produce, synthesize, and cross-vote a MECE master plan | conductor consensus reaches `AWAITING-OWNER-APPROVAL` | done |
+| 1 | Freeze and reconcile the candidate boundary | exact candidate SHA and worktree disposition | done |
+| 2 | Reconcile lifecycle and Compass Forge control-plane truth | fresh index, linked evidence, no hidden release blocker | in-progress |
 | 3 | Repair correctness and quality failures | credential-free release checks green | planned |
 | 4 | Align CI and branch-protection enforcement | required checks match architecture | planned |
 | 5 | Prove real container-first behavior | dated journey verdicts on candidate SHA | planned |
@@ -1081,7 +1081,7 @@ mirror drift remains fail-closed; the dossier reconciles to 192 rows (24 lifecyc
 | ID | Sev | Where | Finding | CF task | Status |
 |---|---|---|---|---|---|
 | **F-W2-R1-1** | Major | `docs/promotion/2026-09-09-control-plane-triage.tsv`, dossier §4 | Blanket zero-blocker classification includes current release acceptance/convergence prerequisites. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1` | fixed |
-| **F-W2-R1-2** | Major | convergence lifecycle Status Block + roadmap | Duplicate `cf` key and stale stage/next-action/phase statuses contradict current wave truth. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B` | open |
+| **F-W2-R1-2** | Major | convergence lifecycle Status Block + roadmap | Duplicate `cf` key and stale stage/next-action/phase statuses contradict current wave truth. | `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B` | fixed |
 
 ## Decision log
 
@@ -1263,3 +1263,10 @@ Did: Fixed F-W2-R1-1 in the W2 dossier and triage TSV: CF-SPEC-30's nine accepta
 Result: F-W2-R1-1 flipped open → fixed for `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1`; the zero unrelated-release-blocker count no longer implies readiness while stage-aware gates remain open.
 Verified: `backend/.venv/bin/python -m pytest -q tests/test_verify_control_plane_triage.py` → 2 passed; `python3 scripts/verify_control_plane_triage.py` → OK; independent TSV aggregation → 9 acceptance-prerequisite / 1 promotion-prerequisite / 172 open-not-release-blocking; scoped `git diff --check` → passed.
 Next: delta re-review F-W2-R1-1 and the dossier/TSV/invariant seams; sibling F-W2-R1-2 remains owned by its separate fixer task.
+
+
+### L-21 | 2026-09-09T17:42:00Z | S4-remediate | gpt-5.6-sol | remediator | Phase 2 — Reconcile Build Stream and Compass Forge lifecycle truth <!-- bsc-ledger:FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B -->
+Did: Fixed F-W2-R1-2 in the convergence lifecycle: normalized the Status Block to one `cf` key, current S4 remediation truth, and a delta-review next action; reconciled roadmap Phases 0/1 to done and active Phase 2 to in-progress. Added `scripts/verify_build_stream_status.py` and focused regression tests to reject duplicate top-level status keys, stale phase progression, and implementation actions during review/remediation.
+Result: F-W2-R1-2 flipped open → fixed for `FIX-testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW-r1-B`; the lifecycle is resumable from Status Block + this ledger entry.
+Verified: `python -m pytest -q tests/test_verify_build_stream_status.py` → 2 passed; `python scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → passed; `git diff --check -- scripts/verify_build_stream_status.py tests/test_verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` → passed.
+Next: stage exit: delta re-review F-W2-R1-2 and its immediate lifecycle-status verification seam.
