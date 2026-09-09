@@ -9,8 +9,8 @@ phase: "Phase 0 — three-architect consensus planning"
 stage: S1-plan
 status: in-progress
 blocked_on: owner approval after consensus winner
-last: { agent: claude-opus-5, at: 2026-09-09T15:00:20Z, ledger: L-3 }
-next_action: "Run the three-architect consensus pipeline and present the frozen MECE winner for owner approval."
+last: { agent: zai/glm-5.3-flash, at: 2026-09-09T15:04:57Z, ledger: L-4 }
+next_action: "Freeze the three architect drafts, synthesize one MECE master candidate per architect, cross-vote, then stop at the owner-approval gate."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -45,6 +45,12 @@ Did: Created the strict-wave manifest and prepared the exact shared architect br
 Result: Planning run is ready to dispatch; no product or branch mutation has been performed.
 Verified: Native Rust Compass Forge identity and conductor routing inspected; no live servers, models, or providers started.
 Next: Dispatch three architect drafts, synthesize MECE master candidates, cross-vote, and stop at the human approval gate.
+
+### L-4 | 2026-09-09T15:04:57Z | S1-plan | zai/glm-5.3-flash | architect | draft <!-- bsc-ledger:testing-to-main-20260909-PLAN-C -->
+Did: Wrote the independent architect-C draft plan to docs/build-stream/plans/testing-to-main-20260909-plan-c.md (350 lines): candidate verdict (surface C selected — untracked tokenStore/SeeMoreList/ToolAuditTrailTable are imported by modified tracked files, so surface B cannot typecheck/build), C1–C6 classification protocol with quarantine branch and drift-prevention rules, findings register F-C-01..F-C-21, 8 waves W0–W7 mapped onto the conductor manifest, CI target architecture with required-check manifest, 22-row verification matrix, Research Spine assurance, owner-gated operations, and binary READY criteria.
+Result: Planning-only artifact; no product code, branch state, threshold, or lifecycle plan content edited. Read-only evidence reproduced: 64 commits ahead of origin/testing, 155 modified/119 untracked files, 15 ruff-format files (pin drift 0.16.4 local vs 0.16.6 CI via >=0.8.0 floor), ChatModelControls.tsx:20 no-empty-object-type, public-quality audit 2 findings (machine checkout path in AGENTS.md:142 and pi-capability-inheritance.md), 295 whitespace findings vs origin/main, CI 34039897688 red (frontend mutation 73.08 < 75; backend Format check; full pytest step never ran), main protection = [governance]/0 reviews/enforce-admins off/force-push allowed, CF: 181 open tasks incl. CF-SPEC-29×13 blocking SC-002, CF impact/graph not_yet_native.
+Verified: six credential-free governance checks + security_benchmark --fail-on-threshold all exit 0 on the working candidate; refs/divergence/lint/audit/whitespace commands re-run by this architect; task evidence rows (2 command + 1 self_report) attached; plan file leak-checked against public_repo_quality GLOBAL_FORBIDDEN (0 hits).
+Next: Conductor freezes the three drafts, runs synthesize, then cross-vote; owner-approval gate precedes W0.
 
 ## Phase 0 — Three-architect consensus planning
 
