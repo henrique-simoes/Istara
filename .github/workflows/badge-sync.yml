@@ -1,0 +1,61 @@
+# README version-badge sync — separate workflow with narrow permissions (M-13).
+#
+# The `governance` job in ci.yml is a REQUIRED check and must be read-only
+# (contents: read): a required check that can push commits is the
+# highest-value target in the repository, and under the owner-gated main
+# branch-protection change (enforce_admins + linear history, M-07) a
+# writeback from inside the required check would start failing anyway.
+#
+# This workflow is the ONLY CI-generated write path:
+#   * triggers on push to `main` (the release branch) and manual dispatch —
+#     never on `testing`/`staging`, so the promotion source stays an exact,
+#     reproducible SHA (no-direct-push / F-6 contract);
+#   * touches only the README badge lines;
+#   * commits with `[skip ci]` so the generated commit does not retrigger the
+#     full graph.
+#
+# Contract-enforced by scripts/check_workflow_contracts.py (badge-sync
+# checks) and scripts/check_ci_governance.py.
+
+name: Badge sync (main only)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: badge-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  badge-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync README version badges (release branch only — never mutates testing/staging)
+        # F-6 regression guard: the writeback is restricted to `main`, the
+        # release branch. On `testing`/`staging` pushes this workflow does not
+        # run at all — CI never mutates `testing` (the promotion source stays
+        # an exact, reproducible SHA for the human promotion gate) — and the
+        # push step itself targets only `main`.
+        if: github.event_name == 'push' && github.ref_name == 'main'
+        run: |
+          VERSION=$(cat VERSION)
+          # English README
+          sed -i "s|version-[0-9][0-9.]*-brightgreen|version-${VERSION}-brightgreen|g" README.md
+          # Portuguese README
+          sed -i "s|versão-[0-9][0-9.]*-brightgreen|versão-${VERSION}-brightgreen|g" README.pt-BR.md
+          if [ -n "$(git diff -- README.md README.pt-BR.md)" ]; then
+            git add README.md README.pt-BR.md
+            git -c user.name="istara-badge-bot" -c user.email="actions@users.noreply.github.com" \
+              commit -m "ci: sync README version badges to ${VERSION} [skip ci]"
+            git push origin HEAD:main
+          else
+            echo "README badges already at ${VERSION} — nothing to do"
+          fi

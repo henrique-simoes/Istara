@@ -1,0 +1,5 @@
+{
+  "purpose": "Additional PROVEN journeys added to the `full` scope (pushes, PRs to main, weekly schedule, dispatch) on top of testing/ui-journeys.smoke.json. Empty at W4 by design: W5 (browser-spine-acceptance) populates this list as it proves each journey green on the QA stack with dated evidence.",
+  "honesty_contract": "Registered scenarios absent from smoke+extra are recorded as explicit not_runnable entries in the uploaded ui-journeys artifact on every full run — they are never silently skipped and never counted as passes (D.8).",
+  "scenarios": []
+}

@@ -11,11 +11,13 @@ Structural, deterministic checks (stdlib only):
      auto-merge, and must fail closed when the source SHA changes.
   5. No public workflow may reference `multivac`, a private endpoint, or a
      committed credential.
-  6. (F-6 regression) ci.yml's governance badge-sync writeback is restricted
-     to the release branch `main`: CI never pushes a generated commit to
-     `testing` (or any other triggering branch), so `testing` HEAD stays a
-     stable, reproducible source for the exact-SHA human promotion gate and
-     the no-direct-push contract.
+  6. (F-6 regression, W4 M-13 form) ci.yml contains NO `git push` at all:
+     every CI job is read-only, so CI can never push a generated commit to
+     `testing` (or any other branch). The README version-badge writeback
+     lives in its own narrow workflow, `badge-sync.yml`, which must trigger
+     only on `main` (the release branch), never on `testing`/`staging`, so
+     `testing` HEAD stays a stable, reproducible source for the exact-SHA
+     human promotion gate and the no-direct-push contract.
   7. (F-5-r2 regression) promote-testing.yml's fail-closed required-checks
      step lists Actions runs via `gh api .../actions/runs`, which requires the
      Actions read scope on the workflow token; the explicit `permissions`
@@ -56,26 +58,64 @@ def check_ci(issues: list[str], root: Path = ROOT) -> None:
         issues.append("ci.yml: missing QA capabilities check")
     if "istara-security-scorecard" not in ci:
         issues.append("ci.yml: missing security scorecard artifact upload")
-    # F-6 regression contract: CI-generated badge-sync writebacks are restricted
-    # to the release branch (`main`). A writeback that follows the triggering
-    # branch (`${{ github.ref_name }}`) would push a generated commit to
-    # `testing` during/after QA evidence, move HEAD, and invalidate the
-    # exact-SHA human promotion gate.
-    if re.search(r"git push\s+origin\s+HEAD:\$\{\{\s*github\.ref_name\s*\}\}", ci):
+    # F-6 regression contract, W4 M-13 form: no CI job writes to any branch.
+    # The `governance` job is a REQUIRED check and must be read-only
+    # (`contents: read`); the README badge writeback lives in badge-sync.yml.
+    if "git push" in ci:
         issues.append(
-            "ci.yml: badge-sync writeback pushes to the triggering branch "
-            "(`${{ github.ref_name }}`); on `testing` this would mutate the "
-            "promotion source — the writeback must target `main`"
+            "ci.yml: no CI job may push to any branch (M-13: governance is a "
+            "required check and must be read-only; badge sync lives in "
+            "badge-sync.yml)"
         )
-    if "github.ref_name == 'main'" not in ci:
+    if not re.search(r"^  release-gate:\s*$", ci, re.MULTILINE):
         issues.append(
-            "ci.yml: badge-sync writeback must be gated to the release branch "
-            "(`if: github.event_name == 'push' && github.ref_name == 'main'`)"
+            "ci.yml: missing the fail-closed `release-gate` aggregator job "
+            "(fails on failure, cancellation, and unexplained skip)"
+        )
+    if "python scripts/check_required_checks.py" not in ci:
+        issues.append(
+            "ci.yml: missing the required-checks manifest contract check (M-20)"
         )
     if re.search(r"git push\b[^\n]*\btesting\b", ci):
         issues.append(
             "ci.yml: no CI step may push a generated commit to `testing` "
             "(no-direct-push / reproducible-source contract)"
+        )
+
+
+def check_badge_sync(issues: list[str], root: Path = ROOT) -> None:
+    """Badge-sync is the ONLY CI-generated write path — narrow and main-only."""
+    badge = read("badge-sync.yml", root=root)
+    if "branches: [main]" not in badge:
+        issues.append(
+            "badge-sync.yml: must trigger on push to `main` only "
+            "(branches: [main]) — the promotion source `testing` must stay "
+            "reproducible (no-direct-push / F-6 contract)"
+        )
+    if re.search(r"branches:\s*\[[^\]]*\btesting\b", badge) or re.search(
+        r"branches:\s*\[[^\]]*\bstaging\b", badge
+    ):
+        issues.append(
+            "badge-sync.yml: must never trigger on `testing`/`staging` — the "
+            "promotion source must stay reproducible (no-direct-push contract)"
+        )
+    if re.search(r"git push\b[^\n]*\btesting\b", badge):
+        issues.append("badge-sync.yml: the writeback must never push to `testing`")
+    if "git push origin HEAD:main" not in badge:
+        issues.append("badge-sync.yml: badge writeback must push only to `main`")
+    if "contents: write" not in badge:
+        issues.append(
+            "badge-sync.yml: must declare the narrow `contents: write` permission"
+        )
+    if "[skip ci]" not in badge:
+        issues.append(
+            "badge-sync.yml: the generated commit must carry `[skip ci]` so it "
+            "does not retrigger the full CI graph"
+        )
+    if "github.ref_name == 'main'" not in badge:
+        issues.append(
+            "badge-sync.yml: the writeback step must be gated to the release "
+            "branch (`if: github.event_name == 'push' && github.ref_name == 'main'`)"
         )
 
 
@@ -134,18 +174,19 @@ def check_promote(issues: list[str], root: Path = ROOT) -> None:
 
 def main() -> int:
     issues: list[str] = []
-    for name in ("ci.yml", "qa-artifact.yml", "promote-testing.yml"):
+    for name in ("ci.yml", "badge-sync.yml", "qa-artifact.yml", "promote-testing.yml"):
         if not (WORKFLOWS / name).exists():
             issues.append(f"missing workflow: {name}")
     if not issues:
         try:
             check_ci(issues)
+            check_badge_sync(issues)
             check_qa_artifact(issues)
             check_promote(issues)
         except FileNotFoundError as exc:
             issues.append(str(exc))
 
-    for name in ("ci.yml", "qa-artifact.yml", "promote-testing.yml"):
+    for name in ("ci.yml", "badge-sync.yml", "qa-artifact.yml", "promote-testing.yml"):
         path = WORKFLOWS / name
         if not path.exists():
             continue

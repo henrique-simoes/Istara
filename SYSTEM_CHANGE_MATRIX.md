@@ -206,7 +206,7 @@ pytest tests/test_feature_docs.py -q
 | versioning format | `scripts/set-version.sh`, `scripts/prepare-release.sh`, `VERSION`, `CHANGELOG.md`, updater logic, desktop tag checks, release workflow |
 | release workflow | `.github/workflows/build-installers.yml`, artifact naming, updater `latest.json`, release notes assumptions, `CHANGELOG.md` |
 | release preparation | `scripts/prepare-release.sh`, `CHANGELOG.md`, integrity/governance/rehearsal flow, release commit/tag sequence |
-| CI enforcement | `.github/workflows/ci.yml`, required checks, docs/checker steps, contributor workflow; CI-generated writebacks (e.g. README badge sync) stay on `main` only and never mutate `testing` (promotion source must remain reproducible); `promote-testing.yml` binds `actions: read` so its `gh api .../actions/runs` green-check is authorized |
+| CI enforcement | `.github/workflows/ci.yml`, `.github/workflows/badge-sync.yml`, required checks (`testing/required-checks.json` manifest, contract-checked by `scripts/check_required_checks.py`), docs/checker steps, contributor workflow; failure-domain jobs with a fail-closed `release-gate` aggregator; CI jobs never push to any branch — the README badge writeback lives in the narrow main-only `badge-sync.yml` and never mutates `testing` (promotion source must remain reproducible); `promote-testing.yml` binds `actions: read` so its `gh api .../actions/runs` green-check is authorized; owner-gated protection package in `docs/promotion/branch-protection/` |
 | runtime update behavior | `backend/app/api/routes/updates.py`, `desktop/src-tauri/src/health.rs`, settings update UI, backup/update docs |
 | installer packaging | desktop build, bundled resources, source inclusion/exclusion, install docs |
 

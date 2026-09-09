@@ -6,6 +6,38 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-09 — CI failure-domain independence + required-check contract (W4 ci-enforcement)
+
+Scope: `.github/workflows/ci.yml` redesigned into failure-domain jobs with a
+fail-closed `release-gate` aggregator; required-checks manifest
+(`testing/required-checks.json`) + contract checker
+(`scripts/check_required_checks.py`); read-only CI (`badge-sync.yml` split out,
+M-13); repo-wide correctness lint classes blocking; `qa-contract-stack` →
+`qa-contract-render` rename with QA contract tests moved to `backend-test`;
+container-first `ui-journeys` lane defined (executed in W5) with honest
+`not_runnable` handling and SHA-keyed artifacts; `desktop-check` honest status
+(M-18 owner decision pending); frontend mutation `related: false` + advisory
+wide scope; owner-gated branch-protection package prepared unapplied in
+`docs/promotion/branch-protection/`. Suite topology change: new
+`tests/test_required_checks.py` (15 tests), new `badge-sync.yml` contract tests
+in `tests/test_workflow_contracts.py` (now 14).
+
+| Area | Result |
+| --- | --- |
+| Contract battery | `check_required_checks.py`, `check_workflow_contracts.py`, `check_ci_governance.py`, `check_test_harness.py`, `check_integrity.py`, `check_qa_capabilities.py`, `public_repo_quality_audit.py --check` — all passed; `security_benchmark.py --fail-on-threshold` — pass, exit 0 |
+| Contract test suites | `pytest tests/test_required_checks.py tests/test_workflow_contracts.py tests/test_feature_obligations.py tests/test_public_repo_quality.py tests/test_qa_capabilities.py -q` → 52 passed; QA contract set (now in backend-test) → 69 passed; harness/property/governance/compute CI contract set → 100 passed |
+| Workflow YAML | `ci.yml` + `badge-sync.yml` parse clean (yaml.safe_load); 17 jobs parsed, single retained edge `ui-journeys → qa-contract-render`, release-gate needs ≡ 16 required contexts − itself |
+| M-06 acceptance (local demonstration) | Injected format violation into `backend/app/core/compute_capacity.py` → `ruff format --check` exit 1 (backend-format red) while `pytest tests/test_data_transformations.py tests/test_workflow_contracts.py` → 35 passed (backend-test green, independent domain); file restored, worktree clean |
+| ui-journeys lane | Docker daemon unavailable locally → stack execution NOT run locally (CI/W5 evidence); selection + `not_runnable` recording verified by execution: scope=full → 79 registered, 7 proven selected, 72 explicitly recorded not-runnable; journey ids validated against the scenario registry; compose render (`--profile contract`, `--profile ui`) passed without a daemon |
+| Frontend | `npx vitest run` → 108 passed after `stryker.config.json` `related:false` + new `stryker.wide.config.json`; stryker thresholds unchanged (break 75) |
+
+Caveats recorded honestly: the deliberate format-error-red/backend-test-green
+proof was demonstrated locally at the command level plus structurally in
+`tests/test_required_checks.py`; the same-run GitHub Actions proof lands when
+CI next executes on the pushed candidate. Local Docker was not started (no
+permission), so `ui-journeys` has no local green run — its CI/W5 evidence is
+the release proof.
+
 ## 2026-09-08 - Pi Upstream Lockstep Bump 0.84.3→0.85.1 + Release Acceptance (update-and-release-proof wave)
 
 Scope: lockstep pi-ai/pi-agent-core pin 0.84.3 → 0.85.1 across `pi-runtime` and

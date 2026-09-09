@@ -1,0 +1,14 @@
+{
+  "purpose": "Deterministic smoke journey set for the container-first ui-journeys CI lane. Used verbatim on ordinary PRs to `testing` (D.4) and as the base of the `full` proven set elsewhere. Every id must exist in tests/simulation/lib/scenario-registry.mjs — scripts/check_required_checks.py-independent validation runs in the lane's resolve step and fails closed on unknown ids.",
+  "selection_rule": "Only journeys that are (a) credential-free, (b) compatible with the qa-provider-stub contract lane (no live model completions), and (c) proven green on the QA stack may be listed here. W5 (browser-spine-acceptance) grows this list with execution evidence.",
+  "scope_default": "pull_request to testing",
+  "scenarios": [
+    "01-health-check",
+    "02-onboarding",
+    "03-project-setup",
+    "09-navigation-search",
+    "32-auth-flow",
+    "67-auth-enforcement",
+    "81-project-settings"
+  ]
+}

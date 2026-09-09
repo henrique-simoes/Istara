@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "packageManager": "npm",
   "testRunner": "vitest",
-  "mutate": ["src/lib/runtimeConfig.ts"],
+  "mutate": ["src/lib/runtimeConfig.ts", "src/lib/*Api.ts"],
   "reporters": ["clear-text", "progress", "json"],
   "thresholds": {
     "high": 90,

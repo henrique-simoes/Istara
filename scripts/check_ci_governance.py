@@ -41,6 +41,49 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "frontend mutation test gate": "npm run test:mutation",
         "change obligations": "python scripts/check_change_obligations.py",
         "integrity check": "python scripts/check_integrity.py",
+        # W4 ci-enforcement topology (M-06/M-15/M-20/M-05/D.8/D.9).
+        "fail-closed release-gate aggregator job": "  release-gate:",
+        "aggregator fail-closed statement": (
+            "fails on failure, cancellation, and unexplained skip"
+        ),
+        "required-checks manifest contract (M-20)": (
+            "python scripts/check_required_checks.py"
+        ),
+        "whitespace hygiene gate (M-15)": "git diff --check",
+        "public-quality audit (M-02)": "python scripts/public_repo_quality_audit.py --check",
+        "backend format gate in its own job": "ruff format --check .",
+        "repo-wide correctness lint classes (M-03)": "--select F821,F811,F822",
+        "ui-journeys container-first lane": (
+            "docker compose -f docker-compose.qa.yml --profile ui up -d --wait"
+        ),
+        "ui-journeys honest not_runnable handling (D.8)": "not_runnable:",
+        "ui-journeys journey evidence artifact": "istara-ui-journeys-",
+        "desktop honest status step (M-18)": "honest status",
+    },
+    ".github/workflows/badge-sync.yml": {
+        "main-only trigger": "branches: [main]",
+        "narrow contents write permission": "contents: write",
+        "push restricted to main": "git push origin HEAD:main",
+        "skip ci generated commit": "[skip ci]",
+        "main-gated writeback step": "github.ref_name == 'main'",
+    },
+    "testing/required-checks.json": {
+        "manifest schema version": '"version": 1',
+        "hygiene required context": '"hygiene"',
+        "backend-format required context": '"backend-format"',
+        "backend-lint required context": '"backend-lint"',
+        "backend-test required context": '"backend-test"',
+        "backend-mutation required context": '"backend-mutation"',
+        "frontend-lint required context": '"frontend-lint"',
+        "frontend-typecheck required context": '"frontend-typecheck"',
+        "frontend-unit required context": '"frontend-unit"',
+        "frontend-mutation required context": '"frontend-mutation"',
+        "frontend-build required context": '"frontend-build"',
+        "qa-contract-render required context": '"qa-contract-render"',
+        "ui-journeys required context": '"ui-journeys"',
+        "release-gate required context": '"release-gate"',
+        "desktop owner-decision-pending (M-18)": "owner-decision-pending",
+        "owner apply path": "docs/promotion/branch-protection/README.md",
     },
     ".github/workflows/build-installers.yml": {
         "Node 24 installer runtime": "node-version: 24",
@@ -299,6 +342,14 @@ FORBIDDEN_SNIPPETS: dict[str, dict[str, str]] = {
         "legacy Compass doc generation": "scripts/update_agent_md.py",
         "legacy Compass AGENT doc commit": "AGENT.md COMPLETE_SYSTEM.md AGENT_ENTRYPOINT.md",
         "Node 20 frontend runtime": 'node-version: "20"',
+        # M-13: the required governance check must stay read-only; the badge
+        # writeback lives in badge-sync.yml.
+        "CI job branch writeback": "git push",
+        # M-18: `continue-on-error` is not an acceptable desktop release
+        # status; the old excuse must not come back.
+        "desktop continue-on-error excuse": (
+            "continue-on-error: true  # Dependencies may require system libs"
+        ),
     },
     ".github/workflows/build-installers.yml": {
         "legacy Compass doc generator release trigger": "scripts/update_agent_md.py",

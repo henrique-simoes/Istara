@@ -758,6 +758,7 @@ pytest tests/
 node tests/simulation/run.mjs
 python scripts/check_integrity.py
 python scripts/check_ci_governance.py
+python scripts/check_required_checks.py  # after renaming/adding/removing a CI job
 ```
 
 ### Production Deployment

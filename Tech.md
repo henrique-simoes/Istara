@@ -1701,10 +1701,13 @@ System tray application for macOS, Windows, and Linux. **Mode-aware manager only
 `.github/workflows/ci.yml` enforces repository governance on pushes to `main` and pull requests:
 - Active governance docs must be coherent: `python scripts/check_integrity.py`
 - CI/CD governance must be self-consistent: `python scripts/check_ci_governance.py`
+- The required-checks manifest must match the job graph: `python scripts/check_required_checks.py`
 - The industry-standard security benchmark must pass: `python scripts/security_benchmark.py --fail-on-threshold`
 - Change obligations must be satisfied: `python scripts/check_change_obligations.py`
 - That governance check fails when architecture/process/release-sensitive code changes without corresponding updates to `Tech.md`, tests, or Istara persona files
+- CI is organized by failure domain (format, lint, tests, mutation, build, governance, QA contracts, UI journeys each report independently); the fail-closed `release-gate` aggregator fails on failure, cancellation, and unexplained skip; required-check semantics live in `testing/required-checks.json`
 - Backend CI compiles release-critical governed surfaces, runs `python scripts/production_rehearsal.py --json`, and then runs the dedicated governed evolution regression pair: `tests/test_improvement_governance.py` and `tests/test_compute.py`
+- No CI job writes to any branch; the README badge writeback lives in the narrow main-only `badge-sync.yml` workflow
 
 Legacy generated agent wrappers and one-off diagnostic registers are no longer blocking CI/CD governance sources. Compass Forge is the local-first control plane for repository onboarding, impact analysis, gates, work orders, and evidence. CI therefore guards against accidentally re-promoting retired generators or retired markdown drift checks back into release governance.
 
@@ -2807,10 +2810,15 @@ Istara's public release testing is now provider-agnostic and human-gated:
   paths and emits a stable JSON obligation report; `qa/runtime_capabilities.json`
   is the consulted runtime/provider capability declaration.
 - **Testing integration branch:** `.github/workflows/ci.yml` triggers on
-  `main`, `staging`, and the long-lived `testing` branch. The
-  `feature-obligations` job gates unknown paths before expensive jobs; the
-  `qa-artifact` job builds a disposable QA image with immutable digest +
-  provenance/SBOM.
+  `main`, `staging`, the long-lived `testing` branch, pull requests, a weekly
+  schedule, and manual dispatch. The `feature-obligations` job gates unknown
+  paths before expensive jobs; the `qa-artifact` job builds a disposable QA
+  image with immutable digest + provenance/SBOM. Jobs are split by failure
+  domain and report independently; `release-gate` aggregates fail-closed;
+  `testing/required-checks.json` is the required-checks manifest
+  (contract-checked by `scripts/check_required_checks.py`) and the verbatim
+  source for the owner-gated `main` branch-protection package in
+  `docs/promotion/branch-protection/`.
 - **Disposable QA runtime:** `docker-compose.qa.yml` provides profile-gated QA
   stacks (`contract`, `synthetic`, `reset`, `audit`, `live`, `ui`) with unique
   project names (`istara-qa-<run-id>`), no fixed container names, no live model

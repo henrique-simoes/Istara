@@ -128,6 +128,7 @@ features:
     owner: platform
     paths:
       - ".github/workflows/ci.yml"
+      - ".github/workflows/badge-sync.yml"
       - ".github/workflows/qa-artifact.yml"
       - ".github/workflows/promote-testing.yml"
       - ".github/workflows/build-installers.yml"
@@ -136,6 +137,11 @@ features:
       - ".github/workflows/track-autoresearch.yml"
       - ".github/CODEOWNERS"
       - ".github/dependabot.yml"
+      - "scripts/check_required_checks.py"
+      - "tests/test_required_checks.py"
+      - "testing/required-checks.json"
+      - "testing/ui-journeys.smoke.json"
+      - "testing/ui-journeys.proven-extra.json"
     exceptions: []
     requires_human_review: true
     docs_features_update: false
@@ -373,6 +379,7 @@ features:
       - "frontend/package.json"
       - "frontend/vitest.config.ts"
       - "frontend/stryker.config.json"
+      - "frontend/stryker.wide.config.json"
       - "frontend/src/lib/runtimeConfig.test.ts"
       - "frontend/src/lib/modelCatalog.test.ts"
       - "frontend/src/lib/modelProviders.test.ts"

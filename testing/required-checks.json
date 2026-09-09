@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "workflow": ".github/workflows/ci.yml",
+  "purpose": "Required-check semantics for CI (M-20) and the single source consumed VERBATIM by the owner-gated main branch-protection change (M-07). Contract-checked every run by scripts/check_required_checks.py: a renamed or removed job fails CI until this manifest is updated in the same change.",
+  "required_contexts": [
+    "hygiene",
+    "feature-obligations",
+    "governance",
+    "backend-format",
+    "backend-lint",
+    "backend-test",
+    "backend-mutation",
+    "frontend-lint",
+    "frontend-typecheck",
+    "frontend-unit",
+    "frontend-mutation",
+    "frontend-build",
+    "test-harness-js",
+    "qa-contract-render",
+    "ui-journeys",
+    "release-gate"
+  ],
+  "required_context_reasons": {
+    "hygiene": "Whitespace + public-quality audit (M-15/M-02) — blocking release hygiene.",
+    "feature-obligations": "Fail-closed change classifier; unknown paths block before expensive jobs run.",
+    "governance": "Integrity, CI/CD governance, test-harness governance, required-checks contract, release security readiness, security benchmark, PR change obligations. Read-only (M-13).",
+    "backend-format": "ruff format --check in its own job so formatting can never hide the test suite (M-06/M-11).",
+    "backend-lint": "Repo-wide correctness classes F821,F811,F822 blocking (M-03) + changed-file strict gate + governed-surface compile check. Style backlog stays advisory with a documented burn-down (M-24).",
+    "backend-test": "Production rehearsal, harness/QA/property/governed-evolution contract tests, and the full backend suite.",
+    "backend-mutation": "Backend mutmut gate on compute_capacity.py.",
+    "frontend-lint": "eslint gate (independent of typecheck/unit/mutation/build).",
+    "frontend-typecheck": "tsc --noEmit (independent).",
+    "frontend-unit": "vitest unit suite (independent).",
+    "frontend-mutation": "Stryker gate — break 75 never lowered, related:false so no-coverage is honest (M-04/D.6); widened scope runs advisory-first.",
+    "frontend-build": "next build (independent).",
+    "test-harness-js": "Relay unit tests, simulation static checks, real-user benchmark static checks.",
+    "qa-contract-render": "QA compose profiles render (parse only — named honestly, M-05). Behavior-level QA contract tests live in backend-test.",
+    "ui-journeys": "Container-first browser lane on the QA stack (loopback-only, synthetic data). Honest not_runnable handling: a missing capability fails the job with a named reason recorded in the evidence (D.8).",
+    "release-gate": "Fail-closed aggregator: fails on failure, cancellation, or unexplained skip of any required context (D.1/D.9). Its needs list is contract-checked against this manifest."
+  },
+  "conditional_contexts": {
+    "desktop-check": {
+      "required": false,
+      "status": "owner-decision-pending (M-18)",
+      "reason": "Desktop release status requires an explicit owner decision: (a) in scope — keep the system-lib install and add desktop-check to required_contexts here; or (b) out of scope — keep it excluded and state the exclusion in TESTING.md and the promotion dossier. The job runs and reports honestly either way; continue-on-error is not an acceptable release status, so the job has none.",
+      "excluded_from_release_gate": true
+    }
+  },
+  "branch_protection_settings": {
+    "branch": "main",
+    "required_approving_reviews": 1,
+    "require_code_owner_reviews": true,
+    "dismiss_stale_reviews": true,
+    "enforce_admins": true,
+    "allow_force_pushes": false,
+    "allow_deletions": false,
+    "required_linear_history": true,
+    "require_conversation_resolution": true,
+    "required_status_checks_strict": true,
+    "owner_apply_path": "docs/promotion/branch-protection/README.md"
+  },
+  "notes": [
+    "In-repo workflow changes and GitHub repository-setting changes are strictly separated (D.10): this manifest + docs/promotion/branch-protection/ PREPARE the protection change; only the owner applies it, then verifies by API read-back plus a negative mergeability test.",
+    "Job renames invalidate existing required contexts: keep old contexts until the replacements have been observed on GitHub, then update protection in one sequenced owner action.",
+    "Required contexts never depend on push-only or schedule-only paths (D.3): every context above is a job that runs on PR, push, schedule, and dispatch."
+  ]
+}
