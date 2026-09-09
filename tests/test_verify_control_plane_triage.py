@@ -3,7 +3,10 @@ from pathlib import Path
 from scripts.verify_control_plane_triage import verify
 
 
-TRIAGE = Path("docs/promotion/2026-09-09-control-plane-triage.tsv")
+# CI runs pytest with working-directory: backend, so repo-relative data paths
+# must be resolved from this file's location, never from the process CWD.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+TRIAGE = REPO_ROOT / "docs/promotion/2026-09-09-control-plane-triage.tsv"
 REVIEW = "testing-to-main-20260909-WAVE-control-plane-lifecycle-REVIEW"
 
 

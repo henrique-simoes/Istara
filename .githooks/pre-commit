@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Release hygiene (M-15): block whitespace errors (trailing spaces, blank-line-at-EOF)
+# from entering the repository through staged changes. CI runs the same check via
+# `git diff --check origin/main`; the hook catches it at authoring time.
+git diff --check --cached
+
 python scripts/check_public_tree_clean.py --staged
