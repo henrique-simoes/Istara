@@ -12,12 +12,36 @@ Now budget-aware: accepts a ``BudgetAllocation`` to enforce per-component
 limits instead of a single monolithic max_tokens value.
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Budget allocation
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class BudgetAllocation:
+    """Per-component token budget for a single LLM request."""
+
+    identity_tokens: int  # Prompt RAG + agent identity
+    rag_tokens: int  # RAG context chunks
+    history_tokens: int  # Conversation history
+    reply_reserve: int  # Reserved for model output
+    buffer_tokens: int  # Safety overflow
+    total_tokens: int  # Full context window
+
+    @property
+    def available_for_input(self) -> int:
+        """Tokens available for identity + RAG + history (excludes reply + buffer)."""
+        return self.identity_tokens + self.rag_tokens + self.history_tokens
+
 
 # ---------------------------------------------------------------------------
 # Core counting helpers
