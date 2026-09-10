@@ -14,7 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { ChatSession, ChatUsage, PiCatalogModel, PiCatalogProvider, PiEndpointInfo } from "@/lib/types";
-import { buildChatModelChoices, resolveChatModelChoice, type ChatModelChoice } from "@/lib/modelCatalog";
+import { buildChatModelChoices, resolveCatalogListState, resolveChatModelChoice, type ChatModelChoice } from "@/lib/modelCatalog";
 import { cn } from "@/lib/utils";
 
 type ModelChoice = ChatModelChoice;
@@ -49,11 +49,13 @@ function ModelPicker({
   selected,
   onSelect,
   onOpen,
+  catalogError,
 }: {
   choices: ModelChoice[];
   selected: ModelChoice | null;
   onSelect: (choice: ModelChoice) => void;
   onOpen?: () => void;
+  catalogError: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -65,6 +67,11 @@ function ModelPicker({
       : choices;
     return matches.slice(0, 80);
   }, [choices, query]);
+  // Empty, zero-match, and load-failure states stay distinguishable (B4).
+  const listState = useMemo(
+    () => resolveCatalogListState({ catalogError, query, matchCount: filtered.length }),
+    [catalogError, filtered.length, query],
+  );
 
   return (
     <div className="relative min-w-0">
@@ -110,9 +117,13 @@ function ModelPicker({
             <p className="mt-2 px-1 text-[11px] text-slate-500">{query ? `${filtered.length} matches` : "Configured models first; type to narrow the full catalog."}</p>
           </div>
           <div id="chat-model-listbox" role="listbox" aria-label="Chat models" className="max-h-80 overflow-y-auto p-2">
-            {filtered.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-slate-500">No models match that search.</p>
-            ) : filtered.map((choice, index) => (
+            {listState.kind !== "options" &&
+              (listState.announce ? (
+                <p role="alert" className="px-3 py-6 text-center text-sm text-red-600 dark:text-red-400">{listState.message}</p>
+              ) : (
+                <p className="px-3 py-6 text-center text-sm text-slate-500">{listState.message}</p>
+              ))}
+            {filtered.map((choice, index) => (
               <button
                 key={choice.key}
                 type="button"
@@ -228,6 +239,7 @@ export default function ChatModelControls({
   engine,
   defaultEndpointId,
   usage,
+  catalogError,
   onUpdateSession,
 }: {
   activeSession: ChatSession | undefined;
@@ -238,6 +250,7 @@ export default function ChatModelControls({
   engine: "pi" | "legacy";
   defaultEndpointId: string | null;
   usage: ChatUsage | null;
+  catalogError: boolean;
   onUpdateSession: (data: Record<string, unknown>) => void;
 }) {
   const [agentOpen, setAgentOpen] = useState(false);
@@ -287,7 +300,7 @@ export default function ChatModelControls({
           </div>}
         </div>
         <div className="hidden h-7 w-px bg-slate-200 dark:bg-slate-700 sm:block" aria-hidden="true" />
-        <div className="min-w-[15rem] max-w-full flex-[1.5] sm:max-w-[28rem]"><ModelPicker choices={choices} selected={selected} onSelect={setModel} onOpen={() => { setUsageOpen(false); setAgentOpen(false); }} /></div>
+        <div className="min-w-[15rem] max-w-full flex-[1.5] sm:max-w-[28rem]"><ModelPicker choices={choices} selected={selected} onSelect={setModel} onOpen={() => { setUsageOpen(false); setAgentOpen(false); }} catalogError={catalogError} /></div>
         <div className="flex min-w-[10rem] items-center gap-2">
           <SlidersHorizontal size={15} className="hidden text-slate-500 sm:block" aria-hidden="true" />
           <label htmlFor="chat-effort" className="sr-only">Model effort</label>

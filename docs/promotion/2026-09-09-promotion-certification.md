@@ -1,16 +1,35 @@
 # Promotion certification dossier — testing-to-main 2026-09-09 (W6)
 
 Wave: `promotion-certification` · Spec: `CF-SPEC-30` · Task:
-`testing-to-main-20260909-WAVE-promotion-certification-IMPL`
+`testing-to-main-remediation-20260909-IMPL`
 
-## 0. VERDICT: **READY — owner-gated promotion**
+## 0. VERDICT: **BLOCKED — EVIDENCE-PENDING (readiness claim withdrawn 2026-09-10)**
 
-Every criterion an agent can certify is green on one exact SHA (§2). Promotion itself
-requires exactly three owner actions that this pipeline is forbidden to perform
-automatically (§5). No live behavior is claimed without live evidence: local browser
-execution is an honest `not_runnable` (no Docker daemon — never fabricated), the GitHub
-Actions run on the candidate SHA does not exist yet (the SHA is local-only), and the
-desktop surface remains an unproven conditional.
+The 2026-09-09 final readiness review reopened this certification. The `READY —
+owner-gated promotion` verdict previously recorded here **overstated readiness** and is
+withdrawn: the remaining blockers are not a rerun of already-green suites. Open items
+(plan `docs/build-stream/plans/testing-to-main-remediation-20260909-plan-a.md`, B1–B6):
+
+- **B1** — the full browser lane selects 7 of 82 registered scenarios and records 75
+  generic `not_runnable` entries; scenarios 82/83/84 have never executed anywhere (row 22
+  below is syntax/registry verification only, not execution evidence).
+- **B2** — no GitHub Actions run exists for any candidate SHA (row 23); the certified SHA
+  differs from the branch tip.
+- **B3** — live `main` protection still requires only `governance` and lacks the
+  review/admin/linear/no-force controls of the committed package.
+- **B4** — scenario 83 contained unconditional and contradictory pass logic (fixed in
+  remediation IMPL; deterministic oracles now assert real filter/empty/error states).
+- **B5** — scenario 84 omitted researcher/viewer/stranger cells, bookkeeping was
+  scenario-level, and the coverage matrix lacked 82/83/84 (fixed in remediation IMPL;
+  obligation-ledger cells + matrix rows now exist).
+- **B6** — this dossier and the lifecycle claimed more readiness than the evidence
+  supports; the desktop scope decision remains unmade.
+
+Sections 1–6 remain an accurate record of what WAS certified locally on `4a7f4e0c`
+(deterministic gates, not live behavior). They confer **no** readiness claim by
+themselves. Promotion stays blocked until exact-SHA CI, a full container browser lane,
+applied-and-proven branch protection, the owner's desktop/promotion-mechanics decisions,
+and a fresh certification all exist (§7).
 
 ## 1. Candidate SHA and freeze provenance
 
@@ -150,3 +169,24 @@ F-W5-R1-1…R1-4 (fixed/pass, L-41). No open Blocker/Major anywhere in the regis
 matrix rows recorded as CF command evidence on
 `testing-to-main-20260909-WAVE-promotion-certification-IMPL`; reviewer verdict to be
 appended by `testing-to-main-20260909-WAVE-promotion-certification-REVIEW`.*
+
+---
+
+## 7. Remediation addendum (2026-09-10) — readiness re-baselined
+
+The 2026-09-09 final readiness review raised blockers B1–B6 (map in §0). Owner-approved
+remediation plan: `docs/build-stream/plans/testing-to-main-remediation-20260909-plan-a.md`
+(pipeline `testing-to-main-remediation-20260909`, task
+`testing-to-main-remediation-20260909-IMPL`). Remediation IMPL delivered, in the shared
+worktree, the local-scope closures:
+
+| Blocker | Local-scope closure delivered | Still owed before any readiness claim |
+|---|---|---|
+| B1 | fail-closed journey resolver (`tests/simulation/lib/journey-selection.mjs` + registry bijection + importability gate in CI); 82/83/84 named individually as pending credential-free release obligations | first real container-lane execution of 82/83/84 (CI `ui-journeys` / exact-SHA Mac lane) |
+| B4 | scenario 83 rewritten: zero-match, restore, disabled-only, empty, and load-failure branches all assert real state; zero unconditional passes remain; product seam `resolveCatalogListState` + `role="alert"` error state with unit tests | same execution evidence as B1 |
+| B5 | scenarios 82/83/84 declare admin/researcher/viewer/stranger cells via the obligation ledger (`variant-obligations.mjs`); isolated-context role driver (`role-variants.mjs`, labeled provisioning setup); coverage matrix rows for 82/83/84 and corrected project-settings mapping; CI lane sets `QA_TEAM_MODE=true` so role cells are honestly drivable | same execution evidence as B1 |
+| B6 | this §0 verdict corrected to BLOCKED — EVIDENCE-PENDING; lifecycle appended (L-44) with truthful status | owner desktop decision (G0), exact-SHA CI (G1/W4), Mac Studio QA (G2/W5), protection package applied and negatively proven (G3/W6) |
+
+B2/B3 have no agent-performable local closure: they require the owner push and the
+protection PUT respectively (plan G1/G3). Until every row above reaches dated evidence on
+one exact SHA, this dossier's operative verdict is §0, not the historical §2 matrix.

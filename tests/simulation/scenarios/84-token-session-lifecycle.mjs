@@ -1,27 +1,73 @@
 /** Scenario 84 — Token session lifecycle: the changed auth/token custody path.
  *
- *  W5 browser-spine-acceptance: proves the tokenStore custody contract in a
- *  real browser with a FRESH context (no runner token injection, so the
- *  journey is exactly what an end user experiences):
- *    1. Login screen renders; synthetic QA admin signs in via the real form.
- *    2. Custody: a fresh login writes NO `istara_token` into localStorage
- *       (memory-only token; the legacy key is a read-only fallback) and the
- *       session cookie is not JS-readable (HttpOnly).
- *    3. Reload: the session persists via cookie transport (not localStorage).
- *    4. Settings → Session Manager "Sign Out": the real UI control ends the
- *       session — login screen returns and no token residue remains.
+ *  Remediation (testing-to-main-remediation-20260909, blocker B5 / plan W1.4):
+ *  proves the tokenStore custody contract in real browsers across the required
+ *  role/variant cells instead of a single admin-only boolean:
+ *    - stranger: a fresh unauthenticated context is held at the login screen;
+ *    - admin: real form login → memory-only token (NO `istara_token` in
+ *      localStorage; the legacy key is a read-only fallback), HttpOnly session
+ *      cookie, session persists across reload via cookie transport, and the
+ *      real Settings → Session Manager "Sign Out" control ends the session;
+ *    - researcher / viewer: synthetic accounts (labeled SETUP via the admin
+ *      provisioning API — the admin UI has no create-user form) form-login in
+ *      isolated contexts and the same custody contract is asserted.
  *
- *  Roles: the QA ui lane boots one deterministic first-admin and keeps
- *  TEAM_MODE off, so admin is the only role this journey can honestly drive;
- *  researcher/viewer/stranger journeys stay explicitly not_runnable in the
- *  lane's not-runnable ledger rather than faked here.
+ *  Every cell is recorded in the machine-checkable obligation ledger; a missing,
+ *  failed, or invalidly-unavailable required cell fails the scenario (B5).
  */
+
+import { createVariantLedger } from "../lib/variant-obligations.mjs";
+import { ensureRoleAccounts, driveRoleCell } from "../lib/role-variants.mjs";
 
 export const name = "Token Session Lifecycle";
 export const id = "84-token-session-lifecycle";
 
 export async function run(ctx) {
   const checks = [];
+  const ledger = createVariantLedger(id, [
+    { variantId: "role=stranger", expectation: "fresh unauthenticated visitor is held at the login screen" },
+    { variantId: "role=admin", expectation: "admin custody: form login, memory-only token, HttpOnly cookie, reload persistence, real UI sign-out" },
+    { variantId: "role=researcher", expectation: "researcher custody: form login and memory-only token/HttpOnly cookie" },
+    { variantId: "role=viewer", expectation: "viewer custody: form login and memory-only token/HttpOnly cookie" },
+  ]);
+
+  // ── Admin cell: the full custody journey (its fresh pre-login phase is the
+  // stranger cell — the exact experience an unauthenticated visitor gets). ──
+  const adminOutcome = await driveAdminCustodyJourney(ctx, checks, ledger);
+
+  // ── Researcher / viewer cells: isolated contexts, real form logins. ──
+  const provisioning = await ensureRoleAccounts(ctx);
+  await driveRoleCell(ctx, {
+    ledger,
+    role: "researcher",
+    provisioning,
+    shotName: "84-role-researcher",
+    drive: async (rolePage) => driveRoleCustodyCell(rolePage),
+  });
+  await driveRoleCell(ctx, {
+    ledger,
+    role: "viewer",
+    provisioning,
+    shotName: "84-role-viewer",
+    drive: async (rolePage) => driveRoleCustodyCell(rolePage),
+  });
+
+  ledger.record({
+    variantId: "role=admin",
+    result: adminOutcome.ok ? "pass" : "fail",
+    detail: adminOutcome.detail,
+    artifacts: ["screenshots/84-fresh-login-screen.png", "screenshots/84-session-manager.png", "screenshots/84-after-signout.png"],
+  });
+  checks.push(...ledger.finalize());
+
+  return {
+    checks,
+    passed: checks.filter((c) => c.passed).length,
+    failed: checks.filter((c) => !c.passed).length,
+  };
+}
+
+async function driveAdminCustodyJourney(ctx, checks, ledger) {
   const username = process.env.ADMIN_USERNAME || "admin";
   const password = process.env.ADMIN_PASSWORD || "";
 
@@ -40,7 +86,8 @@ export async function run(ctx) {
   };
 
   try {
-    // 1. Fresh visitor sees the login screen.
+    // Stranger cell (recorded from this fresh context BEFORE any login): the
+    // unauthenticated visitor lands on the login screen with no shell.
     await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1500);
     const logo = await page
@@ -48,9 +95,10 @@ export async function run(ctx) {
       .first()
       .isVisible({ timeout: 10000 })
       .catch(() => false);
+    const shellHiddenPreLogin = !(await page.locator('nav[aria-label="Views"]').isVisible().catch(() => false));
     checks.push({
       name: "Browser: fresh visitor lands on login screen",
-      passed: logo,
+      passed: logo && shellHiddenPreLogin,
       detail: logo ? "Istara logo visible" : "logo not visible",
     });
     await shot("84-fresh-login-screen");
@@ -162,9 +210,49 @@ export async function run(ctx) {
     await freshContext.close().catch(() => {});
   }
 
+  // The stranger cell rides the same evidence: it held at the login screen.
+  const strangerHeld = checks
+    .filter((c) => c.name === "Browser: fresh visitor lands on login screen")
+    .every((c) => c.passed);
+  ledger.record({
+    variantId: "role=stranger",
+    result: strangerHeld ? "pass" : "fail",
+    detail: `unauthenticated fresh context held at the login screen (held=${strangerHeld})`,
+    artifacts: ["screenshots/84-fresh-login-screen.png"],
+  });
+
+  const custodyChecks = checks.filter((c) => c.name !== "Browser: fresh visitor lands on login screen");
+  const custodyFailed = custodyChecks.filter((c) => !c.passed).length;
+  if (!password) {
+    return { ok: false, detail: "ADMIN_PASSWORD unavailable — admin custody journey could not sign in honestly" };
+  }
   return {
-    checks,
-    passed: checks.filter((c) => c.passed).length,
-    failed: checks.filter((c) => !c.passed).length,
+    ok: custodyFailed === 0,
+    detail: custodyFailed === 0
+      ? "admin custody journey clean (form login, memory-only token, HttpOnly cookie, reload persistence, real sign-out)"
+      : `${custodyFailed} admin custody check(s) failed`,
+  };
+}
+
+/** Researcher/viewer custody: real form login + the same custody contract. */
+async function driveRoleCustodyCell(rolePage) {
+  const shell = await rolePage
+    .locator('nav[aria-label="Views"]')
+    .first()
+    .isVisible({ timeout: 20000 })
+    .catch(() => false);
+  if (!shell) {
+    return { ok: false, detail: "form login never reached the authenticated shell" };
+  }
+  const custody = await rolePage.evaluate(() => ({
+    legacyToken: window.localStorage.getItem("istara_token"),
+    cookieExposesSession: /istara_session/.test(document.cookie || ""),
+  }));
+  const custodyHeld = custody.legacyToken === null && !custody.cookieExposesSession;
+  return {
+    ok: custodyHeld,
+    detail: custodyHeld
+      ? "role custody holds: memory-only token, no JS-readable session cookie"
+      : `role custody violated: istara_token=${custody.legacyToken === null ? "absent" : "present"} cookieLeak=${custody.cookieExposesSession}`,
   };
 }

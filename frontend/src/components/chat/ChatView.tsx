@@ -97,6 +97,9 @@ export default function ChatView() {
   const [modelEngine, setModelEngine] = useState<"pi" | "legacy">("legacy");
   const [chatReady, setChatReady] = useState<boolean | null>(null);
   const [defaultEndpointId, setDefaultEndpointId] = useState<string | null>(null);
+  // Catalog load failures stay distinguishable from an empty catalog (B4): the
+  // picker renders an explicit error state instead of a false "no matches".
+  const [catalogError, setCatalogError] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canWrite = capabilities.canWriteActiveProject || canWriteActiveProject();
@@ -108,6 +111,7 @@ export default function ChatView() {
       fetchSessions(activeProjectId).then(() => ensureDefault(activeProjectId));
       fetchAgents(activeProjectId);
       chatApi.modelCatalog(activeProjectId).then((catalog) => {
+        setCatalogError(false);
         setModelProviders(catalog.providers || []);
         setConfiguredModels(catalog.configured || []);
         setLegacyModels(catalog.legacy_models || []);
@@ -118,6 +122,7 @@ export default function ChatView() {
         // what the user sees is exactly what routes the turn (CF-SPEC-1).
         setEngine(catalog.engine === "pi" ? "pi" : "legacy");
       }).catch(() => {
+        setCatalogError(true);
         setModelProviders([]);
         setConfiguredModels([]);
         setLegacyModels([]);
@@ -322,6 +327,7 @@ export default function ChatView() {
           engine={modelEngine}
           defaultEndpointId={defaultEndpointId}
           usage={usage}
+          catalogError={catalogError}
           onUpdateSession={(data) => {
             if (activeProjectId && activeSessionId) void updateSession(activeProjectId, activeSessionId, data);
           }}

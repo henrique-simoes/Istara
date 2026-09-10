@@ -501,6 +501,11 @@ jobs:
       ISTARA_FRONTEND_URL: http://127.0.0.1:3000
       QA_ADMIN_USERNAME: admin
       QA_ADMIN_PASSWORD: qa-${{ github.run_id }}-synthetic
+      # Role/variant cells (82/83/84) need real researcher/viewer accounts:
+      # the compose lane interpolates TEAM_MODE from this variable and boots
+      # the deterministic first admin from QA_ADMIN_USERNAME/PASSWORD. The
+      # lane stays credential-free and loopback-only (remediation B5).
+      QA_TEAM_MODE: "true"
     steps:
       - uses: actions/checkout@v4
 
@@ -524,21 +529,47 @@ jobs:
           fi
           echo "UI_JOURNEYS_SCOPE=$SCOPE" >> "$GITHUB_ENV"
 
-      - name: Resolve proven journeys and record the not_runnable boundary (D.8)
+      - name: Install lane dependencies and browser (before selection so importability can fail closed)
+        working-directory: tests/simulation
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Resolve journeys (registry bijection + importability, fail closed, D.8)
         working-directory: tests/simulation
         run: |
           node --input-type=module -e '
             import { readFileSync, writeFileSync, mkdirSync } from "fs";
             import { scenarioFiles } from "./lib/scenario-registry.mjs";
+            import { resolveJourneySelection, explainSelection } from "./lib/journey-selection.mjs";
             const smoke = JSON.parse(readFileSync("../../testing/ui-journeys.smoke.json", "utf8")).scenarios;
             const extra = JSON.parse(readFileSync("../../testing/ui-journeys.proven-extra.json", "utf8")).scenarios;
-            const proven = [...new Set([...smoke, ...extra])];
-            const unknown = proven.filter((id) => !scenarioFiles.includes(id));
-            if (unknown.length > 0) {
-              console.error("not_runnable: unknown scenario ids in journey lists: " + unknown.join(", "));
+            // Importability is a release gate: a registered scenario that cannot
+            // be imported fails the lane BEFORE the QA stack starts — import
+            // failures never silently shrink the executable set (B1/W2.3).
+            const importFailures = [];
+            for (const id of scenarioFiles) {
+              try {
+                await import(`./scenarios/${id}.mjs`);
+              } catch (error) {
+                importFailures.push(`${id}: ${error.message}`);
+              }
+            }
+            const selection = resolveJourneySelection({
+              registered: scenarioFiles,
+              smoke,
+              extra,
+              scope: process.env.UI_JOURNEYS_SCOPE,
+            });
+            if (importFailures.length > 0 || selection.errors.length > 0) {
+              for (const failure of importFailures) {
+                console.error("not_runnable: scenario import failed — " + failure);
+              }
+              for (const error of selection.errors) {
+                console.error("not_runnable: " + error);
+              }
               process.exit(1);
             }
-            const unproven = scenarioFiles.filter((id) => !proven.includes(id));
             mkdirSync(".results", { recursive: true });
             writeFileSync(
               ".results/not-runnable-journeys.json",
@@ -546,25 +577,17 @@ jobs:
                 {
                   recorded_at: new Date().toISOString(),
                   scope: process.env.UI_JOURNEYS_SCOPE,
-                  registered_scenarios: scenarioFiles.length,
-                  proven_scenarios: proven.length,
-                  not_runnable: unproven.map((id) => ({
-                    scenario: id,
-                    reason: "not-yet-proven-credential-free (W5 browser-spine-acceptance grows the proven set)",
-                  })),
+                  registered_scenarios: selection.registeredCount,
+                  proven_scenarios: selection.provenCount,
+                  release_obligations_pending: selection.releaseObligationsPending,
+                  not_runnable: selection.notRunnable,
                 },
                 null,
                 2
               )
             );
-            const selected =
-              process.env.UI_JOURNEYS_SCOPE === "full" ? proven : smoke;
-            if (selected.length === 0) {
-              console.error("not_runnable: no-journeys-selected — the selected scope is empty");
-              process.exit(1);
-            }
-            console.log("scope=" + process.env.UI_JOURNEYS_SCOPE + " selected=" + selected.length + " not_runnable=" + unproven.length);
-            writeFileSync(".results/selected-scenarios.txt", selected.join(","));
+            console.log(explainSelection(selection));
+            writeFileSync(".results/selected-scenarios.txt", selection.selected.join(","));
           '
 
       - name: Start QA stack (loopback-only publication, unique project)
@@ -586,12 +609,6 @@ jobs:
             docker compose -f docker-compose.qa.yml --profile ui logs --tail=200 || true
             exit 1
           fi
-
-      - name: Install Playwright browser
-        working-directory: tests/simulation
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
 
       - name: Run container-first UI journeys (fail closed on any failed check)
         working-directory: tests/simulation

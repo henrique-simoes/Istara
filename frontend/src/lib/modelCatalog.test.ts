@@ -9,6 +9,7 @@ import {
   isPiSessionOverrideReady,
   mergeModelCatalogs,
   normalizeProviderId,
+  resolveCatalogListState,
   resolveChatModelChoice,
   settingsDefaultChatModel,
   settingsLlmReadiness,
@@ -321,5 +322,41 @@ describe("chat model choices (CF-SPEC-14)", () => {
     expect(choices.findIndex((c) => c.endpointId === "pi-zai-glm")).toBeLessThan(
       choices.findIndex((c) => !c.enabled),
     );
+  });
+});
+
+describe("resolveCatalogListState (B4: empty vs zero-match vs load-failure stay distinguishable)", () => {
+  it("announces a catalog load failure as an error, regardless of query", () => {
+    for (const query of ["", "zai", "anything"]) {
+      const state = resolveCatalogListState({ catalogError: true, query, matchCount: 0 });
+      expect(state.kind).toBe("error");
+      expect(state.announce).toBe(true);
+      expect(state.message).toContain("Model catalog failed to load");
+    }
+  });
+
+  it("maps a zero-match query to the explicit no-results message", () => {
+    const state = resolveCatalogListState({ catalogError: false, query: "zz-no-such-model", matchCount: 0 });
+    expect(state.kind).toBe("no-match");
+    expect(state.announce).toBe(false);
+    expect(state.message).toBe("No models match that search.");
+  });
+
+  it("maps an empty catalog (no query) to an explicit empty state, never 'available'", () => {
+    const state = resolveCatalogListState({ catalogError: false, query: "", matchCount: 0 });
+    expect(state.kind).toBe("empty-catalog");
+    expect(state.message).toContain("No models are configured yet");
+    expect(state.message).not.toContain("available");
+  });
+
+  it("keeps non-empty match sets as plain option lists", () => {
+    const state = resolveCatalogListState({ catalogError: false, query: "", matchCount: 3 });
+    expect(state.kind).toBe("options");
+    expect(state.message).toBeNull();
+  });
+
+  it("treats a whitespace-only query as an empty catalog, not a zero-match search", () => {
+    const state = resolveCatalogListState({ catalogError: false, query: "   ", matchCount: 0 });
+    expect(state.kind).toBe("empty-catalog");
   });
 });

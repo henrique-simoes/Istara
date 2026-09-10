@@ -383,3 +383,43 @@ export function mergeModelCatalogs(
 
   return merged;
 }
+
+/**
+ * Accessible list state for the chat model picker's listbox body.
+ *
+ * Remediation W1.2 (blocker B4): ChatView used to swallow a catalog load
+ * failure into an empty catalog, making "broken" and "empty" indistinguishable.
+ * This pure mapping keeps the three states apart so the picker can render an
+ * explicit, screen-reader-announced error instead of a false "no matches".
+ */
+export type CatalogListState =
+  | { kind: "error"; message: string; announce: true }
+  | { kind: "no-match"; message: string; announce: false }
+  | { kind: "empty-catalog"; message: string; announce: false }
+  | { kind: "options"; message: null; announce: false };
+
+export function resolveCatalogListState(args: {
+  catalogError: boolean;
+  query: string;
+  matchCount: number;
+}): CatalogListState {
+  const { catalogError, query, matchCount } = args;
+  if (catalogError) {
+    return {
+      kind: "error",
+      message: "Model catalog failed to load. Check Settings → Pi Endpoints, then reopen the menu.",
+      announce: true,
+    };
+  }
+  if (matchCount === 0 && query.trim()) {
+    return { kind: "no-match", message: "No models match that search.", announce: false };
+  }
+  if (matchCount === 0) {
+    return {
+      kind: "empty-catalog",
+      message: "No models are configured yet. Add an endpoint in Settings.",
+      announce: false,
+    };
+  }
+  return { kind: "options", message: null, announce: false };
+}

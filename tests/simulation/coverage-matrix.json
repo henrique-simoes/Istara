@@ -1,5 +1,5 @@
 {
- "version": "2026-09-08",
+ "version": "2026-09-10",
  "lane": "qa-ui-loopback",
  "views": {
   "chat": {
@@ -7,7 +7,8 @@
     "05-chat-interaction",
     "12-chat-sessions",
     "76-long-horizon-trajectory",
-    "79-engine-selector"
+    "79-engine-selector",
+    "83-chat-model-controls"
    ],
    "sub_features": [
     "send/stream/stop/regenerate",
@@ -17,10 +18,10 @@
     "empty/loading/error"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-09-03",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "newest_scenario_change": "2026-09-10",
+   "live_verdict": "pass (batch3 live 2026-09-08); 83 pending first container execution",
    "live_verified_at": "2026-09-08",
-   "notes": "42 10/10 + 70mid 11/11 + 71 7/7"
+   "notes": "42 10/10 + 70mid 11/11 + 71 7/7; 83 rewritten for B4 (deterministic filter/empty/error oracles + role cells) and not yet executed — first run owned by the container ui-journeys lane"
   },
   "findings": {
    "scenarios": [
@@ -223,20 +224,22 @@
   "settings": {
    "scenarios": [
     "10-settings-models",
-    "36-llm-servers"
+    "36-llm-servers",
+    "84-token-session-lifecycle"
    ],
    "sub_features": [
     "model catalog",
     "endpoint switch",
     "strict routing",
     "telemetry",
-    "security-integrity"
+    "security-integrity",
+    "token/session custody"
    ],
    "drive": "mixed",
-   "newest_scenario_change": "2026-09-03",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "newest_scenario_change": "2026-09-10",
+   "live_verdict": "pass (batch3 live 2026-09-08); 84 pending first container execution",
    "live_verified_at": "2026-09-08",
-   "notes": "25 14/14 + 26 17/17 + 36 8/8 + 43 13/13 + 64 19/19 + 68 12/12 + 74 8/8"
+   "notes": "25 14/14 + 26 17/17 + 36 8/8 + 43 13/13 + 64 19/19 + 68 12/12 + 74 8/8; 84 extended for B5/W1.4 (admin/researcher/viewer/stranger custody cells) and not yet executed — first run owned by the container ui-journeys lane"
   },
   "admin": {
    "scenarios": [
@@ -334,7 +337,8 @@
   },
   "quality": {
    "scenarios": [
-    "70-research-integrity"
+    "70-research-integrity",
+    "82-quality-dashboard"
    ],
    "sub_features": [
     "methodology dashboard",
@@ -342,23 +346,25 @@
     "traceability"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-21",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
+   "newest_scenario_change": "2026-09-10",
+   "live_verdict": "pass (batch3 live 2026-09-08); 82 pending first container execution",
    "live_verified_at": "2026-09-08",
-   "notes": "70res 18/18"
+   "notes": "70res 18/18; 82 extended for B5/W1.3 (loading→data, empty-safe, real error strings, role cells) and not yet executed — first run owned by the container ui-journeys lane"
   },
   "project-settings": {
-   "scenarios": [],
+   "scenarios": [
+    "81-project-settings"
+   ],
    "sub_features": [
     "spine health",
     "members",
     "danger zone"
    ],
    "drive": "browser",
-   "newest_scenario_change": null,
+   "newest_scenario_change": "2026-09-09",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "81 5/5"
+   "notes": "81 5/5 — mapping corrected 2026-09-10 (the row listed no scenarios while claiming the 81 verdict)"
   },
   "history": {
    "scenarios": [
