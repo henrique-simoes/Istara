@@ -151,6 +151,36 @@ def test_docs_path_does_not_fail(monkeypatch):
     assert report["pass"] is True
 
 
+def test_w1_layer_ownership_covers_nested_depths(monkeypatch):
+    # W1 readiness-core: pathlib's PurePath.match treats `**` as a single
+    # segment, so ownership patterns must name each depth explicitly. A
+    # regression to bare `**` directory globs would orphan nested paths.
+    report = _report_for_paths(
+        [
+            "backend/app/main.py",
+            "backend/app/mcp/server.py",
+            "backend/app/api/routes/findings.py",
+            "backend/app/channels/slack.py",
+            "backend/app/core/compute_pool.py",
+            "backend/app/core/agentic/bridge.py",
+            "backend/app/core/pi_runtime/data/custom_providers/dashscope.json",
+            "backend/app/models/task.py",
+            "backend/app/services/survey_platforms/google_forms.py",
+            "backend/app/skills/discover/user_interviews.py",
+            "backend/alembic/versions/032_pi_tool_executions.py",
+            "frontend/src/components/agents/AgentsView.tsx",
+            "frontend/src/lib/tokenStore.ts",
+            "frontend/src/stores/authStore.ts",
+            "pi-runtime/test/fixtures/wire/inherited/manifest.json",
+            "labs/pi-replacement/src/scenario-catalog.mjs",
+            "comparison-Istara-pi/reports/20260731-judging/judgments.json",
+        ],
+        monkeypatch,
+    )
+    assert report["unknown_paths"] == []
+    assert report["pass"] is True
+
+
 def test_capability_surface_triggers_spine_obligation(monkeypatch):
     report = _report_for_paths(
         ["backend/app/services/research_validity_service.py"], monkeypatch

@@ -36,9 +36,10 @@ re-render the body from the manifest instead of trusting this file.
    new context set and removing old ones in the same PUT avoids a window
    where `main` requires a context that no longer exists (unmergeable) or
    nothing at all (unprotected).
-3. **`desktop-check` stays OUT of required contexts** until the owner records
-   the M-18 decision (in scope → add it to the manifest first; out of scope →
-   state the exclusion in TESTING.md and the promotion dossier).
+3. **M-18 decided (2026-09-10): `desktop-check` is REQUIRED.** The owner chose
+   in-scope-and-blocking, so the manifest, the `release-gate` needs list,
+   and this body all list `desktop-check`. Do not apply an older copy of this
+   package that omits it.
 4. **`strict: true` is retained** (already true today — the one bright spot
    in the current settings).
 

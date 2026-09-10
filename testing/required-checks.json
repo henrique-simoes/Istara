@@ -18,6 +18,7 @@
     "test-harness-js",
     "qa-contract-render",
     "ui-journeys",
+    "desktop-check",
     "release-gate"
   ],
   "required_context_reasons": {
@@ -36,16 +37,10 @@
     "test-harness-js": "Relay unit tests, simulation static checks, real-user benchmark static checks.",
     "qa-contract-render": "QA compose profiles render (parse only — named honestly, M-05). Behavior-level QA contract tests live in backend-test.",
     "ui-journeys": "Container-first browser lane on the QA stack (loopback-only, synthetic data). Honest not_runnable handling: a missing capability fails the job with a named reason recorded in the evidence (D.8).",
+    "desktop-check": "Tauri desktop `cargo check` with system libs installed and no `continue-on-error`: honest compile status. Required since the 2026-09-10 owner decision (M-18: in scope, blocking).",
     "release-gate": "Fail-closed aggregator: fails on failure, cancellation, or unexplained skip of any required context (D.1/D.9). Its needs list is contract-checked against this manifest."
   },
-  "conditional_contexts": {
-    "desktop-check": {
-      "required": false,
-      "status": "owner-decision-pending (M-18)",
-      "reason": "Desktop release status requires an explicit owner decision: (a) in scope — keep the system-lib install and add desktop-check to required_contexts here; or (b) out of scope — keep it excluded and state the exclusion in TESTING.md and the promotion dossier. The job runs and reports honestly either way; continue-on-error is not an acceptable release status, so the job has none.",
-      "excluded_from_release_gate": true
-    }
-  },
+  "conditional_contexts": {},
   "branch_protection_settings": {
     "branch": "main",
     "required_approving_reviews": 1,

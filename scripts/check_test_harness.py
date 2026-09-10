@@ -160,6 +160,25 @@ def check_simulation_runner(issues: list[str]) -> None:
         issues.append(
             "tests/simulation/run.mjs: must load scenarios from the shared registry"
         )
+    for snippet, label in (
+        (
+            "assertNoDuplicateScenarioIds",
+            "must invoke scenario duplicate-id detection (N-R1)",
+        ),
+        (
+            "assertRequestedScenariosMatch",
+            "must fail closed on unmatched requested scenario ids",
+        ),
+        ("importFailures", "must fail closed on scenario import errors"),
+    ):
+        if snippet not in runner:
+            issues.append(f"tests/simulation/run.mjs: {label}")
+    journey_selection = read("tests/simulation/lib/journey-selection.mjs")
+    if 'in the registry — the selection must be a bijection' not in journey_selection:
+        issues.append(
+            "tests/simulation/lib/journey-selection.mjs: must fail closed on "
+            "duplicates inside the registry itself (N-R1)"
+        )
     if "process.env.ISTARA_API_URL" not in runner:
         issues.append(
             "tests/simulation/run.mjs: API base must be environment-configurable"

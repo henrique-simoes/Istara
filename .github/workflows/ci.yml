@@ -631,7 +631,7 @@ jobs:
             not_runnable.txt
           if-no-files-found: ignore
 
-  # ── Desktop: honest status (M-18 — required-context decision is owner-gated)
+  # ── Desktop: honest status (M-18 — required since the 2026-09-10 owner decision)
   desktop-check:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -654,7 +654,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev
 
-      - name: Check Rust compiles (honest status — no continue-on-error; required-context decision pending with the owner, M-18)
+      - name: Check Rust compiles (honest status — no continue-on-error; required since the 2026-09-10 owner decision, M-18)
         run: cargo check
 
   # ── Fail-closed aggregator (D.1/D.9) ─────────────────────────────────────
@@ -681,6 +681,7 @@ jobs:
       - test-harness-js
       - qa-contract-render
       - ui-journeys
+      - desktop-check
     steps:
       - name: Aggregate required-job results (fail closed)
         run: |

@@ -17,6 +17,7 @@
       "test-harness-js",
       "qa-contract-render",
       "ui-journeys",
+      "desktop-check",
       "release-gate"
     ]
   },

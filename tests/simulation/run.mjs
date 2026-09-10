@@ -23,7 +23,11 @@ import {
   SIMULATION_PROJECT_NAME,
   selectCanonicalSimulationProject,
 } from "./lib/project-selection.mjs";
-import { scenarioFiles } from "./lib/scenario-registry.mjs";
+import { scenarioFiles, findDuplicateScenarioIds } from "./lib/scenario-registry.mjs";
+import {
+  assertNoDuplicateScenarioIds,
+  assertRequestedScenariosMatch,
+} from "./lib/scenario-selection.mjs";
 import {
   setAuthToken as setClientAuthToken,
   setDefaultEngine as setClientDefaultEngine,
@@ -571,7 +575,12 @@ async function loadGenerators() {
 // ── Scenarios ───────────────────────────────────────────────
 
 async function loadScenarios() {
+  // Fail-closed registry integrity (N-R1): a duplicated id would let one
+  // scenario file satisfy two registry entries and break the selection
+  // bijection, so the run refuses to start instead of silently double-running.
+  assertNoDuplicateScenarioIds(scenarioFiles, findDuplicateScenarioIds);
   const scenarios = [];
+  const importFailures = [];
   for (const file of scenarioFiles) {
     // --skip-skills omits the long-running all-skills comprehensive test
     if (skipSkills && file === "20-all-skills-comprehensive") continue;
@@ -579,9 +588,21 @@ async function loadScenarios() {
       const mod = await import(`./scenarios/${file}.mjs`);
       scenarios.push({ id: mod.id || file, name: mod.name || file, run: mod.run });
     } catch (e) {
-      console.warn(`⚠ Could not load scenario ${file}: ${e.message}`);
+      // Fail closed: a scenario that cannot be imported is a release failure,
+      // never a warning that silently shrinks the executable set (B1/W2.3).
+      importFailures.push(`${file}: ${e.message}`);
     }
   }
+  if (importFailures.length > 0) {
+    throw new Error(
+      `Scenario import failed for ${importFailures.length} registered scenario(s):\n` +
+        importFailures.map((failure) => `  - ${failure}`).join("\n")
+    );
+  }
+  // Fail closed on a requested id that matches nothing: a typo in --scenario
+  // / --scenarios must never masquerade as a green empty run. Substring
+  // selection still works for real ids.
+  assertRequestedScenariosMatch(scenarios, { singleScenario, multiScenarios });
   return scenarios;
 }
 

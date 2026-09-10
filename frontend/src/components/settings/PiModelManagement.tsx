@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { piCatalogApi, piEndpoints, piOAuthApi } from "@/lib/api";
 import type { PiCatalogModel, PiCatalogProvider, PiEndpoint, PiOAuthFlow } from "@/lib/api";
+import { isSameOAuthFlowStatus, startOAuthFlowPolling } from "@/lib/oauthFlowPolling";
 import { useAuthStore } from "@/stores/authStore";
 
 function modelApiKind(model: PiCatalogModel): string {
@@ -241,6 +242,10 @@ export default function PiModelManagement() {
   const [completedOAuthFlowId, setCompletedOAuthFlowId] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
+  // fetchAll failure is state, not emptiness: a failed catalog/endpoints load
+  // renders an explicit alert (same seam as the chat catalog error state in
+  // `resolveCatalogListState`), never a false "no models connected" panel.
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   // Operator contract rates (USD per 1M tokens) for the AC-6 admission
   // preflight (F-16): upstream zero-priced catalog models refuse admission
@@ -258,6 +263,7 @@ export default function PiModelManagement() {
       return;
     }
     setLoading(true);
+    setFetchError(null);
     try {
       const [catalog, configured] = await Promise.all([piCatalogApi.get(), piEndpoints.list()]);
       setProviders(catalog.providers || []);
@@ -265,11 +271,12 @@ export default function PiModelManagement() {
       setDefaultEndpointId(configured.default_endpoint_id || null);
       setResearchEndpointIds(configured.research_endpoint_ids || []);
       setRetirementNote(configured.retirement_note || "");
-    } catch {
+    } catch (error) {
       setProviders([]);
       setEndpoints([]);
       setDefaultEndpointId(null);
       setResearchEndpointIds([]);
+      setFetchError(error instanceof Error ? error.message : "Could not load Pi catalog and endpoints.");
     } finally {
       setLoading(false);
     }
@@ -277,30 +284,51 @@ export default function PiModelManagement() {
 
   useEffect(() => { void fetchAll(); }, [fetchAll]);
 
+  // Device-flow poll lifecycle: keyed on the primitive flow id + provider so
+  // adopting a poll result can never restart the interval, and unchanged
+  // statuses keep their state identity so the effect below never re-runs from
+  // a fresh-but-equal response object (the previous `[activeOAuth]` dep made
+  // every poll response restart the timer — a render-driven hot loop).
+  const activeOAuthFlowId = activeOAuth?.flow_id ?? null;
+  const activeOAuthProvider = activeOAuth?.provider ?? null;
   useEffect(() => {
-    if (!activeOAuth) return;
-    const poll = async () => {
-      try {
-        const response = await piOAuthApi.poll(activeOAuth.provider, activeOAuth.flow_id);
-        const latest = (response.flows || []).find((flow: PiOAuthFlow) => flow.flow_id === activeOAuth.flow_id) || (response.flows || []).find((flow: PiOAuthFlow) => flow.provider === activeOAuth.provider);
+    if (!activeOAuthFlowId || !activeOAuthProvider) return;
+    const poller = startOAuthFlowPolling<PiOAuthFlow | null>({
+      intervalMs: 4000,
+      poll: async () => {
+        const response = await piOAuthApi.poll(activeOAuthProvider, activeOAuthFlowId);
+        const flows = response.flows || [];
+        return flows.find((flow: PiOAuthFlow) => flow.flow_id === activeOAuthFlowId)
+          || flows.find((flow: PiOAuthFlow) => flow.provider === activeOAuthProvider)
+          || null;
+      },
+      onFlow: (latest) => {
         if (!latest) return;
-        setActiveOAuth(latest);
         if (latest.status === "approved") {
           setCredentialReady(true);
           setCompletedOAuthFlowId(latest.flow_id || null);
           setActiveOAuth(null);
-        } else if (latest.status === "failed" || latest.status === "expired") {
+          return;
+        }
+        if (latest.status === "failed" || latest.status === "expired") {
           setOauthError(latest.error || "The login did not complete.");
           setActiveOAuth(null);
+          return;
         }
-      } catch (error) {
+        // Adopt only on observable change; returning `prev` keeps state
+        // identity, so this effect (keyed on flow id, not the object) and
+        // React both stay quiet until the status actually moves.
+        setActiveOAuth((prev) => {
+          if (!prev || prev.flow_id !== activeOAuthFlowId) return prev;
+          return isSameOAuthFlowStatus(prev, latest) ? prev : latest;
+        });
+      },
+      onError: (error) => {
         setOauthError(error instanceof Error ? error.message : "Could not check login status.");
-      }
-    };
-    void poll();
-    const timer = window.setInterval(() => void poll(), 4000);
-    return () => window.clearInterval(timer);
-  }, [activeOAuth]);
+      },
+    });
+    return () => poller.stop();
+  }, [activeOAuthFlowId, activeOAuthProvider]);
 
   const providerMatches = useMemo(() => {
     const query = providerQuery.trim().toLowerCase();
@@ -774,7 +802,13 @@ export default function PiModelManagement() {
           </div>
           {loading && <span className="text-xs text-slate-500">Loading catalog…</span>}
         </div>
-        {endpoints.length === 0 ? (
+        {fetchError ? (
+          <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-6 text-center dark:border-red-800 dark:bg-red-950/30">
+            <p role="alert" className="text-sm font-medium text-red-800 dark:text-red-200">Could not load connected models: {fetchError}</p>
+            <p className="mt-1 text-xs text-red-700 dark:text-red-300">This is a load failure, not an empty list. Check Settings → Pi Endpoints connectivity, then retry.</p>
+            <button type="button" className="ui-control mt-3 min-h-[36px] px-3 text-xs font-semibold" onClick={() => void fetchAll()}>Retry loading models</button>
+          </div>
+        ) : endpoints.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center dark:border-slate-700">
             <p className="text-sm font-medium text-slate-700 dark:text-slate-200">No additional models connected yet.</p>
             <p className="mt-1 text-xs text-slate-500">The built-in Pi endpoint remains available; add a provider above to make another model selectable in Chat.</p>

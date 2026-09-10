@@ -74,12 +74,12 @@ def test_real_manifest_has_expected_required_contexts():
         assert context in manifest["required_context_reasons"]
 
 
-def test_real_manifest_desktop_is_conditional_not_required():
+def test_real_manifest_desktop_is_required():
+    # M-18 owner decision (2026-09-10): desktop is in scope and blocking.
     manifest = _real_manifest()
-    assert "desktop-check" not in manifest["required_contexts"]
-    conditional = manifest["conditional_contexts"]["desktop-check"]
-    assert conditional["required"] is False
-    assert "owner" in conditional["reason"].lower()
+    assert "desktop-check" in manifest["required_contexts"]
+    assert "desktop-check" not in manifest["conditional_contexts"]
+    assert "desktop-check" in manifest["required_context_reasons"]
 
 
 def test_cli_exit_zero_on_real_repo():
@@ -155,15 +155,23 @@ def test_removing_required_context_from_aggregator_fails(tmp_path):
 
 def test_conditional_context_in_aggregator_fails(tmp_path):
     manifest = _real_manifest()
-    manifest["conditional_contexts"]["desktop-check"]["required"] = False
+    manifest["conditional_contexts"]["advisory-probe"] = {
+        "required": False,
+        "reason": "Synthetic conditional context for this test.",
+    }
     ci = REAL_CI.replace(
-        "      - ui-journeys\n    steps:",
         "      - ui-journeys\n      - desktop-check\n    steps:",
+        "      - ui-journeys\n      - desktop-check\n      - advisory-probe\n    steps:",
+    )
+    # Add the synthetic conditional job to the workflow graph.
+    ci = ci.replace(
+        "  desktop-check:\n",
+        "  advisory-probe:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo probe\n\n  desktop-check:\n",
     )
     root = _write_project(tmp_path, manifest, ci)
     issues: list[str] = []
     check_required_checks(issues, root=root)
-    assert any("non-required contexts ['desktop-check']" in issue for issue in issues)
+    assert any("non-required contexts ['advisory-probe']" in issue for issue in issues)
 
 
 def test_new_needs_edge_between_quality_gates_fails(tmp_path):

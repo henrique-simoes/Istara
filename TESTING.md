@@ -113,12 +113,12 @@ This is the shape developers should expect when navigating the suite:
 
 | Area | Location | Current span | Notes |
 | --- | --- | --- | --- |
-| Python pytest suite | `tests/` | 1020 collected tests across 118 collected files at this checkpoint. There are 121 `test_*.py` files on disk because some files are splitters/pointers and `tests/e2e_test.py` is a standalone live script. | Default deterministic contract, security, governance, backend, and cross-surface coverage. |
+| Python pytest suite | `tests/` | 2370 collected tests across 244 collected files at the 2026-09-10 checkpoint (2334 across 243 files in the credential-free lane with `tests/petals_bridge/` excluded per the no-Petals-inference rule). There are 163 `test_*.py` files directly under `tests/` plus suites under `tests/pi_production/`, `tests/pi_benchmark/`, `tests/pi_migration/`, `tests/pi_compat/`, `tests/benchmarks/`, and `tests/integration/`; some files are splitters/pointers and `tests/e2e_test.py` is a standalone live script. | Default deterministic contract, security, governance, backend, and cross-surface coverage. |
 | Backend mutation properties | `backend/tests/test_compute_capacity_properties.py` | 6 property tests for the mutmut backend cwd. | Wrapped by `scripts/run_backend_mutation.py`. |
-| Frontend unit tests | `frontend/src/**/*.test.ts` | Vitest tests for runtime config and model provider behavior. | Run with `npm run test:unit`. |
+| Frontend unit tests | `frontend/src/**/*.test.ts` | 23 test files, 118 tests at the 2026-09-10 checkpoint (runtime config, model providers/catalog, forms, navigation, OAuth poll lifecycle). | Run with `npm run test:unit`. |
 | Frontend mutation | `frontend/stryker.config.json` | Stryker target for `src/lib/runtimeConfig.ts`. | Thresholds are defined in the config. |
 | Relay unit tests | `relay/lib/**/*.test.mjs` | Node test runner coverage for relay connection strings, heartbeat payloads, and LLM proxy request behavior. | Run with `cd relay` then `npm test`. |
-| Simulation scenarios | `tests/simulation/scenarios/*.mjs` | 76 scenario files plus static helper tests under `tests/simulation/lib/*.test.mjs`. | Browser/API scenarios against a running app, registered through `tests/simulation/run.mjs`; `npm run test:static` is the PR-safe syntax/project-selection smoke layer. |
+| Simulation scenarios | `tests/simulation/scenarios/*.mjs` | 82 scenario files plus 11 static helper test files under `tests/simulation/lib/*.test.mjs` at the 2026-09-10 checkpoint. | Browser/API scenarios against a running app, registered through `tests/simulation/run.mjs`; `npm run test:static` is the PR-safe syntax/project-selection smoke layer. |
 | E2E script | `tests/e2e_test.py` | One phase-based live script. | Uses `ISTARA_ADMIN_USER` and `ISTARA_ADMIN_PASSWORD` when provided. Run with `python`, not `pytest`. |
 | AI eval registry | `tests/evals/registry.json`, `tests/evals/cases/` | Versioned subsystem evals. | Static mode is safe by default; live mode uses the configured private profile. |
 | Real-user benchmark | `tests/real_user_benchmark/` | Plan, probe, and full modes. | Longitudinal UX researcher benchmark with JSONL logs, scorecards, screenshots, and traces. |
@@ -157,7 +157,7 @@ owner-gated `main` branch-protection change consumes verbatim
 | `test-harness-js` | Relay dependencies plus `npm test`, simulation `npm run test:static`, and real-user benchmark `npm run check`. |
 | `qa-contract-render` | Renders QA Compose profiles (`contract`, `synthetic`, `audit`, `ui`) — parse only, named honestly. Behavior-level QA contract tests live in `backend-test`. |
 | `ui-journeys` | Container-first browser lane: starts `docker-compose.qa.yml --profile ui` (loopback-only publication, unique project, synthetic data), waits for health, installs Playwright, and runs the simulation harness against the QA stack. Scope: smoke journeys on ordinary PRs to `testing`; the full PROVEN set on pushes, PRs to `main`, weekly, and dispatch. Registered-but-unproven scenarios are recorded as explicit `not_runnable` entries in the uploaded evidence — never silently skipped, never counted as passes. Missing capabilities (Docker unavailable, stack unhealthy) fail the job with a named reason. |
-| `desktop-check` | Rust toolchain + `cargo check` with no `continue-on-error`: honest status. Its required-context status is an owner decision (M-18), pending; see `testing/required-checks.json` `conditional_contexts`. |
+| `desktop-check` | Rust toolchain + `cargo check` with no `continue-on-error`: honest status. Required since the 2026-09-10 owner decision (M-18); listed in `testing/required-checks.json` `required_contexts` and the `release-gate` needs list. |
 | `release-gate` | Fail-closed aggregator: passes only when every required context succeeded; fails on failure, cancellation, or unexplained skip. Its `needs` list is contract-checked against the manifest. |
 
 ### CI artifacts

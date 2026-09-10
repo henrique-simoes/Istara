@@ -81,8 +81,9 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
         "frontend-build required context": '"frontend-build"',
         "qa-contract-render required context": '"qa-contract-render"',
         "ui-journeys required context": '"ui-journeys"',
+        "desktop-check required context": '"desktop-check"',
         "release-gate required context": '"release-gate"',
-        "desktop owner-decision-pending (M-18)": "owner-decision-pending",
+        "desktop required since owner decision (M-18)": "2026-09-10 owner decision",
         "owner apply path": "docs/promotion/branch-protection/README.md",
     },
     ".github/workflows/build-installers.yml": {

@@ -51,6 +51,16 @@ export function resolveJourneySelection({ registered, smoke, extra, scope }) {
   }
 
   const registeredSet = new Set(registered);
+  // Duplicates inside the registry itself break the selection bijection the
+  // same way list-level duplicates do (N-R1): fail closed here so the CI
+  // resolve step refuses a duplicated registry before the QA stack starts.
+  const seenRegistered = new Set();
+  for (const id of registered) {
+    if (seenRegistered.has(id)) {
+      errors.push(`duplicate scenario id "${id}" in the registry — the selection must be a bijection`);
+    }
+    seenRegistered.add(id);
+  }
   const smokeList = Array.isArray(smoke) ? smoke : [];
   const extraList = Array.isArray(extra) ? extra : [];
 
