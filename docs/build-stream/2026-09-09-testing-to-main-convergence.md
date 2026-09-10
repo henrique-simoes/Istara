@@ -10,7 +10,7 @@ status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL, testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW, testing-to-main-20260909-WAVE-promotion-certification-IMPL, testing-to-main-20260909-WAVE-promotion-certification-REVIEW] }
 last: { agent: zai/glm-5.3-flash, at: 2026-09-10T00:10:18Z, ledger: L-42 }
-next_action: "Reviewer blind review of the W6 promotion-certification dossier (candidate SHA 4a7f4e0c, verdict READY owner-gated); owner actions per dossier §5: push the candidate for the CI run on the exact SHA, apply the branch-protection package, record M-18 desktop + M-23 merge-mechanics decisions."
+next_action: "Owner approved MECE master plan (slot b); conductor may dispatch implementation."
 ```
 <!-- /STATUS BLOCK -->
 
