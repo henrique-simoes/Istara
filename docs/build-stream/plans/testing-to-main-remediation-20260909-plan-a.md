@@ -1,10 +1,10 @@
 # Final testing-to-main readiness remediation — Plan A
 
-Plan slot: `a`  
-Planning phase: `draft` (sole architect; no synthesis or vote)  
-Compass Forge spec: `CF-SPEC-30`  
-Status: `AWAITING-OWNER-APPROVAL`  
-Planning input SHA: `fd1c3934b4a7d9bf66389d135e5a95a7de51e44f`  
+- Plan slot: `a`
+- Planning phase: `draft` (sole architect; no synthesis or vote)
+- Compass Forge spec: `CF-SPEC-30`
+- Status: `AWAITING-OWNER-APPROVAL`
+- Planning input SHA: `fd1c3934b4a7d9bf66389d135e5a95a7de51e44f`
 Target: owner-gated `testing -> main` proposal
 
 ## Executive decision
@@ -98,8 +98,9 @@ The graph is sequential because W1 defines the truth model W2 consumes; W2 defin
 
 ## W0 — Re-measure, impact, and reconcile existing truth
 
-**Owner role:** approved pipeline; implementer gathers read-only state, reviewer validates.  
-**Dependencies:** G0.  
+**Owner role:** approved pipeline; implementer gathers read-only state, reviewer validates.
+
+**Dependencies:** G0.
 **Mutations:** Compass Forge evidence and, only if needed after approval, append-only lifecycle correction; no product code.
 
 ### Work
@@ -120,8 +121,9 @@ The graph is sequential because W1 defines the truth model W2 consumes; W2 defin
 
 ## W1 — Repair browser oracles and role/variant evidence
 
-**Owner role:** implementer `zai/glm-5.3-flash` (`max`); independent reviewer/fixer `meta/muse-spark-1.3-contributor` (`xhigh`).  
-**Dependencies:** W0.  
+**Owner role:** implementer `zai/glm-5.3-flash` (`max`); independent reviewer/fixer `meta/muse-spark-1.3-contributor` (`xhigh`).
+
+**Dependencies:** W0.
 **Primary scope:** `tests/simulation/scenarios/82-quality-dashboard.mjs`, `83-chat-model-controls.mjs`, `84-token-session-lifecycle.mjs`, shared simulation helpers/tests, `tests/simulation/coverage-matrix.json`, and the smallest product seam required to expose an honest state.
 
 ### Design
@@ -161,14 +163,16 @@ python scripts/security_benchmark.py --fail-on-threshold
 
 Add focused Node tests for the new obligation/aggregation module and include their exact paths in command evidence. If W1 changes only scenarios/helpers and no product/security control, do not churn security matrices; still run the tracked benchmark because the scope is auth/session-adjacent. If a control, trigger, or evidence path changes, update `security/control_matrix.json`, `security/SECURITY_BENCHMARK.md`, and `tests/test_security_benchmark.py` together.
 
-**Exit:** deterministic negative tests prove the false-green paths are closed; all required cells are declared; focused/static/unit/security checks pass.  
-**Stop:** a required variant is collapsed into an aggregate result, browser coverage is simulated only through APIs, a live provider/model becomes necessary, or auth behavior differs from the documented contract.  
+**Exit:** deterministic negative tests prove the false-green paths are closed; all required cells are declared; focused/static/unit/security checks pass.
+
+**Stop:** a required variant is collapsed into an aggregate result, browser coverage is simulated only through APIs, a live provider/model becomes necessary, or auth behavior differs from the documented contract.
 **Rollback:** revert only W1's explicit path set; the old scenarios remain blocked and must not regain “proven” status.
 
 ## W2 — Truthful release selection, container runner, and CI contract
 
-**Owner role:** implementer `zai/glm-5.3-flash` (`max`); independent reviewer/fixer `meta/muse-spark-1.3-contributor` (`xhigh`).  
-**Dependencies:** W1.  
+**Owner role:** implementer `zai/glm-5.3-flash` (`max`); independent reviewer/fixer `meta/muse-spark-1.3-contributor` (`xhigh`).
+
+**Dependencies:** W1.
 **Primary scope:** scenario registry/runner, a new declarative release matrix and resolver, QA Docker/Compose/scripts, `.github/workflows/ci.yml`, required-check/workflow/QA contract tests, and testing documentation.
 
 ### Design
@@ -211,14 +215,16 @@ QA_RUN_ID=<RUN_ID> docker compose -f docker-compose.qa.yml --profile ui run --rm
 
 Add contract tests proving the second command uses the browser container, every release artifact embeds `<PROMOTION_SHA>`, all host-published ports bind loopback, no live credential/provider is selected, and cleanup targets only `<RUN_ID>`.
 
-**Exit:** complete truth table for all registered scenarios/required variants; no silent import/selection shrinkage; container runner and CI share one contract; static/workflow/QA tests pass.  
-**Stop:** any full lane still derives from smoke+empty-extra, `not_runnable` lacks an allowed capability, host Node/Python performs the Mac browser run, container networking requires public exposure, or the job can pass without the run manifest.  
+**Exit:** complete truth table for all registered scenarios/required variants; no silent import/selection shrinkage; container runner and CI share one contract; static/workflow/QA tests pass.
+
+**Stop:** any full lane still derives from smoke+empty-extra, `not_runnable` lacks an allowed capability, host Node/Python performs the Mac browser run, container networking requires public exposure, or the job can pass without the run manifest.
 **Rollback:** revert W2's explicit commits; retain the previous lane only as known-blocked historical behavior, never as release evidence.
 
 ## W3 — Independent review, truthful documents, full gates, and SHA seal
 
-**Owner role:** implementer for remediations; independent code reviewer `meta/muse-spark-1.3-contributor` (`xhigh`); owner owns desktop scope decision from G0.  
-**Dependencies:** W2 fully converged.  
+**Owner role:** implementer for remediations; independent code reviewer `meta/muse-spark-1.3-contributor` (`xhigh`); owner owns desktop scope decision from G0.
+
+**Dependencies:** W2 fully converged.
 **Mutations:** final code/test/doc corrections before sealing only.
 
 ### Work
@@ -254,13 +260,14 @@ python scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testin
 
 Also run the repository's required integrity, feature-obligation, security-release-readiness, release-artifact-cleanliness, research-validity, self-improvement-governance, and QA provisional/reset/seed tests as resolved by W0 impact and the CI manifest. Record exact commands/results, warnings, environment, and duration rather than copying historical counts.
 
-**Exit:** independent review pass; truthful evidence-pending documents; desktop decision reflected; every tracked mutation committed; clean `<PROMOTION_SHA>` and tree hash frozen; `CF-402..410` remain open/pending external evidence where appropriate.  
-**Stop:** false-ready wording, security benchmark below threshold, Research Spine bypass, changed required context without contract sync, dirty tree, unresolved Major finding, or any tracked post-seal edit.  
+**Exit:** independent review pass; truthful evidence-pending documents; desktop decision reflected; every tracked mutation committed; clean `<PROMOTION_SHA>` and tree hash frozen; `CF-402..410` remain open/pending external evidence where appropriate.
+
+**Stop:** false-ready wording, security benchmark below threshold, Research Spine bypass, changed required context without contract sync, dirty tree, unresolved Major finding, or any tracked post-seal edit.
 **Rollback:** revert only the faulty pre-seal wave commits and reseal after review; a seal is invalidated, never amended in place.
 
 ## G1 and W4 — Owner-authorized push and exact-SHA GitHub CI
 
-**Owner-only action G1:** authorize pushing exactly `<PROMOTION_SHA>` through the approved `testing` path. No force push, rebase, squash, or unrelated commit is allowed.  
+**Owner-only action G1:** authorize pushing exactly `<PROMOTION_SHA>` through the approved `testing` path. No force push, rebase, squash, or unrelated commit is allowed.
 **Dependencies:** W3 sealed and clean.
 
 ### Work and proof
@@ -281,13 +288,14 @@ gh run download <RUN_ID> --dir <EVIDENCE_ROOT>/<PROMOTION_SHA>/github
 sha256sum -c <EVIDENCE_ROOT>/<PROMOTION_SHA>/github/checksums.txt
 ```
 
-**Exit:** remote ref, run `head_sha`, every required context, and every downloaded artifact agree on `<PROMOTION_SHA>`; artifact contents pass inspection.  
-**Stop:** remote drift, absent/extraneous required context, cancellation/skip, source/tree mismatch, stale artifact, scenario import loss, or a required `not_runnable`.  
+**Exit:** remote ref, run `head_sha`, every required context, and every downloaded artifact agree on `<PROMOTION_SHA>`; artifact contents pass inspection.
+
+**Stop:** remote drift, absent/extraneous required context, cancellation/skip, source/tree mismatch, stale artifact, scenario import loss, or a required `not_runnable`.
 **Rollback:** do not rewrite the remote; fix forward on a new reviewed commit, return to W3, and produce a new seal.
 
 ## G2 and W5 — Isolated exact-SHA Mac Studio browser acceptance
 
-**Owner-only action G2:** authorize a bounded remote QA run and the exact remote checkout/evidence roots. This does not authorize changes to existing stacks, Docker installation, host package installation, or live providers.  
+**Owner-only action G2:** authorize a bounded remote QA run and the exact remote checkout/evidence roots. This does not authorize changes to existing stacks, Docker installation, host package installation, or live providers.
 **Dependencies:** W4 exact-SHA CI green.
 
 ### Preflight
@@ -318,13 +326,14 @@ QA_RUN_ID=<RUN_ID> docker compose -f docker-compose.qa.yml --profile ui ps
 
 Use the repository QA wrapper when W2 defines it as the authoritative equivalent. Cleanup, if owner-authorized, targets only `<RUN_ID>` after artifacts and logs are secured; never use a broad Docker prune or affect pre-existing containers.
 
-**Exit:** all credential-free required cells pass on `<PROMOTION_SHA>` with complete artifacts; container/checkout provenance matches CI; no pre-existing resource changed.  
-**Stop:** dirty/stale checkout, SHA/tree mismatch, Docker project collision, public bind, host Node/Python test execution, missing HAR/screenshot/verdict, live-model contact, false-green/aggregate coverage, or resource pressure threatening other workloads.  
+**Exit:** all credential-free required cells pass on `<PROMOTION_SHA>` with complete artifacts; container/checkout provenance matches CI; no pre-existing resource changed.
+
+**Stop:** dirty/stale checkout, SHA/tree mismatch, Docker project collision, public bind, host Node/Python test execution, missing HAR/screenshot/verdict, live-model contact, false-green/aggregate coverage, or resource pressure threatening other workloads.
 **Rollback:** bring down only `<RUN_ID>` resources after preserving evidence; retain the exact checkout and evidence until owner accepts disposal.
 
 ## G3 and W6 — Branch protection, negative proof, convergence, and promotion decision
 
-**Owner-only action G3:** apply GitHub settings after W4 proves every intended context exists. The agent prepares and validates the payload but does not perform the write.  
+**Owner-only action G3:** apply GitHub settings after W4 proves every intended context exists. The agent prepares and validates the payload but does not perform the write.
 **Dependencies:** W4 and W5 green on the same `<PROMOTION_SHA>`.
 
 ### Protection transaction
@@ -370,8 +379,9 @@ No agent may invent a bypass, treat a merge-queue temporary SHA as the source SH
 
 Only when every identity row matches, every required context/variant passes, protection is proven, CF is converged, and the promotion-mechanics policy is satisfied may the system present an owner decision packet. Creating a PR still requires separate owner authorization; merging is never performed by this pipeline.
 
-**Exit:** either `PR-READY-AWAITING-OWNER` with complete exact-SHA evidence and a proven promotion mechanism, or an explicit blocked state naming the first unmet gate.  
-**Stop:** any identity drift, open Blocker/Major, incomplete CF task, policy mismatch, failed negative test, missing owner evidence, or wording that conflates transported, CI-green, artifact-built, QA-verified, PR-ready, merged, deployed, and live-verified.  
+**Exit:** either `PR-READY-AWAITING-OWNER` with complete exact-SHA evidence and a proven promotion mechanism, or an explicit blocked state naming the first unmet gate.
+
+**Stop:** any identity drift, open Blocker/Major, incomplete CF task, policy mismatch, failed negative test, missing owner evidence, or wording that conflates transported, CI-green, artifact-built, QA-verified, PR-ready, merged, deployed, and live-verified.
 **Rollback:** owner restores the captured protection payload if necessary; the candidate remains unpromoted. Any source correction returns to W3 and receives a new SHA.
 
 ## Research Spine and self-improvement guard
