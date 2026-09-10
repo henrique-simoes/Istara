@@ -1560,6 +1560,14 @@ Approve only if the seven-wave graph, planned mutations, model routes, external 
 
 ## Decision log
 
+<!-- consensus-winner-decision:testing-to-main-remediation-20260909-50d7af6e354e5c45136fa4a07658810ef9b5341ea21f9d4016f97602a9135a70 -->
+DEC-consensus-winner | 2026-09-10 | S1-plan | conductor
+Context: sole architect plan accepted (no voting round)
+Decision: slot a selected from testing-to-main-remediation-20260909-PLAN-A
+Why: votes={}; tiebreak_used=False; plan_file=docs/build-stream/plans/testing-to-main-remediation-20260909-plan-a.md
+
+
+
 <!-- consensus-winner-decision:testing-to-main-20260909-a38efd495d2d7124756699d0d630f44a66cf2ac1260bbd6d9ad74649d8228bb8 -->
 DEC-consensus-winner | 2026-09-09 | S1-plan | conductor
 Context: three architect cross-votes completed
