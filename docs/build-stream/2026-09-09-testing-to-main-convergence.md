@@ -6,8 +6,8 @@ item: testing-to-main-convergence
 branch: testing
 phase: "Phase 6 — Certify promotion readiness"
 stage: S3-review
-status: awaiting-owner-approval
-blocked_on: "owner approval of MECE master plan (slot a)"
+status: in-progress
+blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL, testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW, testing-to-main-20260909-WAVE-promotion-certification-IMPL, testing-to-main-20260909-WAVE-promotion-certification-REVIEW, testing-to-main-remediation-20260909-IMPL, testing-to-main-remediation-20260909-REVIEW] }
 last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-10T04:28:52Z, ledger: L-45 }
 next_action: "Owner approval required: approve selected MECE master plan (slot a) before implementation dispatch."
