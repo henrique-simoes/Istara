@@ -1,5 +1,6 @@
 """Pytest configuration for Istara tests."""
 
+import importlib.util
 import os
 import sys
 import tempfile
@@ -21,6 +22,16 @@ os.environ.setdefault(
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
 
 
+def _backend_deps_available() -> bool:
+    """Whether the full backend dependency set is importable.
+
+    Dependency-light lanes (for example the Docs Website workflow) run a small
+    pytest subset with only documentation dependencies installed.  Backend-only
+    scaffolding must stay inert there instead of failing collection.
+    """
+    return importlib.util.find_spec("fastapi") is not None
+
+
 def pytest_sessionstart(session):
     """Make ORM mapper configuration deterministic across test order.
 
@@ -29,6 +40,8 @@ def pytest_sessionstart(session):
     unrelated project relationships in SQLAlchemy's permanent failed state.
     This imports metadata only; it does not create or connect to a database.
     """
+    if not _backend_deps_available():
+        return
     from app.models.database import register_models
 
     register_models()
@@ -39,6 +52,8 @@ async def dispose_db_engine():
     """Dispose the global async engine after each test to prevent
     aiosqlite 'Event loop is closed' warnings and SQLite locking."""
     yield
+    if not _backend_deps_available():
+        return
     # Websocket notification persistence runs in background tasks and can
     # retain an AsyncSession while the test event loop is being torn down.
     # Drain those tasks before disposing the shared engine so a full-suite
