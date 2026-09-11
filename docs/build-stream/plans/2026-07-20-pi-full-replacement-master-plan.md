@@ -6,13 +6,13 @@ item: pi-full-replacement
 branch: Review_pi_test (continue in this worktree)
 cf: { spec: CF-SPEC-8 (to be created at M0 — see §12), predecessor: CF-SPEC-7 }
 phase: "Master plan authored; execution not started"
-stage: S1-plan (this document IS the approved plan seed for the conductor)
-status: ready-for-conductor
-blocked_on: "owner approval of this plan + benchmark budget envelope (§10.6, §13)"
+stage: closed
+status: closed-superseded
+blocked_on: null
 authored_by: claude-fable-5 (independent reviewer of CF-SPEC-7), 2026-07-20
 grounding: all file:line references verified on Review_pi_test @ c1d3d7ff via 6 parallel
   code-reading agents + Compass Forge impact queries; see §14 Method
-next_action: "Owner reviews §13 decision points; then run /conductor with this file as the
+next_action: "Closed 2026-09-12 (post-promotion closeout): superseded: master plan executed; successor work is on main (2f106b57) and in the evaluation log."
   governing plan (do NOT let the conductor re-plan from scratch — see §12.1)"
 ```
 <!-- /STATUS BLOCK -->
