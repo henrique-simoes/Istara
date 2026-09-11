@@ -569,8 +569,8 @@ class ReportManager:
                 "3. Ensure categories do not overlap.\n\n"
                 "Findings:\n"
                 + "\n".join(f"- [{f['id'][:8]}] {f['text']}" for f in findings_text)
-                + '\n\nRespond with a JSON array: [{"name": "Action Title "'
-                + '"Sentence", "description": "So-What explanation...", "'
+                + '\n\nRespond with a JSON array: [{"name": "Action Title '
+                + 'Sentence", "description": "So-What explanation...", '
                 + '"finding_ids": ["id1", "id2"]}]'
             )
             # W5: MECE categorization goes through the AgenticDispatcher

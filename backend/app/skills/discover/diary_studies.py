@@ -111,12 +111,17 @@ class DiaryStudiesSkill(BaseSkill):
         return SkillType.QUALITATIVE
 
     async def plan(self, skill_input: SkillInput) -> dict:
-        prompt = f"""Design a diary study plan for UX research.
-Context: {skill_input.project_context or "General UX research"}
-
-Include: study duration recommendation, entry frequency, prompt design (structured + open-ended),
-participant guidelines, reminder strategy, sample diary prompts for each day/phase,
-analysis approach, and dropout mitigation strategies. Format as Markdown."""
+        # Byte-exact prompt text: the first "Include:" line ends with a space
+        # before the newline; the explicit "\n" concat keeps that byte without
+        # introducing source-level trailing whitespace (ruff W291).
+        prompt = (
+            "Design a diary study plan for UX research.\n"
+            f"Context: {skill_input.project_context or 'General UX research'}\n\n"
+            "Include: study duration recommendation, entry frequency, prompt design "
+            "(structured + open-ended), \n"
+            "participant guidelines, reminder strategy, sample diary prompts for each day/phase,\n"
+            "analysis approach, and dropout mitigation strategies. Format as Markdown."
+        )
         # W5: diary study plan generation goes through the
         # AgenticDispatcher (``skill.discover_plan``).
         from app.core.agentic import agentic

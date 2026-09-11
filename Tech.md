@@ -497,6 +497,10 @@ User sends message
 - **OpenAI Codex team** (2026) — Inline compression as default primitive, not emergency fallback. Compress tool outputs before they enter context.
 - **ACON Framework** (Microsoft Research, 2025) — Adaptive context control for tool observations. 26-54% token reduction with 95%+ accuracy across AppWorld, OfficeBench, Multi-obj QA.
 
+### Governed Prompt-String Fidelity
+
+Structural refactors (line-length wraps, `W291` trailing-whitespace cleanups, implicit-concatenation re-splits) must not change the **runtime bytes** of a governed prompt — a prompt is an input contract, so re-splitting a JSON example or dropping a byte silently changes model behavior. Two dispatch-capturing regressions pin the exact text: `tests/pi_production/test_w5_report_manager.py::test_mece_prompt_json_example_stays_verbatim_and_parseable` (the `report.mece` Minto categorization prompt; the example is also `json.loads`-parsed from the message actually dispatched to the model) and `tests/pi_production/test_w5_discover.py::test_diary_plan_prompt_matches_pre_change_bytes` (the `skill.discover_plan` diary-study plan prompt, including its trailing-space byte). Where lint requires avoiding source-level trailing whitespace, keep the byte by using explicit line concatenation inside the expression (`"…(structured + open-ended), \n"`).
+
 ---
 
 ## Context & Memory System

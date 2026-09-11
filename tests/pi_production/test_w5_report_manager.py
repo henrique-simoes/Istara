@@ -278,6 +278,37 @@ async def test_mece_flag_on_dispatches_report_mece(monkeypatch, _agentic_core_on
     assert json.loads(fresh.mece_categories_json) == _MECE_CATEGORIES
 
 
+async def test_mece_prompt_json_example_stays_verbatim_and_parseable(
+    monkeypatch, _agentic_core_on
+):
+    """F-LPR-1: the dispatched report.mece prompt must carry the JSON
+    example byte-for-byte and it must parse as JSON."""
+    dispatcher_stub = _StubAgentic(value={"categories": _MECE_CATEGORIES})
+    monkeypatch.setattr("app.core.llm_router.llm_router", _StubRouter())
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+
+    fresh = SimpleNamespace(mece_categories_json=None)
+    await _manager()._generate_mece_categories(_mece_report(), _mece_db(fresh))
+
+    method, kwargs = dispatcher_stub.calls[0]
+    assert method == "structured"
+    prompt = kwargs["messages"][0]["content"]
+    expected_example = (
+        '[{"name": "Action Title Sentence", "description": "So-What explanation...", '
+        '"finding_ids": ["id1", "id2"]}]'
+    )
+    assert prompt.endswith(f"Respond with a JSON array: {expected_example}")
+    # Parse the example that actually reached the dispatcher (not a test copy).
+    example = prompt.split("Respond with a JSON array: ", 1)[1]
+    assert json.loads(example) == [
+        {
+            "name": "Action Title Sentence",
+            "description": "So-What explanation...",
+            "finding_ids": ["id1", "id2"],
+        }
+    ]
+
+
 async def test_mece_flag_on_failed_outcome_writes_nothing(
     monkeypatch, _agentic_core_on
 ):

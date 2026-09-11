@@ -339,6 +339,27 @@ async def test_diary_plan_flag_on_dispatches_completion(monkeypatch, _agentic_co
     assert result["plan"] == "dispatcher diary plan"
 
 
+async def test_diary_plan_prompt_matches_pre_change_bytes(monkeypatch, _agentic_core_on):
+    """F-LPR-2: the dispatched skill.discover_plan prompt keeps its exact
+    pre-change bytes (including the trailing space before the newline)."""
+    dispatcher_stub = _StubAgentic(text="dispatcher diary plan")
+
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+
+    await _diary_skill().plan(_skill_input())
+
+    method, kwargs = dispatcher_stub.calls[0]
+    assert method == "completion"
+    assert kwargs["messages"][0]["content"] == (
+        "Design a diary study plan for UX research.\n"
+        "Context: General UX research\n\n"
+        "Include: study duration recommendation, entry frequency, prompt design "
+        "(structured + open-ended), \n"
+        "participant guidelines, reminder strategy, sample diary prompts for each day/phase,\n"
+        "analysis approach, and dropout mitigation strategies. Format as Markdown."
+    )
+
+
 async def test_diary_execute_flag_on_dispatches_structured(
     monkeypatch, _agentic_core_on
 ):
