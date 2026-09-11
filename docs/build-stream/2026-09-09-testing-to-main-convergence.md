@@ -5,12 +5,12 @@
 item: testing-to-main-convergence
 branch: testing
 phase: "Phase 6 — Certify promotion readiness"
-stage: S3-review
+stage: S4-remediate
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL, testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW, testing-to-main-20260909-WAVE-promotion-certification-IMPL, testing-to-main-20260909-WAVE-promotion-certification-REVIEW, testing-to-main-remediation-20260909-IMPL, testing-to-main-remediation-20260909-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-11T05:01:18Z, ledger: L-62 }
-next_action: "S4-remediate FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 (Range/G1 + TESTING clarity), then delta re-review; owner G1/G3/G4 stay gated."
+last: { agent: deepseek/deepseek-flash, at: 2026-09-11T05:04:04Z, ledger: L-63 }
+next_action: "Conductor-created delta re-review of FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 (verify Range/G1 + TESTING clarity fixes); owner G1/G3/G4 stay gated."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1616,8 +1616,8 @@ Why: Independent architectural plans are required before selecting the implement
 
 | ID | Sev | Where | One-line finding | CF task | Status |
 |---|---|---|---|---|---|
-| **F-R5-W5-R1-1** | Major | docs/promotion/2026-09-09-promotion-certification.md:8-9,48 Range+G1 | Range lists 7 commits / G1 claims 8 + rev-parse==candidate, but measured 13 / 14 incl 996d8223 + 3 fallback ledgers + 2 FAIL reviews; G1 as written fails on dossier tip. | FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 | open |
-| **F-R5-W5-R1-2** | Minor | TESTING.md:116 topology counts | 2335 collected (1 deselected) ambiguous vs 2330/5/1; clarify as 2336 collected, 1 deselected, 2335 run. | testing-to-main-20260910-WAVE-certification-REVIEW | open |
+| **F-R5-W5-R1-1** | Major | docs/promotion/2026-09-09-promotion-certification.md:8-9,48 Range+G1 | Range lists 7 commits / G1 claims 8 + rev-parse==candidate, but measured 13 / 14 incl 996d8223 + 3 fallback ledgers + 2 FAIL reviews; G1 as written fails on dossier tip. | FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 | fixed |
+| **F-R5-W5-R1-2** | Minor | TESTING.md:116 topology counts | 2335 collected (1 deselected) ambiguous vs 2330/5/1; clarify as 2336 collected, 1 deselected, 2335 run. | testing-to-main-20260910-WAVE-certification-REVIEW | fixed |
 
 
 ## Ledger
@@ -2035,3 +2035,9 @@ Did: Blind two-phase S3 review of W5 IMPL (dossier tip 23554f74 on candidate 3b4
 Result: **fail** — Major F-R5-W5-R1-1 (dossier Range+G1 history/procedure inaccurate, owner verification as written fails) with fix task FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 for testing-to-main-20260910-fixer (wave_id certification preserved); Minor F-R5-W5-R1-2 (TESTING.md 2335 phrasing ambiguous, non-blocking clarity). Confirmations: scope holds docs-only; cheap matrix rows reproduce; required/protection 17 match; risks correctly owner-gated with no bypass; heavy suites stay unverified (asserted-only IMPL evidence). testing-to-main-20260910-WAVE-certification-REVIEW
 Verified: `git diff --stat 3b4b881d..HEAD` 4 docs-only + `git diff --check` clean + `git status --short` 0M/2U; `ls scenarios/*.mjs | wc -l` 82 + `node --check` 82/83/84 OK + `python3 scripts/check_required_checks.py` PASS + `python3 scripts/check_feature_obligations.py --base origin/main --head HEAD` pass:true; `git branch -r --contains HEAD` empty + `rev-parse origin/testing/main` match dossier + `merge-base --is-ancestor` true + `grep -c secret patterns` 0; `rev-list --count abc9da92..HEAD` 14 vs 8 and `abc9da92..3b4b881d` 13 vs 7. CF command (4 rows) + self_report (satisfied:false) + review_verdict fail with measurements[]/environment/could_not_verify recorded on the REVIEW task.
 Next: S4-remediate FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 (correct Range to full 13 + G1 verify steps + TESTING clarity), then conductor-created delta re-review for this role. No push/PR/merge by this pipeline.
+
+### L-63 | 2026-09-11T05:04:04Z | S4-remediate | deepseek/deepseek-flash | remediator | readiness5 Wave W5 — certification review fix <!-- bsc-ledger:FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 -->
+Did: Fixed both cited findings on the W5 certification dossier; docs-only, no product code touched. `docs/promotion/2026-09-09-promotion-certification.md` §0 Range rewritten to the full 13-commit `abc9da92..3b4b881d` list (c5e2dfca, fallback ledgers 512f662e/28327268/534d4479, replacement review 996d8223, 97a73a8a, FAIL review ab8698f4, fix 97dbb2ce, ed2aa7b8, FAIL review 835d1a23, fix 66c0ff87, 9aa3034a, review 3b4b881d) plus a certification-commit line (23554f74 direct child of the candidate; 4-file docs-only diff → product-identical; count 14). §5 G1: replaced the false `rev-parse == 3b4b881d` / `log abc9da92..HEAD == 8` claims with executable steps (candidate resolves; `git rev-parse 23554f74^` == 3b4b881d; `git diff --stat 3b4b881d..23554f74` docs-only; 0M/2 untracked docs; `git rev-list --count abc9da92..23554f74` == 14, re-count at pushed tip) and clarified the push ref = branch tip `conductor/readiness5-20260910` (descendant of 23554f74), not the candidate SHA. G4 parenthetical made ref-explicit the same way. `TESTING.md:116`: "2335 collected tests (1 deselected)" → "2336 collected tests (1 deselected; 2335 run)". Findings register rows F-R5-W5-R1-1 + F-R5-W5-R1-2 flipped open→fixed in this entry.
+Result: **F-R5-W5-R1-1 fixed** and **F-R5-W5-R1-2 fixed** — dossier history claims now match `git rev-list`/`git rev-parse` output and the owner G1 procedure verifies as written. FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1
+Verified: mechanical claim-check (python) → Range list == `git log --format=%h --reverse abc9da92..3b4b881d` 13/13, `rev-parse 3b4b881d` resolves, `rev-parse 23554f74^` == 3b4b881d, `rev-list --count abc9da92..23554f74` == 14, cert diff == 4 docs-only files, no stale "2335 collected"/"..HEAD == 8" strings; `git diff --check` clean; `python3 scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` OK; `python3 scripts/verify_wave_manifest.py` OK canonical 8601a1fc; `python3 scripts/check_integrity.py` PASS; `python3 scripts/public_repo_quality_audit.py --check` passed; `python3 scripts/check_feature_obligations.py --base origin/main --head HEAD` pass:true. CF command rows + self_report recorded on the fix task.
+Next: conductor-created delta re-review of FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 (verify Range/G1 + TESTING clarity on the worktree); owner G1/G3/G4 remain gated. No push/PR/merge by this pipeline.

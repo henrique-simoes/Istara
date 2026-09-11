@@ -6,7 +6,8 @@ Plan: `docs/build-stream/plans/readiness5-20260910-plan-a.md` §Wave W5
 ## 0. VERDICT: READY — OWNER-GATED PROMOTION (local matrix green on 3b4b881d; push + protection + CI observation remain)
 
 Candidate SHA: `3b4b881de23f60e8b58d8a84a907b33c0e105f21` (short `3b4b881d`), branch `conductor/readiness5-20260910`, baseline `abc9da92`.
-Range `abc9da92..3b4b881d`: W1 `c5e2dfca` + W2 `97a73a8a` + fix `97dbb2ce` + W3 `ed2aa7b8` + fix `66c0ff87` + W4 `9aa3034a` + review `3b4b881d`.
+Range `abc9da92..3b4b881d` (13 commits, oldest→newest): W1 `c5e2dfca`; W1 review bookkeeping — harness fallback-ledger commits `512f662e` `28327268` `534d4479` and owner-authorized replacement verdict `996d8223` (PASS, L-50); W2 `97a73a8a`; W2 review `ab8698f4` (FAIL → fix task); W2 fix `97dbb2ce`; W3 `ed2aa7b8`; W3 review `835d1a23` (FAIL → fix task); W3 fix `66c0ff87`; W4 `9aa3034a`; W4 review `3b4b881d` (PASS).
+Certification commit `23554f74` (direct child of the candidate; docs-only diff — TESTING.md, lifecycle, this dossier, TEST_HISTORY.md — so product-identical); `git rev-list --count abc9da92..23554f74` == 14. The W5 review `8f77fb73` and the remediation commits after it extend the branch tip past both, so the pushed ref (G1) is the branch tip, not the candidate `3b4b881d`.
 `origin/testing` `9961fa3d` (ahead, never pushed); `origin/main` `fa6a1a39` strict ancestor.
 Worktree: 0 modified, 0 stash; 2 untracked docs (plan-a.md, evaluation-log.md) — non-product, disclosed.
 `git diff --check` clean. CF: 9 command rows on the IMPL task (pinned binary, ROOT, --target ROOT). No push/PR/merge/settings by this stage.
@@ -45,10 +46,10 @@ Image w4candidate, scratch DBs verified, endpoints host-only 0600. Harness-only 
 ## 5. Owner checklist (owner-only; no agent)
 
 - [ ] G0 desktop DONE (M-18 in-scope blocking; desktop-check required everywhere).
-- [ ] G1 push + CI: manager verifies SHA (`rev-parse` == 3b4b881d, status clean except 2 untracked docs, log abc9da92..HEAD == 8 commits), pushes conductor/readiness5-20260910 to origin/testing, reports `gh run list --commit <SHA>` id + result (expect 17/17 incl ui-journeys + desktop-check first observation).
+- [ ] G1 push + CI: manager verifies the candidate exists (`git rev-parse 3b4b881d` resolves), that the certification commit `23554f74` is its direct child and product-identical (`git rev-parse 23554f74^` == `3b4b881d`; `git diff --stat 3b4b881d..23554f74` docs-only), the worktree state (0 modified / 2 untracked docs: plan-a.md, evaluation-log.md), and `git rev-list --count abc9da92..23554f74` == 14 (13 commits to the candidate + the certification commit; the review/remediation commits after it grow this count, so verify 14 against `23554f74`, not against the pushed tip). Manager pushes branch `conductor/readiness5-20260910` to `origin/testing` — the pushed ref is the branch tip (descendant of `23554f74`), **not** the candidate SHA `3b4b881d` — and reports `gh run list --commit <pushed-tip SHA>` id + result (expect 17/17 incl ui-journeys + desktop-check first observation).
 - [ ] G2 info: W2-W4 QA evidence above suffices; preserved dirs untouched; QA-host state disposable.
 - [ ] G3 protection: PUT gh-api-body.json (verified == manifest 17/17 incl desktop-check), attach API read-back + negative mergeability test, sequencing per README.
-- [ ] G4 merge: record M-23 (--no-ff recommended; dossier-tip parent == 3b4b881d product-identical), merge, post-merge main CI. Protection + PR owner-gated.
+- [ ] G4 merge: record M-23 (--no-ff recommended; certification commit `23554f74` parent == `3b4b881d`, and `git diff --stat 3b4b881d..<pushed-tip>` docs-only at merge time → product-identical), merge, post-merge main CI. Protection + PR owner-gated.
 
 ## 6. Closure map at 3b4b881d
 
