@@ -128,7 +128,9 @@ async def resolve_seed_findings(
         validity = validity_by_id.get(
             item_id,
             provisional_finding_validity(
-                reason="Design seed finding is provisional until accepted through the Research Spine."
+                reason=(
+                    "Design seed finding is provisional until accepted through the Research Spine."
+                )
             ),
         )
         if kind_by_id[item_id] == "insight":
@@ -432,12 +434,15 @@ def build_figma_import_html(
   <meta charset="UTF-8">
   <title>{safe_name}</title>
   <style>
-    body {{ font-family: Inter, system-ui, sans-serif; margin: 0; padding: 32px; color: #111827; background: #f8fafc; }}
-    main {{ max-width: 960px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; }}
+    body {{ font-family: Inter, system-ui, sans-serif; margin: 0; padding: 32px; \
+color: #111827; background: #f8fafc; }}
+    main {{ max-width: 960px; margin: 0 auto; background: #ffffff; \
+border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; }}
     h1 {{ margin: 0 0 8px; font-size: 24px; }}
     section {{ margin-top: 24px; }}
     ul {{ display: grid; gap: 8px; padding: 0; list-style: none; }}
-    li {{ display: flex; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 6px; }}
+    li {{ display: flex; justify-content: space-between; gap: 16px; padding: 10px 12px; \
+border: 1px solid #e5e7eb; border-radius: 6px; }}
     span {{ color: #64748b; }}
   </style>
 </head>

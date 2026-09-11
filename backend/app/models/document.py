@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.database import Base
 
 
-class DocumentStatus(str, enum.Enum):
+class DocumentStatus(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     """Document lifecycle states."""
 
     PENDING = "pending"
@@ -20,7 +20,7 @@ class DocumentStatus(str, enum.Enum):
     ERROR = "error"
 
 
-class DocumentSource(str, enum.Enum):
+class DocumentSource(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     """How the document was created."""
 
     USER_UPLOAD = "user_upload"

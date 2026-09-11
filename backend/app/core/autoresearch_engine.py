@@ -121,7 +121,8 @@ class AutoresearchEngine:
             async with autoresearch_context():
                 if not await self._is_project_active(project_id):
                     logger.info(
-                        "Autoresearch stopped before baseline because project %s is paused or missing",
+                        "Autoresearch stopped before baseline "
+                        "because project %s is paused or missing",
                         project_id,
                     )
                     return []
@@ -140,7 +141,8 @@ class AutoresearchEngine:
                         break
                     if not await self._is_project_active(project_id):
                         logger.info(
-                            "Autoresearch stopped before iteration %s because project %s is paused or missing",
+                            "Autoresearch stopped before iteration %s "
+                            "because project %s is paused or missing",
                             i + 1,
                             project_id,
                         )

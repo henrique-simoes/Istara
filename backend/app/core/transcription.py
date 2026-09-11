@@ -87,7 +87,10 @@ def _transcription_dependency_error(audio_path: str) -> TranscriptionResult | No
         return None
 
     return TranscriptionResult(
-        text="[Transcription unavailable: ffmpeg is required for Whisper audio decoding. Install ffmpeg and retry transcription.]",
+        text=(
+            "[Transcription unavailable: ffmpeg is required for Whisper audio "
+            "decoding. Install ffmpeg and retry transcription.]"
+        ),
         language="unknown",
         confidence=0.0,
         icr_kappa=0.0,

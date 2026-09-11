@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.database import Base
 
 
-class ProjectPhase(str, enum.Enum):
+class ProjectPhase(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     """Double Diamond project phases."""
 
     DISCOVER = "discover"

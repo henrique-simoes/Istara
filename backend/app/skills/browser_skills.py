@@ -173,7 +173,8 @@ class HeuristicEvaluationSkill(BaseBrowserSkill):
 
         web_data = await self._collect_web_data(
             url,
-            "Evaluate this site against Nielsen's 10 heuristics. Look for visibility of status and consistency.",
+            "Evaluate this site against Nielsen's 10 heuristics. "
+            "Look for visibility of status and consistency.",
         )
 
         return SkillOutput(

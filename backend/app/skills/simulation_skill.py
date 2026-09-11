@@ -82,7 +82,8 @@ class SimulationSkill(BaseSkill):
         summary_lines = ["### Simulation Results", ""]
         for res in results:
             summary_lines.append(
-                f"- **{res.participant_id} ({res.strategy})**: Mode: {res.response_mode}, Choice: {res.choice}"
+                f"- **{res.participant_id} ({res.strategy})**: "
+                f"Mode: {res.response_mode}, Choice: {res.choice}"
             )
 
         return SkillOutput(

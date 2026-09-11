@@ -97,7 +97,10 @@ class DiaryStudiesSkill(BaseSkill):
 
     @property
     def description(self) -> str:
-        return "Design diary study prompts, analyze entries over time, identify behavioral patterns and emotional arcs across longitudinal self-reported data."
+        return (
+            "Design diary study prompts, analyze entries over time, identify "
+            "behavioral patterns and emotional arcs across longitudinal self-reported data."
+        )
 
     @property
     def phase(self) -> SkillPhase:
@@ -111,7 +114,7 @@ class DiaryStudiesSkill(BaseSkill):
         prompt = f"""Design a diary study plan for UX research.
 Context: {skill_input.project_context or "General UX research"}
 
-Include: study duration recommendation, entry frequency, prompt design (structured + open-ended), 
+Include: study duration recommendation, entry frequency, prompt design (structured + open-ended),
 participant guidelines, reminder strategy, sample diary prompts for each day/phase,
 analysis approach, and dropout mitigation strategies. Format as Markdown."""
         # W5: diary study plan generation goes through the
@@ -166,7 +169,8 @@ Extract:
 
 JSON format:
 {{"temporal_patterns": [{{"pattern": "...", "timeframe": "..."}}],
-"emotional_arc": [{{"phase": "...", "sentiment": "positive|neutral|negative", "description": "..."}}],
+"emotional_arc": [{{"phase": "...", "sentiment": "positive|neutral|negative", \
+"description": "..."}}],
 "behaviors": [{{"behavior": "...", "frequency": "daily|weekly|occasional"}}],
 "triggers": [{{"trigger": "...", "resulting_behavior": "..."}}],
 "pain_points": [{{"issue": "...", "persistent": true, "severity": 1-5}}],

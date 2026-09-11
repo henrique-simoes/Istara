@@ -83,8 +83,13 @@ def provisional_finding_validity(
         "task_id": task_id,
         "done_approved": False,
         "reason": reason
-        or "Finding is provisional until linked to accepted coded evidence and a human-approved Done task.",
-        "policy": "finding_visibility_does_not_bypass_coding_reliability_review_or_done_report_gates",
+        or (
+            "Finding is provisional until linked to accepted coded evidence "
+            "and a human-approved Done task."
+        ),
+        "policy": (
+            "finding_visibility_does_not_bypass_coding_reliability_review_or_done_report_gates"
+        ),
     }
 
 
@@ -171,7 +176,10 @@ async def chain_research_validity_diagnostics(
         "task_gates": task_gates,
         "report_allowed": report_allowed,
         "report_block_reason": report_block_reason,
-        "policy": "evidence_chain_visibility_does_not_bypass_coding_reliability_review_or_done_report_gates",
+        "policy": (
+            "evidence_chain_visibility_does_not_bypass_coding_"
+            "reliability_review_or_done_report_gates"
+        ),
     }
 
 
@@ -215,7 +223,9 @@ async def finding_research_validity_map(
             "reason": _finding_gate_reason(gate, done_approved, report_allowed),
             "code_application_count": gate.get("code_application_count", 0),
             "accepted_code_application_count": gate.get("accepted_code_application_count", 0),
-            "policy": "finding_visibility_does_not_bypass_coding_reliability_review_or_done_report_gates",
+            "policy": (
+                "finding_visibility_does_not_bypass_coding_reliability_review_or_done_report_gates"
+            ),
         }
 
     validity_by_finding: dict[str, dict[str, Any]] = {}

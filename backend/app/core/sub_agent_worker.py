@@ -177,7 +177,9 @@ class SubAgentWorker:
                     outcome=SYSTEM_FAILED,
                     next_status=TaskStatus.IN_REVIEW,
                     next_review_state="system_failed",
-                    what_to_review=f"Sub-agent failed after {task.retry_count} retries: {str(e)[:500]}",
+                    what_to_review=(
+                        f"Sub-agent failed after {task.retry_count} retries: {str(e)[:500]}"
+                    ),
                     created_by=self._agent_id,
                     failure_category="sub_agent_execution_failure",
                     severity="major",

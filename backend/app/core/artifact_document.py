@@ -60,6 +60,12 @@ def _render_list_of_dicts(title: str, items: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def _item_label(item: dict[str, Any], index: int) -> str:
+    """Best-effort label for a rendered list item (code, response/id, or position)."""
+    label = item.get("code") or item.get("response_id") or item.get("id")
+    return str(label) if label else f"Item {index}"
+
+
 def _render_list(title: str, items: list[Any], level: int = 2) -> list[str]:
     heading = "#" * level
     if not items:
@@ -75,7 +81,7 @@ def _render_list(title: str, items: list[Any], level: int = 2) -> list[str]:
                     line
                     for index, item in enumerate(items, start=1)
                     for line in [
-                        f"{heading}# {item.get('code') or item.get('response_id') or item.get('id') or f'Item {index}'}",
+                        f"{heading}# {_item_label(item, index)}",
                         "",
                         *_render_dict(item, level=level + 1),
                         "",

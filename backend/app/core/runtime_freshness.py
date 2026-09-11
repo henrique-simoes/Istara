@@ -83,10 +83,16 @@ def detect_runtime_freshness(
     stale = bool(build_mtime is not None and source_newer_than_build)
     if stale:
         status = "stale"
-        message = "The production frontend build predates frontend source changes; rebuild and restart the frontend."
+        message = (
+            "The production frontend build predates frontend source changes; "
+            "rebuild and restart the frontend."
+        )
     elif build_mtime is None:
         status = "development_or_unbuilt"
-        message = "No production frontend build id was found; this usually means a development server or unbuilt checkout."
+        message = (
+            "No production frontend build id was found; this usually means "
+            "a development server or unbuilt checkout."
+        )
     else:
         status = "fresh"
         message = (

@@ -95,7 +95,9 @@ Respond in valid JSON with this structure:
 }}"""
 
 
-SYNTHESIS_PROMPT = """You are an expert UX Researcher synthesizing findings across multiple interviews.
+SYNTHESIS_PROMPT = (
+    """You are an expert UX Researcher synthesizing findings """
+    """across multiple interviews.
 
 ## Project Context
 {context}
@@ -141,12 +143,17 @@ What questions remain unanswered:
 
 Respond in valid JSON with this structure:
 {{
-    "themes": [{{"name": "...", "description": "...", "participant_count": 0, "quotes": ["..."], "confidence": "high|medium|low"}}],
+    "themes": [{{"name": "...", "description": "...", "participant_count": 0, \
+"quotes": ["..."], "confidence": "high|medium|low"}}],
     "facts": [{{"text": "...", "evidence_count": 0, "sources": ["..."]}}],
-    "insights": [{{"text": "...", "supporting_facts": ["..."], "confidence": "high|medium|low", "impact": "low|medium|high"}}],
-    "recommendations": [{{"text": "...", "supporting_insights": ["..."], "priority": "low|medium|high|critical", "effort": "low|medium|high"}}],
-    "research_gaps": [{{"description": "...", "suggested_method": "...", "priority": "low|medium|high"}}]
+    "insights": [{{"text": "...", "supporting_facts": ["..."], \
+"confidence": "high|medium|low", "impact": "low|medium|high"}}],
+    "recommendations": [{{"text": "...", "supporting_insights": ["..."], \
+"priority": "low|medium|high|critical", "effort": "low|medium|high"}}],
+    "research_gaps": [{{"description": "...", "suggested_method": "...", \
+"priority": "low|medium|high"}}]
 }}"""
+)
 
 
 # W5: schemas for the AgenticDispatcher structured paths of ``execute``

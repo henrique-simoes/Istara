@@ -80,8 +80,12 @@ class SelfHealingRules:
                         "key": key,
                         "error_rate": round(rate, 3),
                         "threshold": _ERROR_RATE_HIGH_THRESHOLD,
-                        "message": f"High error rate detected ({rate:.0%} over {_ERROR_RATE_WINDOW_MINUTES}min) for {span.skill_name}. "
-                        f"Consider reviewing model configuration or switching to a more reliable model.",
+                        "message": (
+                            f"High error rate detected ({rate:.0%} over "
+                            f"{_ERROR_RATE_WINDOW_MINUTES}min) for {span.skill_name}. "
+                            f"Consider reviewing model configuration "
+                            f"or switching to a more reliable model."
+                        ),
                         "auto_action": "none",
                     }
                 )
@@ -98,8 +102,11 @@ class SelfHealingRules:
                         "model": span.model_name,
                         "duration_ms": round(span.duration_ms, 1),
                         "threshold_ms": 120_000,
-                        "message": f"Skill '{span.skill_name}' took {span.duration_ms / 1000:.0f}s on model {span.model_name}. "
-                        f"This may indicate model overload.",
+                        "message": (
+                            f"Skill '{span.skill_name}' took "
+                            f"{span.duration_ms / 1000:.0f}s on model {span.model_name}. "
+                            f"This may indicate model overload."
+                        ),
                         "auto_action": "none",
                     }
                 )

@@ -141,7 +141,8 @@ class SandboxEvaluationService:
                 )
             ),
             "warning",
-            "Rollback plan should identify a concrete restore, revert, disable, revoke, or quarantine action.",
+            "Rollback plan should identify a concrete restore, "
+            "revert, disable, revoke, or quarantine action.",
             rollback,
         )
         add_check(
@@ -155,20 +156,23 @@ class SandboxEvaluationService:
             "evaluation_evidence",
             not (has_behavioral_surface or has_admin_surface) or has_evaluation_evidence,
             "warning",
-            "Behavioral and infrastructure mutations should include test, metric, or command evidence.",
+            "Behavioral and infrastructure mutations should "
+            "include test, metric, or command evidence.",
             {"evaluation_runs": len(runs), "apply_evidence_keys": sorted(apply_payload.keys())},
         )
         add_check(
             "statistical_rigor",
             "compute" not in surfaces and "orchestration" not in surfaces or has_uncertainty_signal,
             "warning",
-            "Compute and orchestration changes should carry uncertainty, sample, or percentile evidence.",
+            "Compute and orchestration changes should carry "
+            "uncertainty, sample, or percentile evidence.",
         )
         add_check(
             "reasoning_trace",
             not has_reasoning_surface or bool(reasoning_memory_ids),
             "warning",
-            "Reasoning-affecting changes should link the ReasoningBank memories that informed them.",
+            "Reasoning-affecting changes should link the "
+            "ReasoningBank memories that informed them.",
             reasoning_memory_ids,
         )
         add_check(
@@ -176,7 +180,8 @@ class SandboxEvaluationService:
             "[REDACTED]"
             not in str({"proposed": proposed, "rollback": rollback, "apply": apply_payload}),
             "warning",
-            "Proposal payload contains redacted secret material; verify the source integration is not emitting credentials.",
+            "Proposal payload contains redacted secret material; verify "
+            "the source integration is not emitting credentials.",
         )
 
         blockers = [

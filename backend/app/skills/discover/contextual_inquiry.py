@@ -104,7 +104,10 @@ class ContextualInquirySkill(BaseSkill):
 
     @property
     def description(self) -> str:
-        return "Structure and analyze contextual inquiry observations — studying users in their natural work environment."
+        return (
+            "Structure and analyze contextual inquiry observations — studying users "
+            "in their natural work environment."
+        )
 
     @property
     def phase(self) -> SkillPhase:
@@ -123,7 +126,8 @@ Include:
 1. Observation objectives (what to look for)
 2. Pre-visit preparation checklist
 3. Observation framework (AEIOU: Activities, Environments, Interactions, Objects, Users)
-4. Interview prompts to use during observation ("Tell me what you're doing now", "Why did you do that?")
+4. Interview prompts to use during observation ("Tell me what you're doing now", \
+"Why did you do that?")
 5. Note-taking template structure
 6. Post-observation debrief questions
 7. Ethical considerations and consent requirements

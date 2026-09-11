@@ -140,7 +140,8 @@ class CustomAgentWorker:
             project = project_result.scalar_one_or_none()
             if not project:
                 logger.warning(
-                    "Project not found for task %s — sending to human review as an execution failure",
+                    "Project not found for task %s — sending "
+                    "to human review as an execution failure",
                     task.id,
                 )
                 task.agent_notes = "Error: project deleted — task orphaned"
@@ -292,8 +293,8 @@ async def load_custom_agents_from_db() -> None:
         async with async_session() as db:
             result = await db.execute(
                 select(Agent).where(
-                    Agent.is_system == False,
-                    Agent.is_active == True,
+                    Agent.is_system == False,  # noqa: E712 -- SQLAlchemy IS FALSE
+                    Agent.is_active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                     Agent.role == AgentRole.CUSTOM,
                 )
             )

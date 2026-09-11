@@ -13,7 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.database import Base
 
 
-class NotificationSeverity(str, enum.Enum):
+class NotificationSeverity(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"

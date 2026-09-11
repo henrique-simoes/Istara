@@ -282,7 +282,9 @@ class ImprovementGovernanceLifecycleMixin:
                 return {"error": "Proposal not found"}
             if proposal.requires_human_approval and proposal.status != STATUS["approved"]:
                 return {
-                    "error": f"Proposal status is '{proposal.status}', approval required before apply"
+                    "error": (
+                        f"Proposal status is '{proposal.status}', approval required before apply"
+                    )
                 }
             if not proposal.get_rollback_plan():
                 return {"error": "Rollback plan required before apply"}

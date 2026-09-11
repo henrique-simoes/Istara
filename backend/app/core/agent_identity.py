@@ -454,7 +454,9 @@ def get_capability_card(agent_id: str) -> dict:
     if core_path.exists():
         core_text = core_path.read_text(encoding="utf-8")
         # First line after heading is usually the agent name/role
-        lines = [l.strip() for l in core_text.split("\n") if l.strip() and not l.startswith("#")]
+        lines = [
+            ln.strip() for ln in core_text.split("\n") if ln.strip() and not ln.startswith("#")
+        ]
         if lines:
             card["description"] = lines[0][:200]
         # Extract specialties from keywords

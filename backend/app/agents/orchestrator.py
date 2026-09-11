@@ -31,7 +31,7 @@ from app.core.resource_governor import governor
 logger = logging.getLogger(__name__)
 
 
-class AgentRole(str, Enum):
+class AgentRole(str, Enum):  # noqa: UP042 -- StrEnum would change str(member)
     TASK_EXECUTOR = "task_executor"
     DEVOPS_AUDIT = "devops_audit"
     UI_AUDIT = "ui_audit"
@@ -40,7 +40,7 @@ class AgentRole(str, Enum):
     DESIGN_LEAD = "design_lead"
 
 
-class AgentState(str, Enum):
+class AgentState(str, Enum):  # noqa: UP042 -- StrEnum would change str(member)
     IDLE = "idle"
     WORKING = "working"
     PAUSED = "paused"
@@ -93,12 +93,30 @@ _ROLE_AGENT_IDS = {
 
 # Short fallback prompts (used only if persona MD files are missing)
 _FALLBACK_PROMPTS = {
-    AgentRole.TASK_EXECUTOR: "You are Istara, the primary research coordinator. You orchestrate UX research workflows, execute analytical skills, and synthesize findings.",
-    AgentRole.DEVOPS_AUDIT: "You are Sentinel, the DevOps audit agent. You monitor data integrity, system health, and operational reliability.",
-    AgentRole.UI_AUDIT: "You are Pixel, the UI audit agent. You evaluate interfaces against Nielsen's heuristics and WCAG 2.2 AA standards.",
-    AgentRole.UX_EVALUATION: "You are Sage, the UX evaluation agent. You evaluate the end-to-end experience from a human-centered design perspective.",
-    AgentRole.USER_SIMULATION: "You are Echo, the user simulation agent. You rigorously test the platform by simulating realistic research workflows.",
-    AgentRole.DESIGN_LEAD: "You are Piper, the Design Lead agent. You translate research findings into grounded interface designs and prototypes.",
+    AgentRole.TASK_EXECUTOR: (
+        "You are Istara, the primary research coordinator. You orchestrate UX research "
+        "workflows, execute analytical skills, and synthesize findings."
+    ),
+    AgentRole.DEVOPS_AUDIT: (
+        "You are Sentinel, the DevOps audit agent. You monitor data integrity, "
+        "system health, and operational reliability."
+    ),
+    AgentRole.UI_AUDIT: (
+        "You are Pixel, the UI audit agent. You evaluate interfaces against "
+        "Nielsen's heuristics and WCAG 2.2 AA standards."
+    ),
+    AgentRole.UX_EVALUATION: (
+        "You are Sage, the UX evaluation agent. You evaluate the end-to-end "
+        "experience from a human-centered design perspective."
+    ),
+    AgentRole.USER_SIMULATION: (
+        "You are Echo, the user simulation agent. You rigorously test the platform "
+        "by simulating realistic research workflows."
+    ),
+    AgentRole.DESIGN_LEAD: (
+        "You are Piper, the Design Lead agent. You translate research findings "
+        "into grounded interface designs and prototypes."
+    ),
 }
 
 
@@ -459,7 +477,11 @@ class MetaOrchestrator:
                                 from_agent_id=routing["primary_agent_id"],
                                 to_agent_id=collab_id,
                                 message_type="collaboration_request",
-                                content=f"Task '{task.title}' needs your expertise. Specialties: {', '.join(routing['specialties_needed'])}. Please review when complete and provide feedback.",
+                                content=(
+                                    f"Task '{task.title}' needs your expertise. "
+                                    f"Specialties: {', '.join(routing['specialties_needed'])}. "
+                                    "Please review when complete and provide feedback."
+                                ),
                                 project_id=task.project_id,
                                 metadata={
                                     "task_id": task.id,

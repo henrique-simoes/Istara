@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.database import Base
 
 
-class InferencePreset(str, enum.Enum):
+class InferencePreset(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     LIGHTWEIGHT = "lightweight"
     MEDIUM = "medium"
     HIGH = "high"
@@ -85,7 +85,9 @@ class ChatSession(Base):
 INFERENCE_PRESETS = {
     "lightweight": {
         "label": "Lightweight",
-        "description": "Fast responses, minimal reasoning. Best for quick questions and simple tasks.",
+        "description": (
+            "Fast responses, minimal reasoning. Best for quick questions and simple tasks."
+        ),
         "temperature": 0.3,
         "max_tokens": 1024,
         "context_window": 2048,
@@ -106,7 +108,9 @@ INFERENCE_PRESETS = {
     },
     "custom": {
         "label": "Custom",
-        "description": "Define your own settings for temperature, token limits, and context window.",
+        "description": (
+            "Define your own settings for temperature, token limits, and context window."
+        ),
         "temperature": None,
         "max_tokens": None,
         "context_window": None,

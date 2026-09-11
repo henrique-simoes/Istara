@@ -29,7 +29,10 @@ logger = logging.getLogger(__name__)
 DESIGN_TOOLS = [
     {
         "name": "generate_screen",
-        "description": "Generate a UI screen from a text description using Google Stitch. Creates a DesignDecision linking research findings to the generated screen.",
+        "description": (
+            "Generate a UI screen from a text description using Google Stitch. "
+            "Creates a DesignDecision linking research findings to the generated screen."
+        ),
         "parameters": {
             "prompt": {
                 "type": "string",
@@ -39,7 +42,9 @@ DESIGN_TOOLS = [
             "device_type": {
                 "type": "string",
                 "required": False,
-                "description": "Device type: MOBILE, DESKTOP, TABLET, or AGNOSTIC (default: DESKTOP)",
+                "description": (
+                    "Device type: MOBILE, DESKTOP, TABLET, or AGNOSTIC (default: DESKTOP)"
+                ),
             },
             "model": {
                 "type": "string",
@@ -49,7 +54,9 @@ DESIGN_TOOLS = [
             "seed_finding_ids": {
                 "type": "array",
                 "required": False,
-                "description": "Array of finding IDs (insights/recommendations) to seed the design from",
+                "description": (
+                    "Array of finding IDs (insights/recommendations) to seed the design from"
+                ),
             },
         },
     },
@@ -71,7 +78,10 @@ DESIGN_TOOLS = [
     },
     {
         "name": "create_variant",
-        "description": "Generate design variants of an existing screen. Types: REFINE (small tweaks), EXPLORE (moderate changes), REIMAGINE (major rethink)",
+        "description": (
+            "Generate design variants of an existing screen. Types: REFINE (small tweaks), "
+            "EXPLORE (moderate changes), REIMAGINE (major rethink)"
+        ),
         "parameters": {
             "screen_id": {
                 "type": "string",
@@ -92,7 +102,9 @@ DESIGN_TOOLS = [
     },
     {
         "name": "search_findings_for_design",
-        "description": "Search research findings (insights, recommendations, facts) relevant to a design task",
+        "description": (
+            "Search research findings (insights, recommendations, facts) relevant to a design task"
+        ),
         "parameters": {
             "query": {
                 "type": "string",
@@ -103,7 +115,10 @@ DESIGN_TOOLS = [
     },
     {
         "name": "create_design_brief",
-        "description": "Generate a design brief from the project's research findings. Synthesizes insights and recommendations into actionable design requirements.",
+        "description": (
+            "Generate a design brief from the project's research findings. "
+            "Synthesizes insights and recommendations into actionable design requirements."
+        ),
         "parameters": {},
     },
     {
@@ -159,8 +174,10 @@ def build_design_tools_prompt() -> str:
         '{"tool": "tool_name", "params": {"param1": "value1"}}',
         "```",
         "",
-        "After executing the tool, I will show you the result. You can then call another tool or respond to the user.",
-        "Only call a tool when the user's request requires a design action. For general design conversation, respond normally.",
+        "After executing the tool, I will show you the result. "
+        "You can then call another tool or respond to the user.",
+        "Only call a tool when the user's request requires a design "
+        "action. For general design conversation, respond normally.",
         "",
         "### Design Tools:",
         "",
@@ -362,7 +379,10 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
                 await db.commit()
             created_screen_ids.append(screen_id)
 
-        return f"Screen generated: '{prompt[:60]}...' (IDs: {created_screen_ids}, device: {device}, status: ready)"
+        return (
+            f"Screen generated: '{prompt[:60]}...' (IDs: {created_screen_ids}, "
+            f"device: {device}, status: ready)"
+        )
     except ValueError as e:
         return f"Stitch not configured: {e}"
     except Exception as e:
@@ -599,12 +619,12 @@ async def _exec_search_findings(params: dict, project_id: str, agent_id: str) ->
     query = params["query"].lower()
     results: list[str] = []
     async with async_session() as db:
-        for Model, label in [
+        for model, label in [
             (Insight, "Insight"),
             (Recommendation, "Recommendation"),
             (Fact, "Fact"),
         ]:
-            result = await db.execute(select(Model).where(Model.project_id == project_id))
+            result = await db.execute(select(model).where(model.project_id == project_id))
             for item in result.scalars().all():
                 if query in item.text.lower():
                     results.append(f"[{label}] {item.text[:150]} (ID: {item.id})")
@@ -658,7 +678,10 @@ async def _exec_create_brief(params: dict, project_id: str, agent_id: str) -> st
         db.add(brief)
         await db.commit()
 
-    return f"Design brief created (ID: {brief_id}) with {len(insight_ids)} insights and {len(rec_ids)} recommendations"
+    return (
+        f"Design brief created (ID: {brief_id}) with {len(insight_ids)} insights "
+        f"and {len(rec_ids)} recommendations"
+    )
 
 
 async def _exec_import_figma(params: dict, project_id: str, agent_id: str) -> str:
@@ -672,7 +695,10 @@ async def _exec_import_figma(params: dict, project_id: str, agent_id: str) -> st
     try:
         file_data = await figma_service.get_file(parsed["file_key"])
         name = file_data.get("name", "Untitled")
-        return f"Imported Figma file: '{name}' (key: {parsed['file_key']}, node: {parsed.get('node_id', 'root')})"
+        return (
+            f"Imported Figma file: '{name}' (key: {parsed['file_key']}, "
+            f"node: {parsed.get('node_id', 'root')})"
+        )
     except ValueError as e:
         return f"Figma not configured: {e}"
     except Exception as e:

@@ -153,7 +153,8 @@ async def _resolve_message_project_ids(
             resolved[str(message.id)] = next(iter(unique_project_ids))
         elif len(unique_project_ids) > 1:
             logger.warning(
-                "A2A message %s has conflicting project ownership claims; excluding from project views.",
+                "A2A message %s has conflicting project "
+                "ownership claims; excluding from project views.",
                 message.id,
             )
 
@@ -195,7 +196,7 @@ async def send_message(
     - finding, request, broadcast, a2a_task
     """
     # Validate message_type against allowed whitelist
-    ALLOWED_MESSAGE_TYPES = {
+    allowed_message_types = {
         "consult",  # Request information/expertise
         "report",  # Send findings/status
         "alert",  # Urgent notification
@@ -216,10 +217,10 @@ async def send_message(
     # Normalize type (lowercase) for consistent validation
     normalized_type = message_type.lower().strip()
 
-    if normalized_type not in ALLOWED_MESSAGE_TYPES:
+    if normalized_type not in allowed_message_types:
         raise ValueError(
             f"Invalid message_type '{message_type}'. "
-            f"Must be one of: {', '.join(sorted(ALLOWED_MESSAGE_TYPES))}"
+            f"Must be one of: {', '.join(sorted(allowed_message_types))}"
         )
 
     scoped_project_id = _require_project_id(project_id)
@@ -411,12 +412,12 @@ async def get_messages(
     query = select(A2AMessage).where(
         or_(
             A2AMessage.to_agent_id == agent_id,
-            A2AMessage.to_agent_id == None,  # broadcasts
+            A2AMessage.to_agent_id == None,  # noqa: E711 -- SQL IS NULL; broadcasts
             A2AMessage.from_agent_id == agent_id,
         )
     )
     if unread_only:
-        query = query.where(A2AMessage.read == False)
+        query = query.where(A2AMessage.read == False)  # noqa: E712 -- SQLAlchemy IS FALSE
 
     fetch_limit = _project_scoped_fetch_limit(limit)
     query = query.order_by(A2AMessage.created_at.desc()).limit(fetch_limit)
@@ -441,12 +442,12 @@ async def get_project_inbox(
     query = select(A2AMessage).where(
         or_(
             A2AMessage.to_agent_id == agent_id,
-            A2AMessage.to_agent_id == None,  # broadcasts
+            A2AMessage.to_agent_id == None,  # noqa: E711 -- SQL IS NULL; broadcasts
             A2AMessage.from_agent_id == agent_id,
         )
     )
     if unread_only:
-        query = query.where(A2AMessage.read == False)
+        query = query.where(A2AMessage.read == False)  # noqa: E712 -- SQLAlchemy IS FALSE
 
     query = query.order_by(A2AMessage.created_at.desc()).limit(_project_scoped_fetch_limit(limit))
     result = await db.execute(query)

@@ -134,7 +134,7 @@ class CircuitBreaker:
             raise
 
 
-class CircuitBreakerOpen(Exception):
+class CircuitBreakerOpen(Exception):  # noqa: N818 -- public name caught by callers
     """Raised when the circuit breaker is open."""
 
     pass

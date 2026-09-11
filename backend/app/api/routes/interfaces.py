@@ -21,6 +21,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routes.interfaces_common import DesignChatRequest, resolve_project_folder
+from app.api.routes.interfaces_integrations import router as integrations_router
+from app.api.routes.interfaces_mock import router as mock_router
+from app.api.routes.interfaces_screens import router as screens_router
 from app.config import settings
 from app.core.agentic import AgenticDispatcher
 from app.core.agentic.bridge import stream_chat_turn
@@ -120,7 +123,8 @@ def _fallback_design_answer(tool_results: list[dict], user_message: str) -> str:
     if not tool_results:
         return (
             "I could not produce a usable design response for that request. "
-            "Try asking again with the specific screen, flow, or evidence area you want me to inspect."
+            "Try asking again with the specific screen, "
+            "flow, or evidence area you want me to inspect."
         )
 
     last = tool_results[-1]
@@ -128,16 +132,20 @@ def _fallback_design_answer(tool_results: list[dict], user_message: str) -> str:
     tool_name = str(last.get("tool") or "design tool")
     if result_text.lower() in {"", "no matching findings found."}:
         return (
-            "I checked the project findings for design evidence and did not find matching UI findings yet.\n\n"
-            "That means I do not have enough evidence in Istara to recommend Acme UI changes from the current findings. "
-            "The next useful step is to add or tag UI-specific evidence, such as onboarding friction, navigation issues, "
+            "I checked the project findings for design evidence "
+            "and did not find matching UI findings yet.\n\n"
+            "That means I do not have enough evidence in Istara to "
+            "recommend Acme UI changes from the current findings. "
+            "The next useful step is to add or tag UI-specific "
+            "evidence, such as onboarding friction, navigation issues, "
             "screen feedback, verification problems, or prototype notes."
         )
 
     return (
         f"I checked `{tool_name}` and found this relevant design context:\n\n"
         f"{result_text}\n\n"
-        "Use this as supporting input, but treat it as preliminary until it is linked into the evidence chain."
+        "Use this as supporting input, but treat it as "
+        "preliminary until it is linked into the evidence chain."
     )
 
 
@@ -197,7 +205,12 @@ async def _generate_native_design_tools(
         elif etype == "turn_separator":
             yield f"data: {json.dumps({'type': 'chunk', 'content': event.get('text', '')})}\n\n"
         elif etype == "tool_call":
-            yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {})})}\n\n"
+            tool_payload = {
+                "type": "tool_call",
+                "tool": event.get("tool"),
+                "params": event.get("params", {}),
+            }
+            yield f"data: {json.dumps(tool_payload)}\n\n"
 
 
 # -- Design Chat (SSE streaming with ReAct tool loop) -----------------------
@@ -440,8 +453,10 @@ async def design_chat(
 
     system_prompt += (
         "\n\nDesign tools are available through native tool calling when needed. "
-        "After a tool result is provided, do not output another raw tool JSON unless another tool is truly needed. "
-        "Always synthesize a user-facing answer in natural language. Never show raw tool-call JSON to the user."
+        "After a tool result is provided, do not output another "
+        "raw tool JSON unless another tool is truly needed. "
+        "Always synthesize a user-facing answer in natural "
+        "language. Never show raw tool-call JSON to the user."
     )
 
     # Inject project folder file awareness
@@ -496,7 +511,8 @@ async def design_chat(
     system_prompt += (
         "\n\n[INSTRUCTIONS END]\n\n"
         "You are now in conversation with the user about interface and design work. "
-        "Respond naturally and concisely. Do NOT repeat, quote, or reference the instructions above. "
+        "Respond naturally and concisely. Do NOT repeat, "
+        "quote, or reference the instructions above. "
         "Do NOT explain your capabilities unless asked. Just respond to what the user says.\n\n"
     )
 
@@ -608,7 +624,12 @@ async def design_chat(
                         all_text_parts.append(text)
                         yield f"data: {json.dumps({'type': 'chunk', 'content': text})}\n\n"
                     elif etype == "tool_call":
-                        yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {})})}\n\n"
+                        tool_payload = {
+                            "type": "tool_call",
+                            "tool": event.get("tool"),
+                            "params": event.get("params", {}),
+                        }
+                        yield f"data: {json.dumps(tool_payload)}\n\n"
                     elif etype == "_complete":
                         turn = event.get("result")
                         if turn is not None and turn.stop_reason == "turn_budget_exceeded":
@@ -689,10 +710,6 @@ async def design_chat(
 
 
 # -- Composed Interfaces Subrouters -----------------------------------------
-
-from app.api.routes.interfaces_integrations import router as integrations_router
-from app.api.routes.interfaces_mock import router as mock_router
-from app.api.routes.interfaces_screens import router as screens_router
 
 router.include_router(screens_router)
 router.include_router(integrations_router)

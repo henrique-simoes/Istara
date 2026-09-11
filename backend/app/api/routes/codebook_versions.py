@@ -79,7 +79,10 @@ async def _derived_codebook(project_id: str, db: AsyncSession) -> dict | None:
             "code_id": tag,
             "label": tag,
             "brief_definition": "Derived from project tags and coding applications.",
-            "full_definition": "This code is currently inferred from tags applied to findings, interview nuggets, or code applications.",
+            "full_definition": (
+                "This code is currently inferred from tags applied to findings, "
+                "interview nuggets, or code applications."
+            ),
             "exclusion_criteria": "",
             "typical_example": examples.get(tag, [""])[0],
             "boundary_example": "\n".join(examples.get(tag, [])[1:]),

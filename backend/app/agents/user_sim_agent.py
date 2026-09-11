@@ -134,7 +134,6 @@ class UserSimAgent:
                 },
             )
             results.append(result)
-            task_id = result.get("response", {}).get("id") if result["success"] else None
 
             # Test 6: List tasks
             results.append(
@@ -184,7 +183,10 @@ class UserSimAgent:
             "failed": failed,
             "pass_rate": round(passed / max(len(results), 1) * 100, 1),
             "results": results,
-            "summary": f"{passed}/{len(results)} tests passed ({round(passed / max(len(results), 1) * 100)}%)",
+            "summary": (
+                f"{passed}/{len(results)} tests passed "
+                f"({round(passed / max(len(results), 1) * 100)}%)"
+            ),
         }
 
     async def _test_endpoint(

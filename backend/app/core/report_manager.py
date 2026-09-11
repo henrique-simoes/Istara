@@ -157,7 +157,8 @@ class ReportManager:
         )
         if not finding_ids:
             logger.info(
-                "ReportManager: skipped report routing for project=%s skill=%s because no findings are reportable",
+                "ReportManager: skipped report routing for project=%s "
+                "skill=%s because no findings are reportable",
                 project_id,
                 skill_name,
             )
@@ -253,7 +254,8 @@ class ReportManager:
         )
         if not validity["report_allowed"]:
             logger.info(
-                "ReportManager: skipped approved task %s because research-validity gate blocked reporting: %s",
+                "ReportManager: skipped approved task %s because "
+                "research-validity gate blocked reporting: %s",
                 task_id,
                 validity["reason"],
             )
@@ -319,7 +321,10 @@ class ReportManager:
                     project_id=project_id,
                     task_id="",
                     allowed=False,
-                    reason=f"Finding {finding_id} does not exist or is not managed by the Research Spine.",
+                    reason=(
+                        f"Finding {finding_id} does not exist or is not managed "
+                        "by the Research Spine."
+                    ),
                 )
             for finding_id in sorted(unlinked_finding_ids):
                 await _record_report_promotion_gate(
@@ -433,7 +438,8 @@ class ReportManager:
             )
             if not reportable_ids:
                 logger.info(
-                    "ReportManager: skipped L3 synthesis for project=%s because no L2 findings passed Research Spine gates",
+                    "ReportManager: skipped L3 synthesis for project=%s "
+                    "because no L2 findings passed Research Spine gates",
                     project_id,
                 )
                 return
@@ -487,11 +493,15 @@ class ReportManager:
             if not findings_text:
                 return
             summary_prompt = (
-                f"Create a professional consulting-grade executive summary for the '{report_scope}' study using the SCR (Situation-Complication-Resolution) framework.\n\n"
+                f"Create a professional consulting-grade executive summary "
+                f"for the '{report_scope}' study using the SCR "
+                "(Situation-Complication-Resolution) framework.\n\n"
                 f"Context: {len(findings_text)} key findings extracted.\n"
                 "Findings:\n"
                 + "\n".join(f"- {t[:200]}" for t in findings_text[:15])
-                + "\n\nFormat the summary with clear headings: SITUATION, COMPLICATION, and RESOLUTION. Ensure it addresses executive stakeholders with high clarity and academic rigor."
+                + "\n\nFormat the summary with clear headings: SITUATION, "
+                + "COMPLICATION, and RESOLUTION. Ensure it addresses executive "
+                + "stakeholders with high clarity and academic rigor."
             )
             # W5: the SCR executive summary goes through the
             # AgenticDispatcher (``report.exec_summary``).
@@ -547,15 +557,21 @@ class ReportManager:
             if len(findings_text) < 3:
                 return
             mece_prompt = (
-                f"You are a top-tier management consultant. Categorize these {len(findings_text)} research findings into 3-5 MECE "
-                "(Mutually Exclusive, Collectively Exhaustive) categories using the Minto Pyramid Principle.\n\n"
+                f"You are a top-tier management consultant. Categorize these "
+                f"{len(findings_text)} research findings into 3-5 MECE "
+                "(Mutually Exclusive, Collectively Exhaustive) "
+                "categories using the Minto Pyramid Principle.\n\n"
                 "Constraints:\n"
-                "1. Each category MUST have an 'Action Title' — a full sentence that states a conclusion (e.g., 'Users struggle with X because of Y').\n"
-                "2. Provide a 'So-What' description for each category explaining the business/UX impact.\n"
+                "1. Each category MUST have an 'Action Title' — a full sentence that "
+                "states a conclusion (e.g., 'Users struggle with X because of Y').\n"
+                "2. Provide a 'So-What' description for each "
+                "category explaining the business/UX impact.\n"
                 "3. Ensure categories do not overlap.\n\n"
                 "Findings:\n"
                 + "\n".join(f"- [{f['id'][:8]}] {f['text']}" for f in findings_text)
-                + '\n\nRespond with a JSON array: [{"name": "Action Title Sentence", "description": "So-What explanation...", "finding_ids": ["id1", "id2"]}]'
+                + '\n\nRespond with a JSON array: [{"name": "Action Title "'
+                + '"Sentence", "description": "So-What explanation...", "'
+                + '"finding_ids": ["id1", "id2"]}]'
             )
             # W5: MECE categorization goes through the AgenticDispatcher
             # (``report.mece``) as a structured call.
@@ -636,7 +652,8 @@ class ReportManager:
         )
         if not reportable_ids:
             logger.info(
-                "ReportManager: skipped L4 final report for project=%s because no L3 findings passed Research Spine gates",
+                "ReportManager: skipped L4 final report for project=%s "
+                "because no L3 findings passed Research Spine gates",
                 project_id,
             )
             return
@@ -797,8 +814,8 @@ class ReportManager:
             # ── Iterative refinement loop (max 2 passes) ──
             # LLM scores each section, identifies the weakest, and re-composes it.
             # Stops when all sections score ≥7 or after 2 passes.
-            MAX_REFINEMENT_PASSES = 2
-            for pass_num in range(MAX_REFINEMENT_PASSES):
+            max_refinement_passes = 2
+            for pass_num in range(max_refinement_passes):
                 try:
                     score_prompt = (
                         f"Rate each section of this research report (1-10). "
@@ -886,7 +903,7 @@ class ReportManager:
             content["sections"] = [t["section"] for t in self.REPORT_TEMPLATE]
             content["generated_at"] = datetime.now(UTC).isoformat()
             content["refinement_passes"] = (
-                min(pass_num + 1, MAX_REFINEMENT_PASSES) if "pass_num" in dir() else 0
+                min(pass_num + 1, max_refinement_passes) if "pass_num" in dir() else 0
             )
             fresh_report.content_json = json.dumps(content)
             fresh_report.status = "review"
@@ -1006,7 +1023,8 @@ class ReportManager:
                 return "No actionable recommendations generated."
 
             prompt = (
-                f"You are a management consultant. For each of these {len(items)} research recommendations, "
+                f"You are a management consultant. For each of "
+                f"these {len(items)} research recommendations, "
                 "develop a professional, multi-paragraph justification (~500 words total).\n\n"
                 "Constraints:\n"
                 "1. State the recommendation clearly (The 'Pyramid Top').\n"
@@ -1050,7 +1068,8 @@ class ReportManager:
                 parts.append(
                     f"### {name}\n"
                     f"**Strategic Takeaway**: {desc}\n\n"
-                    f"*Evidence density: This conclusion is supported by {count} distinct research findings.*"
+                    f"*Evidence density: This conclusion is supported "
+                    f"by {count} distinct research findings.*"
                 )
             return "\n\n".join(parts)
 

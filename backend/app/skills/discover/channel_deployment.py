@@ -12,7 +12,9 @@ from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, Skil
 logger = logging.getLogger(__name__)
 
 
-DEPLOYMENT_PLAN_PROMPT = """You are an expert UX Researcher planning a research deployment via messaging channels.
+DEPLOYMENT_PLAN_PROMPT = (
+    """You are an expert UX Researcher planning a research deployment """
+    """via messaging channels.
 
 ## Context
 {context}
@@ -71,9 +73,12 @@ Respond in valid JSON:
     }},
     "ethical_notes": ["..."]
 }}"""
+)
 
 
-ANALYSIS_PROMPT = """You are an expert UX Researcher analyzing responses from a channel-deployed {deployment_type}.
+ANALYSIS_PROMPT = (
+    """You are an expert UX Researcher analyzing responses """
+    """from a channel-deployed {deployment_type}.
 
 ## Deployment Summary
 Name: {deployment_name}
@@ -109,16 +114,21 @@ Actionable next steps based on candidate findings.
 
 Respond in valid JSON:
 {{
-    "themes": [{{"name": "...", "description": "...", "frequency": 0, "confidence": "high|medium|low"}}],
-    "candidate_nuggets": [{{"text": "...", "source": "...", "source_location": "...", "source_quote": "...", "tags": ["..."], "confidence": "high|medium|low"}}],
-    "candidate_insights": [{{"text": "...", "confidence": "high|medium|low", "impact": "low|medium|high"}}],
-    "candidate_recommendations": [{{"text": "...", "priority": "low|medium|high|critical", "effort": "low|medium|high"}}],
+    "themes": [{{"name": "...", "description": "...", "frequency": 0, \
+"confidence": "high|medium|low"}}],
+    "candidate_nuggets": [{{"text": "...", "source": "...", "source_location": "...", \
+"source_quote": "...", "tags": ["..."], "confidence": "high|medium|low"}}],
+    "candidate_insights": [{{"text": "...", "confidence": "high|medium|low", \
+"impact": "low|medium|high"}}],
+    "candidate_recommendations": [{{"text": "...", "priority": "low|medium|high|critical", \
+"effort": "low|medium|high"}}],
     "data_quality": {{
         "overall_quality": "high|medium|low",
         "biases": ["..."],
         "gaps": ["..."]
     }}
 }}"""
+)
 
 
 # W5: schema for the AgenticDispatcher structured path of ``_analyze``
@@ -293,7 +303,9 @@ class ChannelResearchDeploymentSkill(BaseSkill):
             plan = await self.plan(skill_input)
             return SkillOutput(
                 success=True,
-                summary=f"Generated deployment plan for {plan.get('deployment_type', 'interview')}.",
+                summary=(
+                    f"Generated deployment plan for {plan.get('deployment_type', 'interview')}."
+                ),
                 artifacts={"deployment_plan.json": json.dumps(plan, indent=2)},
                 suggestions=plan.get("steps", []),
             )

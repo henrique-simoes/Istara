@@ -142,8 +142,7 @@ async def recover_incomplete(db: AsyncSession) -> list[dict]:
     from app.models.task import Task, TaskStatus
 
     # Enum values for comparison
-    WORKING_OR_ERROR = [AgentState.WORKING.value, AgentState.ERROR.value]
-    PAUSED = [AgentState.PAUSED.value]
+    working_or_error = [AgentState.WORKING.value, AgentState.ERROR.value]
 
     result = await db.execute(select(TaskCheckpoint))
     checkpoints = result.scalars().all()
@@ -155,7 +154,7 @@ async def recover_incomplete(db: AsyncSession) -> list[dict]:
         if task:
             agent_state_recovered = AgentState(cp.agent_state) if cp.agent_state else None
 
-            if agent_state_recovered and agent_state_recovered in WORKING_OR_ERROR:
+            if agent_state_recovered and agent_state_recovered in working_or_error:
                 logger.warning(
                     f"Recovering task {cp.task_id} from checkpoint phase={cp.phase}, "
                     f"agent_state={cp.agent_state}: TaskStatus.BACKLOG. Agent needs manual restart."
@@ -165,7 +164,8 @@ async def recover_incomplete(db: AsyncSession) -> list[dict]:
             elif agent_state_recovered and cp.phase != "started":
                 # Was paused mid-execution, put back in queue for manual recovery attempt
                 logger.warning(
-                    f"Recovering task {cp.task_id} from checkpoint phase={cp.phase}: TaskStatus.BACKLOG. "
+                    f"Recovering task {cp.task_id} from checkpoint "
+                    f"phase={cp.phase}: TaskStatus.BACKLOG. "
                     f"Agent was paused at interruption."
                 )
                 task.status = TaskStatus.BACKLOG

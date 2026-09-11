@@ -228,7 +228,9 @@ class DevOpsAuditAgent:
                             "type": "stale_project",
                             "severity": "low",
                             "project_id": project.id,
-                            "message": f"Project '{project.name}' has no data after {age_hours:.0f} hours.",
+                            "message": (
+                                f"Project '{project.name}' has no data after {age_hours:.0f} hours."
+                            ),
                         }
                     )
 
@@ -298,7 +300,9 @@ class DevOpsAuditAgent:
                     "severity": "low",
                     "finding_type": "insight",
                     "finding_id": insight.id,
-                    "message": f"Insight suspiciously short ({len(insight.text)} chars): '{insight.text}'",
+                    "message": (
+                        f"Insight suspiciously short ({len(insight.text)} chars): '{insight.text}'"
+                    ),
                 }
             )
 
@@ -332,7 +336,10 @@ class DevOpsAuditAgent:
                         "type": "stale_task",
                         "severity": "medium",
                         "task_id": task.id,
-                        "message": f"Task '{task.title}' in_progress for {hours_stale:.0f}h without update.",
+                        "message": (
+                            f"Task '{task.title}' in_progress for "
+                            f"{hours_stale:.0f}h without update."
+                        ),
                     }
                 )
 
@@ -346,7 +353,7 @@ class DevOpsAuditAgent:
         for project in result.scalars().all():
             store = VectorStore(project.id)
             try:
-                count = await store.count()
+                await store.count()
                 # No issues — just monitoring
             except Exception as e:
                 issues.append(
@@ -373,7 +380,10 @@ class DevOpsAuditAgent:
                     {
                         "type": "resource_warning",
                         "severity": "high",
-                        "message": f"RAM usage at {mem.percent}% — consider reducing model size or closing apps.",
+                        "message": (
+                            f"RAM usage at {mem.percent}% — consider reducing "
+                            "model size or closing apps."
+                        ),
                     }
                 )
 

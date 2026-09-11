@@ -179,9 +179,9 @@ async def seed_system_agents(db: AsyncSession) -> None:
 
 async def list_agents(db: AsyncSession, include_system: bool = True) -> list[dict]:
     """List all active agents."""
-    query = select(Agent).where(Agent.is_active == True)
+    query = select(Agent).where(Agent.is_active == True)  # noqa: E712 -- SQLAlchemy IS TRUE
     if not include_system:
-        query = query.where(Agent.is_system == False)
+        query = query.where(Agent.is_system == False)  # noqa: E712 -- SQLAlchemy IS FALSE
     result = await db.execute(query.order_by(Agent.created_at))
     return [a.to_dict() for a in result.scalars().all()]
 

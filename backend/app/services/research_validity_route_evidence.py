@@ -1,4 +1,5 @@
-"""Pi coder dispatch, route-evidence postprocessing, and the bounded Qwen rate-limit fallback chains."""
+"""Pi coder dispatch, route-evidence postprocessing, and the bounded Qwen rate-limit fallback
+chains."""
 
 from __future__ import annotations
 

@@ -11,12 +11,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.database import Base
 
 
-class AgentScope(str, enum.Enum):
+class AgentScope(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     UNIVERSAL = "universal"  # Available across all projects (system agents, promoted)
     PROJECT = "project"  # Scoped to a single project
 
 
-class AgentRole(str, enum.Enum):
+class AgentRole(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     TASK_EXECUTOR = "task_executor"
     DEVOPS_AUDIT = "devops_audit"
     UI_AUDIT = "ui_audit"
@@ -26,7 +26,7 @@ class AgentRole(str, enum.Enum):
     CUSTOM = "custom"
 
 
-class AgentState(str, enum.Enum):
+class AgentState(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     IDLE = "idle"
     WORKING = "working"
     PAUSED = "paused"
@@ -34,7 +34,7 @@ class AgentState(str, enum.Enum):
     STOPPED = "stopped"
 
 
-class HeartbeatStatus(str, enum.Enum):
+class HeartbeatStatus(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     ERROR = "error"

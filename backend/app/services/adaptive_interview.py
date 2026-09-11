@@ -17,7 +17,7 @@ from app.models.research_deployment import ResearchDeployment
 logger = logging.getLogger(__name__)
 
 
-class ConversationState(str, Enum):
+class ConversationState(str, Enum):  # noqa: UP042 -- StrEnum would change str(member)
     """State machine states for a research conversation."""
 
     INTRO = "intro"

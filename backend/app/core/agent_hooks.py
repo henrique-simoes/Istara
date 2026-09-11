@@ -38,7 +38,8 @@ class AgentHooks:
         """Register an async callback for a lifecycle event."""
         if event not in ("pre_task", "post_task", "post_validation", "on_completion", "on_error"):
             raise ValueError(
-                f"Unknown hook event: {event}. Must be one of: pre_task, post_task, post_validation, on_completion, on_error"
+                f"Unknown hook event: {event}. Must be one of: pre_task, "
+                f"post_task, post_validation, on_completion, on_error"
             )
         self._hooks[event].append(callback)
 

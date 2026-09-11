@@ -99,7 +99,10 @@ def _get_engine():
     except ImportError:
         raise HTTPException(
             status_code=501,
-            detail="Autoresearch engine not available. Ensure app.core.autoresearch_engine is installed.",
+            detail=(
+                "Autoresearch engine not available. "
+                "Ensure app.core.autoresearch_engine is installed."
+            ),
         )
 
 
@@ -787,7 +790,10 @@ async def start_experiment(
             "production_mutation_allowed": False,
             "background_task_started": False,
             "proposal": {
-                "hypothesis": "Measure Pi replacement candidate without mutating production autoresearch state.",
+                "hypothesis": (
+                    "Measure Pi replacement candidate without mutating "
+                    "production autoresearch state."
+                ),
                 "governance_required": True,
                 "report_evidence": False,
             },

@@ -255,7 +255,8 @@ async def discover_and_register() -> list[dict]:
         llm_router.register_server(entry)
         newly_registered.append(server_info)
         logger.info(
-            f"Auto-discovered LLM server: {server_info['name']} with models: {server_info['models']}"
+            f"Auto-discovered LLM server: {server_info['name']} "
+            f"with models: {server_info['models']}"
         )
 
     # Persist discovered servers to database

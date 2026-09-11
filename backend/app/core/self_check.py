@@ -6,7 +6,7 @@ from enum import Enum
 from app.core.rag import retrieve_context
 
 
-class Confidence(str, Enum):
+class Confidence(str, Enum):  # noqa: UP042 -- StrEnum would change str(member)
     """Confidence level for a finding."""
 
     HIGH = "high"
@@ -52,7 +52,9 @@ async def verify_claim(
         )
 
     # Ask the LLM to verify the claim against the sources
-    verification_prompt = f"""You are a rigorous UX Research fact-checker. Your job is to verify claims against source documents.
+    verification_prompt = (
+        f"""You are a rigorous UX Research fact-checker. Your job is to verify """
+        f"""claims against source documents.
 
 ## Claim to Verify
 "{claim}"
@@ -62,7 +64,8 @@ async def verify_claim(
 
 ## Instructions
 1. Check if the source documents support, contradict, or are irrelevant to the claim.
-2. Rate confidence: HIGH (strong evidence from multiple sources), MEDIUM (some evidence), LOW (weak/indirect evidence), UNVERIFIED (no relevant evidence).
+2. Rate confidence: HIGH (strong evidence from multiple sources), MEDIUM (some evidence), \
+LOW (weak/indirect evidence), UNVERIFIED (no relevant evidence).
 3. List which specific sources support or contradict the claim.
 
 Respond with the structured object:
@@ -70,6 +73,7 @@ Respond with the structured object:
 - supporting: source names supporting the claim ([] if none)
 - contradicting: source names contradicting the claim ([] if none)
 - notes: brief explanation of your assessment"""
+    )
 
     # W3 (L6): claim verification through the AgenticDispatcher
     # (``spine.self_check``) as a proper schema-validated structured call —

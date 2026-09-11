@@ -36,13 +36,16 @@ async def trigger_task_memory_extraction(agent_id: str, task_id: str):
             return
 
         # Distill the interaction
-        interaction_text = "\n".join([f"{m.role}: {m.content}" for m in messages])
+        _interaction_text = "\n".join([f"{m.role}: {m.content}" for m in messages])
 
         # Use LLM to extract preference (simplified for this hook)
         # In a real implementation, we'd call llm_router here.
         # For Phase 6, we'll log that we captured the interaction.
 
-        preference_summary = f"Completed task: {task.title}. Skill used: {task.skill_name}. Instructions: {task.instructions}"
+        preference_summary = (
+            f"Completed task: {task.title}. Skill used: {task.skill_name}. "
+            f"Instructions: {task.instructions}"
+        )
 
         await agent_learning.record_workflow_learning(
             agent_id=agent_id, pattern=preference_summary, project_id=task.project_id

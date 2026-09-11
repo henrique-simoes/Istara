@@ -97,14 +97,15 @@ class AgentResearchMixin:
         try:
             from app.skills.system_actions import OPENAI_TOOLS, execute_tool
 
+            openai_tools = OPENAI_TOOLS
             use_tools = True
         except ImportError:
             use_tools = False
-            OPENAI_TOOLS = []
+            openai_tools = []
             execute_tool = None
 
         skill_tools = build_run_skill_tool(skill_candidates)
-        available_tools = [*OPENAI_TOOLS, *skill_tools]
+        available_tools = [*openai_tools, *skill_tools]
         candidate_by_name = {candidate.name: candidate for candidate in skill_candidates}
 
         tool_names = [t.get("function", {}).get("name", "") for t in available_tools]
@@ -812,7 +813,8 @@ class AgentResearchMixin:
                             created_evidence_unit_ids.append(unit.id)
                     if units and not has_exact_source_span:
                         task.what_to_review = (
-                            "Generated findings are provisional: exact source document/span evidence is "
+                            "Generated findings are provisional: "
+                            "exact source document/span evidence is "
                             "required before governed coding can promote them."
                         )
                 except Exception as e:

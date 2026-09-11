@@ -641,7 +641,6 @@ def compose_keyword_prompt(
         budget = int(budget * 0.3)
 
     anchor = _fit_anchor_to_budget(_extract_identity_anchor(agent_id), budget)
-    anchor_tokens = len(anchor) // 4
     anchor_with_notice_tokens = len(_with_spine_notice(anchor)) // 4
     separator_tokens = len(PROMPT_COMPOSITION_SEPARATOR) // 4
     remaining = max(0, budget - anchor_with_notice_tokens - separator_tokens)

@@ -319,20 +319,20 @@ class MetaHyperagent:
                     project_learnings = await db.execute(
                         select(func.count(AgentLearning.id)).where(
                             AgentLearning.project_id == scoped_project_id,
-                            AgentLearning.active == True,
+                            AgentLearning.active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         )
                     )
                     promoted_learnings = await db.execute(
                         select(func.count(AgentLearning.id)).where(
                             AgentLearning.project_id == scoped_project_id,
-                            AgentLearning.active == True,
+                            AgentLearning.active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                             AgentLearning.resolution.like("%[PROMOTED]%"),
                         )
                     )
                     distinct_agents = await db.execute(
                         select(func.count(func.distinct(AgentLearning.agent_id))).where(
                             AgentLearning.project_id == scoped_project_id,
-                            AgentLearning.active == True,
+                            AgentLearning.active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         )
                     )
                 self_evolution_stats.update(
@@ -478,7 +478,9 @@ class MetaHyperagent:
                                 }
                             ],
                             confidence=60,
-                            expected_impact="More skills matched directly, fewer semantic fallbacks",
+                            expected_impact=(
+                                "More skills matched directly, fewer semantic fallbacks"
+                            ),
                             status="pending",
                             created_at=datetime.now(UTC).isoformat(),
                             project_id=scoped_project_id,
@@ -566,7 +568,9 @@ class MetaHyperagent:
                                 }
                             ],
                             confidence=55,
-                            expected_impact="Higher quality promoted learnings, fewer bad promotions",
+                            expected_impact=(
+                                "Higher quality promoted learnings, fewer bad promotions"
+                            ),
                             status="pending",
                             created_at=datetime.now(UTC).isoformat(),
                             project_id=scoped_project_id,
@@ -683,7 +687,10 @@ class MetaHyperagent:
         # Safety: max active variants
         if self._active_variant_count(scoped_project_id) >= MAX_ACTIVE_VARIANTS:
             return {
-                "error": f"Max active variants ({MAX_ACTIVE_VARIANTS}) reached. Revert or confirm existing variants first."
+                "error": (
+                    f"Max active variants ({MAX_ACTIVE_VARIANTS}) reached. "
+                    "Revert or confirm existing variants first."
+                )
             }
 
         if self._is_protected_research_parameter(proposal["parameter_path"]):
@@ -698,7 +705,10 @@ class MetaHyperagent:
         # Validate bounds
         if not self._validate_bounds(proposal["parameter_path"], proposal["proposed_value"]):
             return {
-                "error": f"Proposed value {proposal['proposed_value']} is outside bounds for {proposal['parameter_path']}"
+                "error": (
+                    f"Proposed value {proposal['proposed_value']} is outside "
+                    f"bounds for {proposal['parameter_path']}"
+                )
             }
 
         # Create a project-scoped variant. The owning services consult active
@@ -937,7 +947,8 @@ class MetaHyperagent:
                             if len(tr.SPECIALTY_KEYWORDS[domain]) < max_kw:
                                 tr.SPECIALTY_KEYWORDS[domain].append(value)
                                 logger.info(
-                                    f"Meta-hyperagent: appended '{value}' to task_router.SPECIALTY_KEYWORDS[{domain}]"
+                                    f"Meta-hyperagent: appended '{value}' to "
+                                    f"task_router.SPECIALTY_KEYWORDS[{domain}]"
                                 )
                                 return
                             raise ValueError(f"Domain '{domain}' at max keywords ({max_kw})")
@@ -945,7 +956,8 @@ class MetaHyperagent:
                     else:
                         tr.SPECIALTY_KEYWORDS[domain] = [value]
                         logger.info(
-                            f"Meta-hyperagent: created task_router.SPECIALTY_KEYWORDS[{domain}] = [{value}]"
+                            f"Meta-hyperagent: created "
+                            f"task_router.SPECIALTY_KEYWORDS[{domain}] = [{value}]"
                         )
                         return
                 elif isinstance(value, list):
@@ -1035,7 +1047,8 @@ class MetaHyperagent:
                     await self.observe_cycle(project_id=scoped_project_id)
                     if not await is_project_active(scoped_project_id):
                         logger.info(
-                            "Meta-hyperagent skipped proposal analysis because project %s is paused or missing",
+                            "Meta-hyperagent skipped proposal analysis "
+                            "because project %s is paused or missing",
                             scoped_project_id,
                         )
                         break

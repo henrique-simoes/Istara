@@ -5,10 +5,9 @@ from __future__ import annotations
 import math
 from types import SimpleNamespace
 
+from app.core.compute_capacity import compute_capacity_envelope, node_capacity_score
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
-from app.core.compute_capacity import compute_capacity_envelope, node_capacity_score
 
 
 def _node(**overrides):

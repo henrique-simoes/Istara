@@ -314,10 +314,13 @@ Data to code:
 Respond in JSON:
 {{
   "codebook": [
-    {{"code": "code-name", "definition": "clear definition", "inclusion_criteria": "when to apply", "exclusion_criteria": "when NOT to apply", "examples": ["example phrase"]}}
+    {{"code": "code-name", "definition": "clear definition", \
+"inclusion_criteria": "when to apply", "exclusion_criteria": \
+"when NOT to apply", "examples": ["example phrase"]}}
   ],
   "coding_results": [
-    {{"item_id": "seg_1", "text": "verbatim phrase (3-30 words)", "source": "filename or location", "codes": ["code1", "code2"]}}
+    {{"item_id": "seg_1", "text": "verbatim phrase (3-30 words)", \
+"source": "filename or location", "codes": ["code1", "code2"]}}
   ]
 }}"""
 
@@ -365,10 +368,13 @@ Respond in JSON:
     {{"item_id": "seg_1", "final_codes": ["code1"], "rationale": "brief explanation"}}
   ],
   "codebook_refinements": [
-    {{"code": "code-name", "issue": "why it caused disagreement", "refined_definition": "improved definition"}}
+    {{"code": "code-name", "issue": "why it caused disagreement", \
+"refined_definition": "improved definition"}}
   ],
   "themes": [
-    {{"name": "theme name", "definition": "what this theme captures", "codes": ["code1", "code2"], "prevalence": "dominant|common|minor", "description": "narrative description"}}
+    {{"name": "theme name", "definition": "what this theme captures", \
+"codes": ["code1", "code2"], "prevalence": "dominant|common|minor", \
+"description": "narrative description"}}
   ]
 }}"""
 
@@ -777,9 +783,12 @@ class KappaIntercoderSkill(BaseSkill):
         ]
         insights = [
             {
-                "text": f"Cohen's Kappa = {reliability['kappa']} ({reliability['interpretation']}), "
-                f"Krippendorff's Alpha = {alpha_result['alpha']} ({alpha_result['interpretation']}). "
-                f"{len(disagreements)} of {len(combined_results)} segments had disagreements.",
+                "text": (
+                    f"Cohen's Kappa = {reliability['kappa']} "
+                    f"({reliability['interpretation']}), Krippendorff's Alpha = "
+                    f"{alpha_result['alpha']} ({alpha_result['interpretation']}). "
+                    f"{len(disagreements)} of {len(combined_results)} segments had disagreements."
+                ),
                 "confidence": "high"
                 if reliability["kappa"] >= 0.60 and alpha_result["alpha"] >= 0.667
                 else "medium",
@@ -790,7 +799,9 @@ class KappaIntercoderSkill(BaseSkill):
         for theme in themes:
             insights.append(
                 {
-                    "text": f"Theme: {theme.get('name', 'Unnamed')} — {theme.get('description', '')}",
+                    "text": (
+                        f"Theme: {theme.get('name', 'Unnamed')} — {theme.get('description', '')}"
+                    ),
                     "confidence": "medium",
                 }
             )

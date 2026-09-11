@@ -125,7 +125,9 @@ class ImprovementGovernanceEvidenceMixin:
                     "event_id": event_id,
                 },
                 rollback_plan={
-                    "strategy": "remove or quarantine this evidence trace; no behavior mutation was applied",
+                    "strategy": (
+                        "remove or quarantine this evidence trace; no behavior mutation was applied"
+                    ),
                 },
                 evidence=[event],
                 metrics_before=metrics_before,
@@ -220,9 +222,15 @@ class ImprovementGovernanceEvidenceMixin:
                 "governance_required": True,
             },
             rollback_plan={
-                "strategy": "reject the proposal; the measured mutation was already reverted after sandbox evaluation",
+                "strategy": (
+                    "reject the proposal; the measured mutation was already "
+                    "reverted after sandbox evaluation"
+                ),
                 "requires_verification": True,
-                "reason": "Autoresearch retained only a candidate proposal; production promotion remains governed.",
+                "reason": (
+                    "Autoresearch retained only a candidate proposal; "
+                    "production promotion remains governed."
+                ),
             },
             evidence=[
                 {
@@ -318,7 +326,10 @@ class ImprovementGovernanceEvidenceMixin:
             agent_id="agent-factory",
             title=f"Review agent creation for {proposal.get('proposed_name', 'new agent')}",
             summary=str(proposal.get("reason", "")),
-            rationale="Memento-Skills agent creation proposed a new specialized agent from a capability gap.",
+            rationale=(
+                "Memento-Skills agent creation proposed a new specialized "
+                "agent from a capability gap."
+            ),
             affected_surfaces=["agents", "skills", "prompts", "orchestration"],
             before_state={
                 "source_task_id": proposal.get("source_task_id"),
@@ -331,7 +342,9 @@ class ImprovementGovernanceEvidenceMixin:
                 "system_prompt": proposal.get("proposed_system_prompt"),
             },
             rollback_plan={
-                "strategy": "disable or delete the generated custom agent and remove its persona overlay",
+                "strategy": (
+                    "disable or delete the generated custom agent and remove its persona overlay"
+                ),
                 "source_task_id": proposal.get("source_task_id"),
             },
             evidence=[
@@ -364,7 +377,9 @@ class ImprovementGovernanceEvidenceMixin:
             agent_id="skill-manager",
             title=f"Review skill update for {proposal.get('skill_name', 'skill')}",
             summary=str(proposal.get("reason", "")),
-            rationale="Skill evolution proposed a prompt/config mutation from observed quality telemetry.",
+            rationale=(
+                "Skill evolution proposed a prompt/config mutation from observed quality telemetry."
+            ),
             affected_surfaces=["skills", "prompts", "telemetry"],
             before_state={
                 "skill_name": proposal.get("skill_name"),
@@ -413,7 +428,9 @@ class ImprovementGovernanceEvidenceMixin:
             agent_id=str(proposal.get("source_agent_id", "skill-manager")),
             title=f"Review skill creation for {definition.get('name', 'new skill')}",
             summary=str(proposal.get("reason", "")),
-            rationale="Memento-Skills skill creation proposed a reusable skill from a high-quality trace.",
+            rationale=(
+                "Memento-Skills skill creation proposed a reusable skill from a high-quality trace."
+            ),
             affected_surfaces=["skills", "prompts", "agents"],
             before_state={"source_task_id": proposal.get("source_task_id")},
             proposed_change={"definition": definition},

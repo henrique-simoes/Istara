@@ -52,7 +52,8 @@ async def check_experiment_limit(
     if total_count >= lim["max_experiments_total_per_day"]:
         return (
             False,
-            f"Daily experiment limit reached ({total_count}/{lim['max_experiments_total_per_day']})",
+            f"Daily experiment limit reached "
+            f"({total_count}/{lim['max_experiments_total_per_day']})",
         )
 
     # Per-skill daily limit
@@ -67,7 +68,8 @@ async def check_experiment_limit(
         if skill_count >= lim["max_experiments_per_skill_per_day"]:
             return (
                 False,
-                f"Per-skill limit reached for '{skill_name}' ({skill_count}/{lim['max_experiments_per_skill_per_day']})",
+                f"Per-skill limit reached for '{skill_name}' "
+                f"({skill_count}/{lim['max_experiments_per_skill_per_day']})",
             )
 
     return True, "OK"
@@ -94,7 +96,8 @@ async def check_learning_limit(
     if count >= lim["max_learnings_per_agent_per_hour"]:
         return (
             False,
-            f"Learning limit reached for agent '{agent_id}' ({count}/{lim['max_learnings_per_agent_per_hour']}/h)",
+            f"Learning limit reached for agent '{agent_id}' "
+            f"({count}/{lim['max_learnings_per_agent_per_hour']}/h)",
         )
 
     return True, "OK"

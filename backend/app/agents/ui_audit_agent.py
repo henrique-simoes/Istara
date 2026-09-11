@@ -31,7 +31,7 @@ FRONTEND_BASE = os.getenv("ISTARA_FRONTEND_BASE", "http://localhost:3000")
 API_BASE = os.getenv("ISTARA_API_BASE", "http://localhost:8000")
 
 
-class Severity(str, Enum):
+class Severity(str, Enum):  # noqa: UP042 -- StrEnum would change str(member)
     CRITICAL = "critical"
     MAJOR = "major"
     MINOR = "minor"
@@ -123,7 +123,8 @@ class UIAuditAgent:
                 if report.critical_count > 0:
                     await broadcast_agent_status(
                         "warning",
-                        f"UI Audit: {report.critical_count} critical issues! Score: {report.overall_score:.0f}/100",
+                        f"UI Audit: {report.critical_count} critical "
+                        f"issues! Score: {report.overall_score:.0f}/100",
                     )
                     logger.warning(f"UI Audit: {report.critical_count} critical issues found!")
                 else:
@@ -218,9 +219,14 @@ class UIAuditAgent:
                             category="accessibility",
                             severity=Severity.MAJOR,
                             location="index.html",
-                            description="Missing viewport meta tag — mobile experience may be broken.",
+                            description=(
+                                "Missing viewport meta tag — mobile experience may be broken."
+                            ),
                             heuristic="WCAG 1.4.10 Reflow",
-                            recommendation="Add <meta name='viewport' content='width=device-width, initial-scale=1'>",
+                            recommendation=(
+                                "Add <meta name='viewport' "
+                                "content='width=device-width, initial-scale=1'>"
+                            ),
                         )
                     )
 
@@ -258,7 +264,9 @@ class UIAuditAgent:
                             category="performance",
                             severity=Severity.MINOR,
                             location="index.html",
-                            description=f"Found {script_count} script tags — may impact initial load time.",
+                            description=(
+                                f"Found {script_count} script tags — may impact initial load time."
+                            ),
                             recommendation="Consider code splitting and lazy loading.",
                         )
                     )
@@ -322,7 +330,9 @@ class UIAuditAgent:
                             category="api_consistency",
                             severity=Severity.MINOR,
                             location=path,
-                            description=f"API endpoint {path} doesn't return application/json content-type",
+                            description=(
+                                f"API endpoint {path} doesn't return application/json content-type"
+                            ),
                             recommendation="Set Content-Type: application/json header.",
                         )
                     )
@@ -334,7 +344,9 @@ class UIAuditAgent:
                                 category="performance",
                                 severity=Severity.MINOR,
                                 location=path,
-                                description=f"API response time > 3s ({resp.elapsed.total_seconds():.1f}s)",
+                                description=(
+                                    f"API response time > 3s ({resp.elapsed.total_seconds():.1f}s)"
+                                ),
                                 recommendation="Optimize query or add caching.",
                             )
                         )
@@ -380,7 +392,9 @@ class UIAuditAgent:
                     category="accessibility",
                     severity=Severity.MAJOR,
                     location="global",
-                    description=f"Found {buttons_without_text} empty buttons without text or aria-label.",
+                    description=(
+                        f"Found {buttons_without_text} empty buttons without text or aria-label."
+                    ),
                     heuristic="WCAG 4.1.2 Name, Role, Value",
                     recommendation="Add text content or aria-label to all buttons.",
                 )
@@ -396,7 +410,10 @@ class UIAuditAgent:
                     category="accessibility",
                     severity=Severity.MINOR,
                     location="global",
-                    description=f"Found {inputs} inputs but only {labels + aria_labels_on_inputs} labels/aria-labels.",
+                    description=(
+                        f"Found {inputs} inputs but only "
+                        f"{labels + aria_labels_on_inputs} labels/aria-labels."
+                    ),
                     heuristic="WCAG 1.3.1 Info and Relationships",
                     recommendation="Ensure every input has an associated label or aria-label.",
                 )
@@ -419,7 +436,10 @@ class UIAuditAgent:
                         category="navigation",
                         severity=Severity.MINOR,
                         location="frontend",
-                        description=f"Navigation items not found in initial HTML: {', '.join(missing)} (may be client-rendered)",
+                        description=(
+                            "Navigation items not found in initial HTML: "
+                            f"{', '.join(missing)} (may be client-rendered)"
+                        ),
                         recommendation="Verify all navigation items render client-side.",
                     )
                 )
@@ -447,7 +467,9 @@ class UIAuditAgent:
                         severity=Severity.MINOR,
                         location=comp_name,
                         description=f"Component '{comp_name}' has no explicit error state defined.",
-                        recommendation="Add error state handling with clear error message and retry action.",
+                        recommendation=(
+                            "Add error state handling with clear error message and retry action."
+                        ),
                     )
                 )
             if "loading" not in states and "empty" not in states:
@@ -456,7 +478,9 @@ class UIAuditAgent:
                         category="consistency",
                         severity=Severity.COSMETIC,
                         location=comp_name,
-                        description=f"Component '{comp_name}' has no explicit loading state defined.",
+                        description=(
+                            f"Component '{comp_name}' has no explicit loading state defined."
+                        ),
                         recommendation="Add loading skeleton or spinner for async data fetching.",
                     )
                 )
@@ -512,7 +536,9 @@ class UIAuditAgent:
             f"- [{i.severity.value}] {i.location}: {i.description}" for i in report.issues[:20]
         )
 
-        prompt = f"""You are a UX expert evaluating a web application called Istara (a UX Research assistant).
+        prompt = (
+            f"""You are a UX expert evaluating a web application called Istara """
+            f"""(a UX Research assistant).
 
 Real audit data from this cycle:
 - Frontend pages fetched: {report.pages_fetched}
@@ -529,6 +555,7 @@ NOT already covered by the existing issues. Focus on actionable, specific issues
 Respond in JSON:
 {{"issues": [{{"heuristic": "...", "severity": "minor|major", "location": "...",
 "description": "...", "recommendation": "..."}}]}}"""
+        )
 
         try:
             resp = await agentic.completion(

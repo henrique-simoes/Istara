@@ -128,7 +128,6 @@ class ResourceGovernor:
         # Determine pressure level
         ram_pressure = res.ram_used_pct > 85
         cpu_pressure = res.cpu_load_pct > 80
-        disk_pressure = res.disk_used_pct > 90
         critical = res.ram_used_pct > 95 or res.disk_used_pct > 95
 
         if critical:
@@ -208,13 +207,15 @@ class ResourceGovernor:
         if budget.paused:
             return (
                 False,
-                "System resources critical — all agents paused. Close other applications to free memory.",
+                "System resources critical — all agents paused. "
+                "Close other applications to free memory.",
             )
 
         if len(self._active_agents) >= budget.max_concurrent_agents:
             return (
                 False,
-                f"Max concurrent agents reached ({budget.max_concurrent_agents}). Wait for a running agent to finish.",
+                f"Max concurrent agents reached ({budget.max_concurrent_agents}). "
+                f"Wait for a running agent to finish.",
             )
 
         return True, "OK"

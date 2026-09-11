@@ -63,7 +63,6 @@ async def context_grep(session_id: str, query: str) -> str:
     lines.append(f'[Context Search — {len(results)} result(s) for "{query}"]')
 
     for r in results:
-        mid = r.get("message_id", "?")
         role = r.get("role", "?")
         excerpt = r.get("content_excerpt", "")
         ts = r.get("created_at", "")
@@ -93,7 +92,8 @@ async def context_describe(session_id: str, node_id: str) -> str:
         f"  Original tokens:   {info.get('original_token_count', 0)}",
         f"  Summary tokens:    {info.get('token_count', 0)}",
         f"  Compression ratio: {info.get('compression_ratio', '?')}x",
-        f"  Time range:        {info.get('time_range_start', '?')} .. {info.get('time_range_end', '?')}",
+        f"  Time range:        {info.get('time_range_start', '?')} .. "
+        f"{info.get('time_range_end', '?')}",
         f"  Child nodes:       {info.get('child_node_ids', [])}",
         f"  Created at:        {info.get('created_at', '?')}",
         "  Summary:",

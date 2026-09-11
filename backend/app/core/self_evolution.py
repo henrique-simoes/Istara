@@ -218,7 +218,7 @@ class SelfEvolutionEngine:
                     select(AgentLearning).where(
                         AgentLearning.agent_id == agent_id,
                         AgentLearning.project_id == scoped_project_id,
-                        AgentLearning.active == True,
+                        AgentLearning.active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         AgentLearning.updated_at >= cutoff,
                         ~AgentLearning.trigger.like("[autoresearch]%"),
                     )
@@ -478,7 +478,7 @@ class SelfEvolutionEngine:
             async with async_session() as db:
                 db_result = await db.execute(
                     select(Agent.id).where(
-                        Agent.is_active == True,
+                        Agent.is_active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         or_(
                             Agent.scope != "project",
                             Agent.project_id == scoped_project_id,
@@ -559,7 +559,8 @@ Your primary directive is defined by your creator's system prompt.
 2. Select appropriate skill or use general reasoning
 3. Execute with source-grounded methodology
 4. Store research outputs as candidate/provisional unless they already cite accepted evidence
-5. Send candidates through evidence units, independent coding, reliability, reconciliation, task review, and Done gates before report use
+5. Send candidates through evidence units, independent coding, reliability, reconciliation, \
+task review, and Done gates before report use
 6. Self-verify output quality
 
 ## Error Handling
@@ -567,7 +568,8 @@ Your primary directive is defined by your creator's system prompt.
 - Record error learnings for future reference
 - Broadcast warning (not crash) on recoverable errors
 - Escalate to system agents for critical failures
-- Never weaken qualitative coding protocol, reliability thresholds, authorization, or report gates through self-evolution
+- Never weaken qualitative coding protocol, reliability thresholds, authorization, \
+or report gates through self-evolution
 
 ## Learned Error Patterns
 (Auto-populated by the self-evolution engine)

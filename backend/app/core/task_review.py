@@ -43,7 +43,7 @@ def classify_review_feedback(feedback: str, labels: list[Any] | None = None) -> 
     LLM diagnosis can refine this later. This small classifier prevents the
     reward pipeline from depending on model availability.
     """
-    text = f"{feedback or ''} {' '.join(str(l) for l in labels or [])}".lower()
+    text = f"{feedback or ''} {' '.join(str(label) for label in labels or [])}".lower()
     checks = [
         ("missing_evidence", ("evidence", "source", "quote", "citation", "unsupported", "nugget")),
         (
@@ -444,8 +444,11 @@ async def record_review_side_effects(event: TaskReviewEvent, score: float | None
 
             await agent_learning.record_user_feedback(
                 event.agent_id,
-                f"Task review feedback ({event.failure_category or 'other'}): {event.feedback_summary}",
-                context=f"task_id={event.task_id}; skill={event.skill_name}; outcome={event.outcome}",
+                f"Task review feedback ({event.failure_category or 'other'}): "
+                f"{event.feedback_summary}",
+                context=(
+                    f"task_id={event.task_id}; skill={event.skill_name}; outcome={event.outcome}"
+                ),
                 project_id=event.project_id,
             )
         except Exception as exc:

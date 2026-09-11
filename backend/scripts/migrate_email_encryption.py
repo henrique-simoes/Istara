@@ -11,11 +11,10 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlalchemy import select
-
 from app.core.field_encryption import hash_field
 from app.models.database import async_session
 from app.models.user import User
+from sqlalchemy import select
 
 
 async def migrate():

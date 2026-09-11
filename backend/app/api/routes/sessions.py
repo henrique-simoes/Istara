@@ -134,7 +134,7 @@ async def list_sessions(
     await require_project_access(db, request, project_id, min_role="viewer")
     query = select(ChatSession).where(ChatSession.project_id == project_id)
     if not include_archived:
-        query = query.where(ChatSession.archived == False)
+        query = query.where(ChatSession.archived == False)  # noqa: E712 -- SQLAlchemy IS FALSE
     query = query.order_by(
         ChatSession.starred.desc(), ChatSession.last_message_at.desc().nullslast()
     )
@@ -308,7 +308,10 @@ async def ensure_default_session(
     await require_project_access(db, request, project_id, min_role="researcher")
     result = await db.execute(
         select(ChatSession)
-        .where(ChatSession.project_id == project_id, ChatSession.archived == False)
+        .where(
+            ChatSession.project_id == project_id,
+            ChatSession.archived == False,  # noqa: E712 -- SQLAlchemy IS FALSE
+        )
         .order_by(ChatSession.last_message_at.desc().nullslast(), ChatSession.created_at.desc())
         .limit(1)
     )

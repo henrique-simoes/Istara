@@ -78,7 +78,9 @@ class HeartbeatManager:
         from app.api.websocket import manager as ws_manager
 
         async with async_session() as db:
-            result = await db.execute(select(Agent).where(Agent.is_active == True))
+            result = await db.execute(
+                select(Agent).where(Agent.is_active == True)  # noqa: E712 -- SQLAlchemy IS TRUE
+            )
             agents = result.scalars().all()
 
             now = datetime.now(UTC)

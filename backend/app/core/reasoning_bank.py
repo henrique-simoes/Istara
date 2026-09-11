@@ -352,7 +352,11 @@ class ReasoningMemoryService:
         return await self.record_trace(
             project_id=project_id,
             agent_id="autoresearch",
-            query=f"{experiment.get('loop_type', '')} {experiment.get('target_name', '')} {experiment.get('hypothesis', '')}",
+            query=(
+                f"{experiment.get('loop_type', '')} "
+                f"{experiment.get('target_name', '')} "
+                f"{experiment.get('hypothesis', '')}"
+            ),
             trajectory=trajectory,
             outcome=outcome,
             source_kind="autoresearch",

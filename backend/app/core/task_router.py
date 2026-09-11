@@ -207,7 +207,7 @@ async def get_available_agents(db: AsyncSession) -> list[Agent]:
     """Get all active, non-paused agents."""
     result = await db.execute(
         select(Agent).where(
-            Agent.is_active == True,
+            Agent.is_active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
             Agent.state.notin_([AgentState.PAUSED, AgentState.STOPPED]),
         )
     )

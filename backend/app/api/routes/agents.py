@@ -8,15 +8,6 @@ import logging
 import re
 from pathlib import Path
 
-
-def _get_version() -> str:
-    try:
-        vf = Path(__file__).resolve().parents[3] / "VERSION"
-        return vf.read_text().strip() if vf.exists() else "dev"
-    except Exception:
-        return "dev"
-
-
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -48,6 +39,15 @@ from app.services import a2a, agent_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _get_version() -> str:
+    try:
+        vf = Path(__file__).resolve().parents[3] / "VERSION"
+        return vf.read_text().strip() if vf.exists() else "dev"
+    except Exception:
+        return "dev"
+
 
 AVATAR_CONTENT_TYPES = {
     "image/png": ".png",
@@ -446,7 +446,10 @@ async def request_promotion(
         id=str(uuid.uuid4()),
         type="agent_promotion_request",
         title=f"Agent Promotion Request: {agent.name}",
-        message=f"A user has requested that agent '{agent.name}' be promoted from project scope to universal scope.",
+        message=(
+            f"A user has requested that agent '{agent.name}' be promoted "
+            "from project scope to universal scope."
+        ),
         category="agent_promotion",
         severity="info",
         agent_id=agent_id,

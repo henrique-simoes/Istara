@@ -79,7 +79,10 @@ class ContextSummarizer:
             )
             summary_text = outcome.text
             if not summary_text.strip():
-                summary_text = f"[Summary of {len(messages)} messages about: {messages[0].get('content', '')[:100]}...]"
+                summary_text = (
+                    f"[Summary of {len(messages)} messages about: "
+                    f"{messages[0].get('content', '')[:100]}...]"
+                )
         except Exception as e:
             logger.warning(f"Summarization failed, using fallback: {e}")
             topics = set()
@@ -87,7 +90,10 @@ class ContextSummarizer:
                 content = m.get("content", "")[:100]
                 if content:
                     topics.add(content.split(".")[0])
-            summary_text = f"[Previous conversation summary ({len(messages)} messages): {'; '.join(list(topics)[:5])}]"
+            summary_text = (
+                f"[Previous conversation summary ({len(messages)} messages): "
+                f"{'; '.join(list(topics)[:5])}]"
+            )
 
         return ContextSummary(
             summary_text=summary_text,

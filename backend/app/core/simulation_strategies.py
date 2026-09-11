@@ -9,7 +9,7 @@ from enum import Enum
 from typing import Any
 
 
-class SimulationStrategy(str, Enum):
+class SimulationStrategy(str, Enum):  # noqa: UP042 -- StrEnum would change str(member)
     TRUTHFUL = "truthful"  # High effort, honest responses
     SATISFICER = "satisficer"  # Low effort, short responses, "good enough"
     ADVERSARIAL = "adversarial"  # Intentional edge cases, contradictory

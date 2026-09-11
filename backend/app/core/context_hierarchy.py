@@ -65,7 +65,9 @@ class ContextDocument(Base):
     )
 
 
-PLATFORM_CONTEXT = """You are Istara, an expert UX Research assistant. You help researchers organize, analyze, and synthesize research findings using rigorous methodology.
+PLATFORM_CONTEXT = (
+    """You are Istara, an expert UX Research assistant. You help researchers organize, """
+    """analyze, and synthesize research findings using rigorous methodology.
 
 Core principles:
 - ALWAYS cite sources when referencing specific documents or data
@@ -78,6 +80,7 @@ Core principles:
 - Maintain researcher ethics: informed consent, privacy, no harm
 - Be specific and actionable in recommendations
 """
+)
 
 
 class ContextHierarchy:
@@ -114,7 +117,7 @@ class ContextHierarchy:
         scoped_project_id = self._normalize_project_id(project_id)
         query = (
             select(ContextDocument)
-            .where(ContextDocument.enabled == True)
+            .where(ContextDocument.enabled == True)  # noqa: E712 -- SQLAlchemy IS TRUE
             .order_by(ContextDocument.level, ContextDocument.priority.desc())
         )
 

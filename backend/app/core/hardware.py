@@ -177,7 +177,9 @@ def recommend_model(profile: HardwareProfile) -> ModelRecommendation:
                 quantization="Q5_K_M",
                 context_length=8192,
                 gpu_layers=-1,
-                reason=f"Apple Silicon with {profile.total_ram_gb}GB unified memory — full GPU offload",
+                reason=(
+                    f"Apple Silicon with {profile.total_ram_gb}GB unified memory — full GPU offload"
+                ),
             )
         if ram >= 6:
             return ModelRecommendation(
@@ -192,7 +194,10 @@ def recommend_model(profile: HardwareProfile) -> ModelRecommendation:
             quantization="Q4_K_M",
             context_length=4096,
             gpu_layers=-1,
-            reason=f"Apple Silicon with limited RAM ({profile.total_ram_gb}GB) — smaller model for comfort",
+            reason=(
+                f"Apple Silicon with limited RAM ({profile.total_ram_gb}GB) — "
+                "smaller model for comfort"
+            ),
         )
 
     # Discrete GPU path

@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any
 
 
-class SkillPhase(str, Enum):
+class SkillPhase(str, Enum):  # noqa: UP042 -- StrEnum would change str(member)
     """Double Diamond phase a skill belongs to."""
 
     DISCOVER = "discover"
@@ -15,7 +15,7 @@ class SkillPhase(str, Enum):
     DELIVER = "deliver"
 
 
-class SkillType(str, Enum):
+class SkillType(str, Enum):  # noqa: UP042 -- StrEnum would change str(member)
     """Whether the skill is qualitative, quantitative, or mixed."""
 
     QUALITATIVE = "qualitative"
@@ -206,11 +206,13 @@ class BaseSkill(ABC):
         # Evidence chain integrity
         if output.insights and not output.facts and not output.nuggets:
             warnings.append(
-                "Candidate insights generated without supporting nuggets or facts (broken provisional evidence chain)."
+                "Candidate insights generated without supporting "
+                "nuggets or facts (broken provisional evidence chain)."
             )
         if output.recommendations and not output.insights:
             warnings.append(
-                "Candidate recommendations generated without supporting insights (broken provisional evidence chain)."
+                "Candidate recommendations generated without supporting "
+                "insights (broken provisional evidence chain)."
             )
 
         # Confidence score bounds
@@ -220,7 +222,8 @@ class BaseSkill(ABC):
                 if conf is not None and isinstance(conf, (int, float)):
                     if conf < 0 or conf > 1:
                         warnings.append(
-                            f"{finding_type} has invalid confidence {conf} (must be 0-1): '{f.get('text', '')[:40]}...'"
+                            f"{finding_type} has invalid confidence {conf} (must be 0-1): "
+                            f"'{f.get('text', '')[:40]}...'"
                         )
 
         # Source attribution on facts and insights

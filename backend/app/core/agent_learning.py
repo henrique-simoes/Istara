@@ -239,7 +239,7 @@ class AgentLearningManager:
                 result = await db.execute(
                     select(AgentLearning).where(
                         AgentLearning.agent_id == agent_id,
-                        AgentLearning.active == True,
+                        AgentLearning.active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         AgentLearning.utility_score < 0.2,
                         AgentLearning.times_applied >= 5,
                     )
@@ -277,7 +277,7 @@ class AgentLearningManager:
                     select(AgentLearning)
                     .where(
                         AgentLearning.agent_id == agent_id,
-                        AgentLearning.active == True,
+                        AgentLearning.active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         AgentLearning.project_id == scoped_project_id,
                     )
                     .order_by(
@@ -295,13 +295,13 @@ class AgentLearningManager:
 
                 return [
                     {
-                        "category": l.category,
-                        "learning": l.learning,
-                        "confidence": l.confidence,
-                        "times_applied": l.times_applied,
-                        "times_successful": l.times_successful,
+                        "category": entry.category,
+                        "learning": entry.learning,
+                        "confidence": entry.confidence,
+                        "times_applied": entry.times_applied,
+                        "times_successful": entry.times_successful,
                     }
-                    for l in learnings
+                    for entry in learnings
                 ]
         except Exception as e:
             logger.warning(f"Failed to retrieve learnings: {e}")
@@ -326,7 +326,7 @@ class AgentLearningManager:
                     .where(
                         AgentLearning.agent_id == agent_id,
                         AgentLearning.category == "error_pattern",
-                        AgentLearning.active == True,
+                        AgentLearning.active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         AgentLearning.project_id == scoped_project_id,
                     )
                     .order_by(AgentLearning.confidence.desc())

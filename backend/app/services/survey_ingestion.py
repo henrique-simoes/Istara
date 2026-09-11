@@ -94,7 +94,8 @@ async def ingest_responses(
     await db.commit()
 
     logger.info(
-        "Ingested %d provisional nuggets and %d evidence units from %d responses (skipped %d empty answers) for link %s",
+        "Ingested %d provisional nuggets and %d evidence units "
+        "from %d responses (skipped %d empty answers) for link %s",
         created,
         evidence_units_created,
         len(responses),
