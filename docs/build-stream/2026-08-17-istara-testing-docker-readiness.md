@@ -6,11 +6,11 @@ item: istara-testing-docker-readiness
 branch: testing
 cf: { spec: CF-SPEC-53, decisions: [20], tasks: [CF-651, CF-652, CF-653, CF-654, CF-655, CF-656, CF-657, CF-658, CF-659, CF-660, CF-661, CF-662, CF-663, CF-664] }
 phase: "Phase 1 — readiness assessment and public CI/testing reframe"
-stage: S1-plan
-status: in-progress
-blocked_on: "Owner approval, a new implementation spec, provider/runtime validation, and missing CI enforcement"
-last: { agent: pi, at: 2026-08-18T00:03:55Z, ledger: L-3 }
-next_action: "Create and approve the public provider-agnostic CI/testing implementation contract; do not launch Conductor implementation or mutate multivac yet."
+stage: closed
+status: closed-superseded
+blocked_on: null
+last: { agent: releasing-manager, at: "2026-09-12T00:00:00Z", ledger: L-80 }
+next_action: "Closed 2026-09-12 (post-promotion closeout): superseded: container-first QA suite and docker-compose.qa.yml ui profile shipped in the testing train (CI run 34637179724)."
 ```
 <!-- /STATUS BLOCK -->
 

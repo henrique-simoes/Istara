@@ -5,11 +5,11 @@ item: pi-production-readiness-review
 branch: comparison/pi-replacement-core
 cf: { spec: CF-SPEC-5, tasks: [] }
 phase: "Phase 1 — literal BSC review and production-test readiness"
-stage: S3-review
-status: in-progress
+stage: closed
+status: closed-superseded
 blocked_on: null
-last: { agent: gpt-5.6-terra, at: "2026-07-19T20:55:43Z", ledger: L-8 }
-next_action: "Conductor: tally consensus plan votes and select the winning plan for execution."
+last: { agent: releasing-manager, at: "2026-09-12T00:00:00Z", ledger: L-80 }
+next_action: "Closed 2026-09-12 (post-promotion closeout): superseded: production readiness was certified in the testing-to-main promotion (docs/promotion/2026-09-09-promotion-certification.md)."
 ```
 
 ## Plan overview
