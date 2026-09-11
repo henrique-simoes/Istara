@@ -6,6 +6,26 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-11 — readiness5 certification (W5) on 3b4b881d: full matrix + browser lane + live ensemble + long-horizon
+
+Scope: Wave W5 certification per `docs/build-stream/plans/readiness5-20260910-plan-a.md` on frozen SHA `3b4b881de23f60e8b58d8a84a907b33c0e105f21` (`conductor/readiness5-20260910`, baseline `abc9da92`). Dossier rewritten at `docs/promotion/2026-09-09-promotion-certification.md` (W5 header + historical appendix); topology counts refreshed in `TESTING.md` (this checkpoint). No push/PR/merge/settings — manager pushes after verifying SHA.
+
+| Area | Result |
+| --- | --- |
+| Governance | `check_integrity`, `check_ci_governance`, `check_test_harness`, `check_required_checks` (17 contexts), `check_workflow_contracts`, `check_qa_capabilities`, `security_release_readiness`, `public_repo_quality_audit --check`, `check_feature_obligations --base origin/main` (0 unknown), `production_rehearsal --json` (ROOT venv) — all PASS; `git diff --check` clean |
+| Security | `security_benchmark --fail-on-threshold` PASS 28/28 100.0 triggered []; changed-paths (`abc9da92..HEAD`) PASS 28/28 triggered [PiModelManagement, authStore, ci.yml, check_ci_governance] |
+| Backend | Full suite `2330 passed / 5 skipped / 1 deselected, 0 failed`; mutmut exit 0 (252 killed / 97 survived / 0 no-cov, 349 mutants); backend-dir `ruff==0.16.6 format --check` clean (371 files) + `ruff check F821/F811/F822` clean |
+| Frontend | `tsc` clean; `eslint` 0 errors / 41 warnings; unit 23 files / 121 tests; `next build` green; Stryker node v24.20.0 `90.77` (118/12/0) ≥75 |
+| Contracts | Compose renders contract/ui/synthetic/audit exit 0; lifecycle verifiers OK; simulation `test:static` 41/41 + 82/83/84 `node --check` + real-user `check` + relay `test` green; CF `gate after --new-only` 0 new issues (full 420 pre-existing cycles); index v21 fresh |
+| Browser lane (W2) | 15 PASS + 1 SKIP, 248/0 checks; 82 15/15, 83 17/17, 84 13/13; axe 0, Nielsen 4.3/5, perf 12/12; artifacts `tests/simulation/.results/runs/2026-09-11T01-35-10-892Z` |
+| Live ensemble (W3) | Stages A–E true; 3-model coding k=-0.102/a=0.493 reconciled; adversarial/debate + 5 probes; artifacts `qa/runs/w3-live-ensemble-2026-09-11T02-32-09Z-97dbb2ce`; no Petals |
+| Long-horizon (W4) | 151 turns/engine, 302/302 success; pi 18.7s $0.31 / legacy 21.3s unmetered; telemetry + docs + UI; artifacts `qa/runs/w4-long-horizon-20260911-zai-glm` (`run-both.json` 618e4c8e); CareNav only; no Petals |
+| Protection | `testing/required-checks.json` 17 contexts == `docs/promotion/branch-protection/gh-api-body.json` incl `desktop-check`; package prepared, application + CI observation owner-gated |
+
+Caveats (non-blocking, in dossier §7): ROOT-scope ruff notes outside CI scope (42 md fences + 6 F811 pre-readiness5) disclosed; 2 untracked docs excluded from SHA; full-tree 420 cycles + 41 warnings pre-existing; telemetry gaps + small-n labels operational only. Minors F-R5-W2-R1-2, F-R5-W3-R1-2/R1-3/R1-4, F-R5-W4-R1-1/R1-2 + registerPasskey residual ride as follow-ups.
+
+
+
 ## 2026-09-09 — CI failure-domain independence + required-check contract (W4 ci-enforcement)
 
 Scope: `.github/workflows/ci.yml` redesigned into failure-domain jobs with a

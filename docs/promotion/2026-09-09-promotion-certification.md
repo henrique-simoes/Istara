@@ -1,3 +1,69 @@
+# W5 certification header — readiness5-20260910 on 3b4b881d (2026-09-11)
+
+Wave: `certification` · Spec: `CF-SPEC-30` · Task: `testing-to-main-20260910-WAVE-certification-IMPL`
+Plan: `docs/build-stream/plans/readiness5-20260910-plan-a.md` §Wave W5
+
+## 0. VERDICT: READY — OWNER-GATED PROMOTION (local matrix green on 3b4b881d; push + protection + CI observation remain)
+
+Candidate SHA: `3b4b881de23f60e8b58d8a84a907b33c0e105f21` (short `3b4b881d`), branch `conductor/readiness5-20260910`, baseline `abc9da92`.
+Range `abc9da92..3b4b881d`: W1 `c5e2dfca` + W2 `97a73a8a` + fix `97dbb2ce` + W3 `ed2aa7b8` + fix `66c0ff87` + W4 `9aa3034a` + review `3b4b881d`.
+`origin/testing` `9961fa3d` (ahead, never pushed); `origin/main` `fa6a1a39` strict ancestor.
+Worktree: 0 modified, 0 stash; 2 untracked docs (plan-a.md, evaluation-log.md) — non-product, disclosed.
+`git diff --check` clean. CF: 9 command rows on the IMPL task (pinned binary, ROOT, --target ROOT). No push/PR/merge/settings by this stage.
+
+B1/B4/B5 now closed by real lane execution (W2 82 15/15, 83 17/17, 84 13/13, 248 checks); W3 live 3-model run with k/a + reconciliation + adversarial/debate + 5 probes; W4 150-turn both engines with telemetry + docs + UI. M-18 decided (desktop-check required). B2 (exact-SHA CI) + B3 (protection PUT + negative proof) remain owner-gated, listed in §5, never claimed.
+
+## 1. Release matrix on 3b4b881d
+
+- governance battery 8/8 PASS (integrity, ci-governance, test-harness, required-checks, workflow-contracts, qa-capabilities, security_release_readiness, public-repo audit)
+- feature-obligations PASS (0 unknown; was 486 at W1 start); production_rehearsal PASS via ROOT venv
+- security_benchmark plain PASS 28/28 100.0 triggered []; changed-paths (abc9da92..HEAD) PASS 28/28 triggered [PiModelManagement, authStore, ci.yml, check_ci_governance]
+- backend full suite: 2330 passed / 5 skipped / 1 deselected, 0 failed (uncontended; better than W1 2315/7-flaky)
+- backend mutation exit 0 (252 killed / 97 survived / 0 no-cov, 349 mutants compute_capacity.py)
+- frontend: tsc clean; eslint 0 errors / 41 warnings; unit 23 files / 121 tests; build green; mutation 90.77 (118/12/0) node v24.20.0, break 75 untouched
+- backend-dir ruff 0.16.6 format clean (371 files) + F821/F811/F822 clean; `git diff --check` + `origin/main` clean
+- compose renders contract/ui/synthetic/audit all exit 0 (parse-only, M-05 honest)
+- lifecycle verifiers OK (status + triage + wave_manifest canonical 8601a1fc)
+- simulation test:static 41/41 + node --check 82/83/84 + real_user check + relay test green
+- CF gate after --new-only 0 new issues (full 420 pre-existing python_import_cycles baseline, untouched); index v21 rust graph v3 warnings [] 1473 files
+- GH Actions on SHA: no run (local-only, never pushed) — CI proof CI-owned post-push; review pending by design
+
+Ruff scope note: ROOT `ruff format --check` reports 42 md fences + ROOT `ruff check F821/F811/F822` reports 6xF811 in tests/test_research_integrity_* — both outside every CI job scope (working-directory backend) and pre-readiness5 (changed main..abc9da92, untouched W1-W4). Rows above are CI-authoritative greens; ROOT notes disclosed, not fixed here (no scope expansion).
+
+## 2. Browser lane W2 (executed)
+
+NEW dir ~/istara-qa-readiness5-20260910 Mac Studio, --profile ui loopback-only, SSH tunnel QA_TEAM_MODE=true synthetic creds. Final battery 16 scenarios + 3 evaluators: 15 PASS + 1 SKIP (05 stub no chat model), 248/0 checks — 82 15/15, 83 17/17, 84 13/13, smoke 7/7, reps 10 27/27 + 12 8/8 + 26 17/17 + 70 18/18 + 79 10/10. Axe 0 violations, Nielsen 4.3/5 (H3 3/5 advisory), perf 12/12. 50 screenshots. proven-extra 8 journeys (resolve 15 selected / 67 not_runnable / 0 pending); coverage-matrix dated 2026-09-11. Fixes: HomeClient cookie boot, session/passkey cookie-tolerant + regressions, ConfirmDialog dialog semantics, resolveCatalogListState alert. Artifacts tests/simulation/.results/runs/2026-09-11T01-35-10-892Z. Review FAIL->fix F-R5-W2-R1-1->delta PASS (L-52/53/54). Minor R1-2 + registerPasskey residual follow-ups. No Petals/push.
+
+## 3. Live ensemble W3
+
+Sibling w3-live-backend, host-only 0600 env, scratch DB (originals untouched, CareNav read-only). A: 3/3 admission distinct receipts (glm-5.3-flash, gpt-5.6-luna, gpt-5.6-terra). B: 6-unit run 3 raters distinct, requested==served, k=-0.102/a=0.493 needs_reconciliation (operational small-n). C: gate refused 6 unreconciled -> allowed 6 accepted. D: adversarial (luna) + 3-pass debate + self_moa honest degradation. E: 5 probes typed. Fix: debate route model+served_model + test; D re-run re-merge F-R5-W3-R1-1 fixed (3/3 receipts, models_used 3). Artifacts qa/runs/w3-live-ensemble-2026-09-11T02-32-09Z-97dbb2ce (secret-scan 0). Review FAIL->fix->delta PASS (L-56/57/58). Minors R1-2/R1-3/R1-4 follow-ups. No Petals/push.
+
+## 4. Long-horizon W4
+
+Image w4candidate, scratch DBs verified, endpoints host-only 0600. Harness-only --thinking-mode (5 lines). 151 turns/engine same model pi-zai-glm served glm-5.3-flash 302/302 success 0 errors 0 fallbacks 32/32 steerings; pi 18.7s $0.31 (30/9), legacy 21.3s unmetered (43/13); stops 150+1 length vs 151 stop; typed retrieval_fallback only. DAGs 500 seeded provisionals/engine, no self-elevation. Telemetry 151 usage rows + 1364/1399 spans; aggregator content-free; audit 5 gaps (G1/G2/G3/G5 + turn-1 dup). Docs + UI dated slice + 79 extended + screenshots. Artifacts qa/runs/w4-long-horizon-20260911-zai-glm (run-both 618e4c8e). Review blind PASS 2 minors (L-60 R1-1/R1-2). No Petals/push.
+
+## 5. Owner checklist (owner-only; no agent)
+
+- [ ] G0 desktop DONE (M-18 in-scope blocking; desktop-check required everywhere).
+- [ ] G1 push + CI: manager verifies SHA (`rev-parse` == 3b4b881d, status clean except 2 untracked docs, log abc9da92..HEAD == 8 commits), pushes conductor/readiness5-20260910 to origin/testing, reports `gh run list --commit <SHA>` id + result (expect 17/17 incl ui-journeys + desktop-check first observation).
+- [ ] G2 info: W2-W4 QA evidence above suffices; preserved dirs untouched; QA-host state disposable.
+- [ ] G3 protection: PUT gh-api-body.json (verified == manifest 17/17 incl desktop-check), attach API read-back + negative mergeability test, sequencing per README.
+- [ ] G4 merge: record M-23 (--no-ff recommended; dossier-tip parent == 3b4b881d product-identical), merge, post-merge main CI. Protection + PR owner-gated.
+
+## 6. Closure map at 3b4b881d
+
+M-01 closed; M-02 closed; M-03 closed (backend-dir); M-04 closed (90.77+exit-0); M-05 closed-executed; M-06 closed; M-07 closed-prepared; M-08 closed; M-09 closed (REVIEW is the one open task by design); M-10 closed (v21 observed); M-11 closed (0.16.6 pin); M-12 closed (plain+changed); M-13 closed; M-14 closed; M-15 closed; M-16 closed; M-17 closed (node-24 lane); M-18 decided; M-19 closed; M-20 closed; M-21 closed; M-22 closed; M-23 owner (§5); M-24 deferred. B1 closed (0 pending); B2 owner; B3 owner; B4 closed (17/17); B5 closed (13/13 + TEAM_MODE); B6 closed (this dossier). Minors F-R5-W2-R1-2, F-R5-W3-R1-2/R1-3/R1-4, F-R5-W4-R1-1/R1-2, registerPasskey residual — follow-ups, non-blocking.
+
+## 7. Residuals (non-blocking)
+
+Local machine evidence (node 26 default / 24.20.0 mutation; ruff 0.16.6 ROOT venv; ROOT venv backend suite — worktree has no .venv). CI is authoritative (G1 proof). Full-tree 420 cycles + 41 warnings pre-existing (gate 0 new). ROOT ruff notes disclosed (§1). 2 untracked docs excluded from SHA (re-freeze if tracked). Telemetry gaps + small-n labels operational only.
+
+Certified by testing-to-main-20260910-implementer (meta/muse-spark-1.3-contributor, xhigh). Do NOT push — manager pushes after verifying SHA.
+
+---
+Historical appendix: 2026-09-09 dossier + 2026-09-10 addendum preserved verbatim below (superseded verdicts remain as audit trail for 4a7f4e0c / B1-B6).
+
+---
 # Promotion certification dossier — testing-to-main 2026-09-09 (W6)
 
 Wave: `promotion-certification` · Spec: `CF-SPEC-30` · Task:
