@@ -15,6 +15,7 @@ import shutil
 
 import pytest
 
+from app.api.routes import chat as chat_route
 from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
 from app.core.pi_runtime.engine import PiExecutionService
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
@@ -31,9 +32,7 @@ if not _NODE_AVAILABLE and os.environ.get("PI_REQUIRE_NODE") == "1":
         pytrace=False,
     )
 
-requires_node = pytest.mark.skipif(
-    not _NODE_AVAILABLE, reason="node runtime not available"
-)
+requires_node = pytest.mark.skipif(not _NODE_AVAILABLE, reason="node runtime not available")
 
 
 def faux_endpoint(responses, *, endpoint_id: str = "pi-faux") -> ResolvedPiEndpoint:
@@ -47,14 +46,10 @@ def faux_endpoint(responses, *, endpoint_id: str = "pi-faux") -> ResolvedPiEndpo
         timeout_ms=30000,
         max_retries=0,
         faux_responses=tuple(
-            response
-            for response in responses
-            if "faux_forced_tool_calls" not in response
+            response for response in responses if "faux_forced_tool_calls" not in response
         ),
         faux_forced_tool_calls=tuple(
-            call
-            for response in responses
-            for call in response.get("faux_forced_tool_calls", [])
+            call for response in responses for call in response.get("faux_forced_tool_calls", [])
         ),
     )
 
@@ -75,6 +70,31 @@ class FixedResolver:
         return []
 
 
+async def _resolved_pi_preflight(**kwargs) -> tuple[bool, str]:
+    return True, "resolved_private_endpoint"
+
+
+def stub_pi_preflight_resolved(monkeypatch) -> None:
+    """Stub the Pi readiness gate so the route reaches the injected worker.
+
+    The Pi-engine chat path gates on ``chat._ensure_pi_chat_target_available``
+    (a fresh PiModelManager over the Keychain-backed resolver), NOT on the
+    legacy ``ensure_pi_deepseek_registered`` probe. Stubbing only the legacy
+    probe leaves the test credential-dependent: green on hosts whose Keychain
+    holds the endpoint secret, red with ``pi_registration_unavailable``
+    (``missing_keychain_secret``) on credential-free hosts such as CI. Both
+    seams are stubbed so the scripted faux worker is reached deterministically
+    in any environment; preflight-failure behavior itself is pinned by
+    ``tests/test_pi_replacement_candidate.py`` (fake preflight + FakeManager).
+    """
+    monkeypatch.setattr(
+        chat_route,
+        "ensure_pi_deepseek_registered",
+        lambda: (True, "resolved_private_endpoint"),
+    )
+    monkeypatch.setattr(chat_route, "_ensure_pi_chat_target_available", _resolved_pi_preflight)
+
+
 def faux_service(responses, supervisor: PiRuntimeSupervisor) -> PiExecutionService:
     from app.core.pi_runtime.model_manager import PiModelManager
 
@@ -82,9 +102,7 @@ def faux_service(responses, supervisor: PiRuntimeSupervisor) -> PiExecutionServi
     # Empty, local-free catalog: resolution falls through to the resolver, so
     # the faux endpoint (scripted responses, forced tool calls) is used intact.
     manager = PiModelManager(resolver=resolver, include_local=False)
-    return PiExecutionService(
-        resolver=resolver, supervisor=supervisor, model_manager=manager
-    )
+    return PiExecutionService(resolver=resolver, supervisor=supervisor, model_manager=manager)
 
 
 def tool_call(name: str, arguments: dict) -> dict:

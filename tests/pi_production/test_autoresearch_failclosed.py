@@ -27,6 +27,8 @@ from app.models.database import async_session, init_db
 from app.models.message import Message
 from app.models.project import Project
 
+from .harness import stub_pi_preflight_resolved
+
 
 # ── autoresearch route: typed 503 on worker failure ─────────────────────────
 class _FailingAutoresearchService:
@@ -129,17 +131,14 @@ async def _run_pi_chat(monkeypatch, project_id: str, events: list[dict]) -> str:
         return None
 
     monkeypatch.setattr(chat_route, "retrieve_context", fake_retrieve_context)
-    monkeypatch.setattr(
-        chat_route, "compose_dynamic_prompt", fake_compose_dynamic_prompt
-    )
-    monkeypatch.setattr(
-        chat_route, "ensure_pi_deepseek_registered", lambda: (True, "registered")
-    )
+    monkeypatch.setattr(chat_route, "compose_dynamic_prompt", fake_compose_dynamic_prompt)
+    # Pin the Pi readiness gate (live seam) alongside the legacy probe so the
+    # scripted Pi service is reached on credential-free hosts (CI has no
+    # Keychain secret; see harness.stub_pi_preflight_resolved).
+    stub_pi_preflight_resolved(monkeypatch)
     monkeypatch.setattr(chat_route, "PiChatRunMetrics", _FakeMetrics)
     monkeypatch.setattr(chat_route, "_pi_execution_service", _StubPiChatService(events))
-    monkeypatch.setattr(
-        "app.core.pi_replacement.telemetry_recorder.record_span", fake_record_span
-    )
+    monkeypatch.setattr("app.core.pi_replacement.telemetry_recorder.record_span", fake_record_span)
     # Keep the post-save DAG compaction task out of the deterministic stream.
     monkeypatch.setattr(chat_route.settings, "dag_enabled", False)
 

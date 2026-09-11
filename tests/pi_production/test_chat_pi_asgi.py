@@ -11,9 +11,10 @@ itself is driven by the real spawned pi-agent-core node worker on a scripted
 
 Deliberate, documented substitution boundary (nothing else is faked):
 
-* the Keychain-backed default-endpoint registration check
-  (``ensure_pi_deepseek_registered``) is stubbed to "resolved" so the route
-  reaches the Pi path — endpoint *resolution* itself is real: the chat route's
+* the Keychain-backed Pi readiness gate (``_ensure_pi_chat_target_available``
+  plus the legacy ``ensure_pi_deepseek_registered`` probe) is stubbed to
+  "resolved" so the route reaches the Pi path — endpoint *resolution* itself
+  is real: the chat route's
   own ``PiExecutionService`` is replaced by a harness service whose resolver
   returns the faux endpoint (same pattern as every ``tests/pi_production``
   scenario);
@@ -47,8 +48,8 @@ from app.core.pi_runtime import seams
 from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
 from app.core.rag import RAGContext
 from app.main import app
-from app.models.database import async_session, init_db
 from app.models.agentic_usage import AgenticUsageRow
+from app.models.database import async_session, init_db
 from app.models.message import Message
 from app.models.project import Project
 from app.models.session import ChatSession
@@ -59,6 +60,7 @@ from .harness import (
     faux_service,
     final_text,
     requires_node,
+    stub_pi_preflight_resolved,
     tool_call,
 )
 
@@ -107,11 +109,7 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
     monkeypatch.setattr(settings, "team_mode", True)
     monkeypatch.setattr(settings, "jwt_secret", "pi-asgi-test-secret")
     _pin_no_network_prompt_seams(monkeypatch)
-    monkeypatch.setattr(
-        chat_route,
-        "ensure_pi_deepseek_registered",
-        lambda: (True, "resolved_private_endpoint"),
-    )
+    stub_pi_preflight_resolved(monkeypatch)
 
     project_id = f"pi-asgi-chat-{uuid.uuid4().hex[:8]}"
     async with async_session() as db:
@@ -197,9 +195,7 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
     # and the route persisted the assistant message — over real HTTP semantics.
     async with async_session() as db:
         tasks = (
-            (await db.execute(select(Task).where(Task.project_id == project_id)))
-            .scalars()
-            .all()
+            (await db.execute(select(Task).where(Task.project_id == project_id))).scalars().all()
         )
         assert [t.title for t in tasks] == ["Pi ASGI task"]
         assistant = (
@@ -222,9 +218,7 @@ async def test_chat_pi_turn_streams_sse_over_real_asgi(monkeypatch):
 @requires_node
 @pytest.mark.asyncio
 @pytest.mark.parametrize("engine", ["pi", "legacy"])
-async def test_chat_two_calls_rehydrate_history_after_worker_restart(
-    monkeypatch, engine
-):
+async def test_chat_two_calls_rehydrate_history_after_worker_restart(monkeypatch, engine):
     """Both selectable engines receive the first call's persisted transcript.
 
     The route opens/closes a worker session per request, so this deliberately
@@ -238,11 +232,7 @@ async def test_chat_two_calls_rehydrate_history_after_worker_restart(
     monkeypatch.setattr(settings, "team_mode", True)
     monkeypatch.setattr(settings, "jwt_secret", "pi-asgi-test-secret")
     _pin_no_network_prompt_seams(monkeypatch)
-    monkeypatch.setattr(
-        chat_route,
-        "ensure_pi_deepseek_registered",
-        lambda: (True, "resolved_private_endpoint"),
-    )
+    stub_pi_preflight_resolved(monkeypatch)
 
     project_id = f"{engine}-asgi-two-call-{uuid.uuid4().hex[:8]}"
     session_id = f"{engine}-asgi-session-{uuid.uuid4().hex[:8]}"
@@ -257,9 +247,7 @@ async def test_chat_two_calls_rehydrate_history_after_worker_restart(
                 message_count=0,
             )
         )
-        db.add(
-            Task(id=task_id, project_id=project_id, title="Two-call research anchor")
-        )
+        db.add(Task(id=task_id, project_id=project_id, title="Two-call research anchor"))
         await db.commit()
 
     class RecordingSupervisor(PiRuntimeSupervisor):
@@ -439,9 +427,7 @@ async def test_autoresearch_governed_turn_fails_closed_over_real_asgi(monkeypatc
     async def _fake_scope(*args, **kwargs):
         return project_id
 
-    monkeypatch.setattr(
-        autoresearch_route, "_require_active_project_scope", _fake_scope
-    )
+    monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", _fake_scope)
     monkeypatch.setattr(
         autoresearch_route, "_get_engine", lambda: SimpleNamespace(is_running=False)
     )
