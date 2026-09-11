@@ -5,12 +5,12 @@
 item: testing-to-main-convergence
 branch: testing
 phase: "Phase 6 — Certify promotion readiness"
-stage: S2-execute
+stage: S3-review
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL, testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW, testing-to-main-20260909-WAVE-promotion-certification-IMPL, testing-to-main-20260909-WAVE-promotion-certification-REVIEW, testing-to-main-remediation-20260909-IMPL, testing-to-main-remediation-20260909-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-11T14:44:11Z, ledger: L-65 }
-next_action: "S3 review of ci-remediation-20260911-WAVE-ci-green-IMPL; then conductor close-out. No push."
+last: { agent: claude-opus-5, at: 2026-09-11T15:03:12Z, ledger: L-66 }
+next_action: "S4 fixes FIX-ci-remediation-20260911-WAVE-ci-green-REVIEW-r1-slack + FIX-ci-remediation-20260911-WAVE-ci-green-REVIEW-r1-picompat, then conductor delta re-review. No push."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1620,6 +1620,15 @@ Why: Independent architectural plans are required before selecting the implement
 | **F-R5-W5-R1-2** | Minor | TESTING.md:116 topology counts | 2335 collected (1 deselected) ambiguous vs 2330/5/1; clarify as 2336 collected, 1 deselected, 2335 run. | testing-to-main-20260910-WAVE-certification-REVIEW | fixed |
 
 
+### CI-remediation ci-green wave — review findings (L-66)
+
+| ID | Sev | Where | One-line finding | CF task | Status |
+|---|---|---|---|---|---|
+| **F-CI-R1-1** | Major | backend/app/channels/slack.py:81,234 | N802 rename `chat_postMessage`→`chat_post_message` breaks `SlackAdapter.send` whenever `_create_client` returns slack_sdk `AsyncWebClient` (declared dep): AttributeError, no Slack send; untested seam. | FIX-ci-remediation-20260911-WAVE-ci-green-REVIEW-r1-slack | open |
+| **F-CI-R1-2** | Major | tests/pi_compat/test_bump_diff_proof.py + ci.yml backend-test | CI-shaped full suite (pi-runtime deps only) fails `test_verify_accepts_current_repository_state` (labs/pi-replacement not installed); full-suite step was never reached in CI run 34564927746, so backend-test stays red after this wave. | FIX-ci-remediation-20260911-WAVE-ci-green-REVIEW-r1-picompat | open |
+| **F-CI-R1-3** | Minor | scripts/check_ruff_changed.py range (testing→main PR) | Strict changed-file gate vs base `main` = 274 errors / 298 files; promotion PR will fail backend-lint unless burned down or owner decides range. Advisory, no fix task. | ci-remediation-20260911-WAVE-ci-green-REVIEW | open |
+
+
 ## Ledger
 
 ### L-1 | 2026-09-09T00:00:00-03:00 | S1-plan | codex | planner | Phase 0
@@ -2053,3 +2062,9 @@ Did: Fixed CI red jobs without weakening gates. TASK A — strict changed-file l
 Result: Strict gate 0 errors on working tree (was 112); F821/F811/F822 clean; format clean (371 files); governed-evolution 64 passed with DATA_ENCRYPTION_KEY="" (was 1 failed); field-encryption 12 passed; full suite 2366 passed 5 skipped 1 deselected with ambient key absent. ci-remediation-20260911-WAVE-ci-green-IMPL
 Verified: python3 scripts/check_ruff_changed.py logic via ruff check on 65 changed files → All checks passed (112→0); backend ruff check --select F821,F811,F822 → All checks passed; backend ruff format --check → 371 already formatted; DATA_ENCRYPTION_KEY="" pytest ../tests/test_improvement_governance.py ../tests/test_compute.py -q → 64 passed; same env pytest ../tests/test_field_encryption.py -q → 12 passed (fail-closed holds); same env pytest ../tests/ -q -m "not live_llm" --ignore=../tests/simulation → 2366 passed 5 skipped 1 deselected; git diff --check clean.
 Next: S3 review of ci-remediation-20260911-WAVE-ci-green-IMPL (reviewer role); then conductor close-out. No push (branch conductor/readiness5-20260910).
+
+### L-66 | 2026-09-11T15:03:12Z | S3-review | claude-opus-5 | reviewer | ci-green Wave — blind code review <!-- bsc-ledger:ci-remediation-20260911-WAVE-ci-green-REVIEW -->
+Did: Blind two-phase review of ed340cb6 (ci-remediation-20260911-WAVE-ci-green-IMPL). Phase 1 measured in own env: detached worktrees of HEAD and parent 60e5ebc4 with no .env and DATA_ENCRYPTION_KEY unset, scratch venv with slack-bolt[async]+aiohttp, own AST string/structural diff harness; read CI run 34564927746 job steps. Phase 2 reconciled against L-65 and IMPL command evidence. Added findings register section above; no product code touched. ci-remediation-20260911-WAVE-ci-green-REVIEW
+Result: **fail** — Major F-CI-R1-1 (Slack N802 rename breaks send on the slack_sdk AsyncWebClient path; parent reaches network, HEAD raises AttributeError) → FIX-ci-remediation-20260911-WAVE-ci-green-REVIEW-r1-slack; Major F-CI-R1-2 (CI-shaped full suite fails pi_compat diff-proof because backend-test installs only pi-runtime deps; IMPL "2366 passed" came from a dev checkout with labs deps) → FIX-ci-remediation-20260911-WAVE-ci-green-REVIEW-r1-picompat; Minor F-CI-R1-3 advisory (strict gate vs base main = 274 errors). Confirmations: strict gate --base 9961fa3d = 0 (parent 112 on the 23 files); F821/F811/F822 + format clean; governed-evolution keyless red at parent/green at HEAD, matching CI; production encrypt_field fails closed with no key, synthetic key is test-scope only; no pyproject/workflow/selector/threshold weakening; all wrapped strings byte-identical. ci-remediation-20260911-WAVE-ci-green-REVIEW
+Verified: `check_ruff_changed.py --base 9961fa3d --head HEAD` exit 0 (65 files); `--base main` exit 1, 274 errors; parent `ruff check <23 files>` 112; `env -u DATA_ENCRYPTION_KEY pytest test_improvement_governance test_compute test_field_encryption` HEAD 76 passed / parent 1 failed (test_compute relay, FieldEncryptionUnavailable); 9 encryption-adjacent files keyless 165 passed; keyless `pytest ../tests/ -q -m "not live_llm"` CI-shaped 1 failed, 2364 passed, 6 skipped, 1 deselected (pi_compat; with labs node_modules 20 passed); Slack probe HEAD AttributeError vs parent ClientConnectorError; fail-closed probe raises. 10 CF command rows + review_verdict fail (with measurements) + self_report recorded.
+Next: S4 remediation of FIX-ci-remediation-20260911-WAVE-ci-green-REVIEW-r1-slack and FIX-ci-remediation-20260911-WAVE-ci-green-REVIEW-r1-picompat by ci-remediation-20260911-fixer, then conductor delta re-review. No push/PR/merge.
