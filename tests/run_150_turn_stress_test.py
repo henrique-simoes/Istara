@@ -360,8 +360,14 @@ async def run_stress_test(
     model_name: str = "qwen3.7-max-2026-06-08",
     checkpoint_interval: int = 10,
     resume: bool = False,
+    thinking_mode: str | None = None,
 ) -> EngineStressTestResult:
-    """Execute the specified range of turns for the agentic engine."""
+    """Execute the specified range of turns for the agentic engine.
+
+    thinking_mode is passed through to TurnParams (e.g. "low" for Zai
+    endpoints, which fail closed on thinking-disabled turns with a typed
+    400 — readiness5 W4 admission probe). None preserves legacy behavior.
+    """
     suffix = uuid.uuid4().hex[:8]
     project_id = f"proj-st150-{engine}-{suffix}"
     agent_id = "cleo-orchestrator"
@@ -622,6 +628,7 @@ async def run_stress_test(
                 model=model_name,
                 endpoint_id=endpoint_id,
                 temperature=0.0,
+                thinking_mode=thinking_mode,
                 max_tokens=1000,
             ),
             engine=engine,
@@ -645,6 +652,7 @@ async def run_stress_test(
                     model="glm-5.2",
                     endpoint_id="pi-dashscope-glm",
                     temperature=0.0,
+                    thinking_mode=None,
                     max_tokens=1000,
                 ),
                 engine=engine,
@@ -777,6 +785,7 @@ async def main() -> None:
     parser.add_argument("--output", default="tests/stress_test_150_results.json", help="Output results file")
     parser.add_argument("--resume", action="store_true", default=False, help="Resume from previous checkpoint")
     parser.add_argument("--checkpoint-interval", type=int, default=10, help="Interval for saving checkpoints")
+    parser.add_argument("--thinking-mode", default=None, help="TurnParams thinking_mode (e.g. low for Zai endpoints)")
     args = parser.parse_args()
 
     start_turn = 1
@@ -801,6 +810,7 @@ async def main() -> None:
                 model_name=args.model,
                 checkpoint_interval=args.checkpoint_interval,
                 resume=args.resume,
+                thinking_mode=args.thinking_mode,
             )
             results[eng] = asdict(eng_res)
     finally:

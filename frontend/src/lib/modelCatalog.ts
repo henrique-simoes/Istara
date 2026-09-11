@@ -212,6 +212,15 @@ export interface EngineComparativeSummary {
 const ENGINE_BENCHMARK_BUNDLE = "comparison-Istara-pi/reports/20260801T010602Z/scorecard.json";
 
 /**
+ * Provisional 150-turn long-horizon slice (readiness5 Wave W4, 2026-09-11).
+ * Same model both engines (pi-zai-glm, served glm-5.3-flash, requested==served
+ * 302/302) over the 150-turn Double Diamond trajectory with 32 steerings.
+ * Reliability parity held (151/151 recorded turns success, 0 tool errors on
+ * both); the rows below are neutral per-engine medians, never a verdict.
+ */
+const ENGINE_LONG_HORIZON_SLICE = "docs/build-stream/w4-long-horizon-telemetry-20260911.json";
+
+/**
  * One shared, canonical embedding identity for both engines. The selector
  * must never offer a per-engine embedding model: switching engines cannot
  * change the vector space (W8 invariant), so the UI surfaces this identity as
@@ -225,8 +234,8 @@ export const ENGINE_COMPARATIVE_SUMMARIES: EngineComparativeSummary[] = [
     engine: "pi",
     title: "Pi",
     summary:
-      "Standalone agent runtime (pi-agent-core worker) with versioned wire protocol, provider catalog, and forced structured-output tool calls. In the accepted benchmark bundle no judged axis reaches significance at 95% CI: tool calling 0.81 vs 0.83, output quality 6.75 vs 6.64, research-spine 1.00 vs 0.81, skills/A2A tied at 1.00.",
-    provenance: [ENGINE_BENCHMARK_BUNDLE, "docs/features/content/chat/model-controls/architecture.md"],
+      "Standalone agent runtime (pi-agent-core worker) with versioned wire protocol, provider catalog, and forced structured-output tool calls. In the accepted benchmark bundle no judged axis reaches significance at 95% CI: tool calling 0.81 vs 0.83, output quality 6.75 vs 6.64, research-spine 1.00 vs 0.81, skills/A2A tied at 1.00. 150-turn long-horizon slice (2026-09-11, glm-5.3-flash, 151 recorded turns): parity on reliability — 151/151 success with 0 tool errors and 32/32 steering — with a per-turn median of 18.7 s, 30 tool calls across 9 tools, and $0.31 metered cost.",
+    provenance: [ENGINE_BENCHMARK_BUNDLE, "docs/features/content/chat/model-controls/architecture.md", ENGINE_LONG_HORIZON_SLICE],
     asOf: "2026-08-01",
     provisional: true,
     shortDescription: "A standalone, versioned agent runtime with a broad provider catalog and structured tool execution.",
@@ -236,14 +245,18 @@ export const ENGINE_COMPARATIVE_SUMMARIES: EngineComparativeSummary[] = [
       { label: "Output quality", value: "6.75 / 10" },
       { label: "Research-spine", value: "1.00" },
       { label: "Skills / A2A", value: "1.00" },
+      { label: "150-turn median (2026-09-11)", value: "18.7 s" },
+      { label: "150-turn success (2026-09-11)", value: "151/151" },
+      { label: "150-turn cost (2026-09-11)", value: "$0.31 metered" },
+      { label: "150-turn tools (2026-09-11)", value: "30 calls · 9 tools" },
     ],
   },
   {
     engine: "legacy",
     title: "Istara",
     summary:
-      "In-process Istara executor over the shared Pi Model Management catalog; it preserves local and donated-compute loop semantics while provider/model selection and route identity stay governed in one plane. In the accepted benchmark bundle no judged axis reaches significance at 95% CI: tool calling 0.83 vs 0.81, output quality 6.64 vs 6.75, research-spine 0.81 vs 1.00, skills/A2A tied at 1.00.",
-    provenance: [ENGINE_BENCHMARK_BUNDLE, "docs/features/content/chat/model-controls/architecture.md"],
+      "In-process Istara executor over the shared Pi Model Management catalog; it preserves local and donated-compute loop semantics while provider/model selection and route identity stay governed in one plane. In the accepted benchmark bundle no judged axis reaches significance at 95% CI: tool calling 0.83 vs 0.81, output quality 6.64 vs 6.75, research-spine 0.81 vs 1.00, skills/A2A tied at 1.00. 150-turn long-horizon slice (2026-09-11, glm-5.3-flash, 151 recorded turns): parity on reliability — 151/151 success with 0 tool errors and 32/32 steering — with a per-turn median of 21.3 s, 43 tool calls across 13 tools (codebook, survey, and report tools exercised), and unmetered cost.",
+    provenance: [ENGINE_BENCHMARK_BUNDLE, "docs/features/content/chat/model-controls/architecture.md", ENGINE_LONG_HORIZON_SLICE],
     asOf: "2026-08-01",
     provisional: true,
     shortDescription: "Istara's in-process executor with local and donated compute routed through the shared Pi Model Management catalog.",
@@ -253,6 +266,10 @@ export const ENGINE_COMPARATIVE_SUMMARIES: EngineComparativeSummary[] = [
       { label: "Output quality", value: "6.64 / 10" },
       { label: "Research-spine", value: "0.81" },
       { label: "Skills / A2A", value: "1.00" },
+      { label: "150-turn median (2026-09-11)", value: "21.3 s" },
+      { label: "150-turn success (2026-09-11)", value: "151/151" },
+      { label: "150-turn cost (2026-09-11)", value: "unmetered" },
+      { label: "150-turn tools (2026-09-11)", value: "43 calls · 13 tools" },
     ],
   },
 ];

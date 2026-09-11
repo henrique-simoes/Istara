@@ -178,3 +178,78 @@ Crucially, the new **Pi Agentic Engine** demonstrated significant operational su
 - **Execution Script:** `tests/run_long_horizon_engine_comparison.py`
 - **Docker Environment:** `istara-testing-backend:latest` on Mac Studio
 - **Container Log Validation:** 0 exceptions, 0 dropped frames, clean exit code 0.
+
+---
+
+## 7. Addendum W4 — 150-turn long-horizon slice, both engines, live (2026-09-11)
+
+**Status:** Executed live on the current stack (readiness5 Wave W4). Provisional
+comparative context only — this addendum does not alter the §§1–6 verdict, and
+no winner is declared. The accepted bundle verdict (`no_significant_difference`)
+is untouched.
+
+**Method.** `tests/run_150_turn_stress_test.py` over the 150-turn Double Diamond
+trajectory (40/40/35/35 phases, 32 dynamic steerings) on both engines with the
+same live model: `pi-zai-glm` (served `glm-5.3-flash`, requested==served 302/302
+exact usage rows, `thinking_mode=low`). Candidate `66c0ff87`, fresh image
+`istara-qa-w4-backend:w4candidate`, scratch DB copies of the preserved
+`istara-qa-live.db` (sha256-verified, originals untouched, CareNav context only).
+151 recorded turns per engine (trajectory 1–150 with turn 1 twice: smoke +
+resumed rerun — disclosed, negligible). Aggregation: content-free, per-turn
+sha12 (`qa/scripts/w4_aggregate_telemetry.py` →
+`docs/build-stream/w4-long-horizon-telemetry-20260911.json`; full per-turn
+record in the worktree-local run dir).
+
+### 7.1 Scorecard
+
+| Metric | Pi (`agentic_engine="pi"`) | Istara Legacy (`agentic_engine="legacy"`) |
+|---|---|---|
+| Recorded turns | 151 (150 unique) | 151 (150 unique) |
+| Turn success | **151/151, 0 errors** | **151/151, 0 errors** |
+| Total duration | 2759.2 s (~46 min) | 3264.7 s (~54 min) |
+| Turn latency p50 / p90 / p99 | 18.72 / 25.13 / 32.95 s | 21.28 / 28.35 / 38.98 s |
+| Tokens in / out | 2,662,054 / 74,513 | 148,394 / 84,963 |
+| Tokens total (engine-defined) | 5,353,719 | 6,984,525 |
+| Cached tokens | 0 | 0 |
+| Cost | **$0.3073 metered** | **$0.00 unmetered (gap G1)** |
+| Tool calls / errors | 30 / 0 | 43 / 0 |
+| Distinct tools | 9 | 13 |
+| Tool latency p50 / p95 | 21.2 / 47.1 ms | 11.4 / 19.3 ms |
+| Steering applied / planned | 32 / 32 | 32 / 32 |
+| Stop reasons | 150 stop + 1 length | 151 stop |
+| Usage rows (`chat_turn`, exact) | 151 × `glm-5.3-flash` | 151 × `glm-5.3-flash` |
+| Telemetry spans (project) | 1364 | 1399 |
+| DAG (nuggets / facts / insights / recs / edges) | 500 / 0 / 0 / 0 / 1000 | 500 / 0 / 0 / 0 / 1000 |
+| Report tool invoked | No | Yes — once (turn 134), honest evidence-graded draft |
+
+Tool breadth (legacy): `list_project_files`, `sync_project_documents`,
+`get_document_content`, `search_findings`, `create_task`, `list_tasks`,
+`search_memory`, `search_documents`, `assign_agent`, `get_codebook`,
+`query_survey_responses`, `generate_minto_report`, `move_task`. Pi used the
+first nine minus codebook/survey/report/move/assign. The only non-success
+spans anywhere are typed `retrieval.hybrid / degraded / retrieval_fallback`
+(4 pi, 2 legacy) — graceful keyword fallbacks with no turn impact.
+
+### 7.2 Reading
+
+1. **Reliability parity held at horizon.** 302/302 turns success across both
+   engines with zero tool errors and all 64 steerings applied. Long-horizon
+   coherence (no crashes, no drops, no ungrounded leaps into reportable
+   claims) is evidenced, not asserted.
+2. **The free-run chats but does not self-elevate.** Both DAGs hold only the
+   500 survey-seeded provisional nuggets: no turn promoted facts, insights, or
+   recommendations, and pi never invoked the report tool. Agentic stamina is
+   proven; autonomous evidence elevation is not — and must not be read into
+   these numbers.
+3. **Telemetry is present, attributed, and content-free — with documented
+   gaps.** `telemetry_enabled=false`, yet dispatcher usage rows, steering,
+   and engine spans record unconditionally to the local DB by design; span
+   payloads carry handles/counts only (spot-checked: `arguments_summary`
+holds parameter names, never values). Gaps: G1 legacy cost unmetered
+(pre-existing); G2 `total_tokens` accounting differs by engine — compare
+input/output, never total; G3 no OTLP exporter exists (`telemetry_spans`
+table only; `opentelemetry-api` is an unimported dependency); G5
+harness-local extended tools bypass the canonical `tool_call` span.
+4. **No significance is claimed.** This is one model, one trajectory, one
+   date. It sits beside the accepted bundle as dated provisional context in
+   the engine-choice UI — which is exactly where it went.

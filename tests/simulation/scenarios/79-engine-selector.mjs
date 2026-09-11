@@ -110,6 +110,14 @@ export async function run(ctx) {
       detail: `href=${evidenceHref || "missing"}`,
     });
     await screenshot("79-project-settings-engine-selector");
+    // W4 deliverable: dated 150-turn long-horizon rows sit beside the bundle
+    // rows as neutral per-engine medians (never a winner claim).
+    const longHorizonRow = page.getByText("150-turn median (2026-09-11)", { exact: false }).first();
+    checks.push({
+      name: "Engine comparative summary carries dated 150-turn rows",
+      passed: await longHorizonRow.isVisible({ timeout: 3000 }).catch(() => false),
+      detail: "",
+    });
   } catch (e) {
     checks.push({ name: "Project settings engine selector", passed: false, detail: e.message });
   }

@@ -500,6 +500,7 @@ drift itself needs a DEC entry in the plan file — the seam mapping is the scop
   <tr><td>E3</td><td>Budget constants, grep-verified on <code>testing</code>.</td><td>Legacy chat 8 · Pi chat 24 · skill tasks 5; <code>range(budget+1)</code>; 120 s run timeout; 15 s handshake; $1.00 cap; pool 2; sessions 10/8; history 200.</td><td>Phase 5 table + Phase 9 autopsy on this page.</td></tr>
   <tr><td>E4</td><td>Reusable seams (code exists today).</td><td>Session revision rehydrate; 50 ms steering pump; <code>validation.judge</code>; <code>resolve_distinct</code>; chat→task binding; compaction + window guard.</td><td>Phases 4–6 on this page with line refs.</td></tr>
   <tr><td>E5</td><td>Honest provider behavior during probing.</td><td>Typed rate-limit (luna) and quota-exhaustion (dashscope) errors surfaced; no silent model substitution.</td><td>Probe transcript, plan file L-002.</td></tr>
+  <tr><td>E6</td><td>150-turn long-horizon slice, both engines, live 2026-09-11 (readiness5 W4): same model (<code>glm-5.3-flash</code> via <code>pi-zai-glm</code>), 151 recorded turns/engine, 302/302 success, 0 tool errors, 32/32 steering each. Medians 18.7&nbsp;s (pi) vs 21.3&nbsp;s (legacy); tools 30/9 vs 43/13; cost $0.31 metered vs unmetered; only non-success spans are typed <code>retrieval_fallback</code> degradations.</td><td>Aggregate <code>docs/build-stream/w4-long-horizon-telemetry-20260911.json</code>; full record worktree-local <code>qa/runs/w4-long-horizon-20260911-zai-glm/</code>. Provisional — no winner declared.</td></tr>
 </table>
 
 <!-- ==================== P11 ==================== -->
@@ -520,7 +521,8 @@ drift itself needs a DEC entry in the plan file — the seam mapping is the scop
 
 <footer>
   Istara agentic-engine study · generated from the <code>testing</code> branch, September 2026 ·
-  Numbers cite <code>backend/app/…</code> and <code>pi-runtime/src/…</code> line ranges current at writing;
+  Evidence log carries a dated 150-turn live slice (E6, 2026-09-11) alongside the earlier bundle verdict;
+  numbers cite <code>backend/app/…</code> and <code>pi-runtime/src/…</code> line ranges current at writing;
   re-verify with grep before quoting in a new revision. Research-spine rule: benchmarks stay provisional.
 </footer>
 

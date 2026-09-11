@@ -45,6 +45,44 @@ describe("engine comparative summaries (W3 selector slice)", () => {
     }
   });
 
+  it("carries the dated 150-turn long-horizon slice as neutral per-engine rows", () => {
+    // Readiness5 Wave W4 (2026-09-11): same model both engines
+    // (glm-5.3-flash), 151 recorded turns each, reliability parity.
+    // Rows stay neutral medians/counts — never a winner claim.
+    for (const entry of ENGINE_COMPARATIVE_SUMMARIES) {
+      const labels = entry.benchmarkRows.map((row) => row.label);
+      expect(labels).toContain("150-turn median (2026-09-11)");
+      expect(labels).toContain("150-turn success (2026-09-11)");
+      expect(labels).toContain("150-turn cost (2026-09-11)");
+      expect(labels).toContain("150-turn tools (2026-09-11)");
+      const success = entry.benchmarkRows.find(
+        (row) => row.label === "150-turn success (2026-09-11)",
+      );
+      expect(success?.value).toBe("151/151");
+      // The slice is appended provenance, never a replacement of the bundle.
+      expect(entry.provenance[0]).toMatch(/comparison-Istara-pi\/reports\//);
+      expect(entry.provenance).toContain(
+        "docs/build-stream/w4-long-horizon-telemetry-20260911.json",
+      );
+      expect(entry.summary).toMatch(/150-turn long-horizon slice \(2026-09-11/);
+      expect(entry.summary).not.toMatch(/outperforms|is better than|faster than/i);
+    }
+    const pi = ENGINE_COMPARATIVE_SUMMARIES.find((entry) => entry.engine === "pi");
+    const legacy = ENGINE_COMPARATIVE_SUMMARIES.find((entry) => entry.engine === "legacy");
+    expect(
+      pi?.benchmarkRows.find((row) => row.label === "150-turn median (2026-09-11)")?.value,
+    ).toBe("18.7 s");
+    expect(
+      legacy?.benchmarkRows.find((row) => row.label === "150-turn median (2026-09-11)")?.value,
+    ).toBe("21.3 s");
+    expect(
+      pi?.benchmarkRows.find((row) => row.label === "150-turn cost (2026-09-11)")?.value,
+    ).toBe("$0.31 metered");
+    expect(
+      legacy?.benchmarkRows.find((row) => row.label === "150-turn cost (2026-09-11)")?.value,
+    ).toBe("unmetered");
+  });
+
   it("describes Istara as a loop mode over shared Pi Model Management authority", () => {
     const istara = ENGINE_COMPARATIVE_SUMMARIES.find((entry) => entry.engine === "legacy");
 
