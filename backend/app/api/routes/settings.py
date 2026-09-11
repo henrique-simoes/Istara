@@ -423,7 +423,10 @@ async def rotate_data_encryption_key_route(
         "fingerprint": result["fingerprint"],
         "new_key": result["new_key"],
         "custody": "memory_only_unless_injected_externally",
-        "warning": "Store the new key in a secrets manager or env injection; restart without it strands newly written rows.",
+        "warning": (
+            "Store the new key in a secrets manager or env injection; "
+            "restart without it strands newly written rows."
+        ),
     }
 
 

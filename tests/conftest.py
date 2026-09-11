@@ -91,6 +91,46 @@ def researcher_auth_headers(researcher_token):
 
 
 @pytest.fixture(autouse=True)
+def _synthetic_field_encryption_key_for_tests():
+    """Supply a deterministic synthetic Fernet key when none is configured.
+
+    CI checkouts have no DATA_ENCRYPTION_KEY, so persisting encrypted User
+    fields (EncryptedType) would fail closed with FieldEncryptionUnavailable.
+    Production must still fail closed when no key is configured (see
+    test_encrypt_without_key_fails_closed) — this fixture only affects the
+    test process, restores the original afterwards, and never writes secrets.
+    """
+    from app.config import settings
+
+    if settings.data_encryption_key:
+        yield
+        return
+    import base64
+    import hashlib
+
+    from app.core.field_encryption import (
+        reset_encryption_health_for_tests,
+        reset_field_encryption_for_tests,
+    )
+
+    original_previous = settings.data_encryption_previous_keys
+    synthetic = base64.urlsafe_b64encode(
+        hashlib.sha256(b"istara-ci-synthetic-test-key").digest()
+    ).decode()
+    settings.data_encryption_key = synthetic
+    settings.data_encryption_previous_keys = ""
+    reset_field_encryption_for_tests()
+    reset_encryption_health_for_tests()
+    try:
+        yield
+    finally:
+        settings.data_encryption_key = ""
+        settings.data_encryption_previous_keys = original_previous
+        reset_field_encryption_for_tests()
+        reset_encryption_health_for_tests()
+
+
+@pytest.fixture(autouse=True)
 def _no_live_llm_env(request, monkeypatch):
     if os.environ.get("ISTARA_RUN_REAL_LLM_BENCHMARK"):
         pytest.fail(

@@ -57,8 +57,6 @@ from app.core.prompt_rag import compose_dynamic_prompt
 from app.core.rag import build_augmented_prompt, retrieve_context
 from app.core.research_validity import RESEARCH_VALIDITY_CONTRACT, protected_block
 from app.models.database import async_session, get_db
-
-_guard = ContentGuard()
 from app.models.message import Message
 from app.models.project import Project
 from app.models.session import INFERENCE_PRESETS, ChatSession
@@ -68,6 +66,8 @@ from app.skills.system_actions import (
     build_tools_prompt,
     execute_tool,
 )
+
+_guard = ContentGuard()
 
 
 def _resolve_project_folder(project, project_id: str) -> Path:
@@ -538,9 +538,13 @@ def _research_spine_chat_contract() -> str:
             "pipeline": RESEARCH_VALIDITY_CONTRACT["pipeline"],
             "chat_policy": [
                 "Chat may discuss provisional findings only when clearly labeled provisional.",
-                "Do not present raw model output, RAG snippets, memories, or tool output as accepted research.",
-                "Accepted research requires source-grounded evidence units, independent coding, reliability/reconciliation, and human-approved Done tasks.",
-                "Reports and report-like recommendations must use accepted/reconciled evidence only.",
+                "Do not present raw model output, RAG snippets, memories, "
+                "or tool output as accepted research.",
+                "Accepted research requires source-grounded evidence units, "
+                "independent coding, reliability/reconciliation, "
+                "and human-approved Done tasks.",
+                "Reports and report-like recommendations must use "
+                "accepted/reconciled evidence only.",
             ],
         },
     )
@@ -729,11 +733,28 @@ async def _generate_native_tools(
             elif etype == "turn_separator":
                 yield f"data: {json.dumps({'type': 'chunk', 'content': event.get('text', '')})}\n\n"
             elif etype == "tool_call":
-                yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {}), 'tool_call_id': event.get('tool_call_id')})}\n\n"
+                tool_call_payload = {
+                    "type": "tool_call",
+                    "tool": event.get("tool"),
+                    "params": event.get("params", {}),
+                    "tool_call_id": event.get("tool_call_id"),
+                }
+                yield f"data: {json.dumps(tool_call_payload)}\n\n"
             elif etype == "tool_result":
-                yield f"data: {json.dumps({'type': 'tool_result', 'tool': event.get('tool'), 'tool_call_id': event.get('tool_call_id'), 'result': event.get('result'), 'ok': event.get('ok', True)})}\n\n"
+                tool_result_payload = {
+                    "type": "tool_result",
+                    "tool": event.get("tool"),
+                    "tool_call_id": event.get("tool_call_id"),
+                    "result": event.get("result"),
+                    "ok": event.get("ok", True),
+                }
+                yield f"data: {json.dumps(tool_result_payload)}\n\n"
             elif etype in ("thought", "thinking"):
-                yield f"data: {json.dumps({'type': 'thought', 'content': event.get('content') or event.get('text', '')})}\n\n"
+                thought_payload = {
+                    "type": "thought",
+                    "content": event.get("content") or event.get("text", ""),
+                }
+                yield f"data: {json.dumps(thought_payload)}\n\n"
             elif etype == "_complete":
                 result = event.get("result")
                 if result is not None:
@@ -866,11 +887,28 @@ async def _generate_text_fallback(
                     pi_metrics.observe_chunk(text)
                 yield f"data: {json.dumps({'type': 'chunk', 'content': text})}\n\n"
             elif etype == "tool_call":
-                yield f"data: {json.dumps({'type': 'tool_call', 'tool': event.get('tool'), 'params': event.get('params', {}), 'tool_call_id': event.get('tool_call_id')})}\n\n"
+                tool_call_payload = {
+                    "type": "tool_call",
+                    "tool": event.get("tool"),
+                    "params": event.get("params", {}),
+                    "tool_call_id": event.get("tool_call_id"),
+                }
+                yield f"data: {json.dumps(tool_call_payload)}\n\n"
             elif etype == "tool_result":
-                yield f"data: {json.dumps({'type': 'tool_result', 'tool': event.get('tool'), 'tool_call_id': event.get('tool_call_id'), 'result': event.get('result'), 'ok': event.get('ok', True)})}\n\n"
+                tool_result_payload = {
+                    "type": "tool_result",
+                    "tool": event.get("tool"),
+                    "tool_call_id": event.get("tool_call_id"),
+                    "result": event.get("result"),
+                    "ok": event.get("ok", True),
+                }
+                yield f"data: {json.dumps(tool_result_payload)}\n\n"
             elif etype in ("thought", "thinking"):
-                yield f"data: {json.dumps({'type': 'thought', 'content': event.get('content') or event.get('text', '')})}\n\n"
+                thought_payload = {
+                    "type": "thought",
+                    "content": event.get("content") or event.get("text", ""),
+                }
+                yield f"data: {json.dumps(thought_payload)}\n\n"
             elif etype == "_complete":
                 result = event.get("result")
                 if result is not None:

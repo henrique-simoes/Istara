@@ -435,7 +435,10 @@ async def a2a_jsonrpc(request: Request):
 
         body_hash = hashlib.sha256(raw_body).hexdigest()
         replay_key = hashlib.sha256(
-            f"{authorized.get('id', '')}:{method}:{json.dumps(req_id, sort_keys=True, default=str)}:{body_hash}".encode()
+            (
+                f"{authorized.get('id', '')}:{method}:"
+                f"{json.dumps(req_id, sort_keys=True, default=str)}:{body_hash}"
+            ).encode()
         ).hexdigest()
         if _a2a_replay_cache.seen_or_store(
             replay_key,

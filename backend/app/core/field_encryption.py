@@ -52,7 +52,7 @@ _decryption_failures = 0
 _last_decryption_failure_at: str | None = None
 
 
-class FieldEncryptionUnavailable(RuntimeError):
+class FieldEncryptionUnavailable(RuntimeError):  # noqa: N818 - public encryption protocol name
     """Field encryption was requested but no cipher is available."""
 
 

@@ -8,11 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.adaptive_validation import _sample_confidence_weight
 from app.core.permissions import require_project_access
+from app.models.code_application import CodeApplication
 from app.models.database import get_db
 from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.message import Message
 from app.models.method_metric import MethodMetric
-from app.models.code_application import CodeApplication
 from app.models.research_validity import (
     EvidenceUnit,
     ReconciliationDecision,
@@ -275,13 +275,17 @@ async def get_validation_metrics(
     """
     await require_project_access(db, request, project_id, min_role="viewer")
 
-    VALIDATION_METHODS = [
+    validation_methods = [
         {
             "id": "self_moa",
             "name": "Self-MoA",
             "description": "Same model, temperature variation (Li et al., 2025)",
         },
-        {"id": "dual_run", "name": "Dual Run", "description": "Two models, same prompt comparison"},
+        {
+            "id": "dual_run",
+            "name": "Dual Run",
+            "description": "Two models, same prompt comparison",
+        },
         {
             "id": "adversarial_review",
             "name": "Adversarial Review",
@@ -290,7 +294,9 @@ async def get_validation_metrics(
         {
             "id": "full_ensemble",
             "name": "Full Ensemble",
-            "description": "3+ models with composite agreement and categorical kappa when labels exist",
+            "description": (
+                "3+ models with composite agreement and categorical kappa when labels exist"
+            ),
         },
         {
             "id": "debate_rounds",
@@ -341,7 +347,7 @@ async def get_validation_metrics(
 
     return {
         "project_id": project_id,
-        "methods": VALIDATION_METHODS,
+        "methods": validation_methods,
         "method_stats": aggregated_method_stats,
         "recent_validations": recent_validations,
         "confidence_thresholds": {
@@ -351,9 +357,17 @@ async def get_validation_metrics(
             "recommendation": 0.50,
         },
         "statistical_notes": {
-            "agreement_score": "Consensus score is a composite agreement signal; kappa is included only when categorical labels can be extracted.",
-            "success_rate": "Success rates aggregate all method contexts and include Wilson 95% confidence intervals.",
-            "sample_weighting": "Adaptive selection down-weights methods with fewer than five observed runs.",
+            "agreement_score": (
+                "Consensus score is a composite agreement signal; kappa is "
+                "included only when categorical labels can be extracted."
+            ),
+            "success_rate": (
+                "Success rates aggregate all method contexts and include "
+                "Wilson 95% confidence intervals."
+            ),
+            "sample_weighting": (
+                "Adaptive selection down-weights methods with fewer than five observed runs."
+            ),
         },
     }
 

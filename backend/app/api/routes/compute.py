@@ -231,7 +231,6 @@ async def relay_websocket(ws: WebSocket):
                 # Same MFA bar as HTTP + /ws: a pre-enrollment JWT must not
                 # subscribe a relay identity once the account requires MFA.
                 from app.core.auth_sessions import mfa_claim_satisfied
-
                 from app.models.user import User
 
                 if not mfa_claim_satisfied(jwt_payload, "/ws/relay"):

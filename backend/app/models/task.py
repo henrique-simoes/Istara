@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import enum
 import json
 from datetime import UTC, datetime
+from enum import StrEnum
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.database import Base
 
 
-class TaskStatus(str, enum.Enum):
+class TaskStatus(StrEnum):
     """Kanban task statuses."""
 
     BACKLOG = "backlog"

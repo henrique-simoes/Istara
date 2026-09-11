@@ -126,7 +126,7 @@ class ContextWindowGuard:
     def __init__(
         self,
         max_tokens: int | None = None,
-        budget: "BudgetAllocation | None" = None,
+        budget: BudgetAllocation | None = None,
     ) -> None:
         self.max_tokens = max_tokens or settings.max_context_tokens
         self.budget = budget

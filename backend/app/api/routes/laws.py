@@ -62,7 +62,8 @@ async def evaluate_compliance(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Evaluate project findings against the 30 UX Laws, tag matches, and return compliance profile."""
+    """Evaluate project findings against the 30 UX Laws, tag matches,
+    and return compliance profile."""
     await require_project_access(db, request, project_id, min_role="researcher")
 
     result = await db.execute(select(Nugget).where(Nugget.project_id == project_id))

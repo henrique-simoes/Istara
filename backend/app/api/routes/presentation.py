@@ -18,17 +18,21 @@ def _fallback_slide_instructions(report: ProjectReport, full_text: str) -> str:
     excerpt = source[:1200]
     return (
         "SYSTEM PROMPT\n"
-        "Create an executive research deck using Minto Pyramid structure, action titles, and an SCR narrative.\n\n"
+        "Create an executive research deck using Minto Pyramid structure, "
+        "action titles, and an SCR narrative.\n\n"
         "HORIZONTAL FLOW\n"
         f"1. Situation: frame the research scope for {report.title}.\n"
-        "2. Complication: summarize the strongest evidence-backed user or business tension.\n"
+        "2. Complication: summarize the strongest evidence-backed user "
+        "or business tension.\n"
         "3. Resolution: present the recommended direction and expected impact.\n"
-        "4. Evidence: include the most important findings, grouped into MECE themes.\n"
+        "4. Evidence: include the most important findings, grouped into "
+        "MECE themes.\n"
         "5. Next Steps: show decisions, owners, and validation needed.\n\n"
         "SOURCE EXCERPT\n"
         f"{excerpt}\n\n"
         "JSON SCHEMA\n"
-        '{"slides":[{"action_title":"string","evidence":["string"],"visual_idea":"string"}]}'
+        '{"slides":[{"action_title":"string","evidence":["string"],'
+        '"visual_idea":"string"}]}'
     )
 
 
@@ -40,7 +44,8 @@ async def get_slide_instructions(
     regenerate: bool = Query(False),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate professional slide creation instructions for an external AI with persistence and caching."""
+    """Generate professional slide creation instructions for an external AI
+    with persistence and caching."""
     scoped_project_id = project_id.strip() if project_id else ""
     if not scoped_project_id:
         raise HTTPException(status_code=400, detail="project_id is required")
@@ -69,15 +74,22 @@ async def get_slide_instructions(
 
     # Generate the instruction package via LLM with bounded timeout
     prompt = (
-        "You are a presentation design specialist. Based on the following professional research report, "
-        "generate a comprehensive instruction package for another AI to create a high-impact slide deck.\n\n"
+        "You are a presentation design specialist. Based on the following "
+        "professional research report, "
+        "generate a comprehensive instruction package for another AI to create "
+        "a high-impact slide deck.\n\n"
         "REPORT CONTENT:\n"
         f"{full_text[:5000]}\n\n"
         "OUTPUT REQUIREMENTS:\n"
-        "1. SYSTEM PROMPT: A detailed prompt to guide the slide-generating AI (Minto principles, Action Titles, SCR narrative).\n"
-        "2. HORIZONTAL FLOW: A slide-by-slide outline. For each slide provide: 'Action Title' (full sentence conclusion), 'Evidence' (bullets), and 'Visual Idea' (chart/diagram suggestion).\n"
+        "1. SYSTEM PROMPT: A detailed prompt to guide the slide-generating "
+        "AI (Minto principles, Action Titles, SCR narrative).\n"
+        "2. HORIZONTAL FLOW: A slide-by-slide outline. For each slide "
+        "provide: 'Action Title' (full sentence conclusion), 'Evidence' "
+        "(bullets), and 'Visual Idea' (chart/diagram suggestion).\n"
         "3. JSON SCHEMA: A strict schema for the slide data.\n\n"
-        "Format the response as a clear, copyable guide for executive presentations. Ensure it respects academic rigor and consulting-grade clarity."
+        "Format the response as a clear, copyable guide for executive "
+        "presentations. Ensure it respects academic rigor and "
+        "consulting-grade clarity."
     )
 
     try:

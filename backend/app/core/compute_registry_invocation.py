@@ -29,7 +29,7 @@ from app.core.llm_thinking import apply_thinking_control
 logger = logging.getLogger("app.core.compute_registry")
 
 
-class ChatTruncatedEmptyResponse(RuntimeError):
+class ChatTruncatedEmptyResponse(RuntimeError):  # noqa: N818 - typed domain failure, not builtin-style error
     """The model exhausted its token budget on reasoning and returned no usable answer.
 
     Raised instead of reporting success on finish_reason="length" with empty content

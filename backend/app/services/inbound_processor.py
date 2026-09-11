@@ -249,7 +249,8 @@ async def process_inbound_channel_message(
             )
             return pi_response
 
-        # Research Spine Compliance: persist incoming participant answer as provisional Nugget & EvidenceUnits
+        # Research Spine Compliance: persist incoming participant answer
+        # as provisional Nugget & EvidenceUnits
         if message.text and conversation.state in {"intro", "questions", "probing", "wrap_up"}:
             questions = _safe_json_list(deployment.questions_json)
             q_idx = conversation.current_question_index
@@ -337,7 +338,9 @@ async def process_inbound_channel_message(
                 source_id=inbound_msg.external_message_id or inbound_msg.id,
                 project_id=project_id,
                 agent_id="channel-router",
-                summary="Inbound channel message was persisted and routed through deployment logic.",
+                summary=(
+                    "Inbound channel message was persisted and routed through deployment logic."
+                ),
                 evidence={
                     "passed": True,
                     "platform": message.channel,

@@ -88,7 +88,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "create_task",
-            "description": "[Tool: create_task] Create a new research task on the Kanban board. Use when the user asks to start work, analyze something, or run a research skill.",
+            "description": (
+                "[Tool: create_task] Create a new research task on the Kanban board. Use when the "
+                "user asks to start work, analyze something, or run a research skill."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -102,7 +105,10 @@ OPENAI_TOOLS: list[dict] = [
                     },
                     "skill_name": {
                         "type": "string",
-                        "description": "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). Leave empty for auto-detect.",
+                        "description": (
+                            "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). "
+                            "Leave empty for auto-detect."
+                        ),
                     },
                     "priority": {
                         "type": "string",
@@ -136,13 +142,19 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "search_documents",
-            "description": "[Tool: search_documents] Search for documents in the current project by title, content, tags, or phase. Use when the user asks to find, locate, or look up a document or file.",
+            "description": (
+                "[Tool: search_documents] Search for documents in the current project by title, "
+                "content, tags, or phase. Use when the user asks to find, locate, or look up a "
+                "document or file."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Search query (matches title, description, content, tags, file name)",
+                        "description": (
+                            "Search query (matches title, description, content, tags, file name)"
+                        ),
                     },
                     "phase": {
                         "type": "string",
@@ -170,7 +182,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "list_tasks",
-            "description": "[Tool: list_tasks] List tasks in the current project, optionally filtered by status. Use when the user asks about task status, what's in progress, or the work queue.",
+            "description": (
+                "[Tool: list_tasks] List tasks in the current project, optionally filtered by "
+                "status. Use when the user asks about task status, what's in progress, or the "
+                "work queue."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -188,7 +204,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "move_task",
-            "description": "[Tool: move_task] Move a task between agent-actionable columns. Agents must send finished work to in_review; only a human review action can approve Done.",
+            "description": (
+                "[Tool: move_task] Move a task between agent-actionable columns. Agents must send "
+                "finished work to in_review; only a human review action can approve Done."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -196,7 +215,9 @@ OPENAI_TOOLS: list[dict] = [
                     "status": {
                         "type": "string",
                         "enum": ["backlog", "in_progress", "in_review"],
-                        "description": "New status. Use in_review when work is ready for human approval.",
+                        "description": (
+                            "New status. Use in_review when work is ready for human approval."
+                        ),
                     },
                 },
                 "required": ["task_id", "status"],
@@ -207,7 +228,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "attach_document",
-            "description": "[Tool: attach_document] Attach a document to a task as input or output. Use when the user says to use a specific file for a task, or to link a result to a task.",
+            "description": (
+                "[Tool: attach_document] Attach a document to a task as input or output. Use when "
+                "the user says to use a specific file for a task, or to link a result to a task."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -216,7 +240,10 @@ OPENAI_TOOLS: list[dict] = [
                     "direction": {
                         "type": "string",
                         "enum": ["input", "output"],
-                        "description": "Direction: 'input' (source material) or 'output' (produced result). Default: input",
+                        "description": (
+                            "Direction: 'input' (source material) or 'output' (produced result). "
+                            "Default: input"
+                        ),
                     },
                 },
                 "required": ["task_id", "document_id"],
@@ -227,7 +254,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "search_findings",
-            "description": "[Tool: search_findings] Search research findings (nuggets, facts, insights, recommendations) in the project. Use when the user asks about research results, what was found, key insights, etc.",
+            "description": (
+                "[Tool: search_findings] Search research findings (nuggets, facts, insights, "
+                "recommendations) in the project. Use when the user asks about research results, "
+                "what was found, key insights, etc."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -254,7 +285,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "list_project_files",
-            "description": "[Tool: list_project_files] List all files in the project folder. Use when the user asks what files are available, what's been uploaded, or references a file by partial name.",
+            "description": (
+                "[Tool: list_project_files] List all files in the project folder. Use when the "
+                "user asks what files are available, what's been uploaded, or references a file "
+                "by partial name."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -266,7 +301,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "assign_agent",
-            "description": "[Tool: assign_agent] Assign an agent to a task. Use when the user asks to delegate work or assign a specific agent.",
+            "description": (
+                "[Tool: assign_agent] Assign an agent to a task. Use when the user asks to "
+                "delegate work or assign a specific agent."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -284,7 +322,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "send_agent_message",
-            "description": "[Tool: send_agent_message] Send a message to another agent via A2A protocol. Use for delegation, status updates, or inter-agent coordination.",
+            "description": (
+                "[Tool: send_agent_message] Send a message to another agent via A2A protocol. Use "
+                "for delegation, status updates, or inter-agent coordination."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -304,7 +345,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "get_document_content",
-            "description": "[Tool: get_document_content] Get the text content of a specific document. Use when the user asks to read, view, or get details from a document.",
+            "description": (
+                "[Tool: get_document_content] Get the text content of a specific document. Use "
+                "when the user asks to read, view, or get details from a document."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -318,7 +362,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "search_memory",
-            "description": "[Tool: search_memory] Search the project's memory and knowledge base using RAG. Use when the user asks to recall something, find information from past conversations, or query the knowledge base.",
+            "description": (
+                "[Tool: search_memory] Search the project's memory and knowledge base using RAG. "
+                "Use when the user asks to recall something, find information from past "
+                "conversations, or query the knowledge base."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -333,7 +381,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "update_task",
-            "description": "[Tool: update_task] Update fields on an existing task. Use when the user wants to change a task's title, description, priority, instructions, or other properties.",
+            "description": (
+                "[Tool: update_task] Update fields on an existing task. Use when the user wants "
+                "to change a task's title, description, priority, instructions, or other "
+                "properties."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -356,7 +408,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "sync_project_documents",
-            "description": "[Tool: sync_project_documents] Scan the project folder for new or untracked files and register them as documents. Use when the user mentions adding files to the folder, or when they want to refresh the document list.",
+            "description": (
+                "[Tool: sync_project_documents] Scan the project folder for new or untracked "
+                "files and register them as documents. Use when the user mentions adding files to "
+                "the folder, or when they want to refresh the document list."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -368,7 +424,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "web_fetch",
-            "description": "[Tool: web_fetch] Fetch a web page URL and return its content as readable text. Use this to access articles, documentation, competitor websites, or any public URL for research analysis.",
+            "description": (
+                "[Tool: web_fetch] Fetch a web page URL and return its content as readable text. "
+                "Use this to access articles, documentation, competitor websites, or any public "
+                "URL for research analysis."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -389,14 +449,23 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "browse_website",
-            "description": "[Tool: browse_website] Browse a website using an AI-powered browser agent. The agent can navigate, click, fill forms, and extract content. Use for: competitor analysis, usability evaluation, design critique, content extraction, form testing. Requires browser-use library.",
+            "description": (
+                "[Tool: browse_website] Browse a website using an AI-powered browser agent. The "
+                "agent can navigate, click, fill forms, and extract content. Use for: competitor "
+                "analysis, usability evaluation, design critique, content extraction, form "
+                "testing. Requires browser-use library."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "url": {"type": "string", "description": "The starting URL to navigate to"},
                     "task": {
                         "type": "string",
-                        "description": "What to do on the website (e.g., 'Extract the pricing page content', 'Fill out the contact form and check for errors', 'Take a screenshot of the homepage and describe the layout')",
+                        "description": (
+                            "What to do on the website (e.g., 'Extract the pricing page content', "
+                            "'Fill out the contact form and check for errors', 'Take a screenshot "
+                            "of the homepage and describe the layout')"
+                        ),
                     },
                     "max_steps": {
                         "type": "integer",
@@ -411,7 +480,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "context_expand",
-            "description": "[Tool: context_expand] Expand a DAG context summary node to reveal its original messages. Use when you need the granular details behind a summary.",
+            "description": (
+                "[Tool: context_expand] Expand a DAG context summary node to reveal its original "
+                "messages. Use when you need the granular details behind a summary."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -425,7 +497,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "context_grep",
-            "description": "[Tool: context_grep] Search all original messages in the session for a specific query string. Use to locate exact quotes or details from the past.",
+            "description": (
+                "[Tool: context_grep] Search all original messages in the session for a specific "
+                "query string. Use to locate exact quotes or details from the past."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -443,7 +518,11 @@ OPENAI_TOOLS: list[dict] = [
 SYSTEM_TOOLS = [
     {
         "name": "create_task",
-        "description": "[Tool: create_task] Create a new research task on the Kanban board. Use when the user asks to start work, analyze something, or run a research skill. Ask for missing required fields conversationally.",
+        "description": (
+            "[Tool: create_task] Create a new research task on the Kanban board. Use when the "
+            "user asks to start work, analyze something, or run a research skill. Ask for missing "
+            "required fields conversationally."
+        ),
         "parameters": {
             "title": {
                 "type": "string",
@@ -458,7 +537,10 @@ SYSTEM_TOOLS = [
             "skill_name": {
                 "type": "string",
                 "required": False,
-                "description": "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). Leave empty for auto-detect.",
+                "description": (
+                    "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). Leave "
+                    "empty for auto-detect."
+                ),
             },
             "priority": {
                 "type": "string",
@@ -489,12 +571,18 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "search_documents",
-        "description": "[Tool: search_documents] Search for documents in the current project by title, content, tags, or phase. Use when the user asks to find, locate, or look up a document or file.",
+        "description": (
+            "[Tool: search_documents] Search for documents in the current project by title, "
+            "content, tags, or phase. Use when the user asks to find, locate, or look up a "
+            "document or file."
+        ),
         "parameters": {
             "query": {
                 "type": "string",
                 "required": True,
-                "description": "Search query (matches title, description, content, tags, file name)",
+                "description": (
+                    "Search query (matches title, description, content, tags, file name)"
+                ),
             },
             "phase": {
                 "type": "string",
@@ -505,13 +593,19 @@ SYSTEM_TOOLS = [
             "source": {
                 "type": "string",
                 "required": False,
-                "description": "Filter by source: user_upload, agent_output, task_output, project_file, external",
+                "description": (
+                    "Filter by source: user_upload, agent_output, task_output, project_file, "
+                    "external"
+                ),
             },
         },
     },
     {
         "name": "list_tasks",
-        "description": "[Tool: list_tasks] List tasks in the current project, optionally filtered by status. Use when the user asks about task status, what's in progress, or the work queue.",
+        "description": (
+            "[Tool: list_tasks] List tasks in the current project, optionally filtered by status. "
+            "Use when the user asks about task status, what's in progress, or the work queue."
+        ),
         "parameters": {
             "status": {
                 "type": "string",
@@ -522,19 +616,28 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "move_task",
-        "description": "[Tool: move_task] Move a task between agent-actionable columns. Agents must send finished work to in_review; only a human review action can approve Done.",
+        "description": (
+            "[Tool: move_task] Move a task between agent-actionable columns. Agents must send "
+            "finished work to in_review; only a human review action can approve Done."
+        ),
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task ID to move"},
             "status": {
                 "type": "string",
                 "required": True,
-                "description": "New status: backlog, in_progress, in_review. Use in_review when work is ready for human approval.",
+                "description": (
+                    "New status: backlog, in_progress, in_review. Use in_review when work is "
+                    "ready for human approval."
+                ),
             },
         },
     },
     {
         "name": "attach_document",
-        "description": "[Tool: attach_document] Attach a document to a task as input or output. Use when the user says to use a specific file for a task, or to link a result to a task.",
+        "description": (
+            "[Tool: attach_document] Attach a document to a task as input or output. Use when the "
+            "user says to use a specific file for a task, or to link a result to a task."
+        ),
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task ID"},
             "document_id": {
@@ -545,13 +648,19 @@ SYSTEM_TOOLS = [
             "direction": {
                 "type": "string",
                 "required": False,
-                "description": "'input' (source material) or 'output' (produced result). Default: input",
+                "description": (
+                    "'input' (source material) or 'output' (produced result). Default: input"
+                ),
             },
         },
     },
     {
         "name": "search_findings",
-        "description": "[Tool: search_findings] Search research findings (nuggets, facts, insights, recommendations) in the project. Use when the user asks about research results, what was found, key insights, etc.",
+        "description": (
+            "[Tool: search_findings] Search research findings (nuggets, facts, insights, "
+            "recommendations) in the project. Use when the user asks about research results, what "
+            "was found, key insights, etc."
+        ),
         "parameters": {
             "query": {
                 "type": "string",
@@ -572,12 +681,19 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "list_project_files",
-        "description": "[Tool: list_project_files] List all files in the project folder. Use when the user asks what files are available, what's been uploaded, or references a file by partial name.",
+        "description": (
+            "[Tool: list_project_files] List all files in the project folder. Use when the user "
+            "asks what files are available, what's been uploaded, or references a file by partial "
+            "name."
+        ),
         "parameters": {},
     },
     {
         "name": "assign_agent",
-        "description": "[Tool: assign_agent] Assign an agent to a task. Use when the user asks to delegate work or assign a specific agent.",
+        "description": (
+            "[Tool: assign_agent] Assign an agent to a task. Use when the user asks to delegate "
+            "work or assign a specific agent."
+        ),
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task to assign"},
             "agent_id": {
@@ -589,7 +705,10 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "send_agent_message",
-        "description": "[Tool: send_agent_message] Send a message to another agent via A2A protocol. Use for delegation, status updates, or inter-agent coordination.",
+        "description": (
+            "[Tool: send_agent_message] Send a message to another agent via A2A protocol. Use for "
+            "delegation, status updates, or inter-agent coordination."
+        ),
         "parameters": {
             "to_agent_id": {"type": "string", "required": True, "description": "Target agent ID"},
             "message_type": {
@@ -602,7 +721,10 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "get_document_content",
-        "description": "[Tool: get_document_content] Get the text content of a specific document. Use when the user asks to read, view, or get details from a document.",
+        "description": (
+            "[Tool: get_document_content] Get the text content of a specific document. Use when "
+            "the user asks to read, view, or get details from a document."
+        ),
         "parameters": {
             "document_id": {
                 "type": "string",
@@ -613,7 +735,11 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "search_memory",
-        "description": "[Tool: search_memory] Search the project's memory and knowledge base using RAG. Use when the user asks to recall something, find information from past conversations, or query the knowledge base.",
+        "description": (
+            "[Tool: search_memory] Search the project's memory and knowledge base using RAG. Use "
+            "when the user asks to recall something, find information from past conversations, or "
+            "query the knowledge base."
+        ),
         "parameters": {
             "query": {"type": "string", "required": True, "description": "The search query"},
             "top_k": {
@@ -625,7 +751,10 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "update_task",
-        "description": "[Tool: update_task] Update fields on an existing task. Use when the user wants to change a task's title, description, priority, instructions, or other properties.",
+        "description": (
+            "[Tool: update_task] Update fields on an existing task. Use when the user wants to "
+            "change a task's title, description, priority, instructions, or other properties."
+        ),
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task ID to update"},
             "title": {"type": "string", "required": False, "description": "New title"},
@@ -649,12 +778,20 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "sync_project_documents",
-        "description": "[Tool: sync_project_documents] Scan the project folder for new or untracked files and register them as documents. Use when the user mentions adding files to the folder, or when they want to refresh the document list.",
+        "description": (
+            "[Tool: sync_project_documents] Scan the project folder for new or untracked files "
+            "and register them as documents. Use when the user mentions adding files to the "
+            "folder, or when they want to refresh the document list."
+        ),
         "parameters": {},
     },
     {
         "name": "web_fetch",
-        "description": "[Tool: web_fetch] Fetch a web page URL and return its content as readable text. Use this to access articles, documentation, competitor websites, or any public URL for research analysis.",
+        "description": (
+            "[Tool: web_fetch] Fetch a web page URL and return its content as readable text. Use "
+            "this to access articles, documentation, competitor websites, or any public URL for "
+            "research analysis."
+        ),
         "parameters": {
             "url": {
                 "type": "string",
@@ -670,7 +807,12 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "browse_website",
-        "description": "[Tool: browse_website] Browse a website using an AI-powered browser agent. The agent can navigate, click, fill forms, and extract content. Use for: competitor analysis, usability evaluation, design critique, content extraction, form testing. Requires browser-use library.",
+        "description": (
+            "[Tool: browse_website] Browse a website using an AI-powered browser agent. The agent "
+            "can navigate, click, fill forms, and extract content. Use for: competitor analysis, "
+            "usability evaluation, design critique, content extraction, form testing. Requires "
+            "browser-use library."
+        ),
         "parameters": {
             "url": {
                 "type": "string",
@@ -680,7 +822,10 @@ SYSTEM_TOOLS = [
             "task": {
                 "type": "string",
                 "required": True,
-                "description": "What to do on the website (e.g., 'Extract the pricing page content', 'Fill out the contact form and check for errors')",
+                "description": (
+                    "What to do on the website (e.g., 'Extract the pricing page content', 'Fill "
+                    "out the contact form and check for errors')"
+                ),
             },
             "max_steps": {
                 "type": "integer",
@@ -691,7 +836,10 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "context_expand",
-        "description": "[Tool: context_expand] Expand a DAG context summary node to reveal its original messages. Use when you need the granular details behind a summary.",
+        "description": (
+            "[Tool: context_expand] Expand a DAG context summary node to reveal its original "
+            "messages. Use when you need the granular details behind a summary."
+        ),
         "parameters": {
             "node_id": {
                 "type": "string",
@@ -702,7 +850,10 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "context_grep",
-        "description": "[Tool: context_grep] Search all original messages in the session for a specific query string. Use to locate exact quotes or details from the past.",
+        "description": (
+            "[Tool: context_grep] Search all original messages in the session for a specific "
+            "query string. Use to locate exact quotes or details from the past."
+        ),
         "parameters": {
             "query": {
                 "type": "string",
@@ -726,14 +877,26 @@ def build_tools_prompt() -> str:
     lines = [
         "## Available Tools",
         "",
-        "You can perform actions in Istara by responding with a tool call in this exact JSON format:",
+        (
+            "You can perform actions in Istara by responding with a tool "
+            "call in this exact JSON format:"
+        ),
         "```json",
         '{"tool": "tool_name", "params": {"param1": "value1"}}',
         "```",
         "",
-        "After executing the tool, I will show you the result. You can then call another tool or respond to the user.",
-        "Only call a tool when the user's request requires an action. For general conversation, respond normally.",
-        "When creating a task, if the user hasn't provided all needed information, ask them conversationally before calling the tool.",
+        (
+            "After executing the tool, I will show you the result. You can "
+            "then call another tool or respond to the user."
+        ),
+        (
+            "Only call a tool when the user's request requires an action. "
+            "For general conversation, respond normally."
+        ),
+        (
+            "When creating a task, if the user hasn't provided all needed "
+            "information, ask them conversationally before calling the tool."
+        ),
         "",
         "### Tools:",
         "",
@@ -982,7 +1145,10 @@ async def _exec_create_task(params: dict, project_id: str, agent_id: str) -> str
 
         wake_orchestrator()
 
-        return f"Task created: '{task.title}' (ID: {task.id}, priority: {task.priority}, status: backlog)"
+        return (
+            f"Task created: '{task.title}' (ID: {task.id}, "
+            f"priority: {task.priority}, status: backlog)"
+        )
 
 
 async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -> str:
@@ -1023,8 +1189,11 @@ async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -
             except Exception:
                 pass
             lines.append(
-                f"- **{doc.title}** (ID: {doc.id}, type: {doc.file_type or 'unknown'}, "
-                f"phase: {doc.phase or 'none'}, source: {doc.source.value if doc.source else 'unknown'}){tags_str}"
+                f"- **{doc.title}** (ID: {doc.id}, "
+                f"type: {doc.file_type or 'unknown'}, "
+                f"phase: {doc.phase or 'none'}, "
+                f"source: {doc.source.value if doc.source else 'unknown'})"
+                f"{tags_str}"
             )
         return "\n".join(lines)
 
@@ -1264,7 +1433,10 @@ async def _exec_get_document_content(params: dict, project_id: str, agent_id: st
                 pass
 
         if not content:
-            return f"Document '{doc.title}' exists but has no readable text content (type: {doc.file_type})."
+            return (
+                f"Document '{doc.title}' exists but has no readable text "
+                f"content (type: {doc.file_type})."
+            )
 
         preview = content[:3000] + "..." if len(content) > 3000 else content
         return (
@@ -1351,7 +1523,10 @@ async def _exec_sync_project_documents(params: dict, project_id: str, agent_id: 
         if new_count:
             await db.commit()
 
-        return f"Synced project folder: {new_count} new document(s) registered, {len(files)} total files."
+        return (
+            f"Synced project folder: {new_count} new document(s) "
+            f"registered, {len(files)} total files."
+        )
 
 
 # ── Executor Registry ─────────────────────────────────────────────

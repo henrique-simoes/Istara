@@ -392,7 +392,7 @@ async def list_links(
         query = query.where(SurveyLink.integration_id == integration_id)
     result = await db.execute(query)
     links = result.scalars().all()
-    return {"links": [l.to_dict() for l in links], "count": len(links)}
+    return {"links": [link.to_dict() for link in links], "count": len(links)}
 
 
 # ---------------------------------------------------------------------------
@@ -512,7 +512,8 @@ async def ingest_direct_survey_responses(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Directly ingest questionnaire responses into the Research Spine (Nuggets & Evidence Units)."""
+    """Directly ingest questionnaire responses into the Research Spine
+    (Nuggets & Evidence Units)."""
     await get_visible_project_or_404(db, request, body.project_id, min_role="researcher")
     from app.services.survey_ingestion import ingest_responses
 

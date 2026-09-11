@@ -193,7 +193,7 @@ async def force_compact(
         try:
             await asyncio.wait_for(asyncio.shield(task), timeout=2.5)
             compacted = True
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.info("DAG compaction for %s continues in background", session_id)
         health = await context_dag.get_health(session_id)
         return {"compacted": compacted, "status": "ok", "health": health, "scheduled": True}

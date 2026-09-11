@@ -274,7 +274,8 @@ async def check_for_updates():
                 result["source_checkout_includes_latest_release"] = source_status
         return result
 
-    # 1. Try querying GitHub REST API for releases list (not /latest which has stale make_latest pointers)
+    # 1. Try querying GitHub REST API for releases list
+    # (not /latest which has stale make_latest pointers)
     latest_release: dict | None = None
     git_tag = ""
 
@@ -457,7 +458,8 @@ async def apply_update(
       4. Rebuilds frontend (npm install + npm run build)
       5. Restarts services via istara.sh
 
-    Requires explicit confirmation. Admin only in team mode. Returns immediately — the update runs async.
+    Requires explicit confirmation. Admin only in team mode.
+    Returns immediately — the update runs async.
     """
     try:
         require_admin_or_localhost_for_destructive_action(request, "apply updates")
@@ -488,7 +490,10 @@ async def apply_update(
     if not (install_dir / ".git").is_dir():
         raise HTTPException(
             status_code=400,
-            detail="Auto-update requires a git-based install. Use: curl -fsSL .../install-istara.sh | bash",
+            detail=(
+                "Auto-update requires a git-based install. "
+                "Use: curl -fsSL .../install-istara.sh | bash"
+            ),
         )
 
     # Run the update in background so the API can respond immediately
@@ -496,7 +501,10 @@ async def apply_update(
 
     return {
         "status": "updating",
-        "message": "Update started. Istara will backup, update, and restart automatically. This may take 1-3 minutes.",
+        "message": (
+            "Update started. Istara will backup, update, and restart "
+            "automatically. This may take 1-3 minutes."
+        ),
         "install_dir": str(install_dir),
     }
 

@@ -342,7 +342,8 @@ async def _select_pi_coders(
                 )
             except PiEndpointResolutionError as exc:
                 logger.warning(
-                    "Preferred Research Spine endpoint %s unavailable; using healthy catalog fallback: %s",
+                    "Preferred Research Spine endpoint %s unavailable; "
+                    "using healthy catalog fallback: %s",
                     endpoint_id,
                     exc,
                 )

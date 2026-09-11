@@ -33,12 +33,12 @@ class PiCatalogModel:
     id: str
     name: str
     api: str
-    baseUrl: str = ""
-    contextWindow: int = 0
-    maxTokens: int = 0
+    baseUrl: str = ""  # noqa: N815 -- verbatim pi-ai JSON field name
+    contextWindow: int = 0  # noqa: N815 -- verbatim pi-ai JSON field name
+    maxTokens: int = 0  # noqa: N815 -- verbatim pi-ai JSON field name
     reasoning: bool = False
     input: list[str] = field(default_factory=list)
-    thinkingLevels: list[str] | None = None
+    thinkingLevels: list[str] | None = None  # noqa: N815 -- verbatim pi-ai JSON field name
     cost: dict | None = None
     # Authority fields projected verbatim from pi-ai's registry by
     # pi-runtime/scripts/emit-catalog.mjs (build-stream 2026-09-08
@@ -82,20 +82,28 @@ _OAUTH_PROVIDERS: dict[str, dict[str, Any]] = {
         "oauth_provider": "openai-codex",
         "oauth_methods": ["browser", "device_code"],
         "display": "OpenAI API",
-        "description": "API key for OpenAI Platform. ChatGPT subscription OAuth is available on the shared Codex models below.",
+        "description": (
+            "API key for OpenAI Platform. ChatGPT subscription OAuth is "
+            "available on the shared Codex models below."
+        ),
     },
     "openai-codex": {
         "flow": "openai_codex",
         "oauth_provider": "openai-codex",
         "oauth_methods": ["browser", "device_code"],
         "display": "OpenAI Codex — ChatGPT subscription",
-        "description": "Use your ChatGPT Plus or Pro subscription through Pi's Codex Responses API.",
+        "description": (
+            "Use your ChatGPT Plus or Pro subscription through Pi's Codex Responses API."
+        ),
     },
     "anthropic": {
         "flow": "browser_pkce",
         "oauth_methods": ["browser"],
         "display": "Anthropic Claude",
-        "description": "API key or Claude Pro/Max browser login, when your Pi build exposes the subscription flow.",
+        "description": (
+            "API key or Claude Pro/Max browser login, when your Pi build "
+            "exposes the subscription flow."
+        ),
     },
     "github-copilot": {
         "flow": "device_code",

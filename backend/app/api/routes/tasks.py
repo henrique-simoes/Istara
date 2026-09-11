@@ -759,9 +759,7 @@ async def get_task_review_events(
     db: AsyncSession = Depends(get_db),
 ):
     """List review/reward events for a task."""
-    task = await _get_authorized_project_task_or_404(
-        db, request, task_id, project_id, min_role="viewer"
-    )
+    await _get_authorized_project_task_or_404(db, request, task_id, project_id, min_role="viewer")
     result = await db.execute(
         select(TaskReviewEvent)
         .where(TaskReviewEvent.task_id == task_id)
