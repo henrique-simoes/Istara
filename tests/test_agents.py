@@ -44,7 +44,9 @@ def _researcher_headers(user_id: str = "agent-scope-user") -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _seed_project_member(project_id: str, user_id: str, role: str = "researcher") -> None:
+async def _seed_project_member(
+    project_id: str, user_id: str, role: str = "researcher"
+) -> None:
     async with async_session() as db:
         if await db.get(Project, project_id) is None:
             db.add(
@@ -101,6 +103,48 @@ async def _seed_agent(
             )
         )
         await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_custom_worker_orphaned_task_never_bypasses_human_done(monkeypatch):
+    """A missing project is an execution failure, never agent-authored Done."""
+    from unittest.mock import AsyncMock
+
+    from app.agents import custom_worker
+
+    class _NoProjectResult:
+        @staticmethod
+        def scalar_one_or_none():
+            return None
+
+    class _FakeDb:
+        def __init__(self) -> None:
+            self.commits = 0
+
+        async def execute(self, statement):  # noqa: ANN001
+            del statement
+            return _NoProjectResult()
+
+        async def commit(self) -> None:
+            self.commits += 1
+
+    task = Task(
+        id="orphaned-custom-worker-task",
+        project_id="missing-project",
+        agent_id="custom-worker-agent",
+        title="Cannot execute without its project",
+        status=TaskStatus.BACKLOG,
+    )
+    worker = custom_worker.CustomAgentWorker("custom-worker-agent", "Test worker")
+    monkeypatch.setattr(worker, "_update_db_state", AsyncMock())
+    monkeypatch.setattr(custom_worker, "broadcast_agent_status", AsyncMock())
+
+    await worker._execute_task(_FakeDb(), task, SimpleNamespace())
+
+    assert task.status == TaskStatus.IN_REVIEW
+    assert task.review_state == "needs_revision"
+    assert "project" in task.what_to_review.lower()
+    assert task.status != TaskStatus.DONE
 
 
 @pytest.mark.asyncio
@@ -166,7 +210,9 @@ async def test_agent_creation_proposals_require_project_id(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/agents/creation-proposals/all", headers=auth_headers)
+        response = await ac.get(
+            "/api/agents/creation-proposals/all", headers=auth_headers
+        )
 
     assert response.status_code == 400
     assert response.json()["detail"] == "project_id is required"
@@ -184,7 +230,9 @@ async def test_agent_creation_proposals_are_filtered_by_project(
     import app.core.agent_factory as agent_factory_module
 
     monkeypatch.setattr(agent_factory_module, "DATA_DIR", tmp_path)
-    monkeypatch.setattr(agent_factory_module, "PROPOSALS_FILE", tmp_path / "_agent_proposals.json")
+    monkeypatch.setattr(
+        agent_factory_module, "PROPOSALS_FILE", tmp_path / "_agent_proposals.json"
+    )
 
     factory = agent_factory_module.AgentFactory()
     project_a = factory.propose_agent_creation(
@@ -283,13 +331,19 @@ async def test_agent_project_routes_require_active_project_for_non_admins():
         assert unscoped_detail.status_code == 400
         assert unscoped_detail.json()["detail"] == "project_id is required"
 
-        unscoped_memory = await ac.get(f"/api/agents/{agent_id}/memory", headers=headers)
+        unscoped_memory = await ac.get(
+            f"/api/agents/{agent_id}/memory", headers=headers
+        )
         assert unscoped_memory.status_code == 400
 
-        unscoped_identity = await ac.get(f"/api/agents/{agent_id}/identity", headers=headers)
+        unscoped_identity = await ac.get(
+            f"/api/agents/{agent_id}/identity", headers=headers
+        )
         assert unscoped_identity.status_code == 400
 
-        unscoped_heartbeat = await ac.get("/api/agents/heartbeat/status", headers=headers)
+        unscoped_heartbeat = await ac.get(
+            "/api/agents/heartbeat/status", headers=headers
+        )
         assert unscoped_heartbeat.status_code == 400
 
         unscoped_log = await ac.get(
@@ -513,7 +567,9 @@ async def test_agents_get_nonexistent_returns_404(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_agent_restart_scope_and_promotion_routes_use_persistent_agent(auth_headers):
+async def test_agent_restart_scope_and_promotion_routes_use_persistent_agent(
+    auth_headers,
+):
     """Lifecycle helpers should operate on ORM state, not serialized agent dicts."""
     await init_db()
     transport = ASGITransport(app=app)
@@ -557,12 +613,16 @@ async def test_agent_restart_scope_and_promotion_routes_use_persistent_agent(aut
         )
         assert invalid_scope.status_code == 422
 
-        promotion = await ac.post(f"/api/agents/{agent_id}/request-promotion", headers=auth_headers)
+        promotion = await ac.post(
+            f"/api/agents/{agent_id}/request-promotion", headers=auth_headers
+        )
         assert promotion.status_code == 200
         assert promotion.json()["status"] == "requested"
         assert promotion.json()["project_id"] == "project-test"
 
-        await ac.delete(f"/api/agents/{agent_id}?project_id=project-test", headers=auth_headers)
+        await ac.delete(
+            f"/api/agents/{agent_id}?project_id=project-test", headers=auth_headers
+        )
 
 
 @pytest.mark.asyncio
@@ -692,7 +752,9 @@ async def test_a2a_log_filters_by_project_id(auth_headers):
             assert message_b not in contents
             assert message_global not in contents
 
-            unscoped = await ac.get("/api/agents/a2a/log?limit=20", headers=auth_headers)
+            unscoped = await ac.get(
+                "/api/agents/a2a/log?limit=20", headers=auth_headers
+            )
             assert unscoped.status_code == 422
     finally:
         async with async_session() as db:
@@ -718,8 +780,16 @@ async def test_system_action_agent_tools_reject_cross_project_targets():
             [
                 Project(id=visible_project_id, name="Tool Visible Project"),
                 Project(id=hidden_project_id, name="Tool Hidden Project"),
-                Task(id=visible_task_id, project_id=visible_project_id, title="Visible tool task"),
-                Task(id=hidden_task_id, project_id=hidden_project_id, title="Hidden tool task"),
+                Task(
+                    id=visible_task_id,
+                    project_id=visible_project_id,
+                    title="Visible tool task",
+                ),
+                Task(
+                    id=hidden_task_id,
+                    project_id=hidden_project_id,
+                    title="Hidden tool task",
+                ),
                 Agent(
                     id=hidden_agent_id,
                     name="Hidden project agent",
@@ -757,8 +827,14 @@ async def test_system_action_agent_tools_reject_cross_project_targets():
     async with async_session() as db:
         hidden_task = await db.get(Task, hidden_task_id)
         stored_messages = (
-            await db.execute(select(A2AMessage).where(A2AMessage.content == message_content))
-        ).scalars().all()
+            (
+                await db.execute(
+                    select(A2AMessage).where(A2AMessage.content == message_content)
+                )
+            )
+            .scalars()
+            .all()
+        )
         assert "not available in this project" in assign_result["result"]
         assert "Task not found" in move_result["result"]
         assert "not available in this project" in message_result["result"]
@@ -766,11 +842,17 @@ async def test_system_action_agent_tools_reject_cross_project_targets():
         assert stored_messages == []
 
     async with async_session() as db:
-        await db.execute(delete(A2AMessage).where(A2AMessage.content == message_content))
-        await db.execute(delete(Agent).where(Agent.id == hidden_agent_id))
-        await db.execute(delete(Task).where(Task.id.in_([visible_task_id, hidden_task_id])))
         await db.execute(
-            delete(Project).where(Project.id.in_([visible_project_id, hidden_project_id]))
+            delete(A2AMessage).where(A2AMessage.content == message_content)
+        )
+        await db.execute(delete(Agent).where(Agent.id == hidden_agent_id))
+        await db.execute(
+            delete(Task).where(Task.id.in_([visible_task_id, hidden_task_id]))
+        )
+        await db.execute(
+            delete(Project).where(
+                Project.id.in_([visible_project_id, hidden_project_id])
+            )
         )
         await db.commit()
 
@@ -827,10 +909,16 @@ async def test_system_action_create_task_validates_project_documents_and_priorit
 
     async with async_session() as db:
         tasks = (
-            await db.execute(
-                select(Task).where(Task.project_id == visible_project_id).order_by(Task.created_at)
+            (
+                await db.execute(
+                    select(Task)
+                    .where(Task.project_id == visible_project_id)
+                    .order_by(Task.created_at)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
     assert rejected["success"] is True
     assert "unknown documents for this project" in rejected["result"]
@@ -841,9 +929,13 @@ async def test_system_action_create_task_validates_project_documents_and_priorit
 
     async with async_session() as db:
         await db.execute(delete(Task).where(Task.project_id == visible_project_id))
-        await db.execute(delete(Document).where(Document.id.in_([visible_doc_id, hidden_doc_id])))
         await db.execute(
-            delete(Project).where(Project.id.in_([visible_project_id, hidden_project_id]))
+            delete(Document).where(Document.id.in_([visible_doc_id, hidden_doc_id]))
+        )
+        await db.execute(
+            delete(Project).where(
+                Project.id.in_([visible_project_id, hidden_project_id])
+            )
         )
         await db.commit()
 
@@ -939,31 +1031,45 @@ def test_agent_complex_auto_task_attempts_research_plan():
 
 @pytest.mark.asyncio
 async def test_agent_research_plan_parses_dag_dependencies(monkeypatch):
-    """The planner should preserve ordered steps and dependency edges from LLM JSON."""
+    """The planner should preserve ordered steps and dependency edges from LLM JSON.
+
+    W3: the planner enters through the AgenticDispatcher (``spine.plan``); the
+    fake binds the Pi Model Management provider authority that both dispatcher
+    engine choices use, so no retired Ollama transport can be reached.
+    """
     from types import SimpleNamespace
 
-    import app.core.agent_research as agent_research_module
     from app.core.agent import AgentOrchestrator
+    from app.core.agentic import agentic
     from app.models.task import Task
 
     captured = {}
 
-    async def fake_chat(*_args, **kwargs):
+    async def fake_structured(**kwargs):
         captured.update(kwargs)
         return {
-            "message": {
-                "content": (
-                    '{"steps": ['
-                    '{"id": "step_1", "description": "Analyze transcripts", '
-                    '"skill_name": "user-interviews", "depends_on": []}, '
-                    '{"id": "step_2", "description": "Synthesize recommendations", '
-                    '"skill_name": null, "depends_on": ["step_1"]}'
-                    "]}"
-                )
-            }
+            "text": "scripted structured plan",
+            "value": {
+                "steps": [
+                    {
+                        "id": "step_1",
+                        "description": "Analyze transcripts",
+                        "skill_name": "user-interviews",
+                        "depends_on": [],
+                    },
+                    {
+                        "id": "step_2",
+                        "description": "Synthesize recommendations",
+                        "skill_name": None,
+                        "depends_on": ["step_1"],
+                    },
+                ]
+            },
+            "status": "success",
+            "endpoint_id": "test-pi-provider",
         }
 
-    monkeypatch.setattr(agent_research_module.ollama, "chat", fake_chat)
+    monkeypatch.setattr(agentic._pi, "run_structured", fake_structured)
 
     from app.core.agent_skill_tools import SkillCandidate
 
@@ -1001,8 +1107,10 @@ async def test_agent_research_plan_parses_dag_dependencies(monkeypatch):
     )
 
     assert plan is not None
-    assert captured["response_format"]["type"] == "json_schema"
-    assert captured["thinking_mode"] == "off"
+    assert captured["purpose"] == "spine.plan"
+    assert captured["project_id"] == "plan-parse-project"
+    assert captured["schema"]["type"] == "object"
+    assert captured["params"].thinking_mode == "off"
     assert [step.id for step in plan.steps] == ["step_1", "step_2"]
     assert plan.steps[1].depends_on == ["step_1"]
     assert plan.steps[0].skill_name == "user-interviews"
@@ -1051,7 +1159,13 @@ async def test_manual_skill_execute_survives_poisoned_storage_session(monkeypatc
     from app.models.database import async_session
     from app.models.project import Project
     from app.models.task import Task
-    from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
+    from app.skills.base import (
+        BaseSkill,
+        SkillInput,
+        SkillOutput,
+        SkillPhase,
+        SkillType,
+    )
     from app.skills.registry import registry
 
     await init_db()
@@ -1106,7 +1220,13 @@ async def test_manual_skill_execute_survives_poisoned_storage_session(monkeypatc
             return SkillOutput(
                 success=True,
                 summary="Valid skill output",
-                nuggets=[{"text": "A valid piece of evidence", "source": "test", "tags": ["valid"]}],
+                nuggets=[
+                    {
+                        "text": "A valid piece of evidence",
+                        "source": "test",
+                        "tags": ["valid"],
+                    }
+                ],
                 facts=[{"text": "A valid fact"}],
             )
 
@@ -1188,6 +1308,8 @@ async def test_agent_store_findings_blocks_skill_output_without_source_span():
         assert "provisional" in task.what_to_review
 
         facts = (
-            await db.execute(select(Fact).where(Fact.task_id == task_id))
-        ).scalars().all()
+            (await db.execute(select(Fact).where(Fact.task_id == task_id)))
+            .scalars()
+            .all()
+        )
         assert len(facts) == 1

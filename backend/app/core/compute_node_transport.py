@@ -22,6 +22,7 @@ from app.core.model_capabilities import ANTHROPIC_PROVIDERS, provider_auth_heade
 
 logger = logging.getLogger("app.core.compute_registry")
 
+
 class ComputeNodeTransportMixin:
     def server_id(self) -> str:
         return self.node_id
@@ -288,6 +289,8 @@ class ComputeNodeTransportMixin:
         if tool_calls:
             result["message"]["tool_calls"] = tool_calls
             result["finish_reason"] = "tool_calls"
+        if isinstance(data.get("usage"), dict) and data["usage"]:
+            result["usage"] = dict(data["usage"])
         return result
 
     async def close(self) -> None:

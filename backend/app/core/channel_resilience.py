@@ -10,8 +10,9 @@ import asyncio
 import functools
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,7 @@ class CircuitBreaker:
             raise
 
 
-class CircuitBreakerOpen(Exception):
+class CircuitBreakerOpen(Exception):  # noqa: N818 -- public name caught by callers
     """Raised when the circuit breaker is open."""
 
     pass
@@ -167,7 +168,9 @@ def resilient_send(
 
             if breaker is not None:
                 return await breaker.call(
-                    lambda: retry_with_backoff(_call, max_retries=max_retries, base_delay=base_delay)
+                    lambda: retry_with_backoff(
+                        _call, max_retries=max_retries, base_delay=base_delay
+                    )
                 )
             return await retry_with_backoff(_call, max_retries=max_retries, base_delay=base_delay)
 

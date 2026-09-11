@@ -3,9 +3,16 @@
 export const name = "Systemic Robustness (Cascades & Orphan Cleanup)";
 export const id = "25-systemic-robustness";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "settings",
+    navLabel: "Settings",
+    markers: ["System Status", "Settings"],
+    screenshot: "25-settings-view",
+  });
 
   // ── 1. Create a TEMPORARY project for cascade deletion testing ──
   // NOTE: This scenario intentionally creates and deletes its own project

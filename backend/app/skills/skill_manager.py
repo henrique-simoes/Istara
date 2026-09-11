@@ -15,13 +15,12 @@ from __future__ import annotations
 import json
 import logging
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.config import settings
 from app.core.checkpoint import atomic_write
 from app.skills.skill_creation import SkillCreationMixin
 from app.skills.skill_models import (
-    SKILLS_DIR,
     SOURCE_SKILLS_DIR,
     SkillCreationProposal,
     SkillDefinition,
@@ -43,7 +42,9 @@ class SkillManager(SkillUsageMixin, SkillProposalMixin, SkillCreationMixin):
         self._definitions: dict[str, SkillDefinition] = {}
         self._proposals: list[SkillUpdateProposal] = []
         self._creation_proposals: list[SkillCreationProposal] = []
-        self._usage_stats: dict[str, dict] = {}  # skill_name → {executions, successes, failures, avg_quality}
+        self._usage_stats: dict[
+            str, dict
+        ] = {}  # skill_name → {executions, successes, failures, avg_quality}
         runtime_meta_dir = runtime_skills_dir()
         self._proposals_file = runtime_meta_dir / "_proposals.json"
         self._creation_proposals_file = runtime_meta_dir / "_creation_proposals.json"
@@ -63,8 +64,8 @@ class SkillManager(SkillUsageMixin, SkillProposalMixin, SkillCreationMixin):
             if not directory.exists():
                 continue
             for path in sorted(directory.glob("*.json")):
-                if path.name.startswith("_"):
-                    continue  # Skip meta files
+                if path.name.startswith(("_", "._")):
+                    continue  # Skip product meta files and macOS AppleDouble sidecars
                 try:
                     defn = SkillDefinition(path)
                     self._definitions[defn.name] = defn
@@ -85,9 +86,15 @@ class SkillManager(SkillUsageMixin, SkillProposalMixin, SkillCreationMixin):
                 data = json.loads(self._proposals_file.read_text())
                 self._proposals = []
                 for p in data:
-                    prop = SkillUpdateProposal(p["skill_name"], p["field"], p.get("current_value", ""),
-                                                p.get("proposed_value", ""), p["reason"], p.get("confidence", 0.5),
-                                                project_id=p.get("project_id", ""))
+                    prop = SkillUpdateProposal(
+                        p["skill_name"],
+                        p["field"],
+                        p.get("current_value", ""),
+                        p.get("proposed_value", ""),
+                        p["reason"],
+                        p.get("confidence", 0.5),
+                        project_id=p.get("project_id", ""),
+                    )
                     prop.id = p["id"]
                     prop.status = p["status"]
                     prop.created_at = p["created_at"]
@@ -140,9 +147,12 @@ class SkillManager(SkillUsageMixin, SkillProposalMixin, SkillCreationMixin):
         name = data["name"]
         data.setdefault("version", "1.0.0")
         data.setdefault("enabled", True)
-        data.setdefault("created_at", datetime.now(timezone.utc).isoformat())
-        data["updated_at"] = datetime.now(timezone.utc).isoformat()
-        data.setdefault("changelog", [{"version": "1.0.0", "date": data["created_at"], "changes": "Initial creation"}])
+        data.setdefault("created_at", datetime.now(UTC).isoformat())
+        data["updated_at"] = datetime.now(UTC).isoformat()
+        data.setdefault(
+            "changelog",
+            [{"version": "1.0.0", "date": data["created_at"], "changes": "Initial creation"}],
+        )
 
         source_write = bool(data.pop("_source", False))
         path = writeable_skill_path(name, source=source_write)
@@ -169,15 +179,17 @@ class SkillManager(SkillUsageMixin, SkillProposalMixin, SkillCreationMixin):
         # Update data
         defn.data.update(updates)
         defn.data["version"] = new_version
-        defn.data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        defn.data["updated_at"] = datetime.now(UTC).isoformat()
 
         # Add changelog
         changelog = defn.data.setdefault("changelog", [])
-        changelog.append({
-            "version": new_version,
-            "date": defn.data["updated_at"],
-            "changes": changelog_entry or f"Updated fields: {', '.join(updates.keys())}",
-        })
+        changelog.append(
+            {
+                "version": new_version,
+                "date": defn.data["updated_at"],
+                "changes": changelog_entry or f"Updated fields: {', '.join(updates.keys())}",
+            }
+        )
 
         path = defn.path
         if not source_write and defn.path.is_relative_to(SOURCE_SKILLS_DIR):
@@ -213,8 +225,10 @@ class SkillManager(SkillUsageMixin, SkillProposalMixin, SkillCreationMixin):
 
     def toggle_skill(self, name: str, enabled: bool) -> SkillDefinition:
         """Enable or disable a skill."""
-        return self.update_skill(name, {"enabled": enabled},
-                                  f"{'Enabled' if enabled else 'Disabled'} skill")
+        return self.update_skill(
+            name, {"enabled": enabled}, f"{'Enabled' if enabled else 'Disabled'} skill"
+        )
+
 
 # Singleton
 skill_manager = SkillManager()

@@ -8,6 +8,22 @@
 export const name = "Documents System";
 export const id = "29-documents-system";
 
+/**
+ * Resolve the folder used by the external-folder simulation.
+ *
+ * The normal lane remains isolated in a per-run temporary directory. A
+ * disposable container lane may opt into a path mounted into both the runner
+ * and backend (for example `/app/data/simulation-shared`) so the real backend
+ * can observe the file. The opt-in is explicit and never changes production
+ * folder-link behavior.
+ */
+export function resolveLinkedFolderPath({ configuredPath = "", tempDir = "", now = Date.now() } = {}) {
+  const sharedPath = String(configuredPath || "").trim();
+  if (sharedPath) return { path: sharedPath, shared: true };
+  const root = tempDir || "/tmp";
+  return { path: `${root.replace(/\/$/, "")}/istara-test-${now}`, shared: false };
+}
+
 export async function run(ctx) {
   const { api, page, screenshot } = ctx;
   const checks = [];
@@ -250,14 +266,22 @@ export async function run(ctx) {
   // 14b. Sync documents from linked external folder (watch_folder_path)
   // ──────────────────────────────────────────────────────────────────
   let linkedFolderPath;
+  let externalFileName;
+  let linkedFolderShared = false;
   try {
     const fs = await import("fs");
     const os = await import("os");
     const path = await import("path");
 
-    linkedFolderPath = path.join(os.tmpdir(), `istara-test-${Date.now()}`);
+    const folderSpec = resolveLinkedFolderPath({
+      configuredPath: process.env.ISTARA_SIM_SHARED_FOLDER,
+      tempDir: os.tmpdir(),
+      now: Date.now(),
+    });
+    linkedFolderPath = folderSpec.path;
+    linkedFolderShared = folderSpec.shared;
     fs.mkdirSync(linkedFolderPath, { recursive: true });
-    const externalFileName = `external-test-${Date.now()}.txt`;
+    externalFileName = `external-test-${Date.now()}.txt`;
     fs.writeFileSync(path.join(linkedFolderPath, externalFileName), "External folder test content");
 
     const linkRes = await api.post(`/api/projects/${projectId}/link-folder`, { folder_path: linkedFolderPath });
@@ -282,13 +306,22 @@ export async function run(ctx) {
 
     // Cleanup: unlink folder
     await api.post(`/api/projects/${projectId}/unlink-folder`, {});
-    fs.rmSync(linkedFolderPath, { recursive: true, force: true });
+    if (linkedFolderShared) {
+      fs.rmSync(path.join(linkedFolderPath, externalFileName), { force: true });
+    } else {
+      fs.rmSync(linkedFolderPath, { recursive: true, force: true });
+    }
   } catch (e) {
     check(14, "Sync finds files in linked external folder", false, e.message);
     if (linkedFolderPath) {
       try {
         const fs = await import("fs");
+      if (linkedFolderShared) {
+        const path = await import("path");
+        fs.rmSync(path.join(linkedFolderPath, externalFileName || ""), { force: true });
+      } else {
         fs.rmSync(linkedFolderPath, { recursive: true, force: true });
+      }
       } catch (_) {}
     }
   }
@@ -349,7 +382,21 @@ export async function run(ctx) {
   try {
     // Navigate fresh to the app
     await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded", timeout: 10000 });
+    await page.setViewportSize({ width: 1280, height: 800 }).catch(() => {});
     await page.waitForTimeout(2000);
+    // Dismiss any modal/overlay if visible
+    const dismissCandidates = [
+      'button[aria-label*="Close"]',
+      'button[aria-label*="Dismiss"]',
+      'button:has-text("Skip")',
+      'button:has-text("Got it")',
+    ];
+    for (const sel of dismissCandidates) {
+      const el = page.locator(sel).first();
+      if (await el.isVisible({ timeout: 200 }).catch(() => false)) {
+        await el.click().catch(() => {});
+      }
+    }
     // The sidebar is only visible on lg+ (1280px viewport in test runner)
     const docsBtn = await page.$('button[aria-label="Documents"]');
     check(19, "Documents menu appears in sidebar",
@@ -373,9 +420,7 @@ export async function run(ctx) {
         `heading="${heading}"`);
     } else {
       // Fallback: use keyboard shortcut
-      await page.keyboard.down("Meta");
-      await page.keyboard.press("5");
-      await page.keyboard.up("Meta");
+      await page.keyboard.press("ControlOrMeta+5");
       await page.waitForTimeout(2000);
       const heading = await page.$eval("h2", el => el.textContent).catch(() => "");
       check(20, "Documents view loads on navigation",
@@ -522,7 +567,7 @@ export async function run(ctx) {
       source: "external",
     });
     // Delete it
-    const delRes = await fetch(`http://localhost:8000/api/documents/${tempDoc.id}?${projectQuery}`, { method: "DELETE", headers: api._headers() });
+    const delRes = await api.delete(`/api/documents/${tempDoc.id}?${projectQuery}`);
     // Verify it's gone
     let gone = false;
     try {
@@ -550,9 +595,7 @@ export async function run(ctx) {
       await page.waitForTimeout(500);
     }
     // Press Cmd+5 to go to Documents
-    await page.keyboard.down("Meta");
-    await page.keyboard.press("5");
-    await page.keyboard.up("Meta");
+    await page.keyboard.press("ControlOrMeta+5");
     await page.waitForTimeout(1500);
     const heading = await page.$eval("h2", el => el.textContent).catch(() => "");
     check(25, "Cmd+5 keyboard shortcut opens Documents view",

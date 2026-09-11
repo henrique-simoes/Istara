@@ -1,0 +1,56 @@
+[
+  {
+    "file": "dashscope-governed-custom__qwen3.7-plus__off.json",
+    "pi_provider": "dashscope",
+    "model": "qwen3.7-plus",
+    "level": "off"
+  },
+  {
+    "file": "dashscope-governed-custom__qwen3.7-plus__low.json",
+    "pi_provider": "dashscope",
+    "model": "qwen3.7-plus",
+    "level": "low"
+  },
+  {
+    "file": "dashscope-governed-custom__qwen3.7-plus__high.json",
+    "pi_provider": "dashscope",
+    "model": "qwen3.7-plus",
+    "level": "high"
+  },
+  {
+    "file": "dashscope-governed-custom__qwen3.7-plus__xhigh.json",
+    "pi_provider": "dashscope",
+    "model": "qwen3.7-plus",
+    "level": "xhigh"
+  },
+  {
+    "file": "dashscope-governed-custom__qwen3.7-plus__max.json",
+    "pi_provider": "dashscope",
+    "model": "qwen3.7-plus",
+    "level": "max"
+  },
+  {
+    "file": "unknown-proxy-gateway__some-model__low.json",
+    "pi_provider": "custom-gateway",
+    "model": "some-model",
+    "level": "low"
+  },
+  {
+    "file": "legacy-deepseek-identity__deepseek-chat__low.json",
+    "pi_provider": "deepseek",
+    "model": "deepseek-chat",
+    "level": "low"
+  },
+  {
+    "file": "legacy-deepseek-identity__deepseek-chat__high.json",
+    "pi_provider": "deepseek",
+    "model": "deepseek-chat",
+    "level": "high"
+  },
+  {
+    "file": "legacy-no-capability-binding__legacy-model__low.json",
+    "pi_provider": "test-provider",
+    "model": "legacy-model",
+    "level": "low"
+  }
+]

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 SELF_IMPROVEMENT_GOVERNANCE_CONTRACT = {
     "telemetry": "observation_only",
     "reasoning_bank": "process_memory_only",

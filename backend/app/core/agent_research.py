@@ -5,14 +5,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import math
-import re
 import uuid
-from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
 
-from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.websocket import (
@@ -20,25 +15,22 @@ from app.api.websocket import (
     broadcast_agent_thinking,
     broadcast_finding_created,
     broadcast_plan_progress,
-    broadcast_suggestion,
     broadcast_task_progress,
-    broadcast_task_queue_update,
 )
 from app.config import settings
-from app.core.agent_hooks import agent_hooks
-from app.core.checkpoint import complete_checkpoint, create_checkpoint, update_checkpoint
+from app.core.agent_models import (
+    ResearchPlan,
+    ResearchStep,
+    _resolve_project_folder,
+)
 from app.core.context_hierarchy import context_hierarchy
-from app.core.datetime_utils import ensure_utc
 from app.core.embeddings import TextChunk
-from app.core.ollama import ollama
 from app.core.rag import ingest_chunks, retrieve_context
-from app.core.resource_governor import governor
 from app.core.self_check import Confidence, verify_claim
 from app.core.self_improvement_policy import learning_signal_for_research_output
-from app.core.steering import steering_manager
 from app.core.telemetry import telemetry_recorder
 from app.core.token_counter import count_tokens
-from app.models.agent import Agent, AgentState
+from app.models.agent import AgentState
 from app.models.database import async_session
 from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.project import Project
@@ -47,14 +39,8 @@ from app.skills.base import SkillInput, SkillOutput
 from app.skills.registry import registry
 from app.skills.skill_manager import skill_manager
 
-from app.core.agent_models import (
-    _META_SKILL_SIMILARITY_THRESHOLD,
-    _resolve_project_folder,
-    ResearchPlan,
-    ResearchStep,
-)
-
 logger = logging.getLogger("app.core.agent")
+
 
 class AgentResearchMixin:
     async def _execute_general_task(self, db: AsyncSession, task: Task, project: Project) -> None:
@@ -102,125 +88,105 @@ class AgentResearchMixin:
             user_parts.append(f"Specific instructions: {task.instructions}")
         user_msg = "\n\n".join(user_parts)
 
-        # Tool-augmented ReAct loop — same tools available in chat
+        # Tool-augmented ReAct loop — same tools available in chat.
+        # W3 (L1): the loop transport migrated to the AgenticDispatcher
+        # (``spine.react``); prompt building, skill-candidate constraint, tool
+        # execution, and telemetry stay here. ONE Pi session per task.
         max_agent_tool_iterations = 5
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_msg},
-        ]
-        result = ""
-        tools_used = []
 
         try:
             from app.skills.system_actions import OPENAI_TOOLS, execute_tool
 
+            openai_tools = OPENAI_TOOLS
             use_tools = True
         except ImportError:
             use_tools = False
-            OPENAI_TOOLS = []
+            openai_tools = []
             execute_tool = None
 
         skill_tools = build_run_skill_tool(skill_candidates)
-        available_tools = [*OPENAI_TOOLS, *skill_tools]
+        available_tools = [*openai_tools, *skill_tools]
         candidate_by_name = {candidate.name: candidate for candidate in skill_candidates}
 
-        for iteration in range(max_agent_tool_iterations + 1):
-            if (use_tools or skill_tools) and iteration < max_agent_tool_iterations:
-                response = await ollama.chat(messages=messages, tools=available_tools)
-            else:
-                response = await ollama.chat(messages=messages)
+        tool_names = [t.get("function", {}).get("name", "") for t in available_tools]
+        tool_names = [name for name in tool_names if name]
+        # Per-run dynamic tools for the Pi path (master plan §5.3): the ranked
+        # run_skill schema is sent with the session catalog; the Python-side
+        # allowlist (tool_names) stays the authority on both engines.
+        extra_tools = [
+            {
+                "name": t.get("function", {}).get("name", ""),
+                "description": t.get("function", {}).get("description", ""),
+                "parameters": t.get("function", {}).get("parameters", {}),
+            }
+            for t in skill_tools
+        ]
 
-            msg = response.get("message", {})
-            content = msg.get("content", "")
-            tool_calls = msg.get("tool_calls", [])
-
-            if tool_calls and iteration < max_agent_tool_iterations and use_tools:
-                # Append assistant message with tool calls
-                messages.append(
-                    {"role": "assistant", "content": content or "", "tool_calls": tool_calls}
+        async def _react_tool_executor(tool_name, tool_args, _project_id, _agent_id):
+            # Tool-call arguments arrive pre-parsed from the engine; record the
+            # parse telemetry the manual loop recorded per call.
+            asyncio.create_task(
+                telemetry_recorder.record_json_parse(
+                    trace_id=trace_id,
+                    model_name="",  # Model name not available at this scope
+                    success=True,
+                    agent_id=self._agent_id,
+                    project_id=project.id,
                 )
-                for tc in tool_calls:
-                    fn = tc.get("function", {})
-                    tool_name = fn.get("name", "")
-                    try:
-                        tool_args = (
-                            json.loads(fn.get("arguments", "{}"))
-                            if isinstance(fn.get("arguments"), str)
-                            else fn.get("arguments", {})
-                        )
-                        # Record successful JSON parse for telemetry tracking
-                        asyncio.create_task(
-                            telemetry_recorder.record_json_parse(
-                                trace_id=trace_id,
-                                model_name="",  # Model name not available at this scope
-                                success=True,
-                                agent_id=self._agent_id,
-                                project_id=project.id,
-                            )
-                        )
-                    except (json.JSONDecodeError, TypeError) as e:
-                        tool_args = {}
-                        # Record failed JSON parse for telemetry tracking
-                        asyncio.create_task(
-                            telemetry_recorder.record_json_parse(
-                                trace_id=trace_id,
-                                model_name="",
-                                success=False,
-                                error_type="JSONDecodeError",
-                                error_message=str(e)[:200],
-                                agent_id=self._agent_id,
-                                project_id=project.id,
-                            )
-                        )
-                    tools_used.append(tool_name)
-                    logger.info(
-                        f"Agent tool call [{iteration}]: {tool_name}({list(tool_args.keys())})"
+            )
+            logger.info(f"Agent tool call: {tool_name}({list((tool_args or {}).keys())})")
+            if tool_name == "run_skill":
+                return await self._execute_react_skill_tool(
+                    db=db,
+                    task=task,
+                    project=project,
+                    params=tool_args,
+                    candidate_by_name=candidate_by_name,
+                    trace_id=trace_id,
+                    rag_context=context,
+                )
+            if execute_tool is not None:
+                started = datetime.now(UTC)
+                tool_result = await execute_tool(tool_name, tool_args, project.id, self._agent_id)
+                duration_ms = (datetime.now(UTC) - started).total_seconds() * 1000
+                asyncio.create_task(
+                    telemetry_recorder.record_span(
+                        trace_id=trace_id,
+                        operation="tool_call",
+                        tool_name=tool_name,
+                        tool_success=bool(
+                            isinstance(tool_result, dict) and tool_result.get("success", True)
+                        ),
+                        tool_duration_ms=duration_ms,
+                        agent_id=self._agent_id,
+                        project_id=project.id,
+                        task_id=task.id,
                     )
-                    if tool_name == "run_skill":
-                        tool_result = await self._execute_react_skill_tool(
-                            db=db,
-                            task=task,
-                            project=project,
-                            params=tool_args,
-                            candidate_by_name=candidate_by_name,
-                            trace_id=trace_id,
-                            rag_context=context,
-                        )
-                    elif execute_tool is not None:
-                        started = datetime.now(UTC)
-                        tool_result = await execute_tool(
-                            tool_name, tool_args, project.id, self._agent_id
-                        )
-                        duration_ms = (datetime.now(UTC) - started).total_seconds() * 1000
-                        asyncio.create_task(
-                            telemetry_recorder.record_span(
-                                trace_id=trace_id,
-                                operation="tool_call",
-                                tool_name=tool_name,
-                                tool_success=bool(
-                                    isinstance(tool_result, dict)
-                                    and tool_result.get("success", True)
-                                ),
-                                tool_duration_ms=duration_ms,
-                                agent_id=self._agent_id,
-                                project_id=project.id,
-                                task_id=task.id,
-                            )
-                        )
-                    else:
-                        tool_result = {"success": False, "error": "Tool executor unavailable"}
-                    messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tc.get("id", f"call_{iteration}"),
-                            "content": json.dumps(tool_result)
-                            if isinstance(tool_result, dict)
-                            else str(tool_result),
-                        }
-                    )
-            else:
-                result = content
-                break
+                )
+                return tool_result
+            return {"success": False, "error": "Tool executor unavailable"}
+
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
+        outcome = await agentic.react(
+            purpose="spine.react",
+            project_id=project.id,
+            agent_id=self._agent_id,
+            session_key=f"task:{task.id}",
+            system=system_prompt,
+            messages=[],
+            user_text=user_msg,
+            tool_executor=_react_tool_executor if (use_tools or skill_tools) else None,
+            tool_names=tool_names,
+            tools=available_tools or None,
+            extra_tools=extra_tools or None,
+            params=TurnParams(max_turns=max_agent_tool_iterations),
+            task_id=task.id,
+            spine_phase="execution",
+        )
+        result = outcome.text
+        tools_used = [tc.get("tool", "") for tc in outcome.tool_calls]
 
         # Log tool usage
         if tools_used:
@@ -240,14 +206,30 @@ class AgentResearchMixin:
                 "General agent response was too short or empty.",
             )
             await db.commit()
-            await broadcast_task_progress(task.id, 1.0, "Verification failed: response too short")
+            await broadcast_task_progress(
+                task.id,
+                1.0,
+                "Verification failed: response too short",
+                outcome="verification_failed",
+                project_id=task.project_id,
+            )
             await self._persist_agent_state(AgentState.IDLE)
-            await broadcast_agent_status("warning", f"Needs attention: {task.title}", project_id=task.project_id)
+            await broadcast_agent_status(
+                "warning", f"Needs attention: {task.title}", project_id=task.project_id
+            )
         else:
             await self._mark_task_ready_for_review(db, task, f"{tool_summary}{result}")
-            await broadcast_task_progress(task.id, 1.0, "Complete — ready for review.")
+            await broadcast_task_progress(
+                task.id,
+                1.0,
+                "Complete — ready for review.",
+                outcome="ready_for_review",
+                project_id=task.project_id,
+            )
             await self._persist_agent_state(AgentState.IDLE)
-            await broadcast_agent_status("idle", f"Completed: {task.title}", project_id=task.project_id)
+            await broadcast_agent_status(
+                "idle", f"Completed: {task.title}", project_id=task.project_id
+            )
 
     async def _execute_react_skill_tool(
         self,
@@ -273,7 +255,10 @@ class AgentResearchMixin:
             }
 
         if not await self._check_agent_skill_acl(task.agent_id, skill_name):
-            return {"success": False, "error": f"Skill '{skill_name}' is not allowed for this agent."}
+            return {
+                "success": False,
+                "error": f"Skill '{skill_name}' is not allowed for this agent.",
+            }
 
         skill = registry.get(skill_name)
         if not skill:
@@ -401,10 +386,6 @@ class AgentResearchMixin:
                 format_candidate_skill_context,
                 rank_skill_candidates,
             )
-            from app.core.llm_schema_adapter import (
-                openai_json_schema_response_format,
-                parse_json_object,
-            )
 
             candidates = await rank_skill_candidates(
                 task=task,
@@ -453,11 +434,6 @@ class AgentResearchMixin:
                 "required": ["steps"],
                 "additionalProperties": False,
             }
-            response_format = openai_json_schema_response_format(
-                name="istara_research_plan",
-                schema=step_schema,
-                strict=True,
-            )
             plan_prompt = (
                 "You are a research planning agent. Decompose this task into 2-5 "
                 "concrete steps.\n\n"
@@ -475,21 +451,33 @@ class AgentResearchMixin:
                 "Respond only with the attached JSON schema. "
                 'If this is a simple task that doesn\'t need decomposition, respond: {"steps": []}'
             )
-            response = await ollama.chat(
+            # W3 (L2): structured plan call through the AgenticDispatcher
+            # (``spine.plan``); the same step schema drives both engines
+            # (forced-tool structured output on Pi, response_format on legacy).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.structured(
+                purpose="spine.plan",
+                project_id=project.id,
+                system=None,
                 messages=[{"role": "user", "content": plan_prompt}],
-                temperature=0.3,
-                response_format=response_format,
-                max_tokens=900,
-                min_context=(
-                    count_tokens(plan_prompt)
-                    + count_tokens(json.dumps(response_format, ensure_ascii=False))
-                    + 900
+                schema=step_schema,
+                params=TurnParams(
+                    temperature=0.3,
+                    max_tokens=900,
+                    min_context=(
+                        count_tokens(plan_prompt)
+                        + count_tokens(json.dumps(step_schema, ensure_ascii=False))
+                        + 900
+                    ),
+                    thinking_mode="off",
                 ),
-                thinking_mode="off",
+                task_id=task.id,
+                spine_phase="plan",
             )
-            content = response.get("message", {}).get("content", "")
-            logger.info(f"Research plan raw content: {content}")
-            data = parse_json_object(content)
+            data = outcome.value or None
+            logger.info(f"Research plan raw content: {outcome.text}")
             await telemetry_recorder.record_json_parse(
                 trace_id=uuid.uuid4().hex[:36],
                 model_name=getattr(self, "model_name", ""),
@@ -562,6 +550,7 @@ class AgentResearchMixin:
                     task.id,
                     0.2 + (0.6 * step_num / total_steps),
                     f"Running {parallel_count} steps in parallel...",
+                    project_id=task.project_id,
                 )
             else:
                 await broadcast_agent_thinking(
@@ -571,6 +560,7 @@ class AgentResearchMixin:
                     task.id,
                     0.2 + (0.6 * step_num / total_steps),
                     f"Step: {ready[0].description[:60]}",
+                    project_id=task.project_id,
                 )
 
             # Execute ready steps in parallel
@@ -610,10 +600,16 @@ class AgentResearchMixin:
         )
 
         await broadcast_task_progress(
-            task.id, 1.0, f"Plan complete — {len(plan.past_steps)} steps ({total_steps} planned)."
+            task.id,
+            1.0,
+            f"Plan complete — {len(plan.past_steps)} steps ({total_steps} planned).",
+            outcome="ready_for_review",
+            project_id=task.project_id,
         )
         await self._persist_agent_state(AgentState.IDLE)
-        await broadcast_agent_status("idle", f"Completed plan: {task.title}", project_id=task.project_id)
+        await broadcast_agent_status(
+            "idle", f"Completed plan: {task.title}", project_id=task.project_id
+        )
 
     async def _execute_single_step(
         self,
@@ -664,9 +660,17 @@ class AgentResearchMixin:
                 prev_context = "\n".join(
                     f"- {s.description}: {s.result[:200]}" for s in plan.past_steps if s.result
                 )
-                response = await ollama.chat(
+                # W3 (L3): skill-less plan step through the AgenticDispatcher
+                # (``spine.step_execute``); DAG-parallel callers fan out to
+                # parallel dispatcher calls exactly as before.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="spine.step_execute",
+                    project_id=project.id,
+                    system=system_prompt,
                     messages=[
-                        {"role": "system", "content": system_prompt},
                         {
                             "role": "user",
                             "content": (
@@ -674,9 +678,12 @@ class AgentResearchMixin:
                                 f"Context from previous steps:\n{prev_context}"
                             ),
                         },
-                    ]
+                    ],
+                    params=TurnParams(),
+                    task_id=task.id,
+                    spine_phase="execution",
                 )
-                step.result = response.get("message", {}).get("content", "")
+                step.result = outcome.text
             step.status = "completed"
         except TimeoutError:
             step.status = "failed"
@@ -693,7 +700,6 @@ class AgentResearchMixin:
         """Store visible candidate findings without bypassing the Research Spine."""
         output.mark_research_artifacts_candidate()
 
-        # === VALIDATION GATE: sanitize tags before storage ===
         for nugget_data in output.nuggets or []:
             tags = nugget_data.get("tags", [])
             if isinstance(tags, str):
@@ -701,16 +707,12 @@ class AgentResearchMixin:
                     tags = json.loads(tags)
                 except (json.JSONDecodeError, TypeError):
                     tags = []
-            # Filter empty/too-short tags (but keep ux-law: tags)
             tags = [t for t in tags if t and (len(t.strip()) >= 2 or t.startswith("ux-law:"))]
             nugget_data["tags"] = tags
 
-        # Determine base phase from skill (Double Diamond)
         skill = registry.get(task.skill_name) if task.skill_name else None
         skill_phase = skill.phase.value if skill else None
 
-        # Each finding type has a natural phase in the Atomic Research hierarchy.
-        # If the skill specifies a phase, use it; otherwise use the type's default.
         nugget_phase = skill_phase or "discover"
         fact_phase = skill_phase or "define"
         insight_phase = skill_phase or "define"
@@ -723,6 +725,10 @@ class AgentResearchMixin:
         created_recommendation_ids: list[str] = []
         created_evidence_unit_ids: list[str] = []
         finding_agent_id = task.agent_id or self.agent_id
+
+        from app.services.research_finding_links import (
+            persist_scoped_derivation_links as persist_links,
+        )  # noqa: E501,I001
 
         for nugget_data in output.nuggets:
             nid = str(uuid.uuid4())
@@ -774,14 +780,19 @@ class AgentResearchMixin:
                 or nugget_data.get("quote")
                 or ""
             ).strip()
-            has_exact_source_span = bool(source_document_id and source_location and exact_source_text)
+            has_exact_source_span = bool(
+                source_document_id and source_location and exact_source_text
+            )
             evidence_source_text = (
                 exact_source_text if has_exact_source_span else str(nugget_data.get("text", ""))
             )[:2000]
             units = []
             if evidence_source_text.strip():
                 try:
-                    from app.services.research_validity_service import persist_task_nugget_evidence_units
+                    from app.services.research_validity_service import (
+                        persist_task_nugget_evidence_units,
+                    )
+
                     units = await persist_task_nugget_evidence_units(
                         db,
                         project_id=project_id,
@@ -802,7 +813,8 @@ class AgentResearchMixin:
                             created_evidence_unit_ids.append(unit.id)
                     if units and not has_exact_source_span:
                         task.what_to_review = (
-                            "Generated findings are provisional: exact source document/span evidence is "
+                            "Generated findings are provisional: "
+                            "exact source document/span evidence is "
                             "required before governed coding can promote them."
                         )
                 except Exception as e:
@@ -811,7 +823,10 @@ class AgentResearchMixin:
             _reasoning = nugget_data.get("coding_reasoning", "")
             if _reasoning and isinstance(_enriched_tags, list) and _enriched_tags:
                 try:
-                    from app.services.research_validity_service import add_agent_initial_code_applications
+                    from app.services.research_validity_service import (
+                        add_agent_initial_code_applications,
+                    )
+
                     add_agent_initial_code_applications(
                         db,
                         project_id=project_id,
@@ -832,7 +847,17 @@ class AgentResearchMixin:
 
         for fact_data in output.facts:
             fid = str(uuid.uuid4())
-            linked_nuggets = fact_data.get("nugget_ids") or created_nugget_ids[-5:]
+            linked_nuggets = await persist_links(
+                db,
+                Nugget,
+                fact_data.get("nugget_ids"),
+                created_nugget_ids[-5:],
+                project_id,
+                task,
+                "fact",
+                fid,
+                "nugget",
+            )  # noqa: E501
             fact = Fact(
                 id=fid,
                 project_id=project_id,
@@ -847,7 +872,17 @@ class AgentResearchMixin:
 
         for insight_data in output.insights:
             iid = str(uuid.uuid4())
-            linked_facts = insight_data.get("fact_ids") or created_fact_ids[-3:]
+            linked_facts = await persist_links(
+                db,
+                Fact,
+                insight_data.get("fact_ids"),
+                created_fact_ids[-3:],
+                project_id,
+                task,
+                "insight",
+                iid,
+                "fact",
+            )  # noqa: E501
             insight = Insight(
                 id=iid,
                 project_id=project_id,
@@ -863,7 +898,17 @@ class AgentResearchMixin:
 
         for rec_data in output.recommendations:
             rid = str(uuid.uuid4())
-            linked_insights = rec_data.get("insight_ids") or created_insight_ids[-2:]
+            linked_insights = await persist_links(
+                db,
+                Insight,
+                rec_data.get("insight_ids"),
+                created_insight_ids[-2:],
+                project_id,
+                task,
+                "recommendation",
+                rid,
+                "insight",
+            )  # noqa: E501
             rec = Recommendation(
                 id=rid,
                 project_id=project_id,
@@ -892,7 +937,10 @@ class AgentResearchMixin:
         await db.commit()
         if created_evidence_unit_ids:
             try:
-                from app.services.research_validity_service import run_task_coding_run_and_mark_review
+                from app.services.research_validity_service import (
+                    run_task_coding_run_and_mark_review,
+                )
+
                 await run_task_coding_run_and_mark_review(
                     db,
                     task=task,
@@ -1059,19 +1107,37 @@ class AgentResearchMixin:
                 "Respond with EXACTLY one JSON object:\n"
                 '{"verified": true, "confidence": 0.85, "reason": "one sentence"}'
             )
-            response = await ollama.chat(
-                messages=[{"role": "user", "content": reflection_prompt}],
-                temperature=0.1,
-            )
-            content = response.get("message", {}).get("content", "")
-            # Extract JSON from response (model may wrap in markdown)
-            import re
+            # W3 (L5): reflection through the AgenticDispatcher (``spine.verify``)
+            # as a proper structured call — the regex-JSON extraction upgrades
+            # to a schema BOTH engines enforce (deliberate baseline improvement,
+            # master plan §8 W3).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-            json_match = re.search(r'\{[^{}]*"verified"[^{}]*\}', content)
-            if json_match:
-                result = json.loads(json_match.group())
-                verified = result.get("verified", True)
-                reason = result.get("reason", "LLM reflection passed")
+            reflection_schema = {
+                "type": "object",
+                "properties": {
+                    "verified": {"type": "boolean"},
+                    "confidence": {"type": "number"},
+                    "reason": {"type": "string"},
+                },
+                "required": ["verified", "confidence", "reason"],
+                "additionalProperties": False,
+            }
+            outcome = await agentic.structured(
+                purpose="spine.verify",
+                project_id=task.project_id,
+                system=None,
+                messages=[{"role": "user", "content": reflection_prompt}],
+                schema=reflection_schema,
+                params=TurnParams(temperature=0.1),
+                task_id=task.id,
+                spine_phase="review",
+            )
+            if outcome.status == "success" and outcome.value:
+                result = outcome.value
+                verified = bool(result.get("verified", True))
+                reason = str(result.get("reason") or "LLM reflection passed")
                 logger.info(
                     "LLM reflection: verified=%s, confidence=%s, reason=%s",
                     verified,
@@ -1079,7 +1145,7 @@ class AgentResearchMixin:
                     reason,
                 )
                 return verified, reason
-            # If no JSON found, trust heuristic result
+            # If no structured object came back, trust heuristic result
             return True, "LLM reflection returned non-JSON — heuristic passed"
         except Exception as e:
             logger.debug(f"LLM reflection failed ({e}), using heuristic")
@@ -1128,7 +1194,9 @@ class AgentResearchMixin:
                 company_context=project.company_context,
             )
 
-            await broadcast_agent_status("working", f"Running {skill.display_name}...", project_id=project_id)
+            await broadcast_agent_status(
+                "working", f"Running {skill.display_name}...", project_id=project_id
+            )
 
             try:
                 output = await skill.execute(skill_input)
@@ -1188,7 +1256,9 @@ class AgentResearchMixin:
                 )
 
                 if verified:
-                    await broadcast_agent_status("idle", f"Completed: {skill.display_name}", project_id=project_id)
+                    await broadcast_agent_status(
+                        "idle", f"Completed: {skill.display_name}", project_id=project_id
+                    )
                 else:
                     await broadcast_agent_status(
                         "warning",

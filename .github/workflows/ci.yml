@@ -1,40 +1,141 @@
 name: CI
 
+# W4 `ci-enforcement` redesign (master plan D.1-D.9, findings M-03/M-04/M-05/
+# M-06/M-13/M-15/M-18/M-20):
+#
+#   * One job per FAILURE DOMAIN, not per technology. No quality gate gates
+#     another quality gate: a red format check can no longer hide the test
+#     suite (M-06). The only retained edge between non-aggregator jobs is
+#     ui-journeys -> qa-contract-render (a stack that does not render cannot
+#     start).
+#   * Formatting, correctness lint, tests, mutation, builds, governance, QA
+#     contracts, and UI journeys each report independently; `release-gate`
+#     is a fail-closed aggregator that fails on failure, cancellation, and
+#     unexplained skip of any required job (D.1/D.9).
+#   * Required-check semantics live in the committed manifest
+#     `testing/required-checks.json` (M-20), contract-checked every run by
+#     `scripts/check_required_checks.py`. That manifest is the single source
+#     consumed VERBATIM by the owner-gated main branch-protection change
+#     (M-07) — agents never mutate repository settings; see
+#     `docs/promotion/branch-protection/`.
+#   * No CI job writes to any branch (M-13): governance is contents: read and
+#     the README badge sync moved to its own narrow workflow
+#     (`.github/workflows/badge-sync.yml`, main-only).
+#   * The ui-journeys lane is container-first (`docker-compose.qa.yml`
+#     `--profile ui`, loopback-only publication, synthetic data only) with
+#     honest not_runnable handling: a missing capability fails the job with a
+#     named reason and is recorded in the uploaded evidence — it is never
+#     silently skipped and never counted as a pass (D.8).
+
 on:
   push:
-    branches: [main, staging]
+    branches: [main, staging, testing]
   pull_request:
-    branches: [main, staging]
+    branches: [main, staging, testing]
+  schedule:
+    # Weekly full-graph run (D.3): catches runner-image/dependency rot and
+    # runs the widest proven journey set without lengthening PR latency.
+    - cron: "30 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  governance:
+  # ── Fast fail-closed hygiene (M-15/M-02) ─────────────────────────────────
+  hygiene:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Sync README version badges
-        if: github.event_name == 'push'
+      - name: Whitespace hygiene (git diff --check, blocking)
         run: |
-          VERSION=$(cat VERSION)
-          # English README
-          sed -i "s|version-[0-9][0-9.]*-brightgreen|version-${VERSION}-brightgreen|g" README.md
-          # Portuguese README
-          sed -i "s|versão-[0-9][0-9.]*-brightgreen|versão-${VERSION}-brightgreen|g" README.pt-BR.md
-          if [ -n "$(git diff -- README.md README.pt-BR.md)" ]; then
-            git add README.md README.pt-BR.md
-            git commit -m "ci: sync README version badges to ${VERSION} [skip ci]" || true
-            git push origin HEAD:${{ github.ref_name }} || echo "Push failed (token permissions)"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
           fi
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
+            BASE="$(git rev-parse origin/main)"
+          fi
+          git diff --check "$BASE..$HEAD" 2>/dev/null || git diff --check "$BASE..HEAD"
+        env:
+          HEAD: ${{ github.sha }}
+
+      - name: Public-quality audit (blocking, M-02)
+        run: python scripts/public_repo_quality_audit.py --check
+
+  # ── Fail-closed change classification (gates expensive jobs) ────────────
+  feature-obligations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Classify feature obligations (fail-closed)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          fi
+          python scripts/check_feature_obligations.py --base "$BASE" --head "$HEAD" \
+            --json-out artifacts/feature-obligations.json
+
+      - name: Validate QA capability declaration
+        run: python scripts/check_qa_capabilities.py
+
+      - name: Validate public workflow human-gate contract
+        run: python scripts/check_workflow_contracts.py
+
+      - name: Upload obligation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: istara-feature-obligations
+          path: artifacts/feature-obligations.json
+          if-no-files-found: ignore
+
+  # ── Governance (read-only — M-13; required-checks contract — M-20) ──────
+  governance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       - name: Check integrity
         run: python scripts/check_integrity.py
@@ -44,6 +145,9 @@ jobs:
 
       - name: Check test harness governance
         run: python scripts/check_test_harness.py
+
+      - name: Check required-checks manifest contract (M-20)
+        run: python scripts/check_required_checks.py
 
       - name: Check release security readiness
         run: python scripts/security_release_readiness.py
@@ -74,12 +178,13 @@ jobs:
           path: security/security_scorecard.json
           if-no-files-found: ignore
 
-  backend:
+  # ── Backend failure domains (independent — M-06) ─────────────────────────
+  backend-format:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: backend
-
     steps:
       - uses: actions/checkout@v4
 
@@ -88,29 +193,45 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Install the formatter at the exact project pin (M-11)
         run: |
-          pip install -e ".[dev]"
+          RUFF_PIN=$(python3 -c "import re;print(re.search(r'\"(ruff==[0-9.]+)\"', open('pyproject.toml').read()).group(1))")
+          echo "Installing $RUFF_PIN (pinned exactly to the version CI resolves)"
+          pip install "$RUFF_PIN"
+          ruff --version
 
-      - name: Compile governed release surfaces
-        run: python -m compileall -q app ../scripts/production_rehearsal.py ../scripts/check_ci_governance.py ../scripts/check_change_obligations.py ../scripts/check_integrity.py ../scripts/check_ruff_changed.py ../scripts/security_benchmark.py ../scripts/security_release_readiness.py ../scripts/check_test_harness.py ../scripts/run_backend_mutation.py
+      - name: Format check (blocking — its own job so it can never hide the test suite)
+        run: ruff format --check .
 
-      - name: Run production rehearsal
-        run: python ../scripts/production_rehearsal.py --json
+  backend-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Run test harness contract smoke tests
-        run: pytest ../tests/test_harness_config.py ../tests/test_agentic_eval_contract.py ../tests/test_harness_project_scope_contracts.py ../tests/test_marathon_config_integrity.py -q
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Run property-based contract tests
-        run: pytest ../tests/test_property_contracts.py -q
+      - name: Install ruff at the exact project pin (M-11)
+        run: |
+          RUFF_PIN=$(python3 -c "import re;print(re.search(r'\"(ruff==[0-9.]+)\"', open('pyproject.toml').read()).group(1))")
+          pip install "$RUFF_PIN"
+          ruff --version
 
-      - name: Run backend mutation gate
-        run: python ../scripts/run_backend_mutation.py
+      - name: Compile governed release surfaces (syntax-error class, blocking)
+        run: python -m compileall -q app ../scripts/production_rehearsal.py ../scripts/check_ci_governance.py ../scripts/check_change_obligations.py ../scripts/check_integrity.py ../scripts/check_ruff_changed.py ../scripts/check_required_checks.py ../scripts/security_benchmark.py ../scripts/security_release_readiness.py ../scripts/check_test_harness.py ../scripts/run_backend_mutation.py
 
-      - name: Run governed evolution regressions
-        run: pytest ../tests/test_improvement_governance.py ../tests/test_compute.py -q
+      - name: Repo-wide correctness lint (F821,F811,F822 — blocking; E999 retired in ruff 0.16 where syntax errors are always fatal, M-03)
+        run: ruff check . --select F821,F811,F822
 
-      - name: Strict lint for changed backend files
+      - name: Strict lint for changed backend files (blocking)
         run: |
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           if [ -z "$BASE_SHA" ]; then
@@ -119,23 +240,92 @@ jobs:
           HEAD_SHA="${{ github.sha }}"
           python ../scripts/check_ruff_changed.py --base "$BASE_SHA" --head "$HEAD_SHA"
 
-      - name: Lint
+      - name: Style backlog (advisory — documented burn-down; flip to blocking at zero, never by deleting rules, M-24)
         run: ruff check . --statistics
-        continue-on-error: true  # TODO: fix 1159 existing lint errors, then make blocking
+        continue-on-error: true # 378 backend + related root errors remain (manual classes: E501/E402/UP042/E712/N806/F841; ruff 0.15.12 offers no safe auto-fixes, --unsafe-fixes is forbidden). Drive down manually, then make blocking.
 
-      - name: Format check
-        run: ruff format --check .
-        continue-on-error: true  # TODO: fix 146 files needing reformat, then make blocking
-
-      - name: Test
-        run: pytest ../tests/ -v --tb=short
-
-  frontend:
+  backend-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Install pi-runtime worker dependencies
+        working-directory: pi-runtime
+        run: npm ci
+
+      # F-CI-R1-2: the full suite runs
+      # tests/pi_compat/test_bump_diff_proof.py, whose `verify` acceptance
+      # fails closed when EITHER bundled pi surface has no installed
+      # @earendil-works packages. Installing only pi-runtime made the
+      # full-suite step red on a surface-not-built gate failure; the gate is
+      # never weakened or skipped, so BOTH lockstep surfaces install here.
+      - name: Install labs/pi-replacement dependencies (pi diff-proof surface)
+        working-directory: labs/pi-replacement
+        run: npm ci
+
+      - name: Run production rehearsal
+        run: python ../scripts/production_rehearsal.py --json
+
+      - name: Run test harness contract smoke tests
+        run: pytest ../tests/test_harness_config.py ../tests/test_agentic_eval_contract.py ../tests/test_harness_project_scope_contracts.py ../tests/test_marathon_config_integrity.py -q
+
+      - name: Run QA contract tests (moved from the renamed qa-contract-render job — render proves parse, not behavior)
+        run: pytest ../tests/test_qa_stack_contract.py ../tests/test_qa_reset_seed.py ../tests/test_qa_artifacts.py ../tests/test_feature_obligations.py ../tests/test_qa_capabilities.py -q
+
+      - name: Run property-based contract tests
+        run: pytest ../tests/test_property_contracts.py -q
+
+      - name: Run governed evolution regressions
+        run: pytest ../tests/test_improvement_governance.py ../tests/test_compute.py -q
+
+      - name: Test (full backend suite)
+        run: pytest ../tests/ -v --tb=short -m "not live_llm"
+
+  backend-mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run backend mutation gate
+        run: python ../scripts/run_backend_mutation.py
+
+  # ── Frontend failure domains (independent — M-06) ────────────────────────
+  frontend-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
-
     steps:
       - uses: actions/checkout@v4
 
@@ -143,6 +333,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -150,21 +342,126 @@ jobs:
       - name: Lint
         run: npm run lint
 
+  frontend-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Type check
         run: npx tsc --noEmit
+
+  frontend-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Unit tests
         run: npm run test:unit
 
-      - name: Mutation tests
+  frontend-mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Mutation tests (blocking — thresholds never lowered, scope never shrunk, M-04/D.6)
         run: npm run test:mutation
+
+      - name: Record killed/survived/no-coverage triple (the composite score alone hid M-04's shape)
+        if: always()
+        run: |
+          if [ -f reports/mutation/mutation.json ]; then
+            node -e "
+              const r = require('./reports/mutation/mutation.json');
+              const status = r.status || {};
+              console.log('mutation triple: killed=' + (status.killed || 0) +
+                ' survived=' + (status.survived || 0) +
+                ' no-coverage=' + (status.noCoverage || 0) +
+                ' score=' + r.metrics?.mutationScore);
+            "
+          else
+            echo "mutation report missing — the blocking run must have failed"
+          fi
+
+      - name: Widened mutation scope (advisory-first — blocking only by explicit owner decision, M-04/D.6)
+        run: npm run test:mutation:wide
+        continue-on-error: true # advisory until the owner promotes the widened scope to blocking; the report is always uploaded
+
+      - name: Upload mutation reports (SHA-keyed)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: istara-frontend-mutation-${{ github.sha }}
+          path: frontend/reports/mutation/
+          if-no-files-found: ignore
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build
         run: npm run build
 
+  # ── JavaScript harnesses ──────────────────────────────────────────────────
   test-harness-js:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -189,12 +486,176 @@ jobs:
         working-directory: tests/real_user_benchmark
         run: npm run check
 
-  desktop:
+  # ── QA contracts: render (honestly named — parse only, M-05) ─────────────
+  qa-contract-render:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render QA compose profiles (contract, synthetic, audit, ui)
+        run: |
+          docker compose -f docker-compose.qa.yml --profile contract config --quiet
+          docker compose -f docker-compose.qa.yml --profile synthetic config --quiet
+          docker compose -f docker-compose.qa.yml --profile audit config --quiet
+          docker compose -f docker-compose.qa.yml --profile ui config --quiet
+
+  # ── Container-first browser lane (D.8/D.9 — defined in W4, executed in W5)
+  ui-journeys:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    needs: [qa-contract-render]
+    env:
+      QA_RUN_ID: ci-${{ github.run_id }}-${{ github.run_attempt }}
+      ISTARA_API_URL: http://127.0.0.1:8000
+      ISTARA_FRONTEND_URL: http://127.0.0.1:3000
+      QA_ADMIN_USERNAME: admin
+      QA_ADMIN_PASSWORD: qa-${{ github.run_id }}-synthetic
+      # Role/variant cells (82/83/84) need real researcher/viewer accounts:
+      # the compose lane interpolates TEAM_MODE from this variable and boots
+      # the deterministic first admin from QA_ADMIN_USERNAME/PASSWORD. The
+      # lane stays credential-free and loopback-only (remediation B5).
+      QA_TEAM_MODE: "true"
+      # Fixed-model pinning (run.mjs applyFixedTestModel) admits only models
+      # in the Pi catalog served by THIS stack. The contract lane serves the
+      # deterministic provider stub, whose chat model is QA_OLLAMA_MODEL
+      # (default istara-qa-contract-chat:latest in docker-compose.qa.yml) —
+      # the harness default (google/gemma-4-e4b) is not admitted there and
+      # fails the lane before the first scenario (W2 finding F-W2-1). Keep
+      # these two values in lockstep; the live profile sets its own target.
+      ISTARA_FIXED_LLM_TEST_MODEL: istara-qa-contract-chat:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify container runtime (fail closed with a named capability)
+        run: |
+          if ! docker info >/dev/null 2>&1; then
+            echo "not_runnable: docker-unavailable — the container-first browser lane requires a reachable Docker Engine" | tee not_runnable.txt
+            exit 1
+          fi
+
+      - name: Select journey scope (deterministic, recorded in the artifact)
+        run: |
+          SCOPE=smoke
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            # Pushes (testing is the promotion source), schedules, and dispatches
+            # run the full PROVEN set (D.4) — no convenience scoping on pushes.
+            SCOPE=full
+          elif [ "${{ github.event.pull_request.base.ref }}" = "main" ]; then
+            # PRs to main are never scoped (D.4).
+            SCOPE=full
+          fi
+          echo "UI_JOURNEYS_SCOPE=$SCOPE" >> "$GITHUB_ENV"
+
+      - name: Install lane dependencies and browser (before selection so importability can fail closed)
+        working-directory: tests/simulation
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Resolve journeys (registry bijection + importability, fail closed, D.8)
+        working-directory: tests/simulation
+        run: |
+          node --input-type=module -e '
+            import { readFileSync, writeFileSync, mkdirSync } from "fs";
+            import { scenarioFiles } from "./lib/scenario-registry.mjs";
+            import { resolveJourneySelection, explainSelection } from "./lib/journey-selection.mjs";
+            const smoke = JSON.parse(readFileSync("../../testing/ui-journeys.smoke.json", "utf8")).scenarios;
+            const extra = JSON.parse(readFileSync("../../testing/ui-journeys.proven-extra.json", "utf8")).scenarios;
+            // Importability is a release gate: a registered scenario that cannot
+            // be imported fails the lane BEFORE the QA stack starts — import
+            // failures never silently shrink the executable set (B1/W2.3).
+            const importFailures = [];
+            for (const id of scenarioFiles) {
+              try {
+                await import(`./scenarios/${id}.mjs`);
+              } catch (error) {
+                importFailures.push(`${id}: ${error.message}`);
+              }
+            }
+            const selection = resolveJourneySelection({
+              registered: scenarioFiles,
+              smoke,
+              extra,
+              scope: process.env.UI_JOURNEYS_SCOPE,
+            });
+            if (importFailures.length > 0 || selection.errors.length > 0) {
+              for (const failure of importFailures) {
+                console.error("not_runnable: scenario import failed — " + failure);
+              }
+              for (const error of selection.errors) {
+                console.error("not_runnable: " + error);
+              }
+              process.exit(1);
+            }
+            mkdirSync(".results", { recursive: true });
+            writeFileSync(
+              ".results/not-runnable-journeys.json",
+              JSON.stringify(
+                {
+                  recorded_at: new Date().toISOString(),
+                  scope: process.env.UI_JOURNEYS_SCOPE,
+                  registered_scenarios: selection.registeredCount,
+                  proven_scenarios: selection.provenCount,
+                  release_obligations_pending: selection.releaseObligationsPending,
+                  not_runnable: selection.notRunnable,
+                },
+                null,
+                2
+              )
+            );
+            console.log(explainSelection(selection));
+            writeFileSync(".results/selected-scenarios.txt", selection.selected.join(","));
+          '
+
+      - name: Start QA stack (loopback-only publication, unique project)
+        run: |
+          docker compose -f docker-compose.qa.yml --profile ui up -d --wait --quiet-pull
+
+      - name: Wait for QA frontend and API (fail closed with logs on timeout)
+        run: |
+          ok=0
+          for i in $(seq 1 60); do
+            if curl -fsS "$ISTARA_FRONTEND_URL" >/dev/null 2>&1 && curl -fsS "$ISTARA_API_URL/api/health" >/dev/null 2>&1; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          if [ "$ok" != "1" ]; then
+            echo "not_runnable: qa-stack-unhealthy — the QA stack did not become healthy in time" | tee not_runnable.txt
+            docker compose -f docker-compose.qa.yml --profile ui logs --tail=200 || true
+            exit 1
+          fi
+
+      - name: Run container-first UI journeys (fail closed on any failed check)
+        working-directory: tests/simulation
+        env:
+          ADMIN_USERNAME: ${{ env.QA_ADMIN_USERNAME }}
+          ADMIN_PASSWORD: ${{ env.QA_ADMIN_PASSWORD }}
+        run: node run.mjs --skip-eval --scenarios "$(cat .results/selected-scenarios.txt)"
+
+      - name: Tear down QA stack
+        if: always()
+        run: docker compose -f docker-compose.qa.yml --profile ui down -v --remove-orphans || true
+
+      - name: Upload journey evidence (SHA-keyed)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: istara-ui-journeys-${{ github.sha }}
+          path: |
+            tests/simulation/.results/
+            not_runnable.txt
+          if-no-files-found: ignore
+
+  # ── Desktop: honest status (M-18 — required since the 2026-09-10 owner decision)
+  desktop-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: desktop/src-tauri
-
     steps:
       - uses: actions/checkout@v4
 
@@ -211,6 +672,73 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev
 
-      - name: Check Rust compiles
+      - name: Check Rust compiles (honest status — no continue-on-error; required since the 2026-09-10 owner decision, M-18)
         run: cargo check
-        continue-on-error: true  # Dependencies may require system libs not available in CI
+
+  # ── Fail-closed aggregator (D.1/D.9) ─────────────────────────────────────
+  # Fails on failure, cancellation, and unexplained skip of any required job.
+  # Its `needs` list is contract-checked against testing/required-checks.json
+  # by scripts/check_required_checks.py every run (M-20).
+  release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: always()
+    needs:
+      - hygiene
+      - feature-obligations
+      - governance
+      - backend-format
+      - backend-lint
+      - backend-test
+      - backend-mutation
+      - frontend-lint
+      - frontend-typecheck
+      - frontend-unit
+      - frontend-mutation
+      - frontend-build
+      - test-harness-js
+      - qa-contract-render
+      - ui-journeys
+      - desktop-check
+    steps:
+      - name: Aggregate required-job results (fail closed)
+        run: |
+          mkdir -p artifacts
+          cat > artifacts/release-gate.json <<JSON
+          {
+            "run_id": "${{ github.run_id }}",
+            "attempt": "${{ github.run_attempt }}",
+            "sha": "${{ github.sha }}",
+            "ref": "${{ github.ref }}",
+            "event": "${{ github.event_name }}",
+            "needs": ${{ toJson(needs) }}
+          }
+          JSON
+          python3 - <<'PY'
+          import json, sys
+
+          gate = json.load(open("artifacts/release-gate.json"))
+          bad = {
+              name: entry.get("result")
+              for name, entry in gate["needs"].items()
+              if entry.get("result") != "success"
+          }
+          if bad:
+              print("release-gate: FAIL — failure, cancellation, or unexplained skip in required jobs:")
+              print(json.dumps(bad, indent=2))
+              sys.exit(1)
+          print(
+              "release-gate: PASS — all "
+              + str(len(gate["needs"]))
+              + " required jobs succeeded for "
+              + gate["sha"]
+          )
+          PY
+
+      - name: Upload release-gate evidence (SHA-keyed)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: istara-release-gate-${{ github.sha }}
+          path: artifacts/release-gate.json
+          if-no-files-found: ignore

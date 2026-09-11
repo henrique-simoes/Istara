@@ -41,6 +41,7 @@ async def _seed_project(name: str = "Business Logic Project") -> Project:
 # Project business logic
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_project_create_and_retrieve(auth_headers):
     """Creating a project and retrieving it returns the same data."""
@@ -83,17 +84,22 @@ async def test_project_pause_and_resume(auth_headers):
             project_id = project["id"]
 
             # Pause it
-            response = await ac.post(f"/api/projects/{project_id}/pause", headers=auth_headers)
+            response = await ac.post(
+                f"/api/projects/{project_id}/pause", headers=auth_headers
+            )
             assert response.status_code in (200, 404)
 
             # Resume it
-            response = await ac.post(f"/api/projects/{project_id}/resume", headers=auth_headers)
+            response = await ac.post(
+                f"/api/projects/{project_id}/resume", headers=auth_headers
+            )
             assert response.status_code in (200, 404)
 
 
 # ---------------------------------------------------------------------------
 # Task business logic
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_task_create_and_list(auth_headers):
@@ -103,7 +109,9 @@ async def test_task_create_and_list(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Get initial count
-        response = await ac.get(f"/api/tasks?project_id={project.id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/tasks?project_id={project.id}", headers=auth_headers
+        )
         assert response.status_code == 200
 
         # Create a task
@@ -118,7 +126,9 @@ async def test_task_create_and_list(auth_headers):
         )
         assert response.status_code == 201
 
-        listed = await ac.get(f"/api/tasks?project_id={project.id}", headers=auth_headers)
+        listed = await ac.get(
+            f"/api/tasks?project_id={project.id}", headers=auth_headers
+        )
         assert listed.status_code == 200
         assert any(task["id"] == response.json()["id"] for task in listed.json())
 
@@ -127,6 +137,7 @@ async def test_task_create_and_list(auth_headers):
 # Skills business logic
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_skills_have_health_data(auth_headers):
     """Skills health endpoint returns structured data."""
@@ -134,7 +145,9 @@ async def test_skills_have_health_data(auth_headers):
     project = await _seed_project("Skills Health")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/skills/health/all?project_id={project.id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/skills/health/all?project_id={project.id}", headers=auth_headers
+        )
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, dict)
@@ -144,6 +157,7 @@ async def test_skills_have_health_data(auth_headers):
 # Laws of UX business logic
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_laws_have_compliance_data(auth_headers):
     """UX Laws compliance endpoint returns structured data."""
@@ -151,7 +165,9 @@ async def test_laws_have_compliance_data(auth_headers):
     project = await _seed_project("Business Laws")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/laws/compliance/{project.id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/laws/compliance/{project.id}", headers=auth_headers
+        )
     assert response.status_code == 200
     body = response.json()
     assert "evaluated" in body
@@ -161,6 +177,7 @@ async def test_laws_have_compliance_data(auth_headers):
 # ---------------------------------------------------------------------------
 # Backup business logic
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_backup_estimate_returns_data(auth_headers):
@@ -177,6 +194,7 @@ async def test_backup_estimate_returns_data(auth_headers):
 # Meta-agent business logic
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_meta_agent_variants_returns_list(auth_headers):
     """Meta-agent variants endpoint returns a list."""
@@ -184,7 +202,10 @@ async def test_meta_agent_variants_returns_list(auth_headers):
     project = await _seed_project("Meta Variants")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/meta-hyperagent/variants?project_id={project.id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/meta-hyperagent/variants?project_id={project.id}",
+            headers=auth_headers,
+        )
     assert response.status_code == 200
     body = response.json()
     assert body["project_id"] == project.id
@@ -195,6 +216,7 @@ async def test_meta_agent_variants_returns_list(auth_headers):
 # Compute business logic
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_compute_stats_returns_structured_data(auth_headers):
     """Compute stats returns structured data."""
@@ -202,7 +224,9 @@ async def test_compute_stats_returns_structured_data(auth_headers):
     project = await _seed_project("Business Compute")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/compute/stats?project_id={project.id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/compute/stats?project_id={project.id}", headers=auth_headers
+        )
         assert response.status_code == 200
         body = response.json()
         assert "nodes" in body
@@ -212,6 +236,7 @@ async def test_compute_stats_returns_structured_data(auth_headers):
 # ---------------------------------------------------------------------------
 # Settings business logic
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_settings_models_returns_model_list(auth_headers):

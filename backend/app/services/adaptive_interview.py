@@ -9,10 +9,7 @@ Conversation states: intro -> questions -> probing -> wrap_up -> completed
 import json
 import logging
 import time
-from datetime import datetime, timezone
 from enum import Enum
-
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.channel_conversation import ChannelConversation
 from app.models.research_deployment import ResearchDeployment
@@ -20,7 +17,7 @@ from app.models.research_deployment import ResearchDeployment
 logger = logging.getLogger(__name__)
 
 
-class ConversationState(str, Enum):
+class ConversationState(str, Enum):  # noqa: UP042 -- StrEnum would change str(member)
     """State machine states for a research conversation."""
 
     INTRO = "intro"
@@ -101,9 +98,7 @@ async def get_next_action(
         )
 
     if current_state == ConversationState.PROBING:
-        return await _handle_probing(
-            conversation, deployment, config, metadata, last_message
-        )
+        return await _handle_probing(conversation, deployment, config, metadata, last_message)
 
     if current_state == ConversationState.WRAP_UP:
         return _handle_wrap_up(config, metadata)
@@ -291,8 +286,6 @@ async def generate_clarification(
     deployment_type = config.get("deployment_type", "interview")
 
     try:
-        from app.core.llm_router import llm_router
-
         prompt = (
             f"You are an expert UX researcher conducting a {deployment_type}.\n"
             f'The participant just said: "{response}"\n'
@@ -305,11 +298,19 @@ async def generate_clarification(
             "Only output the question text, nothing else."
         )
 
-        result = await llm_router.chat(
-            [{"role": "user", "content": prompt}],
-            project_id=project_id,
+        # W5: the clarification probe goes through the AgenticDispatcher
+        # (``channel.clarify``).
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
+        outcome = await agentic.completion(
+            purpose="channel.clarify",
+            project_id=project_id or "",
+            system=None,
+            messages=[{"role": "user", "content": prompt}],
+            params=TurnParams(),
         )
-        content = result.get("content", "").strip()
+        content = outcome.text.strip()
         if content and content.upper() != "NONE":
             return content
     except Exception as e:
@@ -351,8 +352,6 @@ async def _is_saturated(
     """
     if config.get("saturation_check_llm", False):
         try:
-            from app.core.llm_router import llm_router
-
             prompt = (
                 "A research participant just gave this response to a follow-up probe:\n"
                 f'"{response}"\n\n'
@@ -360,11 +359,19 @@ async def _is_saturated(
                 "participant repeating themselves / giving minimal answers?\n"
                 'Respond with exactly "SATURATED" or "NOT_SATURATED".'
             )
-            result = await llm_router.chat(
-                [{"role": "user", "content": prompt}],
-                project_id=project_id,
+            # W5: the saturation judgment goes through the AgenticDispatcher
+            # (``channel.saturation``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="channel.saturation",
+                project_id=project_id or "",
+                system=None,
+                messages=[{"role": "user", "content": prompt}],
+                params=TurnParams(),
             )
-            content = result.get("content", "").strip().upper()
+            content = outcome.text.strip().upper()
             return "SATURATED" in content
         except Exception:
             pass
@@ -386,8 +393,6 @@ def _parse_metadata(conversation: ChannelConversation) -> dict:
         return {}
 
 
-def update_conversation_metadata(
-    conversation: ChannelConversation, metadata: dict
-) -> None:
+def update_conversation_metadata(conversation: ChannelConversation, metadata: dict) -> None:
     """Update the conversation's metadata_json field in-place."""
     conversation.metadata_json = json.dumps(metadata)

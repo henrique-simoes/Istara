@@ -8,7 +8,9 @@ Output: skills/{phase}/{skill-name}/SKILL.md
 import json
 from pathlib import Path
 
-DEFINITIONS_DIR = Path(__file__).parent.parent / "backend" / "app" / "skills" / "definitions"
+DEFINITIONS_DIR = (
+    Path(__file__).parent.parent / "backend" / "app" / "skills" / "definitions"
+)
 SKILLS_DIR = Path(__file__).parent.parent / "skills"
 
 # Skill detail descriptions for SKILL.md body
@@ -176,12 +178,12 @@ def generate_skill_md(name, defn, detail=None):
     lines = [
         "---",
         f"name: {name}",
-        f"description: \"{desc}\"",
+        f'description: "{desc}"',
         "metadata:",
         "  istara:",
         f"    phase: {phase}",
         f"    type: {skill_type}",
-        f"    version: \"{version}\"",
+        f'    version: "{version}"',
         "---",
         "",
     ]
@@ -191,39 +193,41 @@ def generate_skill_md(name, defn, detail=None):
         lines.append(detail["body"].strip())
     else:
         # Generate a standard body
-        lines.extend([
-            f"# {display}",
-            "",
-            f"{desc}",
-            "",
-            f"## Phase",
-            "",
-            f"Double Diamond: **{phase.title()}**",
-            "",
-            f"## Type",
-            "",
-            f"**{skill_type.title()}** research method",
-            "",
-            "## Workflow",
-            "",
-            "1. **Plan** — Generate a research plan with objectives, methods, and timeline",
-            "2. **Execute** — Process input data (files, context) through the analysis",
-            "3. **Validate** — Self-check findings against sources, score confidence",
-            "4. **Report** — Structured output with nuggets, facts, insights, recommendations",
-            "",
-            "## Input",
-            "",
-            "- Project files (PDF, DOCX, TXT, CSV, MD)",
-            "- Project and company context (auto-loaded)",
-            "- User instructions and task context",
-            "",
-            "## Output",
-            "",
-            "- Nuggets with source references",
-            "- Facts verified against evidence",
-            "- Insights with confidence scoring",
-            "- Actionable recommendations with priority/effort ratings",
-        ])
+        lines.extend(
+            [
+                f"# {display}",
+                "",
+                f"{desc}",
+                "",
+                f"## Phase",
+                "",
+                f"Double Diamond: **{phase.title()}**",
+                "",
+                f"## Type",
+                "",
+                f"**{skill_type.title()}** research method",
+                "",
+                "## Workflow",
+                "",
+                "1. **Plan** — Generate a research plan with objectives, methods, and timeline",
+                "2. **Execute** — Process input data (files, context) through the analysis",
+                "3. **Validate** — Self-check findings against sources, score confidence",
+                "4. **Report** — Structured output with nuggets, facts, insights, recommendations",
+                "",
+                "## Input",
+                "",
+                "- Project files (PDF, DOCX, TXT, CSV, MD)",
+                "- Project and company context (auto-loaded)",
+                "- User instructions and task context",
+                "",
+                "## Output",
+                "",
+                "- Nuggets with source references",
+                "- Facts verified against evidence",
+                "- Insights with confidence scoring",
+                "- Actionable recommendations with priority/effort ratings",
+            ]
+        )
 
     return "\n".join(lines) + "\n"
 

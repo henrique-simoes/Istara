@@ -6,7 +6,6 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  Zap,
   MessageSquareText,
   ClipboardCheck,
   Network,
@@ -25,7 +24,6 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
-  const [bulkApproving, setBulkApproving] = useState(false);
 
   const loadPending = useCallback(async () => {
     setLoading(true);
@@ -91,29 +89,6 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [items, handleReview]);
-
-  const handleBulkApprove = async () => {
-    setBulkApproving(true);
-    try {
-      const result = await codeAppApi.bulkApprove(projectId, 0.9);
-      // Remove approved items from the local list
-      setItems((prev) => prev.filter((item) => !isBulkApprovable(item)));
-      // If the result shows items were approved, we may need to refresh
-      if (result.approved_count > 0) {
-        await loadPending();
-      }
-    } catch (err) {
-      console.error("Failed to bulk approve:", err);
-    }
-    setBulkApproving(false);
-  };
-
-  const isBulkApprovable = (item: CodeApplicationType) =>
-    item.confidence >= 0.9 &&
-    item.promotion_status === "accepted" &&
-    ["accepted", "reliable", "passed"].includes(item.reliability_status || "");
-
-  const highConfidenceCount = items.filter(isBulkApprovable).length;
 
   // Loading state
   if (loading) {
@@ -210,27 +185,10 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
             </span>
           </div>
 
-          {/* Bulk approve button */}
-          {highConfidenceCount > 0 && (
-            <button
-              onClick={handleBulkApprove}
-              disabled={bulkApproving}
-              aria-label={`Bulk approve ${highConfidenceCount} reliable high confidence codes`}
-              className={cn(
-                "inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md font-medium transition-colors",
-                bulkApproving
-                  ? "bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
-                  : "bg-green-600 text-white hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1"
-              )}
-            >
-              {bulkApproving ? (
-                <Loader2 size={12} className="animate-spin" aria-hidden="true" />
-              ) : (
-                <Zap size={12} aria-hidden="true" />
-              )}
-              Bulk Approve Reliable Codes ({highConfidenceCount})
-            </button>
-          )}
+          <p className="max-w-xs text-right text-[10px] text-slate-500 dark:text-slate-400">
+            Reliability and confidence prioritize review; every application still
+            requires an explicit reconciliation decision.
+          </p>
         </div>
 
         {/* Keyboard shortcut hints */}

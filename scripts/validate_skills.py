@@ -47,7 +47,9 @@ def _schema_is_empty(schema: Any) -> bool:
     return schema is None or schema == "" or schema == {}
 
 
-def _validate_output_schema(path: Path, data: dict[str, Any], result: ValidationResult) -> None:
+def _validate_output_schema(
+    path: Path, data: dict[str, Any], result: ValidationResult
+) -> None:
     schema = data.get("output_schema")
     if _schema_is_empty(schema):
         return
@@ -63,7 +65,9 @@ def _validate_output_schema(path: Path, data: dict[str, Any], result: Validation
         try:
             json.dumps(schema)
         except (TypeError, ValueError) as exc:
-            result.failures.append(f"{path}: output_schema is not JSON-serializable: {exc}")
+            result.failures.append(
+                f"{path}: output_schema is not JSON-serializable: {exc}"
+            )
         return
 
     result.failures.append(
@@ -71,7 +75,9 @@ def _validate_output_schema(path: Path, data: dict[str, Any], result: Validation
     )
 
 
-def _validate_taxonomy(path: Path, data: dict[str, Any], result: ValidationResult) -> None:
+def _validate_taxonomy(
+    path: Path, data: dict[str, Any], result: ValidationResult
+) -> None:
     phase = data.get("phase")
     if phase not in VALID_PHASES:
         result.failures.append(
@@ -95,7 +101,9 @@ def validate_skill_definitions(
     result = ValidationResult()
 
     if not definitions_dir.exists():
-        result.failures.append(f"{definitions_dir}: definitions directory does not exist")
+        result.failures.append(
+            f"{definitions_dir}: definitions directory does not exist"
+        )
         return result
 
     definition_files = sorted(
@@ -126,7 +134,9 @@ def validate_skill_definitions(
             definition_names.add(name)
             expected = f"{name}.json"
             if path.name != expected:
-                result.warnings.append(f"{path}: filename does not match skill name '{name}'")
+                result.warnings.append(
+                    f"{path}: filename does not match skill name '{name}'"
+                )
 
         _validate_output_schema(path, data, result)
         _validate_taxonomy(path, data, result)

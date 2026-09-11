@@ -172,7 +172,7 @@
 <h2>Settings</h2>
 <ul>
 <li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../../settings/general/researcher.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
-<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../../settings/llm-servers/researcher.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="legacy llm server compatibility settings &gt; pi model management &gt; legacy compatibility pi model management owns provider/model configuration while legacy llmserver rows remain read-only migration input and petals donors join through the governed bridge."><a href="../../settings/llm-servers/researcher.html"><span>Legacy LLM Server Compatibility</span><small>Settings &gt; Pi Model Management &gt; Legacy Compatibility</small></a></li>
 <li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../../settings/users/researcher.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
 <li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../../settings/connection-strings/researcher.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
 <li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../../settings/security-factors/researcher.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
@@ -244,6 +244,15 @@
 <a href="../../interviews/transcription/researcher.html">Interview Transcription</a></div>
   <p class="concept-line"><strong>Concepts:</strong> wcag</p>
 </header>
+<h3 id="model-availability">Model availability</h3>
+<p>Audio transcription is governed by an administrator-configured audio profile,</p>
+<p>and advertised capabilities are grounded in what the runtime can actually</p>
+<p>serve: local Whisper advertises support only when the local Whisper runtime is</p>
+<p>available; remote Whisper and diarized providers are configurable today but</p>
+<p>have no dispatch adapter yet, so they are advertised as unavailable until the</p>
+<p>adapter ships. An unconfigured, unsupported, or invalid profile is unavailable</p>
+<p>(typed 503, never a crash) and never falls back to a text model. Transcription</p>
+<p>output remains provisional until reviewed.</p>
 <h2 id="what-it-does">What It Does</h2>
 <p>The chat audio flow records user speech through the browser, sends it to the voice route, and returns transcription or voice-assisted chat input.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
@@ -295,6 +304,7 @@
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
           <nav aria-label="On this page"><ul>
+<li class="toc-level-3"><a href="#model-availability">Model availability</a></li>
 <li class="toc-level-2"><a href="#what-it-does">What It Does</a></li>
 <li class="toc-level-2"><a href="#why-it-exists">Why It Exists</a></li>
 <li class="toc-level-2"><a href="#where-it-lives">Where It Lives</a></li>

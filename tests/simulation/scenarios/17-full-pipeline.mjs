@@ -3,9 +3,16 @@
 export const name = "Full Pipeline (Discover → Deliver)";
 export const id = "17-full-pipeline";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "findings",
+    navLabel: "Findings",
+    markers: ["Evidence", "Findings"],
+    screenshot: "17-findings-view",
+  });
 
   if (!ctx.projectId) {
     return { checks: [{ name: "Skip — no project", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };

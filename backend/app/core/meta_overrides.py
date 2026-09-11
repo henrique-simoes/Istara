@@ -35,10 +35,7 @@ def get_project_parameter_overrides(project_id: str | None) -> dict[str, Any]:
         return {}
 
     result: dict[str, Any] = {}
-    persisted = (
-        (_load_json(OVERRIDES_FILE, {}).get("projects") or {})
-        .get(scoped_project_id, {})
-    )
+    persisted = (_load_json(OVERRIDES_FILE, {}).get("projects") or {}).get(scoped_project_id, {})
     for parameter_path, entry in persisted.items():
         result[str(parameter_path)] = entry.get("value") if isinstance(entry, dict) else entry
 
@@ -74,7 +71,7 @@ def get_self_evolution_threshold_overrides(project_id: str | None) -> dict[str, 
     result: dict[str, Any] = {}
     for path, value in get_project_parameter_overrides(project_id).items():
         if path.startswith(prefix):
-            key = path[len(prefix):]
+            key = path[len(prefix) :]
             if key:
                 result[key] = value
     return result

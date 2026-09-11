@@ -66,7 +66,9 @@ def parse_json_list(raw: Any) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
-def normalize_id_list(raw_ids: list[str] | tuple[str, ...] | None, *, max_items: int = 10) -> list[str]:
+def normalize_id_list(
+    raw_ids: list[str] | tuple[str, ...] | None, *, max_items: int = 10
+) -> list[str]:
     """Return unique, trimmed IDs in caller order."""
     normalized: list[str] = []
     seen: set[str] = set()
@@ -126,7 +128,9 @@ async def resolve_seed_findings(
         validity = validity_by_id.get(
             item_id,
             provisional_finding_validity(
-                reason="Design seed finding is provisional until accepted through the Research Spine."
+                reason=(
+                    "Design seed finding is provisional until accepted through the Research Spine."
+                )
             ),
         )
         if kind_by_id[item_id] == "insight":
@@ -166,9 +170,7 @@ def build_seeded_prompt(prompt: str, findings: list[DesignSeedFinding]) -> str:
     return (
         "Use these project-local research seed findings as design context. "
         "Preserve each Research Spine status: provisional sources are candidate "
-        "context only, not accepted report evidence.\n"
-        + "\n".join(lines)
-        + f"\n\nDesign: {prompt}"
+        "context only, not accepted report evidence.\n" + "\n".join(lines) + f"\n\nDesign: {prompt}"
     )
 
 
@@ -209,7 +211,9 @@ async def hydrate_design_brief(db: AsyncSession, brief: DesignBrief) -> dict[str
 
     if insight_ids:
         rows = await db.execute(
-            select(Insight).where(Insight.project_id == brief.project_id, Insight.id.in_(insight_ids))
+            select(Insight).where(
+                Insight.project_id == brief.project_id, Insight.id.in_(insight_ids)
+            )
         )
         insight_by_id = {item.id: item for item in rows.scalars().all()}
         for iid in insight_ids:
@@ -430,12 +434,15 @@ def build_figma_import_html(
   <meta charset="UTF-8">
   <title>{safe_name}</title>
   <style>
-    body {{ font-family: Inter, system-ui, sans-serif; margin: 0; padding: 32px; color: #111827; background: #f8fafc; }}
-    main {{ max-width: 960px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; }}
+    body {{ font-family: Inter, system-ui, sans-serif; margin: 0; padding: 32px; \
+color: #111827; background: #f8fafc; }}
+    main {{ max-width: 960px; margin: 0 auto; background: #ffffff; \
+border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; }}
     h1 {{ margin: 0 0 8px; font-size: 24px; }}
     section {{ margin-top: 24px; }}
     ul {{ display: grid; gap: 8px; padding: 0; list-style: none; }}
-    li {{ display: flex; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 6px; }}
+    li {{ display: flex; justify-content: space-between; gap: 16px; padding: 10px 12px; \
+border: 1px solid #e5e7eb; border-radius: 6px; }}
     span {{ color: #64748b; }}
   </style>
 </head>

@@ -17,7 +17,7 @@ compass: CF-SPEC-53 / CF-657; CF-SPEC-121
 
 ## Implementation Summary
 
-Interview audio processing uses backend transcription capabilities to turn recordings into usable research text. The real-user benchmark exercises the credential-free interview path through uploaded transcripts and `analyze-interview` task review; live participant-channel deployment remains optional unless explicit bounded test credentials are provided.
+Interview audio processing uses backend transcription capabilities to turn recordings into usable research text. The real-user benchmark exercises the credential-free interview path through uploaded transcripts and `analyze-interview` task review; live participant-channel deployment remains optional unless explicit bounded test credentials are provided. The Whisper primary/optional alternate pass exposes a provisional transcription-quality agreement signal for `needs_review`; its legacy `icr_*` fields are not formal Research Spine inter-coder reliability.
 
 ## Frontend Surface
 
@@ -39,6 +39,8 @@ Interview audio processing uses backend transcription capabilities to turn recor
 
 - The feature is mounted through `frontend/src/components/interviews/InterviewView.tsx` and the UI navigation path recorded in the inventory.
 - Benchmark interview evidence should include uploaded transcript sources plus an approved interview-analysis task. Telegram/AURA live participant conversations are recorded as future improvement when no local simulator or channel credentials are available.
+- `backend/app/core/transcription.py` compares at most the primary Whisper result and an optional alternate pass using heuristic keyword-category consensus. The result is explicitly marked `formal_reliability: false`, `research_spine_eligible: false`, and `validation_scope: transcription_quality_signal`.
+- Formal Fleiss' Kappa/alpha is computed only after the transcript becomes source evidence units and three independent Research Spine coders rate the same units; transcription agreement cannot promote a transcript, nugget, fact, insight, recommendation, or report.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

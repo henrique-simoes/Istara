@@ -172,7 +172,7 @@
 <h2>Settings</h2>
 <ul>
 <li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../../settings/general/researcher.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
-<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../../settings/llm-servers/researcher.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="legacy llm server compatibility settings &gt; pi model management &gt; legacy compatibility pi model management owns provider/model configuration while legacy llmserver rows remain read-only migration input and petals donors join through the governed bridge."><a href="../../settings/llm-servers/researcher.html"><span>Legacy LLM Server Compatibility</span><small>Settings &gt; Pi Model Management &gt; Legacy Compatibility</small></a></li>
 <li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../../settings/users/researcher.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
 <li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../../settings/connection-strings/researcher.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
 <li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../../settings/security-factors/researcher.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
@@ -258,8 +258,11 @@
 <ul>
 <li>Open Documents &gt; Suggestions from the Istara navigation or the parent tab.</li>
 <li>Use the visible controls in this surface to work with document suggestions in the active project context.</li>
-<li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
+<li>Review the provisional output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
+<li>Use Stop to cancel an active suggestion request. If no chat-ready model is</li>
 </ul>
+<p>configured, the panel shows the server&#x27;s Settings guidance instead of</p>
+<p>remaining blank.</p>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
 <li>Start from Documents &gt; Suggestions when the current research task needs document suggestions.</li>
@@ -273,9 +276,19 @@
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
-<li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
-<li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
+<li>Organization suggestions do not rename or move files. They are provisional</li>
 </ul>
+<p>chat guidance and are not accepted Research Spine evidence.</p>
+<ul>
+<li>A project-scoped suggestion session can still be opened in Chat after it is</li>
+</ul>
+<p>created. A model-readiness error must be resolved in Settings before a useful</p>
+<p>answer can be generated.</p>
+<ul>
+<li>Loading, unavailable-model error, and cancellation behavior were verified on</li>
+</ul>
+<p>the published QA surface; permission-denied behavior remains contract-tested</p>
+<p>elsewhere rather than exercised with a second live role in this walkthrough.</p>
 <h2 id="related-features">Related Features</h2>
 <ul>
 <li><a href="../preview/researcher.html">documents.preview</a></li>
@@ -288,8 +301,8 @@
 <h2 id="evidence">Evidence</h2>
 <ul>
 <li>Source files: <code>frontend/src/components/common/InteractiveSuggestionBox.tsx</code>, <code>frontend/src/components/documents/DocumentsView.tsx</code></li>
-<li>API references: <code>backend/app/api/routes/documents.py</code></li>
-<li>Tests: none recorded</li>
+<li>API references: <code>backend/app/api/routes/sessions.py</code>, <code>backend/app/api/routes/chat.py</code></li>
+<li>Tests: <code>frontend/src/lib/suggestionStream.test.ts</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

@@ -1,0 +1,9 @@
+[recipe]
+name = "generic"
+
+[context]
+skip_dirs = [".git", "target", "node_modules"]
+
+[change_types.local_fix]
+blast_radius = "lite"
+keywords = ["fix", "docs"]

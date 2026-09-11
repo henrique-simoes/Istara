@@ -95,9 +95,7 @@ async def _get_project_client_or_404(
     *,
     min_role: ProjectRole = "project_admin",
 ) -> tuple[str, MCPServerConfig]:
-    scoped_project_id = await _require_project_scope(
-        db, request, project_id, min_role=min_role
-    )
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role=min_role)
     server = await db.get(MCPServerConfig, server_id)
     if not server or server.project_id != scoped_project_id:
         raise HTTPException(status_code=404, detail="MCP server not found")
@@ -427,7 +425,9 @@ async def register_client(
     data: ClientRegisterRequest, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """Register a new external MCP server."""
-    project_id = await _require_project_scope(db, request, data.project_id, min_role="project_admin")
+    project_id = await _require_project_scope(
+        db, request, data.project_id, min_role="project_admin"
+    )
     from app.services.mcp_client_manager import register_server
 
     try:
@@ -728,7 +728,9 @@ async def connect_featured_server(
     Creates a new MCP client config from the featured server's definition,
     optionally setting environment variables (API keys).
     """
-    project_id = await _require_project_scope(db, request, body.project_id, min_role="project_admin")
+    project_id = await _require_project_scope(
+        db, request, body.project_id, min_role="project_admin"
+    )
 
     import json
     from pathlib import Path

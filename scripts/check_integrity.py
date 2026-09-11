@@ -188,6 +188,30 @@ def check_testing_strategy_freshness(issues: list[str]) -> None:
         )
 
 
+PI_COUNT_TO_ZERO = ROOT / "tests" / "pi_migration" / "test_count_to_zero.py"
+
+
+def check_pi_migration_count_to_zero(issues: list[str]) -> None:
+    """Run the Pi full-replacement count-to-zero ratchet (master plan §4.2).
+
+    Loads tests/pi_migration/test_count_to_zero.py, which runs
+    scripts/pi_migration_inventory.py in-process and asserts every direct
+    legacy-plane call site in backend/app/ is explicitly allowlisted and the
+    product-site count matches the wave ratchet literal (0 since W9 — the
+    allowlist holds permanent infrastructure entries only). Any new direct
+    legacy-plane call added to product code fails this check.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("pi_count_to_zero", PI_COUNT_TO_ZERO)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    try:
+        module.check_count_to_zero()
+    except RuntimeError as exc:
+        issues.append(f"PI-RATCHET: {exc}")
+
+
 def main() -> int:
     issues: list[str] = []
 
@@ -204,6 +228,7 @@ def main() -> int:
     check_tech_md_freshness(issues)
     check_testing_strategy_freshness(issues)
     check_backend_dependency_alignment(issues)
+    check_pi_migration_count_to_zero(issues)
 
     if issues:
         print("Integrity issues detected:")

@@ -28,8 +28,12 @@ from app.models.improvement_governance import ImprovementProposal
 class DGMHArchiveService:
     """Register, select, evaluate, apply, and roll back DGM-H archive variants."""
 
-    async def _get_variant(self, session: AsyncSession, variant_id: str) -> DGMHArchiveVariant | None:
-        result = await session.execute(select(DGMHArchiveVariant).where(DGMHArchiveVariant.id == variant_id))
+    async def _get_variant(
+        self, session: AsyncSession, variant_id: str
+    ) -> DGMHArchiveVariant | None:
+        result = await session.execute(
+            select(DGMHArchiveVariant).where(DGMHArchiveVariant.id == variant_id)
+        )
         return result.scalar_one_or_none()
 
     async def _select_parent_model(
@@ -113,7 +117,8 @@ class DGMHArchiveService:
                     select(DGMHArchiveVariant).where(
                         DGMHArchiveVariant.source_system == safe_source,
                         DGMHArchiveVariant.source_id == safe_source_id,
-                        DGMHArchiveVariant.mutation_kind == normalize_token(mutation_kind, "proposal"),
+                        DGMHArchiveVariant.mutation_kind
+                        == normalize_token(mutation_kind, "proposal"),
                         DGMHArchiveVariant.project_id == safe_project_id,
                     )
                 )
@@ -167,7 +172,9 @@ class DGMHArchiveService:
                 artifact_ref=clean_string(artifact_ref, max_chars=255),
                 title=clean_string(title, max_chars=255),
                 summary=clean_string(summary, max_chars=4000),
-                status=status if status in set(ARCHIVE_STATUS.values()) else ARCHIVE_STATUS["candidate"],
+                status=status
+                if status in set(ARCHIVE_STATUS.values())
+                else ARCHIVE_STATUS["candidate"],
                 score=variant_score,
                 confidence=max(0.0, min(1.0, float(confidence))),
             )
@@ -353,7 +360,10 @@ class DGMHArchiveService:
                 variant.score = computed_score
             if confidence is not None:
                 variant.confidence = max(0.0, min(1.0, float(confidence)))
-            if passed is False and variant.status not in {ARCHIVE_STATUS["active"], ARCHIVE_STATUS["confirmed"]}:
+            if passed is False and variant.status not in {
+                ARCHIVE_STATUS["active"],
+                ARCHIVE_STATUS["confirmed"],
+            }:
                 variant.status = ARCHIVE_STATUS["failed"]
             variant.ucb_score = ucb_score(
                 score=variant.score,
@@ -365,6 +375,7 @@ class DGMHArchiveService:
             await self._record_reasoning_trace(
                 variant,
                 outcome="success" if passed else "failure" if passed is False else "unknown",
+                db=session,
             )
             return {"variant": variant.to_dict()}
 
@@ -478,7 +489,14 @@ class DGMHArchiveService:
             variant.status = ARCHIVE_STATUS["active"]
             variant.applied_at = now
             events = variant.get_evidence()
-            events.append({"event": "variant_applied", "at": now.isoformat(), "actor_id": actor_id, **(evidence or {})})
+            events.append(
+                {
+                    "event": "variant_applied",
+                    "at": now.isoformat(),
+                    "actor_id": actor_id,
+                    **(evidence or {}),
+                }
+            )
             variant.set_evidence(events)
             await session.flush()
             return {"variant": variant.to_dict()}
@@ -514,13 +532,25 @@ class DGMHArchiveService:
             elif status == ARCHIVE_STATUS["active"]:
                 variant.applied_at = now
             events = variant.get_evidence()
-            events.append({"event": f"variant_{status}", "at": now.isoformat(), "actor_id": actor_id, "reason": reason})
+            events.append(
+                {
+                    "event": f"variant_{status}",
+                    "at": now.isoformat(),
+                    "actor_id": actor_id,
+                    "reason": reason,
+                }
+            )
             variant.set_evidence(events)
             await session.flush()
-            if status in {ARCHIVE_STATUS["confirmed"], ARCHIVE_STATUS["reverted"], ARCHIVE_STATUS["failed"]}:
+            if status in {
+                ARCHIVE_STATUS["confirmed"],
+                ARCHIVE_STATUS["reverted"],
+                ARCHIVE_STATUS["failed"],
+            }:
                 await self._record_reasoning_trace(
                     variant,
                     outcome="success" if status == ARCHIVE_STATUS["confirmed"] else "failure",
+                    db=session,
                 )
             return {"variant": variant.to_dict()}
 
@@ -549,7 +579,9 @@ class DGMHArchiveService:
             return {
                 "root_id": variant.root_id,
                 "variant_id": variant.id,
-                "variants": [variants_by_id[item_id] for item_id in ids if item_id in variants_by_id],
+                "variants": [
+                    variants_by_id[item_id] for item_id in ids if item_id in variants_by_id
+                ],
             }
 
     async def summary(self, *, project_id: str | None = None) -> dict:
@@ -565,14 +597,28 @@ class DGMHArchiveService:
                 "by_source_system": dict(Counter(item.source_system for item in variants)),
                 "by_surface": dict(Counter(item.mutation_surface for item in variants)),
                 "by_artifact_kind": dict(Counter(item.artifact_kind for item in variants)),
-                "candidate": sum(1 for item in variants if item.status == ARCHIVE_STATUS["candidate"]),
+                "candidate": sum(
+                    1 for item in variants if item.status == ARCHIVE_STATUS["candidate"]
+                ),
                 "active": sum(1 for item in variants if item.status == ARCHIVE_STATUS["active"]),
-                "confirmed": sum(1 for item in variants if item.status == ARCHIVE_STATUS["confirmed"]),
-                "reverted": sum(1 for item in variants if item.status == ARCHIVE_STATUS["reverted"]),
-                "quarantined": sum(1 for item in variants if item.status == ARCHIVE_STATUS["quarantined"]),
+                "confirmed": sum(
+                    1 for item in variants if item.status == ARCHIVE_STATUS["confirmed"]
+                ),
+                "reverted": sum(
+                    1 for item in variants if item.status == ARCHIVE_STATUS["reverted"]
+                ),
+                "quarantined": sum(
+                    1 for item in variants if item.status == ARCHIVE_STATUS["quarantined"]
+                ),
             }
 
-    async def _record_reasoning_trace(self, variant: DGMHArchiveVariant, *, outcome: str) -> None:
+    async def _record_reasoning_trace(
+        self,
+        variant: DGMHArchiveVariant,
+        *,
+        outcome: str,
+        db: AsyncSession | None = None,
+    ) -> None:
         try:
             from app.core.reasoning_bank import reasoning_bank
 
@@ -597,6 +643,7 @@ class DGMHArchiveService:
                 tags=[variant.source_system, variant.mutation_kind, variant.mutation_surface],
                 domain=variant.target_system or variant.mutation_surface,
                 judge_score=variant.score if isinstance(variant.score, (int, float)) else None,
+                db=db,
             )
             memory_ids = [memory["id"] for memory in memories if memory.get("id")]
             if memory_ids:

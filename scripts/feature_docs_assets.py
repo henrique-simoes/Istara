@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+
 def site_css() -> str:
     return """
 :root {

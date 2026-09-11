@@ -3,9 +3,17 @@
 export const name = "Mid-Execution Steering";
 export const id = "70-mid-execution-steering";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api, report } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "chat",
+    navLabel: "Chat",
+    markers: ["Chat"],
+    selectors: ['textarea[placeholder*="Ask about"]'],
+    screenshot: "70-chat-view",
+  });
   const agentId = "istara-main";
   const projectId = ctx.projectId;
   const projectQuery = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";

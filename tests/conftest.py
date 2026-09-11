@@ -1,13 +1,50 @@
 """Pytest configuration for Istara tests."""
 
+import importlib.util
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
 
+# Unit tests must never inherit the developer checkout's persistent SQLite file:
+# it may be on an older schema and parallel test processes can lock it.  An
+# explicitly supplied DATABASE_URL still wins for integration/Postgres runs.
+_PYTEST_DB_DIR = tempfile.TemporaryDirectory(prefix="istara-pytest-")
+os.environ.setdefault(
+    "DATABASE_URL",
+    f"sqlite+aiosqlite:///{Path(_PYTEST_DB_DIR.name) / 'istara.db'}",
+)
+
 # Ensure backend is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+
+
+def _backend_deps_available() -> bool:
+    """Whether the full backend dependency set is importable.
+
+    Dependency-light lanes (for example the Docs Website workflow) run a small
+    pytest subset with only documentation dependencies installed.  Backend-only
+    scaffolding must stay inert there instead of failing collection.
+    """
+    return importlib.util.find_spec("fastapi") is not None
+
+
+def pytest_sessionstart(session):
+    """Make ORM mapper configuration deterministic across test order.
+
+    Pi runtime tests can persist telemetry without initializing the database.
+    Register every mapped class first so that early telemetry rows cannot leave
+    unrelated project relationships in SQLAlchemy's permanent failed state.
+    This imports metadata only; it does not create or connect to a database.
+    """
+    if not _backend_deps_available():
+        return
+    from app.models.database import register_models
+
+    register_models()
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -15,8 +52,20 @@ async def dispose_db_engine():
     """Dispose the global async engine after each test to prevent
     aiosqlite 'Event loop is closed' warnings and SQLite locking."""
     yield
+    if not _backend_deps_available():
+        return
+    # Websocket notification persistence runs in background tasks and can
+    # retain an AsyncSession while the test event loop is being torn down.
+    # Drain those tasks before disposing the shared engine so a full-suite
+    # loop boundary cannot leave session-close coroutines unawaited.
+    from app.api.websocket import manager as websocket_manager
+    from app.core.compute_route_evidence import drain_compute_telemetry
+    from app.core.context_dag import context_dag
     from app.models.database import engine
 
+    await websocket_manager.drain_notification_tasks()
+    await drain_compute_telemetry()
+    await context_dag.drain_compaction_tasks()
     await engine.dispose()
 
 
@@ -54,3 +103,56 @@ def researcher_token():
 def researcher_auth_headers(researcher_token):
     """Authorization headers for non-admin protected API tests."""
     return {"Authorization": f"Bearer {researcher_token}"}
+
+
+@pytest.fixture(autouse=True)
+def _synthetic_field_encryption_key_for_tests():
+    """Supply a deterministic synthetic Fernet key when none is configured.
+
+    CI checkouts have no DATA_ENCRYPTION_KEY, so persisting encrypted User
+    fields (EncryptedType) would fail closed with FieldEncryptionUnavailable.
+    Production must still fail closed when no key is configured (see
+    test_encrypt_without_key_fails_closed) — this fixture only affects the
+    test process, restores the original afterwards, and never writes secrets.
+    """
+    from app.config import settings
+
+    if settings.data_encryption_key:
+        yield
+        return
+    import base64
+    import hashlib
+
+    from app.core.field_encryption import (
+        reset_encryption_health_for_tests,
+        reset_field_encryption_for_tests,
+    )
+
+    original_previous = settings.data_encryption_previous_keys
+    synthetic = base64.urlsafe_b64encode(
+        hashlib.sha256(b"istara-ci-synthetic-test-key").digest()
+    ).decode()
+    settings.data_encryption_key = synthetic
+    settings.data_encryption_previous_keys = ""
+    reset_field_encryption_for_tests()
+    reset_encryption_health_for_tests()
+    try:
+        yield
+    finally:
+        settings.data_encryption_key = ""
+        settings.data_encryption_previous_keys = original_previous
+        reset_field_encryption_for_tests()
+        reset_encryption_health_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def _no_live_llm_env(request, monkeypatch):
+    if os.environ.get("ISTARA_RUN_REAL_LLM_BENCHMARK"):
+        pytest.fail(
+            "ISTARA_RUN_REAL_LLM_BENCHMARK is set: live inference is forbidden "
+            "in this suite (use the marker-gated integration module explicitly)."
+        )
+    if request.node.get_closest_marker("live_llm") is None:
+        monkeypatch.setenv("ISTARA_TEST_BLOCK_EXTERNAL_LLM", "1")
+    monkeypatch.setattr("app.config.settings.pi_research_endpoint_ids", [])
+    yield

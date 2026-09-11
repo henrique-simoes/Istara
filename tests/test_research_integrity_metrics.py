@@ -32,7 +32,16 @@ from app.core.validation_executor import ValidationExecutor, ValidationResult
 from app.core.report_manager import ReportManager, SCOPE_MAP, SYNTHESIS_SKILLS
 
 # Ensure ALL models are registered with Base (mirrors database.init_db imports)
-from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
+from app.models import (
+    agent,
+    codebook,
+    document,
+    finding,
+    message,
+    project,
+    session,
+    task,
+)  # noqa: F401
 from app.models import user  # noqa: F401
 from app.models import llm_server, method_metric  # noqa: F401
 from app.core.checkpoint import TaskCheckpoint  # noqa: F401
@@ -56,9 +65,285 @@ from app.models.model_skill_stats import ModelSkillStats  # noqa: F401
 from app.models.autoresearch_experiment import AutoresearchExperiment  # noqa: F401
 
 
+def test_missing_rater_cell_is_not_treated_as_a_none_category():
+    from app.core.research_validity import evaluate_reliability_gate
+
+    applications = [
+        {
+            "coder_id": coder_id,
+            "model_name": model_name,
+            "evidence_unit_id": unit_id,
+            "codes": ["nav" if unit_id == "eu-1" else "trust"],
+        }
+        for coder_id, model_name in (
+            ("coder-a", "model-a"),
+            ("coder-b", "model-b"),
+            ("coder-c", "model-c"),
+        )
+        for unit_id in ("eu-1", "eu-2")
+        if not (coder_id == "coder-c" and unit_id == "eu-2")
+    ]
+
+    result = evaluate_reliability_gate(applications, minimum_distinct_models=3)
+
+    assert result["method"] == "incomplete_rater_matrix"
+    assert result["kappa"] is None
+    assert result["alpha"] is None
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["matrix"]["missing_ratings"] == [
+        {"coder_id": "coder-c", "evidence_unit_id": "eu-2"}
+    ]
+    assert "__none__" not in result["matrix"]["codes"]
+
+
+def test_explicit_abstention_is_distinct_from_a_missing_rating():
+    from app.core.research_validity import build_binary_coding_matrix
+
+    matrix = build_binary_coding_matrix(
+        [
+            {
+                "coder_id": "coder-a",
+                "evidence_unit_id": "eu-1",
+                "codes": [],
+                "rating_status": "abstained",
+            },
+            {"coder_id": "coder-b", "evidence_unit_id": "eu-1", "codes": ["nav"]},
+            {"coder_id": "coder-c", "evidence_unit_id": "eu-1", "codes": []},
+        ]
+    )
+
+    assert matrix["missing_ratings"] == [
+        {"coder_id": "coder-c", "evidence_unit_id": "eu-1"}
+    ]
+    assert matrix["matrix"]["eu-1"]["coder-a"] == ["__abstain__"]
+    assert "__abstain__" in matrix["codes"]
+
+
+def test_duplicate_coder_unit_ratings_are_not_merged_into_a_synthetic_vote():
+    from app.core.research_validity import evaluate_reliability_gate
+
+    applications = [
+        {
+            "coder_id": "coder-a",
+            "model_name": "model-a",
+            "evidence_unit_id": "eu-1",
+            "codes": ["nav"],
+        },
+        {
+            "coder_id": "coder-a",
+            "model_name": "model-a",
+            "evidence_unit_id": "eu-1",
+            "codes": ["trust"],
+        },
+        {
+            "coder_id": "coder-b",
+            "model_name": "model-b",
+            "evidence_unit_id": "eu-1",
+            "codes": ["nav"],
+        },
+        {
+            "coder_id": "coder-c",
+            "model_name": "model-c",
+            "evidence_unit_id": "eu-1",
+            "codes": ["nav"],
+        },
+    ]
+
+    result = evaluate_reliability_gate(applications, minimum_distinct_models=3)
+
+    assert result["method"] == "duplicate_rater_applications"
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["kappa"] is None
+    assert result["matrix"]["duplicate_ratings"] == [
+        {"coder_id": "coder-a", "evidence_unit_id": "eu-1", "count": 2}
+    ]
+
+
+def test_single_category_fleiss_kappa_is_undefined_and_requires_reconciliation():
+    from app.core.research_validity import evaluate_reliability_gate
+
+    applications = [
+        {
+            "coder_id": coder_id,
+            "model_name": model_name,
+            "evidence_unit_id": unit_id,
+            "codes": ["nav"],
+        }
+        for coder_id, model_name in (
+            ("coder-a", "model-a"),
+            ("coder-b", "model-b"),
+            ("coder-c", "model-c"),
+        )
+        for unit_id in ("eu-1", "eu-2")
+    ]
+
+    result = evaluate_reliability_gate(applications, minimum_distinct_models=3)
+
+    assert result["details"]["fleiss"]["status"] == "undefined"
+    assert result["kappa"] is None
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert "undefined" in result["fallback_reason"].lower()
+
+
+@pytest.mark.parametrize(
+    ("metric", "value"),
+    [
+        ("alpha", None),
+        ("alpha", float("nan")),
+        ("alpha", 2.0),
+        ("alpha", -2.0),
+        ("kappa", "not-a-number"),
+        ("kappa", float("inf")),
+        ("kappa", 2.0),
+    ],
+)
+def test_malformed_reliability_metrics_fail_closed(monkeypatch, metric, value):
+    """Three-model promotion requires finite, in-domain kappa and alpha."""
+    from app.core import research_validity
+
+    applications = [
+        {
+            "coder_id": coder_id,
+            "model_name": model_name,
+            "evidence_unit_id": unit_id,
+            "codes": [code],
+        }
+        for coder_id, model_name in (
+            ("coder-a", "model-a"),
+            ("coder-b", "model-b"),
+            ("coder-c", "model-c"),
+        )
+        for unit_id, code in (("eu-1", "nav"), ("eu-2", "trust"))
+    ]
+
+    if metric == "alpha":
+        monkeypatch.setattr(
+            research_validity,
+            "krippendorff_alpha",
+            lambda *_args, **_kwargs: {"alpha": value, "unreliable_codes": []},
+        )
+    else:
+        monkeypatch.setattr(
+            research_validity,
+            "fleiss_kappa_from_matrix",
+            lambda *_args, **_kwargs: {
+                "kappa": value,
+                "status": "computed",
+            },
+        )
+
+    result = research_validity.evaluate_reliability_gate(
+        applications,
+        minimum_distinct_models=3,
+    )
+
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["accepted_evidence_unit_ids"] == []
+    assert "finite numeric" in result["fallback_reason"]
+
+
+def test_effective_rater_provenance_is_reconstructable_and_conflicts_fail_closed():
+    from app.core.research_validity import evaluate_reliability_gate
+
+    base = {
+        "coder_id": "coder-a",
+        "model_name": "model-a",
+        "provider_account_handle": "account-safe-handle",
+        "endpoint_id": "endpoint-a",
+        "prompt_hash": "prompt-sha256",
+        "codebook_version_id": "codebook-v1",
+        "protocol_version": "protocol-v1",
+        "decoding_profile": {"temperature": 0.2},
+        "conversation_scope": "fresh_session_per_coder_call",
+        "cache_scope": "provider_prefix_cache_no_response_reuse",
+    }
+    applications = [
+        {**base, "evidence_unit_id": "eu-1", "codes": ["nav"]},
+        {
+            **base,
+            "endpoint_id": "endpoint-b",
+            "evidence_unit_id": "eu-2",
+            "codes": ["trust"],
+        },
+    ]
+
+    result = evaluate_reliability_gate(applications)
+
+    assert result["method"] == "invalid_rater_provenance"
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert (
+        result["matrix"]["rater_provenance"]["coder-a"]["model_checkpoint"] == "model-a"
+    )
+    assert result["matrix"]["provenance_conflicts"] == [
+        {"coder_id": "coder-a", "field": "endpoint_id"}
+    ]
+    assert result["item_promotion_statuses"] == {
+        "eu-1": "needs_reconciliation",
+        "eu-2": "needs_reconciliation",
+    }
+    assert result["accepted_evidence_unit_ids"] == []
+    assert result["reconciliation_evidence_unit_ids"] == ["eu-1", "eu-2"]
+
+    incomplete = evaluate_reliability_gate(
+        [
+            {
+                "coder_id": "coder-a",
+                "model_name": "model-a",
+                "evidence_unit_id": "eu-1",
+                "codes": ["nav"],
+            }
+        ],
+        require_rater_provenance=True,
+    )
+    assert incomplete["method"] == "incomplete_rater_provenance"
+    assert incomplete["promotion_status"] == "needs_reconciliation"
+    assert incomplete["item_promotion_statuses"] == {"eu-1": "needs_reconciliation"}
+    assert incomplete["accepted_evidence_unit_ids"] == []
+    assert incomplete["reconciliation_evidence_unit_ids"] == ["eu-1"]
+
+
+def test_fleiss_kappa_matches_independent_count_formula_and_category_order():
+    from app.core.research_validity import (
+        build_binary_coding_matrix,
+        fleiss_kappa_from_matrix,
+    )
+
+    labels = {
+        "eu-1": ("a", "a", "b"),
+        "eu-2": ("a", "b", "b"),
+        "eu-3": ("a", "a", "a"),
+        "eu-4": ("b", "b", "b"),
+    }
+    applications = [
+        {
+            "coder_id": f"coder-{index}",
+            "model_name": f"model-{index}",
+            "evidence_unit_id": unit_id,
+            "codes": [label, "shared"] if index % 2 else ["shared", label],
+        }
+        for unit_id, row in labels.items()
+        for index, label in enumerate(row, 1)
+    ]
+
+    metric = fleiss_kappa_from_matrix(build_binary_coding_matrix(applications))
+
+    # Independent count-formula reference: Pbar=(1/3+1/3+1+1)/4=2/3;
+    # marginal category proportions are 1/2 and 1/2, so Pe=1/2 and k=1/3.
+    assert metric["kappa"] == 0.333
+    reordered = [
+        {**application, "codes": list(reversed(application["codes"]))}
+        for application in applications
+    ]
+    assert (
+        fleiss_kappa_from_matrix(build_binary_coding_matrix(reordered))["kappa"]
+        == 0.333
+    )
+
+
 # ============================================================
 # Fixtures: in-memory async SQLite for model tests
 # ============================================================
+
 
 @pytest.fixture
 async def db_session():
@@ -71,7 +356,9 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with session_factory() as session:
         yield session
 
@@ -83,6 +370,7 @@ async def db_session():
 # ============================================================
 # 1. CodebookVersion Model Tests
 # ============================================================
+
 
 class TestCohenKappa:
     """Test Cohen's Kappa calculation with known mathematical examples."""
@@ -166,7 +454,16 @@ class TestCohenKappa:
         """Verify 'substantial' interpretation for kappa in (0.60, 0.80]."""
         # 8 items, 7 agree, 1 disagrees -> high but not perfect kappa
         coder_a = [["a"], ["b"], ["a"], ["b"], ["a"], ["b"], ["a"], ["b"]]
-        coder_b = [["a"], ["b"], ["a"], ["b"], ["a"], ["b"], ["a"], ["a"]]  # last one differs
+        coder_b = [
+            ["a"],
+            ["b"],
+            ["a"],
+            ["b"],
+            ["a"],
+            ["b"],
+            ["a"],
+            ["a"],
+        ]  # last one differs
         all_codes = ["a", "b"]
 
         result = cohen_kappa(coder_a, coder_b, all_codes)
@@ -203,6 +500,7 @@ class TestCohenKappa:
 # ============================================================
 # 4. Krippendorff's Alpha Calculation Tests
 # ============================================================
+
 
 class TestKrippendorffAlpha:
     """Test Krippendorff's Alpha calculation with known examples."""

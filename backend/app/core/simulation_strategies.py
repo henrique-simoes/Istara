@@ -6,21 +6,23 @@ to test research instrument robustness.
 """
 
 from enum import Enum
-from typing import Dict, Any
+from typing import Any
 
-class SimulationStrategy(str, Enum):
-    TRUTHFUL = "truthful"      # High effort, honest responses
+
+class SimulationStrategy(str, Enum):  # noqa: UP042 -- StrEnum would change str(member)
+    TRUTHFUL = "truthful"  # High effort, honest responses
     SATISFICER = "satisficer"  # Low effort, short responses, "good enough"
-    ADVERSARIAL = "adversarial" # Intentional edge cases, contradictory
-    SKEPTIC = "skeptic"        # Highly critical, demands evidence
+    ADVERSARIAL = "adversarial"  # Intentional edge cases, contradictory
+    SKEPTIC = "skeptic"  # Highly critical, demands evidence
+
 
 class ParticipantSimulationStrategy:
     """Configures model behavior based on game-theory strategy."""
-    
+
     @staticmethod
     def get_strategy_prompt(strategy: SimulationStrategy) -> str:
         """Get the system prompt modifier for a given strategy."""
-        
+
         prompts = {
             SimulationStrategy.TRUTHFUL: (
                 "You are an ideal research participant. Provide detailed, honest, "
@@ -38,13 +40,13 @@ class ParticipantSimulationStrategy:
                 "You are a highly skeptical participant. Question the interviewer's "
                 "assumptions, point out flaws in the product, and demand high value "
                 "before providing positive feedback."
-            )
+            ),
         }
-        
+
         return prompts.get(strategy, prompts[SimulationStrategy.TRUTHFUL])
 
     @staticmethod
-    def apply_to_context(context: Dict[str, Any], strategy: SimulationStrategy) -> Dict[str, Any]:
+    def apply_to_context(context: dict[str, Any], strategy: SimulationStrategy) -> dict[str, Any]:
         """Apply strategy constraints to the simulation context."""
         context["simulation_strategy"] = strategy.value
         context["strategy_modifier"] = ParticipantSimulationStrategy.get_strategy_prompt(strategy)

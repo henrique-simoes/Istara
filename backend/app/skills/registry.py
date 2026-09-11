@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Type
 
 from app.skills.base import BaseSkill, SkillPhase, SkillType
 
@@ -28,7 +27,7 @@ class SkillRegistry:
     def __init__(self) -> None:
         self._skills: dict[str, BaseSkill] = {}
 
-    def register(self, skill_class: Type[BaseSkill]) -> None:
+    def register(self, skill_class: type[BaseSkill]) -> None:
         """Register a skill class."""
         instance = skill_class()
         self._skills[instance.name] = instance
@@ -55,10 +54,7 @@ class SkillRegistry:
         return {
             "skills": [s.to_dict() for s in self._skills.values()],
             "count": len(self._skills),
-            "by_phase": {
-                phase.value: len(self.list_by_phase(phase))
-                for phase in SkillPhase
-            },
+            "by_phase": {phase.value: len(self.list_by_phase(phase)) for phase in SkillPhase},
         }
 
     def register_from_definition(self, name: str) -> bool:
@@ -104,10 +100,10 @@ registry = SkillRegistry()
 def load_default_skills() -> None:
     """Load all built-in skills into the registry."""
     # Hand-crafted skills (complex logic)
-    from app.skills.discover.user_interviews import UserInterviewsSkill
+    from app.skills.discover.channel_deployment import ChannelResearchDeploymentSkill
     from app.skills.discover.contextual_inquiry import ContextualInquirySkill
     from app.skills.discover.diary_studies import DiaryStudiesSkill
-    from app.skills.discover.channel_deployment import ChannelResearchDeploymentSkill
+    from app.skills.discover.user_interviews import UserInterviewsSkill
     from app.skills.intercoder import KappaIntercoderSkill
 
     registry.register(UserInterviewsSkill)
@@ -131,7 +127,9 @@ def load_default_skills() -> None:
     for directory in skill_definition_dirs():
         if not directory.exists():
             continue
-        names.update(path.stem for path in directory.glob("*.json") if not path.name.startswith("_"))
+        names.update(
+            path.stem for path in directory.glob("*.json") if not path.name.startswith(("_", "._"))
+        )
 
     for name in sorted(names):
         if name in hand_crafted:

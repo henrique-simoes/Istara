@@ -21,6 +21,14 @@ TECH_REQUIRED_PATTERNS = [
     "scripts/security_benchmark.py",
     "scripts/production_rehearsal.py",
     "testing/TESTING_STRATEGY.md",
+    "testing/feature_coverage.yml",
+    "scripts/check_feature_obligations.py",
+    "scripts/check_workflow_contracts.py",
+    "scripts/check_qa_capabilities.py",
+    "scripts/istara-qa.sh",
+    "docker-compose.yml",
+    "docker-compose.qa.yml",
+    "qa/**",
     "scripts/set-version.sh",
     "backend/app/api/routes/updates.py",
     "backend/app/core/*.py",
@@ -54,6 +62,13 @@ TEST_REQUIRED_PATTERNS = [
     "scripts/check_ci_governance.py",
     "scripts/check_test_harness.py",
     "scripts/security_benchmark.py",
+    "scripts/check_feature_obligations.py",
+    "scripts/check_workflow_contracts.py",
+    "scripts/check_qa_capabilities.py",
+    "scripts/istara-qa.sh",
+    "docker-compose.yml",
+    "docker-compose.qa.yml",
+    "qa/**",
     "tests/agentic_eval_contract.json",
     "tests/llm_test_config.py",
     "tests/simulation/run.mjs",
@@ -106,7 +121,6 @@ GOVERNED_EVOLUTION_PATTERNS = [
     "frontend/src/lib/improvementGovernance*.ts",
     "frontend/src/lib/reasoningBank*.ts",
     "scripts/production_rehearsal.py",
-    "scripts/check_test_harness.py",
     "tests/agentic_eval_contract.json",
 ]
 
@@ -128,7 +142,8 @@ SECURITY_BENCHMARK_PATTERNS = [
     "backend/app/api/routes/webauthn.py",
     "backend/app/api/routes/connections.py",
     "backend/app/api/routes/mcp.py",
-    "backend/app/api/routes/llm_servers.py",
+    "backend/app/core/pi_runtime/endpoints.py",
+    "backend/app/core/pi_runtime/model_manager.py",
     "backend/app/api/routes/webhooks.py",
     "backend/app/core/auth*.py",
     "backend/app/core/security*.py",
@@ -268,7 +283,9 @@ def main() -> int:
         print("Change-governance check failed:\n")
         for issue in issues:
             print(f"- {issue}\n")
-        print("See AGENTS.md, SYSTEM_CHANGE_MATRIX.md, CHANGE_CHECKLIST.md, and Tech.md.")
+        print(
+            "See AGENTS.md, SYSTEM_CHANGE_MATRIX.md, CHANGE_CHECKLIST.md, and Tech.md."
+        )
         return 1
 
     print("Change-governance check passed.")

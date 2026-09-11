@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import type { WSEvent } from "@/lib/types";
 import { WS_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 import { useProjectStore } from "@/stores/projectStore";
 
 const WS_URL = `${WS_BASE}/ws`;
@@ -74,8 +75,10 @@ export function useWebSocket(onEvent?: (event: WSEvent) => void) {
     clearTimeout(reconnectTimer.current);
     const version = ++connectionVersion.current;
 
-    // Append JWT token as query parameter for authentication
-    const token = typeof window !== "undefined" ? localStorage.getItem("istara_token") : null;
+    // Append JWT token as query parameter for authentication.
+    // In-memory first (fresh logins no longer persist to localStorage);
+    // the browser also sends the HttpOnly session cookie on the handshake.
+    const token = getToken();
     if (!token) {
       setConnected(false);
       setStatus("auth_failed");

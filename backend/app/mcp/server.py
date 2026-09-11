@@ -161,7 +161,9 @@ if MCP_AVAILABLE:
                 allowed_ids = json.loads(policy.allowed_project_ids_json or "[]") if policy else []
             except (json.JSONDecodeError, TypeError):
                 allowed_ids = []
-            allowed_ids = [str(project_id).strip() for project_id in allowed_ids if str(project_id).strip()]
+            allowed_ids = [
+                str(project_id).strip() for project_id in allowed_ids if str(project_id).strip()
+            ]
             if not allowed_ids:
                 return {"projects": [], "count": 0}
 

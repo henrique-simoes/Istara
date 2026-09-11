@@ -61,3 +61,62 @@ test("auth fallback does not report local env password mismatch as a product iss
     rmSync(repoRoot, { recursive: true, force: true });
   }
 });
+
+test("sendChat forwards configured Pi engine header for benchmark probes", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  try {
+    globalThis.fetch = async (url, options) => {
+      requests.push({ url, options });
+      return new Response(
+        'data: {"type":"chunk","content":"ok"}\n\ndata: {"type":"done","session_id":"s1"}\n\n',
+        { status: 200, headers: { "content-type": "text/event-stream" } },
+      );
+    };
+
+    const client = new IstaraApiClient({
+      apiBase: "http://localhost:8000",
+      repoRoot: "/tmp",
+      agentEngine: "pi",
+    });
+    const result = await client.sendChat({
+      projectId: "project-1",
+      message: "benchmark pi",
+      timeoutMs: 1000,
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, "http://localhost:8000/api/chat");
+    assert.equal(requests[0].options.headers["x-istara-agent-engine"], "pi");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("sendChat rejects a transport-successful turn that exhausted its tool budget", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response(
+      [
+        'data: {"type":"chunk","content":"partial answer"}',
+        'data: {"type":"usage","stop_reason":"turn_budget_exceeded"}',
+        'data: {"type":"done","message_id":"partial-message"}',
+        "",
+      ].join("\n\n"),
+      { status: 200, headers: { "content-type": "text/event-stream" } },
+    );
+
+    const client = new IstaraApiClient({
+      apiBase: "http://localhost:8000",
+      repoRoot: "/tmp",
+    });
+
+    await assert.rejects(
+      client.sendChat({ projectId: "project-1", message: "long research task", timeoutMs: 1000 }),
+      /turn_budget_exceeded/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

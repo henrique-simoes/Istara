@@ -8,6 +8,7 @@ import { ApiError } from "@/hooks/useApiCall";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 import { API_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 
 interface ProjectMetrics {
   findings: { nuggets: number; facts: number; insights: number; recommendations: number; total: number };
@@ -26,10 +27,11 @@ export default function MetricsView() {
     if (!activeProjectId) return;
     setLoading(true);
     setError(null);
-    const _t = localStorage.getItem("istara_token");
+    const _t = getToken();
     const _h: Record<string, string> = {};
     if (_t) _h["Authorization"] = `Bearer ${_t}`;
-    fetch(`${API_BASE}/api/metrics/${activeProjectId}`, { headers: _h })
+    fetch(`${API_BASE}/api/metrics/${activeProjectId}`, {
+      credentials: "include", headers: _h })
       .then((r) => { if (!r.ok) throw new Error("Failed to load metrics"); return r.json(); })
       .then(setMetrics)
       .catch((e) => setError(e.message))

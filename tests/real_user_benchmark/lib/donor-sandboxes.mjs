@@ -79,7 +79,56 @@ export function buildDonorModelSandboxConfig(rawProfile = {}, index = 1, options
     return { requested: false, enabled: false, kind: "external" };
   }
 
-  const normalizedKind = kind === "llama.cpp" || kind === "llama-cpp" ? "llamacpp" : kind;
+  const normalizedKind = kind === "llama.cpp" || kind === "llama-cpp" ? "llamacpp"
+    : ["pi", "pi-endpoint", "pi-managed", "managed"].includes(kind) ? "pi-managed"
+    : kind;
+  // Pi-managed donors are operator-run servers already registered in Istara's
+  // Pi Model Management catalog (settings endpoints, Petals projection,
+  // llm-server rows). No container is built: the benchmark validates the
+  // endpoint id + URL and probes readiness, and lib/model-management-probes
+  // cross-checks the endpoint id against the live model catalog.
+  if (normalizedKind === "pi-managed") {
+    const endpointId = firstNonEmpty(
+      envValue(env, index, ["PI_ENDPOINT_ID", "ENDPOINT_ID"]).value,
+      rawProfile.pi_endpoint_id,
+      rawProfile.piEndpointId,
+      rawProfile.endpoint_id,
+      rawProfile.endpointId,
+    );
+    const hostUrl = firstNonEmpty(
+      envValue(env, index, ["HOST_URL", "ENDPOINT_URL", "BASE_URL"]).value,
+      rawProfile.host_url,
+      rawProfile.hostUrl,
+      rawProfile.endpoint_url,
+      rawProfile.endpointUrl,
+    );
+    return {
+      requested: true,
+      enabled: true,
+      kind: "pi-managed",
+      provider: "pi",
+      managedBy: "pi-model-manager",
+      source: serverEnv.source || "donor-profile",
+      donorId,
+      containerName: "",
+      image: "",
+      hostPort: 0,
+      containerPort: 0,
+      hostUrl,
+      hostProbeUrl: hostUrl,
+      endpointId,
+      modelName: firstNonEmpty(
+        envValue(env, index, ["LLM_MODEL", "MODEL", "MODEL_ID"]).value,
+        rawProfile.model,
+        rawProfile.llm_model,
+        options.model,
+        "default",
+      ),
+      quantization: "",
+      q4: { ok: true, evidence: "server-managed" },
+      requireQ4: false,
+    };
+  }
   const provider = normalizedKind === "ollama" ? "ollama" : "llamacpp";
   const hostPort = parsePort(
     firstNonEmpty(
@@ -202,6 +251,15 @@ export function buildDonorModelSandboxConfig(rawProfile = {}, index = 1, options
 export function validateDonorModelSandbox(config) {
   const issues = [];
   if (!config?.requested) return issues;
+  if (config.kind === "pi-managed") {
+    if (!config.endpointId) {
+      issues.push({ severity: "critical", code: "pi-endpoint-id-required", detail: "Pi-managed donor sandboxes require DONOR_N_PI_ENDPOINT_ID or pi_endpoint_id (must match a Pi Model Management catalog entry)." });
+    }
+    if (!config.hostUrl) {
+      issues.push({ severity: "critical", code: "pi-host-url-required", detail: "Pi-managed donor sandboxes require DONOR_N_HOST_URL or host_url (operator-managed server base URL for readiness probing)." });
+    }
+    return issues;
+  }
   if (!["llamacpp", "ollama"].includes(config.kind)) {
     issues.push({ severity: "critical", code: "unsupported-model-server", detail: `Unsupported donor model server: ${config.kind}` });
   }
@@ -238,6 +296,8 @@ export function validateDonorModelSandbox(config) {
 }
 
 export function dockerArgsForDonorModelSandbox(config, extraHostArgs = []) {
+  // Pi-managed donors run no container; readiness is probed at hostUrl.
+  if (config?.kind === "pi-managed") return [];
   const common = [
     "run",
     "-d",
@@ -313,6 +373,19 @@ export function donorEndpointDiversity(profiles = []) {
 
 export function summarizeDonorModelSandbox(config) {
   if (!config?.requested) return { requested: false };
+  if (config.kind === "pi-managed") {
+    return {
+      requested: true,
+      kind: "pi-managed",
+      provider: "pi",
+      managed_by: "pi-model-manager",
+      donor_id: config.donorId,
+      endpoint_id: config.endpointId || "",
+      endpoint_configured: Boolean(config.endpointId),
+      host_url_configured: Boolean(config.hostUrl),
+      model_configured: Boolean(config.modelName && config.modelName !== "default"),
+    };
+  }
   return {
     requested: true,
     kind: config.kind,

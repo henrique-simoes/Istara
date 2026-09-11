@@ -1,5 +1,6 @@
 """Database connection and session management."""
 
+import os
 from importlib import import_module
 from pathlib import Path
 
@@ -32,13 +33,15 @@ if _is_sqlite:
     # across tests by closing connections immediately.
     _engine_kwargs["poolclass"] = NullPool
 else:
-    # PostgreSQL: prefer SSL for connections (does not break local dev)
-    import ssl as _ssl
+    # PostgreSQL: SSL by default; disable explicitly for internal networks where the
+    # server has no TLS (POSTGRES_SSL=false). "prefer"-equivalent context when enabled.
+    if str(os.getenv("POSTGRES_SSL", "true")).strip().lower() not in ("0", "false", "no", "off"):
+        import ssl as _ssl
 
-    _pg_ssl_ctx = _ssl.create_default_context()
-    _pg_ssl_ctx.check_hostname = False
-    _pg_ssl_ctx.verify_mode = _ssl.CERT_NONE  # "prefer" equivalent
-    _engine_kwargs.setdefault("connect_args", {})["ssl"] = _pg_ssl_ctx
+        _pg_ssl_ctx = _ssl.create_default_context()
+        _pg_ssl_ctx.check_hostname = False
+        _pg_ssl_ctx.verify_mode = _ssl.CERT_NONE  # "prefer" equivalent
+        _engine_kwargs.setdefault("connect_args", {})["ssl"] = _pg_ssl_ctx
 
 engine = create_async_engine(settings.database_url, **_engine_kwargs)
 
@@ -64,6 +67,7 @@ if _is_sqlite:
         finally:
             cursor.close()
 
+
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -76,8 +80,13 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 
-async def init_db() -> None:
-    """Create all database tables."""
+def register_models() -> None:
+    """Import every mapped model before SQLAlchemy configures relationships.
+
+    This is intentionally separate from database creation so processes and
+    test harnesses that instantiate an ORM row before ``init_db`` can establish
+    a complete mapper registry without opening or mutating a database.
+    """
     # Import model modules so they're registered with Base. Keep this dynamic so
     # database.py does not statically depend on every model-owning feature module.
     for module_name in (
@@ -93,6 +102,7 @@ async def init_db() -> None:
         "app.models.recovery_code",
         "app.models.auth_session",
         "app.models.llm_server",
+        "app.models.embedding_profile",
         "app.models.method_metric",
         "app.models.webauthn_credential",
         "app.models.webauthn_challenge",
@@ -126,19 +136,51 @@ async def init_db() -> None:
         "app.core.agent_learning",
         "app.core.audit_middleware",
         "app.models.telemetry_span",
+        "app.models.agentic_usage",
         "app.models.project_report",
         "app.models.project_member",
         "app.models.permission_request",
         "app.models.task_review",
+        "app.models.pi_tool_execution",
     ):
         import_module(module_name)
 
+
+async def init_db() -> None:
+    """Register mapped models and create all database tables."""
+    register_models()
+
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        # PostgreSQL + enums: SQLAlchemy's checkfirst sees an existing enum TYPE and
+        # skips the tables that depend on it, even when no table exists yet (fresh DB).
+        # Detect an empty schema and force-create all tables so recovery_codes,
+        # task_checkpoints, etc. are never missing on first boot. Idempotent for an
+        # already-populated database: create_all(checkfirst=True) skips existing tables.
+        # The emptiness probe is dialect-aware: information_schema is PostgreSQL-only;
+        # SQLite exposes sqlite_master instead (upgrade-safe for existing SQLite users).
+        from sqlalchemy import text as _sa_text
+
+        if _is_sqlite:
+            _empty_probe = _sa_text(
+                "select count(*) from sqlite_master where type = 'table' "
+                "and name not like 'sqlite_%'"
+            )
+        else:
+            _empty_probe = _sa_text(
+                "select count(*) from information_schema.tables where table_schema = 'public'"
+            )
+        existing = (await conn.execute(_empty_probe)).scalar() or 0
+        if existing == 0:
+            await conn.run_sync(lambda sc: Base.metadata.create_all(sc, checkfirst=False))
+        else:
+            await conn.run_sync(lambda sc: Base.metadata.create_all(sc, checkfirst=True))
 
         # Lightweight schema migration: add columns that create_all()
-        # won't add to pre-existing tables.  Each ALTER is wrapped in a
-        # try/except so it's a no-op once the column exists.
+        # won't add to pre-existing tables.  Each ALTER runs inside its own
+        # SAVEPOINT (begin_nested) so a single "column already exists" failure
+        # rolls back only that statement. PostgreSQL aborts the WHOLE transaction
+        # on the first failing statement; without savepoints the final COMMIT
+        # silently becomes a ROLLBACK and the create_all above is undone too.
         import sqlalchemy as sa
 
         migrations = [
@@ -147,8 +189,10 @@ async def init_db() -> None:
             "ALTER TABLE agents ADD COLUMN scope VARCHAR(10) NOT NULL DEFAULT 'universal'",
             "ALTER TABLE agents ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
             "ALTER TABLE projects ADD COLUMN watch_folder_path VARCHAR(1000)",
+            "ALTER TABLE projects ADD COLUMN agentic_engine VARCHAR(32)",
             "ALTER TABLE chat_sessions ADD COLUMN thinking_mode VARCHAR(20) "
             "NOT NULL DEFAULT 'server_default'",
+            "ALTER TABLE chat_sessions ADD COLUMN endpoint_override VARCHAR(120)",
             # MFA / 2FA columns
             "ALTER TABLE users ADD COLUMN totp_secret VARCHAR(64)",
             "ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT 0",
@@ -190,21 +234,15 @@ async def init_db() -> None:
             "ALTER TABLE connection_strings ADD COLUMN connection_string_hash VARCHAR(64)",
             "ALTER TABLE connection_strings ADD COLUMN allowed_project_ids_json TEXT "
             "NOT NULL DEFAULT '[]'",
-            "ALTER TABLE mcp_server_configs ADD COLUMN project_id VARCHAR(36) "
-            "NOT NULL DEFAULT ''",
-            "ALTER TABLE mcp_audit_log ADD COLUMN project_id VARCHAR(36) "
-            "NOT NULL DEFAULT ''",
-            "CREATE INDEX IF NOT EXISTS ix_mcp_audit_log_project_id "
-            "ON mcp_audit_log(project_id)",
+            "ALTER TABLE mcp_server_configs ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "ALTER TABLE mcp_audit_log ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS ix_mcp_audit_log_project_id ON mcp_audit_log(project_id)",
             # Scheduler/loops hardening columns for existing installations.
-            "ALTER TABLE loop_executions ADD COLUMN project_id VARCHAR(36) "
-            "NOT NULL DEFAULT ''",
+            "ALTER TABLE loop_executions ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
             "CREATE INDEX IF NOT EXISTS ix_loop_executions_project_id "
             "ON loop_executions(project_id)",
-            "ALTER TABLE a2a_messages ADD COLUMN project_id VARCHAR(36) "
-            "NOT NULL DEFAULT ''",
-            "CREATE INDEX IF NOT EXISTS ix_a2a_messages_project_id "
-            "ON a2a_messages(project_id)",
+            "ALTER TABLE a2a_messages ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS ix_a2a_messages_project_id ON a2a_messages(project_id)",
             # Finding provenance for approved-task-only reporting.
             "ALTER TABLE nuggets ADD COLUMN task_id VARCHAR(36)",
             "CREATE INDEX IF NOT EXISTS ix_nuggets_task_id ON nuggets(task_id)",
@@ -223,6 +261,11 @@ async def init_db() -> None:
             # Checkpoint/recovery hardening.
             "ALTER TABLE task_checkpoints ADD COLUMN agent_state VARCHAR(20) "
             "NOT NULL DEFAULT 'idle'",
+            # F-P1: checkpoint timestamps must be timestamptz to match the
+            # UTC-aware model defaults (asyncpg rejects aware datetimes for
+            # naive columns). Postgres-only type change; SQLite tolerates.
+            "ALTER TABLE task_checkpoints ALTER COLUMN created_at TYPE TIMESTAMP WITH TIME ZONE",
+            "ALTER TABLE task_checkpoints ALTER COLUMN updated_at TYPE TIMESTAMP WITH TIME ZONE",
             # WebAuthn credential metadata and persisted challenge state.
             "ALTER TABLE webauthn_credentials ADD COLUMN device_type VARCHAR(50) "
             "NOT NULL DEFAULT ''",
@@ -234,11 +277,9 @@ async def init_db() -> None:
             "NOT NULL DEFAULT ''",
             # Research-validity architecture: evidence units, coding runs, route evidence.
             "ALTER TABLE evidence_units ADD COLUMN task_id VARCHAR(36)",
-            "CREATE INDEX IF NOT EXISTS ix_evidence_units_task_id "
-            "ON evidence_units(task_id)",
+            "CREATE INDEX IF NOT EXISTS ix_evidence_units_task_id ON evidence_units(task_id)",
             "ALTER TABLE coding_runs ADD COLUMN task_id VARCHAR(36)",
-            "CREATE INDEX IF NOT EXISTS ix_coding_runs_task_id "
-            "ON coding_runs(task_id)",
+            "CREATE INDEX IF NOT EXISTS ix_coding_runs_task_id ON coding_runs(task_id)",
             "ALTER TABLE research_evidence_edges ADD COLUMN task_id VARCHAR(36)",
             "CREATE INDEX IF NOT EXISTS ix_research_evidence_edges_task_id "
             "ON research_evidence_edges(task_id)",
@@ -249,14 +290,14 @@ async def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS ix_code_applications_coding_run_id "
             "ON code_applications(coding_run_id)",
             "ALTER TABLE code_applications ADD COLUMN task_id VARCHAR(36)",
-            "CREATE INDEX IF NOT EXISTS ix_code_applications_task_id "
-            "ON code_applications(task_id)",
+            "CREATE INDEX IF NOT EXISTS ix_code_applications_task_id ON code_applications(task_id)",
             "ALTER TABLE code_applications ADD COLUMN start_offset INTEGER",
             "ALTER TABLE code_applications ADD COLUMN end_offset INTEGER",
             "ALTER TABLE code_applications ADD COLUMN model_name VARCHAR(200) NOT NULL DEFAULT ''",
             "ALTER TABLE code_applications ADD COLUMN donor_id VARCHAR(120) NOT NULL DEFAULT ''",
             "ALTER TABLE code_applications ADD COLUMN route_id VARCHAR(120) NOT NULL DEFAULT ''",
-            "ALTER TABLE code_applications ADD COLUMN route_evidence_json TEXT NOT NULL DEFAULT '{}'",
+            "ALTER TABLE code_applications ADD COLUMN route_evidence_json TEXT "
+            "NOT NULL DEFAULT '{}'",
             "ALTER TABLE code_applications ADD COLUMN reliability_status VARCHAR(40) "
             "NOT NULL DEFAULT 'unknown'",
             "ALTER TABLE code_applications ADD COLUMN reconciliation_status VARCHAR(40) "
@@ -269,70 +310,103 @@ async def init_db() -> None:
             "ALTER TABLE telemetry_spans ADD COLUMN donor_id VARCHAR(120) NOT NULL DEFAULT ''",
             "ALTER TABLE telemetry_spans ADD COLUMN retrieval_mode VARCHAR(40) NOT NULL DEFAULT ''",
             "ALTER TABLE telemetry_spans ADD COLUMN coding_run_id VARCHAR(36) NOT NULL DEFAULT ''",
-            "ALTER TABLE telemetry_spans ADD COLUMN evidence_unit_id VARCHAR(36) NOT NULL DEFAULT ''",
-            "ALTER TABLE telemetry_spans ADD COLUMN codebook_version_id VARCHAR(36) NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN evidence_unit_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN codebook_version_id VARCHAR(36) "
+            "NOT NULL DEFAULT ''",
             "ALTER TABLE telemetry_spans ADD COLUMN reliability_score FLOAT",
+            # Content-free tool audit handles: parameter names and lesson IDs only.
+            "ALTER TABLE telemetry_spans ADD COLUMN arguments_summary VARCHAR(500) "
+            "NOT NULL DEFAULT ''",
+            "ALTER TABLE telemetry_spans ADD COLUMN reasoning_bank_id VARCHAR(100)",
             # Project-scoped model/skill learning. Global stats must not steer
             # another project's research process.
             "ALTER TABLE model_skill_stats ADD COLUMN project_id VARCHAR(36) NOT NULL DEFAULT ''",
             "CREATE INDEX IF NOT EXISTS ix_model_skill_stats_project_id "
             "ON model_skill_stats(project_id)",
+            # Per-experiment autoresearch engine selection (W6). Nullable so
+            # pre-W6 rows keep an honest "unknown engine" (NULL).
+            "ALTER TABLE autoresearch_experiments ADD COLUMN engine VARCHAR(16)",
+            "CREATE INDEX IF NOT EXISTS ix_autoresearch_experiments_engine "
+            "ON autoresearch_experiments(engine)",
+            # Chat usage menu: scope exact/estimated totals to one session.
+            "ALTER TABLE agentic_usage_rows ADD COLUMN session_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_agentic_usage_rows_session_id "
+            "ON agentic_usage_rows(session_id)",
+            # Reports slide instructions caching
+            "ALTER TABLE project_reports ADD COLUMN slide_instructions TEXT",
+            # Task-level codebook assignment
+            "ALTER TABLE tasks ADD COLUMN codebook_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_tasks_codebook_id ON tasks(codebook_id)",
         ]
         for ddl in migrations:
             try:
-                await conn.execute(sa.text(ddl))
+                async with conn.begin_nested():
+                    await conn.execute(sa.text(ddl))
             except Exception:
                 pass  # Column already exists or SQLite doesn't support this DDL
 
         # Create tables with follow-up lightweight migrations when needed.
         try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["webauthn_credentials"].create(c, checkfirst=True)
-            )
-        except Exception:
-            pass  # Table already exists
-
-        try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["webauthn_challenges"].create(c, checkfirst=True)
-            )
-        except Exception:
-            pass  # Table already exists
-
-        try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["recovery_codes"].create(c, checkfirst=True)
-            )
-        except Exception:
-            pass  # Table already exists
-
-        try:
-            await conn.execute(
-                sa.text(
-                    "ALTER TABLE audit_log ADD COLUMN event_type VARCHAR(80) NOT NULL DEFAULT ''"
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["webauthn_credentials"].create(
+                        c, checkfirst=True
+                    )
                 )
-            )
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["webauthn_challenges"].create(c, checkfirst=True)
+                )
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["recovery_codes"].create(c, checkfirst=True)
+                )
+        except Exception:
+            pass  # Table already exists
+
+        try:
+            async with conn.begin_nested():
+                await conn.execute(
+                    sa.text(
+                        "ALTER TABLE audit_log ADD COLUMN event_type VARCHAR(80) "
+                        "NOT NULL DEFAULT ''"
+                    )
+                )
         except Exception:
             pass  # Column already exists or audit_log has not been created yet
 
         try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["task_review_events"].create(c, checkfirst=True)
-            )
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["task_review_events"].create(c, checkfirst=True)
+                )
         except Exception:
             pass  # Table already exists
 
         try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["permission_requests"].create(c, checkfirst=True)
-            )
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["permission_requests"].create(c, checkfirst=True)
+                )
         except Exception:
             pass  # Table already exists
 
         try:
-            await conn.run_sync(
-                lambda c: Base.metadata.tables["project_interface_configs"].create(c, checkfirst=True)
-            )
+            async with conn.begin_nested():
+                await conn.run_sync(
+                    lambda c: Base.metadata.tables["project_interface_configs"].create(
+                        c, checkfirst=True
+                    )
+                )
         except Exception:
             pass  # Table already exists
 
@@ -342,10 +416,14 @@ async def init_db() -> None:
             "coding_run_coders",
             "research_evidence_edges",
             "reconciliation_decisions",
+            "pi_tool_executions",
         ):
             try:
-                await conn.run_sync(
-                    lambda c, name=table_name: Base.metadata.tables[name].create(c, checkfirst=True)
-                )
+                async with conn.begin_nested():
+                    await conn.run_sync(
+                        lambda c, name=table_name: Base.metadata.tables[name].create(
+                            c, checkfirst=True
+                        )
+                    )
             except Exception:
                 pass  # Table already exists

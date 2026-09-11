@@ -1,0 +1,1278 @@
+{
+  "schema": "pi-bump-diff-proof/1",
+  "installed_pin": "0.84.3",
+  "candidate": "0.85.1",
+  "surfaces": [
+    {
+      "surface": "pi-ai/dist/providers/all.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "eb283b6d03ed3f697e6baba6d89826997bc73133799d8aafc10baf9e08413485"
+    },
+    {
+      "surface": "pi-ai/dist/models.js",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "3640032062f2aced8e15f111eebc6e92ce373241987c4a1443df248be225f56d",
+      "new_sha256": "42610d47fe293d99f4b05b147971e181c7312ea47c9be2906a4803955276a8a4"
+    },
+    {
+      "surface": "pi-ai/dist/api/openai-completions.js",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "5655fb5cc177685889864ff3a00585f333a5c00543fb875f552ae716158ba7d0",
+      "new_sha256": "1e2097ced37cf0e21aa5711297eecc77916de8a4ed81a9019bc7d97b22825fa3"
+    },
+    {
+      "surface": "pi-ai/dist/api/openai-responses.js",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "29986216827b25313ab57b0a8f6df092d0aa5763d87fada56490a80c80e86004",
+      "new_sha256": "87085aa3c3c865fb51774bc13b669599461fd29e497fc6063bd6f5b9b5262d33"
+    },
+    {
+      "surface": "pi-ai/dist/api/anthropic-messages.js",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "b57b6697c2b85304c8c22d6ea6ed1754ff2d862cb460cedafabc4723198c2846",
+      "new_sha256": "f748560c80fe91bb5736b62f6f34c5e2e2bfa224cd5eb959134ca903c226b604"
+    },
+    {
+      "surface": "pi-ai/dist/api/openai-codex-responses.js",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "0a6904d4869a09a2d9b4144f3364b575306bede11647835dddd9d80032a7f53e",
+      "new_sha256": "f5705d45ae72102110238d6265a548df3aef50b777f654f1f91a32d563c91b3e"
+    },
+    {
+      "surface": "pi-ai/dist/providers/amazon-bedrock.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "0748a4393a9881010d93304d222ef061c4bcd51eeaab506212fdb53dd38a9d30"
+    },
+    {
+      "surface": "pi-ai/dist/providers/ant-ling.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "8a95baed4c27976509044963e7dadb7b410482afa8bff4614b3205796371d350"
+    },
+    {
+      "surface": "pi-ai/dist/providers/anthropic.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "b819b6579da673c57acf8cdc4276e4783d50173526829aed4b68f5f86850edbd"
+    },
+    {
+      "surface": "pi-ai/dist/providers/azure-openai-responses.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "5ff40b9d359bab1265fe945bac51560c5f1f1c3db41c9df929cd1db9ef060572"
+    },
+    {
+      "surface": "pi-ai/dist/providers/baseten.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "4fa9887b3818e27ebaa265d0936ce532e22fe8bfdfe82c941ff503ae031d0ff1"
+    },
+    {
+      "surface": "pi-ai/dist/providers/cerebras.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "55431761583bfda11d7d2740ead58ecaf539b5d106a727d15ebc9a4f68a5f5d7"
+    },
+    {
+      "surface": "pi-ai/dist/providers/cloudflare-ai-gateway.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "a3df0210994f0d8987441981920560222e89936a242cf6a47de1b80fba8e448e"
+    },
+    {
+      "surface": "pi-ai/dist/providers/cloudflare-workers-ai.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "2f0748289941b14ce97138b45b02a4e71b4fa87623545c888aa769c31734a242"
+    },
+    {
+      "surface": "pi-ai/dist/providers/deepseek.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "e4f6fcf16453062a9a7d79034ae08c52f74341b833ad355c8c755339d00d9f7d"
+    },
+    {
+      "surface": "pi-ai/dist/providers/fireworks.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "f2bbbc6e2c811f30766cd24096d505007161bf48afa1bb1fa7f8542daa5516c1"
+    },
+    {
+      "surface": "pi-ai/dist/providers/github-copilot.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "71b77f3c326fddee575dd498cae7d36ee820c03b3cffe159c378060cab9b4c48"
+    },
+    {
+      "surface": "pi-ai/dist/providers/google-vertex.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "dff87b9670bbcc93118ee16f50c279cd1bd2674502dd6366640a5dc18c18cf1f"
+    },
+    {
+      "surface": "pi-ai/dist/providers/google.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "fa6aa05a4c887ee0cac82c27ee93c2d1a4487efbcb062f9676ee352d8ded7312"
+    },
+    {
+      "surface": "pi-ai/dist/providers/groq.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "2eee220343e511ff4c0652807845071f850e7ede81768b9863d819169ff215a1"
+    },
+    {
+      "surface": "pi-ai/dist/providers/huggingface.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "8fbe09ec0a9830d648c87e0a6eeb4c697ef56116bc634eb6be750d885d5fd334"
+    },
+    {
+      "surface": "pi-ai/dist/providers/kimi-coding.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "022ca2caf149f2d5f57baabba03bdf2d445c7d426a799ee493b1c3a2329187b5"
+    },
+    {
+      "surface": "pi-ai/dist/providers/minimax-cn.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "1d250e00d0c1ab5db8d0767f18a8b3a4a2c07ad48fa1f63d2d02642e23611010"
+    },
+    {
+      "surface": "pi-ai/dist/providers/minimax.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "11ee4fc17479b9eaeb4bd1e4542dc7078a65d533b2df422400706ab1c10ac861"
+    },
+    {
+      "surface": "pi-ai/dist/providers/mistral.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "59cb6acc75c7ac269e7f3d4749f3fc78a2e2e5b36111240c3dea957b676972bb"
+    },
+    {
+      "surface": "pi-ai/dist/providers/moonshotai-cn.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "4122d20afd9fcc52e2f233632aa72939c068d474ba6c433919aeeb5fa26223b4"
+    },
+    {
+      "surface": "pi-ai/dist/providers/moonshotai.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "ee07d04a15e1d99453ea950f59f24cd77cd5422b4b14e123ddefa25d57699cb6"
+    },
+    {
+      "surface": "pi-ai/dist/providers/nvidia.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "abdc1cd0fbf354c8242b38ad6f2d6a3bb08df7b36738fe60aebdb0dd1a994d92"
+    },
+    {
+      "surface": "pi-ai/dist/providers/openai-codex.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "2957c06d0abb6dccbfbd154ff1adabbbba14242001a2ff9d56ce78c3fb4d146e"
+    },
+    {
+      "surface": "pi-ai/dist/providers/openai.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "e145e1a744107013e2906f164a1b1bed6742e9bc5f69fb268a5fcc2a6295eb3c"
+    },
+    {
+      "surface": "pi-ai/dist/providers/opencode-go.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "3e65dfbea578822f2878eb1afbb98dd54a1a410a4db4e9c690f82125815dbf86"
+    },
+    {
+      "surface": "pi-ai/dist/providers/opencode.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "0c9bac732667ce6740d2fb4b6a164c5f13c378489c6c11aaa4ceb4d78483d1a4"
+    },
+    {
+      "surface": "pi-ai/dist/providers/openrouter.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "b9bdcf07e4647ee7bdc8dcad74f13f9d4fb34a3076284d726e7254abcc2b3674"
+    },
+    {
+      "surface": "pi-ai/dist/providers/qwen-token-plan-cn.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "4480ae6e07527811e974da584dafe0c5d83bfb5ac0859a9b6e561d42d968eee8"
+    },
+    {
+      "surface": "pi-ai/dist/providers/qwen-token-plan-individual.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "e653b4b1d2c465e0b7a7986b0e9c24270f5226f8993c70fee0086dcaef932b65"
+    },
+    {
+      "surface": "pi-ai/dist/providers/qwen-token-plan.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "38dd51f95ef816b12fddaf73c8cbc34b202b1a2c88dab41ef10b2cbff214b5ea"
+    },
+    {
+      "surface": "pi-ai/dist/providers/together.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "ddc0383cdd0d39a5a5b2810cd5cf96c9b16fe4c5bf4a45ea6f7724a774cca7b0"
+    },
+    {
+      "surface": "pi-ai/dist/providers/vercel-ai-gateway.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "089134a4c5fe0071841b0ff787c769a0f2b294d6405ac275db8fd4a98f3b489f"
+    },
+    {
+      "surface": "pi-ai/dist/providers/xai.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "8d753cb825702298c7bee8880effadf56460e8bf61540deadd623a35acb7d9a5"
+    },
+    {
+      "surface": "pi-ai/dist/providers/xiaomi-token-plan-ams.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "34043fe91d32692116a912777c3c7f645de27fcf291580a4e9e9af14d952a843"
+    },
+    {
+      "surface": "pi-ai/dist/providers/xiaomi-token-plan-cn.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "f34bcda1ceec90489715723e9d02341f4c04aa6e08c2de603190c91d44a25ee5"
+    },
+    {
+      "surface": "pi-ai/dist/providers/xiaomi-token-plan-sgp.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "158ccc3c399719a24558f257db7ada81facbd6d8f447b1f8913b2baf5ed2e037"
+    },
+    {
+      "surface": "pi-ai/dist/providers/xiaomi.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "5c7aa1de72f9b477cdc846a06279342a9679d69bc8578d548dcbd9110fa84116"
+    },
+    {
+      "surface": "pi-ai/dist/providers/zai-coding-cn.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "a5252728a948df6de4ac9d061b91617f8f8832290cb45b957c5e829ed975e6fe"
+    },
+    {
+      "surface": "pi-ai/dist/providers/zai.models.js",
+      "status": "identical",
+      "classification": null,
+      "sha256": "9c286b005d44b6301ae14ae36bddfe637b4d717f351b3e12bf8176b60b79301f"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/.manifest.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "d211d9a871225c6daf8582900aa6a1b6d6c1bf4133a252e0c58d326d1d030e3b",
+      "new_sha256": "30e7f58cc33d5901dbcb64f0e00d0133620005737ffb73553b358ca23572bac8"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/amazon-bedrock.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "71441520503c82d14c788a16fdbd5314adc5b7b34abd65a3f260b96f493c2e90",
+      "new_sha256": "49ae6bb829a9651177693dcaab26e03cd44788ad91aba52e71247ed505f10ab9"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/ant-ling.json",
+      "status": "identical",
+      "classification": null,
+      "sha256": "4979fe79d99ed97382d7ce40170c6132e932e77906de1eb54464c042e7d63633"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/anthropic.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "4d44dd3f78d21dd1d0fba878bd58026914ba98dba3083212059b4710dc13eeb3",
+      "new_sha256": "c0e1cfcef8531b5d0852c0e74790290f130dbcb4591b6578bb0d8a4b464231c0"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/azure-openai-responses.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "5315b6a2299fefbdbb6cc13a720544077c9498132ad5e3a7d76a8c1daa8e9335",
+      "new_sha256": "2f42741e47dbebd8491cf40bff1de313fc2221f55e16bc02fd6e5d50b5f8fefe"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/baseten.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "950433e7fcf9357ae3423b27fc0d32568b6e0990bb35c6e961dcb9740a6bba1b",
+      "new_sha256": "51e518cfa5b2578f1946bcc0defc15814a6391706671a1b2c09a4558582ca99d"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/cerebras.json",
+      "status": "identical",
+      "classification": null,
+      "sha256": "38272a7525d6680c71bb4bb3c4085e871768b400832e2013b0e7fd92f8fd4f05"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/cloudflare-ai-gateway.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "f8d54b2d4c8583194d87b48e31d85adc97156cc861db198ea173414fc835231a",
+      "new_sha256": "eb2bf274394a157714072a2726675fbdfd2cc370e359b6665fa6aca409617089"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/cloudflare-workers-ai.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "89e63a18886ecedd1d995cc90e4bfe06f73e2a79117b2f54f58fe60cdcf63df5",
+      "new_sha256": "07ef63208ff7517fd1a80962f18143e21de399640423329490b157f459ccf995"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/deepseek.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "e3106724723fd82d48a3ff685da9908a3a7b7b4fd84cc3cfe97a6a23067b6029",
+      "new_sha256": "8cc5e02a8eb3f1ead25da01d6ebac7dbd9aa5134c561026de2076cc990eb3349"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/fireworks.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "2c85d89cd04288b15ff8a23af5eba72779cae9221f4bcfed1720ce6d41629fcc",
+      "new_sha256": "bead252c3a5a2f142a8694ee06f63835f05938c01eeafa91bffb5df32f987e5f"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/github-copilot.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "d235f33b932953739618c54a365e65eebfacedd10b24ec130abf8d73769de12c",
+      "new_sha256": "5ddbd26a51c3d60975dfc41c685f65ee0964b94352379f9f3dac77715f389004"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/google-vertex.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "fb7586fc955da7b7d7d11d641954f496fbbb42cf3e4cbba66d7116ea3b37d5ed",
+      "new_sha256": "e1631109172dc1f7d7977570420a5bb86258bdd1088427e244a2c51545c4f24d"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/google.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "b5572904165d37ab594eafc3ab7f29774e35747b5dd211144ec01532db9217c1",
+      "new_sha256": "7619bf03edd2a7acb06a2274a14b13c3a61354288abe029a758401d4de36a8fd"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/groq.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "f1eb899453e70b5e4479fe6eb78869ee99121fa6d4a019a5a05ab42d2ada8992",
+      "new_sha256": "e4728fd72e358cd8f25e9a518e9b49a521ef44523d3debe38a7db9e0663c4077"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/huggingface.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "b2f15353177738beb5c0865ffcd92cc470e1c8ba6b6a4d2707cda12212a6043b",
+      "new_sha256": "3a004b58d3f801077a81f5be5cdf40c59ce1070c9c68f279e8d6c8902d441b19"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/kimi-coding.json",
+      "status": "identical",
+      "classification": null,
+      "sha256": "5e28e32e5b16df506a3a1c620ed7870fa7e5e57d8ede4a2aa44dbb24ecf1ba2f"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/minimax-cn.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "8ccd71ff838f4b78bb88809babb0dc32a4fcfaec2bc4f4083841000428df4f77",
+      "new_sha256": "65d37e55a6d9585855f94b3fb7739308d107fe248ebd9e1001d1c5d4606ad2c4"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/minimax.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "253edd4c910a41c8bb252400ba099f3a4de0a8900ce154319288ab091b372987",
+      "new_sha256": "c7dc5765995ae77242916430929c7cc9a782589f7e483e13f7e01663190d028e"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/mistral.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "4f9d84bf1ba10cb14ff2c9e23e77d63441756ef3500375dd4ad10094614b215b",
+      "new_sha256": "e3a109306644bf2f2fa38fece50b2d3ce1dbe3b87b1f1b9e2d70cce7eb5c0ea1"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/moonshotai-cn.json",
+      "status": "identical",
+      "classification": null,
+      "sha256": "1e6146ff3477883636448c0f44222f0a52b3c4562ef8f4eecf7e941cdd59d12e"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/moonshotai.json",
+      "status": "identical",
+      "classification": null,
+      "sha256": "d8d5209873058ddccd37c1f026833e2ea3f9476c3dc9628b4a940d407acc0b2e"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/nvidia.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "f9e2737a9d7ccb77ccc14083422dae03e0b786d169660670f739ddb3f0533eb5",
+      "new_sha256": "7e5d6e027f61e36f8d806d0af311cda93a40e75920b8a0645eddf0ab9f058033"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/openai-codex.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "2712c2924a4a75213dddc743c0e5f08d50a781fe807f16d5afb5fb65b41c64c7",
+      "new_sha256": "a10bfcfd34db6bcb98d8ee46175e154cab30530a137dbf31ac1434020ed3ffdd"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/openai.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "47746dfe79d92a7da58d7fae2c02a5d481b2eba2f5a914a42792552940b78b78",
+      "new_sha256": "775d3b7d95d14b741d0b287b1153d40f051a9ea03035a82b487889acc7fa69e2"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/opencode-go.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "edd2b9d79f81e2b0af0745fd7cfadda05de49eef18baf1eda2e36ea56710318e",
+      "new_sha256": "bfd19fb58f64ed9e3a129c82eb380151a80602211a43f2f931261d4675a4ed71"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/opencode.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "9d7fb901d5796f443e465f843f538840f72d4924e5fa1f051782a34b0d700417",
+      "new_sha256": "7b878f5fb48e9fce68af0c3b507ddafd88a07b5ec7a8c06e9b99cf85b27324ac"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/openrouter.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "6dbbf84366da2ef97af845baebc719e54a063105d920cb3f55684b351c678c9d",
+      "new_sha256": "8c6dd997a6204598e90a517e45122e609272983895c513232c7327f7ebdd556f"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/qwen-token-plan-cn.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "700cb41cdee4c0ae2a5159eb3ab43f4cedc9d43e87c6fd1bcd410d71431f9856",
+      "new_sha256": "d24c5318361ae5395866faaaffde5e52341be58e607def0cc219cae49326492a"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/qwen-token-plan-individual.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "5649fd4075ada766ec65a7a162cd65f096a7ecc29960ace04b2e6a6a4a995a41",
+      "new_sha256": "eb040e78595853e980011308b1bf9caacae6dc8a91abbac5ffebd402515dd2a6"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/qwen-token-plan.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "f85715f7f2023a162c47d1a84ba73747e2580d0a9aa33799b3232ce19527c1ab",
+      "new_sha256": "0545c9881decb710a9535f67960174089b04f607c1200335cdad9de4670ec92a"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/together.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "f7c9ba0441c1cbb8af41aaea3cfaa12559e1235a7335898e705d5918dc308c97",
+      "new_sha256": "6010980c9b0af72c60965ae325dbdb21e67c91844a7f7f6f7d71d363f1325f56"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/vercel-ai-gateway.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "7857ae0ce938685455f9b570b55cecdfb9b5e8aa82baff4645669d4d8b7ba9e5",
+      "new_sha256": "1f54747332c000efa851e92c1357ede3350e7257230cdde9b338a994d1d20779"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/xai.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "9668b607ac69237089e84efa3f0590dc1e28d8e24c9d1afa3a2b7cf72efa30e0",
+      "new_sha256": "037bde3de5ea72814c3f0b79da8b244c89feb708cc0cbf8596cdfac7682477b6"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/xiaomi-token-plan-ams.json",
+      "status": "identical",
+      "classification": null,
+      "sha256": "a36446cb9e3cb4f7054617676fd711092245a74f703ba89573f21d2673b85fa8"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/xiaomi-token-plan-cn.json",
+      "status": "identical",
+      "classification": null,
+      "sha256": "c295dadf4097b5d86af15e924fb2a1a6342bae9e0a9a5839c9fca216308c51e5"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/xiaomi-token-plan-sgp.json",
+      "status": "identical",
+      "classification": null,
+      "sha256": "93d359575c2348c97d79a2b14e1e9437199bd4aee948d58611b3fbab75cd9fb3"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/xiaomi.json",
+      "status": "identical",
+      "classification": null,
+      "sha256": "f06f1011d606d22311b1f4c50eb36d38b8cd99abf5760faee657d5559e87452b"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/zai-coding-cn.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "d70c9f0c99df4d8ff9be2d64d31ad50e4f4ebc07fa8e24d96bbbf035c8ed76bb",
+      "new_sha256": "d3c969020a7ab978497837a3301c7bca364d704082832221cfe61e6596333e56"
+    },
+    {
+      "surface": "pi-ai/dist/providers/data/zai.json",
+      "status": "changed",
+      "classification": "intended-upstream",
+      "old_sha256": "243cdb758c7c323c25efa3d1ccfaeed38233b10426f527d8ebd3587950eec12d",
+      "new_sha256": "f42790c77fb4681a656897a9d860b939916c0ddf979a5f16856bce9573cdf64e"
+    }
+  ],
+  "registry_inventory_delta": {
+    "providers_added": [],
+    "providers_removed": [],
+    "model_deltas": {
+      "amazon-bedrock": {
+        "added": [
+          "anthropic.claude-fable-5-1",
+          "global.anthropic.claude-fable-5-1",
+          "us.anthropic.claude-fable-5-1"
+        ],
+        "removed": []
+      },
+      "anthropic": {
+        "added": [
+          "claude-fable-5-1"
+        ],
+        "removed": []
+      },
+      "azure-openai-responses": {
+        "added": [
+          "gpt-6-astra"
+        ],
+        "removed": []
+      },
+      "baseten": {
+        "added": [
+          "zai-org/GLM-5.3",
+          "zai-org/GLM-5.3-Fast",
+          "zai-org/GLM-5.3-Flash"
+        ],
+        "removed": []
+      },
+      "cloudflare-ai-gateway": {
+        "added": [
+          "claude-fable-5.1",
+          "workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+          "workers-ai/@cf/deepseek-ai/deepseek-v4-pro-0813",
+          "workers-ai/@cf/qwen/qwen3.8-27b",
+          "workers-ai/@cf/zai-org/glm-5.3",
+          "workers-ai/@cf/zai-org/glm-5.3-flash"
+        ],
+        "removed": [
+          "gpt-4",
+          "gpt-4-turbo",
+          "gpt-5-pro",
+          "gpt-5.2",
+          "gpt-5.2-chat-latest",
+          "gpt-5.2-pro",
+          "gpt-5.3-chat-latest",
+          "gpt-5.3-codex",
+          "gpt-5.3-codex-spark",
+          "gpt-5.6",
+          "o1",
+          "o1-pro",
+          "o3-pro"
+        ]
+      },
+      "cloudflare-workers-ai": {
+        "added": [
+          "@cf/zai-org/glm-5.3",
+          "@cf/zai-org/glm-5.3-flash"
+        ],
+        "removed": []
+      },
+      "deepseek": {
+        "added": [
+          "deepseek-v4-flash-vision-exp"
+        ],
+        "removed": []
+      },
+      "fireworks": {
+        "added": [
+          "accounts/fireworks/models/deepseek-v4-flash-vision-exp",
+          "accounts/fireworks/models/glm-5p3",
+          "accounts/fireworks/models/glm-5p3-flash",
+          "accounts/fireworks/models/qwen3p8-2p4t-a95b"
+        ],
+        "removed": [
+          "accounts/fireworks/models/deepseek-v4-flash",
+          "accounts/fireworks/models/deepseek-v4-pro",
+          "accounts/fireworks/models/gpt-oss-20b",
+          "accounts/fireworks/models/minimax-m2p7",
+          "accounts/fireworks/routers/kimi-k2p6-fast",
+          "accounts/fireworks/routers/kimi-k2p6-turbo",
+          "accounts/fireworks/routers/kimi-k2p7-code-fast"
+        ]
+      },
+      "github-copilot": {
+        "added": [
+          "claude-fable-5.1",
+          "gemini-3.8-flash",
+          "gpt-6-astra"
+        ],
+        "removed": [
+          "claude-opus-4.5",
+          "claude-opus-4.6",
+          "claude-sonnet-4",
+          "claude-sonnet-4.5",
+          "gemini-3.1-pro-preview",
+          "gpt-4.1",
+          "gpt-5.2",
+          "gpt-5.2-codex"
+        ]
+      },
+      "google": {
+        "added": [
+          "gemini-3.8-flash"
+        ],
+        "removed": [
+          "gemini-robotics-er-1.6-preview"
+        ]
+      },
+      "google-vertex": {
+        "added": [
+          "gemini-3.8-flash"
+        ],
+        "removed": []
+      },
+      "groq": {
+        "added": [
+          "qwen/qwen3.8-27b"
+        ],
+        "removed": []
+      },
+      "huggingface": {
+        "added": [
+          "Qwen/Qwen3.8-27B",
+          "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+          "zai-org/GLM-5.3",
+          "zai-org/GLM-5.3-Flash"
+        ],
+        "removed": []
+      },
+      "mistral": {
+        "added": [
+          "zai-glm-5-2"
+        ],
+        "removed": []
+      },
+      "nvidia": {
+        "added": [
+          "deepseek-ai/deepseek-v4-pro-0813"
+        ],
+        "removed": [
+          "meta/llama-3.1-70b-instruct",
+          "meta/llama-3.1-8b-instruct",
+          "meta/llama-3.3-70b-instruct",
+          "nvidia/llama-3.1-nemotron-nano-8b-v1",
+          "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+          "nvidia/llama-3.3-nemotron-super-49b-v1",
+          "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+          "nvidia/nemotron-3-nano-30b-a3b",
+          "nvidia/nemotron-nano-12b-v2-vl",
+          "nvidia/nvidia-nemotron-nano-9b-v2",
+          "openai/gpt-oss-120b",
+          "stepfun-ai/step-3.7-flash",
+          "thinkingmachines/inkling"
+        ]
+      },
+      "openai": {
+        "added": [
+          "gpt-6-astra"
+        ],
+        "removed": []
+      },
+      "openai-codex": {
+        "added": [
+          "gpt-6-astra"
+        ],
+        "removed": []
+      },
+      "opencode": {
+        "added": [
+          "claude-fable-5-1",
+          "deepseek-v4-flash-vision-exp",
+          "gemini-3.8-flash",
+          "glm-5.3",
+          "glm-5.3-flash",
+          "gpt-6-astra",
+          "ling-3.0-flash-fin-free",
+          "muse-spark-1.3",
+          "muse-spark-1.3-contributor-free"
+        ],
+        "removed": [
+          "hy3-free",
+          "x-preview-f-free"
+        ]
+      },
+      "opencode-go": {
+        "added": [
+          "glm-5.3-flash",
+          "grok-4.6",
+          "hy4-preview",
+          "muse-spark-1.3-contributor",
+          "omen-alpha",
+          "qwen3.8-flash"
+        ],
+        "removed": [
+          "grok-4.5",
+          "ox-alpha-free"
+        ]
+      },
+      "openrouter": {
+        "added": [
+          "anthropic/claude-fable-5.1",
+          "anthropic/claude-fable-5.1:batch",
+          "deepseek/deepseek-v4-flash-0731:batch",
+          "deepseek/deepseek-v4-pro-0813:batch",
+          "google/gemini-3.8-flash",
+          "google/gemini-3.8-flash:batch",
+          "google/gemma-4-31b-it:batch",
+          "ibm-granite/granite-4.2-8b",
+          "inception/mercury-2.5-preview",
+          "inclusionai/ling-3.0-flash-fin",
+          "inclusionai/ling-3.0-flash-fin:free",
+          "inclusionai/ling-3.0-flash-sante:free",
+          "meta/muse-glimmer-30b:batch",
+          "meta/muse-spark-1.3",
+          "meta/muse-spark-1.3-contributor",
+          "minimax/minimax-m2.7:free",
+          "minimax/minimax-m3:free",
+          "mistralai/devstral-2512",
+          "mistralai/mistral-medium-3-5:batch",
+          "moonshotai/kimi-k3:batch",
+          "openai/gpt-6-astra",
+          "openai/gpt-6-astra-pro",
+          "openai/gpt-6-astra-pro:batch",
+          "openai/gpt-6-astra:batch",
+          "openai/gpt-oss-120b:batch",
+          "qwen/qwen3.5-9b:batch",
+          "qwen/qwen3.8-2.4t-a95b:batch",
+          "qwen/qwen3.8-flash",
+          "qwen/qwen3.8-max-0902",
+          "tencent/hy4-preview",
+          "thinkingmachines/inkling-small:batch",
+          "x-ai/grok-4.3:batch",
+          "z-ai/glm-5.3-flash",
+          "z-ai/glm-5.3-flash:batch",
+          "~z-ai/glm-flash-latest"
+        ],
+        "removed": [
+          "anthropic/claude-opus-4.7-fast",
+          "anthropic/claude-opus-4.8-fast",
+          "anthropic/claude-opus-5-fast",
+          "arcee-ai/virtuoso-large",
+          "ibm-granite/granite-4.1-8b",
+          "kwaipilot/kat-coder-air-v2.5",
+          "moonshotai/kimi-k2.7-code:batch",
+          "nvidia/nemotron-3-nano-30b-a3b:free",
+          "nvidia/nemotron-3-ultra-550b-a55b:batch",
+          "nvidia/nemotron-nano-12b-v2-vl:free",
+          "nvidia/nemotron-nano-9b-v2:free",
+          "openai/gpt-5-codex:batch",
+          "openai/o1:batch",
+          "openai/o3-mini-high:batch",
+          "openai/o3-pro:batch",
+          "openai/o4-mini-high:batch",
+          "qwen/qwen-plus-2025-07-28:thinking",
+          "qwen/qwen3.8-max",
+          "stealth/ox-alpha",
+          "z-ai/glm-5.2:batch"
+        ]
+      },
+      "qwen-token-plan": {
+        "added": [
+          "qwen3.8-flash"
+        ],
+        "removed": []
+      },
+      "qwen-token-plan-cn": {
+        "added": [
+          "qwen3.8-flash"
+        ],
+        "removed": []
+      },
+      "qwen-token-plan-individual": {
+        "added": [
+          "qwen3.8-flash"
+        ],
+        "removed": []
+      },
+      "together": {
+        "added": [
+          "zai-org/GLM-5.3",
+          "zai-org/GLM-5.3-Flash"
+        ],
+        "removed": []
+      },
+      "vercel-ai-gateway": {
+        "added": [
+          "alibaba/qwen3.8-flash",
+          "alibaba/qwen3.8-flash-next",
+          "alibaba/qwen3.8-max-0902",
+          "anthropic/claude-fable-5.1",
+          "google/gemini-3.8-flash",
+          "inclusionai/ling-3.0-flash-fin",
+          "inclusionai/ling-3.0-flash-fin-free",
+          "inclusionai/ling-3.0-flash-sante",
+          "inclusionai/ling-3.0-flash-sante-free",
+          "meta/muse-spark-1.3",
+          "meta/muse-spark-1.3-contributor",
+          "minimax/minimax-m2.7-free",
+          "minimax/minimax-m3-free",
+          "openai/gpt-6-astra",
+          "openai/gpt-6-astra-fast",
+          "openai/gpt-oss-safeguard-120b",
+          "tencent/hy4-preview",
+          "xiaomi/mimo-v2.5-pro-ultraspeed",
+          "zai/glm-5.3-fast",
+          "zai/glm-5.3-flash",
+          "zai/glm-5.3-promo-50"
+        ],
+        "removed": [
+          "arcee-ai/trinity-mini",
+          "deepseek/deepseek-v3",
+          "mistral/magistral-medium",
+          "mistral/magistral-small",
+          "nvidia/nemotron-3.5-lightning-free",
+          "openai/o3-deep-research"
+        ]
+      },
+      "xai": {
+        "added": [],
+        "removed": [
+          "grok-build-0.1"
+        ]
+      },
+      "zai": {
+        "added": [
+          "glm-5.3-flash",
+          "glm-5.3-highspeed"
+        ],
+        "removed": []
+      },
+      "zai-coding-cn": {
+        "added": [
+          "glm-5.3-flash",
+          "glm-5.3-highspeed"
+        ],
+        "removed": []
+      }
+    },
+    "total_models_old": 1312,
+    "total_models_new": 1354,
+    "removal_classifications": [
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-4",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-4-turbo",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5-pro",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.2",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.2-chat-latest",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.2-pro",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.3-chat-latest",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.3-codex",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.3-codex-spark",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "gpt-5.6",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "o1",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "o1-pro",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "cloudflare-ai-gateway",
+        "model": "o3-pro",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/models/deepseek-v4-flash",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/models/deepseek-v4-pro",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/models/gpt-oss-20b",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/models/minimax-m2p7",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/routers/kimi-k2p6-fast",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/routers/kimi-k2p6-turbo",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "fireworks",
+        "model": "accounts/fireworks/routers/kimi-k2p7-code-fast",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "claude-opus-4.5",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "claude-opus-4.6",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "claude-sonnet-4",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "claude-sonnet-4.5",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "gemini-3.1-pro-preview",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "gpt-4.1",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "gpt-5.2",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "github-copilot",
+        "model": "gpt-5.2-codex",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "google",
+        "model": "gemini-robotics-er-1.6-preview",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.1-70b-instruct",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.1-8b-instruct",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "meta/llama-3.3-70b-instruct",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-nano-30b-a3b",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-nano-12b-v2-vl",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "nvidia/nvidia-nemotron-nano-9b-v2",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-120b",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "stepfun-ai/step-3.7-flash",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "nvidia",
+        "model": "thinkingmachines/inkling",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "opencode",
+        "model": "hy3-free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "opencode",
+        "model": "x-preview-f-free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "opencode-go",
+        "model": "grok-4.5",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "opencode-go",
+        "model": "ox-alpha-free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-4.7-fast",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-4.8-fast",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "anthropic/claude-opus-5-fast",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "arcee-ai/virtuoso-large",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "ibm-granite/granite-4.1-8b",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "kwaipilot/kat-coder-air-v2.5",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "moonshotai/kimi-k2.7-code:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "nvidia/nemotron-3-ultra-550b-a55b:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "nvidia/nemotron-nano-12b-v2-vl:free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "nvidia/nemotron-nano-9b-v2:free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "openai/gpt-5-codex:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "openai/o1:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "openai/o3-mini-high:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "openai/o3-pro:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "openai/o4-mini-high:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "qwen/qwen-plus-2025-07-28:thinking",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "qwen/qwen3.8-max",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "stealth/ox-alpha",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "openrouter",
+        "model": "z-ai/glm-5.2:batch",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "vercel-ai-gateway",
+        "model": "arcee-ai/trinity-mini",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "vercel-ai-gateway",
+        "model": "deepseek/deepseek-v3",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "vercel-ai-gateway",
+        "model": "mistral/magistral-medium",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "vercel-ai-gateway",
+        "model": "mistral/magistral-small",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "vercel-ai-gateway",
+        "model": "nvidia/nemotron-3.5-lightning-free",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "vercel-ai-gateway",
+        "model": "openai/o3-deep-research",
+        "classification": "intended-upstream"
+      },
+      {
+        "provider": "xai",
+        "model": "grok-build-0.1",
+        "classification": "intended-upstream"
+      }
+    ]
+  },
+  "expect_models": [
+    {
+      "model": "zai/glm-5.3-flash",
+      "present": true
+    },
+    {
+      "model": "zai/glm-5.3",
+      "present": true
+    }
+  ],
+  "gate_passed": true,
+  "gate_reasons": [],
+  "expansion_note": "F-22 (2026-09-08): the 10 provider-wide removal_classifications rows from the live proof run were expanded into one explicit row per removed model using the report own measured model_deltas (no new measurement; gate outcome unchanged). Future proof runs emit this shape directly via apply_removal_classifications."
+}

@@ -40,7 +40,7 @@ async def autoresearch_context():
     - skill_manager.record_execution() returns early (no stats polluted)
     - self_evolution.scan_for_promotions() filters out [autoresearch] learnings
     - meta_hyperagent.observe_cycle() filters out autoresearch-tagged stats
-    
+
     The experiment's findings are still captured but not automatically merged
     into permanent knowledge graphs until promoted via the ResearchDeployment workflow.
     """

@@ -5,17 +5,21 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.agent import (
-    Agent, AgentRole, AgentState, HeartbeatStatus,
-    ALL_CAPABILITIES, DEFAULT_CAPABILITIES,
-)
-from app.core.resource_governor import governor
 from app.core.hardware import detect_hardware
+from app.core.resource_governor import governor
+from app.models.agent import (
+    ALL_CAPABILITIES,
+    DEFAULT_CAPABILITIES,
+    Agent,
+    AgentRole,
+    AgentState,
+    HeartbeatStatus,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +112,13 @@ SYSTEM_AGENTS = [
             "traceability to the Atomic Research chain, and collaborate with "
             "Pixel, Sage, Echo, and Istara before recommending interface changes."
         ),
-        "capabilities": ["skill_execution", "findings_write", "a2a_messaging", "task_creation", "rag_retrieval"],
+        "capabilities": [
+            "skill_execution",
+            "findings_write",
+            "a2a_messaging",
+            "task_creation",
+            "rag_retrieval",
+        ],
         "specialties": ["design", "interfaces", "prototyping"],
         "is_system": True,
     },
@@ -124,9 +134,7 @@ async def seed_system_agents(db: AsyncSession) -> None:
     Pixel, Sage, Echo).
     """
     for agent_def in SYSTEM_AGENTS:
-        result = await db.execute(
-            select(Agent).where(Agent.id == agent_def["id"])
-        )
+        result = await db.execute(select(Agent).where(Agent.id == agent_def["id"]))
         existing = result.scalar_one_or_none()
 
         if existing is None:
@@ -165,17 +173,15 @@ async def seed_system_agents(db: AsyncSession) -> None:
                 existing.specialties = target_specs
                 updated = True
             if updated:
-                logger.info(
-                    f"Updated system agent: {agent_def['name']} ({agent_def['id']})"
-                )
+                logger.info(f"Updated system agent: {agent_def['name']} ({agent_def['id']})")
     await db.commit()
 
 
 async def list_agents(db: AsyncSession, include_system: bool = True) -> list[dict]:
     """List all active agents."""
-    query = select(Agent).where(Agent.is_active == True)
+    query = select(Agent).where(Agent.is_active == True)  # noqa: E712 -- SQLAlchemy IS TRUE
     if not include_system:
-        query = query.where(Agent.is_system == False)
+        query = query.where(Agent.is_system == False)  # noqa: E712 -- SQLAlchemy IS FALSE
     result = await db.execute(query.order_by(Agent.created_at))
     return [a.to_dict() for a in result.scalars().all()]
 
@@ -241,7 +247,7 @@ async def update_agent(db: AsyncSession, agent_id: str, updates: dict) -> dict |
         elif hasattr(agent, key):
             setattr(agent, key, value)
 
-    agent.updated_at = datetime.now(timezone.utc)
+    agent.updated_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(agent)
     return agent.to_dict()
@@ -263,9 +269,7 @@ async def delete_agent(db: AsyncSession, agent_id: str) -> bool:
 async def set_agent_state(db: AsyncSession, agent_id: str, state: AgentState) -> bool:
     """Update an agent's state."""
     result = await db.execute(
-        update(Agent).where(Agent.id == agent_id).values(
-            state=state, updated_at=datetime.now(timezone.utc)
-        )
+        update(Agent).where(Agent.id == agent_id).values(state=state, updated_at=datetime.now(UTC))
     )
     await db.commit()
     return result.rowcount > 0
@@ -287,7 +291,7 @@ async def update_agent_memory(db: AsyncSession, agent_id: str, updates: dict) ->
     existing = json.loads(agent.memory or "{}")
     existing.update(updates)
     agent.memory = json.dumps(existing)
-    agent.updated_at = datetime.now(timezone.utc)
+    agent.updated_at = datetime.now(UTC)
     await db.commit()
     return existing
 

@@ -26,17 +26,11 @@ Two modes:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, or_
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import or_, select
 
 from app.core.agent_identity import (
-    IDENTITY_FILES,
-    _load_persona_file,
-    save_agent_memory,
-    load_agent_memory,
     runtime_personas_dir,
     writeable_persona_path,
 )
@@ -50,11 +44,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 PROMOTION_THRESHOLDS = {
-    "min_occurrences": 3,       # Pattern seen at least 3 times
-    "min_contexts": 1,          # Within the authorized active project
-    "max_age_days": 30,         # Within a 30-day window
-    "min_confidence": 70,       # Minimum confidence score (0-100)
-    "min_success_rate": 0.6,    # 60% success rate when applied
+    "min_occurrences": 3,  # Pattern seen at least 3 times
+    "min_contexts": 1,  # Within the authorized active project
+    "max_age_days": 30,  # Within a 30-day window
+    "min_confidence": 70,  # Minimum confidence score (0-100)
+    "min_success_rate": 0.6,  # 60% success rate when applied
 }
 
 
@@ -72,12 +66,11 @@ def get_effective_promotion_thresholds(project_id: str | None = None) -> dict:
     try:
         from app.core.meta_overrides import get_self_evolution_threshold_overrides
 
-        effective.update(
-            get_self_evolution_threshold_overrides(project_id=scoped_project_id)
-        )
+        effective.update(get_self_evolution_threshold_overrides(project_id=scoped_project_id))
     except Exception as exc:
         logger.debug("Project-scoped self-evolution thresholds unavailable: %s", exc)
     return effective
+
 
 # Which MD file receives promotions for each learning category
 PROMOTION_TARGETS = {
@@ -138,6 +131,7 @@ def _requires_governed_research_review(*parts: str | None) -> bool:
 # ---------------------------------------------------------------------------
 # Self-Evolution Engine
 # ---------------------------------------------------------------------------
+
 
 class SelfEvolutionEngine:
     """Scans agent learnings and promotes mature patterns into persona files."""
@@ -211,7 +205,7 @@ class SelfEvolutionEngine:
             )
             return []
         th = thresholds or get_effective_promotion_thresholds(scoped_project_id)
-        cutoff = datetime.now(timezone.utc) - timedelta(days=th["max_age_days"])
+        cutoff = datetime.now(UTC) - timedelta(days=th["max_age_days"])
         candidates = []
 
         try:
@@ -224,7 +218,7 @@ class SelfEvolutionEngine:
                     select(AgentLearning).where(
                         AgentLearning.agent_id == agent_id,
                         AgentLearning.project_id == scoped_project_id,
-                        AgentLearning.active == True,
+                        AgentLearning.active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         AgentLearning.updated_at >= cutoff,
                         ~AgentLearning.trigger.like("[autoresearch]%"),
                     )
@@ -239,9 +233,7 @@ class SelfEvolutionEngine:
                     occurrences = learning.times_applied or 0
                     confidence = learning.confidence or 0
                     successful = learning.times_successful or 0
-                    success_rate = (
-                        successful / occurrences if occurrences > 0 else 0
-                    )
+                    success_rate = successful / occurrences if occurrences > 0 else 0
 
                     # The active project is the authorization boundary. Older
                     # builds counted distinct project ids here, which let other
@@ -255,12 +247,14 @@ class SelfEvolutionEngine:
                     meets_success = success_rate >= th["min_success_rate"]
 
                     # All thresholds must be met
-                    qualifies = all([
-                        meets_occurrences,
-                        meets_contexts,
-                        meets_confidence,
-                        meets_success,
-                    ])
+                    qualifies = all(
+                        [
+                            meets_occurrences,
+                            meets_contexts,
+                            meets_confidence,
+                            meets_success,
+                        ]
+                    )
 
                     if qualifies:
                         if _requires_governed_research_review(
@@ -275,29 +269,29 @@ class SelfEvolutionEngine:
                                 learning.id,
                             )
                             continue
-                        target_file = PROMOTION_TARGETS.get(
-                            learning.category, "MEMORY.md"
+                        target_file = PROMOTION_TARGETS.get(learning.category, "MEMORY.md")
+                        candidates.append(
+                            {
+                                "learning_id": learning.id,
+                                "agent_id": agent_id,
+                                "project_id": scoped_project_id,
+                                "category": learning.category,
+                                "learning": learning.learning,
+                                "trigger": learning.trigger,
+                                "resolution": learning.resolution,
+                                "confidence": confidence,
+                                "occurrences": occurrences,
+                                "success_rate": round(success_rate, 2),
+                                "distinct_contexts": distinct_contexts,
+                                "target_file": target_file,
+                                "target_section": PROMOTION_SECTIONS.get(
+                                    target_file, "## Promoted Learnings"
+                                ),
+                                "created_at": learning.created_at.isoformat()
+                                if learning.created_at
+                                else None,
+                            }
                         )
-                        candidates.append({
-                            "learning_id": learning.id,
-                            "agent_id": agent_id,
-                            "project_id": scoped_project_id,
-                            "category": learning.category,
-                            "learning": learning.learning,
-                            "trigger": learning.trigger,
-                            "resolution": learning.resolution,
-                            "confidence": confidence,
-                            "occurrences": occurrences,
-                            "success_rate": round(success_rate, 2),
-                            "distinct_contexts": distinct_contexts,
-                            "target_file": target_file,
-                            "target_section": PROMOTION_SECTIONS.get(
-                                target_file, "## Promoted Learnings"
-                            ),
-                            "created_at": learning.created_at.isoformat()
-                            if learning.created_at
-                            else None,
-                        })
 
         except Exception as e:
             logger.error(f"Evolution scan failed for {agent_id}: {e}")
@@ -323,8 +317,12 @@ class SelfEvolutionEngine:
             return {"success": False, "error": "Project is paused or not found"}
 
         from app.core.agent_identity import is_persona_locked
+
         if is_persona_locked(agent_id):
-            return {"success": False, "error": f"Persona locked for {agent_id} (autoresearch in progress)"}
+            return {
+                "success": False,
+                "error": f"Persona locked for {agent_id} (autoresearch in progress)",
+            }
 
         try:
             from app.core.agent_learning import AgentLearning
@@ -362,9 +360,7 @@ class SelfEvolutionEngine:
                     }
 
                 # Determine target file
-                tf = target_file or PROMOTION_TARGETS.get(
-                    learning.category, "MEMORY.md"
-                )
+                tf = target_file or PROMOTION_TARGETS.get(learning.category, "MEMORY.md")
                 section = PROMOTION_SECTIONS.get(tf, "## Promoted Learnings")
 
                 # Build the promotion text
@@ -375,10 +371,7 @@ class SelfEvolutionEngine:
 
                 if success:
                     # Mark the learning as promoted in DB
-                    learning.resolution = (
-                        f"[PROMOTED to {tf}] "
-                        + (learning.resolution or "")
-                    )
+                    learning.resolution = f"[PROMOTED to {tf}] " + (learning.resolution or "")
                     learning.confidence = min(100, (learning.confidence or 50) + 10)
                     await db.commit()
                     await self._record_validity_proposal(
@@ -388,9 +381,7 @@ class SelfEvolutionEngine:
                         confidence=learning.confidence,
                     )
 
-                    logger.info(
-                        f"Promoted learning {learning_id} for {agent_id} → {tf}"
-                    )
+                    logger.info(f"Promoted learning {learning_id} for {agent_id} → {tf}")
                     return {
                         "success": True,
                         "agent_id": agent_id,
@@ -452,9 +443,7 @@ class SelfEvolutionEngine:
                 promotions.append(result)
 
         if promotions:
-            logger.info(
-                f"Self-evolution for {agent_id}: {len(promotions)} promotions applied"
-            )
+            logger.info(f"Self-evolution for {agent_id}: {len(promotions)} promotions applied")
 
         return promotions
 
@@ -489,7 +478,7 @@ class SelfEvolutionEngine:
             async with async_session() as db:
                 db_result = await db.execute(
                     select(Agent.id).where(
-                        Agent.is_active == True,
+                        Agent.is_active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         or_(
                             Agent.scope != "project",
                             Agent.project_id == scoped_project_id,
@@ -512,7 +501,9 @@ class SelfEvolutionEngine:
 
         return results
 
-    async def create_persona_for_custom_agent(self, agent_id: str, name: str, system_prompt: str) -> bool:
+    async def create_persona_for_custom_agent(
+        self, agent_id: str, name: str, system_prompt: str
+    ) -> bool:
         """Create persona MD files for a custom user-created agent.
 
         This gives custom agents the same evolution capabilities as system agents.
@@ -568,7 +559,8 @@ Your primary directive is defined by your creator's system prompt.
 2. Select appropriate skill or use general reasoning
 3. Execute with source-grounded methodology
 4. Store research outputs as candidate/provisional unless they already cite accepted evidence
-5. Send candidates through evidence units, independent coding, reliability, reconciliation, task review, and Done gates before report use
+5. Send candidates through evidence units, independent coding, reliability, reconciliation, \
+task review, and Done gates before report use
 6. Self-verify output quality
 
 ## Error Handling
@@ -576,7 +568,8 @@ Your primary directive is defined by your creator's system prompt.
 - Record error learnings for future reference
 - Broadcast warning (not crash) on recoverable errors
 - Escalate to system agents for critical failures
-- Never weaken qualitative coding protocol, reliability thresholds, authorization, or report gates through self-evolution
+- Never weaken qualitative coding protocol, reliability thresholds, authorization, \
+or report gates through self-evolution
 
 ## Learned Error Patterns
 (Auto-populated by the self-evolution engine)
@@ -643,9 +636,21 @@ async def reflect_on_failure(
 
     # Transient / environmental errors
     transient_keywords = [
-        "timeout", "timed out", "connection", "refused", "reset",
-        "resource", "memory", "oom", "disk", "rate limit", "throttl",
-        "temporarily", "unavailable", "econnrefused", "econnreset",
+        "timeout",
+        "timed out",
+        "connection",
+        "refused",
+        "reset",
+        "resource",
+        "memory",
+        "oom",
+        "disk",
+        "rate limit",
+        "throttl",
+        "temporarily",
+        "unavailable",
+        "econnrefused",
+        "econnreset",
     ]
     if any(kw in error_lower for kw in transient_keywords):
         failure_type = "transient"
@@ -668,8 +673,7 @@ async def reflect_on_failure(
         await agent_learning.record_error_learning(
             agent_id=agent_id,
             error_message=f"[{failure_type}] {task_title}: {error[:300]}",
-            resolution=f"Failure attributed as '{failure_type}'. "
-            f"Skill: {skill_name or 'none'}.",
+            resolution=f"Failure attributed as '{failure_type}'. Skill: {skill_name or 'none'}.",
         )
     except Exception as exc:
         logger.warning(f"Failed to record failure reflection: {exc}")
@@ -685,6 +689,7 @@ async def reflect_on_failure(
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _format_promotion(learning) -> str:
     """Format a learning record into a concise promotion entry."""
     category_labels = {
@@ -694,7 +699,7 @@ def _format_promotion(learning) -> str:
         "performance_note": "Performance Note",
     }
     label = category_labels.get(learning.category, learning.category)
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d")
 
     parts = [f"**[{label}]** ({timestamp}, confidence: {learning.confidence}%)"]
     parts.append(learning.learning[:500])

@@ -32,6 +32,17 @@ test("reviewerAssessment approves grounded task output with concrete sources", (
   assert.equal(assessment.approved, true);
 });
 
+test("reviewerAssessment does not mistake a medical-safety disclaimer for unsafe advice", () => {
+  const assessment = reviewerAssessment(sourceBackedTask, `
+    Sources: P01-staff.md and P02-staff.md. The evidence indicates appointment-prep
+    confusion, with medium confidence because both interviews describe the same
+    workflow gap. This is research synthesis, not medical advice or a diagnosis.
+  `);
+
+  assert.equal(assessment.approved, true);
+  assert.doesNotMatch(assessment.issues.join(" "), /unsafe medical inference/);
+});
+
 test("real-user benchmark chat turns and task prompts preserve realistic research depth", () => {
   const wordCount = (value) => String(value || "").trim().split(/\s+/).filter(Boolean).length;
   const chatTurns = buildChatTurns({ total: 20 });

@@ -8,14 +8,14 @@ import logging
 import uuid
 from pathlib import Path
 
-from watchfiles import awatch, Change
+from watchfiles import Change, awatch
 
+from app.api.websocket import broadcast_file_processed, broadcast_suggestion
+from app.config import settings
 from app.core.embeddings import embed_chunks
 from app.core.file_encryption import encrypt_file_in_place, protect_document_text, read_file_text
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.rag import VectorStore
-from app.api.websocket import broadcast_file_processed, broadcast_suggestion
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +97,11 @@ class FileWatcher:
         tasks: list[tuple[str, str, str]] = []
 
         # Interview transcripts
-        if "interview" in filename or "transcript" in filename or \
-           ("[00:" in preview and "interviewer:" in preview):
+        if (
+            "interview" in filename
+            or "transcript" in filename
+            or ("[00:" in preview and "interviewer:" in preview)
+        ):
             tasks.append(("user-interviews", f"Analyze interview: {stem}", "high"))
             tasks.append(("thematic-analysis", f"Thematic analysis: {stem}", "medium"))
 
@@ -130,7 +133,9 @@ class FileWatcher:
             tasks.append(("competitive-analysis", f"Competitive analysis: {stem}", "high"))
 
         # Analytics data
-        elif ext == ".csv" and ("sessions" in preview or "bounce_rate" in preview or "conversions" in preview):
+        elif ext == ".csv" and (
+            "sessions" in preview or "bounce_rate" in preview or "conversions" in preview
+        ):
             tasks.append(("analytics-review", f"Analytics review: {stem}", "high"))
             if "variant" in preview or "a/b" in preview or "ab-test" in filename:
                 tasks.append(("ab-test-analysis", f"A/B test analysis: {stem}", "high"))
@@ -162,9 +167,10 @@ class FileWatcher:
         if not skill_tasks:
             return 0
 
+        from sqlalchemy import func, select
+
         from app.models.database import async_session
         from app.models.task import Task, TaskStatus
-        from sqlalchemy import select, func
 
         created = 0
         async with async_session() as db:
@@ -215,6 +221,7 @@ class FileWatcher:
 
             try:
                 from app.core.agent import agent as agent_orchestrator
+
                 agent_orchestrator.wake()
             except Exception:
                 pass
@@ -235,13 +242,14 @@ class FileWatcher:
             logger.info("Skipping document registration for paused project %s", project_id)
             return
 
+        from sqlalchemy import select
+
         from app.models.database import async_session
         from app.models.document import Document, DocumentSource, DocumentStatus
         from app.services.research_validity_service import (
             persist_document_source_evidence_units,
             record_source_evidence_unit_telemetry,
         )
-        from sqlalchemy import select
 
         async with async_session() as db:
             # Check if already registered
@@ -315,9 +323,8 @@ class FileWatcher:
             # Notify via WebSocket
             try:
                 from app.api.websocket import broadcast_document_event
-                await broadcast_document_event(
-                    "document_created", doc.id, title, project_id
-                )
+
+                await broadcast_document_event("document_created", doc.id, title, project_id)
             except Exception:
                 pass
 
@@ -327,7 +334,11 @@ class FileWatcher:
 
     # Cloud-sync temp file patterns to skip
     _TEMP_PATTERNS = {
-        ".partial", ".tmp", ".crdownload", ".download", ".part",
+        ".partial",
+        ".tmp",
+        ".crdownload",
+        ".download",
+        ".part",
     }
     _TEMP_PREFIXES = ("~$", ".~", "._")
 

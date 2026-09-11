@@ -1,0 +1,7 @@
+{
+  "scope-boundary": "Update only the simulation scenario 31 health assertion. Accept degraded status only when the provider is connected and chat_readiness.chat_ready is explicitly false; keep real outage states failing.",
+  "contract-compatibility": "Do not change the backend status contract or production behavior. Preserve the existing scenario checks and report the bounded capability gap in the diagnostic detail.",
+  "verification-bar": "Run the simulation static checks and the Mac Studio Docker scenario 31 run with the contract provider stub.",
+  "rollback": "Revert the single scenario assertion change and remove this clarification file.",
+  "docs": "Regenerate feature documentation/checks and append synchronized Build Stream ledger evidence for the red failure and green rerun."
+}

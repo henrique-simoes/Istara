@@ -8,14 +8,16 @@ import type {
 } from "@/lib/dgmhArchiveTypes";
 
 import { API_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 
 function authHeaders(): Record<string, string> {
-  const token = typeof window === "undefined" ? "" : localStorage.getItem("istara_token");
+  const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...authHeaders(), ...options?.headers },
     ...options,
   });

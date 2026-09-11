@@ -1,0 +1,72 @@
+[
+ {
+  "packet_id": "deep:deep.a2a.debate",
+  "rubric_sha256": "46a8e974eff6175b3971c743ab2813d2c20b670dccfd139606187ff9e4b1283a",
+  "judge": "kimi-code/k3",
+  "scores": {
+   "pi": 6,
+   "legacy": 7
+  },
+  "winner": "legacy",
+  "position": {
+   "A": "pi",
+   "B": "legacy"
+  }
+ },
+ {
+  "packet_id": "deep:deep.a2a.debate-self_moa",
+  "rubric_sha256": "46a8e974eff6175b3971c743ab2813d2c20b670dccfd139606187ff9e4b1283a",
+  "judge": "kimi-code/k3",
+  "scores": {
+   "pi": 7,
+   "legacy": 7
+  },
+  "winner": "tie",
+  "position": {
+   "A": "pi",
+   "B": "legacy"
+  }
+ },
+ {
+  "packet_id": "deep:deep.corpus.grounding-self_moa",
+  "rubric_sha256": "46a8e974eff6175b3971c743ab2813d2c20b670dccfd139606187ff9e4b1283a",
+  "judge": "kimi-code/k3",
+  "scores": {
+   "pi": 7,
+   "legacy": 1
+  },
+  "winner": "pi",
+  "position": {
+   "A": "pi",
+   "B": "legacy"
+  }
+ },
+ {
+  "packet_id": "deep:deep.corpus.review_gate",
+  "rubric_sha256": "46a8e974eff6175b3971c743ab2813d2c20b670dccfd139606187ff9e4b1283a",
+  "judge": "kimi-code/k3",
+  "scores": {
+   "legacy": 7,
+   "pi": 7
+  },
+  "winner": "tie",
+  "position": {
+   "A": "legacy",
+   "B": "pi"
+  }
+ },
+ {
+  "packet_id": "deep:deep.corpus.review_gate-self_moa",
+  "rubric_sha256": "46a8e974eff6175b3971c743ab2813d2c20b670dccfd139606187ff9e4b1283a",
+  "judge": "kimi-code/k3",
+  "scores": {
+   "legacy": 6,
+   "pi": 7
+  },
+  "winner": "pi",
+  "position": {
+   "A": "legacy",
+   "B": "pi"
+  }
+ }
+]

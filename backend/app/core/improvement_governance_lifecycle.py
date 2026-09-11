@@ -2,29 +2,36 @@
 
 from __future__ import annotations
 
-from collections import Counter
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.improvement_governance_contracts import (
     POLICY,
-    RISK,
     STATUS,
+)
+from app.core.improvement_governance_contracts import (
     clean_payload as _clean_payload,
+)
+from app.core.improvement_governance_contracts import (
     clean_string as _clean_string,
+)
+from app.core.improvement_governance_contracts import (
     normalize_surface as _normalize_surface,
+)
+from app.core.improvement_governance_contracts import (
     utcnow as _utcnow,
 )
-from app.core.improvement_governance_policy import ImprovementPolicyMixin
 from app.core.sandbox_evaluation import sandbox_evaluation
 from app.models.database import async_session
 from app.models.improvement_governance import ImprovementProposal
 
 logger_name = "app.core.improvement_governance"
 
+
 class ImprovementGovernanceLifecycleMixin:
-    async def _register_archive_variant(self, proposal: ImprovementProposal, session: AsyncSession) -> None:
+    async def _register_archive_variant(
+        self, proposal: ImprovementProposal, session: AsyncSession
+    ) -> None:
         try:
             from app.core.dgmh_archive import dgmh_archive
 
@@ -103,7 +110,9 @@ class ImprovementGovernanceLifecycleMixin:
             policy = approval_policy or classification["approval_policy"]
             initial_status = status
             if initial_status is None:
-                initial_status = STATUS["applied"] if policy == POLICY["auto"] else STATUS["proposed"]
+                initial_status = (
+                    STATUS["applied"] if policy == POLICY["auto"] else STATUS["proposed"]
+                )
 
             now = _utcnow()
             proposal = ImprovementProposal(
@@ -145,7 +154,9 @@ class ImprovementGovernanceLifecycleMixin:
             await session.refresh(proposal)
             return proposal
 
-    async def get_proposal(self, proposal_id: str, db: AsyncSession | None = None) -> ImprovementProposal | None:
+    async def get_proposal(
+        self, proposal_id: str, db: AsyncSession | None = None
+    ) -> ImprovementProposal | None:
         async def _get(session: AsyncSession) -> ImprovementProposal | None:
             result = await session.execute(
                 select(ImprovementProposal).where(ImprovementProposal.id == proposal_id)
@@ -205,7 +216,8 @@ class ImprovementGovernanceLifecycleMixin:
             if affected_surface:
                 normalized = _normalize_surface(affected_surface)
                 proposals = [
-                    proposal for proposal in proposals
+                    proposal
+                    for proposal in proposals
                     if normalized in proposal.get("affected_surfaces", [])
                 ]
             return proposals
@@ -234,10 +246,19 @@ class ImprovementGovernanceLifecycleMixin:
             proposal.approved_by = _clean_string(reviewer_id, max_chars=100)
             proposal.approved_at = now
             evidence = proposal.get_evidence()
-            evidence.append({"event": "approved", "at": now.isoformat(), "reviewer_id": reviewer_id, "note": note})
+            evidence.append(
+                {
+                    "event": "approved",
+                    "at": now.isoformat(),
+                    "reviewer_id": reviewer_id,
+                    "note": note,
+                }
+            )
             proposal.set_evidence(evidence)
             await session.flush()
-            await self._sync_archive_status(proposal, session, evidence={"reviewer_id": reviewer_id, "note": note})
+            await self._sync_archive_status(
+                proposal, session, evidence={"reviewer_id": reviewer_id, "note": note}
+            )
             return {"proposal": proposal.to_dict()}
 
         if db is not None:
@@ -260,12 +281,18 @@ class ImprovementGovernanceLifecycleMixin:
             if proposal is None:
                 return {"error": "Proposal not found"}
             if proposal.requires_human_approval and proposal.status != STATUS["approved"]:
-                return {"error": f"Proposal status is '{proposal.status}', approval required before apply"}
+                return {
+                    "error": (
+                        f"Proposal status is '{proposal.status}', approval required before apply"
+                    )
+                }
             if not proposal.get_rollback_plan():
                 return {"error": "Rollback plan required before apply"}
             now = _utcnow()
             events = proposal.get_evidence()
-            sandbox_result = sandbox_evaluation.evaluate_proposal(proposal, apply_evidence=evidence or {})
+            sandbox_result = sandbox_evaluation.evaluate_proposal(
+                proposal, apply_evidence=evidence or {}
+            )
             events.append(sandbox_result)
             if not sandbox_result["passed"]:
                 proposal.set_evidence(events)
@@ -278,10 +305,19 @@ class ImprovementGovernanceLifecycleMixin:
             proposal.status = STATUS["applied"]
             proposal.applied_by = _clean_string(actor_id, max_chars=100)
             proposal.applied_at = now
-            events.append({"event": "applied", "at": now.isoformat(), "actor_id": actor_id, **(evidence or {})})
+            events.append(
+                {
+                    "event": "applied",
+                    "at": now.isoformat(),
+                    "actor_id": actor_id,
+                    **(evidence or {}),
+                }
+            )
             proposal.set_evidence(events)
             await session.flush()
-            await self._sync_archive_status(proposal, session, evidence={"actor_id": actor_id, **(evidence or {})})
+            await self._sync_archive_status(
+                proposal, session, evidence={"actor_id": actor_id, **(evidence or {})}
+            )
             return {"proposal": proposal.to_dict()}
 
         if db is not None:
@@ -335,10 +371,19 @@ class ImprovementGovernanceLifecycleMixin:
             proposal.approved_by = _clean_string(reviewer_id, max_chars=100)
             proposal.approved_at = now
             events = proposal.get_evidence()
-            events.append({"event": "rejected", "at": now.isoformat(), "reviewer_id": reviewer_id, "reason": reason})
+            events.append(
+                {
+                    "event": "rejected",
+                    "at": now.isoformat(),
+                    "reviewer_id": reviewer_id,
+                    "reason": reason,
+                }
+            )
             proposal.set_evidence(events)
             await session.flush()
-            await self._sync_archive_status(proposal, session, evidence={"reviewer_id": reviewer_id, "reason": reason})
+            await self._sync_archive_status(
+                proposal, session, evidence={"reviewer_id": reviewer_id, "reason": reason}
+            )
             return {"proposal": proposal.to_dict()}
 
         if db is not None:
@@ -367,10 +412,14 @@ class ImprovementGovernanceLifecycleMixin:
             proposal.reverted_by = _clean_string(actor_id, max_chars=100)
             proposal.reverted_at = now
             events = proposal.get_evidence()
-            events.append({"event": "reverted", "at": now.isoformat(), "actor_id": actor_id, "reason": reason})
+            events.append(
+                {"event": "reverted", "at": now.isoformat(), "actor_id": actor_id, "reason": reason}
+            )
             proposal.set_evidence(events)
             await session.flush()
-            await self._sync_archive_status(proposal, session, evidence={"actor_id": actor_id, "reason": reason})
+            await self._sync_archive_status(
+                proposal, session, evidence={"actor_id": actor_id, "reason": reason}
+            )
             return {"proposal": proposal.to_dict()}
 
         if db is not None:
@@ -395,10 +444,19 @@ class ImprovementGovernanceLifecycleMixin:
             now = _utcnow()
             proposal.status = STATUS["quarantined"]
             events = proposal.get_evidence()
-            events.append({"event": "quarantined", "at": now.isoformat(), "actor_id": actor_id, "reason": reason})
+            events.append(
+                {
+                    "event": "quarantined",
+                    "at": now.isoformat(),
+                    "actor_id": actor_id,
+                    "reason": reason,
+                }
+            )
             proposal.set_evidence(events)
             await session.flush()
-            await self._sync_archive_status(proposal, session, evidence={"actor_id": actor_id, "reason": reason})
+            await self._sync_archive_status(
+                proposal, session, evidence={"actor_id": actor_id, "reason": reason}
+            )
             return {"proposal": proposal.to_dict()}
 
         if db is not None:
@@ -428,13 +486,15 @@ class ImprovementGovernanceLifecycleMixin:
             if metrics_after is not None:
                 proposal.set_metrics_after(_clean_payload(metrics_after))
             runs = proposal.get_evaluation_runs()
-            runs.append({
-                "at": now.isoformat(),
-                "passed": passed,
-                "metrics_before": _clean_payload(metrics_before or {}),
-                "metrics_after": _clean_payload(metrics_after or {}),
-                "evidence": _clean_payload(evidence or {}),
-            })
+            runs.append(
+                {
+                    "at": now.isoformat(),
+                    "passed": passed,
+                    "metrics_before": _clean_payload(metrics_before or {}),
+                    "metrics_after": _clean_payload(metrics_after or {}),
+                    "evidence": _clean_payload(evidence or {}),
+                }
+            )
             proposal.set_evaluation_runs(runs)
             await session.flush()
             try:

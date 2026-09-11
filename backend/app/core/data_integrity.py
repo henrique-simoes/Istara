@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.keyword_index import keyword_index_dir
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ async def run_integrity_check(db: AsyncSession) -> dict:
 
     # 2. Check keyword indexes. Keep this tied to the configured runtime data
     # directory so clean-install checks do not inspect a developer checkout.
-    keyword_path = Path(settings.data_dir) / "keyword_index"
+    keyword_path = keyword_index_dir()
     if keyword_path.exists():
         keyword_files = [f.stem for f in keyword_path.glob("*.db")]
 
@@ -194,7 +195,7 @@ async def quarantine_integrity_issues(db: AsyncSession, *, dry_run: bool = True)
     for project_id in report["orphans"]["lance_db"]:
         add_action("lance_db", Path(settings.lance_db_path) / project_id)
     for project_id in report["orphans"]["keyword_index"]:
-        add_action("keyword_index", Path(settings.data_dir) / "keyword_index" / f"{project_id}.db")
+        add_action("keyword_index", keyword_index_dir() / f"{project_id}.db")
     for project_id in report["orphans"]["uploads"]:
         add_action("uploads", Path(settings.upload_dir) / project_id)
     for agent_id in report["orphans"]["personas"]:

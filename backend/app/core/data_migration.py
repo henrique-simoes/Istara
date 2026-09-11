@@ -7,16 +7,15 @@ remain connected to their database records after migration.
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import select, text, inspect
+from sqlalchemy import inspect, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.keyword_index import keyword_index_dir
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +28,13 @@ async def export_full_database(db: AsyncSession) -> dict:
     - tables: { table_name: [row_dicts, ...] }
     - filesystem_refs: { lance_db_projects, keyword_index_projects, upload_dirs, persona_dirs }
     """
+    from app.models.agent import A2AMessage, Agent
     from app.models.project import Project
     from app.models.task import Task
-    from app.models.message import Message
-    from app.models.finding import Nugget, Fact, Insight, Recommendation
-    from app.models.agent import Agent, A2AMessage
 
     export_data = {
         "metadata": {
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "source_db": "sqlite" if "sqlite" in settings.database_url else "postgresql",
             "version": "1.0",
         },
@@ -58,8 +55,7 @@ async def export_full_database(db: AsyncSession) -> dict:
             result = await db.execute(select(model))
             rows = result.scalars().all()
             export_data["tables"][table_name] = [
-                row.to_dict() if hasattr(row, 'to_dict') else _row_to_dict(row)
-                for row in rows
+                row.to_dict() if hasattr(row, "to_dict") else _row_to_dict(row) for row in rows
             ]
             logger.info(f"Exported {len(rows)} rows from {table_name}")
         except Exception as e:
@@ -67,9 +63,21 @@ async def export_full_database(db: AsyncSession) -> dict:
             export_data["tables"][table_name] = []
 
     # Export tables that don't have to_dict (use raw SQL)
-    raw_tables = ["messages", "chat_sessions", "nuggets", "facts", "insights",
-                  "recommendations", "documents", "codebooks", "codes",
-                  "context_dag_nodes", "users", "llm_servers", "method_metrics"]
+    raw_tables = [
+        "messages",
+        "chat_sessions",
+        "nuggets",
+        "facts",
+        "insights",
+        "recommendations",
+        "documents",
+        "codebooks",
+        "codes",
+        "context_dag_nodes",
+        "users",
+        "llm_servers",
+        "method_metrics",
+    ]
 
     for table_name in raw_tables:
         try:
@@ -77,8 +85,7 @@ async def export_full_database(db: AsyncSession) -> dict:
             columns = result.keys()
             rows = result.fetchall()
             export_data["tables"][table_name] = [
-                {col: _serialize_value(row[i]) for i, col in enumerate(columns)}
-                for row in rows
+                {col: _serialize_value(row[i]) for i, col in enumerate(columns)} for row in rows
             ]
             logger.info(f"Exported {len(rows)} rows from {table_name}")
         except Exception as e:
@@ -87,15 +94,23 @@ async def export_full_database(db: AsyncSession) -> dict:
 
     # Catalog filesystem references
     lance_path = Path(settings.lance_db_path)
-    keyword_path = Path("./data/keyword_index")
+    keyword_path = keyword_index_dir()
     upload_path = Path(settings.upload_dir)
     persona_path = Path(__file__).parent.parent / "agents" / "personas"
 
     export_data["filesystem_refs"] = {
-        "lance_db_projects": [d.name for d in lance_path.iterdir() if d.is_dir()] if lance_path.exists() else [],
-        "keyword_index_projects": [f.stem for f in keyword_path.glob("*.db")] if keyword_path.exists() else [],
-        "upload_dirs": [d.name for d in upload_path.iterdir() if d.is_dir()] if upload_path.exists() else [],
-        "persona_dirs": [d.name for d in persona_path.iterdir() if d.is_dir()] if persona_path.exists() else [],
+        "lance_db_projects": [d.name for d in lance_path.iterdir() if d.is_dir()]
+        if lance_path.exists()
+        else [],
+        "keyword_index_projects": [f.stem for f in keyword_path.glob("*.db")]
+        if keyword_path.exists()
+        else [],
+        "upload_dirs": [d.name for d in upload_path.iterdir() if d.is_dir()]
+        if upload_path.exists()
+        else [],
+        "persona_dirs": [d.name for d in persona_path.iterdir() if d.is_dir()]
+        if persona_path.exists()
+        else [],
     }
 
     return export_data
@@ -111,10 +126,23 @@ async def import_full_database(db: AsyncSession, data: dict) -> dict:
 
     # Import order matters (foreign keys)
     import_order = [
-        "users", "projects", "agents", "chat_sessions", "tasks",
-        "messages", "nuggets", "facts", "insights", "recommendations",
-        "documents", "codebooks", "codes", "context_dag_nodes",
-        "a2a_messages", "llm_servers", "method_metrics",
+        "users",
+        "projects",
+        "agents",
+        "chat_sessions",
+        "tasks",
+        "messages",
+        "nuggets",
+        "facts",
+        "insights",
+        "recommendations",
+        "documents",
+        "codebooks",
+        "codes",
+        "context_dag_nodes",
+        "a2a_messages",
+        "llm_servers",
+        "method_metrics",
     ]
 
     for table_name in import_order:

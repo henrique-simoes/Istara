@@ -1,13 +1,15 @@
 import { API_BASE } from "@/lib/runtimeConfig";
-import type { ThinkingMode } from "@/lib/types";
+import { getToken } from "@/lib/tokenStore";
+import type { ChatUsage, PiCatalogProvider, PiEndpointInfo, ThinkingMode } from "@/lib/types";
 
 function authHeaders(): Record<string, string> {
-  const token = typeof window === "undefined" ? "" : localStorage.getItem("istara_token");
+  const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function json<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...authHeaders(), ...options?.headers },
     ...options,
   });
@@ -22,14 +24,22 @@ export const chat = {
     message: string,
     sessionId?: string,
     signal?: AbortSignal,
-    thinkingMode?: ThinkingMode
+    thinkingMode?: ThinkingMode,
+    engine?: "pi" | "legacy"
   ) {
     const payload: Record<string, unknown> = { message, project_id: projectId };
     if (sessionId) payload.session_id = sessionId;
     if (thinkingMode) payload.thinking_mode = thinkingMode;
     const res = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+        // Per-request Agentic Core override so the backend routes this turn
+        // through the exact core shown in the UI (CF-SPEC-1 ITEM-001).
+        ...(engine ? { "x-istara-agent-engine": engine } : {}),
+      },
       body: JSON.stringify(payload),
       signal,
     });
@@ -74,6 +84,14 @@ export const chat = {
   },
   history: (projectId: string, limit = 50) =>
     json<any[]>(`/api/chat/history/${projectId}?limit=${limit}`),
+  modelCatalog: (projectId: string) =>
+    json<{ providers: PiCatalogProvider[]; total_models: number; configured: PiEndpointInfo[]; legacy_models: string[]; engine: string; chat_ready?: boolean | null; default_endpoint_id: string | null; default_model: string | null }>(
+      `/api/chat/model-catalog?project_id=${encodeURIComponent(projectId)}`
+    ),
+  usage: (projectId: string, sessionId?: string) =>
+    json<ChatUsage>(
+      `/api/chat/usage/${encodeURIComponent(projectId)}${sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ""}`
+    ),
   transcribeVoice: async (audioFile: File, projectId: string, language?: string): Promise<{
     text: string;
     language: string;
@@ -89,6 +107,7 @@ export const chat = {
     if (language) formData.append("language", language);
 
     const res = await fetch(`${API_BASE}/api/chat/voice`, {
+      credentials: "include",
       method: "POST",
       headers: authHeaders(),
       body: formData,

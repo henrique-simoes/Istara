@@ -3,9 +3,16 @@
 export const name = "Game Theory Participant Simulation";
 export const id = "75-participant-simulation";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "interviews",
+    navLabel: "Interviews",
+    markers: ["All", "Transcripts"],
+    screenshot: "75-interviews-view",
+  });
   if (!ctx.projectId) {
     return {
       checks: [{ name: "Project available for participant simulation", passed: false, detail: "No persistent project from runner" }],

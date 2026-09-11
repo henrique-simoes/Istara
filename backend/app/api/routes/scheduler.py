@@ -1,13 +1,14 @@
 """Scheduled task CRUD API routes."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import ensure_utc
 from app.core.permissions import get_active_project_or_404, require_project_access
 from app.core.scheduler import CronParser, ScheduledTask
 from app.models.database import get_db
@@ -47,6 +48,7 @@ async def _get_project_schedule_or_404(
 # ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
+
 
 class ScheduleCreate(BaseModel):
     """Request body for creating a scheduled task."""
@@ -89,13 +91,22 @@ class ScheduleResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_serializer("last_run", "next_run", "created_at")
+    def serialize_utc_datetime(self, value: datetime | None) -> str | None:
+        """Keep SQLite-naive UTC values unambiguous for browser clients."""
+        normalized = ensure_utc(value)
+        return normalized.isoformat() if normalized else None
+
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
+
 @router.post("/schedules", response_model=ScheduleResponse, status_code=201)
-async def create_schedule(data: ScheduleCreate, request: Request, db: AsyncSession = Depends(get_db)):
+async def create_schedule(
+    data: ScheduleCreate, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Create a new scheduled task."""
     name = data.name.strip()
     project_id = data.project_id.strip()
@@ -113,7 +124,7 @@ async def create_schedule(data: ScheduleCreate, request: Request, db: AsyncSessi
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     try:
         next_run = CronParser.next_run_after(cron_expression, now)
     except ValueError as exc:
@@ -204,7 +215,7 @@ async def update_schedule(
         try:
             update_data["next_run"] = CronParser.next_run_after(
                 update_data["cron_expression"],
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc))
@@ -212,7 +223,7 @@ async def update_schedule(
         try:
             update_data["next_run"] = CronParser.next_run_after(
                 task.cron_expression,
-                datetime.now(timezone.utc),
+                datetime.now(UTC),
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc))

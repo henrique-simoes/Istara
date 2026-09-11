@@ -5,8 +5,8 @@ and whether it was human-reviewed. Based on O'Connor & Joffe (2020)
 ICR guidelines and Lincoln & Guba (1985) audit trail requirements.
 """
 
-from datetime import datetime, timezone
 import json
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -48,7 +48,7 @@ class CodeApplication(Base):
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     def to_dict(self) -> dict:
@@ -57,7 +57,8 @@ class CodeApplication(Base):
         except json.JSONDecodeError:
             route_evidence = {}
         return {
-            "id": self.id, "project_id": self.project_id,
+            "id": self.id,
+            "project_id": self.project_id,
             "task_id": self.task_id,
             "codebook_version_id": self.codebook_version_id,
             "code_id": self.code_id,
@@ -68,12 +69,14 @@ class CodeApplication(Base):
             "source_location": self.source_location,
             "start_offset": self.start_offset,
             "end_offset": self.end_offset,
-            "coder_id": self.coder_id, "coder_type": self.coder_type,
+            "coder_id": self.coder_id,
+            "coder_type": self.coder_type,
             "model_name": self.model_name,
             "donor_id": self.donor_id,
             "route_id": self.route_id,
             "route_evidence": route_evidence,
-            "confidence": self.confidence, "reasoning": self.reasoning,
+            "confidence": self.confidence,
+            "reasoning": self.reasoning,
             "reliability_status": self.reliability_status,
             "reconciliation_status": self.reconciliation_status,
             "promotion_status": self.promotion_status,

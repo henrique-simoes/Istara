@@ -46,6 +46,7 @@ The chat session sidebar manages project-scoped conversation history and new ses
 - `sessionsApi.get`, `update`, `delete`, and `star` all include `project_id`; the backend verifies access to that active project and then looks up the chat session with both `ChatSession.id` and `ChatSession.project_id`.
 - Session detail responses load messages with both `Message.session_id` and `Message.project_id`, and a cross-project active scope returns 404 instead of revealing that another project's session exists.
 - Session create and update validate `agent_id` against the same active project before storing it. Universal system agents are allowed; project-owned agents from another project, inactive agents, and orphaned project-scoped agents are rejected.
+- Session create and update also reject embedding-only model names at the persistence boundary, so a stale or direct API override cannot route an embedding transport through chat.
 - The sidebar derives `scopedSessions` from the active project before rendering rows, counts, and actions.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.

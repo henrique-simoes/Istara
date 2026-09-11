@@ -21,14 +21,14 @@ This is the single most important quality control mechanism in Istara.
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, String, Text, Integer, DateTime, Boolean
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.content_guard import ContentGuard
-from app.models.database import Base, async_session
+from app.models.database import Base
 
 _guard = ContentGuard()
 
@@ -43,23 +43,31 @@ class ContextDocument(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     level: Mapped[int] = mapped_column(Integer, nullable=False)  # 0-5
-    level_type: Mapped[str] = mapped_column(String(50), nullable=False)  # platform, company, product, project, task, agent
-    parent_id: Mapped[str] = mapped_column(String(36), default="")  # Links to parent context (e.g., project → company)
+    level_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # platform, company, product, project, task, agent
+    parent_id: Mapped[str] = mapped_column(
+        String(36), default=""
+    )  # Links to parent context (e.g., project → company)
     project_id: Mapped[str] = mapped_column(String(36), default="")  # For project/task level
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    priority: Mapped[int] = mapped_column(Integer, default=0)  # Higher = more important, overrides lower
+    priority: Mapped[int] = mapped_column(
+        Integer, default=0
+    )  # Higher = more important, overrides lower
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
 
-PLATFORM_CONTEXT = """You are Istara, an expert UX Research assistant. You help researchers organize, analyze, and synthesize research findings using rigorous methodology.
+PLATFORM_CONTEXT = (
+    """You are Istara, an expert UX Research assistant. You help researchers organize, """
+    """analyze, and synthesize research findings using rigorous methodology.
 
 Core principles:
 - ALWAYS cite sources when referencing specific documents or data
@@ -72,6 +80,7 @@ Core principles:
 - Maintain researcher ethics: informed consent, privacy, no harm
 - Be specific and actionable in recommendations
 """
+)
 
 
 class ContextHierarchy:
@@ -106,9 +115,11 @@ class ContextHierarchy:
 
         # Level 1-5: Load project-local context rows from database.
         scoped_project_id = self._normalize_project_id(project_id)
-        query = select(ContextDocument).where(
-            ContextDocument.enabled == True
-        ).order_by(ContextDocument.level, ContextDocument.priority.desc())
+        query = (
+            select(ContextDocument)
+            .where(ContextDocument.enabled == True)  # noqa: E712 -- SQLAlchemy IS TRUE
+            .order_by(ContextDocument.level, ContextDocument.priority.desc())
+        )
 
         if scoped_project_id:
             query = query.where(ContextDocument.project_id == scoped_project_id)
@@ -247,7 +258,6 @@ class ContextHierarchy:
         await db.delete(doc)
         await db.commit()
         return True
-
 
     async def compose_context_with_budget(
         self,

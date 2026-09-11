@@ -172,7 +172,7 @@
 <h2>Settings</h2>
 <ul>
 <li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../../settings/general/architecture.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
-<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../../settings/llm-servers/architecture.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="legacy llm server compatibility settings &gt; pi model management &gt; legacy compatibility pi model management owns provider/model configuration while legacy llmserver rows remain read-only migration input and petals donors join through the governed bridge."><a href="../../settings/llm-servers/architecture.html"><span>Legacy LLM Server Compatibility</span><small>Settings &gt; Pi Model Management &gt; Legacy Compatibility</small></a></li>
 <li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../../settings/users/architecture.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
 <li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../../settings/connection-strings/architecture.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
 <li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../../settings/security-factors/architecture.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
@@ -275,6 +275,11 @@
 <li>The backend list, unread-count, mark-all-read, mark-read, and delete APIs never fall back to a global inbox; cross-project notification aggregation belongs only on explicit admin reporting surfaces.</li>
 <li>Lower-level notification service helpers also require <code>project_id</code>, and project-bound event persistence skips records that cannot be tied to a project.</li>
 <li>System-wide notification-style websocket events such as updates, backups, and resource throttles fan out only to global admins.</li>
+<li>Websocket-triggered notification persistence remains asynchronous for broadcast latency, but</li>
+</ul>
+<p><code>ConnectionManager</code> tracks those tasks and the application shutdown lifecycle drains them before</p>
+<p>closing the event loop, preventing an <code>AsyncSession.close</code> coroutine from being abandoned.</p>
+<ul>
 <li>Agent promotion review notifications use the <code>agent_promotion</code> category in the API allow-list, frontend category filters, and badge styling so project-scoped review requests remain visible when users filter notification categories.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>

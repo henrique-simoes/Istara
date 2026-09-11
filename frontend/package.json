@@ -1,14 +1,18 @@
 {
   "name": "istara-frontend",
-  "version": "2026.04.27",
+  "version": "2026.05.27.3",
   "private": true,
+  "engines": {
+    "node": ">=24.0.0 <25.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "test:unit": "vitest run",
-    "test:mutation": "stryker run stryker.config.json"
+    "test:mutation": "stryker run stryker.config.json",
+    "test:mutation:wide": "stryker run stryker.wide.config.json"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

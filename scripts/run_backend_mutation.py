@@ -31,7 +31,9 @@ def main(argv: list[str] | None = None) -> int:
         default=_default_max_children(),
         help="Maximum mutmut worker children. Defaults to 1 on macOS, up to 4 elsewhere.",
     )
-    parser.add_argument("mutants", nargs="*", help="Optional mutmut mutant names to rerun.")
+    parser.add_argument(
+        "mutants", nargs="*", help="Optional mutmut mutant names to rerun."
+    )
     parser.add_argument(
         "--keep-mutants",
         action="store_true",

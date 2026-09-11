@@ -3,9 +3,16 @@
 export const name = "Agent Factory";
 export const id = "44-agent-factory";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "agents",
+    navLabel: "Agents",
+    markers: ["System Agents", "Agents"],
+    screenshot: "44-agents-view",
+  });
   const projectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
   const scopedSkipDetail = "[skipped] No active project id; scoped endpoint not called";
 

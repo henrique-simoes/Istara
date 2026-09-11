@@ -192,21 +192,36 @@ async function checkEnvironment() {
 
   // Frontend
   try {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"; // self-signed deploy certs
     const res = await fetch(FRONTEND_BASE);
     env.frontend = res.ok;
   } catch { /* not running */ }
 
-  // LLM (requires auth)
+  // LLM availability = the unified model catalog only (Phase 6: the LLM
+  // Servers surface is retired). Gates run when any plane has a routable
+  // model; "network_llm" means more than one local/donated entry.
+  let piConfigured = 0;
+  let legacyModels = 0;
   try {
-    const res = await fetch(`${API_BASE}/api/llm-servers`, { headers: authHeaders() });
+    // The catalog is project-scoped: resolve one visible project first.
+    let pid = "";
+    try {
+      const pres = await fetch(`${API_BASE}/api/projects`, { headers: authHeaders() });
+      if (pres.ok) {
+        const projects = await pres.json();
+        const first = Array.isArray(projects) ? projects[0] : projects?.projects?.[0];
+        if (first?.id) pid = `?project_id=${encodeURIComponent(first.id)}`;
+      }
+    } catch { /* catalog probe below reports its own failure */ }
+    const res = await fetch(`${API_BASE}/api/chat/model-catalog${pid}`, { headers: authHeaders() });
     if (res.ok) {
       const data = await res.json();
-      const servers = data?.servers || (Array.isArray(data) ? data : []);
-      const healthy = servers.filter((s) => s.is_healthy);
-      env.llm = healthy.length > 0;
-      env.network_llm = healthy.length > 1;
+      piConfigured = Array.isArray(data?.configured) ? data.configured.length : 0;
+      legacyModels = Array.isArray(data?.legacy_models) ? data.legacy_models.length : 0;
     }
   } catch { /* */ }
+  env.llm = piConfigured > 0 || legacyModels > 0;
+  env.network_llm = legacyModels > 1;
 
   // Stitch/Figma keys (requires auth)
   try {
@@ -250,32 +265,45 @@ async function runScenarios(scenarioIds) {
   if (AUTH_TOKEN && !scenarioEnv.ISTARA_TEST_AUTH_TOKEN) {
     scenarioEnv.ISTARA_TEST_AUTH_TOKEN = AUTH_TOKEN;
   }
+  // Dual-core matrix: ISTARA_MARATHON_ENGINE=pi|legacy|both threads the
+  // simulation harness's --engine selection into every cycle scenario.
+  // `both` runs each scenario twice (legacy, then pi) and merges results.
+  const engineSetting = process.env.ISTARA_MARATHON_ENGINE;
+  const enginePasses =
+    engineSetting === "pi" ? ["pi"]
+    : engineSetting === "legacy" ? ["legacy"]
+    : engineSetting === "both" ? ["legacy", "pi"]
+    : [null];
   for (const id of scenarioIds) {
-    try {
-      const output = execSync(
-        `cd "${PROJECT_ROOT}" && node tests/simulation/run.mjs --scenario ${id} --skip-eval 2>&1`,
-        { timeout: 300000, encoding: "utf-8", maxBuffer: 10 * 1024 * 1024, env: scenarioEnv }
-      );
-      // Parse results from output
-      const parsed = parseScenarioOutput(output);
-      results.push({
-        scenario: id,
-        passed: parsed.passed,
-        failed: parsed.failed,
-        output: output.slice(-1200),
-        success: parsed.failed === 0,
-      });
-    } catch (e) {
-      const output = String(e.stdout || e.stderr || e.message || "Execution error");
-      const parsed = parseScenarioOutput(output);
-      results.push({
-        scenario: id,
-        passed: parsed.passed,
-        failed: parsed.failed || 1,
-        output: output.slice(-1200),
-        success: false,
-        error: true,
-      });
+    for (const enginePass of enginePasses) {
+      const label = enginePass ? `${id}[${enginePass}]` : id;
+      try {
+        const engineArgs = enginePass ? ` --engine ${enginePass}` : "";
+        const output = execSync(
+          `cd "${PROJECT_ROOT}" && node tests/simulation/run.mjs --scenario ${id}${engineArgs} --skip-eval 2>&1`,
+          { timeout: 300000, encoding: "utf-8", maxBuffer: 10 * 1024 * 1024, env: scenarioEnv }
+        );
+        // Parse results from output
+        const parsed = parseScenarioOutput(output);
+        results.push({
+          scenario: label,
+          passed: parsed.passed,
+          failed: parsed.failed,
+          output: output.slice(-1200),
+          success: parsed.failed === 0,
+        });
+      } catch (e) {
+        const output = String(e.stdout || e.stderr || e.message || "Execution error");
+        const parsed = parseScenarioOutput(output);
+        results.push({
+          scenario: label,
+          passed: parsed.passed,
+          failed: parsed.failed || 1,
+          output: output.slice(-1200),
+          success: false,
+          error: true,
+        });
+      }
     }
   }
   return results;

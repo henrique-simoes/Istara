@@ -8,8 +8,8 @@ import httpx
 from app.config import settings
 from app.core.env_persistence import persist_env_value
 from app.core.llm_output import ThinkingContentFilter, visible_assistant_message
-from app.core.llm_thinking import apply_thinking_control
 from app.core.llm_schema_adapter import provider_response_format_fields
+from app.core.llm_thinking import apply_thinking_control
 
 
 class OllamaClient:

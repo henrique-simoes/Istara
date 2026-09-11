@@ -60,6 +60,25 @@ def configured_trusted_origins(settings_obj: Any) -> set[str]:
     return origins
 
 
+def trusted_loopback_alias(request: Request, trusted_origins: set[str]) -> bool:
+    """Allow an explicitly trusted loopback UI/API hostname alias.
+
+    Local development tunnels commonly publish the UI as ``localhost`` while
+    the API is bound as ``127.0.0.1`` (or vice versa). Browsers label that
+    spelling difference ``cross-site`` even though both ends are loopback.
+    The exception remains limited to an exact configured origin, matching
+    HTTP/HTTPS schemes, and loopback hosts on both sides.
+    """
+    origin = request_origin(request)
+    if not origin or origin not in trusted_origins:
+        return False
+    parsed_origin = urlparse(origin)
+    target_host = (getattr(request.url, "hostname", "") or "").strip()
+    if parsed_origin.scheme != request.url.scheme:
+        return False
+    return _host_is_loopback(parsed_origin.hostname or "") and _host_is_loopback(target_host)
+
+
 def _host_is_loopback(host: str) -> bool:
     host = host.lower().strip("[]")
     if host in LOCALHOST_HOSTS or host.endswith(".localhost"):
@@ -201,7 +220,11 @@ def production_security_configuration_issues(settings_obj: Any) -> list[str]:
 
     if not team_mode:
         issues.append("Production/public profile must enable TEAM_MODE.")
-    if not jwt_secret or jwt_secret == "istara-dev-secret-change-in-production" or len(jwt_secret) < 32:
+    if (
+        not jwt_secret
+        or jwt_secret == "istara-dev-secret-change-in-production"
+        or len(jwt_secret) < 32
+    ):
         issues.append("Production/public profile requires a strong JWT_SECRET.")
     if not trusted_origins:
         issues.append("Production/public profile requires exact trusted browser origins.")

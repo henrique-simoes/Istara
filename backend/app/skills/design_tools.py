@@ -29,48 +29,107 @@ logger = logging.getLogger(__name__)
 DESIGN_TOOLS = [
     {
         "name": "generate_screen",
-        "description": "Generate a UI screen from a text description using Google Stitch. Creates a DesignDecision linking research findings to the generated screen.",
+        "description": (
+            "Generate a UI screen from a text description using Google Stitch. "
+            "Creates a DesignDecision linking research findings to the generated screen."
+        ),
         "parameters": {
-            "prompt": {"type": "string", "required": True, "description": "Description of the UI screen to generate"},
-            "device_type": {"type": "string", "required": False, "description": "Device type: MOBILE, DESKTOP, TABLET, or AGNOSTIC (default: DESKTOP)"},
-            "model": {"type": "string", "required": False, "description": "AI model: GEMINI_3_PRO or GEMINI_3_FLASH (default: GEMINI_3_FLASH)"},
-            "seed_finding_ids": {"type": "array", "required": False, "description": "Array of finding IDs (insights/recommendations) to seed the design from"},
+            "prompt": {
+                "type": "string",
+                "required": True,
+                "description": "Description of the UI screen to generate",
+            },
+            "device_type": {
+                "type": "string",
+                "required": False,
+                "description": (
+                    "Device type: MOBILE, DESKTOP, TABLET, or AGNOSTIC (default: DESKTOP)"
+                ),
+            },
+            "model": {
+                "type": "string",
+                "required": False,
+                "description": "AI model: GEMINI_3_PRO or GEMINI_3_FLASH (default: GEMINI_3_FLASH)",
+            },
+            "seed_finding_ids": {
+                "type": "array",
+                "required": False,
+                "description": (
+                    "Array of finding IDs (insights/recommendations) to seed the design from"
+                ),
+            },
         },
     },
     {
         "name": "edit_screen",
         "description": "Edit an existing generated screen with text instructions",
         "parameters": {
-            "screen_id": {"type": "string", "required": True, "description": "ID of the screen to edit"},
-            "instructions": {"type": "string", "required": True, "description": "Edit instructions for the screen"},
+            "screen_id": {
+                "type": "string",
+                "required": True,
+                "description": "ID of the screen to edit",
+            },
+            "instructions": {
+                "type": "string",
+                "required": True,
+                "description": "Edit instructions for the screen",
+            },
         },
     },
     {
         "name": "create_variant",
-        "description": "Generate design variants of an existing screen. Types: REFINE (small tweaks), EXPLORE (moderate changes), REIMAGINE (major rethink)",
+        "description": (
+            "Generate design variants of an existing screen. Types: REFINE (small tweaks), "
+            "EXPLORE (moderate changes), REIMAGINE (major rethink)"
+        ),
         "parameters": {
-            "screen_id": {"type": "string", "required": True, "description": "ID of the screen to create variants from"},
-            "variant_type": {"type": "string", "required": True, "description": "Type: REFINE, EXPLORE, or REIMAGINE"},
-            "count": {"type": "integer", "required": False, "description": "Number of variants (1-5, default: 3)"},
+            "screen_id": {
+                "type": "string",
+                "required": True,
+                "description": "ID of the screen to create variants from",
+            },
+            "variant_type": {
+                "type": "string",
+                "required": True,
+                "description": "Type: REFINE, EXPLORE, or REIMAGINE",
+            },
+            "count": {
+                "type": "integer",
+                "required": False,
+                "description": "Number of variants (1-5, default: 3)",
+            },
         },
     },
     {
         "name": "search_findings_for_design",
-        "description": "Search research findings (insights, recommendations, facts) relevant to a design task",
+        "description": (
+            "Search research findings (insights, recommendations, facts) relevant to a design task"
+        ),
         "parameters": {
-            "query": {"type": "string", "required": True, "description": "Search query for findings"},
+            "query": {
+                "type": "string",
+                "required": True,
+                "description": "Search query for findings",
+            },
         },
     },
     {
         "name": "create_design_brief",
-        "description": "Generate a design brief from the project's research findings. Synthesizes insights and recommendations into actionable design requirements.",
+        "description": (
+            "Generate a design brief from the project's research findings. "
+            "Synthesizes insights and recommendations into actionable design requirements."
+        ),
         "parameters": {},
     },
     {
         "name": "import_from_figma",
         "description": "Import design context from a Figma URL (file or specific frame)",
         "parameters": {
-            "figma_url": {"type": "string", "required": True, "description": "Figma URL to import from"},
+            "figma_url": {
+                "type": "string",
+                "required": True,
+                "description": "Figma URL to import from",
+            },
         },
     },
     {
@@ -96,9 +155,7 @@ OPENAI_DESIGN_TOOLS = [
                     for name, info in tool["parameters"].items()
                 },
                 "required": [
-                    name
-                    for name, info in tool["parameters"].items()
-                    if info.get("required")
+                    name for name, info in tool["parameters"].items() if info.get("required")
                 ],
             },
         },
@@ -117,8 +174,10 @@ def build_design_tools_prompt() -> str:
         '{"tool": "tool_name", "params": {"param1": "value1"}}',
         "```",
         "",
-        "After executing the tool, I will show you the result. You can then call another tool or respond to the user.",
-        "Only call a tool when the user's request requires a design action. For general design conversation, respond normally.",
+        "After executing the tool, I will show you the result. "
+        "You can then call another tool or respond to the user.",
+        "Only call a tool when the user's request requires a design "
+        "action. For general design conversation, respond normally.",
         "",
         "### Design Tools:",
         "",
@@ -139,12 +198,14 @@ def build_design_tools_prompt() -> str:
 
 
 async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) -> str:
-    from app.services.stitch_service import stitch_service
-    from app.models.design_screen import DesignScreen, DesignDecision
-    from app.config import settings
-    from app.services.design_evidence import build_seeded_prompt, resolve_seed_findings
     from pathlib import Path
+
     import httpx
+
+    from app.config import settings
+    from app.models.design_screen import DesignDecision, DesignScreen
+    from app.services.design_evidence import build_seeded_prompt, resolve_seed_findings
+    from app.services.stitch_service import stitch_service
 
     prompt = params["prompt"]
     device = params.get("device_type", "DESKTOP")
@@ -168,11 +229,15 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
         try:
             stitch_proj = await stitch_service.create_project(f"Istara-{project_id[:8]}")
             raw_name = stitch_proj.get("name", "")
-            stitch_project_id = stitch_service.extract_project_id(raw_name) if raw_name else "default"
+            stitch_project_id = (
+                stitch_service.extract_project_id(raw_name) if raw_name else "default"
+            )
         except Exception:
             pass
 
-        data = await stitch_service.generate_screen(stitch_project_id, enriched_prompt, device, model)
+        data = await stitch_service.generate_screen(
+            stitch_project_id, enriched_prompt, device, model
+        )
 
         # Parse real Stitch response: screens are nested in outputComponents
         output_components = data.get("outputComponents", [{}])
@@ -200,7 +265,9 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
                     # Download HTML from downloadUrl
                     html_content = ""
                     html_code = s_data.get("htmlCode", {})
-                    html_url = html_code.get("downloadUrl", "") if isinstance(html_code, dict) else ""
+                    html_url = (
+                        html_code.get("downloadUrl", "") if isinstance(html_code, dict) else ""
+                    )
                     if html_url:
                         try:
                             resp = await http.get(html_url)
@@ -216,7 +283,11 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
                     # Download screenshot
                     screenshot_path = ""
                     screenshot_info = s_data.get("screenshot", {})
-                    screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+                    screenshot_url = (
+                        screenshot_info.get("downloadUrl", "")
+                        if isinstance(screenshot_info, dict)
+                        else ""
+                    )
                     if screenshot_url:
                         try:
                             resp = await http.get(screenshot_url)
@@ -243,11 +314,13 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
                         stitch_screen_id=stitch_screen_id,
                         status="ready",
                         source_findings=json.dumps(seed_ids),
-                        metadata_json=json.dumps({
-                            "stitch_session_id": stitch_session_id,
-                            "stitch_width": s_data.get("width"),
-                            "stitch_height": s_data.get("height"),
-                        }),
+                        metadata_json=json.dumps(
+                            {
+                                "stitch_session_id": stitch_session_id,
+                                "stitch_width": s_data.get("width"),
+                                "stitch_height": s_data.get("height"),
+                            }
+                        ),
                     )
                     db.add(screen)
 
@@ -306,7 +379,10 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
                 await db.commit()
             created_screen_ids.append(screen_id)
 
-        return f"Screen generated: '{prompt[:60]}...' (IDs: {created_screen_ids}, device: {device}, status: ready)"
+        return (
+            f"Screen generated: '{prompt[:60]}...' (IDs: {created_screen_ids}, "
+            f"device: {device}, status: ready)"
+        )
     except ValueError as e:
         return f"Stitch not configured: {e}"
     except Exception as e:
@@ -314,11 +390,13 @@ async def _exec_generate_screen(params: dict, project_id: str, agent_id: str) ->
 
 
 async def _exec_edit_screen(params: dict, project_id: str, agent_id: str) -> str:
-    from app.services.stitch_service import stitch_service
-    from app.models.design_screen import DesignScreen
-    from app.config import settings
     from pathlib import Path
+
     import httpx
+
+    from app.config import settings
+    from app.models.design_screen import DesignScreen
+    from app.services.stitch_service import stitch_service
 
     screen_id = params["screen_id"]
     instructions = params["instructions"]
@@ -376,7 +454,11 @@ async def _exec_edit_screen(params: dict, project_id: str, agent_id: str) -> str
 
                 # Download screenshot
                 screenshot_info = s_data.get("screenshot", {})
-                screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+                screenshot_url = (
+                    screenshot_info.get("downloadUrl", "")
+                    if isinstance(screenshot_info, dict)
+                    else ""
+                )
                 if screenshot_url:
                     try:
                         resp = await http.get(screenshot_url)
@@ -419,11 +501,13 @@ async def _exec_edit_screen(params: dict, project_id: str, agent_id: str) -> str
 
 
 async def _exec_create_variant(params: dict, project_id: str, agent_id: str) -> str:
-    from app.services.stitch_service import stitch_service
-    from app.models.design_screen import DesignScreen
-    from app.config import settings
     from pathlib import Path
+
     import httpx
+
+    from app.config import settings
+    from app.models.design_screen import DesignScreen
+    from app.services.stitch_service import stitch_service
 
     screen_id = params["screen_id"]
     variant_type = params.get("variant_type", "EXPLORE")
@@ -470,7 +554,9 @@ async def _exec_create_variant(params: dict, project_id: str, agent_id: str) -> 
                     # Download HTML
                     html_content = ""
                     html_code = s_data.get("htmlCode", {})
-                    html_url = html_code.get("downloadUrl", "") if isinstance(html_code, dict) else ""
+                    html_url = (
+                        html_code.get("downloadUrl", "") if isinstance(html_code, dict) else ""
+                    )
                     if html_url:
                         try:
                             resp = await http.get(html_url)
@@ -484,7 +570,11 @@ async def _exec_create_variant(params: dict, project_id: str, agent_id: str) -> 
                     # Download screenshot
                     screenshot_path = ""
                     screenshot_info = s_data.get("screenshot", {})
-                    screenshot_url = screenshot_info.get("downloadUrl", "") if isinstance(screenshot_info, dict) else ""
+                    screenshot_url = (
+                        screenshot_info.get("downloadUrl", "")
+                        if isinstance(screenshot_info, dict)
+                        else ""
+                    )
                     if screenshot_url:
                         try:
                             resp = await http.get(screenshot_url)
@@ -524,13 +614,17 @@ async def _exec_create_variant(params: dict, project_id: str, agent_id: str) -> 
 
 
 async def _exec_search_findings(params: dict, project_id: str, agent_id: str) -> str:
-    from app.models.finding import Insight, Recommendation, Fact
+    from app.models.finding import Fact, Insight, Recommendation
 
     query = params["query"].lower()
     results: list[str] = []
     async with async_session() as db:
-        for Model, label in [(Insight, "Insight"), (Recommendation, "Recommendation"), (Fact, "Fact")]:
-            result = await db.execute(select(Model).where(Model.project_id == project_id))
+        for model, label in [
+            (Insight, "Insight"),
+            (Recommendation, "Recommendation"),
+            (Fact, "Fact"),
+        ]:
+            result = await db.execute(select(model).where(model.project_id == project_id))
             for item in result.scalars().all():
                 if query in item.text.lower():
                     results.append(f"[{label}] {item.text[:150]} (ID: {item.id})")
@@ -540,13 +634,11 @@ async def _exec_search_findings(params: dict, project_id: str, agent_id: str) ->
 
 
 async def _exec_create_brief(params: dict, project_id: str, agent_id: str) -> str:
-    from app.models.finding import Insight, Recommendation
     from app.models.design_screen import DesignBrief
+    from app.models.finding import Insight, Recommendation
 
     async with async_session() as db:
-        insight_result = await db.execute(
-            select(Insight).where(Insight.project_id == project_id)
-        )
+        insight_result = await db.execute(select(Insight).where(Insight.project_id == project_id))
         insights = insight_result.scalars().all()
         rec_result = await db.execute(
             select(Recommendation).where(Recommendation.project_id == project_id)
@@ -586,7 +678,10 @@ async def _exec_create_brief(params: dict, project_id: str, agent_id: str) -> st
         db.add(brief)
         await db.commit()
 
-    return f"Design brief created (ID: {brief_id}) with {len(insight_ids)} insights and {len(rec_ids)} recommendations"
+    return (
+        f"Design brief created (ID: {brief_id}) with {len(insight_ids)} insights "
+        f"and {len(rec_ids)} recommendations"
+    )
 
 
 async def _exec_import_figma(params: dict, project_id: str, agent_id: str) -> str:
@@ -600,7 +695,10 @@ async def _exec_import_figma(params: dict, project_id: str, agent_id: str) -> st
     try:
         file_data = await figma_service.get_file(parsed["file_key"])
         name = file_data.get("name", "Untitled")
-        return f"Imported Figma file: '{name}' (key: {parsed['file_key']}, node: {parsed.get('node_id', 'root')})"
+        return (
+            f"Imported Figma file: '{name}' (key: {parsed['file_key']}, "
+            f"node: {parsed.get('node_id', 'root')})"
+        )
     except ValueError as e:
         return f"Figma not configured: {e}"
     except Exception as e:

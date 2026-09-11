@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -215,7 +215,7 @@ async def enforce_rate_limits(
 
     Uses the audit log to count invocations in the past hour.
     """
-    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    one_hour_ago = datetime.now(UTC) - timedelta(hours=1)
 
     result = await db.execute(
         select(func.count(MCPAuditEntry.id)).where(
@@ -287,7 +287,7 @@ async def get_exposure_summary(db: AsyncSession) -> dict:
             enabled_by_risk.setdefault(risk, []).append(tool_name)
 
     # Recent activity counts (last 24h)
-    one_day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+    one_day_ago = datetime.now(UTC) - timedelta(hours=24)
     total_result = await db.execute(
         select(func.count(MCPAuditEntry.id)).where(
             MCPAuditEntry.timestamp >= one_day_ago,
@@ -313,8 +313,7 @@ async def get_exposure_summary(db: AsyncSession) -> dict:
         "requests_last_24h": total_24h,
         "denied_last_24h": denied_24h,
         "warning": (
-            "SENSITIVE or HIGH-risk tools are enabled. External agents can "
-            "access research data."
+            "SENSITIVE or HIGH-risk tools are enabled. External agents can access research data."
         )
         if enabled_by_risk.get("sensitive") or enabled_by_risk.get("high")
         else None,
@@ -351,10 +350,7 @@ async def get_audit_log(
         return [_audit_entry_to_dict(entry) for entry in entries[offset : offset + limit]]
 
     result = await db.execute(
-        select(MCPAuditEntry)
-        .order_by(MCPAuditEntry.timestamp.desc())
-        .offset(offset)
-        .limit(limit)
+        select(MCPAuditEntry).order_by(MCPAuditEntry.timestamp.desc()).offset(offset).limit(limit)
     )
     entries = result.scalars().all()
     return [_audit_entry_to_dict(e) for e in entries]

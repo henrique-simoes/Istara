@@ -52,8 +52,6 @@ class ContextSummarizer:
         self, messages: list[dict], max_summary_tokens: int = 200
     ) -> ContextSummary:
         """Use the LLM to summarize a batch of messages."""
-        from app.core.ollama import ollama
-
         # Build conversation text for summarization
         conv_text = "\n".join(
             f"{m.get('role', 'unknown')}: {m.get('content', '')[:500]}" for m in messages
@@ -69,14 +67,22 @@ class ContextSummarizer:
         )
 
         try:
-            result = await ollama.chat(
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="context_summarize",
+                project_id="",
+                system=None,
                 messages=[{"role": "user", "content": summary_prompt}],
-                temperature=0.3,
-                max_tokens=max_summary_tokens,
+                params=TurnParams(temperature=0.3, max_tokens=max_summary_tokens),
             )
-            summary_text = result.get("message", {}).get("content", "")
+            summary_text = outcome.text
             if not summary_text.strip():
-                summary_text = f"[Summary of {len(messages)} messages about: {messages[0].get('content', '')[:100]}...]"
+                summary_text = (
+                    f"[Summary of {len(messages)} messages about: "
+                    f"{messages[0].get('content', '')[:100]}...]"
+                )
         except Exception as e:
             logger.warning(f"Summarization failed, using fallback: {e}")
             topics = set()
@@ -84,7 +90,10 @@ class ContextSummarizer:
                 content = m.get("content", "")[:100]
                 if content:
                     topics.add(content.split(".")[0])
-            summary_text = f"[Previous conversation summary ({len(messages)} messages): {'; '.join(list(topics)[:5])}]"
+            summary_text = (
+                f"[Previous conversation summary ({len(messages)} messages): "
+                f"{'; '.join(list(topics)[:5])}]"
+            )
 
         return ContextSummary(
             summary_text=summary_text,
@@ -111,7 +120,7 @@ class ContextSummarizer:
         Returns:
             Tuple of (compressed_messages, original_token_count).
         """
-        from app.core.prompt_compressor import compress_text, SectionType
+        from app.core.prompt_compressor import SectionType, compress_text
 
         compressed: list[dict] = []
         original_tokens = 0

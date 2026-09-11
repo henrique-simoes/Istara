@@ -7,25 +7,26 @@ native function calling, while `SYSTEM_TOOLS` and `build_tools_prompt()` keep th
 text fallback path working for models without native tool support.
 """
 
+import asyncio
 import json
 import logging
+import time
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.orchestrator_runtime import wake_orchestrator
 from app.core.task_contracts import ensure_project_documents, normalize_task_priority
-from app.models.database import async_session
-from app.models.task import Task, TaskStatus
-from app.models.project import Project
-from app.models.document import Document
-from app.models.finding import Nugget, Fact, Insight, Recommendation
 from app.models.agent import Agent
+from app.models.database import async_session
+from app.models.document import Document
+from app.models.finding import Fact, Insight, Nugget, Recommendation
+from app.models.project import Project
+from app.models.task import Task, TaskStatus
 from app.services.finding_validity_service import finding_research_validity_map
 from app.skills.system_web_context_actions import (
     _exec_browse_website,
@@ -48,7 +49,13 @@ def _resolve_project_folder(project, project_id: str) -> Path:
     return Path(settings.upload_dir) / project_id
 
 
-_BUILTIN_UNIVERSAL_AGENTS = {"istara-main", "istara-devops", "istara-ui-audit", "istara-ux-eval", "istara-sim"}
+_BUILTIN_UNIVERSAL_AGENTS = {
+    "istara-main",
+    "istara-devops",
+    "istara-ui-audit",
+    "istara-ux-eval",
+    "istara-sim",
+}
 
 
 async def _validate_agent_for_project(
@@ -81,7 +88,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "create_task",
-            "description": "[Tool: create_task] Create a new research task on the Kanban board. Use when the user asks to start work, analyze something, or run a research skill.",
+            "description": (
+                "[Tool: create_task] Create a new research task on the Kanban board. Use when the "
+                "user asks to start work, analyze something, or run a research skill."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -95,7 +105,10 @@ OPENAI_TOOLS: list[dict] = [
                     },
                     "skill_name": {
                         "type": "string",
-                        "description": "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). Leave empty for auto-detect.",
+                        "description": (
+                            "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). "
+                            "Leave empty for auto-detect."
+                        ),
                     },
                     "priority": {
                         "type": "string",
@@ -129,13 +142,19 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "search_documents",
-            "description": "[Tool: search_documents] Search for documents in the current project by title, content, tags, or phase. Use when the user asks to find, locate, or look up a document or file.",
+            "description": (
+                "[Tool: search_documents] Search for documents in the current project by title, "
+                "content, tags, or phase. Use when the user asks to find, locate, or look up a "
+                "document or file."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Search query (matches title, description, content, tags, file name)",
+                        "description": (
+                            "Search query (matches title, description, content, tags, file name)"
+                        ),
                     },
                     "phase": {
                         "type": "string",
@@ -163,7 +182,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "list_tasks",
-            "description": "[Tool: list_tasks] List tasks in the current project, optionally filtered by status. Use when the user asks about task status, what's in progress, or the work queue.",
+            "description": (
+                "[Tool: list_tasks] List tasks in the current project, optionally filtered by "
+                "status. Use when the user asks about task status, what's in progress, or the "
+                "work queue."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -181,7 +204,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "move_task",
-            "description": "[Tool: move_task] Move a task between agent-actionable columns. Agents must send finished work to in_review; only a human review action can approve Done.",
+            "description": (
+                "[Tool: move_task] Move a task between agent-actionable columns. Agents must send "
+                "finished work to in_review; only a human review action can approve Done."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -189,7 +215,9 @@ OPENAI_TOOLS: list[dict] = [
                     "status": {
                         "type": "string",
                         "enum": ["backlog", "in_progress", "in_review"],
-                        "description": "New status. Use in_review when work is ready for human approval.",
+                        "description": (
+                            "New status. Use in_review when work is ready for human approval."
+                        ),
                     },
                 },
                 "required": ["task_id", "status"],
@@ -200,7 +228,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "attach_document",
-            "description": "[Tool: attach_document] Attach a document to a task as input or output. Use when the user says to use a specific file for a task, or to link a result to a task.",
+            "description": (
+                "[Tool: attach_document] Attach a document to a task as input or output. Use when "
+                "the user says to use a specific file for a task, or to link a result to a task."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -209,7 +240,10 @@ OPENAI_TOOLS: list[dict] = [
                     "direction": {
                         "type": "string",
                         "enum": ["input", "output"],
-                        "description": "Direction: 'input' (source material) or 'output' (produced result). Default: input",
+                        "description": (
+                            "Direction: 'input' (source material) or 'output' (produced result). "
+                            "Default: input"
+                        ),
                     },
                 },
                 "required": ["task_id", "document_id"],
@@ -220,7 +254,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "search_findings",
-            "description": "[Tool: search_findings] Search research findings (nuggets, facts, insights, recommendations) in the project. Use when the user asks about research results, what was found, key insights, etc.",
+            "description": (
+                "[Tool: search_findings] Search research findings (nuggets, facts, insights, "
+                "recommendations) in the project. Use when the user asks about research results, "
+                "what was found, key insights, etc."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -247,7 +285,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "list_project_files",
-            "description": "[Tool: list_project_files] List all files in the project folder. Use when the user asks what files are available, what's been uploaded, or references a file by partial name.",
+            "description": (
+                "[Tool: list_project_files] List all files in the project folder. Use when the "
+                "user asks what files are available, what's been uploaded, or references a file "
+                "by partial name."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -259,7 +301,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "assign_agent",
-            "description": "[Tool: assign_agent] Assign an agent to a task. Use when the user asks to delegate work or assign a specific agent.",
+            "description": (
+                "[Tool: assign_agent] Assign an agent to a task. Use when the user asks to "
+                "delegate work or assign a specific agent."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -277,7 +322,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "send_agent_message",
-            "description": "[Tool: send_agent_message] Send a message to another agent via A2A protocol. Use for delegation, status updates, or inter-agent coordination.",
+            "description": (
+                "[Tool: send_agent_message] Send a message to another agent via A2A protocol. Use "
+                "for delegation, status updates, or inter-agent coordination."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -297,7 +345,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "get_document_content",
-            "description": "[Tool: get_document_content] Get the text content of a specific document. Use when the user asks to read, view, or get details from a document.",
+            "description": (
+                "[Tool: get_document_content] Get the text content of a specific document. Use "
+                "when the user asks to read, view, or get details from a document."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -311,7 +362,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "search_memory",
-            "description": "[Tool: search_memory] Search the project's memory and knowledge base using RAG. Use when the user asks to recall something, find information from past conversations, or query the knowledge base.",
+            "description": (
+                "[Tool: search_memory] Search the project's memory and knowledge base using RAG. "
+                "Use when the user asks to recall something, find information from past "
+                "conversations, or query the knowledge base."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -326,7 +381,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "update_task",
-            "description": "[Tool: update_task] Update fields on an existing task. Use when the user wants to change a task's title, description, priority, instructions, or other properties.",
+            "description": (
+                "[Tool: update_task] Update fields on an existing task. Use when the user wants "
+                "to change a task's title, description, priority, instructions, or other "
+                "properties."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -349,7 +408,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "sync_project_documents",
-            "description": "[Tool: sync_project_documents] Scan the project folder for new or untracked files and register them as documents. Use when the user mentions adding files to the folder, or when they want to refresh the document list.",
+            "description": (
+                "[Tool: sync_project_documents] Scan the project folder for new or untracked "
+                "files and register them as documents. Use when the user mentions adding files to "
+                "the folder, or when they want to refresh the document list."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -361,7 +424,11 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "web_fetch",
-            "description": "[Tool: web_fetch] Fetch a web page URL and return its content as readable text. Use this to access articles, documentation, competitor websites, or any public URL for research analysis.",
+            "description": (
+                "[Tool: web_fetch] Fetch a web page URL and return its content as readable text. "
+                "Use this to access articles, documentation, competitor websites, or any public "
+                "URL for research analysis."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -382,14 +449,23 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "browse_website",
-            "description": "[Tool: browse_website] Browse a website using an AI-powered browser agent. The agent can navigate, click, fill forms, and extract content. Use for: competitor analysis, usability evaluation, design critique, content extraction, form testing. Requires browser-use library.",
+            "description": (
+                "[Tool: browse_website] Browse a website using an AI-powered browser agent. The "
+                "agent can navigate, click, fill forms, and extract content. Use for: competitor "
+                "analysis, usability evaluation, design critique, content extraction, form "
+                "testing. Requires browser-use library."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "url": {"type": "string", "description": "The starting URL to navigate to"},
                     "task": {
                         "type": "string",
-                        "description": "What to do on the website (e.g., 'Extract the pricing page content', 'Fill out the contact form and check for errors', 'Take a screenshot of the homepage and describe the layout')",
+                        "description": (
+                            "What to do on the website (e.g., 'Extract the pricing page content', "
+                            "'Fill out the contact form and check for errors', 'Take a screenshot "
+                            "of the homepage and describe the layout')"
+                        ),
                     },
                     "max_steps": {
                         "type": "integer",
@@ -404,7 +480,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "context_expand",
-            "description": "[Tool: context_expand] Expand a DAG context summary node to reveal its original messages. Use when you need the granular details behind a summary.",
+            "description": (
+                "[Tool: context_expand] Expand a DAG context summary node to reveal its original "
+                "messages. Use when you need the granular details behind a summary."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -418,7 +497,10 @@ OPENAI_TOOLS: list[dict] = [
         "type": "function",
         "function": {
             "name": "context_grep",
-            "description": "[Tool: context_grep] Search all original messages in the session for a specific query string. Use to locate exact quotes or details from the past.",
+            "description": (
+                "[Tool: context_grep] Search all original messages in the session for a specific "
+                "query string. Use to locate exact quotes or details from the past."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -436,7 +518,11 @@ OPENAI_TOOLS: list[dict] = [
 SYSTEM_TOOLS = [
     {
         "name": "create_task",
-        "description": "[Tool: create_task] Create a new research task on the Kanban board. Use when the user asks to start work, analyze something, or run a research skill. Ask for missing required fields conversationally.",
+        "description": (
+            "[Tool: create_task] Create a new research task on the Kanban board. Use when the "
+            "user asks to start work, analyze something, or run a research skill. Ask for missing "
+            "required fields conversationally."
+        ),
         "parameters": {
             "title": {
                 "type": "string",
@@ -451,7 +537,10 @@ SYSTEM_TOOLS = [
             "skill_name": {
                 "type": "string",
                 "required": False,
-                "description": "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). Leave empty for auto-detect.",
+                "description": (
+                    "UXR skill to use (e.g., 'user-interviews', 'competitive-analysis'). Leave "
+                    "empty for auto-detect."
+                ),
             },
             "priority": {
                 "type": "string",
@@ -482,12 +571,18 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "search_documents",
-        "description": "[Tool: search_documents] Search for documents in the current project by title, content, tags, or phase. Use when the user asks to find, locate, or look up a document or file.",
+        "description": (
+            "[Tool: search_documents] Search for documents in the current project by title, "
+            "content, tags, or phase. Use when the user asks to find, locate, or look up a "
+            "document or file."
+        ),
         "parameters": {
             "query": {
                 "type": "string",
                 "required": True,
-                "description": "Search query (matches title, description, content, tags, file name)",
+                "description": (
+                    "Search query (matches title, description, content, tags, file name)"
+                ),
             },
             "phase": {
                 "type": "string",
@@ -498,13 +593,19 @@ SYSTEM_TOOLS = [
             "source": {
                 "type": "string",
                 "required": False,
-                "description": "Filter by source: user_upload, agent_output, task_output, project_file, external",
+                "description": (
+                    "Filter by source: user_upload, agent_output, task_output, project_file, "
+                    "external"
+                ),
             },
         },
     },
     {
         "name": "list_tasks",
-        "description": "[Tool: list_tasks] List tasks in the current project, optionally filtered by status. Use when the user asks about task status, what's in progress, or the work queue.",
+        "description": (
+            "[Tool: list_tasks] List tasks in the current project, optionally filtered by status. "
+            "Use when the user asks about task status, what's in progress, or the work queue."
+        ),
         "parameters": {
             "status": {
                 "type": "string",
@@ -515,19 +616,28 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "move_task",
-        "description": "[Tool: move_task] Move a task between agent-actionable columns. Agents must send finished work to in_review; only a human review action can approve Done.",
+        "description": (
+            "[Tool: move_task] Move a task between agent-actionable columns. Agents must send "
+            "finished work to in_review; only a human review action can approve Done."
+        ),
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task ID to move"},
             "status": {
                 "type": "string",
                 "required": True,
-                "description": "New status: backlog, in_progress, in_review. Use in_review when work is ready for human approval.",
+                "description": (
+                    "New status: backlog, in_progress, in_review. Use in_review when work is "
+                    "ready for human approval."
+                ),
             },
         },
     },
     {
         "name": "attach_document",
-        "description": "[Tool: attach_document] Attach a document to a task as input or output. Use when the user says to use a specific file for a task, or to link a result to a task.",
+        "description": (
+            "[Tool: attach_document] Attach a document to a task as input or output. Use when the "
+            "user says to use a specific file for a task, or to link a result to a task."
+        ),
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task ID"},
             "document_id": {
@@ -538,13 +648,19 @@ SYSTEM_TOOLS = [
             "direction": {
                 "type": "string",
                 "required": False,
-                "description": "'input' (source material) or 'output' (produced result). Default: input",
+                "description": (
+                    "'input' (source material) or 'output' (produced result). Default: input"
+                ),
             },
         },
     },
     {
         "name": "search_findings",
-        "description": "[Tool: search_findings] Search research findings (nuggets, facts, insights, recommendations) in the project. Use when the user asks about research results, what was found, key insights, etc.",
+        "description": (
+            "[Tool: search_findings] Search research findings (nuggets, facts, insights, "
+            "recommendations) in the project. Use when the user asks about research results, what "
+            "was found, key insights, etc."
+        ),
         "parameters": {
             "query": {
                 "type": "string",
@@ -565,12 +681,19 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "list_project_files",
-        "description": "[Tool: list_project_files] List all files in the project folder. Use when the user asks what files are available, what's been uploaded, or references a file by partial name.",
+        "description": (
+            "[Tool: list_project_files] List all files in the project folder. Use when the user "
+            "asks what files are available, what's been uploaded, or references a file by partial "
+            "name."
+        ),
         "parameters": {},
     },
     {
         "name": "assign_agent",
-        "description": "[Tool: assign_agent] Assign an agent to a task. Use when the user asks to delegate work or assign a specific agent.",
+        "description": (
+            "[Tool: assign_agent] Assign an agent to a task. Use when the user asks to delegate "
+            "work or assign a specific agent."
+        ),
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task to assign"},
             "agent_id": {
@@ -582,7 +705,10 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "send_agent_message",
-        "description": "[Tool: send_agent_message] Send a message to another agent via A2A protocol. Use for delegation, status updates, or inter-agent coordination.",
+        "description": (
+            "[Tool: send_agent_message] Send a message to another agent via A2A protocol. Use for "
+            "delegation, status updates, or inter-agent coordination."
+        ),
         "parameters": {
             "to_agent_id": {"type": "string", "required": True, "description": "Target agent ID"},
             "message_type": {
@@ -595,7 +721,10 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "get_document_content",
-        "description": "[Tool: get_document_content] Get the text content of a specific document. Use when the user asks to read, view, or get details from a document.",
+        "description": (
+            "[Tool: get_document_content] Get the text content of a specific document. Use when "
+            "the user asks to read, view, or get details from a document."
+        ),
         "parameters": {
             "document_id": {
                 "type": "string",
@@ -606,7 +735,11 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "search_memory",
-        "description": "[Tool: search_memory] Search the project's memory and knowledge base using RAG. Use when the user asks to recall something, find information from past conversations, or query the knowledge base.",
+        "description": (
+            "[Tool: search_memory] Search the project's memory and knowledge base using RAG. Use "
+            "when the user asks to recall something, find information from past conversations, or "
+            "query the knowledge base."
+        ),
         "parameters": {
             "query": {"type": "string", "required": True, "description": "The search query"},
             "top_k": {
@@ -618,7 +751,10 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "update_task",
-        "description": "[Tool: update_task] Update fields on an existing task. Use when the user wants to change a task's title, description, priority, instructions, or other properties.",
+        "description": (
+            "[Tool: update_task] Update fields on an existing task. Use when the user wants to "
+            "change a task's title, description, priority, instructions, or other properties."
+        ),
         "parameters": {
             "task_id": {"type": "string", "required": True, "description": "The task ID to update"},
             "title": {"type": "string", "required": False, "description": "New title"},
@@ -642,12 +778,20 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "sync_project_documents",
-        "description": "[Tool: sync_project_documents] Scan the project folder for new or untracked files and register them as documents. Use when the user mentions adding files to the folder, or when they want to refresh the document list.",
+        "description": (
+            "[Tool: sync_project_documents] Scan the project folder for new or untracked files "
+            "and register them as documents. Use when the user mentions adding files to the "
+            "folder, or when they want to refresh the document list."
+        ),
         "parameters": {},
     },
     {
         "name": "web_fetch",
-        "description": "[Tool: web_fetch] Fetch a web page URL and return its content as readable text. Use this to access articles, documentation, competitor websites, or any public URL for research analysis.",
+        "description": (
+            "[Tool: web_fetch] Fetch a web page URL and return its content as readable text. Use "
+            "this to access articles, documentation, competitor websites, or any public URL for "
+            "research analysis."
+        ),
         "parameters": {
             "url": {
                 "type": "string",
@@ -663,7 +807,12 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "browse_website",
-        "description": "[Tool: browse_website] Browse a website using an AI-powered browser agent. The agent can navigate, click, fill forms, and extract content. Use for: competitor analysis, usability evaluation, design critique, content extraction, form testing. Requires browser-use library.",
+        "description": (
+            "[Tool: browse_website] Browse a website using an AI-powered browser agent. The agent "
+            "can navigate, click, fill forms, and extract content. Use for: competitor analysis, "
+            "usability evaluation, design critique, content extraction, form testing. Requires "
+            "browser-use library."
+        ),
         "parameters": {
             "url": {
                 "type": "string",
@@ -673,7 +822,10 @@ SYSTEM_TOOLS = [
             "task": {
                 "type": "string",
                 "required": True,
-                "description": "What to do on the website (e.g., 'Extract the pricing page content', 'Fill out the contact form and check for errors')",
+                "description": (
+                    "What to do on the website (e.g., 'Extract the pricing page content', 'Fill "
+                    "out the contact form and check for errors')"
+                ),
             },
             "max_steps": {
                 "type": "integer",
@@ -684,7 +836,10 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "context_expand",
-        "description": "[Tool: context_expand] Expand a DAG context summary node to reveal its original messages. Use when you need the granular details behind a summary.",
+        "description": (
+            "[Tool: context_expand] Expand a DAG context summary node to reveal its original "
+            "messages. Use when you need the granular details behind a summary."
+        ),
         "parameters": {
             "node_id": {
                 "type": "string",
@@ -695,7 +850,10 @@ SYSTEM_TOOLS = [
     },
     {
         "name": "context_grep",
-        "description": "[Tool: context_grep] Search all original messages in the session for a specific query string. Use to locate exact quotes or details from the past.",
+        "description": (
+            "[Tool: context_grep] Search all original messages in the session for a specific "
+            "query string. Use to locate exact quotes or details from the past."
+        ),
         "parameters": {
             "query": {
                 "type": "string",
@@ -719,14 +877,26 @@ def build_tools_prompt() -> str:
     lines = [
         "## Available Tools",
         "",
-        "You can perform actions in Istara by responding with a tool call in this exact JSON format:",
+        (
+            "You can perform actions in Istara by responding with a tool "
+            "call in this exact JSON format:"
+        ),
         "```json",
         '{"tool": "tool_name", "params": {"param1": "value1"}}',
         "```",
         "",
-        "After executing the tool, I will show you the result. You can then call another tool or respond to the user.",
-        "Only call a tool when the user's request requires an action. For general conversation, respond normally.",
-        "When creating a task, if the user hasn't provided all needed information, ask them conversationally before calling the tool.",
+        (
+            "After executing the tool, I will show you the result. You can "
+            "then call another tool or respond to the user."
+        ),
+        (
+            "Only call a tool when the user's request requires an action. "
+            "For general conversation, respond normally."
+        ),
+        (
+            "When creating a task, if the user hasn't provided all needed "
+            "information, ask them conversationally before calling the tool."
+        ),
         "",
         "### Tools:",
         "",
@@ -749,40 +919,192 @@ def build_tools_prompt() -> str:
 # ── Tool Execution ────────────────────────────────────────────────
 
 
+def _classify_tool_error(err_str: str) -> str:
+    """Classify tool errors into structured telemetry taxonomy."""
+    lower = err_str.lower()
+    if "unknown tool" in lower:
+        return "unknown_tool"
+    if "not found" in lower or "missing" in lower:
+        return "not_found"
+    if (
+        "permission" in lower
+        or "denied" in lower
+        or "not available" in lower
+        or "not active" in lower
+    ):
+        return "permission_denied"
+    if "timeout" in lower or "timed out" in lower:
+        return "timeout"
+    if "json" in lower or "parse" in lower:
+        return "json_parse"
+    if "validation" in lower or "invalid" in lower:
+        return "validation_error"
+    if "rate limit" in lower or "429" in lower:
+        return "rate_limit"
+    return "execution_error"
+
+
+def _classify_exception(exc: Exception) -> str:
+    if isinstance(exc, (TimeoutError, asyncio.TimeoutError)):
+        return "timeout"
+    if isinstance(exc, ValueError):
+        return "validation_error"
+    if isinstance(exc, PermissionError):
+        return "permission_denied"
+    return _classify_tool_error(str(exc))
+
+
+def _content_free_arguments_summary(params: dict[str, Any]) -> str:
+    """Return parameter names only, never values, for content-free telemetry."""
+    try:
+        keys = sorted(str(k) for k in (params or {}).keys() if not str(k).startswith("_"))
+    except Exception:
+        return ""
+    return ", ".join(keys)[:500]
+
+
 async def execute_tool(
     tool_name: str,
     params: dict[str, Any],
     project_id: str,
     agent_id: str = "istara-main",
+    *,
+    trace_id: str | None = None,
+    task_id: str | None = None,
+    parent_id: str | None = None,
+    model_name: str = "",
+    session: AsyncSession | None = None,
 ) -> dict[str, Any]:
     """Execute a system action tool and return the result.
 
     Returns a dict with 'success' bool and 'result' or 'error' string.
+    Instruments tool execution with canonical OpenTelemetry GenAI spans.
     """
+    from app.core.telemetry import telemetry_recorder
+
+    start_perf = time.perf_counter()
+    resolved_trace_id = trace_id or params.get("_trace_id") or uuid.uuid4().hex[:36]
+    resolved_task_id = task_id or params.get("task_id") or params.get("target_task_id")
+    resolved_model_name = model_name or str(params.get("_model_name") or "")
+    arguments_summary = _content_free_arguments_summary(params)
+    if resolved_task_id is not None:
+        resolved_task_id = str(resolved_task_id)[:36]
+
     executor = TOOL_EXECUTORS.get(tool_name)
     if not executor:
-        return {"success": False, "error": f"Unknown tool: {tool_name}"}
+        duration_ms = (time.perf_counter() - start_perf) * 1000.0
+        err_msg = f"Unknown tool: {tool_name}"
+        try:
+            await telemetry_recorder.record_tool_call(
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                success=False,
+                model_name=resolved_model_name,
+                project_id=project_id,
+                agent_id=agent_id,
+                task_id=resolved_task_id,
+                trace_id=resolved_trace_id,
+                parent_id=parent_id,
+                error_type="unknown_tool",
+                error_message=err_msg,
+                arguments_summary=arguments_summary,
+                session=session,
+            )
+        except Exception as tel_err:
+            logger.debug("Telemetry record failed for unknown tool %s: %s", tool_name, tel_err)
+        return {"success": False, "error": err_msg}
 
     try:
         result = await executor(params, project_id, agent_id)
-        
+
+        is_success = True
+        error_type: str | None = None
+        error_message: str | None = None
+
+        if isinstance(result, dict):
+            if result.get("success") is False or ("error" in result and "result" not in result):
+                is_success = False
+                err_text = str(result.get("error", "tool_failed"))
+                error_type = _classify_tool_error(err_text)
+                error_message = err_text[:500]
+        elif isinstance(result, str) and (
+            result.startswith("Agent not found:")
+            or result.startswith("Agent is not active:")
+            or result.startswith("Agent '")
+            or "unknown documents for this project" in result
+        ):
+            is_success = False
+            error_type = _classify_tool_error(result)
+            error_message = result[:500]
+
         data_gathering_tools = {
-            "search_documents", "search_findings", "get_document_content", 
-            "search_memory", "web_fetch", "browse_website", "context_expand", 
-            "context_grep", "list_project_files"
+            "search_documents",
+            "search_findings",
+            "get_document_content",
+            "search_memory",
+            "web_fetch",
+            "browse_website",
+            "context_expand",
+            "context_grep",
+            "list_project_files",
         }
-        
+
         if tool_name in data_gathering_tools:
             if not isinstance(result, str):
                 import json
+
                 result_str = json.dumps(result, ensure_ascii=False)
             else:
                 result_str = result
             result = f"<tool_output>\n{result_str}\n</tool_output>"
 
+        duration_ms = (time.perf_counter() - start_perf) * 1000.0
+        try:
+            await telemetry_recorder.record_tool_call(
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                success=is_success,
+                model_name=resolved_model_name,
+                project_id=project_id,
+                agent_id=agent_id,
+                task_id=resolved_task_id,
+                trace_id=resolved_trace_id,
+                parent_id=parent_id,
+                error_type=error_type,
+                error_message=error_message,
+                arguments_summary=arguments_summary,
+                session=session,
+            )
+        except Exception as tel_err:
+            logger.debug("Telemetry record failed for tool %s: %s", tool_name, tel_err)
+
+        if isinstance(result, dict) and result.get("success") is False:
+            return result
+
         return {"success": True, "result": result}
     except Exception as e:
+        duration_ms = (time.perf_counter() - start_perf) * 1000.0
+        error_type = _classify_exception(e)
+        error_msg = str(e)[:500]
         logger.error(f"Tool execution error ({tool_name}): {e}")
+        try:
+            await telemetry_recorder.record_tool_call(
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                success=False,
+                model_name=resolved_model_name,
+                project_id=project_id,
+                agent_id=agent_id,
+                task_id=resolved_task_id,
+                trace_id=resolved_trace_id,
+                parent_id=parent_id,
+                error_type=error_type,
+                error_message=error_msg,
+                arguments_summary=arguments_summary,
+                session=session,
+            )
+        except Exception as tel_err:
+            logger.debug("Telemetry record failed for exception in tool %s: %s", tool_name, tel_err)
         return {"success": False, "error": str(e)}
 
 
@@ -823,7 +1145,10 @@ async def _exec_create_task(params: dict, project_id: str, agent_id: str) -> str
 
         wake_orchestrator()
 
-        return f"Task created: '{task.title}' (ID: {task.id}, priority: {task.priority}, status: backlog)"
+        return (
+            f"Task created: '{task.title}' (ID: {task.id}, "
+            f"priority: {task.priority}, status: backlog)"
+        )
 
 
 async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -> str:
@@ -864,8 +1189,11 @@ async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -
             except Exception:
                 pass
             lines.append(
-                f"- **{doc.title}** (ID: {doc.id}, type: {doc.file_type or 'unknown'}, "
-                f"phase: {doc.phase or 'none'}, source: {doc.source.value if doc.source else 'unknown'}){tags_str}"
+                f"- **{doc.title}** (ID: {doc.id}, "
+                f"type: {doc.file_type or 'unknown'}, "
+                f"phase: {doc.phase or 'none'}, "
+                f"source: {doc.source.value if doc.source else 'unknown'})"
+                f"{tags_str}"
             )
         return "\n".join(lines)
 
@@ -994,12 +1322,15 @@ async def _exec_search_findings(params: dict, project_id: str, agent_id: str) ->
             )
             for item in items:
                 validity = validity_by_id.get(str(item.id), {})
-                status = "accepted" if validity.get("report_allowed") else validity.get("status", "provisional")
+                status = (
+                    "accepted"
+                    if validity.get("report_allowed")
+                    else validity.get("status", "provisional")
+                )
                 report_note = "reportable" if validity.get("report_allowed") else "not reportable"
                 text_preview = item.text[:150] + "..." if len(item.text) > 150 else item.text
                 results.append(
-                    f"- [{type_name} | {status} | {report_note}] {text_preview} "
-                    f"(ID: {item.id})"
+                    f"- [{type_name} | {status} | {report_note}] {text_preview} (ID: {item.id})"
                 )
 
         if not results:
@@ -1059,6 +1390,7 @@ async def _exec_assign_agent(params: dict, project_id: str, agent_id: str) -> st
 async def _exec_send_agent_message(params: dict, project_id: str, agent_id: str) -> str:
     async with async_session() as db:
         from app.services.a2a import send_message
+
         agent_error = await _validate_agent_for_project(
             db,
             params["to_agent_id"],
@@ -1101,7 +1433,10 @@ async def _exec_get_document_content(params: dict, project_id: str, agent_id: st
                 pass
 
         if not content:
-            return f"Document '{doc.title}' exists but has no readable text content (type: {doc.file_type})."
+            return (
+                f"Document '{doc.title}' exists but has no readable text "
+                f"content (type: {doc.file_type})."
+            )
 
         preview = content[:3000] + "..." if len(content) > 3000 else content
         return (
@@ -1140,7 +1475,9 @@ async def _exec_update_task(params: dict, project_id: str, agent_id: str) -> str
         updated_fields = []
         for field in ("title", "description", "priority", "instructions", "skill_name"):
             if field in params and params[field] is not None:
-                value = normalize_task_priority(params[field]) if field == "priority" else params[field]
+                value = (
+                    normalize_task_priority(params[field]) if field == "priority" else params[field]
+                )
                 setattr(task, field, value)
                 updated_fields.append(field)
 
@@ -1186,7 +1523,11 @@ async def _exec_sync_project_documents(params: dict, project_id: str, agent_id: 
         if new_count:
             await db.commit()
 
-        return f"Synced project folder: {new_count} new document(s) registered, {len(files)} total files."
+        return (
+            f"Synced project folder: {new_count} new document(s) "
+            f"registered, {len(files)} total files."
+        )
+
 
 # ── Executor Registry ─────────────────────────────────────────────
 

@@ -30,7 +30,12 @@ class TypeformAdapter(SurveyPlatformAdapter):
     # ------------------------------------------------------------------
 
     def _headers(self) -> dict[str, str]:
-        token = self.config.get("access_token", "")
+        token = (
+            self.config.get("access_token", "")
+            or self.config.get("token", "")
+            or self.config.get("personal_access_token", "")
+            or self.config.get("Personal Access Token", "")
+        )
         if not token:
             raise ValueError("Typeform access_token not configured")
         return {
@@ -46,7 +51,8 @@ class TypeformAdapter(SurveyPlatformAdapter):
         json_body: dict | None = None,
         params: dict | None = None,
     ) -> dict:
-        url = f"{BASE_URL}{path}"
+        base = self.config.get("api_base") or self.config.get("base_url") or BASE_URL
+        url = f"{base.rstrip('/')}{path}"
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.request(
                 method, url, headers=self._headers(), json=json_body, params=params
@@ -99,9 +105,7 @@ class TypeformAdapter(SurveyPlatformAdapter):
         Returns:
             True if the signature is valid.
         """
-        expected = hmac.new(
-            secret.encode(), payload, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
         provided = signature.removeprefix("sha256=")
         return hmac.compare_digest(expected, provided)
 
@@ -182,10 +186,12 @@ class TypeformAdapter(SurveyPlatformAdapter):
 
                 answers.append({"question": q_text, "answer": value})
 
-            normalised.append({
-                "id": item.get("response_id", item.get("token", "")),
-                "answers": answers,
-            })
+            normalised.append(
+                {
+                    "id": item.get("response_id", item.get("token", "")),
+                    "answers": answers,
+                }
+            )
 
         return normalised
 
@@ -216,9 +222,7 @@ class TypeformAdapter(SurveyPlatformAdapter):
         if secret:
             body["secret"] = secret
 
-        await self._request(
-            "PUT", f"/forms/{survey_id}/webhooks/{tag}", json_body=body
-        )
+        await self._request("PUT", f"/forms/{survey_id}/webhooks/{tag}", json_body=body)
 
         return {
             "webhook_tag": tag,

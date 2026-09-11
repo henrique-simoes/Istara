@@ -8,9 +8,10 @@ it is safe during installation, tests, and offline production startup.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import or_, select
@@ -19,6 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.content_guard import ContentGuard
 from app.models.database import async_session
 from app.models.reasoning_memory import ReasoningMemoryItem
+
+logger = logging.getLogger(__name__)
 
 ACTIVE_STATUS = "active"
 MERGED_STATUS = "merged"
@@ -61,7 +64,7 @@ _guard = ContentGuard()
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _clean_text(value: Any, *, max_chars: int = 4000, mark_prompt_risk: bool = True) -> str:
@@ -101,7 +104,11 @@ def _dedupe_tags(tags: list[str]) -> list[str]:
     return out
 
 
-async def _record_reasoning_bank_telemetry(item: ReasoningMemoryItem) -> None:
+async def _record_reasoning_bank_telemetry(
+    item: ReasoningMemoryItem,
+    *,
+    session: AsyncSession | None = None,
+) -> None:
     if not item.project_id:
         return
     try:
@@ -114,6 +121,7 @@ async def _record_reasoning_bank_telemetry(item: ReasoningMemoryItem) -> None:
             skill_name=item.source_kind or "",
             status="success",
             quality_score=item.confidence,
+            session=session,
         )
     except Exception as exc:
         logger.debug("ReasoningBank telemetry skipped: %s", exc)
@@ -162,7 +170,7 @@ class ReasoningMemoryService:
         if db is not None:
             db.add(item)
             await db.flush()
-            await _record_reasoning_bank_telemetry(item)
+            await _record_reasoning_bank_telemetry(item, session=db)
             return item
 
         async with async_session() as session:
@@ -201,7 +209,9 @@ class ReasoningMemoryService:
             confidence = 0.75
         elif is_failure:
             title = f"Avoid repeated {source_kind} failure: {safe_query[:120] or source_id}"
-            description = "A failed or reverted trace captured so future agents can avoid repeating it."
+            description = (
+                "A failed or reverted trace captured so future agents can avoid repeating it."
+            )
             content = (
                 "Treat this as a cautionary memory. Check whether the same assumptions, "
                 "mutation, route, or integration pattern appears again.\n\n"
@@ -247,6 +257,7 @@ class ReasoningMemoryService:
         tags: list[str] | None = None,
         domain: str = "",
         judge_score: float | None = None,
+        db: AsyncSession | None = None,
     ) -> list[dict]:
         memories = self.extract_memory_items(
             query=query,
@@ -263,6 +274,7 @@ class ReasoningMemoryService:
             item = await self.record_memory(
                 project_id=project_id,
                 agent_id=agent_id,
+                db=db,
                 **memory,
             )
             stored.append(item.to_dict())
@@ -340,7 +352,11 @@ class ReasoningMemoryService:
         return await self.record_trace(
             project_id=project_id,
             agent_id="autoresearch",
-            query=f"{experiment.get('loop_type', '')} {experiment.get('target_name', '')} {experiment.get('hypothesis', '')}",
+            query=(
+                f"{experiment.get('loop_type', '')} "
+                f"{experiment.get('target_name', '')} "
+                f"{experiment.get('hypothesis', '')}"
+            ),
             trajectory=trajectory,
             outcome=outcome,
             source_kind="autoresearch",
@@ -510,7 +526,7 @@ class ReasoningMemoryService:
             for item in items:
                 created_at = item.created_at
                 if created_at and created_at.tzinfo is None:
-                    created_at = created_at.replace(tzinfo=timezone.utc)
+                    created_at = created_at.replace(tzinfo=UTC)
                 if created_at and created_at >= day_ago:
                     recent.append(item)
 
@@ -519,8 +535,12 @@ class ReasoningMemoryService:
                 "source_kinds": dict(source_counts),
                 "outcomes": dict(outcome_counts),
                 "recent_24h": len(recent),
-                "recent_failures_24h": sum(1 for item in recent if item.outcome in FAILURE_OUTCOMES),
-                "recent_successes_24h": sum(1 for item in recent if item.outcome in SUCCESS_OUTCOMES),
+                "recent_failures_24h": sum(
+                    1 for item in recent if item.outcome in FAILURE_OUTCOMES
+                ),
+                "recent_successes_24h": sum(
+                    1 for item in recent if item.outcome in SUCCESS_OUTCOMES
+                ),
             }
 
     async def list_memories(

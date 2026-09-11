@@ -560,7 +560,7 @@ export default function ContextDAGView() {
           <div className="mt-3 space-y-2">
             <p className="text-xs text-slate-500">
               {searchResults.results.length} result
-              {searchResults.results.length !== 1 ? "s" : ""} for &quot;
+              {searchResults.results.length !== 1 ? "s" : ""}{" "}for &quot;
               {searchResults.query}&quot;
             </p>
             {searchResults.results.length === 0 ? (

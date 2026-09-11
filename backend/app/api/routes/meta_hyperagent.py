@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.env_persistence import persist_env_value
 from app.core.improvement_governance import improvement_governance
 from app.core.meta_hyperagent import meta_hyperagent
 from app.core.permissions import get_active_project_or_404, get_visible_project_or_404
@@ -38,28 +38,23 @@ class ToggleRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _persist_env(key: str, value: str) -> None:
-    """Update a key in the .env file (reuses settings.py pattern)."""
-    env_path = Path(".env")
-    if not env_path.exists():
-        env_path.write_text(f"{key}={value}\n")
-        return
+def _persist_env(key: str, value: str) -> bool:
+    """Persist a setting when storage is writable.
 
-    lines = env_path.read_text().splitlines(keepends=True)
-    found = False
-    new_lines = []
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith(f"{key}=") or stripped.startswith(f"{key} ="):
-            new_lines.append(f"{key}={value}\n")
-            found = True
-        else:
-            new_lines.append(line)
-    if not found:
-        if new_lines and not new_lines[-1].endswith("\n"):
-            new_lines[-1] += "\n"
-        new_lines.append(f"{key}={value}\n")
-    env_path.write_text("".join(new_lines))
+    Runtime toggles are still valid in read-only Docker images. Keep the
+    in-memory state change and report the persistence boundary instead of
+    allowing an expected filesystem error to become a 500 response.
+    """
+    try:
+        persist_env_value(key, value)
+    except OSError as exc:
+        logger.warning(
+            "Meta-hyperagent setting %s changed in memory but could not be persisted: %s",
+            key,
+            exc,
+        )
+        return False
+    return True
 
 
 def _require_project_id(project_id: str | None) -> str:
@@ -207,17 +202,19 @@ async def meta_hyperagent_status(
         "pending_proposals": len(
             meta_hyperagent.get_pending_proposals(project_id=scoped_project_id)
         ),
-        "active_variants": len(
-            meta_hyperagent.get_active_variants(project_id=scoped_project_id)
-        ),
+        "active_variants": len(meta_hyperagent.get_active_variants(project_id=scoped_project_id)),
         "recent_observations": len(
             meta_hyperagent.get_recent_observations(
                 limit=100,
                 project_id=scoped_project_id,
             )
         ),
-        "last_observed_at": recent_observations[-1].get("timestamp") if recent_observations else None,
-        "reasoning_bank": recent_observations[-1].get("reasoning_bank", {}) if recent_observations else {},
+        "last_observed_at": recent_observations[-1].get("timestamp")
+        if recent_observations
+        else None,
+        "reasoning_bank": recent_observations[-1].get("reasoning_bank", {})
+        if recent_observations
+        else {},
         "observation_interval_hours": settings.meta_hyperagent_observation_interval_hours,
         "variant_observation_hours": settings.meta_hyperagent_variant_observation_hours,
     }
@@ -238,9 +235,7 @@ async def list_proposals(
             limit=limit,
             project_id=scoped_project_id,
         ),
-        "pending_count": len(
-            meta_hyperagent.get_pending_proposals(project_id=scoped_project_id)
-        ),
+        "pending_count": len(meta_hyperagent.get_pending_proposals(project_id=scoped_project_id)),
     }
 
 
@@ -300,9 +295,7 @@ async def list_variants(
             limit=limit,
             project_id=scoped_project_id,
         ),
-        "active_count": len(
-            meta_hyperagent.get_active_variants(project_id=scoped_project_id)
-        ),
+        "active_count": len(meta_hyperagent.get_active_variants(project_id=scoped_project_id)),
     }
 
 
@@ -377,7 +370,7 @@ async def toggle_meta_hyperagent(
     else:
         scoped_project_id = await _require_admin_project_scope(db, request, project_id)
     settings.meta_hyperagent_enabled = body.enabled
-    _persist_env("META_HYPERAGENT_ENABLED", str(body.enabled).lower())
+    persisted = _persist_env("META_HYPERAGENT_ENABLED", str(body.enabled).lower())
 
     if body.enabled:
         meta_hyperagent.start(project_id=scoped_project_id)
@@ -386,6 +379,12 @@ async def toggle_meta_hyperagent(
 
     return {
         "enabled": body.enabled,
+        "persisted": persisted,
         "project_id": scoped_project_id,
-        "message": f"Meta-hyperagent {'enabled' if body.enabled else 'disabled'}",
+        "message": (
+            f"Meta-hyperagent {'enabled' if body.enabled else 'disabled'}"
+            if persisted
+            else f"Meta-hyperagent {'enabled' if body.enabled else 'disabled'} for this runtime; "
+            "restart persistence is unavailable in the read-only environment"
+        ),
     }

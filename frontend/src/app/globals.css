@@ -7,6 +7,29 @@
   --sidebar-text: #1e293b;
   --background: #ffffff;
   --foreground: #0f172a;
+
+  /* Istara UI semantic tokens — DESIGN.md is the authority. */
+  --ui-surface: #ffffff;
+  --ui-surface-raised: #f8fafc;
+  --ui-surface-soft: #f1f5f9;
+  --ui-ink: #0f172a;
+  --ui-ink-muted: #475569;
+  --ui-ink-subtle: #64748b;
+  --ui-rule: #e2e8f0;
+  --ui-rule-strong: #cbd5e1;
+  --ui-accent: #15803d;
+  --ui-accent-soft: #f0fdf4;
+  --ui-focus: #2563eb;
+  --ui-danger: #b91c1c;
+  --ui-warning: #a16207;
+  --ui-success: #166534;
+  --ui-control-height: 44px;
+  --ui-radius-panel: 16px;
+  --ui-radius-control: 10px;
+  --ui-radius-pill: 999px;
+  --ui-shadow-menu: 0 18px 48px rgb(15 23 42 / 0.16);
+  --ui-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ui-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
 }
 
 .dark {
@@ -14,12 +37,133 @@
   --sidebar-text: #e2e8f0;
   --background: #020617;
   --foreground: #f8fafc;
+  --ui-surface: #0f172a;
+  --ui-surface-raised: #172033;
+  --ui-surface-soft: #1e293b;
+  --ui-ink: #f8fafc;
+  --ui-ink-muted: #cbd5e1;
+  --ui-ink-subtle: #94a3b8;
+  --ui-rule: #334155;
+  --ui-rule-strong: #475569;
+  --ui-accent: #4ade80;
+  --ui-accent-soft: #052e16;
+  --ui-focus: #93c5fd;
+  --ui-danger: #fca5a5;
+  --ui-warning: #facc15;
+  --ui-success: #86efac;
+  --ui-shadow-menu: 0 18px 48px rgb(2 6 23 / 0.48);
+}
+
+html,
+body {
+  overflow-x: clip;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.ui-panel {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-rule);
+  border-radius: var(--ui-radius-panel);
+  color: var(--ui-ink);
+}
+
+.ui-control {
+  min-height: var(--ui-control-height);
+  border: 1px solid var(--ui-rule-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: background-color 180ms var(--ui-ease-out), border-color 180ms var(--ui-ease-out), color 180ms var(--ui-ease-out), box-shadow 180ms var(--ui-ease-out);
+}
+
+.ui-control:hover {
+  background: var(--ui-surface-raised);
+}
+
+.ui-control:focus-visible,
+.ui-option:focus-visible,
+.ui-icon-button:focus-visible {
+  outline-color: var(--ui-focus);
+}
+
+.ui-control:disabled,
+.ui-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.ui-icon-button {
+  min-width: var(--ui-control-height);
+  min-height: var(--ui-control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ui-radius-control);
+  color: var(--ui-ink-muted);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: background-color 180ms var(--ui-ease-out), color 180ms var(--ui-ease-out);
+}
+
+.ui-icon-button:hover {
+  background: var(--ui-surface-soft);
+  color: var(--ui-ink);
+}
+
+.ui-menu {
+  border: 1px solid var(--ui-rule-strong);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-menu);
+  color: var(--ui-ink);
+  transform-origin: top center;
+  animation: ui-menu-in 180ms var(--ui-ease-out) both;
+}
+
+.ui-option {
+  min-height: var(--ui-control-height);
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  border-radius: 8px;
+  color: var(--ui-ink);
+  text-align: left;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: background-color 120ms var(--ui-ease-out), color 120ms var(--ui-ease-out);
+}
+
+.ui-option:hover,
+.ui-option[data-active="true"] {
+  background: var(--ui-surface-soft);
+}
+
+.ui-option[aria-selected="true"] {
+  background: var(--ui-accent-soft);
+  color: var(--ui-success);
+}
+
+@keyframes ui-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-menu,
+  .ui-control,
+  .ui-icon-button,
+  .ui-option {
+    animation: none;
+    transition-duration: 0.01ms;
+  }
 }
 
 /* Scrollbar styling */

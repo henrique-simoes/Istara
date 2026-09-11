@@ -3,9 +3,17 @@
 export const name = "Agent Communication";
 export const id = "14-agent-communication";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "agents",
+    navLabel: "Agents",
+    markers: ["System Agents", "Agents"],
+    screenshot: "14-agents-view",
+  });
   if (!ctx.projectId) {
     return { checks: [{ name: "Simulation project required", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };
   }

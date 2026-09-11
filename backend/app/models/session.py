@@ -1,15 +1,15 @@
 """Chat session model — groups messages into conversations."""
 
 import enum
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.database import Base
 
 
-class InferencePreset(str, enum.Enum):
+class InferencePreset(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     LIGHTWEIGHT = "lightweight"
     MEDIUM = "medium"
     HIGH = "high"
@@ -25,7 +25,10 @@ class ChatSession(Base):
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), nullable=False)
     title: Mapped[str] = mapped_column(String(255), default="New Chat")
     agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # assigned agent
-    model_override: Mapped[str | None] = mapped_column(String(255), nullable=True)  # model name override
+    model_override: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )  # model name override
+    endpoint_override: Mapped[str | None] = mapped_column(String(120), nullable=True)
     inference_preset: Mapped[InferencePreset] = mapped_column(
         Enum(InferencePreset), default=InferencePreset.MEDIUM
     )
@@ -39,12 +42,12 @@ class ChatSession(Base):
     message_count: Mapped[int] = mapped_column(Integer, default=0)
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     # Relationships
@@ -62,6 +65,7 @@ class ChatSession(Base):
             "title": self.title,
             "agent_id": self.agent_id,
             "model_override": self.model_override,
+            "endpoint_override": self.endpoint_override,
             "session_type": self.session_type,
             "inference_preset": preset_value,
             "custom_temperature": self.custom_temperature,
@@ -81,7 +85,9 @@ class ChatSession(Base):
 INFERENCE_PRESETS = {
     "lightweight": {
         "label": "Lightweight",
-        "description": "Fast responses, minimal reasoning. Best for quick questions and simple tasks.",
+        "description": (
+            "Fast responses, minimal reasoning. Best for quick questions and simple tasks."
+        ),
         "temperature": 0.3,
         "max_tokens": 1024,
         "context_window": 2048,
@@ -102,7 +108,9 @@ INFERENCE_PRESETS = {
     },
     "custom": {
         "label": "Custom",
-        "description": "Define your own settings for temperature, token limits, and context window.",
+        "description": (
+            "Define your own settings for temperature, token limits, and context window."
+        ),
         "temperature": None,
         "max_tokens": None,
         "context_window": None,

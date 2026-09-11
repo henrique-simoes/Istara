@@ -70,6 +70,7 @@ async def generate_screen(
 ):
     """Generate a new screen via Stitch or design tools."""
     import httpx
+
     from app.core.content_guard import ContentGuard
     from app.services.stitch_service import stitch_service
 
@@ -242,6 +243,7 @@ async def generate_screen(
 async def edit_screen(data: EditRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Edit an existing screen with instructions via Stitch."""
     import httpx
+
     from app.services.stitch_service import stitch_service
 
     parent = await get_screen_or_404(db, data.screen_id)
@@ -346,9 +348,12 @@ async def edit_screen(data: EditRequest, request: Request, db: AsyncSession = De
 
 
 @router.post("/interfaces/screens/variant")
-async def create_variant(data: VariantRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def create_variant(
+    data: VariantRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Create design variants of an existing screen via Stitch."""
     import httpx
+
     from app.services.stitch_service import stitch_service
 
     parent = await get_screen_or_404(db, data.screen_id)

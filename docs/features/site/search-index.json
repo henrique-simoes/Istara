@@ -775,11 +775,12 @@
     "id": "settings.llm-servers",
     "kind": "feature",
     "researcher_url": "features/settings/llm-servers/researcher.html",
-    "summary": "Settings manages configured LLM providers, server endpoints, provider labels, and active model switching.",
-    "title": "LLM Server Settings",
+    "summary": "Pi Model Management owns provider/model configuration while legacy LLMServer rows remain read-only migration input and Petals donors join through the governed bridge.",
+    "title": "Legacy LLM Server Compatibility",
     "ui_path": [
       "Settings",
-      "LLM Servers"
+      "Pi Model Management",
+      "Legacy Compatibility"
     ]
   },
   {

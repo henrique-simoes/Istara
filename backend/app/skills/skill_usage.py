@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.checkpoint import atomic_write
 
@@ -36,7 +36,7 @@ class SkillUsageMixin:
             stats["failures"] += 1
             stats["utility_score"] = stats.get("utility_score", 0.5) * 0.9
         stats["total_quality"] += quality_score
-        stats["last_used"] = datetime.now(timezone.utc).isoformat()
+        stats["last_used"] = datetime.now(UTC).isoformat()
 
     def _usage_stats_with_rates(self, stats: dict) -> dict:
         result = dict(stats)
@@ -70,7 +70,12 @@ class SkillUsageMixin:
             self._update_usage_stats(scoped_stats, success, quality_score)
 
         self._save_stats()
-        if scoped_project_id and scoped_stats and scoped_stats["executions"] >= 10 and scoped_stats["utility_score"] < 0.3:
+        if (
+            scoped_project_id
+            and scoped_stats
+            and scoped_stats["executions"] >= 10
+            and scoped_stats["utility_score"] < 0.3
+        ):
             self._notify_low_utility_skill(
                 skill_name,
                 scoped_stats,
@@ -87,6 +92,7 @@ class SkillUsageMixin:
     ) -> None:
         try:
             import asyncio
+
             from app.api.websocket import broadcast_suggestion
 
             if allow_lifecycle_change:
@@ -181,10 +187,7 @@ class SkillUsageMixin:
                     for p in self._proposals
                     if p.skill_name == name
                     and p.status == "pending"
-                    and (
-                        not scoped_project_id
-                        or getattr(p, "project_id", "") == scoped_project_id
-                    )
+                    and (not scoped_project_id or getattr(p, "project_id", "") == scoped_project_id)
                 ]
             ),
         }

@@ -523,7 +523,7 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
             if isinstance(transcription, dict):
                 doc.description = (
                     f"Audio transcript. Language: {transcription.get('language', 'unknown')}. "
-                    f"ICR: {transcription.get('icr_confidence', 'insufficient')}. "
+                    f"Agreement signal: {transcription.get('icr_confidence', 'insufficient')}. "
                     f"Needs review: {bool(transcription.get('needs_review'))}."
                 )
             doc.status = DocumentStatus.READY
@@ -582,6 +582,15 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
                         "icr_confidence": transcription.get("icr_confidence")
                         if isinstance(transcription, dict)
                         else None,
+                        "formal_reliability": transcription.get("formal_reliability")
+                        if isinstance(transcription, dict)
+                        else None,
+                        "research_spine_eligible": transcription.get("research_spine_eligible")
+                        if isinstance(transcription, dict)
+                        else None,
+                        "validation_scope": transcription.get("validation_scope")
+                        if isinstance(transcription, dict)
+                        else None,
                         "tags": transcription_tags,
                     },
                     metrics_after={
@@ -589,6 +598,12 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
                         if isinstance(transcription, dict)
                         else None,
                         "icr_kappa": transcription.get("icr_kappa")
+                        if isinstance(transcription, dict)
+                        else None,
+                        "formal_reliability": transcription.get("formal_reliability")
+                        if isinstance(transcription, dict)
+                        else None,
+                        "research_spine_eligible": transcription.get("research_spine_eligible")
                         if isinstance(transcription, dict)
                         else None,
                         "needs_review": bool(transcription.get("needs_review"))
@@ -767,6 +782,8 @@ async def get_file_content(
     """Get file content for preview. Returns text content for supported formats."""
     project = await _get_project(db, request, project_id, min_role="viewer")
     file_path, doc = await _resolve_project_file(db, project, project_id, filename)
+    if doc is not None and doc.status == DocumentStatus.QUARANTINED:
+        raise HTTPException(status_code=403, detail="File quarantined pending security review")
 
     suffix = file_path.suffix.lower()
 
@@ -850,6 +867,8 @@ async def serve_file(
     """Serve a file directly (for media playback, image display, PDF viewer)."""
     project = await _get_project(db, request, project_id, min_role="viewer")
     file_path, _doc = await _resolve_project_file(db, project, project_id, filename)
+    if _doc is not None and _doc.status == DocumentStatus.QUARANTINED:
+        raise HTTPException(status_code=403, detail="File quarantined pending security review")
 
     media_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
 

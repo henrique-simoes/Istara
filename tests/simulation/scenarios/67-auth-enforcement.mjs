@@ -4,9 +4,16 @@
 export const name = "Authentication Enforcement";
 export const id = "67-auth-enforcement";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "admin",
+    navLabel: "Admin",
+    markers: ["Admin", "Users"],
+    screenshot: "67-admin-view",
+  });
 
   const status = await api.get("/api/settings/status").catch(() => null);
   if (!status?.team_mode) {

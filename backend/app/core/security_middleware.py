@@ -32,7 +32,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from app.core.auth_cookies import get_auth_cookie_token, has_auth_cookie
-from app.core.auth_origins import configured_trusted_origins, request_origin
+from app.core.auth_origins import configured_trusted_origins, request_origin, trusted_loopback_alias
 
 logger = logging.getLogger(__name__)
 
@@ -121,13 +121,16 @@ def browser_origin_denial(request: Request, *, require_cookie_auth: bool = False
         return None
 
     fetch_site = request.headers.get("sec-fetch-site", "").strip().lower()
+    origin = request_origin(request)
+    trusted_origins = _trusted_origins(request)
     if fetch_site == "cross-site":
+        if trusted_loopback_alias(request, trusted_origins):
+            return None
         return "Untrusted browser origin for authentication request."
 
-    origin = request_origin(request)
     if not origin:
         return None
-    if origin in _trusted_origins(request):
+    if origin in trusted_origins:
         return None
     if require_cookie_auth:
         return "Untrusted browser origin for cookie-authenticated request."
@@ -206,8 +209,13 @@ class SecurityAuthMiddleware(BaseHTTPMiddleware):
 
         # Verify JWT
         from app.core.auth import verify_token
-        from app.core.auth_sessions import current_user_context_for_payload, validate_auth_session
+        from app.core.auth_sessions import (
+            current_user_context_for_payload,
+            mfa_claim_satisfied,
+            validate_auth_session,
+        )
         from app.models.database import async_session
+        from app.models.user import User
 
         payload = verify_token(token)
         if not payload:
@@ -228,6 +236,19 @@ class SecurityAuthMiddleware(BaseHTTPMiddleware):
                     status_code=401,
                     content={"detail": "Authenticated user no longer exists."},
                 )
+            # Enforce the MFA claim globally: sessions minted before MFA
+            # enrollment must not survive once the account requires it.
+            if not mfa_claim_satisfied(payload, path):
+                from sqlalchemy import select as _select
+
+                _user = (
+                    await db.execute(_select(User).where(User.id == str(payload.get("sub") or "")))
+                ).scalar_one_or_none()
+                if _user is not None and getattr(_user, "totp_enabled", False):
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "Multi-factor authentication required."},
+                    )
 
         # Attach user info to request state for downstream use
         request.state.user = user_context

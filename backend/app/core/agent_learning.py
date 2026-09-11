@@ -13,12 +13,10 @@ their behavior over time without manual prompt engineering.
 
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, String, Text, Integer, Float, DateTime, Boolean
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.database import Base, async_session
@@ -39,29 +37,21 @@ class AgentLearning(Base):
     trigger: Mapped[str] = mapped_column(
         Text, nullable=False
     )  # What caused this learning (error message, user action, etc.)
-    resolution: Mapped[str] = mapped_column(
-        Text, default=""
-    )  # How it was resolved (if applicable)
-    learning: Mapped[str] = mapped_column(
-        Text, nullable=False
-    )  # The distilled learning
-    confidence: Mapped[int] = mapped_column(
-        Integer, default=50
-    )  # 0-100 confidence score
+    resolution: Mapped[str] = mapped_column(Text, default="")  # How it was resolved (if applicable)
+    learning: Mapped[str] = mapped_column(Text, nullable=False)  # The distilled learning
+    confidence: Mapped[int] = mapped_column(Integer, default=50)  # 0-100 confidence score
     times_applied: Mapped[int] = mapped_column(Integer, default=0)
     times_successful: Mapped[int] = mapped_column(Integer, default=0)
-    project_id: Mapped[str] = mapped_column(
-        String(36), default=""
-    )  # Empty = global learning
+    project_id: Mapped[str] = mapped_column(String(36), default="")  # Empty = global learning
     utility_score: Mapped[float] = mapped_column(Float, default=0.5)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
 
@@ -82,6 +72,7 @@ class AgentLearningManager:
         and succeeds.  The pattern is stored for future reference.
         """
         from app.core.autoresearch_isolation import is_autoresearch_active
+
         if is_autoresearch_active():
             return
         scoped_project_id = str(project_id or "").strip()
@@ -92,10 +83,7 @@ class AgentLearningManager:
             )
             return
 
-        learning_text = (
-            f"When encountering '{error_message[:200]}', "
-            f"resolve by: {resolution[:500]}"
-        )
+        learning_text = f"When encountering '{error_message[:200]}', resolve by: {resolution[:500]}"
 
         try:
             async with async_session() as db:
@@ -112,24 +100,16 @@ class AgentLearningManager:
 
                 if existing_record:
                     # Reinforce existing learning
-                    existing_record.times_applied = (
-                        existing_record.times_applied or 0
-                    ) + 1
-                    existing_record.times_successful = (
-                        existing_record.times_successful or 0
-                    ) + 1
-                    existing_record.confidence = min(
-                        100, (existing_record.confidence or 50) + 5
-                    )
+                    existing_record.times_applied = (existing_record.times_applied or 0) + 1
+                    existing_record.times_successful = (existing_record.times_successful or 0) + 1
+                    existing_record.confidence = min(100, (existing_record.confidence or 50) + 5)
                     # Update utility on successful resolution
                     existing_record.utility_score = (
-                        (existing_record.utility_score or 0.5) * 0.9 + 0.1
-                    )
-                    existing_record.updated_at = datetime.now(timezone.utc)
+                        existing_record.utility_score or 0.5
+                    ) * 0.9 + 0.1
+                    existing_record.updated_at = datetime.now(UTC)
                     await db.commit()
-                    logger.info(
-                        f"Reinforced learning for {agent_id}: {error_message[:60]}"
-                    )
+                    logger.info(f"Reinforced learning for {agent_id}: {error_message[:60]}")
                 else:
                     # Create new learning
                     record = AgentLearning(
@@ -143,9 +123,7 @@ class AgentLearningManager:
                     )
                     db.add(record)
                     await db.commit()
-                    logger.info(
-                        f"New error learning for {agent_id}: {error_message[:60]}"
-                    )
+                    logger.info(f"New error learning for {agent_id}: {error_message[:60]}")
         except Exception as e:
             logger.warning(f"Failed to record error learning: {e}")
 
@@ -157,6 +135,7 @@ class AgentLearningManager:
     ) -> None:
         """Record a workflow pattern observation."""
         from app.core.autoresearch_isolation import is_autoresearch_active
+
         if is_autoresearch_active():
             return
         scoped_project_id = str(project_id or "").strip()
@@ -190,6 +169,7 @@ class AgentLearningManager:
     ) -> None:
         """Record a user preference or feedback learning."""
         from app.core.autoresearch_isolation import is_autoresearch_active
+
         if is_autoresearch_active():
             return
         scoped_project_id = str(project_id or "").strip()
@@ -240,7 +220,7 @@ class AgentLearningManager:
                 record.times_applied = (record.times_applied or 0) + 1
                 if success:
                     record.times_successful = (record.times_successful or 0) + 1
-                record.updated_at = datetime.now(timezone.utc)
+                record.updated_at = datetime.now(UTC)
                 await db.commit()
         except Exception as e:
             logger.warning(f"Failed to update utility for learning {learning_id}: {e}")
@@ -259,7 +239,7 @@ class AgentLearningManager:
                 result = await db.execute(
                     select(AgentLearning).where(
                         AgentLearning.agent_id == agent_id,
-                        AgentLearning.active == True,
+                        AgentLearning.active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         AgentLearning.utility_score < 0.2,
                         AgentLearning.times_applied >= 5,
                     )
@@ -267,13 +247,11 @@ class AgentLearningManager:
                 low_utility = result.scalars().all()
                 for record in low_utility:
                     record.active = False
-                    record.updated_at = datetime.now(timezone.utc)
+                    record.updated_at = datetime.now(UTC)
                     archived += 1
                 if archived:
                     await db.commit()
-                    logger.info(
-                        f"Archived {archived} low-utility learnings for {agent_id}"
-                    )
+                    logger.info(f"Archived {archived} low-utility learnings for {agent_id}")
         except Exception as e:
             logger.warning(f"Failed to archive low-utility learnings: {e}")
         return archived
@@ -299,7 +277,7 @@ class AgentLearningManager:
                     select(AgentLearning)
                     .where(
                         AgentLearning.agent_id == agent_id,
-                        AgentLearning.active == True,
+                        AgentLearning.active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         AgentLearning.project_id == scoped_project_id,
                     )
                     .order_by(
@@ -317,13 +295,13 @@ class AgentLearningManager:
 
                 return [
                     {
-                        "category": l.category,
-                        "learning": l.learning,
-                        "confidence": l.confidence,
-                        "times_applied": l.times_applied,
-                        "times_successful": l.times_successful,
+                        "category": entry.category,
+                        "learning": entry.learning,
+                        "confidence": entry.confidence,
+                        "times_applied": entry.times_applied,
+                        "times_successful": entry.times_successful,
                     }
-                    for l in learnings
+                    for entry in learnings
                 ]
         except Exception as e:
             logger.warning(f"Failed to retrieve learnings: {e}")
@@ -348,7 +326,7 @@ class AgentLearningManager:
                     .where(
                         AgentLearning.agent_id == agent_id,
                         AgentLearning.category == "error_pattern",
-                        AgentLearning.active == True,
+                        AgentLearning.active == True,  # noqa: E712 -- SQLAlchemy IS TRUE
                         AgentLearning.project_id == scoped_project_id,
                     )
                     .order_by(AgentLearning.confidence.desc())

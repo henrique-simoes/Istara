@@ -172,7 +172,7 @@
 <h2>Settings</h2>
 <ul>
 <li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../../settings/general/architecture.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
-<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../../settings/llm-servers/architecture.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="legacy llm server compatibility settings &gt; pi model management &gt; legacy compatibility pi model management owns provider/model configuration while legacy llmserver rows remain read-only migration input and petals donors join through the governed bridge."><a href="../../settings/llm-servers/architecture.html"><span>Legacy LLM Server Compatibility</span><small>Settings &gt; Pi Model Management &gt; Legacy Compatibility</small></a></li>
 <li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../../settings/users/architecture.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
 <li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../../settings/connection-strings/architecture.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
 <li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../../settings/security-factors/architecture.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
@@ -237,15 +237,15 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Findings &gt; Codebook</dd></div>
     <div><dt>Component</dt><dd><code>CodebookViewer</code></dd></div>
-    <div><dt>Source Refs</dt><dd>4</dd></div>
-    <div><dt>Tests</dt><dd>2</dd></div>
+    <div><dt>Source Refs</dt><dd>6</dd></div>
+    <div><dt>Tests</dt><dd>4</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../evidence/architecture.html">Findings Evidence</a>
 <a href="../review/architecture.html">Findings Code Review</a></div>
   <p class="concept-line"><strong>Concepts:</strong> atomic-research</p>
 </header>
 <h2 id="implementation-summary">Implementation Summary</h2>
-<p>The Codebook tab surfaces qualitative coding structures and codebook versions associated with project findings. Project-facing codebook and code by-id routes require the active project id and load records by both record id and project id before returning or mutating data.</p>
+<p>The Codebook tab surfaces qualitative coding structures and codebook versions associated with project findings. Project-facing codebook and code by-id routes require the active project id and load records by both record id and project id before returning or mutating data. Create and update responses explicitly eager-load the codes relationship before serialization, so an empty codebook returns <code>201</code>/<code>200</code> instead of triggering an async lazy-load <code>500</code>.</p>
 <h2 id="frontend-surface">Frontend Surface</h2>
 <ul>
 <li><code>frontend/src/components/findings/FindingsView.tsx</code></li>
@@ -267,17 +267,27 @@
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/findings/FindingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>Creating the first project codebook version records a content-free <code>codebook.freeze</code> telemetry event; later versions record <code>codebook.revise</code>. The span carries project and codebook-version handles only, so governed codebook lifecycle audits do not store code definitions, examples, prompts, or source quotes in telemetry.</li>
+<li>Governed coding reads Pi Model Management without loading a model, requests at least three distinct model identities, and dispatches each coder with <code>structured(purpose=&quot;validity.coder&quot;)</code> pinned to that coder&#x27;s exact endpoint. Selection and dispatch carry one request-scoped <code>PiExecutionService</code> paired with its <code>PiModelManager</code> snapshot, while the dispatcher remains responsible for usage-ledger accounting. Both Istara and Pi loop modes use this same provider authority; loop choice cannot bypass coding independence.</li>
+<li>The structured coder adapter also verifies the provider-reported endpoint identity against the endpoint pinned in <code>TurnParams</code>. A mismatch is a failed coder attempt, not usable route evidence; no code applications or reliability score may be promoted from that response.</li>
+<li>Reliability preserves both model and endpoint provenance, but the rater-independence unit is the model identity. Same-model endpoint replicas do not count as separate coders. Each admitted coder must cover every selected evidence unit after one bounded repair; otherwise it is excluded and the run remains blocked when the requested width is no longer met.</li>
+<li>A coding application is admissible only when its non-empty returned quote is an exact contiguous substring of the resolved evidence unit&#x27;s raw source text. A valid unit ID cannot make a paraphrase or fabricated quote source-grounded; rejected applications count as missing coverage and therefore fail the reliability gate closed.</li>
+<li>The resulting code applications remain provisional until reliability, reconciliation, and human review gates accept them. A blocked or insufficient coding run cannot promote findings into reportable evidence.</li>
+<li>Embedding consumers route through <code>agentic.embed</code>; both loop modes use the Pi-governed <code>EmbeddingsGateway</code> and the canonical vector-space identity.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>Codebook and code reads/mutations are project-content surfaces. They must reject stale ids from any other project with <code>404</code>, even when the same authenticated user can access both projects through another surface.</li>
+<li>Engine selection changes loop semantics only. The permanent Istara executor and the Pi agentic loop both resolve provider/model identities through Pi Model Management; neither may silently switch engines or bypass the Research Spine gate.</li>
 </ul>
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_codebooks.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
+<li><code>tests/test_research_validity_contract.py</code> — exact source-span grounding, protected prompt blocks, persistence, reliability, reconciliation, and reportability contracts.</li>
+<li><code>tests/pi_production/test_w7_validation.py</code> — three-model minimum, exact endpoint pinning, same-model replica rejection, complete grounded-unit coverage, schema constraints, and fail-closed blocked coding runs.</li>
+<li><code>tests/pi_production/test_w7_pi_manager_integration.py</code> — the positive coding-run path uses the real <code>AgenticDispatcher</code> with its paired Pi Model Manager; a deterministic provider seam verifies that all three selected endpoint/model identities reach <code>validity.coder</code> structured dispatch before Spine acceptance.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

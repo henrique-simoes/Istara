@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -10,12 +10,12 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.agent import agent as agent_orchestrator
+from app.core.permissions import get_visible_project_or_404
 from app.models.database import get_db
 from app.models.document import Document
 from app.models.task import Task, TaskStatus
 from app.models.task_review import TaskReviewEvent
-from app.core.agent import agent as agent_orchestrator
-from app.core.permissions import get_visible_project_or_404
 
 LOCK_EXPIRY_MINUTES = 30
 TASK_PRIORITIES = {"urgent", "high", "medium", "low"}
@@ -53,7 +53,9 @@ async def _ensure_documents_in_project(
     missing = [doc_id for doc_id in ids if doc_id not in project_by_id]
     foreign = [doc_id for doc_id in ids if project_by_id.get(doc_id) != project_id]
     if missing or foreign:
-        raise HTTPException(status_code=404, detail=f"{field_name} contains unknown documents for this project.")
+        raise HTTPException(
+            status_code=404, detail=f"{field_name} contains unknown documents for this project."
+        )
 
     return ids
 
@@ -71,10 +73,22 @@ class TaskCreate(BaseModel):
     urls: list[str] = Field(default_factory=list, max_length=100)
     instructions: str = Field(default="", max_length=50000)
     labels: list[dict | str] = Field(default_factory=list, max_length=100)
+    codebook_id: str | None = Field(default=None, max_length=36)
     priority: str = "medium"
     agent_id: str | None = Field(default=None, max_length=100)
+    lock_for_edit: bool = False
 
-    @field_validator("project_id", "title", "skill_name", "user_context", "instructions", "priority", "agent_id", mode="before")
+    @field_validator(
+        "project_id",
+        "title",
+        "skill_name",
+        "user_context",
+        "instructions",
+        "priority",
+        "agent_id",
+        "codebook_id",
+        mode="before",
+    )
     @classmethod
     def _strip_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -112,6 +126,7 @@ class TaskUpdate(BaseModel):
     progress: float | None = Field(default=None, ge=0, le=1)
     position: int | None = Field(default=None, ge=0, le=1000000)
     agent_id: str | None = Field(default=None, max_length=100)
+    codebook_id: str | None = Field(default=None, max_length=36)
     priority: str | None = None
     input_document_ids: list[str] | None = Field(default=None, max_length=200)
     output_document_ids: list[str] | None = Field(default=None, max_length=200)
@@ -120,7 +135,19 @@ class TaskUpdate(BaseModel):
     labels: list[dict | str] | None = Field(default=None, max_length=100)
     what_to_review: str | None = Field(default=None, max_length=5000)
 
-    @field_validator("title", "description", "skill_name", "agent_notes", "user_context", "agent_id", "priority", "instructions", "what_to_review", mode="before")
+    @field_validator(
+        "title",
+        "description",
+        "skill_name",
+        "agent_notes",
+        "user_context",
+        "agent_id",
+        "codebook_id",
+        "priority",
+        "instructions",
+        "what_to_review",
+        mode="before",
+    )
     @classmethod
     def _strip_optional_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -149,6 +176,7 @@ class TaskResponse(BaseModel):
     id: str
     project_id: str
     agent_id: str | None = None
+    codebook_id: str | None = None
     title: str
     description: str
     status: TaskStatus
@@ -233,7 +261,9 @@ class ReviewRevisionRequest(BaseModel):
     input_document_ids: list[str] | None = Field(default=None, max_length=200)
     urls: list[str] | None = Field(default=None, max_length=100)
 
-    @field_validator("what_to_review", "reviewed_by", "severity", "failure_category", "skill_name", mode="before")
+    @field_validator(
+        "what_to_review", "reviewed_by", "severity", "failure_category", "skill_name", mode="before"
+    )
     @classmethod
     def _strip_optional_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -394,6 +424,10 @@ async def create_task(data: TaskCreate, request: Request, db: AsyncSession = Dep
             _log.getLogger(__name__).warning(f"Task routing failed, defaulting to istara-main: {e}")
             agent_id = "istara-main"
 
+    edit_lock_time = datetime.now(UTC) if data.lock_for_edit else None
+    request_user = getattr(request.state, "user", {}) or {}
+    edit_lock_owner = str(request_user.get("id") or "local") if data.lock_for_edit else None
+
     task = Task(
         id=str(uuid.uuid4()),
         project_id=data.project_id,
@@ -404,11 +438,19 @@ async def create_task(data: TaskCreate, request: Request, db: AsyncSession = Dep
         instructions=data.instructions,
         priority=data.priority,
         agent_id=agent_id,
+        codebook_id=data.codebook_id,
         position=max_pos + 1,
         input_document_ids=json.dumps(input_document_ids),
         output_document_ids=json.dumps(output_document_ids),
         urls=json.dumps(data.urls),
         labels=json.dumps(data.labels),
+        locked_by=edit_lock_owner,
+        locked_at=edit_lock_time,
+        lock_expires_at=(
+            edit_lock_time + timedelta(minutes=LOCK_EXPIRY_MINUTES)
+            if edit_lock_time is not None
+            else None
+        ),
     )
 
     db.add(task)
@@ -448,7 +490,9 @@ async def update_task(
     task = await _get_authorized_project_task_or_404(
         db, request, task_id, project_id, min_role="researcher"
     )
-    previous_status = task.status.value if isinstance(task.status, TaskStatus) else str(task.status or "")
+    previous_status = (
+        task.status.value if isinstance(task.status, TaskStatus) else str(task.status or "")
+    )
 
     update_data = data.model_dump(exclude_unset=True)
     if update_data.get("status") == TaskStatus.DONE:
@@ -480,7 +524,9 @@ async def update_task(
             project_id=task.project_id,
             task_id=task.id,
             previous_status=previous_status,
-            next_status=task.status.value if isinstance(task.status, TaskStatus) else str(task.status or ""),
+            next_status=task.status.value
+            if isinstance(task.status, TaskStatus)
+            else str(task.status or ""),
         )
 
     # If an agent was assigned, wake the orchestrator to pick up the task immediately
@@ -503,11 +549,15 @@ async def move_task(
     task = await _get_authorized_project_task_or_404(
         db, request, task_id, project_id, min_role="researcher"
     )
-    previous_status = task.status.value if isinstance(task.status, TaskStatus) else str(task.status or "")
+    previous_status = (
+        task.status.value if isinstance(task.status, TaskStatus) else str(task.status or "")
+    )
 
     if status == TaskStatus.DONE:
         if task.status != TaskStatus.IN_REVIEW:
-            raise HTTPException(status_code=409, detail="Only tasks in review can be approved as done.")
+            raise HTTPException(
+                status_code=409, detail="Only tasks in review can be approved as done."
+            )
         event = await _approve_task(db, task, reviewed_by="local", note="Approved via Kanban move.")
         if position is not None:
             task.position = position
@@ -529,8 +579,13 @@ async def move_task(
         task.position = position
     if status == TaskStatus.IN_REVIEW and task.review_state in ("none", ""):
         task.review_state = "awaiting_review"
-    if status in (TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS) and task.review_state in ("needs_revision", "system_failed"):
-        task.next_agent_action = "resume_in_progress" if status == TaskStatus.IN_PROGRESS else "return_to_backlog"
+    if status in (TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS) and task.review_state in (
+        "needs_revision",
+        "system_failed",
+    ):
+        task.next_agent_action = (
+            "resume_in_progress" if status == TaskStatus.IN_PROGRESS else "return_to_backlog"
+        )
 
     await db.commit()
     await db.refresh(task)
@@ -540,7 +595,9 @@ async def move_task(
         project_id=task.project_id,
         task_id=task.id,
         previous_status=previous_status,
-        next_status=task.status.value if isinstance(task.status, TaskStatus) else str(task.status or ""),
+        next_status=task.status.value
+        if isinstance(task.status, TaskStatus)
+        else str(task.status or ""),
     )
     return task
 
@@ -576,7 +633,9 @@ async def verify_task(
 
     event = None
     if verified and task.status == TaskStatus.IN_REVIEW:
-        event = await _approve_task(db, task, reviewed_by="local", note="Approved via legacy verify endpoint.")
+        event = await _approve_task(
+            db, task, reviewed_by="local", note="Approved via legacy verify endpoint."
+        )
         await db.commit()
         from app.core.task_review import record_review_side_effects
 
@@ -613,7 +672,10 @@ async def approve_task_review(
 
     await record_review_side_effects(event)
     await db.refresh(task)
-    return {"task": TaskResponse.model_validate(task).model_dump(mode="json"), "event": event.to_dict()}
+    return {
+        "task": TaskResponse.model_validate(task).model_dump(mode="json"),
+        "event": event.to_dict(),
+    }
 
 
 @router.post("/tasks/{task_id}/review/request-revision")
@@ -629,11 +691,17 @@ async def request_task_revision(
         db, request, task_id, project_id, min_role="researcher"
     )
     if task.status not in (TaskStatus.IN_REVIEW, TaskStatus.DONE):
-        raise HTTPException(status_code=409, detail="Only tasks in review or done can be flagged for revision.")
+        raise HTTPException(
+            status_code=409, detail="Only tasks in review or done can be flagged for revision."
+        )
     if data.next_status not in (TaskStatus.BACKLOG, TaskStatus.IN_PROGRESS):
-        raise HTTPException(status_code=422, detail="Rejected work must go to backlog or in progress.")
+        raise HTTPException(
+            status_code=422, detail="Rejected work must go to backlog or in progress."
+        )
     if not data.what_to_review.strip() and not data.failure_category:
-        raise HTTPException(status_code=422, detail="What to Review is required when requesting revision.")
+        raise HTTPException(
+            status_code=422, detail="What to Review is required when requesting revision."
+        )
 
     if data.labels is not None:
         task.set_labels(data.labels)
@@ -652,9 +720,11 @@ async def request_task_revision(
         task.set_urls(data.urls)
 
     previous_status = task.status
-    next_review_state = "rejected_after_done" if previous_status == TaskStatus.DONE else "needs_revision"
+    next_review_state = (
+        "rejected_after_done" if previous_status == TaskStatus.DONE else "needs_revision"
+    )
 
-    from app.core.task_review import record_task_review_event, diagnose_review_event
+    from app.core.task_review import diagnose_review_event, record_task_review_event
 
     event = await record_task_review_event(
         db,
@@ -675,7 +745,10 @@ async def request_task_revision(
     await db.refresh(task)
     if data.next_status == TaskStatus.IN_PROGRESS or task.agent_id == "istara-main":
         agent_orchestrator.wake()
-    return {"task": TaskResponse.model_validate(task).model_dump(mode="json"), "event": event.to_dict()}
+    return {
+        "task": TaskResponse.model_validate(task).model_dump(mode="json"),
+        "event": event.to_dict(),
+    }
 
 
 @router.get("/tasks/{task_id}/review-events")
@@ -686,9 +759,7 @@ async def get_task_review_events(
     db: AsyncSession = Depends(get_db),
 ):
     """List review/reward events for a task."""
-    task = await _get_authorized_project_task_or_404(
-        db, request, task_id, project_id, min_role="viewer"
-    )
+    await _get_authorized_project_task_or_404(db, request, task_id, project_id, min_role="viewer")
     result = await db.execute(
         select(TaskReviewEvent)
         .where(TaskReviewEvent.task_id == task_id)
@@ -766,7 +837,9 @@ async def create_report_from_task(
         db, request, task_id, project_id, min_role="researcher"
     )
     if task.status != TaskStatus.DONE or task.review_state != "approved":
-        raise HTTPException(status_code=409, detail="Only human-approved Done tasks can be sent to Reports.")
+        raise HTTPException(
+            status_code=409, detail="Only human-approved Done tasks can be sent to Reports."
+        )
     from app.services.research_validity_service import assess_task_research_validity
 
     validity = await assess_task_research_validity(db, project_id=task.project_id, task_id=task.id)
@@ -791,13 +864,15 @@ async def create_report_from_task(
         layer=2,
         report_type="task_review",
         scope=task.id,
-        content_json=json.dumps({
-            "task_id": task.id,
-            "task_title": task.title,
-            "agent_notes": task.agent_notes,
-            "atomic_path": snapshot,
-            "review_state": task.review_state,
-        }),
+        content_json=json.dumps(
+            {
+                "task_id": task.id,
+                "task_title": task.title,
+                "agent_notes": task.agent_notes,
+                "atomic_path": snapshot,
+                "review_state": task.review_state,
+            }
+        ),
         executive_summary=(task.agent_notes or task.description or task.title)[:2000],
         finding_ids_json=json.dumps(finding_ids),
         source_document_ids_json=json.dumps(task.get_output_document_ids()),
@@ -892,13 +967,13 @@ async def lock_task(
         db, request, task_id, project_id, min_role="researcher"
     )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Check if already locked by someone else (and not expired)
     if task.locked_by and task.locked_by != user_id:
         expires = task.lock_expires_at
         if expires and expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
+            expires = expires.replace(tzinfo=UTC)
         if expires and expires > now:
             raise HTTPException(
                 status_code=409,
@@ -939,6 +1014,10 @@ async def unlock_task(
     task.locked_at = None
     task.lock_expires_at = None
     await db.commit()
+
+    # An editor-held task becomes worker-eligible only after the successful
+    # save/unlock handshake completes.
+    agent_orchestrator.wake()
 
     return {"task_id": task_id, "unlocked": True}
 

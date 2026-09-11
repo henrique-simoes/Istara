@@ -13,6 +13,8 @@ from app.models.backup import BackupRecord
 from app.models.database import async_session, init_db
 from app.core.auth import create_token
 from app.core.backup_manager import BackupManager
+from app.core.backup_manager import _redact_env_content
+from app.core.env_persistence import persist_env_value
 
 
 @pytest.fixture(autouse=True)
@@ -22,14 +24,18 @@ def reset_settings():
     original_file_encryption_enabled = settings.file_encryption_enabled
     original_file_encryption_key = settings.file_encryption_key
     original_file_encryption_key_file = settings.file_encryption_key_file
-    original_file_encryption_keychain_service = settings.file_encryption_keychain_service
+    original_file_encryption_keychain_service = (
+        settings.file_encryption_keychain_service
+    )
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
     settings.file_encryption_enabled = original_file_encryption_enabled
     settings.file_encryption_key = original_file_encryption_key
     settings.file_encryption_key_file = original_file_encryption_key_file
-    settings.file_encryption_keychain_service = original_file_encryption_keychain_service
+    settings.file_encryption_keychain_service = (
+        original_file_encryption_keychain_service
+    )
 
 
 @pytest.fixture
@@ -99,7 +105,9 @@ def _backup_tar_bytes(members: dict[str, bytes]) -> bytes:
 
 
 @pytest.mark.asyncio
-async def test_upload_restore_accepts_valid_manifest_only_archive(auth_headers, tmp_path, monkeypatch):
+async def test_upload_restore_accepts_valid_manifest_only_archive(
+    auth_headers, tmp_path, monkeypatch
+):
     """Upload restore should call the real restore path and not a missing method."""
     await init_db()
     monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
@@ -124,7 +132,9 @@ async def test_upload_restore_accepts_valid_manifest_only_archive(auth_headers, 
 
 
 @pytest.mark.asyncio
-async def test_upload_restore_rejects_path_traversal_archive(auth_headers, tmp_path, monkeypatch):
+async def test_upload_restore_rejects_path_traversal_archive(
+    auth_headers, tmp_path, monkeypatch
+):
     """Restore must reject archives that try to write outside the extraction dir."""
     await init_db()
     monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
@@ -143,7 +153,9 @@ async def test_upload_restore_rejects_path_traversal_archive(auth_headers, tmp_p
 
 
 @pytest.mark.asyncio
-async def test_upload_restore_accepts_encrypted_backup_archive(auth_headers, tmp_path, monkeypatch):
+async def test_upload_restore_accepts_encrypted_backup_archive(
+    auth_headers, tmp_path, monkeypatch
+):
     """Encrypted .tar.gz.enc archives restore when the configured key is present."""
     from app.core.file_encryption import encrypt_bytes, resolve_file_encryption_key
 
@@ -151,7 +163,9 @@ async def test_upload_restore_accepts_encrypted_backup_archive(auth_headers, tmp
     monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
     monkeypatch.setattr(settings, "file_encryption_enabled", True)
     monkeypatch.setattr(settings, "file_encryption_key", "")
-    monkeypatch.setattr(settings, "file_encryption_key_file", str(tmp_path / "file-encryption.key"))
+    monkeypatch.setattr(
+        settings, "file_encryption_key_file", str(tmp_path / "file-encryption.key")
+    )
     monkeypatch.setattr(settings, "file_encryption_keychain_service", "")
     resolve_file_encryption_key(create=True)
 
@@ -168,7 +182,13 @@ async def test_upload_restore_accepts_encrypted_backup_archive(auth_headers, tmp
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(
             "/api/backups/upload-restore",
-            files={"file": ("restore.tar.gz.enc", encrypted_archive, "application/octet-stream")},
+            files={
+                "file": (
+                    "restore.tar.gz.enc",
+                    encrypted_archive,
+                    "application/octet-stream",
+                )
+            },
             headers=auth_headers,
         )
 
@@ -177,7 +197,9 @@ async def test_upload_restore_accepts_encrypted_backup_archive(auth_headers, tmp
 
 
 @pytest.mark.asyncio
-async def test_backup_download_rejects_record_filename_traversal(auth_headers, tmp_path, monkeypatch):
+async def test_backup_download_rejects_record_filename_traversal(
+    auth_headers, tmp_path, monkeypatch
+):
     """A poisoned backup record must not let download escape backup_dir."""
     await init_db()
     monkeypatch.setattr(settings, "backup_dir", str(tmp_path / "backups"))
@@ -195,7 +217,9 @@ async def test_backup_download_rejects_record_filename_traversal(auth_headers, t
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/backups/{backup_id}/download", headers=auth_headers)
+        response = await ac.get(
+            f"/api/backups/{backup_id}/download", headers=auth_headers
+        )
 
     assert response.status_code == 404
 
@@ -226,3 +250,62 @@ def test_backup_copy_excludes_secret_and_local_model_artifacts(tmp_path):
     assert not (dest / "private.pem").exists()
     assert not (dest / "LLMs").exists()
     assert sorted(checksums) == ["archive/notes.txt"]
+
+
+def test_redact_env_content_redacts_url_userinfo(tmp_path, monkeypatch):
+    """DATABASE_URL credentials must not survive into backup archives."""
+    content = (
+        "DATABASE_URL=postgres://dbuser:s3cret@db.internal:5432/istara\n"
+        "PLAIN_HOST=db.internal\n"
+        "# comment=kept\n"
+    )
+    redacted = _redact_env_content(content)
+    assert "s3cret" not in redacted
+    assert "dbuser" not in redacted
+    assert redacted.splitlines()[0].startswith("DATABASE_URL=postgres://")
+    assert "PLAIN_HOST=db.internal" in redacted
+
+
+def test_persist_env_value_reports_file_custody(tmp_path, monkeypatch):
+    """Secrets reach the explicit private target; ordinary keys report True too.
+
+    F-11/F-12: with an explicit ISTARA_ENV_FILE volume, a denylisted secret
+    must be written there — keeping it memory-only regenerates it on every
+    restart and strands already-encrypted data. Memory-only (False) applies
+    solely when no private target is configured and the primary itself is a
+    shared-volume file (pinned in test_env_precedence.py).
+    """
+    from app.config import settings as app_settings
+
+    monkeypatch.setenv("ISTARA_ENV_FILE", str(tmp_path / "runtime.env"))
+    monkeypatch.setenv("DATA_ENCRYPTION_KEY", "orig-for-test")
+    monkeypatch.setenv("SOME_DISPLAY_NAME", "placeholder")
+    original_key = app_settings.data_encryption_key
+    try:
+        assert persist_env_value("DATA_ENCRYPTION_KEY", "test-key-value") is True
+        assert "DATA_ENCRYPTION_KEY=test-key-value" in (tmp_path / "runtime.env").read_text()
+        assert persist_env_value("SOME_DISPLAY_NAME", "shown") is True
+        assert "SOME_DISPLAY_NAME=shown" in (tmp_path / "runtime.env").read_text()
+    finally:
+        app_settings.data_encryption_key = original_key
+
+
+def test_persist_env_value_coerces_int_settings(tmp_path, monkeypatch):
+    """Persisting an int setting as a string must not poison numeric comparisons.
+
+    Regression: POST /api/backups/config stored BACKUP_RETENTION_COUNT via
+    setattr as the raw str, so the next create_backup crashed in
+    enforce_retention (int <= str). Coercion keeps the Settings type.
+    """
+    from app.config import settings as app_settings
+
+    monkeypatch.setenv("ISTARA_ENV_FILE", str(tmp_path / "runtime.env"))
+    original = app_settings.backup_retention_count
+    try:
+        assert persist_env_value("BACKUP_RETENTION_COUNT", "12") is True
+        assert app_settings.backup_retention_count == 12
+        assert isinstance(app_settings.backup_retention_count, int)
+        # The exact comparison that crashed must now hold.
+        assert 3 <= app_settings.backup_retention_count
+    finally:
+        app_settings.backup_retention_count = original

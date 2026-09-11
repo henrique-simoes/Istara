@@ -1,0 +1,17 @@
+{
+  "gate_id": "G2",
+  "name": "Owner Gate G2 — T3 Budget Envelope",
+  "status": "APPROVED",
+  "authorized_by": "user",
+  "authorized_at": "2026-07-22T14:32:34Z",
+  "approved_budget_usd": 0.50,
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "pricing_table": {
+    "input_per_million": 0.55,
+    "output_per_million": 2.19,
+    "cache_read_per_million": 0.14,
+    "cache_write_per_million": 0.55
+  },
+  "notes": "User explicitly approved the T3 budget envelope (pre-fixed 50 cents limit for DeepSeek)."
+}

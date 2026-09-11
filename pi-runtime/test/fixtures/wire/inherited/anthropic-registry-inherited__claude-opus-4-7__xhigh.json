@@ -1,0 +1,39 @@
+{
+  "fixture_class": "inherited",
+  "captured_at": "2026-09-08T09:32:26.011Z",
+  "endpoint": {
+    "provider_kind": "anthropic_compat",
+    "pi_provider": "anthropic",
+    "model": "claude-opus-4-7",
+    "supports_reasoning": true,
+    "supports_vision": null,
+    "base_url_host": "anthropic.test"
+  },
+  "thinking_level": "xhigh",
+  "request_body": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": [
+          {
+            "cache_control": {
+              "type": "ephemeral"
+            },
+            "text": "fixture",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "claude-opus-4-7",
+    "output_config": {
+      "effort": "xhigh"
+    },
+    "stream": true,
+    "thinking": {
+      "display": "summarized",
+      "type": "adaptive"
+    }
+  }
+}

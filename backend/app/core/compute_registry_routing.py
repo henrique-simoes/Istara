@@ -2,36 +2,26 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import time
-from collections.abc import AsyncGenerator
 from typing import Any
 
 import httpx
 
 from app.config import settings
 from app.core.compute_node import ComputeNode
-from app.core.compute_route_evidence import schedule_compute_telemetry_event
 from app.core.compute_registry_helpers import (
     TRANSIENT_CHAT_BASE_DELAY_S,
-    TRANSIENT_CHAT_MAX_ATTEMPTS,
     TRANSIENT_CHAT_MAX_DELAY_S,
     TRANSIENT_HTTP_STATUS_CODES,
-    _hydrate_local_resources,
-    _looks_like_context_length_error,
-    _looks_like_model_availability_error,
-    _positive_number,
-    _redacted_endpoint_for_log,
-    _server_endpoint_identity,
     _unique_model_names,
 )
-from app.core.llm_output import ThinkingContentFilter, visible_assistant_content
-from app.core.llm_thinking import apply_thinking_control
+from app.core.compute_route_evidence import schedule_compute_telemetry_event
 from app.core.token_counter import count_tokens
 
 logger = logging.getLogger("app.core.compute_registry")
+
 
 class ComputeRegistryRoutingMixin:
     def _sorted_servers(
@@ -153,9 +143,7 @@ class ComputeRegistryRoutingMixin:
         requested_model = (model or "").strip()
         if requested_model and requested_model != "default" and strict_model and candidates:
             candidates = [
-                n
-                for n in candidates
-                if self._node_can_attempt_requested_model(n, requested_model)
+                n for n in candidates if self._node_can_attempt_requested_model(n, requested_model)
             ]
 
         if min_context > 0 and candidates:
@@ -276,7 +264,9 @@ class ComputeRegistryRoutingMixin:
     @staticmethod
     def _content_requires_vision(content: Any) -> bool:
         if isinstance(content, list):
-            return any(ComputeRegistryRoutingMixin._content_requires_vision(item) for item in content)
+            return any(
+                ComputeRegistryRoutingMixin._content_requires_vision(item) for item in content
+            )
         if isinstance(content, dict):
             item_type = str(content.get("type", "")).lower()
             if item_type in {"image", "image_url", "input_image"}:
@@ -293,7 +283,8 @@ class ComputeRegistryRoutingMixin:
     @staticmethod
     def _messages_require_vision(messages: list[dict]) -> bool:
         return any(
-            ComputeRegistryRoutingMixin._content_requires_vision(msg.get("content")) for msg in messages
+            ComputeRegistryRoutingMixin._content_requires_vision(msg.get("content"))
+            for msg in messages
         )
 
     @staticmethod
@@ -367,11 +358,7 @@ class ComputeRegistryRoutingMixin:
             pass
 
         requested_model = (model or "").strip()
-        strict_requested_model = (
-            strict_model
-            and requested_model
-            and requested_model != "default"
-        )
+        strict_requested_model = strict_model and requested_model and requested_model != "default"
 
         loaded_models = [
             name
@@ -380,9 +367,7 @@ class ComputeRegistryRoutingMixin:
         ]
         if strict_requested_model:
             loaded_models = [
-                name
-                for name in loaded_models
-                if name in self._model_aliases(requested_model)
+                name for name in loaded_models if name in self._model_aliases(requested_model)
             ]
         if loaded_models:
             candidates = loaded_models
@@ -410,9 +395,7 @@ class ComputeRegistryRoutingMixin:
                 if isinstance(caps, dict) and caps.get("is_loaded"):
                     try:
                         loaded_context = int(
-                            caps.get("loaded_context_length")
-                            or caps.get("context_length")
-                            or 0
+                            caps.get("loaded_context_length") or caps.get("context_length") or 0
                         )
                     except (TypeError, ValueError):
                         loaded_context = 0
@@ -493,11 +476,7 @@ class ComputeRegistryRoutingMixin:
             return None
 
         requested_model = (model or "").strip()
-        if (
-            settings.strict_auto_routing
-            and requested_model
-            and requested_model != "default"
-        ):
+        if settings.strict_auto_routing and requested_model and requested_model != "default":
             candidates = [requested_model]
         else:
             candidates = self._node_load_candidates(

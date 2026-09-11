@@ -25,7 +25,9 @@ async def test_retry_with_backoff_succeeds_on_first_try():
 @pytest.mark.asyncio
 async def test_retry_with_backoff_retries_then_succeeds():
     """Retry should recover after transient failures."""
-    mock_fn = AsyncMock(side_effect=[RuntimeError("fail 1"), RuntimeError("fail 2"), "ok"])
+    mock_fn = AsyncMock(
+        side_effect=[RuntimeError("fail 1"), RuntimeError("fail 2"), "ok"]
+    )
     result = await retry_with_backoff(mock_fn, max_retries=3, base_delay=0.01)
     assert result == "ok"
     assert mock_fn.call_count == 3
@@ -172,7 +174,9 @@ async def test_whatsapp_webhook_missing_id_is_not_globally_deduplicated():
 
 
 @pytest.mark.asyncio
-async def test_whatsapp_audio_downloads_and_transcribes_before_dispatch(tmp_path, monkeypatch):
+async def test_whatsapp_audio_downloads_and_transcribes_before_dispatch(
+    tmp_path, monkeypatch
+):
     """WhatsApp audio webhooks should dispatch a local transcript, not a pending marker."""
     from app.channels.whatsapp import WhatsAppAdapter
     from app.config import settings
@@ -192,12 +196,18 @@ async def test_whatsapp_audio_downloads_and_transcribes_before_dispatch(tmp_path
         async def get(self, url):
             if url.endswith("/media-123"):
                 return FakeResponse(
-                    {"url": "https://cdn.whatsapp.test/media-123", "mime_type": "audio/ogg", "file_size": 4}
+                    {
+                        "url": "https://cdn.whatsapp.test/media-123",
+                        "mime_type": "audio/ogg",
+                        "file_size": 4,
+                    }
                 )
             return FakeResponse(content=b"OggS")
 
     monkeypatch.setattr(settings, "data_dir", str(tmp_path / "data"))
-    monkeypatch.setattr("app.core.transcription.convert_audio_to_wav", lambda path: path)
+    monkeypatch.setattr(
+        "app.core.transcription.convert_audio_to_wav", lambda path: path
+    )
     monkeypatch.setattr(
         "app.core.transcription.transcribe_audio",
         lambda path: SimpleNamespace(

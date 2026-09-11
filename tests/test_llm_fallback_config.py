@@ -64,7 +64,9 @@ def test_configured_fallback_can_read_key_from_keychain(monkeypatch):
         monkeypatch.setattr(
             app_config,
             "_read_macos_keychain_secret",
-            lambda service: "keychain-test-key" if service == "istara-secondary-test" else "",
+            lambda service: (
+                "keychain-test-key" if service == "istara-secondary-test" else ""
+            ),
         )
 
         node = _build_configured_fallback_llm_node()

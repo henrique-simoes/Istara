@@ -45,6 +45,7 @@ Agent Registry exists so the work represented by Agents > Agents has a stable, d
 ## Inputs, Outputs, And Expected Outcomes
 
 - Universal system agents and project-scoped custom agents associated with the active project.
+- The onboarding copy reports the current number of rendered universal system agents rather than a hard-coded count.
 - Project-owned custom-agent changes stay bound to the active project instead of applying to a global agent record.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 

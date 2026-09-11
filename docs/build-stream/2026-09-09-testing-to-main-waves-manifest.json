@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "pipeline_run": "testing-to-main-20260909",
+  "waves": [
+    {
+      "id": "candidate-boundary",
+      "title": "Freeze and reconcile the testing release candidate",
+      "instructions": "Reconcile origin/main, origin/testing, local committed testing, and the dirty/untracked worktree into one explicitly classified candidate. Preserve ambient edits and protected artifact folders. Freeze one exact candidate SHA and document included, excluded, superseded, and deferred Build Stream work. Do not merge, push, or delete user data. Verify the boundary with Git and Compass Forge evidence.",
+      "scope": ["docs", "scripts", "tests", ".compass-forge"],
+      "review_instructions": "Verify that the candidate SHA is explicit, reproducible, and not silently widened by later waves; that ambient work and protected folders are preserved; that all recent lifecycle plans have a disposition; and that Git, Build Stream, and Compass Forge provenance agree.",
+      "spec": "CF-SPEC-30"
+    },
+    {
+      "id": "control-plane-lifecycle",
+      "title": "Reconcile Build Stream and Compass Forge lifecycle truth",
+      "instructions": "Repair contradictory or stale lifecycle status, reconcile CF-SPEC-29 and related tasks without erasing history, refresh the native Rust index deliberately, establish required gates and evidence, and make the lifecycle ledger a truthful resume contract. Preserve the Research Spine and self-improvement governance contracts.",
+      "scope": ["docs", ".compass-forge", "scripts"],
+      "review_instructions": "Verify lifecycle status blocks, ledgers, CF spec/task relationships, index freshness, gates, evidence provenance, and Research Spine/self-improvement references. Any unresolved release-blocking ambiguity must remain blocking.",
+      "spec": "CF-SPEC-30"
+    },
+    {
+      "id": "correctness-quality",
+      "title": "Repair correctness, formatting, lint, public quality, and mutation gaps",
+      "instructions": "Fix the observed frontend lint failure, backend Ruff formatting failures, public-repository quality findings, whitespace defects, and mutation survivors/no-coverage through root-cause code and test changes. Preserve or strengthen thresholds. Run the credential-free backend, frontend, security, type, unit, contract, and mutation evidence required by the final candidate.",
+      "scope": ["backend", "frontend", "tests", "scripts", "security", "docs"],
+      "review_instructions": "Verify every known red check is repaired on the frozen candidate, mutation quality is at least the required threshold without lowering it, and no ignored lint or public-quality defect remains. Require exact commands and observed results.",
+      "spec": "CF-SPEC-30"
+    },
+    {
+      "id": "ci-enforcement",
+      "title": "Align CI and main protection with the changed architecture",
+      "instructions": "Redesign CI job independence and required-check semantics so formatting, lint, tests, mutation, builds, governance, QA contracts, and UI journeys report independently and cannot be hidden by earlier failure. Add the appropriate container-first browser lane, honest not_runnable handling, artifacts, and documentation. Separate workflow changes from owner-gated GitHub branch-protection changes.",
+      "scope": [".github", "tests", "scripts", "docs", "TESTING.md", "testing"],
+      "review_instructions": "Review the workflow graph, triggers, required contexts, failure propagation, artifact evidence, credential-free/live boundaries, UI execution, desktop status, and branch-protection plan. Ensure green status cannot be produced by skipped or advisory release-critical checks.",
+      "spec": "CF-SPEC-30"
+    },
+    {
+      "id": "browser-spine-acceptance",
+      "title": "Prove changed behavior through real container-first journeys",
+      "instructions": "Execute and, where necessary, extend Playwright simulation and real-user benchmark journeys for the changed architecture. Cover roles, themes, 375px reflow, keyboard focus, loading/error/empty states, Research Spine gates, team/model/donation paths, and honest credential-free not_runnable outcomes. Use synthetic data and loopback-only QA publication.",
+      "scope": ["tests", "frontend", "backend", "docs"],
+      "review_instructions": "Blindly verify actual browser behavior rather than API-only surrogates. Require dated verdicts, deterministic screenshots/HAR paths, accessibility/focus coverage, role coverage, and explicit live-dependency boundaries.",
+      "spec": "CF-SPEC-30"
+    },
+    {
+      "id": "promotion-certification",
+      "title": "Certify one exact SHA for owner-gated promotion",
+      "instructions": "Run the complete release matrix on the final frozen SHA, including CI, security benchmark, mutation threshold, public quality, container UI journeys, lifecycle/CF evidence, blind independent review, and worktree/ref checks. Produce a promotion dossier and a binary ready/not-ready verdict. Do not open a PR, merge, push, or change repository settings automatically.",
+      "scope": [".github", "docs", "tests", "scripts", "security", "backend", "frontend", "desktop"],
+      "review_instructions": "Verify that every promotion criterion is tied to the same exact SHA, every release-blocking task and finding is closed, required branch protection is aligned or explicitly owner-blocked, and no live behavior is claimed without live evidence.",
+      "spec": "CF-SPEC-30"
+    }
+  ]
+}

@@ -50,7 +50,10 @@ async def test_governance_proposals_create_and_sync_dgmh_archive_variants():
         title="Tune routing threshold",
         summary="Measure and promote a routing parameter change.",
         affected_surfaces=["configs", "orchestration"],
-        proposed_change={"target_system": target_system, "parameter_path": "task_router.min_confidence"},
+        proposed_change={
+            "target_system": target_system,
+            "parameter_path": "task_router.min_confidence",
+        },
         rollback_plan={"strategy": "restore previous threshold"},
         metrics_before={"score": 0.6},
         metrics_after={"score": 0.72},
@@ -63,12 +66,16 @@ async def test_governance_proposals_create_and_sync_dgmh_archive_variants():
         project_id="project-dgmh-governance",
         target_system=target_system,
     )
-    variant = next(item for item in variants if item["governance_proposal_id"] == proposal.id)
+    variant = next(
+        item for item in variants if item["governance_proposal_id"] == proposal.id
+    )
     assert variant["status"] == "candidate"
     assert variant["score"] == 0.12
     assert variant["root_id"] == variant["id"]
 
-    approved = await improvement_governance.approve_proposal(proposal.id, reviewer_id="tester")
+    approved = await improvement_governance.approve_proposal(
+        proposal.id, reviewer_id="tester"
+    )
     assert approved["proposal"]["status"] == "approved"
     synced = await dgmh_archive.get_variant(variant["id"])
     assert synced is not None
@@ -182,7 +189,10 @@ async def test_dgmh_archive_api_contract_and_admin_guard(auth_headers):
                 "mutation_surface": "configs",
                 "artifact_kind": "parameter_variant",
                 "title": "Manual archive candidate",
-                "mutation": {"parameter_path": "agent.max_parallel_tasks", "proposed_value": 4},
+                "mutation": {
+                    "parameter_path": "agent.max_parallel_tasks",
+                    "proposed_value": 4,
+                },
                 "rollback_plan": {"strategy": "restore previous value"},
                 "score": 0.08,
                 "confidence": 0.7,
@@ -221,7 +231,9 @@ async def test_dgmh_archive_api_contract_and_admin_guard(auth_headers):
         assert other_listed.status_code == 200
         assert all(item["id"] != variant_id for item in other_listed.json()["variants"])
 
-        summary = await ac.get(f"/api/dgmh-archive/summary?project_id={project_id}", headers=auth_headers)
+        summary = await ac.get(
+            f"/api/dgmh-archive/summary?project_id={project_id}", headers=auth_headers
+        )
         assert summary.status_code == 200
         assert summary.json()["total"] >= 1
 

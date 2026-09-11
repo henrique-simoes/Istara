@@ -6,9 +6,17 @@
 export const name = "User Management";
 export const id = "69-user-management-ui";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "admin",
+    navLabel: "Admin",
+    markers: ["Admin", "Users"],
+    screenshot: "69-admin-view",
+  });
   const cleanup = { userIds: [] };
   const suffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
   const researcherUsername = `sim-researcher-${suffix}`;

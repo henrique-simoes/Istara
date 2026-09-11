@@ -4,9 +4,17 @@
 export const name = "Compute Pool";
 export const id = "34-compute-pool";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "compute",
+    navLabel: "Compute Pool",
+    markers: ["Compute Pool", "Nodes"],
+    screenshot: "34-compute-view",
+  });
   const projectId = ctx.projectId;
   const computePath = (path) => `${path}?project_id=${encodeURIComponent(projectId)}`;
 

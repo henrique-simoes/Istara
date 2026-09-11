@@ -26,7 +26,12 @@ class SurveyMonkeyAdapter(SurveyPlatformAdapter):
     # ------------------------------------------------------------------
 
     def _headers(self) -> dict[str, str]:
-        token = self.config.get("access_token", "")
+        token = (
+            self.config.get("access_token", "")
+            or self.config.get("token", "")
+            or self.config.get("api_key", "")
+            or self.config.get("Access Token", "")
+        )
         if not token:
             raise ValueError("SurveyMonkey access_token not configured")
         return {
@@ -42,7 +47,8 @@ class SurveyMonkeyAdapter(SurveyPlatformAdapter):
         json_body: dict | None = None,
         params: dict | None = None,
     ) -> dict:
-        url = f"{BASE_URL}{path}"
+        base = self.config.get("api_base") or self.config.get("base_url") or BASE_URL
+        url = f"{base.rstrip('/')}{path}"
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.request(
                 method, url, headers=self._headers(), json=json_body, params=params
@@ -81,15 +87,11 @@ class SurveyMonkeyAdapter(SurveyPlatformAdapter):
                 sm_q["family"] = "single_choice"
                 sm_q["subtype"] = "vertical"
                 choices = q.get("choices", [])
-                sm_q["answers"] = {
-                    "choices": [{"text": c} for c in choices]
-                }
+                sm_q["answers"] = {"choices": [{"text": c} for c in choices]}
             elif q_type == "rating":
                 sm_q["family"] = "matrix"
                 sm_q["subtype"] = "rating"
-                sm_q["answers"] = {
-                    "choices": [{"text": str(i)} for i in range(1, 6)]
-                }
+                sm_q["answers"] = {"choices": [{"text": str(i)} for i in range(1, 6)]}
             else:
                 sm_q["family"] = "open_ended"
                 sm_q["subtype"] = "essay"
@@ -130,17 +132,19 @@ class SurveyMonkeyAdapter(SurveyPlatformAdapter):
                         break
                     answer_texts: list[str] = []
                     for ans in question.get("answers", []):
-                        answer_texts.append(
-                            ans.get("text", ans.get("choice_id", ""))
-                        )
-                    answers.append({
-                        "question": q_heading,
-                        "answer": "; ".join(answer_texts) if answer_texts else "",
-                    })
-            normalised.append({
-                "id": str(resp.get("id", "")),
-                "answers": answers,
-            })
+                        answer_texts.append(ans.get("text", ans.get("choice_id", "")))
+                    answers.append(
+                        {
+                            "question": q_heading,
+                            "answer": "; ".join(answer_texts) if answer_texts else "",
+                        }
+                    )
+            normalised.append(
+                {
+                    "id": str(resp.get("id", "")),
+                    "answers": answers,
+                }
+            )
 
         return normalised
 

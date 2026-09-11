@@ -15,7 +15,7 @@ existing reports, not create new ones.
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from sqlalchemy import select
@@ -157,7 +157,8 @@ class ReportManager:
         )
         if not finding_ids:
             logger.info(
-                "ReportManager: skipped report routing for project=%s skill=%s because no findings are reportable",
+                "ReportManager: skipped report routing for project=%s "
+                "skill=%s because no findings are reportable",
                 project_id,
                 skill_name,
             )
@@ -173,7 +174,7 @@ class ReportManager:
         report.finding_ids_json = json.dumps(merged)
         report.version += 1
         report.status = "in_progress"
-        report.updated_at = datetime.now(timezone.utc)
+        report.updated_at = datetime.now(UTC)
 
         # Track ensemble consensus score on the report
         if consensus_score is not None:
@@ -253,7 +254,8 @@ class ReportManager:
         )
         if not validity["report_allowed"]:
             logger.info(
-                "ReportManager: skipped approved task %s because research-validity gate blocked reporting: %s",
+                "ReportManager: skipped approved task %s because "
+                "research-validity gate blocked reporting: %s",
                 task_id,
                 validity["reason"],
             )
@@ -319,7 +321,10 @@ class ReportManager:
                     project_id=project_id,
                     task_id="",
                     allowed=False,
-                    reason=f"Finding {finding_id} does not exist or is not managed by the Research Spine.",
+                    reason=(
+                        f"Finding {finding_id} does not exist or is not managed "
+                        "by the Research Spine."
+                    ),
                 )
             for finding_id in sorted(unlinked_finding_ids):
                 await _record_report_promotion_gate(
@@ -433,7 +438,8 @@ class ReportManager:
             )
             if not reportable_ids:
                 logger.info(
-                    "ReportManager: skipped L3 synthesis for project=%s because no L2 findings passed Research Spine gates",
+                    "ReportManager: skipped L3 synthesis for project=%s "
+                    "because no L2 findings passed Research Spine gates",
                     project_id,
                 )
                 return
@@ -441,7 +447,7 @@ class ReportManager:
             merged_ids = _merge_ids([], reportable_ids)
             synth.finding_ids_json = json.dumps(merged_ids)
             synth.version += 1
-            synth.updated_at = datetime.now(timezone.utc)
+            synth.updated_at = datetime.now(UTC)
             await db.commit()
             logger.info(
                 "ReportManager: synthesis updated with %d findings from %d L2 reports",
@@ -473,8 +479,6 @@ class ReportManager:
         if len(finding_ids) < 3:
             return
         try:
-            from app.core.llm_router import llm_router
-
             # Load finding texts
             from app.models.finding import Fact, Insight, Nugget, Recommendation
 
@@ -489,18 +493,30 @@ class ReportManager:
             if not findings_text:
                 return
             summary_prompt = (
-                f"Create a professional consulting-grade executive summary for the '{report_scope}' study using the SCR (Situation-Complication-Resolution) framework.\n\n"
+                f"Create a professional consulting-grade executive summary "
+                f"for the '{report_scope}' study using the SCR "
+                "(Situation-Complication-Resolution) framework.\n\n"
                 f"Context: {len(findings_text)} key findings extracted.\n"
                 "Findings:\n"
                 + "\n".join(f"- {t[:200]}" for t in findings_text[:15])
-                + "\n\nFormat the summary with clear headings: SITUATION, COMPLICATION, and RESOLUTION. Ensure it addresses executive stakeholders with high clarity and academic rigor."
+                + "\n\nFormat the summary with clear headings: SITUATION, "
+                + "COMPLICATION, and RESOLUTION. Ensure it addresses executive "
+                + "stakeholders with high clarity and academic rigor."
             )
-            response = await llm_router.chat(
-                [{"role": "user", "content": summary_prompt}],
-                temperature=0.3,
+            # W5: the SCR executive summary goes through the
+            # AgenticDispatcher (``report.exec_summary``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="report.exec_summary",
                 project_id=report_project_id,
+                system=None,
+                messages=[{"role": "user", "content": summary_prompt}],
+                params=TurnParams(temperature=0.3),
+                spine_phase="synthesis",
             )
-            summary = response.get("message", {}).get("content", "")
+            summary = outcome.text
             if summary and len(summary) > 20:
                 from app.models.project_report import ProjectReport
 
@@ -526,7 +542,6 @@ class ReportManager:
         if existing_categories:
             return
         try:
-            from app.core.llm_router import llm_router
             from app.models.finding import Fact, Insight, Nugget, Recommendation
 
             findings_text = []
@@ -542,27 +557,62 @@ class ReportManager:
             if len(findings_text) < 3:
                 return
             mece_prompt = (
-                f"You are a top-tier management consultant. Categorize these {len(findings_text)} research findings into 3-5 MECE "
-                "(Mutually Exclusive, Collectively Exhaustive) categories using the Minto Pyramid Principle.\n\n"
+                f"You are a top-tier management consultant. Categorize these "
+                f"{len(findings_text)} research findings into 3-5 MECE "
+                "(Mutually Exclusive, Collectively Exhaustive) "
+                "categories using the Minto Pyramid Principle.\n\n"
                 "Constraints:\n"
-                "1. Each category MUST have an 'Action Title' — a full sentence that states a conclusion (e.g., 'Users struggle with X because of Y').\n"
-                "2. Provide a 'So-What' description for each category explaining the business/UX impact.\n"
+                "1. Each category MUST have an 'Action Title' — a full sentence that "
+                "states a conclusion (e.g., 'Users struggle with X because of Y').\n"
+                "2. Provide a 'So-What' description for each "
+                "category explaining the business/UX impact.\n"
                 "3. Ensure categories do not overlap.\n\n"
                 "Findings:\n"
                 + "\n".join(f"- [{f['id'][:8]}] {f['text']}" for f in findings_text)
-                + '\n\nRespond with a JSON array: [{"name": "Action Title Sentence", "description": "So-What explanation...", "finding_ids": ["id1", "id2"]}]'
+                + '\n\nRespond with a JSON array: [{"name": "Action Title '
+                + 'Sentence", "description": "So-What explanation...", '
+                + '"finding_ids": ["id1", "id2"]}]'
             )
-            response = await llm_router.chat(
-                [{"role": "user", "content": mece_prompt}],
-                temperature=0.3,
-                project_id=report_project_id,
-            )
-            content = response.get("message", {}).get("content", "")
-            import re
+            # W5: MECE categorization goes through the AgenticDispatcher
+            # (``report.mece``) as a structured call.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
 
-            json_match = re.search(r"\[.*\]", content, re.DOTALL)
-            if json_match:
-                categories = json.loads(json_match.group())
+            outcome = await agentic.structured(
+                purpose="report.mece",
+                project_id=report_project_id,
+                system=None,
+                messages=[{"role": "user", "content": mece_prompt}],
+                schema={
+                    "type": "object",
+                    "properties": {
+                        "categories": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {"type": "string"},
+                                    "description": {"type": "string"},
+                                    "finding_ids": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                    },
+                                },
+                                "required": ["name", "description", "finding_ids"],
+                            },
+                        },
+                    },
+                    "required": ["categories"],
+                },
+                params=TurnParams(temperature=0.3),
+                spine_phase="synthesis",
+            )
+            categories = (
+                outcome.value.get("categories")
+                if outcome.status == "success" and outcome.value
+                else None
+            )
+            if categories:
                 from app.models.project_report import ProjectReport
 
                 fresh_report = await db.get(ProjectReport, report_id)
@@ -602,7 +652,8 @@ class ReportManager:
         )
         if not reportable_ids:
             logger.info(
-                "ReportManager: skipped L4 final report for project=%s because no L3 findings passed Research Spine gates",
+                "ReportManager: skipped L4 final report for project=%s "
+                "because no L3 findings passed Research Spine gates",
                 project_id,
             )
             return
@@ -612,7 +663,7 @@ class ReportManager:
         if existing_l4:
             existing_l4.finding_ids_json = reportable_ids_json
             existing_l4.version += 1
-            existing_l4.updated_at = datetime.now(timezone.utc)
+            existing_l4.updated_at = datetime.now(UTC)
             l4 = existing_l4
         else:
             l4 = ProjectReport(
@@ -661,21 +712,44 @@ class ReportManager:
     # ── Template-Driven Report Composition ──────────────────────────
 
     REPORT_TEMPLATE = [
-        {"section": "I. Executive Summary (SCR)", "source": "executive_summary", "format": "narrative"},
+        {
+            "section": "I. Executive Summary (SCR)",
+            "source": "executive_summary",
+            "format": "narrative",
+        },
         {"section": "II. Research Methodology & Rigor", "source": "skills_used", "format": "list"},
-        {"section": "III. Strategic Thematic Analysis (MECE)", "source": "mece_categories", "format": "structured"},
-        {"section": "IV. Detailed Insights & Evidence Chain", "source": "insights", "format": "detailed_narrative"},
-        {"section": "V. Supporting Evidence (Nuggets & Facts)", "source": "nuggets_and_facts", "format": "citation_table"},
-        {"section": "VI. Actionable Recommendations (Pyramid Top)", "source": "recommendations", "format": "priority_table"},
-        {"section": "VII. Validation & Consensus Metrics", "source": "ensemble_scores", "format": "metrics"},
+        {
+            "section": "III. Strategic Thematic Analysis (MECE)",
+            "source": "mece_categories",
+            "format": "structured",
+        },
+        {
+            "section": "IV. Detailed Insights & Evidence Chain",
+            "source": "insights",
+            "format": "detailed_narrative",
+        },
+        {
+            "section": "V. Supporting Evidence (Nuggets & Facts)",
+            "source": "nuggets_and_facts",
+            "format": "citation_table",
+        },
+        {
+            "section": "VI. Actionable Recommendations (Pyramid Top)",
+            "source": "recommendations",
+            "format": "priority_table",
+        },
+        {
+            "section": "VII. Validation & Consensus Metrics",
+            "source": "ensemble_scores",
+            "format": "metrics",
+        },
         {"section": "VIII. Analysis Gaps & Next Steps", "source": "gaps", "format": "narrative"},
     ]
 
     async def _compose_full_report(self, report, project_id: str, db: AsyncSession) -> None:
         """Compose the full L4 report document from template sections."""
         try:
-            from app.core.llm_router import llm_router
-            from app.models.finding import Nugget, Fact, Insight, Recommendation
+            from app.models.finding import Fact, Insight, Nugget, Recommendation
 
             report_id = report.id
             report_snapshot = SimpleNamespace(
@@ -729,7 +803,6 @@ class ReportManager:
                     findings,
                     report_snapshot,
                     methodologies,
-                    llm_router,
                     project_id=project_id,
                 )
                 if section_content:
@@ -741,8 +814,8 @@ class ReportManager:
             # ── Iterative refinement loop (max 2 passes) ──
             # LLM scores each section, identifies the weakest, and re-composes it.
             # Stops when all sections score ≥7 or after 2 passes.
-            MAX_REFINEMENT_PASSES = 2
-            for pass_num in range(MAX_REFINEMENT_PASSES):
+            max_refinement_passes = 2
+            for pass_num in range(max_refinement_passes):
                 try:
                     score_prompt = (
                         f"Rate each section of this research report (1-10). "
@@ -751,20 +824,39 @@ class ReportManager:
                         f'Respond with JSON: {{"scores": {{"section_name": score}}, '
                         f'"weakest": "section_name", "reason": "...", "suggestion": "..."}}'
                     )
-                    score_response = await llm_router.chat(
-                        [{"role": "user", "content": score_prompt}],
-                        temperature=0.2,
+                    # W5: weakest-section scoring goes through the
+                    # AgenticDispatcher (``report.weakest_section``) as a
+                    # structured call.
+                    from app.core.agentic import agentic
+                    from app.core.agentic.types import TurnParams
+
+                    outcome = await agentic.structured(
+                        purpose="report.weakest_section",
                         project_id=project_id,
+                        system=None,
+                        messages=[{"role": "user", "content": score_prompt}],
+                        schema={
+                            "type": "object",
+                            "properties": {
+                                "scores": {
+                                    "type": "object",
+                                    "additionalProperties": True,
+                                },
+                                "weakest": {"type": "string"},
+                                "reason": {"type": "string"},
+                                "suggestion": {"type": "string"},
+                            },
+                            "required": ["scores", "weakest", "suggestion"],
+                        },
+                        params=TurnParams(temperature=0.2),
+                        spine_phase="review",
                     )
-                    score_text = score_response.get("message", {}).get("content", "")
-
-                    import re as _re
-
-                    json_match = _re.search(r'\{.*"weakest".*\}', score_text, _re.DOTALL)
-                    if not json_match:
+                    score_data = (
+                        outcome.value if outcome.status == "success" and outcome.value else None
+                    )
+                    if not score_data:
                         break
 
-                    score_data = json.loads(json_match.group())
                     scores = score_data.get("scores", {})
                     weakest = score_data.get("weakest", "")
                     suggestion = score_data.get("suggestion", "")
@@ -784,13 +876,14 @@ class ReportManager:
                                 findings,
                                 report_snapshot,
                                 methodologies,
-                                llm_router,
                                 refinement_hint=suggestion,
                                 project_id=project_id,
                             )
                             if refined:
                                 sections[i] = f"## {template['section']}\n\n{refined}"
-                                full_doc = f"# {report_snapshot.title}\n\n" + "\n\n---\n\n".join(sections)
+                                full_doc = f"# {report_snapshot.title}\n\n" + "\n\n---\n\n".join(
+                                    sections
+                                )
                                 logger.info(
                                     f"Report refined: section '{weakest}' (pass {pass_num + 1})"
                                 )
@@ -808,9 +901,9 @@ class ReportManager:
             content = json.loads(fresh_report.content_json or report_snapshot.content_json or "{}")
             content["full_document"] = full_doc
             content["sections"] = [t["section"] for t in self.REPORT_TEMPLATE]
-            content["generated_at"] = datetime.now(timezone.utc).isoformat()
+            content["generated_at"] = datetime.now(UTC).isoformat()
             content["refinement_passes"] = (
-                min(pass_num + 1, MAX_REFINEMENT_PASSES) if "pass_num" in dir() else 0
+                min(pass_num + 1, max_refinement_passes) if "pass_num" in dir() else 0
             )
             fresh_report.content_json = json.dumps(content)
             fresh_report.status = "review"
@@ -844,7 +937,6 @@ class ReportManager:
         findings: dict,
         report,
         methodologies: list,
-        llm_router,
         refinement_hint: str = "",
         project_id: str | None = None,
     ) -> str:
@@ -866,7 +958,7 @@ class ReportManager:
             items = findings.get("insights", [])
             if not items:
                 return "No key insights were generated."
-            
+
             if fmt == "detailed_narrative":
                 prompt = (
                     f"You are a management consultant. Expand these {len(items)} insights into a "
@@ -876,16 +968,23 @@ class ReportManager:
                     "contextualize it within the study's scope.\n"
                     "2. Use professional, objective language.\n"
                     "3. Connect insights where relationships exist.\n\n"
-                    "Insights:\n"
-                    + "\n".join(f"- {i['text']}" for i in items)
+                    "Insights:\n" + "\n".join(f"- {i['text']}" for i in items)
                 )
                 try:
-                    response = await llm_router.chat(
-                        [{"role": "user", "content": prompt}],
-                        temperature=0.3,
-                        project_id=project_id or getattr(report, "project_id", None),
+                    # W5: the detailed insights narrative goes through the
+                    # AgenticDispatcher (``report.insights_narrative``).
+                    from app.core.agentic import agentic
+                    from app.core.agentic.types import TurnParams
+
+                    outcome = await agentic.completion(
+                        purpose="report.insights_narrative",
+                        project_id=project_id or getattr(report, "project_id", None) or "",
+                        system=None,
+                        messages=[{"role": "user", "content": prompt}],
+                        params=TurnParams(temperature=0.3),
+                        spine_phase="synthesis",
                     )
-                    return response.get("message", {}).get("content", "Detailed narrative generation failed.")
+                    return outcome.text or "Detailed narrative generation failed."
                 except Exception:
                     fmt = "evidence_table"  # Fallback
 
@@ -922,24 +1021,32 @@ class ReportManager:
             items = findings.get("recommendations", [])
             if not items:
                 return "No actionable recommendations generated."
-            
+
             prompt = (
-                f"You are a management consultant. For each of these {len(items)} research recommendations, "
+                f"You are a management consultant. For each of "
+                f"these {len(items)} research recommendations, "
                 "develop a professional, multi-paragraph justification (~500 words total).\n\n"
                 "Constraints:\n"
                 "1. State the recommendation clearly (The 'Pyramid Top').\n"
                 "2. Provide 2-3 logical supporting reasons based on research findings.\n"
                 "3. Suggest immediate next steps for implementation.\n\n"
-                "Recommendations:\n"
-                + "\n".join(f"- {r['text']}" for r in items)
+                "Recommendations:\n" + "\n".join(f"- {r['text']}" for r in items)
             )
             try:
-                response = await llm_router.chat(
-                    [{"role": "user", "content": prompt}],
-                    temperature=0.3,
-                    project_id=project_id or getattr(report, "project_id", None),
+                # W5: the recommendations justification goes through the
+                # AgenticDispatcher (``report.recommendations_narrative``).
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="report.recommendations_narrative",
+                    project_id=project_id or getattr(report, "project_id", None) or "",
+                    system=None,
+                    messages=[{"role": "user", "content": prompt}],
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="synthesis",
                 )
-                return response.get("message", {}).get("content", "Recommendation detail generation failed.")
+                return outcome.text or "Recommendation detail generation failed."
             except Exception:
                 rows = ["| # | Recommendation | Priority |", "|---|---------------|----------|"]
                 for i, item in enumerate(items, 1):
@@ -950,18 +1057,19 @@ class ReportManager:
             categories = json.loads(report.mece_categories_json or "[]")
             if not categories:
                 return "Strategic thematic analysis (MECE) not yet available."
-            
+
             parts = []
             for cat in categories:
                 name = cat.get("name", "Unknown Conclusion")
                 desc = cat.get("description", "No supporting argument provided.")
                 count = len(cat.get("finding_ids", []))
-                
+
                 # Deeper analysis for each MECE category
                 parts.append(
                     f"### {name}\n"
                     f"**Strategic Takeaway**: {desc}\n\n"
-                    f"*Evidence density: This conclusion is supported by {count} distinct research findings.*"
+                    f"*Evidence density: This conclusion is supported "
+                    f"by {count} distinct research findings.*"
                 )
             return "\n\n".join(parts)
 
@@ -972,11 +1080,14 @@ class ReportManager:
                 return "No ensemble validation data available."
             avg = content.get("avg_consensus", 0)
             return (
-                f"**Average consensus score**: {avg:.2f}\n"
+                f"**Average response-level consensus score**: {avg:.2f}\n"
                 f"**Validation runs**: {len(scores)}\n"
                 f"**Score range**: {min(scores):.2f} – {max(scores):.2f}\n\n"
-                "Consensus is computed using Fleiss' Kappa + cosine similarity across "
-                "multiple model runs (Self-MoA, Dual Run, Adversarial Review)."
+                "These scores are heuristic response-level quality signals from "
+                "Self-MoA, Dual Run, or Adversarial Review; they are not Fleiss' "
+                "Kappa and cannot establish formal Research Spine reliability. "
+                "Formal Fleiss/Cohen/Krippendorff metrics are computed only from "
+                "independent coded evidence-unit matrices in a governed coding run."
             )
 
         if source == "gaps":
@@ -993,12 +1104,20 @@ class ReportManager:
                 if refinement_hint:
                     prompt += f"\n\nRefinement guidance: {refinement_hint}"
                 prompt += "\n\nBe specific and concise."
-                response = await llm_router.chat(
-                    [{"role": "user", "content": prompt}],
-                    temperature=0.3,
-                    project_id=project_id or getattr(report, "project_id", None),
+                # W5: the gaps/limitations analysis goes through the
+                # AgenticDispatcher (``report.gaps_analysis``).
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="report.gaps_analysis",
+                    project_id=project_id or getattr(report, "project_id", None) or "",
+                    system=None,
+                    messages=[{"role": "user", "content": prompt}],
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="review",
                 )
-                return response.get("message", {}).get("content", "No gaps analysis available.")
+                return outcome.text or "No gaps analysis available."
             except Exception:
                 return "Gap analysis could not be generated."
 

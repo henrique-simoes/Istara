@@ -43,7 +43,9 @@ async def test_autoresearch_integration(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/autoresearch/status?project_id=test", headers=auth_headers)
+        response = await ac.get(
+            "/api/autoresearch/status?project_id=test", headers=auth_headers
+        )
         assert response.status_code < 600  # Endpoint exists (may have backend bugs)
 
 
@@ -99,7 +101,9 @@ async def test_channels_integration(auth_headers):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Channels accessible
-        response = await ac.get("/api/channels?project_id=integration-channel-project", headers=auth_headers)
+        response = await ac.get(
+            "/api/channels?project_id=integration-channel-project", headers=auth_headers
+        )
         assert response.status_code == 200
 
         # Findings accessible

@@ -5,15 +5,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException
 
 from app.models.design_screen import DesignDecision
 from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.task import Task, TaskStatus
 from app.services.research_validity_service import assess_task_research_validity
-
 
 PROVISIONAL_DESIGN_DECISION_RATIONALE = (
     "Provisional Research Spine candidate: this design decision is not reportable "
@@ -59,7 +58,9 @@ async def ensure_project_link_ids(
     found = {str(row_id) for row_id in rows.scalars().all()}
     missing = [item for item in cleaned if item not in found]
     if missing:
-        raise HTTPException(status_code=422, detail=f"{field_name} contains unknown records for this project.")
+        raise HTTPException(
+            status_code=422, detail=f"{field_name} contains unknown records for this project."
+        )
     return cleaned
 
 
@@ -73,15 +74,22 @@ def provisional_design_decision_rationale(rationale: str) -> str:
     return PROVISIONAL_DESIGN_DECISION_RATIONALE
 
 
-def provisional_finding_validity(task_id: str | None = None, reason: str | None = None) -> dict[str, Any]:
+def provisional_finding_validity(
+    task_id: str | None = None, reason: str | None = None
+) -> dict[str, Any]:
     return {
         "status": "provisional",
         "report_allowed": False,
         "task_id": task_id,
         "done_approved": False,
         "reason": reason
-        or "Finding is provisional until linked to accepted coded evidence and a human-approved Done task.",
-        "policy": "finding_visibility_does_not_bypass_coding_reliability_review_or_done_report_gates",
+        or (
+            "Finding is provisional until linked to accepted coded evidence "
+            "and a human-approved Done task."
+        ),
+        "policy": (
+            "finding_visibility_does_not_bypass_coding_reliability_review_or_done_report_gates"
+        ),
     }
 
 
@@ -168,7 +176,10 @@ async def chain_research_validity_diagnostics(
         "task_gates": task_gates,
         "report_allowed": report_allowed,
         "report_block_reason": report_block_reason,
-        "policy": "evidence_chain_visibility_does_not_bypass_coding_reliability_review_or_done_report_gates",
+        "policy": (
+            "evidence_chain_visibility_does_not_bypass_coding_"
+            "reliability_review_or_done_report_gates"
+        ),
     }
 
 
@@ -212,7 +223,9 @@ async def finding_research_validity_map(
             "reason": _finding_gate_reason(gate, done_approved, report_allowed),
             "code_application_count": gate.get("code_application_count", 0),
             "accepted_code_application_count": gate.get("accepted_code_application_count", 0),
-            "policy": "finding_visibility_does_not_bypass_coding_reliability_review_or_done_report_gates",
+            "policy": (
+                "finding_visibility_does_not_bypass_coding_reliability_review_or_done_report_gates"
+            ),
         }
 
     validity_by_finding: dict[str, dict[str, Any]] = {}
@@ -221,9 +234,7 @@ async def finding_research_validity_map(
         task_id = str(getattr(item, "task_id", "") or "").strip() or None
         if finding_id:
             validity_by_finding[finding_id] = (
-                gate_by_task.get(task_id)
-                if task_id
-                else provisional_finding_validity(task_id=None)
+                gate_by_task.get(task_id) if task_id else provisional_finding_validity(task_id=None)
             )
     return validity_by_finding
 
@@ -283,9 +294,7 @@ async def design_decision_research_validity_map(
             if bool(source_validity.get(item, {}).get("report_allowed", False))
         ]
         blocked_ids = [
-            item
-            for item in linked_ids
-            if item in resolved_by_id and item not in accepted_ids
+            item for item in linked_ids if item in resolved_by_id and item not in accepted_ids
         ]
         if not linked_ids:
             validity_by_decision[decision_id] = _design_decision_provisional(
@@ -329,7 +338,9 @@ def _finding_gate_reason(gate: dict[str, Any], done_approved: bool, report_allow
     if not gate.get("report_allowed", False):
         return str(gate.get("reason") or "Finding is blocked by the research-validity gate.")
     if not done_approved:
-        return "Finding is linked to accepted coded evidence but its task is not human-approved Done."
+        return (
+            "Finding is linked to accepted coded evidence but its task is not human-approved Done."
+        )
     return "Finding is provisional."
 
 

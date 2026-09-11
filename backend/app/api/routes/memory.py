@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,15 +42,23 @@ async def list_memory(
 
         chunks = []
         for _, row in page_df.iterrows():
-            chunks.append({
-                "text": str(row.get("text", ""))[:500],  # Truncate for listing
-                "source": str(row.get("source", "")),
-                "page": int(row.get("page", 0)) if "page" in row.index else 0,
-                "agent_id": str(row.get("agent_id", "")) if "agent_id" in row.index else "",
-                "chunk_type": str(row.get("chunk_type", "character")) if "chunk_type" in row.index else "character",
-                "created_at": float(row.get("created_at", 0)) if "created_at" in row.index else 0,
-                "confidence": float(row.get("confidence", 1.0)) if "confidence" in row.index else 1.0,
-            })
+            chunks.append(
+                {
+                    "text": str(row.get("text", ""))[:500],  # Truncate for listing
+                    "source": str(row.get("source", "")),
+                    "page": int(row.get("page", 0)) if "page" in row.index else 0,
+                    "agent_id": str(row.get("agent_id", "")) if "agent_id" in row.index else "",
+                    "chunk_type": str(row.get("chunk_type", "character"))
+                    if "chunk_type" in row.index
+                    else "character",
+                    "created_at": float(row.get("created_at", 0))
+                    if "created_at" in row.index
+                    else 0,
+                    "confidence": float(row.get("confidence", 1.0))
+                    if "confidence" in row.index
+                    else 1.0,
+                }
+            )
 
         # Source distribution
         sources = {}
@@ -78,8 +85,8 @@ async def search_memory(
     query: str = Query("", max_length=500),
     q: str | None = Query(None, max_length=500),
     top_k: int = Query(20, ge=1, le=100),
-    source: Optional[str] = Query(None, max_length=1000),
-    file_type: Optional[str] = Query(None, max_length=32),
+    source: str | None = Query(None, max_length=1000),
+    file_type: str | None = Query(None, max_length=32),
     db: AsyncSession = Depends(get_db),
 ):
     """Hybrid search across project memory."""
@@ -90,7 +97,9 @@ async def search_memory(
         return {"results": [], "query": search_text, "total": 0}
 
     source_filter = source.strip() if source and source.strip() else None
-    file_type_filter = file_type.strip().lstrip(".").lower() if file_type and file_type.strip() else None
+    file_type_filter = (
+        file_type.strip().lstrip(".").lower() if file_type and file_type.strip() else None
+    )
 
     context = await retrieve_context(
         project_id,
@@ -148,15 +157,19 @@ async def memory_stats(project_id: str, request: Request, db: AsyncSession = Dep
     except Exception:
         pass
 
-    # Embedding model info
+    # Embedding identity is Pi-owned; classical provider settings are not an
+    # authority and must not change what this health response reports.
     from app.config import settings as s
-    embed_model = s.lmstudio_embed_model if s.llm_provider == "lmstudio" else s.ollama_embed_model
+    from app.core.pi_runtime.embedding_profile import public_embedding_profile
+
+    embedding_profile = public_embedding_profile()
 
     return {
         "vector_chunks": vector_count,
         "keyword_chunks": keyword_count,
         "sources": sources,
-        "embedding_model": embed_model,
+        "embedding_model": embedding_profile["model_id"],
+        "embedding_profile": embedding_profile,
         "vector_dimensions": vector_dim,
         "chunk_size": s.rag_chunk_size,
         "chunk_overlap": s.rag_chunk_overlap,
@@ -178,6 +191,7 @@ async def agent_notes(
     await get_visible_project_or_404(db, request, project_id, min_role="viewer")
 
     from app.core.agent_memory import agent_memory
+
     notes = await agent_memory.get_all_notes(project_id, agent_id)
     return {"agent_id": agent_id, "project_id": project_id, "notes": notes}
 
@@ -202,3 +216,18 @@ async def delete_source(
     await keyword_idx.delete_by_source(source_name)
 
     return {"deleted": True, "source": source_name}
+
+
+@router.post("/memory/{project_id}/sync")
+async def sync_project_knowledge(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Index or re-index all project documents and files into LanceDB and BM25 search indices."""
+    await get_visible_project_or_404(db, request, project_id, min_role="researcher")
+    from app.services.knowledge_sync import KnowledgeSyncService
+
+    service = KnowledgeSyncService()
+    result = await service.sync_project(project_id, db)
+    return result

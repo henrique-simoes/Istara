@@ -18,6 +18,19 @@ def reset_settings():
     original_runtime_personas_dir = settings.runtime_personas_dir
     original_strict_auto_routing = settings.strict_auto_routing
     original_active_probe = settings.llm_capability_active_probe_enabled
+    _audio_fields = (
+        "audio_model_provider",
+        "audio_model",
+        "audio_model_endpoint_id",
+        "audio_model_credential_ref",
+        "audio_model_mode",
+        "audio_model_languages",
+        "audio_model_diarization",
+        "audio_model_timestamps",
+        "audio_model_speaker_count",
+        "audio_model_review_threshold",
+    )
+    original_audio = {name: getattr(settings, name) for name in _audio_fields}
     yield
     settings.team_mode = original_team_mode
     settings.jwt_secret = original_jwt_secret
@@ -27,6 +40,8 @@ def reset_settings():
     settings.runtime_personas_dir = original_runtime_personas_dir
     settings.strict_auto_routing = original_strict_auto_routing
     settings.llm_capability_active_probe_enabled = original_active_probe
+    for name, value in original_audio.items():
+        setattr(settings, name, value)
 
 
 @pytest.fixture
@@ -59,6 +74,39 @@ async def test_settings_status_returns_response(auth_headers):
         assert "runtime" in response.json()
         assert "provider" not in response.json()
         assert "config" not in response.json()
+
+
+@pytest.mark.asyncio
+async def test_security_integrity_is_admin_only_and_never_exposes_key(
+    auth_headers, researcher_headers
+):
+    from app.core.field_encryption import (
+        decrypt_field,
+        reset_encryption_health_for_tests,
+    )
+    from app.core.telemetry import telemetry_recorder
+
+    # The admin-only enforcement contract holds in team mode; local desktop
+    # mode intentionally serves every request as the built-in local admin.
+    settings.team_mode = True
+    reset_encryption_health_for_tests()
+    telemetry_recorder.reset_write_health_for_tests()
+    decrypt_field("ENC:tampered")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        denied = await ac.get(
+            "/api/settings/security-integrity", headers=researcher_headers
+        )
+        response = await ac.get(
+            "/api/settings/security-integrity", headers=auth_headers
+        )
+    assert denied.status_code == 403
+    assert response.status_code == 200
+    payload = response.json()["field_encryption"]
+    assert payload["decryption_failures"] == 1
+    assert payload["healthy"] is False
+    assert "key" not in str(payload).lower()
+    assert response.json()["telemetry_writes"]["healthy"] is True
 
 
 class _CachedNode:
@@ -112,7 +160,26 @@ async def test_settings_status_uses_cached_llm_readiness_without_probes(monkeypa
 
 
 @pytest.mark.asyncio
-async def test_strict_routing_toggle_updates_runtime_and_persists(auth_headers, monkeypatch):
+async def test_settings_status_never_calls_contract_stub_chat_ready(monkeypatch):
+    """The deterministic QA transport may be reachable but is not a chat model."""
+    from app.api.routes import settings as settings_routes
+
+    fake_registry = _PassiveCachedRegistry()
+    fake_registry._nodes = {"node": _CachedNode(reachable=True, ready=True)}
+    monkeypatch.setattr(settings_routes, "ollama", fake_registry)
+    monkeypatch.setattr(settings, "llm_provider_contract_stub", True)
+
+    response = await settings_routes.system_status()
+
+    assert response["llm_readiness"] == {"reachable": True, "chat_ready": False}
+    assert response["services"]["llm"] == "connected"
+    assert response["status"] == "degraded"
+
+
+@pytest.mark.asyncio
+async def test_strict_routing_toggle_updates_runtime_and_persists(
+    auth_headers, monkeypatch
+):
     """POST /api/settings/strict-routing persists the compute routing mode."""
     await init_db()
     persisted: dict[str, str] = {}
@@ -133,6 +200,97 @@ async def test_strict_routing_toggle_updates_runtime_and_persists(auth_headers, 
     assert response.json()["strict_auto_routing"] is True
     assert settings.strict_auto_routing is True
     assert persisted == {"STRICT_AUTO_ROUTING": "true"}
+
+
+@pytest.mark.asyncio
+async def test_telemetry_toggle_keeps_runtime_state_when_env_is_read_only(
+    auth_headers, monkeypatch
+):
+    """A read-only runtime must not turn a valid telemetry toggle into a 500."""
+    from app.api.routes import settings as settings_routes
+
+    await init_db()
+    original = settings.telemetry_enabled
+
+    def raise_read_only(*_args, **_kwargs):
+        raise OSError("read-only filesystem")
+
+    monkeypatch.setattr(settings_routes, "persist_env_value", raise_read_only)
+    transport = ASGITransport(app=app)
+
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/settings/telemetry/toggle?enabled=true",
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 200
+        assert response.json()["telemetry_enabled"] is True
+        assert "runtime" in response.json()["message"].lower()
+        assert settings.telemetry_enabled is True
+    finally:
+        settings.telemetry_enabled = original
+
+
+@pytest.mark.asyncio
+async def test_model_management_migration_status_admin_plan_shape_no_secrets(
+    auth_headers,
+):
+    """GET /api/settings/model-management/migration-status: dry-run plan shape,
+    counts, rollback readiness, and never any secret material."""
+    import json
+    import uuid
+
+    from app.core.field_encryption import encrypt_field
+    from app.models.database import async_session
+    from app.models.llm_server import LLMServer
+    from sqlalchemy import select
+
+    await init_db()
+    row_id = f"mig-shape-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        # The settings test DB file persists across runs; sweep stale rows from
+        # earlier runs so ordering and counts stay deterministic.
+        stale = list(
+            (
+                await db.execute(
+                    select(LLMServer).where(LLMServer.id.like("mig-shape-%"))
+                )
+            ).scalars()
+        )
+        for row in stale:
+            await db.delete(row)
+        db.add(
+            LLMServer(
+                id=row_id,
+                name="Compat shape",
+                provider_type="openai_compat",
+                host="https://llm.invalid/v1",
+                api_key=encrypt_field("super-secret-key-value"),
+                is_local=False,
+                is_relay=False,
+            )
+        )
+        await db.commit()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            "/api/settings/model-management/migration-status", headers=auth_headers
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["mode"] == "dry_run"
+    assert body["delete_source_rows"] is False
+    assert set(body["counts"]) == {"projected", "legacy_only", "blocked"}
+    assert body["rollback"]["available"] is True
+    assert body["rollback"]["source_rows_retained"] is True
+    assert body["mappings"][0]["source_id"] == row_id
+    assert body["mappings"][0]["canonical_endpoint_id"] == f"pi-llm-{row_id}"
+    # Secret-free contract: the encrypted API key never surfaces, and no
+    # mapping/checksum material can contain it.
+    assert "api_key" not in body
+    assert "super-secret-key-value" not in json.dumps(body)
 
 
 @pytest.mark.asyncio
@@ -161,6 +319,8 @@ async def test_settings_status_is_public_but_redacted_in_team_mode():
         "/api/settings/integrations-status",
         "/api/settings/vector-health",
         "/api/settings/data-integrity",
+        "/api/settings/model-management/migration-status",
+        "/api/settings/audio-model",
     ],
 )
 async def test_settings_infrastructure_metadata_requires_global_admin_in_team_mode(
@@ -191,6 +351,66 @@ async def test_settings_llm_mutations_require_global_admin_in_team_mode(
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.post(path, headers=researcher_headers)
         assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("path", "replacement"),
+    [
+        ("/api/settings/model?model_name=test-model", "/api/settings/pi-endpoints"),
+        ("/api/settings/provider?provider=ollama", "/api/settings/pi-endpoints"),
+    ],
+)
+async def test_classical_model_mutations_fail_closed_as_deprecated_adapters(
+    path, replacement, auth_headers, monkeypatch
+):
+    """Legacy model-management writes cannot remain a second authority.
+
+    The compatibility routes remain discoverable for old clients, but an
+    authorized caller receives a stable migration-required response before
+    provider reconstruction, model discovery/pulling, settings mutation, or
+    environment persistence can occur.
+    """
+    from app.api.routes import settings as settings_routes
+    from app.core import ollama as ollama_module
+
+    await init_db()
+    original_provider = settings.llm_provider
+
+    async def forbidden_list_models():
+        raise AssertionError(
+            "deprecated write must not inspect or pull classical models"
+        )
+
+    monkeypatch.setattr(settings_routes.ollama, "list_models", forbidden_list_models)
+    monkeypatch.setattr(
+        ollama_module,
+        "_create_llm_client",
+        lambda: (_ for _ in ()).throw(
+            AssertionError("deprecated write must not recreate the provider singleton")
+        ),
+    )
+    monkeypatch.setattr(
+        settings_routes,
+        "_persist_env",
+        lambda *_args: (_ for _ in ()).throw(
+            AssertionError("deprecated write must not persist classical authority")
+        ),
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(path, headers=auth_headers)
+
+    assert response.status_code == 410
+    assert response.headers["deprecation"] == "true"
+    assert response.headers["link"] == f'<{replacement}>; rel="successor-version"'
+    assert response.json() == {
+        "error": "pi_model_management_required",
+        "replacement": replacement,
+        "message": "Model and provider writes are managed by Pi Model Management.",
+    }
+    assert settings.llm_provider == original_provider
 
 
 @pytest.mark.asyncio
@@ -227,7 +447,9 @@ async def test_settings_data_integrity_returns_response(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.get("/api/settings/data-integrity", headers=auth_headers)
     assert response.status_code == 200
-    assert {"status", "checks", "orphans", "invalid_files", "warnings"}.issubset(response.json())
+    assert {"status", "checks", "orphans", "invalid_files", "warnings"}.issubset(
+        response.json()
+    )
 
 
 @pytest.mark.asyncio
@@ -297,3 +519,182 @@ async def test_data_integrity_quarantine_moves_orphans_and_invalid_pdfs(tmp_path
     assert result["moved"] >= 1
     assert not orphan_upload.exists()
     assert any(action["kind"] == "uploads" for action in result["actions"])
+
+
+@pytest.mark.asyncio
+async def test_settings_audio_model_unconfigured_fails_closed(auth_headers):
+    """GET /api/settings/audio-model with no profile -> 200 configured:false."""
+    await init_db()
+    settings.audio_model_provider = ""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/settings/audio-model", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["configured"] is False
+    assert body["profile"] is None
+    assert body["fallback"] == "unavailable"
+    assert body["research_data_status"] == "provisional_until_review"
+    assert "credential_ref" not in body
+
+
+@pytest.mark.asyncio
+async def test_settings_audio_model_valid_profile_is_secret_free(
+    auth_headers, monkeypatch
+):
+    """Configured local profile -> 200 with runtime-grounded capabilities, no secrets."""
+    await init_db()
+    settings.audio_model_provider = "local_whisper"
+    settings.audio_model = "whisper-base"
+    settings.audio_model_endpoint_id = "audio-local"
+    settings.audio_model_credential_ref = "keychain://istara/whisper"
+    settings.audio_model_mode = "local"
+    settings.audio_model_speaker_count = "unknown"
+    monkeypatch.setattr(
+        "app.core.transcription.transcription_dependency_status",
+        lambda: {
+            "whisper_available": True,
+            "ffmpeg_available": True,
+            "ffmpeg_path": "/usr/bin/ffmpeg",
+        },
+    )
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/settings/audio-model", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["configured"] is True
+    profile = body["profile"]
+    assert profile["provider"] == "local_whisper"
+    assert profile["model"] == "whisper-base"
+    assert profile["mode"] == "local"
+    assert profile["has_credential"] is True
+    assert profile["dispatch_available"] is True
+    assert profile["capabilities"] == {
+        "interview_audio": True,
+        "microphone_chat": True,
+        "channel_audio": True,
+    }
+    # Secret-free projection: credential references and URLs never surface.
+    assert "credential_ref" not in body
+    assert "credential_ref" not in profile
+    assert "keychain://" not in response.text
+
+
+@pytest.mark.asyncio
+async def test_settings_audio_model_capabilities_reflect_runtime(
+    auth_headers, monkeypatch
+):
+    """Whisper unavailable at runtime -> local profile advertises no capabilities."""
+    await init_db()
+    settings.audio_model_provider = "local_whisper"
+    settings.audio_model = "whisper-base"
+    settings.audio_model_endpoint_id = "audio-local"
+    settings.audio_model_mode = "local"
+    monkeypatch.setattr(
+        "app.core.transcription.transcription_dependency_status",
+        lambda: {
+            "whisper_available": False,
+            "ffmpeg_available": False,
+            "ffmpeg_path": None,
+        },
+    )
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/settings/audio-model", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["configured"] is True
+    assert body["profile"]["dispatch_available"] is True
+    assert body["profile"]["capabilities"] == {
+        "interview_audio": False,
+        "microphone_chat": False,
+        "channel_audio": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_settings_audio_model_unsupported_provider_fails_closed(auth_headers):
+    """Unsupported provider -> typed 503 (never a crash, never a fallback)."""
+    await init_db()
+    settings.audio_model_provider = "pi"
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/settings/audio-model", headers=auth_headers)
+    assert response.status_code == 503
+    body = response.json()
+    assert body["configured"] is False
+    assert body["profile"] is None
+    assert body["fallback"] == "unavailable"
+    assert body["error"] == {
+        "type": "audio_profile_invalid",
+        "reason": "unsupported_provider",
+    }
+    assert body["research_data_status"] == "provisional_until_review"
+
+
+@pytest.mark.asyncio
+async def test_settings_audio_model_invalid_mode_fails_closed(auth_headers):
+    """local_whisper with remote mode -> typed 503."""
+    await init_db()
+    settings.audio_model_provider = "local_whisper"
+    settings.audio_model = "whisper-base"
+    settings.audio_model_endpoint_id = "audio-local"
+    settings.audio_model_mode = "remote"
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/settings/audio-model", headers=auth_headers)
+    assert response.status_code == 503
+    body = response.json()
+    assert body["configured"] is False
+    assert body["error"] == {
+        "type": "audio_profile_invalid",
+        "reason": "local_whisper_remote_mode",
+    }
+
+
+@pytest.mark.asyncio
+async def test_data_encryption_rotation_keeps_old_rows_readable(auth_headers):
+    """POST /settings/data-encryption/rotate keeps previous keys for reads."""
+    from cryptography.fernet import Fernet
+
+    from app.core.field_encryption import (
+        decrypt_field,
+        encrypt_field,
+        reset_field_encryption_for_tests,
+    )
+
+    await init_db()
+    original_key = settings.data_encryption_key
+    original_previous = settings.data_encryption_previous_keys
+    settings.data_encryption_key = Fernet.generate_key().decode()
+    settings.data_encryption_previous_keys = ""
+    reset_field_encryption_for_tests()
+    try:
+        old_row = encrypt_field("pre-rotation-secret")
+        old_key = settings.data_encryption_key
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            denied = await ac.post(
+                "/api/settings/data-encryption/rotate",
+                json={"confirm_rotation": True, "confirm_memory_only": False},
+                headers=auth_headers,
+            )
+            assert denied.status_code == 400
+            response = await ac.post(
+                "/api/settings/data-encryption/rotate",
+                json={"confirm_rotation": True, "confirm_memory_only": True},
+                headers=auth_headers,
+            )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["status"] == "rotated"
+        assert body["previous_key_count"] == 1
+        assert body["custody"] == "memory_only_unless_injected_externally"
+        assert settings.data_encryption_key != old_key
+        assert decrypt_field(old_row) == "pre-rotation-secret"
+        assert decrypt_field(encrypt_field("post-rotation-secret")) == "post-rotation-secret"
+    finally:
+        settings.data_encryption_key = original_key
+        settings.data_encryption_previous_keys = original_previous
+        reset_field_encryption_for_tests()

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Paperclip, Loader2, StopCircle, Upload, Bot, Zap, ChevronDown, X, AlertTriangle, FolderOpen, FileText, Mic, Activity, BrainCircuit } from "lucide-react";
+import { Send, Paperclip, Loader2, StopCircle, Upload, X, FolderOpen, FileText, Mic, Activity } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useChatStore } from "@/stores/chatStore";
@@ -11,340 +11,14 @@ import { useAgentStore } from "@/stores/agentStore";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { cn, formatDate } from "@/lib/utils";
-import { files as filesApi, documents as documentsApi, steering as steeringApi } from "@/lib/api";
-import type { ThinkingMode } from "@/lib/types";
+import { chat as chatApi, files as filesApi, documents as documentsApi, steering as steeringApi } from "@/lib/api";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import ChatSessionsSidebar from "./ChatSessionsSidebar";
-import { AgentAvatar, PRESET_INFO, REASONING_PRESETS, THINKING_INFO, UserAvatar } from "./chatViewParts";
-
-function CustomLLMPanel({
-  session,
-  onUpdate,
-  onClose,
-}: {
-  session: any;
-  onUpdate: (data: Record<string, unknown>) => void;
-  onClose: () => void;
-}) {
-  const [temperature, setTemperature] = useState(session.custom_temperature ?? 0.7);
-  const [maxTokens, setMaxTokens] = useState(session.custom_max_tokens ?? 2048);
-  const [topP, setTopP] = useState(0.9);
-  const [reasoning, setReasoning] = useState("balanced");
-
-  const isHighResource = maxTokens > 4096 || (reasoning === "deep" && temperature < 0.3);
-
-  const save = () => {
-    onUpdate({
-      inference_preset: "custom",
-      custom_temperature: temperature,
-      custom_max_tokens: maxTokens,
-    });
-    onClose();
-  };
-
-  return (
-    <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-4 min-w-[320px]">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Custom LLM Settings</h4>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-0.5" aria-label="Close custom LLM settings">
-          <X size={14} />
-        </button>
-      </div>
-
-      {/* Reasoning Level */}
-      <div className="mb-4">
-        <label className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1 block">
-          Reasoning Depth
-        </label>
-        <div className="grid grid-cols-3 gap-1">
-          {(["quick", "balanced", "deep"] as const).map((level) => (
-            <button
-              key={level}
-              onClick={() => {
-                setReasoning(level);
-                const preset = REASONING_PRESETS[level];
-                setTemperature(preset.temperature);
-                setMaxTokens(preset.maxTokens);
-                setTopP(preset.topP);
-              }}
-              className={cn(
-                "py-1.5 px-2 text-xs rounded-md transition-colors capitalize",
-                reasoning === level
-                  ? "bg-istara-600 text-white"
-                  : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-              )}
-            >
-              {level === "quick" ? "⚡ Quick" : level === "balanced" ? "⚖️ Balanced" : "🧠 Deep"}
-            </button>
-          ))}
-        </div>
-        <p className="text-[10px] text-slate-400 mt-1">
-          {reasoning === "quick" ? "Fast responses, less analysis" : reasoning === "balanced" ? "Good mix of speed and depth" : "Maximum analysis, slower responses"}
-        </p>
-      </div>
-
-      {/* Temperature */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            Temperature
-          </label>
-          <span className="text-xs text-slate-500 font-mono">{temperature.toFixed(2)}</span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="1.5"
-          step="0.05"
-          value={temperature}
-          onChange={(e) => setTemperature(parseFloat(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-istara-600"
-        />
-        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
-          <span>Precise</span>
-          <span>Creative</span>
-        </div>
-      </div>
-
-      {/* Max Tokens */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            Max Output Tokens
-          </label>
-          <span className="text-xs text-slate-500 font-mono">{maxTokens}</span>
-        </div>
-        <input
-          type="range"
-          min="256"
-          max="8192"
-          step="256"
-          value={maxTokens}
-          onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-istara-600"
-        />
-        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
-          <span>Short (256)</span>
-          <span>Long (8192)</span>
-        </div>
-      </div>
-
-      {/* Top P */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            Top P (Nucleus Sampling)
-          </label>
-          <span className="text-xs text-slate-500 font-mono">{topP.toFixed(2)}</span>
-        </div>
-        <input
-          type="range"
-          min="0.1"
-          max="1.0"
-          step="0.05"
-          value={topP}
-          onChange={(e) => setTopP(parseFloat(e.target.value))}
-          className="w-full h-1.5 rounded-full appearance-none bg-slate-200 dark:bg-slate-700 accent-istara-600"
-        />
-        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
-          <span>Focused</span>
-          <span>Diverse</span>
-        </div>
-      </div>
-
-      {/* Resource warning */}
-      {isHighResource && (
-        <div className="mb-3 p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-          <p className="text-[10px] text-amber-700 dark:text-amber-400 flex items-center gap-1">
-            <AlertTriangle size={10} /> High resource usage — may slow other agents or exceed local GPU memory.
-          </p>
-        </div>
-      )}
-
-      {/* Save */}
-      <button
-        onClick={save}
-        className="w-full py-1.5 bg-istara-600 text-white text-xs font-medium rounded-md hover:bg-istara-700 transition-colors"
-      >
-        Apply Settings
-      </button>
-    </div>
-  );
-}
-
-function ChatToolbar({
-  activeSession,
-  agents,
-  onUpdateSession,
-}: {
-  activeSession: any;
-  agents: any[];
-  onUpdateSession: (data: Record<string, unknown>) => void;
-}) {
-  const [showPresets, setShowPresets] = useState(false);
-  const [showAgents, setShowAgents] = useState(false);
-  const [showCustomPanel, setShowCustomPanel] = useState(false);
-  const [showThinking, setShowThinking] = useState(false);
-
-  if (!activeSession) return null;
-
-  const currentPreset = activeSession.inference_preset || "medium";
-  const presetInfo = PRESET_INFO[currentPreset] || PRESET_INFO.medium;
-  const currentThinking = (activeSession.thinking_mode || "server_default") as ThinkingMode;
-  const thinkingInfo = THINKING_INFO[currentThinking] || THINKING_INFO.server_default;
-  const assignedAgent = agents.find((a: any) => a.id === activeSession.agent_id);
-
-  return (
-    <div className="flex items-center gap-2 px-4 py-1.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs">
-      {/* Agent selector */}
-      <div className="relative">
-        <button
-          onClick={() => { setShowAgents(!showAgents); setShowPresets(false); setShowThinking(false); }}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-        >
-          <Bot size={12} className="text-slate-500" />
-          <span className="text-slate-600 dark:text-slate-400">
-            {assignedAgent ? assignedAgent.name : "Istara (Main)"}
-          </span>
-          <ChevronDown size={10} className="text-slate-400" />
-        </button>
-        {showAgents && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[180px]">
-            <button
-              onClick={() => { onUpdateSession({ agent_id: null }); setShowAgents(false); }}
-              className={cn(
-                "w-full text-left px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2",
-                !activeSession.agent_id && "bg-istara-50 dark:bg-istara-900/20"
-              )}
-            >
-              <span className="text-sm">🐾</span> Istara (Main)
-            </button>
-            {agents.filter((a: any) => a.is_active && a.id !== "istara-main").map((agent: any) => (
-              <button
-                key={agent.id}
-                onClick={() => { onUpdateSession({ agent_id: agent.id }); setShowAgents(false); }}
-                className={cn(
-                  "w-full text-left px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2",
-                  activeSession.agent_id === agent.id && "bg-istara-50 dark:bg-istara-900/20"
-                )}
-              >
-                <div
-                  className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold"
-                  style={{ backgroundColor: `hsl(${agent.name.length * 37 % 360}, 60%, 45%)` }}
-                >
-                  {agent.name.charAt(0)}
-                </div>
-                {agent.name}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
-
-      {/* Preset selector */}
-      <div className="relative">
-        <button
-          onClick={() => { setShowPresets(!showPresets); setShowAgents(false); setShowThinking(false); }}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-        >
-          <Zap size={12} className="text-slate-500" />
-          <span className="text-slate-600 dark:text-slate-400">
-            {presetInfo.icon} {presetInfo.label}
-          </span>
-          <ChevronDown size={10} className="text-slate-400" />
-        </button>
-        {showPresets && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[260px]">
-            {Object.entries(PRESET_INFO).map(([key, info]) => (
-              <button
-                key={key}
-                onClick={() => {
-                  if (key === "custom") {
-                    setShowPresets(false);
-                    setShowCustomPanel(true);
-                  } else {
-                    onUpdateSession({ inference_preset: key });
-                    setShowPresets(false);
-                  }
-                }}
-                className={cn(
-                  "w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700",
-                  currentPreset === key && "bg-istara-50 dark:bg-istara-900/20"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <span>{info.icon}</span>
-                  <span className="font-medium text-slate-900 dark:text-white">{info.label}</span>
-                  {currentPreset === key && (
-                    <span className="ml-auto text-istara-600 text-[10px]">Active</span>
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-500 mt-0.5 ml-6">{info.desc}</p>
-              </button>
-            ))}
-          </div>
-        )}
-        {showCustomPanel && (
-          <CustomLLMPanel
-            session={activeSession}
-            onUpdate={onUpdateSession}
-            onClose={() => setShowCustomPanel(false)}
-          />
-        )}
-      </div>
-
-      <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
-
-      {/* Thinking selector */}
-      <div className="relative">
-        <button
-          onClick={() => { setShowThinking(!showThinking); setShowAgents(false); setShowPresets(false); setShowCustomPanel(false); }}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-          title="Thinking mode"
-        >
-          <BrainCircuit size={12} className="text-slate-500" />
-          <span className="text-slate-600 dark:text-slate-400">
-            Thinking: {thinkingInfo.label}
-          </span>
-          <ChevronDown size={10} className="text-slate-400" />
-        </button>
-        {showThinking && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[240px]">
-            {(Object.keys(THINKING_INFO) as ThinkingMode[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => {
-                  onUpdateSession({ thinking_mode: mode });
-                  setShowThinking(false);
-                }}
-                className={cn(
-                  "w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700",
-                  currentThinking === mode && "bg-istara-50 dark:bg-istara-900/20"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <BrainCircuit size={12} className="text-slate-500" />
-                  <span className="font-medium text-slate-900 dark:text-white">{THINKING_INFO[mode].label}</span>
-                  {currentThinking === mode && (
-                    <span className="ml-auto text-istara-600 text-[10px]">Active</span>
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-500 mt-0.5 ml-5">{THINKING_INFO[mode].desc}</p>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Session title */}
-      <div className="ml-auto text-slate-400">
-        {activeSession.title}
-      </div>
-    </div>
-  );
-}
+import ChatModelControls from "./ChatModelControls";
+import type { PiCatalogProvider, PiEndpointInfo } from "@/lib/types";
+import { isChatSendReady } from "@/lib/modelCatalog";
+import { AgentAvatar, UserAvatar } from "./chatViewParts";
+import AgentCognitionDisclosure, { extractCognitionFromContent } from "./AgentCognitionDisclosure";
 
 function SteeringQueueIndicator({
   agentId,
@@ -388,7 +62,20 @@ function SteeringQueueIndicator({
 }
 
 export default function ChatView() {
-  const { messages, streaming, streamingContent, error, sendMessage, fetchHistory, cancelStreaming } = useChatStore();
+  const {
+    messages,
+    streaming,
+    streamingContent,
+    streamingThoughts,
+    streamingToolCalls,
+    activeStreamingTool,
+    error,
+    usage,
+    sendMessage,
+    fetchHistory,
+    cancelStreaming,
+    setEngine,
+  } = useChatStore();
   const { activeProjectId, canWriteActiveProject } = useProjectStore();
   const { activeSessionId, ensureDefault, updateSession, pendingPrefill, setPendingPrefill, fetchSessions } = useSessionStore();
   const { agents, fetchAgents } = useAgentStore();
@@ -404,17 +91,50 @@ export default function ChatView() {
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pendingDocRefs, setPendingDocRefs] = useState<{ id: string; title: string }[]>([]);
+  const [modelProviders, setModelProviders] = useState<PiCatalogProvider[]>([]);
+  const [configuredModels, setConfiguredModels] = useState<PiEndpointInfo[]>([]);
+  const [legacyModels, setLegacyModels] = useState<string[]>([]);
+  const [modelEngine, setModelEngine] = useState<"pi" | "legacy">("legacy");
+  const [chatReady, setChatReady] = useState<boolean | null>(null);
+  const [defaultEndpointId, setDefaultEndpointId] = useState<string | null>(null);
+  // Catalog load failures stay distinguishable from an empty catalog (B4): the
+  // picker renders an explicit error state instead of a false "no matches".
+  const [catalogError, setCatalogError] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canWrite = capabilities.canWriteActiveProject || canWriteActiveProject();
+  const chatUnavailable = !isChatSendReady(modelEngine, chatReady);
 
   // Initialize sessions: fetch list first (restores localStorage session), then ensure a default exists
   useEffect(() => {
     if (activeProjectId) {
       fetchSessions(activeProjectId).then(() => ensureDefault(activeProjectId));
       fetchAgents(activeProjectId);
+      chatApi.modelCatalog(activeProjectId).then((catalog) => {
+        setCatalogError(false);
+        setModelProviders(catalog.providers || []);
+        setConfiguredModels(catalog.configured || []);
+        setLegacyModels(catalog.legacy_models || []);
+        setModelEngine(catalog.engine === "pi" ? "pi" : "legacy");
+        setChatReady(catalog.chat_ready ?? null);
+        setDefaultEndpointId(catalog.default_endpoint_id || null);
+        // Keep the request header in lockstep with the visible core chip so
+        // what the user sees is exactly what routes the turn (CF-SPEC-1).
+        setEngine(catalog.engine === "pi" ? "pi" : "legacy");
+      }).catch(() => {
+        setCatalogError(true);
+        setModelProviders([]);
+        setConfiguredModels([]);
+        setLegacyModels([]);
+        setModelEngine("legacy");
+        setChatReady(false);
+        setDefaultEndpointId(null);
+        // Catalog unknown: clear the override so the request carries no
+        // engine header and the backend uses the persisted choice (F-B1).
+        setEngine(null);
+      });
     }
-  }, [activeProjectId, fetchSessions, ensureDefault, fetchAgents]);
+  }, [activeProjectId, fetchSessions, ensureDefault, fetchAgents, setEngine]);
 
   useEffect(() => {
     if (activeProjectId) {
@@ -429,18 +149,18 @@ export default function ChatView() {
 
   // Auto-send pending prefill message (from "Send to Agent" flow)
   useEffect(() => {
-    if (pendingPrefill && activeProjectId && activeSessionId && canWrite && !streaming && !loadingHistory) {
+    if (pendingPrefill && activeProjectId && activeSessionId && canWrite && !chatUnavailable && !streaming && !loadingHistory) {
       const msg = pendingPrefill;
       setPendingPrefill(null);
       sendMessage(activeProjectId, msg, activeSessionId);
     }
-  }, [pendingPrefill, activeProjectId, activeSessionId, canWrite, streaming, loadingHistory, setPendingPrefill, sendMessage]);
+  }, [pendingPrefill, activeProjectId, activeSessionId, canWrite, chatUnavailable, streaming, loadingHistory, setPendingPrefill, sendMessage]);
 
   const handleSend = async () => {
     const text = input.trim();
     const files = [...pendingFiles];
     const docRefs = [...pendingDocRefs];
-    if (!canWrite || (!text && files.length === 0 && docRefs.length === 0) || !activeProjectId || streaming) return;
+    if (!canWrite || chatUnavailable || (!text && files.length === 0 && docRefs.length === 0) || !activeProjectId || streaming) return;
 
     setInput("");
     setPendingFiles([]);
@@ -589,6 +309,7 @@ export default function ChatView() {
 
       {/* Main chat area */}
       <div
+        data-chat-workbench="true"
         className={cn("flex-1 min-w-0 flex flex-col min-h-0 overflow-hidden", dragOver && "ring-2 ring-istara-500 ring-inset bg-istara-50/50 dark:bg-istara-900/10")}
         onDragOver={(e) => { e.preventDefault(); if (canWrite) setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -597,11 +318,18 @@ export default function ChatView() {
         <ViewOnboarding viewId="chat" title="Your Research Assistant" description="Chat with your AI agent about research. Upload files, ask questions, or run analysis skills. Agents understand your project context." chatPrompt="What can I do in Chat?" />
 
         {/* Toolbar */}
-        <ChatToolbar
+        <ChatModelControls
           activeSession={activeSession}
           agents={agents}
+          providers={modelProviders}
+          configured={configuredModels}
+          legacyModels={legacyModels}
+          engine={modelEngine}
+          defaultEndpointId={defaultEndpointId}
+          usage={usage}
+          catalogError={catalogError}
           onUpdateSession={(data) => {
-            if (activeProjectId && activeSessionId) updateSession(activeProjectId, activeSessionId, data);
+            if (activeProjectId && activeSessionId) void updateSession(activeProjectId, activeSessionId, data);
           }}
         />
 
@@ -629,135 +357,151 @@ export default function ChatView() {
             </div>
           )}
 
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                "message-enter max-w-3xl flex gap-2.5",
-                msg.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
-              )}
-            >
-              {/* Avatar */}
-              <div className="mt-1">
-                {msg.role === "user" ? <UserAvatar /> : <AgentAvatar name={msg.agent_name} />}
-              </div>
+          {messages.map((msg) => {
+            const isUser = msg.role === "user";
+            const extracted = !isUser ? extractCognitionFromContent(msg.content) : null;
+            const cleanContent = extracted ? extracted.cleanContent : msg.content;
+            const thoughts = extracted ? [...(msg.thoughts || []), ...extracted.thoughts] : (msg.thoughts || []);
+            const toolCalls = extracted ? [...(msg.tool_calls || []), ...extracted.toolCalls] : (msg.tool_calls || []);
+            const hasCognition = thoughts.length > 0 || toolCalls.length > 0;
 
-              {/* Bubble */}
-              <div className="flex-1 min-w-0">
-                {msg.role !== "user" && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">
-                    {msg.agent_name || "Istara"}
-                  </p>
+            return (
+              <div
+                key={msg.id}
+                className={cn(
+                  "message-enter max-w-3xl flex gap-2.5",
+                  isUser ? "ml-auto flex-row-reverse" : "mr-auto"
                 )}
-                <div
-                  className={cn(
-                    "rounded-2xl px-4 py-3",
-                    msg.role === "user"
-                      ? "bg-istara-600 text-white rounded-br-md"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-md"
+              >
+                {/* Avatar */}
+                <div className="mt-1">
+                  {isUser ? <UserAvatar /> : <AgentAvatar name={msg.agent_name} />}
+                </div>
+
+                {/* Bubble */}
+                <div className="flex-1 min-w-0">
+                  {!isUser && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">
+                      {msg.agent_name || "Istara"}
+                    </p>
                   )}
-                >
-                  {msg.role === "user" ? (
-                    <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
-                  ) : (
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          p: ({ children }) => {
-                            const text = String(children);
-                            if (text.startsWith("[Tool:") && text.endsWith("]")) {
-                              const toolName = text.slice(7, -1);
-                              return (
-                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 my-1 rounded-full bg-slate-200 dark:bg-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                  <span>Ran: <span className="font-bold">{toolName}</span></span>
-                                </div>
-                              );
-                            }
-                            return <p className="my-1">{children}</p>;
-                          }
-                        }}
-                      >
-                        {msg.content}
-                      </ReactMarkdown>
+
+                  {/* Cognition disclosure for assistant messages */}
+                  {!isUser && hasCognition && (
+                    <AgentCognitionDisclosure
+                      thoughts={thoughts}
+                      toolCalls={toolCalls}
+                      agentName={msg.agent_name || "Istara"}
+                      defaultExpanded={false}
+                    />
                   )}
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Sources:</p>
-                      {msg.sources.map((src, i) => (
-                        <span
-                          key={i}
-                          className="inline-block text-xs bg-slate-200 dark:bg-slate-700 rounded px-1.5 py-0.5 mr-1 mb-1"
+
+                  {cleanContent && (
+                    <div
+                      className={cn(
+                        "rounded-2xl px-4 py-3",
+                        isUser
+                          ? "bg-istara-600 text-white rounded-br-md"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-md"
+                      )}
+                    >
+                      {isUser ? (
+                        <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                      ) : (
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({ children }) => <p className="my-1">{children}</p>,
+                          }}
                         >
-                          {(src.source ?? "unknown").split("/").pop()} ({Math.round((src.score ?? 0) * 100)}%)
-                        </span>
-                      ))}
+                          {cleanContent}
+                        </ReactMarkdown>
+                      )}
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Sources:</p>
+                          {msg.sources.map((src, i) => (
+                            <span
+                              key={i}
+                              className="inline-block text-xs bg-slate-200 dark:bg-slate-700 rounded px-1.5 py-0.5 mr-1 mb-1"
+                            >
+                              {(src.source ?? "unknown").split("/").pop()} ({Math.round((src.score ?? 0) * 100)}%)
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
+                  <p className="text-xs text-slate-400 mt-1 px-1">
+                    {formatDate(msg.created_at)}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-400 mt-1 px-1">
-                  {formatDate(msg.created_at)}
-                </p>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Streaming response */}
-          {streaming && streamingContent && (() => {
+          {streaming && (() => {
             const agentId = activeSession?.agent_id;
             const streamAgent = agentId ? agents.find((a) => a.id === agentId) : undefined;
             const streamAgentName = streamAgent?.name || "Istara";
+
+            const extracted = extractCognitionFromContent(streamingContent);
+            const liveCleanContent = extracted.cleanContent;
+            const liveThoughts = [...streamingThoughts, ...extracted.thoughts];
+            const liveTools = [...streamingToolCalls, ...extracted.toolCalls];
+            const hasLiveCognition = liveThoughts.length > 0 || liveTools.length > 0 || Boolean(activeStreamingTool);
+
             return (
-            <div className="mr-auto max-w-3xl flex gap-2.5 message-enter">
-              <div className="mt-1"><AgentAvatar name={streamAgentName} /></div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">{streamAgentName}</p>
-                <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
-                  <div className="streaming-cursor">
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        p: ({ children }) => {
-                          const text = String(children);
-                          if (text.startsWith("[Tool:") && text.endsWith("]")) {
-                            const toolName = text.slice(7, -1);
-                            return (
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 my-1 rounded-full bg-istara-100 dark:bg-istara-900/40 text-xs font-medium text-istara-700 dark:text-istara-300 border border-istara-200 dark:border-istara-800">
-                                <Loader2 size={12} className="animate-spin text-istara-600 dark:text-istara-400" />
-                                <span>⚡ Running: <span className="font-bold">{toolName}</span></span>
-                              </div>
-                            );
-                          }
-                          return <p className="my-1">{children}</p>;
-                        }
-                      }}
+              <div className="mr-auto max-w-3xl flex gap-2.5 message-enter w-full">
+                <div className="mt-1"><AgentAvatar name={streamAgentName} /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1 px-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{streamAgentName}</p>
+                    <button
+                      onClick={cancelStreaming}
+                      className="flex items-center gap-1 text-[11px] text-red-400 hover:text-red-500 transition-colors"
+                      aria-label="Cancel response"
                     >
-                      {streamingContent}
-                    </ReactMarkdown>
+                      <StopCircle size={12} /> Cancel
+                    </button>
                   </div>
+
+                  {/* Cognition disclosure during streaming */}
+                  {hasLiveCognition && (
+                    <AgentCognitionDisclosure
+                      thoughts={liveThoughts}
+                      toolCalls={liveTools}
+                      activeTool={activeStreamingTool}
+                      isStreaming={true}
+                      agentName={streamAgentName}
+                      defaultExpanded={!liveCleanContent}
+                    />
+                  )}
+
+                  {!liveCleanContent && !hasLiveCognition && (
+                    <div className="flex items-center gap-2 text-slate-400 px-3 py-2 text-xs">
+                      <Loader2 size={14} className="animate-spin text-istara-500" />
+                      <span>Thinking...</span>
+                    </div>
+                  )}
+
+                  {liveCleanContent && (
+                    <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+                      <div className="streaming-cursor">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({ children }) => <p className="my-1">{children}</p>,
+                          }}
+                        >
+                          {liveCleanContent}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-            );
-          })()}
-
-          {streaming && !streamingContent && (() => {
-            const agentId = activeSession?.agent_id;
-            const thinkAgent = agentId ? agents.find((a) => a.id === agentId) : undefined;
-            const thinkAgentName = thinkAgent?.name || "Istara";
-            return (
-            <div className="mr-auto flex items-center gap-2.5 text-slate-400 px-4">
-              <div className="mt-0"><AgentAvatar name={thinkAgentName} /></div>
-              <Loader2 size={16} className="animate-spin" />
-              <span className="text-sm">Thinking...</span>
-              <button
-                onClick={cancelStreaming}
-                className="ml-2 flex items-center gap-1 text-xs text-red-400 hover:text-red-500"
-                aria-label="Cancel response"
-              >
-                <StopCircle size={12} /> Cancel
-              </button>
-            </div>
             );
           })()}
 
@@ -787,6 +531,11 @@ export default function ChatView() {
         {/* Input */}
         <div className="border-t border-slate-200 dark:border-slate-800 p-4">
           <div className="max-w-3xl mx-auto">
+            {chatUnavailable && (
+              <p role="status" className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                Chat is unavailable until a connected model is ready. Configure one in Settings.
+              </p>
+            )}
             {/* Queue status */}
             {capabilities.canUseSteering && (
               <SteeringQueueIndicator
@@ -795,7 +544,7 @@ export default function ChatView() {
                 enabled={capabilities.canUseSteering}
               />
             )}
-            
+
             {/* Pending file chips */}
             {(pendingFiles.length > 0 || pendingDocRefs.length > 0) && (
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -867,7 +616,7 @@ export default function ChatView() {
                 {isRecording && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <button 
+                    <button
                       onClick={cancelRecording}
                       className="text-xs text-slate-400 hover:text-red-500"
                     >
@@ -884,7 +633,7 @@ export default function ChatView() {
                 aria-label={isRecording ? "Stop recording" : "Start recording"}
                 className={cn(
                   "p-2.5 rounded-lg transition-colors",
-                  isRecording 
+                  isRecording
                     ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 animate-pulse"
                     : isTranscribing
                     ? "bg-slate-100 dark:bg-slate-800 text-slate-300 cursor-not-allowed"
@@ -899,7 +648,7 @@ export default function ChatView() {
 
               <button
                 onClick={handleSend}
-                disabled={!canWrite || (!input.trim() && pendingFiles.length === 0 && pendingDocRefs.length === 0) || streaming}
+                disabled={!canWrite || chatUnavailable || (!input.trim() && pendingFiles.length === 0 && pendingDocRefs.length === 0) || streaming}
               aria-label="Send message"
               className={cn(
                 "p-2.5 rounded-lg transition-colors",

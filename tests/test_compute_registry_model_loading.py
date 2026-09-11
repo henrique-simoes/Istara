@@ -14,7 +14,9 @@ def reset_settings():
     original_llm_provider = settings.llm_provider
     original_lmstudio_auto_load_enabled = settings.lmstudio_auto_load_enabled
     original_lmstudio_auto_context_reload = settings.lmstudio_auto_context_reload
-    original_lmstudio_max_load_attempts = settings.lmstudio_max_load_attempts_per_request
+    original_lmstudio_max_load_attempts = (
+        settings.lmstudio_max_load_attempts_per_request
+    )
     original_lmstudio_allow_unload = settings.lmstudio_allow_unload_on_reload
     original_strict_auto_routing = settings.strict_auto_routing
     yield
@@ -23,7 +25,9 @@ def reset_settings():
     settings.llm_provider = original_llm_provider
     settings.lmstudio_auto_load_enabled = original_lmstudio_auto_load_enabled
     settings.lmstudio_auto_context_reload = original_lmstudio_auto_context_reload
-    settings.lmstudio_max_load_attempts_per_request = original_lmstudio_max_load_attempts
+    settings.lmstudio_max_load_attempts_per_request = (
+        original_lmstudio_max_load_attempts
+    )
     settings.lmstudio_allow_unload_on_reload = original_lmstudio_allow_unload
     settings.strict_auto_routing = original_strict_auto_routing
 
@@ -87,7 +91,9 @@ class _NoModelsThenFallbackLoadClient:
                     request=request,
                     json={"error": {"message": "No LM Runtime for torchSafetensors"}},
                 )
-                raise httpx.HTTPStatusError("load failed", request=request, response=response)
+                raise httpx.HTTPStatusError(
+                    "load failed", request=request, response=response
+                )
             return httpx.Response(
                 200,
                 request=httpx.Request("POST", f"http://test/{path}"),
@@ -101,7 +107,9 @@ class _NoModelsThenFallbackLoadClient:
                 response = httpx.Response(
                     400,
                     request=request,
-                    json={"error": {"message": "No models loaded. Please load a model."}},
+                    json={
+                        "error": {"message": "No models loaded. Please load a model."}
+                    },
                 )
                 raise httpx.HTTPStatusError(
                     "No models loaded",
@@ -418,7 +426,9 @@ async def test_registry_recovers_lmstudio_no_models_loaded_with_discovered_fallb
     monkeypatch.setattr(node, "_get_client", get_client)
     registry.register_node(node)
 
-    result = await registry.chat([{"role": "user", "content": "hello"}], project_id="project-a")
+    result = await registry.chat(
+        [{"role": "user", "content": "hello"}], project_id="project-a"
+    )
 
     assert result["message"]["content"] == "fallback model answered"
     assert client.chat_models == ["bad-model", "good-model"]
@@ -465,7 +475,9 @@ async def test_strict_routing_uses_configured_lmstudio_model_when_request_omits_
     monkeypatch.setattr(node, "_get_client", get_client)
     registry.register_node(node)
 
-    result = await registry.chat([{"role": "user", "content": "hello"}], project_id="project-a")
+    result = await registry.chat(
+        [{"role": "user", "content": "hello"}], project_id="project-a"
+    )
 
     assert result["message"]["content"] == "loaded answer"
     assert client.posts[0][0] == "api/v1/models/load"

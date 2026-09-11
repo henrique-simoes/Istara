@@ -21,16 +21,16 @@ export async function run(ctx) {
     checks.push({ name: "Compute pool API works", passed: false, detail: e.message });
   }
 
-  // 2. Verify LLM servers API works (backend for Ensemble Health)
+  // 2. Verify the model catalog API works (Pi providers + configured endpoints identity view).
   try {
-    const servers = await api.get("/api/llm-servers");
+    const catalog = await api.get(`/api/chat/model-catalog?project_id=${encodeURIComponent(projectId)}`);
     checks.push({
-      name: "LLM servers API works",
-      passed: Array.isArray(servers.router_live),
-      detail: `router_live=${servers.router_live?.length}`,
+      name: "Model catalog API works",
+      passed: Array.isArray(catalog.providers) && ["pi", "legacy"].includes(catalog.engine),
+      detail: `providers=${catalog.providers?.length}, engine=${catalog.engine}, pi_configured=${catalog.configured?.length}`,
     });
   } catch (e) {
-    checks.push({ name: "LLM servers API works", passed: false, detail: e.message });
+    checks.push({ name: "Model catalog API works", passed: false, detail: e.message });
   }
 
   // 3. Verify maintenance endpoint works (used by ensemble views)

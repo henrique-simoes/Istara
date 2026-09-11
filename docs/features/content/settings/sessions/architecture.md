@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["auth.login", "settings.security-factors"]
 related_glossary: ["webauthn", "totp"]
-code_references: ["frontend/src/components/settings/SessionManager.tsx", "backend/app/api/routes/sessions.py", "backend/app/core/auth_sessions.py"]
+code_references: ["frontend/src/components/settings/SessionManager.tsx", "frontend/src/stores/authStore.ts", "backend/app/api/routes/sessions.py", "backend/app/core/auth_sessions.py"]
 api_references: ["backend/app/api/routes/sessions.py"]
-test_references: []
-last_verified: 2026-05-15
+test_references: ["frontend/src/stores/authStore.test.ts"]
+last_verified: 2026-08-30
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -38,6 +38,7 @@ Session management lists active authentication sessions and supports session-lev
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/settings/SessionManager.tsx` and the UI navigation path recorded in the inventory.
+- Active-session requests read the in-memory `authStore` token. A successful `fetchMe()` during shell bootstrap must hydrate that token from browser storage before this component fetches sessions.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -47,7 +48,7 @@ Session management lists active authentication sessions and supports session-lev
 
 ## Tests And Verification
 
-- No focused test reference recorded yet.
+- `frontend/src/stores/authStore.test.ts`
 
 ## Related Features
 

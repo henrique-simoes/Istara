@@ -5,6 +5,7 @@ import { useProjectStore } from "@/stores/projectStore";
 import { cn, formatDate } from "@/lib/utils";
 
 import { API_BASE, WS_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 
 interface ActiveConnectionString {
   id: string;
@@ -44,8 +45,9 @@ export default function ConnectionStringPanel() {
   const loadActiveStrings = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("istara_token");
+      const token = getToken();
       const res = await fetch(`${API_BASE}/api/connections`, {
+        credentials: "include",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
@@ -88,7 +90,7 @@ export default function ConnectionStringPanel() {
     setError(null);
     setConnectionString("");
     try {
-      const token = localStorage.getItem("istara_token");
+      const token = getToken();
       const serverUrl = window.location.origin;
       const endpoint = tokenType === "compute_donation"
         ? "/api/connections/compute-donation/generate"
@@ -134,8 +136,9 @@ export default function ConnectionStringPanel() {
   const handleRevoke = async (id: string) => {
     if (!window.confirm("Revoke this connection string? Future attempts to redeem it will fail.")) return;
     try {
-      const token = localStorage.getItem("istara_token");
+      const token = getToken();
       const res = await fetch(`${API_BASE}/api/connections/${id}`, {
+        credentials: "include",
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -156,8 +159,9 @@ export default function ConnectionStringPanel() {
     if (!window.confirm("Rotate the network access token? All existing connection strings will be invalidated.")) return;
     setRotating(true);
     try {
-      const token = localStorage.getItem("istara_token");
+      const token = getToken();
       const res = await fetch(`${API_BASE}/api/connections/rotate-network-token`, {
+        credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",

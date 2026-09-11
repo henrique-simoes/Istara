@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-import json
 import time
 from collections.abc import AsyncGenerator
 
-from app.config import settings
+from app.core.compute_node_streaming import stream_node_chat
+from app.core.compute_route_evidence import attach_route_evidence
 from app.core.llm_output import (
-    ThinkingContentFilter,
     visible_assistant_content,
     visible_assistant_message,
 )
-from app.core.compute_route_evidence import attach_route_evidence
 from app.core.llm_schema_adapter import provider_response_format_fields
 from app.core.llm_thinking import apply_thinking_control
+
 
 class ComputeNodeInvocationMixin:
     def _authorized_project_for_content_dispatch(self, project_id: str | None) -> str | None:
@@ -148,6 +147,8 @@ class ComputeNodeInvocationMixin:
             if message.get("tool_calls"):
                 result["message"]["tool_calls"] = message["tool_calls"]
                 result["finish_reason"] = choice.get("finish_reason", "tool_calls")
+            if isinstance(data.get("usage"), dict) and data["usage"]:
+                result["usage"] = dict(data["usage"])
             return attach_route_evidence(
                 result,
                 self,
@@ -191,126 +192,17 @@ class ComputeNodeInvocationMixin:
             return
 
         client = await self._get_client()
-
-        if self.is_anthropic:
-            result = await self.chat(
-                msgs,
-                model=model,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                tools=tools,
-                thinking_mode=None,
-                project_id=project_id,
-            )
-            content = result.get("message", {}).get("content", "")
-            if content:
-                yield content
-            if result.get("message", {}).get("tool_calls"):
-                yield {
-                    "tool_calls": result["message"]["tool_calls"],
-                    "finish_reason": result.get("finish_reason", "tool_calls"),
-                }
-            return
-
-        if self.provider_type == "ollama":
-            options: dict = {"temperature": temperature}
-            if max_tokens:
-                options["num_predict"] = max_tokens
-            payload = {
-                "model": model or settings.ollama_model,
-                "messages": msgs,
-                "stream": True,
-                "options": options,
-            }
-            async with client.stream("POST", "/api/chat", json=payload, timeout=None) as resp:
-                resp.raise_for_status()
-                content_filter = ThinkingContentFilter()
-                async for line in resp.aiter_lines():
-                    if line.strip():
-                        data = json.loads(line)
-                        content = content_filter.push(data.get("message", {}).get("content", ""))
-                        if content:
-                            yield content
-                        if data.get("done", False):
-                            remaining = content_filter.flush()
-                            if remaining:
-                                yield remaining
-                            return
-        else:
-            payload = {
-                "model": self._resolve_model(model),
-                "messages": msgs,
-                "temperature": temperature,
-                "stream": True,
-            }
-            if max_tokens:
-                payload["max_tokens"] = max_tokens
-            if tools:
-                payload["tools"] = tools
-
-            accumulated_tool_calls: list[dict] = []
-            tool_call_mode = False
-            content_filter = ThinkingContentFilter()
-
-            async with client.stream(
-                "POST", self._openai_endpoint("chat/completions"), json=payload, timeout=None
-            ) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    line = line.strip()
-                    if not line or not line.startswith("data: "):
-                        continue
-                    data_str = line[6:]
-                    if data_str == "[DONE]":
-                        break
-                    try:
-                        data = json.loads(data_str)
-                        choice = data.get("choices", [{}])[0]
-                        delta = choice.get("delta", {})
-                        finish = choice.get("finish_reason")
-
-                        if delta.get("tool_calls"):
-                            tool_call_mode = True
-                            for tc_delta in delta["tool_calls"]:
-                                idx = tc_delta.get("index", 0)
-                                while len(accumulated_tool_calls) <= idx:
-                                    accumulated_tool_calls.append(
-                                        {
-                                            "id": "",
-                                            "type": "function",
-                                            "function": {"name": "", "arguments": ""},
-                                        }
-                                    )
-                                tc = accumulated_tool_calls[idx]
-                                if tc_delta.get("id"):
-                                    tc["id"] = tc_delta["id"]
-                                fn = tc_delta.get("function", {})
-                                if fn.get("name"):
-                                    tc["function"]["name"] = fn["name"]
-                                if fn.get("arguments"):
-                                    tc["function"]["arguments"] += fn["arguments"]
-                            continue
-
-                        content = content_filter.push(delta.get("content", ""))
-                        if content:
-                            yield content
-
-                        if finish == "tool_calls" or (finish == "stop" and tool_call_mode):
-                            break
-                    except (json.JSONDecodeError, IndexError, KeyError):
-                        continue
-
-            remaining = content_filter.flush()
-            if remaining:
-                yield remaining
-
-            if accumulated_tool_calls and any(
-                tc["function"]["name"] for tc in accumulated_tool_calls
-            ):
-                yield {
-                    "tool_calls": accumulated_tool_calls,
-                    "finish_reason": "tool_calls",
-                }
+        async for piece in stream_node_chat(
+            self,
+            client,
+            msgs,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            tools=tools,
+            project_id=project_id,
+        ):
+            yield piece
 
     async def embed(
         self,

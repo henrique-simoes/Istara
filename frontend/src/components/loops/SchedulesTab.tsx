@@ -40,7 +40,7 @@ function formatTimeUntil(dateStr: string | null): string {
 }
 
 export default function SchedulesTab() {
-  const { schedules, loading, createSchedule, updateSchedule, deleteSchedule, fetchSchedules } = useLoopsStore();
+  const { schedules, loading, error, createSchedule, updateSchedule, deleteSchedule, fetchSchedules } = useLoopsStore();
   const { activeProjectId } = useProjectStore();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ScheduleForm>({ ...EMPTY_FORM });
@@ -52,13 +52,14 @@ export default function SchedulesTab() {
 
   const handleCreate = async () => {
     if (!form.name.trim() || !activeProjectId) return;
-    await createSchedule({
+    const created = await createSchedule({
       name: form.name,
       skill_name: form.skill_name,
       project_id: activeProjectId,
       cron_expression: form.cron_expression,
       description: form.description,
     });
+    if (!created) return;
     setForm({ ...EMPTY_FORM });
     setShowForm(false);
   };
@@ -119,6 +120,11 @@ export default function SchedulesTab() {
             <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">Cron Expression</label>
             <CronBuilder value={form.cron_expression} onChange={(cron) => setForm({ ...form, cron_expression: cron })} />
           </div>
+          {error && (
+            <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+              {error}
+            </p>
+          )}
           <div className="flex items-center gap-2 pt-2">
             <button
               onClick={handleCreate}

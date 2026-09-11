@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from app.core.autoresearch_runners import BaseLoopRunner
 
@@ -42,8 +42,6 @@ class QuestionBankRunner(BaseLoopRunner):
         self, target: str, current_score: float, history: list[dict]
     ) -> tuple[str, dict]:
         """LLM suggests question rewording, reordering, or adaptive config changes."""
-        from app.core.llm_router import llm_router
-
         deployment = await self._load_deployment(target)
         questions = json.loads(deployment.questions_json or "[]")
         config = json.loads(deployment.config_json or "{}")
@@ -90,13 +88,21 @@ class QuestionBankRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(
-                messages,
-                temperature=0.7,
-                max_tokens=1500,
+            # W6/W9: the question-bank improvement goes through the
+            # AgenticDispatcher (``autoresearch.question_bank.hypothesize``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.question_bank.hypothesize",
                 project_id=self.require_project_id(),
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(temperature=0.7, max_tokens=1500),
+                spine_phase="plan",
+                engine=self.engine,
             )
-            content = response.get("message", {}).get("content", "").strip()
+            content = (outcome.text or "").strip()
         except Exception as e:
             raise RuntimeError(f"LLM question hypothesis failed: {e}") from e
 
@@ -126,9 +132,7 @@ class QuestionBankRunner(BaseLoopRunner):
         }
         return hypothesis, mutation
 
-    async def apply_mutation(
-        self, target: str, mutation: dict
-    ) -> Callable[[], Awaitable[None]]:
+    async def apply_mutation(self, target: str, mutation: dict) -> Callable[[], Awaitable[None]]:
         """Modify deployment questions in the database.  Returns revert fn."""
         old_questions_json = json.dumps(mutation["old_questions"])
         new_questions_json = json.dumps(mutation["new_questions"])
@@ -197,8 +201,6 @@ class QuestionBankRunner(BaseLoopRunner):
 
     async def _evaluate_questions(self, deployment_id: str) -> float:
         """Simulate a participant going through the question bank and score quality."""
-        from app.core.llm_router import llm_router
-
         deployment = await self._load_deployment(deployment_id)
         questions = json.loads(deployment.questions_json or "[]")
 
@@ -207,7 +209,7 @@ class QuestionBankRunner(BaseLoopRunner):
 
         # Format questions for the simulated participant
         questions_text = "\n".join(
-            f"{i+1}. {q.get('text', q) if isinstance(q, dict) else q}"
+            f"{i + 1}. {q.get('text', q) if isinstance(q, dict) else q}"
             for i, q in enumerate(questions)
         )
 
@@ -229,13 +231,21 @@ class QuestionBankRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(
-                sim_messages,
-                temperature=0.8,
-                max_tokens=1500,
+            # W6/W9: the simulated-participant run goes through the
+            # AgenticDispatcher (``autoresearch.question_bank.evaluate``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.question_bank.evaluate",
                 project_id=self.require_project_id(),
+                system=sim_messages[0]["content"],
+                messages=sim_messages[1:],
+                params=TurnParams(temperature=0.8, max_tokens=1500),
+                spine_phase="execution",
+                engine=self.engine,
             )
-            participant_response = response.get("message", {}).get("content", "")
+            participant_response = outcome.text
         except Exception as e:
             logger.warning(f"Participant simulation failed: {e}")
             return 0.0
@@ -243,12 +253,8 @@ class QuestionBankRunner(BaseLoopRunner):
         # Score the response quality
         return await self._score_responses(questions_text, participant_response)
 
-    async def _score_responses(
-        self, questions_text: str, responses: str
-    ) -> float:
+    async def _score_responses(self, questions_text: str, responses: str) -> float:
         """Score how well the questions elicited useful research responses."""
-        from app.core.llm_router import llm_router
-
         if not responses or len(responses.strip()) < 30:
             return 0.1
 
@@ -277,13 +283,21 @@ class QuestionBankRunner(BaseLoopRunner):
         ]
 
         try:
-            response = await llm_router.chat(
-                messages,
-                temperature=0.1,
-                max_tokens=10,
+            # W6/W9: the elicited-response score goes through the
+            # AgenticDispatcher (``autoresearch.question_bank.score``).
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.question_bank.score",
                 project_id=self.require_project_id(),
+                system=messages[0]["content"],
+                messages=messages[1:],
+                params=TurnParams(temperature=0.1, max_tokens=10),
+                spine_phase="review",
+                engine=self.engine,
             )
-            score_text = response.get("message", {}).get("content", "").strip()
+            score_text = (outcome.text or "").strip()
             for token in score_text.replace(",", ".").split():
                 try:
                     val = float(token)

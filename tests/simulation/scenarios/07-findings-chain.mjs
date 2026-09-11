@@ -66,6 +66,7 @@ export async function run(ctx) {
   ];
 
   const counts = {};
+  let endpointsOk = true;
   for (const ft of findingTypes) {
     try {
       const results = await api.get(ft.endpoint);
@@ -74,18 +75,23 @@ export async function run(ctx) {
       checks.push({ name: `API: ${ft.name}`, passed: true, detail: `${count} ${ft.name}` });
     } catch (e) {
       counts[ft.name] = 0;
+      endpointsOk = false;
       checks.push({ name: `API: ${ft.name}`, passed: false, detail: e.message });
     }
   }
 
-  // Check if any findings exist — at this point in the test suite, findings may
-  // not have been created yet (scenario 16 populates them later). Accept zero
-  // findings as valid; the real assertion is that the API responds correctly.
+  // At this point in the suite findings may not exist yet (scenario 16
+  // populates them later), so zero findings is valid — but the check must
+  // assert something real: that every findings endpoint responded (W2: no
+  // unconditional passed:true). A failed endpoint already recorded its own
+  // failed check above; this aggregate refuses to pass over it.
   const totalFindings = Object.values(counts).reduce((a, b) => a + b, 0);
   checks.push({
-    name: "Findings exist in database",
-    passed: true,
-    detail: totalFindings > 0 ? `${totalFindings} total findings` : "No findings yet (populated in later scenario)",
+    name: "Findings endpoints all respond",
+    passed: endpointsOk,
+    detail: endpointsOk
+      ? `${totalFindings} total findings (zero valid here; populated in later scenario)`
+      : "one or more findings endpoints failed — see per-endpoint checks above",
   });
 
   // Summary endpoint

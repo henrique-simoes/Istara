@@ -1,6 +1,7 @@
 """Tests for Channels API routes — CRUD, start/stop, health, messages, conversations, send."""
 
 import json
+import re
 import uuid
 
 import pytest
@@ -44,7 +45,9 @@ async def test_channels_list_returns_list(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/channels?project_id=channel-list-project", headers=auth_headers)
+        response = await ac.get(
+            "/api/channels?project_id=channel-list-project", headers=auth_headers
+        )
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
@@ -68,7 +71,9 @@ async def test_channel_create_requires_existing_active_project_for_admin(auth_he
     transport = ASGITransport(app=app)
 
     async with async_session() as db:
-        db.add(Project(id=paused_project_id, name="Paused Channel Create", is_paused=True))
+        db.add(
+            Project(id=paused_project_id, name="Paused Channel Create", is_paused=True)
+        )
         await db.commit()
 
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -124,7 +129,9 @@ async def test_channel_detail_routes_are_bound_to_active_project(auth_headers):
         assert created.status_code == 200
         instance_id = created.json()["id"]
 
-        missing_scope = await ac.get(f"/api/channels/{instance_id}", headers=auth_headers)
+        missing_scope = await ac.get(
+            f"/api/channels/{instance_id}", headers=auth_headers
+        )
         wrong_scope = await ac.get(
             f"/api/channels/{instance_id}?project_id={other_project_id}",
             headers=auth_headers,
@@ -141,7 +148,9 @@ async def test_channel_detail_routes_are_bound_to_active_project(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_channel_messages_and_conversations_filter_by_active_project(auth_headers):
+async def test_channel_messages_and_conversations_filter_by_active_project(
+    auth_headers,
+):
     await init_db()
     project_id = f"channel-messages-project-{uuid.uuid4()}"
     other_project_id = f"channel-messages-other-{uuid.uuid4()}"
@@ -213,7 +222,9 @@ async def test_channel_messages_and_conversations_filter_by_active_project(auth_
             f"/api/channels/{instance_id}/messages?project_id={project_id}",
             headers=auth_headers,
         )
-        missing_scope = await ac.get(f"/api/channels/{instance_id}/messages", headers=auth_headers)
+        missing_scope = await ac.get(
+            f"/api/channels/{instance_id}/messages", headers=auth_headers
+        )
         wrong_scope = await ac.get(
             f"/api/channels/{instance_id}/messages?project_id={other_project_id}",
             headers=auth_headers,
@@ -247,10 +258,18 @@ async def test_channel_service_helpers_require_matching_project_scope():
         )
         instance_id = instance.id
 
-        assert await channel_service.list_channel_instances(db, project_id=other_project_id) == []
-        assert await channel_service.delete_channel_instance(
-            db, instance_id, project_id=other_project_id
-        ) is False
+        assert (
+            await channel_service.list_channel_instances(
+                db, project_id=other_project_id
+            )
+            == []
+        )
+        assert (
+            await channel_service.delete_channel_instance(
+                db, instance_id, project_id=other_project_id
+            )
+            is False
+        )
         with pytest.raises(KeyError):
             await channel_service.start_channel_instance(
                 db, instance_id, project_id=other_project_id
@@ -258,9 +277,12 @@ async def test_channel_service_helpers_require_matching_project_scope():
 
         scoped = await channel_service.list_channel_instances(db, project_id=project_id)
         assert [item.id for item in scoped] == [instance_id]
-        assert await channel_service.delete_channel_instance(
-            db, instance_id, project_id=project_id
-        ) is True
+        assert (
+            await channel_service.delete_channel_instance(
+                db, instance_id, project_id=project_id
+            )
+            is True
+        )
 
 
 @pytest.mark.asyncio
@@ -303,7 +325,9 @@ async def test_channel_create_normalizes_ui_credential_labels(auth_headers):
     assert response.status_code == 200
     instance_id = response.json()["id"]
     async with async_session() as db:
-        result = await db.execute(select(ChannelInstance).where(ChannelInstance.id == instance_id))
+        result = await db.execute(
+            select(ChannelInstance).where(ChannelInstance.id == instance_id)
+        )
         instance = result.scalar_one()
         stored = json.loads(decrypt_field(instance.config_json))
 
@@ -311,7 +335,9 @@ async def test_channel_create_normalizes_ui_credential_labels(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_channel_start_missing_config_reports_not_enabled(auth_headers, monkeypatch):
+async def test_channel_start_missing_config_reports_not_enabled(
+    auth_headers, monkeypatch
+):
     await init_db()
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.setattr("app.channels.telegram._TELEGRAM_AVAILABLE", True)
@@ -350,6 +376,110 @@ async def test_channel_start_missing_config_reports_not_enabled(auth_headers, mo
     assert health.status_code == 200
     assert health.json()["status"] == "not_enabled"
     assert channel_router.get(instance_id) is None
+
+
+@pytest.mark.asyncio
+async def test_channel_start_never_exposes_provider_exception_text(monkeypatch):
+    """Startup failures use the stable public error and unregister the adapter."""
+    await init_db()
+    project_id = f"channel-start-safe-error-{uuid.uuid4()}"
+    instance_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Channel Start Safe Error"))
+        db.add(
+            ChannelInstance(
+                id=instance_id,
+                platform="telegram",
+                name="Unreachable Telegram",
+                config_json="{}",
+                project_id=project_id,
+            )
+        )
+        await db.commit()
+
+        class FakeAdapter:
+            def __init__(self):
+                self.instance_id = instance_id
+                self.enabled = True
+                self.is_running = False
+                self.platform = "telegram"
+                self.name = "telegram-safe-error"
+
+            def on_message(self, _callback):
+                pass
+
+            async def start(self):
+                pass
+
+        async def fail_start(_instance_id):
+            raise RuntimeError(
+                "httpx.ConnectError: https://secret-token@example.invalid"
+            )
+
+        monkeypatch.setattr(
+            channel_service, "_instantiate_adapter", lambda _instance: FakeAdapter()
+        )
+        monkeypatch.setattr(channel_service.channel_router, "start_adapter", fail_start)
+
+        with pytest.raises(
+            RuntimeError, match=re.escape(channel_service.PUBLIC_HEALTH_ERROR)
+        ) as exc_info:
+            await channel_service.start_channel_instance(
+                db, instance_id, project_id=project_id
+            )
+
+        assert "secret-token" not in str(exc_info.value)
+        assert "httpx" not in str(exc_info.value)
+        assert channel_router.get(instance_id) is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["returned_error", "raised_exception"])
+async def test_channel_health_never_exposes_provider_exception_text(monkeypatch, mode):
+    """Health failures are actionable to users without leaking provider internals."""
+    await init_db()
+    project_id = f"channel-health-safe-error-{uuid.uuid4()}"
+    instance_id = str(uuid.uuid4())
+
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Channel Health Safe Error"))
+        db.add(
+            ChannelInstance(
+                id=instance_id,
+                platform="telegram",
+                name="Unreachable Telegram",
+                config_json="{}",
+                project_id=project_id,
+            )
+        )
+        await db.commit()
+
+        class FakeAdapter:
+            enabled = True
+
+            async def health_check(self):
+                if mode == "raised_exception":
+                    raise RuntimeError(
+                        "httpx.ConnectError: https://secret-token@example.invalid"
+                    )
+                return {
+                    "status": "unhealthy",
+                    "platform": "telegram",
+                    "error": "httpx.ConnectError: https://secret-token@example.invalid",
+                }
+
+        monkeypatch.setattr(
+            channel_service.channel_router, "get", lambda _instance_id: FakeAdapter()
+        )
+        health = await channel_service.health_check_instance(
+            db, instance_id, project_id=project_id
+        )
+
+    assert health["status"] == "unhealthy"
+    assert health["error"] == channel_service.PUBLIC_HEALTH_ERROR
+    assert "secret-token" not in str(health)
+    assert "httpx" not in str(health)
 
 
 @pytest.mark.asyncio

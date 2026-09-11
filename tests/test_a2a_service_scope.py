@@ -58,7 +58,9 @@ async def test_a2a_service_requires_and_persists_project_scope():
         assert stored and stored.project_id == project_id
         assert json.loads(stored.extra_data)["project_id"] == project_id
 
-        with pytest.raises(ValueError, match="project_id is required for A2A message mutations"):
+        with pytest.raises(
+            ValueError, match="project_id is required for A2A message mutations"
+        ):
             await a2a.mark_read(db, message_id, project_id="")
 
     async with async_session() as db:
@@ -95,7 +97,9 @@ async def test_a2a_thread_context_resolves_task_project_scope():
                     to_agent_id=agent_b,
                     message_type="collaboration_request",
                     content="visible project thread content",
-                    extra_data=json.dumps({"task_id": task_a, "context_id": context_id}),
+                    extra_data=json.dumps(
+                        {"task_id": task_a, "context_id": context_id}
+                    ),
                 ),
                 A2AMessage(
                     id=message_ids[1],
@@ -103,7 +107,9 @@ async def test_a2a_thread_context_resolves_task_project_scope():
                     to_agent_id=agent_a,
                     message_type="collaboration_request",
                     content="hidden project thread content",
-                    extra_data=json.dumps({"task_id": task_b, "context_id": context_id}),
+                    extra_data=json.dumps(
+                        {"task_id": task_b, "context_id": context_id}
+                    ),
                 ),
                 A2AMessage(
                     id=message_ids[2],
@@ -112,7 +118,11 @@ async def test_a2a_thread_context_resolves_task_project_scope():
                     message_type="collaboration_request",
                     content="conflicting project thread content",
                     extra_data=json.dumps(
-                        {"project_id": project_a, "task_id": task_b, "context_id": context_id}
+                        {
+                            "project_id": project_a,
+                            "task_id": task_b,
+                            "context_id": context_id,
+                        }
                     ),
                 ),
             ]

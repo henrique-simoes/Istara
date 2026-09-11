@@ -1,0 +1,185 @@
+from types import SimpleNamespace
+from pathlib import Path
+
+import pytest
+
+from app.core.pi_runtime.model_management_compat import (
+    SUPPORTED_PROVIDERS,
+    plan_migration,
+)
+from app.core.pi_runtime.model_manager import PiModelManager
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.mark.parametrize("provider", sorted(SUPPORTED_PROVIDERS))
+def test_plan_state_matches_catalog_projection_for_every_provider(provider):
+    """Plan state and Pi catalog projection must agree for every provider.
+
+    Regression for F-1: vllm/sglang/llamacpp/mlx used to be planned as
+    `projected` while the catalog silently dropped the row (config loss at the
+    migration gate), and anthropic_compat was plan-blocked while the catalog
+    projected it. The manager imports SUPPORTED_PROVIDERS by construction, so
+    this asserts the shared contract end to end.
+    """
+    row = SimpleNamespace(
+        id=f"row-{provider}",
+        name=f"{provider} server",
+        provider_type=provider,
+        host="http://localhost:8080/v1",
+        is_local=True,
+        is_relay=False,
+        priority=10,
+        capabilities='{"models": ["m1"], "context_window": 8192}',
+        api_key="",
+    )
+    mapping = plan_migration([row])["mappings"][0]
+    entry = PiModelManager._project_llm_server(row)
+    # Plan outcome == catalog outcome: projected rows reach the catalog.
+    assert mapping["state"] == "projected"
+    assert mapping["canonical_endpoint_id"] == f"pi-llm-row-{provider}"
+    assert entry is not None
+    assert entry.endpoint_id == f"pi-llm-row-{provider}"
+    expected_kind = (
+        "anthropic_compat" if provider.startswith("anthropic") else "openai_compat"
+    )
+    assert entry.provider_kind == expected_kind
+    assert entry.base_url == "http://localhost:8080/v1"
+    assert entry.context_window == 8192
+
+
+def test_plan_and_catalog_reject_unsupported_providers_identically():
+    """A provider outside the shared set is blocked by the plan AND dropped by
+    the catalog — never planned as projected while silently lost."""
+    row = SimpleNamespace(
+        id="row-unsupported",
+        name="Unsupported",
+        provider_type="future_provider",
+        host="http://localhost:8080/v1",
+        is_local=True,
+        is_relay=False,
+        priority=10,
+        capabilities="{}",
+        api_key="",
+    )
+    mapping = plan_migration([row])["mappings"][0]
+    assert mapping["state"] == "blocked"
+    assert mapping["reason"] == "unsupported_provider"
+    assert PiModelManager._project_llm_server(row) is None
+
+
+@pytest.mark.parametrize(
+    ("host", "provider"),
+    [
+        (
+            "localhost:11434",
+            "ollama",
+        ),  # schemeless — projection base_url is dead on arrival
+        ("//llm.invalid/v1", "openai_compat"),  # scheme-relative
+        ("http://user:pass@llm.invalid/v1", "openai_compat"),  # embedded credentials
+        ("http://llm.invalid/v1?key=secret", "openai_compat"),  # query string
+    ],
+)
+def test_plan_and_catalog_reject_unplannable_host_shapes_identically(host, provider):
+    """Plan state and Pi catalog projection must agree for host shapes the
+    platform's endpoint policy forbids (userinfo/query) or that would project
+    a dead base_url (schemeless). Regression for F-3: such rows used to be
+    planned `projected` — blessing their removal under the plan's criteria —
+    while the catalog entry was uncallable or carried credentials/query the
+    platform never accepts (EndpointPolicy.allow_userinfo/allow_query=False)."""
+    row = SimpleNamespace(
+        id="row-host-shape",
+        name="Host shape",
+        provider_type=provider,
+        host=host,
+        is_local=False,
+        is_relay=False,
+        priority=10,
+        capabilities="{}",
+        api_key="",
+    )
+    mapping = plan_migration([row])["mappings"][0]
+    # Plan outcome == catalog outcome: unplannable hosts are blocked AND dropped.
+    assert mapping["state"] == "blocked"
+    assert mapping["reason"] == "invalid_host"
+    assert PiModelManager._project_llm_server(row) is None
+
+
+def test_plan_is_idempotent_and_preserves_source_rows():
+    rows = [
+        SimpleNamespace(
+            id="a",
+            name="A",
+            provider_type="ollama",
+            host="http://localhost:11434",
+            is_local=True,
+            is_relay=False,
+            priority=1,
+            capabilities="{}",
+        )
+    ]
+    first = plan_migration(rows)
+    second = plan_migration(rows)
+    assert first == second
+    assert first["delete_source_rows"] is False
+    assert first["mappings"][0]["canonical_endpoint_id"] == "pi-llm-a"
+    assert first["rollback"]["available"] is True
+
+
+def test_plan_fails_closed_without_silent_fallback():
+    rows = [
+        SimpleNamespace(
+            id="relay", provider_type="ollama", host="http://relay", is_relay=True
+        ),
+        SimpleNamespace(
+            id="bad", provider_type="unknown", host="http://bad", is_relay=False
+        ),
+        SimpleNamespace(id="host", provider_type="ollama", host="", is_relay=False),
+    ]
+    plan = plan_migration(rows)
+    assert plan["counts"] == {"projected": 0, "legacy_only": 1, "blocked": 2}
+    assert {item["reason"] for item in plan["mappings"]} == {
+        "relay_not_pi_catalog",
+        "unsupported_provider",
+        "invalid_host",
+    }
+
+
+def test_startup_does_not_mutate_or_load_classical_model_authority():
+    """Application startup may discover transport capacity, but it must not
+    choose/persist a provider or model, issue a completion probe, or pull a
+    model outside Pi Model Management.
+
+    This static tripwire covers authority operations that the call-site
+    count-to-zero scanner historically missed.
+    """
+    source = (REPO_ROOT / "backend/app/main.py").read_text(encoding="utf-8")
+    forbidden = {
+        "auto provider selection": "auto_detect_provider",
+        "startup environment mutation": "_persist_env_startup",
+        "startup model pull": ".pull_model(",
+        "completion-based loaded-model probe": "detect_loaded_model(force=True)",
+    }
+    present = [label for label, marker in forbidden.items() if marker in source]
+    assert not present, "classical startup authority remains: " + ", ".join(present)
+
+
+def test_active_clients_do_not_call_classical_model_management_writes():
+    """UI and simulation clients must use Pi Model Management exclusively."""
+    client_paths = (
+        "frontend/src/lib/api.ts",
+        "frontend/src/components/common/SettingsView.tsx",
+        "tests/simulation/run.mjs",
+        "tests/simulation/lib/api-client.mjs",
+    )
+    forbidden = ("/api/settings/model?", "/api/settings/provider?")
+    violations = []
+    for relative_path in client_paths:
+        source = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for marker in forbidden:
+            if marker in source:
+                violations.append(f"{relative_path}: {marker}")
+    assert not violations, (
+        "active classical model-management clients remain: " + ", ".join(violations)
+    )

@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+import httpx
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -7,6 +8,41 @@ from app.config import settings
 from app.core.auth import create_token
 from app.main import app
 from app.models.database import init_db
+
+
+@pytest.mark.asyncio
+async def test_update_check_redacts_transport_failures(monkeypatch):
+    """Settings must never expose resolver/host details from the update transport."""
+    from app.api.routes import updates as updates_routes
+
+    class FailingUpdateClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def get(self, *_args, **_kwargs):
+            raise OSError("[Errno -3] Temporary failure in name resolution")
+
+    updates_routes._update_cache.clear()
+    monkeypatch.setattr(
+        httpx, "AsyncClient", lambda *_args, **_kwargs: FailingUpdateClient()
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/updates/check")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["error_code"] == "update_check_unavailable"
+    assert (
+        body["error"]
+        == "Update check is unavailable. Check the network connection and try again."
+    )
+    assert "Errno" not in response.text
+    assert "name resolution" not in response.text
 
 
 @pytest.fixture(autouse=True)
@@ -49,7 +85,9 @@ async def test_local_update_apply_accepts_matching_confirmation(tmp_path, monkey
     scheduled_coroutines = []
 
     def fake_create_task(coro):
-        scheduled_coroutines.append(getattr(getattr(coro, "cr_code", None), "co_name", None))
+        scheduled_coroutines.append(
+            getattr(getattr(coro, "cr_code", None), "co_name", None)
+        )
         coro.close()
         return SimpleNamespace()
 
@@ -73,7 +111,9 @@ async def test_local_update_prepare_requires_explicit_confirmation(monkeypatch):
     async def fail_if_called(*args, **kwargs):
         raise AssertionError("backup should not run without confirmation")
 
-    monkeypatch.setattr("app.core.backup_manager.backup_manager.create_backup", fail_if_called)
+    monkeypatch.setattr(
+        "app.core.backup_manager.backup_manager.create_backup", fail_if_called
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -84,7 +124,9 @@ async def test_local_update_prepare_requires_explicit_confirmation(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_team_update_apply_requires_admin_even_with_confirmation(tmp_path, monkeypatch):
+async def test_team_update_apply_requires_admin_even_with_confirmation(
+    tmp_path, monkeypatch
+):
     await init_db()
     settings.team_mode = True
     settings.jwt_secret = settings.jwt_secret or "test-secret"
@@ -107,7 +149,9 @@ async def test_team_update_apply_requires_admin_even_with_confirmation(tmp_path,
 
 
 @pytest.mark.asyncio
-async def test_local_update_apply_rejects_remote_client_even_with_confirmation(tmp_path, monkeypatch):
+async def test_local_update_apply_rejects_remote_client_even_with_confirmation(
+    tmp_path, monkeypatch
+):
     await init_db()
     settings.team_mode = False
     settings.network_access_token = "network-secret"

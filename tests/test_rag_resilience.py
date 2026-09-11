@@ -1,12 +1,27 @@
 """RAG resilience tests for degraded compute environments."""
 
+from pathlib import Path
+
 import pytest
 from unittest.mock import AsyncMock
 
 from app.config import settings
 from app.core import rag
 from app.core.embeddings import EmbeddedChunk, TextChunk
-from app.core.keyword_index import KeywordIndex
+from app.core.keyword_index import KeywordIndex, keyword_index_dir
+
+
+def test_keyword_index_dir_defaults_beside_data_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "data_dir", str(tmp_path / "data"))
+    monkeypatch.setattr(settings, "keyword_index_dir", None)
+    assert keyword_index_dir() == tmp_path / "data" / "keyword_index"
+
+
+def test_keyword_index_dir_env_override_wins(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "data_dir", str(tmp_path / "data"))
+    monkeypatch.setattr(settings, "keyword_index_dir", str(tmp_path / "shared" / "keyword_index"))
+    index = KeywordIndex("override-probe")
+    assert Path(index.db_path) == tmp_path / "shared" / "keyword_index" / "override-probe.db"
 
 
 @pytest.mark.asyncio

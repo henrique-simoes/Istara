@@ -1,0 +1,3 @@
+{
+  "scope-boundary": "Change only the isolated replacement worktree. Keep the Pi replacement candidate explicitly opt-in and reversible. Add credential-free production-test hooks that exercise existing Istara contracts for chat/tool SSE, A2A, local channels, human Done/report gates, source/evidence-chain persistence, memory/RAG/ReasoningBank/Memento/skill stats, governed Autoresearch dry-run, steering interruption evidence, telemetry, and benchmark readiness. Do not require real external channel credentials, production secrets beyond existing DeepSeek keychain lookup, destructive production data mutation, or deployment. Main Istara comparison artifacts may be written only under comparison-Istara-pi run folders from the main checkout."
+}

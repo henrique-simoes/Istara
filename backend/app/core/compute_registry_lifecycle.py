@@ -3,34 +3,20 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
-from collections.abc import AsyncGenerator
-from typing import Any
 from urllib.parse import urlparse
 
-import httpx
-
 from app.config import settings
-from app.core.compute_node import ComputeNode
-from app.core.compute_route_evidence import schedule_compute_telemetry_event
+from app.core.compute_node import ComputeNode, _hydrate_local_resources
 from app.core.compute_registry_helpers import (
-    TRANSIENT_CHAT_BASE_DELAY_S,
-    TRANSIENT_CHAT_MAX_ATTEMPTS,
-    TRANSIENT_CHAT_MAX_DELAY_S,
-    TRANSIENT_HTTP_STATUS_CODES,
-    _hydrate_local_resources,
-    _looks_like_context_length_error,
     _looks_like_model_availability_error,
     _positive_number,
     _redacted_endpoint_for_log,
     _server_endpoint_identity,
     _unique_model_names,
 )
-from app.core.llm_output import ThinkingContentFilter, visible_assistant_content
-from app.core.llm_thinking import apply_thinking_control
-from app.core.token_counter import count_tokens
+from app.core.compute_route_evidence import schedule_compute_telemetry_event
 
 logger = logging.getLogger("app.core.compute_registry")
 
@@ -66,7 +52,12 @@ def _emit_lifecycle_snapshot(node: ComputeNode) -> None:
         return
     _emit_lifecycle_once(node, "donor.visible")
     state = (getattr(node, "health_state", "") or "").strip()
-    if getattr(node, "is_healthy", False) or state in {"ready", "degraded", "slow", "no_model_loaded"}:
+    if getattr(node, "is_healthy", False) or state in {
+        "ready",
+        "degraded",
+        "slow",
+        "no_model_loaded",
+    }:
         _emit_lifecycle_once(node, "donor.reachable")
     if getattr(node, "is_healthy", False) and state not in {
         "auth_required",
@@ -120,11 +111,9 @@ class ComputeRegistryLifecycleMixin:
             for existing_id, existing in list(self._nodes.items()):
                 if existing_id == node.node_id or not existing.host:
                     continue
-                same_endpoint = (
-                    _server_endpoint_identity(existing.host, source=existing.source)
-                    == new_identity
-                    or self._looks_like_configured_local_alias(existing, node)
-                )
+                same_endpoint = _server_endpoint_identity(
+                    existing.host, source=existing.source
+                ) == new_identity or self._looks_like_configured_local_alias(existing, node)
                 if not same_endpoint:
                     continue
                 if self._should_keep_relay_endpoint_distinct(existing, node):
@@ -199,10 +188,7 @@ class ComputeRegistryLifecycleMixin:
         relay_sources = {"relay", "browser"}
         if sources and sources <= relay_sources:
             return True
-        return bool(
-            sources & relay_sources
-            and sources & {"local"}
-        )
+        return bool(sources & relay_sources and sources & {"local"})
 
     @staticmethod
     def _endpoint_parts(node: ComputeNode) -> tuple[str, int | None, str] | None:
@@ -529,9 +515,7 @@ class ComputeRegistryLifecycleMixin:
         accounts for loaded model state, LM Studio's load contract, and the
         same model selection logic used by normal user requests.
         """
-        cache_key = (
-            f"{model or 'default'}:{require_vision}:{probe_lmstudio}:{allow_model_load}"
-        )
+        cache_key = f"{model or 'default'}:{require_vision}:{probe_lmstudio}:{allow_model_load}"
         now = time.time()
         cached = self._chat_ready_cache.get(cache_key)
         if not force and cached:
@@ -588,7 +572,7 @@ class ComputeRegistryLifecycleMixin:
                             model=recovered,
                             temperature=0,
                             max_tokens=1,
-                )
+                        )
                 self._record_success(node)
                 self._chat_ready_cache[cache_key] = (time.time(), True)
                 return True

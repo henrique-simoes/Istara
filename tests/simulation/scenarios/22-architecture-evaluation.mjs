@@ -7,9 +7,16 @@
 export const name = "Architecture & Protocol Evaluation";
 export const id = "22-architecture-evaluation";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "agents",
+    navLabel: "Agents",
+    markers: ["System Agents", "Agents"],
+    screenshot: "22-agents-view",
+  });
   const evalProjectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
   const projectQuery = evalProjectId ? `project_id=${encodeURIComponent(evalProjectId)}` : "";
   const scopedSkipDetail = "[skipped] No active project id; scoped endpoint not called";

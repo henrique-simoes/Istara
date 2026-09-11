@@ -1,8 +1,9 @@
-"""Voice Transcription Pipeline — local-first audio transcription with ICR.
+"""Voice Transcription Pipeline — local-first audio transcription.
 
 Uses Whisper (via whisper.cpp or openai-whisper) for local transcription.
-Multiple LLMs transcribe independently → consensus via Fleiss' Kappa.
-Low agreement triggers human review flag.
+An optional alternate Whisper pass provides an operational agreement signal;
+it is not the Research Spine's independent evidence-unit coding or formal
+Fleiss' Kappa reliability gate. Low agreement triggers human review.
 
 Integrates with:
 - Interview audio file uploads
@@ -10,7 +11,9 @@ Integrates with:
 - Chat voice input (mic icon)
 - Atomic Research chain (transcriptions → nuggets → facts)
 
-All transcriptions are auto-tagged with inter-coder reliability scoring.
+All transcriptions are auto-tagged with a clearly scoped transcription-quality
+signal. Formal reliability is computed later by the Research Spine coding
+plane over source evidence units.
 """
 
 import logging
@@ -18,22 +21,26 @@ import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class TranscriptionResult:
-    """Result of audio transcription with ICR metadata."""
+    """Result of audio transcription with legacy agreement metadata.
+
+    ``icr_kappa`` and ``icr_confidence`` remain for API compatibility, but the
+    values are heuristic transcription-quality signals, not formal Research
+    Spine inter-coder reliability.
+    """
 
     text: str
     language: str
     confidence: float  # 0-1, Whisper's own confidence
-    icr_kappa: float  # Inter-coder reliability (Fleiss' Kappa)
-    icr_confidence: str  # high | medium | low | insufficient
-    needs_review: bool  # True if ICR below threshold
-    original_audio_path: Optional[str] = None
+    icr_kappa: float  # Legacy compatibility field; heuristic agreement only
+    icr_confidence: str  # high | medium | low | insufficient (heuristic)
+    needs_review: bool  # True if the transcription signal is below threshold
+    original_audio_path: str | None = None
     tags: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
 
@@ -45,6 +52,24 @@ class TranscriptionResult:
 _WHISPER_AVAILABLE = False
 _WHISPER_MODEL = None
 _WHISPER_TINY_MODEL = None  # Cache for ICR
+
+_TRANSCRIPTION_VALIDATION_SCOPE = "transcription_quality_signal"
+
+
+def _quality_signal_metadata(**extra: object) -> dict:
+    """Mark transcription agreement as provisional and non-research evidence.
+
+    Keeping this boundary on every result prevents downstream document,
+    channel, and telemetry consumers from mistaking the compatibility
+    ``icr_*`` fields for the three-coder Research Spine reliability gate.
+    """
+    return {
+        "formal_reliability": False,
+        "research_spine_eligible": False,
+        "validation_scope": _TRANSCRIPTION_VALIDATION_SCOPE,
+        "research_data_status": "provisional_until_coding",
+        **extra,
+    }
 
 
 def transcription_dependency_status() -> dict:
@@ -62,7 +87,10 @@ def _transcription_dependency_error(audio_path: str) -> TranscriptionResult | No
         return None
 
     return TranscriptionResult(
-        text="[Transcription unavailable: ffmpeg is required for Whisper audio decoding. Install ffmpeg and retry transcription.]",
+        text=(
+            "[Transcription unavailable: ffmpeg is required for Whisper audio "
+            "decoding. Install ffmpeg and retry transcription.]"
+        ),
         language="unknown",
         confidence=0.0,
         icr_kappa=0.0,
@@ -70,7 +98,7 @@ def _transcription_dependency_error(audio_path: str) -> TranscriptionResult | No
         needs_review=True,
         original_audio_path=audio_path,
         tags=["transcription-error", "audio-decoder-unavailable"],
-        metadata={"error_type": "audio_decoder_unavailable"},
+        metadata=_quality_signal_metadata(error_type="audio_decoder_unavailable"),
     )
 
 
@@ -114,6 +142,7 @@ def _load_whisper_model(model_size: str = "base"):
 
     try:
         import whisper
+
         model = whisper.load_model(model_size)
         _WHISPER_AVAILABLE = True
 
@@ -131,7 +160,7 @@ def _load_whisper_model(model_size: str = "base"):
         )
     except Exception as e:
         logger.warning(f"Failed to load Whisper model '{model_size}': {e}")
-    
+
     return None
 
 
@@ -161,7 +190,7 @@ def transcribe_audio(
             needs_review=True,
             original_audio_path=audio_path,
             tags=["transcription-error", "audio-file-missing"],
-            metadata={"error_type": "audio_file_missing"},
+            metadata=_quality_signal_metadata(error_type="audio_file_missing"),
         )
 
     model = _load_whisper_model(model_size)
@@ -176,7 +205,7 @@ def transcribe_audio(
             needs_review=True,
             original_audio_path=audio_path,
             tags=["transcription-error"],
-            metadata={"error_type": "transcription_engine_unavailable"},
+            metadata=_quality_signal_metadata(error_type="transcription_engine_unavailable"),
         )
 
     dependency_error = _transcription_dependency_error(audio_path)
@@ -204,6 +233,16 @@ def transcribe_audio(
         # Auto-generate tags based on content
         tags = _generate_transcription_tags(text)
 
+        icr_details = dict(icr_result.details or {})
+        icr_details.update(
+            {
+                "formal_reliability": False,
+                "research_spine_eligible": False,
+                "validation_scope": _TRANSCRIPTION_VALIDATION_SCOPE,
+                "research_data_status": "provisional_until_coding",
+            }
+        )
+
         return TranscriptionResult(
             text=text,
             language=detected_language,
@@ -213,12 +252,12 @@ def transcribe_audio(
             needs_review=icr_result.confidence in ("low", "insufficient"),
             original_audio_path=audio_path,
             tags=tags,
-            metadata={
-                "model_size": model_size,
-                "requested_language": language,
-                "detected_language": detected_language,
-                "icr_details": icr_result.details,
-            },
+            metadata=_quality_signal_metadata(
+                model_size=model_size,
+                requested_language=language,
+                detected_language=detected_language,
+                icr_details=icr_details,
+            ),
         )
 
     except Exception as e:
@@ -232,7 +271,9 @@ def transcribe_audio(
             needs_review=True,
             original_audio_path=audio_path,
             tags=["transcription-error"],
-            metadata={"error_type": "transcription_runtime_failure", "error": str(e)[:500]},
+            metadata=_quality_signal_metadata(
+                error_type="transcription_runtime_failure", error=str(e)[:500]
+            ),
         )
 
 
@@ -240,15 +281,18 @@ def transcribe_audio(
 # Inter-Coder Reliability for Transcriptions
 # ---------------------------------------------------------------------------
 
-def _compute_transcription_icr(text: str, audio_path: str, language: str | None = None):
-    """Compute ICR for transcription by comparing multiple transcriptions.
 
-    Uses the consensus engine to check agreement between:
+def _compute_transcription_icr(text: str, audio_path: str, language: str | None = None):
+    """Compute a compatibility agreement signal for transcription quality.
+
+    Uses the heuristic consensus engine to check agreement between:
     1. Primary Whisper transcription
     2. Alternative model/temperature transcription
     3. Semantic similarity check
 
-    Returns ConsensusResult from core.consensus
+    Returns a ``ConsensusResult`` from ``core.consensus``. Its kappa is not a
+    formal Research Spine reliability result because the responses are not
+    independent coders rating the same evidence-unit matrix.
     """
     from app.core.consensus import compute_consensus
 
@@ -268,13 +312,14 @@ def _compute_transcription_icr(text: str, audio_path: str, language: str | None 
     except Exception:
         logger.debug("Alternative transcription pass unavailable", exc_info=True)
 
-    # Compute consensus
+    # Compute heuristic agreement; formal coding happens downstream.
     return compute_consensus(responses, method="auto")
 
 
 # ---------------------------------------------------------------------------
 # Auto-Tagging for Transcriptions
 # ---------------------------------------------------------------------------
+
 
 def _generate_transcription_tags(text: str) -> list[str]:
     """Generate tags for transcribed content based on content analysis.
@@ -287,11 +332,46 @@ def _generate_transcription_tags(text: str) -> list[str]:
 
     # Research-relevant categories
     category_keywords = {
-        "pain-point": ["frustrating", "difficult", "confusing", "broken", "annoying", "hate", "terrible", "worst"],
-        "feature-request": ["would be nice", "wish", "could have", "should have", "need", "want", "add"],
+        "pain-point": [
+            "frustrating",
+            "difficult",
+            "confusing",
+            "broken",
+            "annoying",
+            "hate",
+            "terrible",
+            "worst",
+        ],
+        "feature-request": [
+            "would be nice",
+            "wish",
+            "could have",
+            "should have",
+            "need",
+            "want",
+            "add",
+        ],
         "usability": ["easy", "intuitive", "simple", "clear", "straightforward", "user-friendly"],
-        "positive": ["great", "excellent", "love", "amazing", "perfect", "wonderful", "fantastic", "good"],
-        "negative": ["bad", "poor", "terrible", "awful", "horrible", "disappointing", "frustrating", "confusing"],
+        "positive": [
+            "great",
+            "excellent",
+            "love",
+            "amazing",
+            "perfect",
+            "wonderful",
+            "fantastic",
+            "good",
+        ],
+        "negative": [
+            "bad",
+            "poor",
+            "terrible",
+            "awful",
+            "horrible",
+            "disappointing",
+            "frustrating",
+            "confusing",
+        ],
         "navigation": ["menu", "button", "click", "scroll", "page", "screen", "find"],
         "accessibility": ["screen reader", "font size", "color contrast", "keyboard", "alt text"],
         "performance": ["slow", "fast", "lag", "load", "crash", "freeze", "timeout"],
@@ -320,6 +400,7 @@ def _generate_transcription_tags(text: str) -> list[str]:
 # Audio format conversion helpers
 # ---------------------------------------------------------------------------
 
+
 def convert_audio_to_wav(audio_path: str) -> str:
     """Convert audio file to WAV format for Whisper compatibility.
 
@@ -331,6 +412,7 @@ def convert_audio_to_wav(audio_path: str) -> str:
 
     try:
         import subprocess
+
         output_path = path.with_suffix(".wav")
 
         # Try ffmpeg first
@@ -347,6 +429,7 @@ def convert_audio_to_wav(audio_path: str) -> str:
         # Fallback: pydub
         try:
             from pydub import AudioSegment
+
             audio = AudioSegment.from_file(str(path))
             audio = audio.set_frame_rate(16000).set_channels(1)
             audio.export(str(output_path), format="wav")

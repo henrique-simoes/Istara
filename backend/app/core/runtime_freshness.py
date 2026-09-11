@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-
 FRONTEND_SOURCE_GLOBS = ("**/*.css", "**/*.js", "**/*.mjs", "**/*.ts", "**/*.tsx")
 STALE_GRACE_SECONDS = 1.0
 
@@ -69,9 +68,7 @@ def detect_runtime_freshness(
 
     source_files = _frontend_sources(root / "frontend" / "src")
     source_mtimes = [
-        (path, mtime)
-        for path in source_files
-        if (mtime := _safe_mtime(path)) is not None
+        (path, mtime) for path in source_files if (mtime := _safe_mtime(path)) is not None
     ]
     newest_source_mtime = max((mtime for _, mtime in source_mtimes), default=None)
 
@@ -86,13 +83,21 @@ def detect_runtime_freshness(
     stale = bool(build_mtime is not None and source_newer_than_build)
     if stale:
         status = "stale"
-        message = "The production frontend build predates frontend source changes; rebuild and restart the frontend."
+        message = (
+            "The production frontend build predates frontend source changes; "
+            "rebuild and restart the frontend."
+        )
     elif build_mtime is None:
         status = "development_or_unbuilt"
-        message = "No production frontend build id was found; this usually means a development server or unbuilt checkout."
+        message = (
+            "No production frontend build id was found; this usually means "
+            "a development server or unbuilt checkout."
+        )
     else:
         status = "fresh"
-        message = "The production frontend build is at least as new as the tracked frontend source files."
+        message = (
+            "The production frontend build is at least as new as the tracked frontend source files."
+        )
 
     payload: dict[str, Any] = {
         "frontend": {

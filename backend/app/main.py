@@ -24,6 +24,8 @@ from app.agents.user_sim_agent import user_sim_agent
 from app.agents.ux_eval_agent import ux_eval_agent
 from app.api.routes import (
     a2a as a2a_routes,
+)
+from app.api.routes import (
     admin,
     agents,
     audit,
@@ -35,7 +37,6 @@ from app.api.routes import (
     files,
     findings,
     interfaces,
-    llm_servers,
     memory,
     metrics,
     projects,
@@ -63,6 +64,9 @@ from app.api.routes import mcp as mcp_routes
 from app.api.routes import meta_hyperagent as meta_hyperagent_routes
 from app.api.routes import notifications as notification_routes
 from app.api.routes import permission_requests as permission_request_routes
+from app.api.routes import (
+    petals_bridge as petals_bridge_routes,
+)
 from app.api.routes import presentation as presentation_routes
 from app.api.routes import reasoning_bank as reasoning_bank_routes
 from app.api.routes import reports as reports_routes
@@ -84,7 +88,7 @@ from app.core.audit_middleware import AuditLogMiddleware
 from app.core.backup_manager import backup_manager
 from app.core.file_watcher import FileWatcher
 from app.core.log_redaction import install_sensitive_log_redaction
-from app.core.network_security import NetworkSecurityMiddleware, requires_local_admin_network_guard
+from app.core.network_security import NetworkSecurityMiddleware
 from app.core.scheduler import scheduler
 from app.core.security_middleware import SecurityAuthMiddleware
 from app.core.version import read_istara_version
@@ -97,26 +101,17 @@ from app.skills.skill_manager import skill_manager
 install_sensitive_log_redaction()
 
 
-def _persist_env_startup(key: str, value: str, logger=None) -> None:
-    """Persist a key to .env during startup (reuses settings.py logic)."""
-    try:
-        from app.api.routes.settings import _persist_env
-
-        _persist_env(key, value)
-        if logger:
-            logger.info(f"Auto-persisted {key}={value} to .env")
-    except Exception as e:
-        if logger:
-            logger.warning(f"Could not persist {key} to .env: {e}")
-
-
 def _build_configured_local_llm_node():
     """Build the configured local LLM node with auth/model metadata intact."""
     from app.core.compute_registry import ComputeNode
 
     local_type = app_settings.llm_provider
-    local_host = app_settings.lmstudio_host if local_type == "lmstudio" else app_settings.ollama_host
-    model_name = app_settings.lmstudio_model if local_type == "lmstudio" else app_settings.ollama_model
+    local_host = (
+        app_settings.lmstudio_host if local_type == "lmstudio" else app_settings.ollama_host
+    )
+    model_name = (
+        app_settings.lmstudio_model if local_type == "lmstudio" else app_settings.ollama_model
+    )
     api_key = app_settings.lmstudio_api_key if local_type == "lmstudio" else ""
     loaded_models = [model_name] if model_name and model_name != "default" else []
 
@@ -230,6 +225,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup
     app_settings.ensure_dirs()
     app_settings.ensure_secrets()
+    # Deferred from config import time, when logging is not yet configured.
+    app_settings.log_storage_warnings()
     try:
         from app.core.auth_origins import (
             production_security_configuration_issues,
@@ -271,6 +268,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await init_db()
 
+    # Freeze the persisted Pi-owned vector identity before any embedding,
+    # cache, or vector-space health path can observe model configuration.
+    from app.core.pi_runtime.embedding_profile import bootstrap_embedding_profile
+
+    async with async_session() as db:
+        await bootstrap_embedding_profile(db)
+
     # Bootstrap admin user if none exists
     try:
         from sqlalchemy import func, select
@@ -309,37 +313,54 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     recovery_codes_hashed="",
                 )
                 db.add(user)
-                await replace_recovery_codes(
-                    db,
-                    user_id=user.id,
-                    codes=recovery_codes,
-                    created_by_user_id=user.id,
-                )
-                await db.commit()
-                _log = __import__("logging").getLogger(__name__)
-                credentials_path = _write_initial_admin_credentials_file(
-                    username=admin_user,
-                    password=admin_pass,
-                    recovery_codes=recovery_codes,
-                )
-                _log.info("=" * 60)
-                _log.info("  ADMIN USER CREATED (first startup)")
-                _log.info(f"  Username: {admin_user}")
-                _log.info("  Initial credentials saved to owner-only file: %s", credentials_path)
-                _log.info("  Change this password after first login!")
-                _log.info("  Delete the credentials file after secure storage.")
-                _log.info("=" * 60)
-                # Persist to .env if auto-generated
-                if not app_settings.admin_password:
-                    try:
-                        from pathlib import Path
+                bootstrapped = True
+                try:
+                    await replace_recovery_codes(
+                        db,
+                        user_id=user.id,
+                        codes=recovery_codes,
+                        created_by_user_id=user.id,
+                    )
+                    await db.commit()
+                except Exception as _bootstrap_exc:
+                    # Concurrent startups race here: the username unique
+                    # constraint guarantees at most one first admin wins; the
+                    # loser rolls back instead of half-creating an account.
+                    await db.rollback()
+                    from sqlalchemy.exc import IntegrityError as _IntegrityError
 
-                        env_path = Path(__file__).parent.parent / ".env"
-                        lines = env_path.read_text().splitlines() if env_path.exists() else []
-                        lines.append(f"ADMIN_PASSWORD={admin_pass}")
-                        env_path.write_text("\n".join(lines) + "\n")
-                    except Exception:
-                        pass
+                    if isinstance(_bootstrap_exc, _IntegrityError):
+                        _log = __import__("logging").getLogger(__name__)
+                        _log.info("Admin bootstrap already completed by a concurrent startup.")
+                        bootstrapped = False
+                    else:
+                        raise
+                if not bootstrapped:
+                    pass  # Lost the concurrent-startup race; nothing to report.
+                else:
+                    _log = __import__("logging").getLogger(__name__)
+                    credentials_path = _write_initial_admin_credentials_file(
+                        username=admin_user,
+                        password=admin_pass,
+                        recovery_codes=recovery_codes,
+                    )
+                    _log.info("=" * 60)
+                    _log.info("  ADMIN USER CREATED (first startup)")
+                    _log.info(f"  Username: {admin_user}")
+                    _log.info(
+                        "  Initial credentials saved to owner-only file: %s", credentials_path
+                    )
+                    _log.info("  Change this password after first login!")
+                    _log.info("  Delete the credentials file after secure storage.")
+                    _log.info("=" * 60)
+                    # Persist to the runtime env file if auto-generated
+                    if not app_settings.admin_password:
+                        try:
+                            from app.core.env_persistence import persist_env_value
+
+                            persist_env_value("ADMIN_PASSWORD", admin_pass)
+                        except Exception:
+                            pass
     except Exception as e:
         __import__("logging").getLogger(__name__).warning(f"Admin bootstrap skipped: {e}")
     load_default_skills()
@@ -479,103 +500,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         _log.warning(f"Health check failed: {e}")
 
-    # Auto-detect LLM provider: try configured first, fall back to the other
-    from app.core.ollama import auto_detect_provider
-
-    try:
-        await auto_detect_provider()
-        # Re-import after potential provider switch
-        from app.core import ollama as ollama_mod
-
-        current_client = ollama_mod.ollama
-        if await current_client.health():
-            _log.info(f"LLM provider ({app_settings.llm_provider}) is online.")
-            models = await current_client.list_models()
-            model_names = [m.get("name", "") for m in models]
-
-            if app_settings.llm_provider == "ollama":
-                if not any(app_settings.ollama_model in n for n in model_names):
-                    _log.info(f"Pulling default model: {app_settings.ollama_model}")
-                    async for _ in current_client.pull_model(app_settings.ollama_model):
-                        pass
-                # Auto-detect if configured model is "default" or not loaded
-                active = app_settings.ollama_model
-                if active == "default" or not any(active in n for n in model_names):
-                    non_embed = [n for n in model_names if "embed" not in n.lower()]
-                    if non_embed:
-                        resolved = non_embed[0]
-                        app_settings.ollama_model = resolved
-                        _log.info(f"Ollama active model resolved to: {resolved}")
-                        _persist_env_startup("OLLAMA_MODEL", resolved, _log)
-            elif app_settings.llm_provider == "lmstudio":
-                # Detect the ACTUALLY loaded model by probing LM Studio.
-                # /v1/models lists all downloaded models, not just loaded ones.
-                # The only reliable detection is a minimal chat probe — the
-                # response's 'model' field reveals which model is serving.
-                from app.core.lmstudio import (
-                    LMStudioClient,
-                    configured_lmstudio_model_is_authoritative,
-                )
-
-                lms_client = (
-                    current_client
-                    if isinstance(current_client, LMStudioClient)
-                    else LMStudioClient()
-                )
-                configured_model_locked = configured_lmstudio_model_is_authoritative()
-                loaded = None
-                if configured_model_locked:
-                    _log.info(
-                        "LM Studio configured model preserved: %s",
-                        app_settings.lmstudio_model,
-                    )
-                else:
-                    loaded = await lms_client.detect_loaded_model(force=True)
-                    if loaded and loaded != app_settings.lmstudio_model:
-                        app_settings.lmstudio_model = loaded
-                        _log.info(f"LM Studio active model detected: {loaded}")
-                        _persist_env_startup("LMSTUDIO_MODEL", loaded, _log)
-                    elif loaded:
-                        _log.info(f"LM Studio model confirmed: {loaded}")
-
-                if not configured_model_locked and not loaded:
-                    # Fallback: pick from model list if probe fails
-                    active = app_settings.lmstudio_model
-                    non_embed = [n for n in model_names if "embed" not in n.lower()]
-                    if active == "default" or (active and active not in model_names):
-                        if non_embed:
-                            resolved = non_embed[0]
-                            app_settings.lmstudio_model = resolved
-                            _log.info(f"LM Studio model fallback to: {resolved}")
-                            _persist_env_startup("LMSTUDIO_MODEL", resolved, _log)
-                        elif model_names:
-                            app_settings.lmstudio_model = model_names[0]
-                            _persist_env_startup("LMSTUDIO_MODEL", model_names[0], _log)
-
-                # Detect model capabilities (context window) after model is known
-                try:
-                    from app.core.model_capabilities import detect_capabilities_lmstudio
-
-                    caps = await detect_capabilities_lmstudio(
-                        app_settings.lmstudio_host,
-                        active_probe=False,
-                    )
-                    for model_name, cap in caps.items():
-                        if cap.context_length and cap.context_length > 0:
-                            app_settings.update_context_window(cap.context_length)
-                            _log.info(
-                                "Detected context window: %s tokens for %s",
-                                cap.context_length,
-                                model_name,
-                            )
-                            break
-                except Exception as e:
-                    _log.debug(f"LM Studio capability detection skipped: {e}")
-        else:
-            _log.warning(f"LLM provider ({app_settings.llm_provider}) is not reachable.")
-    except Exception:
-        pass  # Don't block startup if provider check fails
-
     # Vector store dimension health check
     try:
         from app.core.vector_health import check_embedding_dimensions
@@ -587,6 +511,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             _log.info(f"Vector dimensions OK ({dim_check['model_dim']}d)")
     except Exception as e:
         _log.warning(f"Dimension check skipped: {e}")
+
+    # W8 vector-space invariant: both engines must embed with the SAME model —
+    # an engine switch must never silently change the embedding space, or
+    # every stored vector is invalidated.
+    try:
+        from app.core.pi_runtime.embeddings_gateway import assert_vector_space_invariant
+        from app.core.vector_health import check_embedding_dimensions
+
+        shared_embed_model = await assert_vector_space_invariant(
+            dimension_probe=check_embedding_dimensions
+        )
+        _log.info(f"Vector-space invariant OK (embed model: {shared_embed_model})")
+    except Exception as e:
+        _log.critical(
+            "Vector-space invariant check failed; refusing startup to prevent unsafe "
+            "engine switching: %s",
+            e,
+        )
+        raise RuntimeError("vector_space_invariant_violation") from e
 
     # ── Data integrity check ──
     try:
@@ -612,9 +555,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     watcher_task = asyncio.create_task(watcher.start())
     app.state.file_watcher = watcher
 
-    disable_background_agents = os.environ.get(
-        "ISTARA_DISABLE_BACKGROUND_AGENTS", ""
-    ).lower() in {"1", "true", "yes"}
+    disable_background_agents = os.environ.get("ISTARA_DISABLE_BACKGROUND_AGENTS", "").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
     autonomous_quality_agents_enabled = app_settings.autonomous_quality_agents_enabled
 
@@ -733,6 +678,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as e:
             _sd_log.warning(f"Background task stopped with error during shutdown: {e}")
 
+    try:
+        from app.api.websocket import manager as ws_manager
+
+        await ws_manager.drain_notification_tasks()
+    except Exception as e:
+        _sd_log.warning(f"WebSocket notification persistence drain failed: {e}")
+
+    try:
+        from app.core.context_dag import context_dag
+
+        await context_dag.drain_compaction_tasks()
+    except Exception as e:
+        _sd_log.warning(f"Context-DAG compaction drain failed: {e}")
+
+    # Owned teardown of the supervised Pi runtime worker (Plan C D-C1): cancel
+    # runs, terminate, then kill only the child PID it created. No-op when a Pi
+    # request never started the worker; never blocks shutdown on a stuck child.
+    try:
+        from app.core.pi_runtime import shutdown_supervisor
+
+        await shutdown_supervisor()
+    except Exception as e:
+        _sd_log.warning(f"Pi runtime worker shutdown error: {e}")
+
     _sd_log.info("Shutdown complete.")
 
 
@@ -773,16 +742,24 @@ app.add_middleware(
     allow_origin_regex=app_settings.cors_origin_regex or None,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Access-Token"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-Access-Token",
+        "X-Istara-Agent-Engine",
+    ],
 )
 
-if app_settings.network_access_token or requires_local_admin_network_guard(app_settings):
-    app.add_middleware(NetworkSecurityMiddleware)
-    import logging
-
-    logging.getLogger(__name__).info(
-        "Network security enabled — non-localhost requests require access token or are denied"
-    )
+# Always installed: dispatch re-reads settings on every request and passes
+# through when no token is configured and no unsafe local-admin exposure
+# exists, so a NETWORK_ACCESS_TOKEN generated lazily at runtime (or restored
+# from the runtime env file on the next boot) takes effect without depending
+# on an import-time value (F-12). Gating installation on the token would
+# silently leave a token-enabled deployment unguarded until its next restart.
+app.add_middleware(NetworkSecurityMiddleware)
+__import__("logging").getLogger(__name__).info(
+    "Network security enabled — non-localhost requests require access token or are denied"
+)
 
 # Rate limiting
 if app_settings.rate_limit_enabled:
@@ -820,7 +797,6 @@ app.include_router(sessions.router, prefix="/api", tags=["Sessions"])
 app.include_router(memory.router, prefix="/api", tags=["Memory"])
 app.include_router(documents.router, prefix="/api", tags=["Documents"])
 app.include_router(context_dag_routes.router, prefix="/api", tags=["Context DAG"])
-app.include_router(llm_servers.router, prefix="/api", tags=["LLM Servers"])
 app.include_router(compute_routes.router, prefix="/api", tags=["Compute"])
 # Connection strings and the standalone relay CLI advertise /ws/relay.
 # Keep the prefixed /api/ws/relay route above for API consistency, and expose
@@ -852,6 +828,12 @@ app.include_router(connection_routes.router, prefix="/api", tags=["Connections"]
 app.include_router(update_routes.router, prefix="/api", tags=["Updates"])
 app.include_router(ws_router)
 app.include_router(a2a_routes.router, tags=["A2A"])
+
+app.include_router(
+    petals_bridge_routes.router,
+    prefix=app_settings.petals_bridge_base_path,
+    tags=["PetalsBridge"],
+)
 
 
 @app.get("/api/health")

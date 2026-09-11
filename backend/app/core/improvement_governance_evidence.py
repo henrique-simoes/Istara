@@ -11,13 +11,16 @@ from app.core.improvement_governance_contracts import (
     POLICY,
     RISK,
     STATUS,
+)
+from app.core.improvement_governance_contracts import (
     clean_payload as _clean_payload,
+)
+from app.core.improvement_governance_contracts import (
     clean_string as _clean_string,
-    normalize_surface as _normalize_surface,
+)
+from app.core.improvement_governance_contracts import (
     utcnow as _utcnow,
 )
-from app.core.improvement_governance_policy import ImprovementPolicyMixin
-from app.core.sandbox_evaluation import sandbox_evaluation
 from app.models.database import async_session
 from app.models.improvement_governance import ImprovementProposal
 
@@ -49,7 +52,9 @@ class ImprovementGovernanceEvidenceMixin:
     ) -> dict:
         """Record producer evidence without treating it as an applied behavior mutation."""
         feature_key = _clean_string(feature, max_chars=120) or "unknown_feature"
-        event_id = _clean_string(source_id or f"{feature_key}:{_utcnow().timestamp()}", max_chars=90)
+        event_id = _clean_string(
+            source_id or f"{feature_key}:{_utcnow().timestamp()}", max_chars=90
+        )
         proposal_source_id = _clean_string(f"{feature_key}:{event_id}", max_chars=120)
 
         async def _record(session: AsyncSession) -> dict:
@@ -94,7 +99,8 @@ class ImprovementGovernanceEvidenceMixin:
 
             matrix = next(
                 (
-                    item for item in self.feature_contract_matrix()
+                    item
+                    for item in self.feature_contract_matrix()
                     if item.get("feature") == feature_key
                 ),
                 {},
@@ -119,7 +125,9 @@ class ImprovementGovernanceEvidenceMixin:
                     "event_id": event_id,
                 },
                 rollback_plan={
-                    "strategy": "remove or quarantine this evidence trace; no behavior mutation was applied",
+                    "strategy": (
+                        "remove or quarantine this evidence trace; no behavior mutation was applied"
+                    ),
                 },
                 evidence=[event],
                 metrics_before=metrics_before,
@@ -155,8 +163,10 @@ class ImprovementGovernanceEvidenceMixin:
                 "by_source_system": dict(source_counts),
                 "by_surface": dict(surface_counts),
                 "pending_human_approval": sum(
-                    1 for item in proposals
-                    if item.requires_human_approval and item.status in {STATUS["draft"], STATUS["proposed"]}
+                    1
+                    for item in proposals
+                    if item.requires_human_approval
+                    and item.status in {STATUS["draft"], STATUS["proposed"]}
                 ),
                 "applied": status_counts.get(STATUS["applied"], 0),
                 "reverted": status_counts.get(STATUS["reverted"], 0),
@@ -207,31 +217,40 @@ class ImprovementGovernanceEvidenceMixin:
                 "target_name": experiment.get("target_name"),
                 "hypothesis": experiment.get("hypothesis"),
                 "mutation_description": experiment.get("mutation_description"),
-                "candidate_mutation": _clean_payload(
-                    experiment.get("candidate_mutation") or {}
-                ),
+                "candidate_mutation": _clean_payload(experiment.get("candidate_mutation") or {}),
                 "sandboxed": bool(experiment.get("sandboxed")),
                 "governance_required": True,
             },
             rollback_plan={
-                "strategy": "reject the proposal; the measured mutation was already reverted after sandbox evaluation",
-                "requires_verification": True,
-                "reason": "Autoresearch retained only a candidate proposal; production promotion remains governed.",
-            },
-            evidence=[{
-                "kind": "autoresearch_experiment",
-                "experiment_id": experiment.get("id"),
-                "delta": experiment.get("delta"),
-                "score_samples": experiment.get("score_samples"),
-                "score_stddev": experiment.get("score_stddev"),
-                "confidence_interval_95": experiment.get("confidence_interval_95"),
-                "decision_reason": experiment.get("decision_reason"),
-                "mutation_live_after_measurement": bool(
-                    experiment.get("mutation_live_after_measurement")
+                "strategy": (
+                    "reject the proposal; the measured mutation was already "
+                    "reverted after sandbox evaluation"
                 ),
-            }],
+                "requires_verification": True,
+                "reason": (
+                    "Autoresearch retained only a candidate proposal; "
+                    "production promotion remains governed."
+                ),
+            },
+            evidence=[
+                {
+                    "kind": "autoresearch_experiment",
+                    "experiment_id": experiment.get("id"),
+                    "delta": experiment.get("delta"),
+                    "score_samples": experiment.get("score_samples"),
+                    "score_stddev": experiment.get("score_stddev"),
+                    "confidence_interval_95": experiment.get("confidence_interval_95"),
+                    "decision_reason": experiment.get("decision_reason"),
+                    "mutation_live_after_measurement": bool(
+                        experiment.get("mutation_live_after_measurement")
+                    ),
+                }
+            ],
             metrics_before={"score": experiment.get("baseline_score")},
-            metrics_after={"score": experiment.get("experiment_score"), "delta": experiment.get("delta")},
+            metrics_after={
+                "score": experiment.get("experiment_score"),
+                "delta": experiment.get("delta"),
+            },
             reasoning_memory_ids=reasoning_memory_ids or [],
             improvement_score=experiment.get("delta"),
             confidence=0.7 if experiment.get("score_samples") else 0.6,
@@ -307,7 +326,10 @@ class ImprovementGovernanceEvidenceMixin:
             agent_id="agent-factory",
             title=f"Review agent creation for {proposal.get('proposed_name', 'new agent')}",
             summary=str(proposal.get("reason", "")),
-            rationale="Memento-Skills agent creation proposed a new specialized agent from a capability gap.",
+            rationale=(
+                "Memento-Skills agent creation proposed a new specialized "
+                "agent from a capability gap."
+            ),
             affected_surfaces=["agents", "skills", "prompts", "orchestration"],
             before_state={
                 "source_task_id": proposal.get("source_task_id"),
@@ -320,15 +342,19 @@ class ImprovementGovernanceEvidenceMixin:
                 "system_prompt": proposal.get("proposed_system_prompt"),
             },
             rollback_plan={
-                "strategy": "disable or delete the generated custom agent and remove its persona overlay",
+                "strategy": (
+                    "disable or delete the generated custom agent and remove its persona overlay"
+                ),
                 "source_task_id": proposal.get("source_task_id"),
             },
-            evidence=[{
-                "kind": "memento_agent_creation",
-                "project_id": scoped_project_id,
-                "confidence": proposal.get("confidence"),
-                "created_at": proposal.get("created_at"),
-            }],
+            evidence=[
+                {
+                    "kind": "memento_agent_creation",
+                    "project_id": scoped_project_id,
+                    "confidence": proposal.get("confidence"),
+                    "created_at": proposal.get("created_at"),
+                }
+            ],
             confidence=max(0.0, min(1.0, float(proposal.get("confidence", 50)) / 100)),
             created_by="agent-factory",
         )
@@ -351,7 +377,9 @@ class ImprovementGovernanceEvidenceMixin:
             agent_id="skill-manager",
             title=f"Review skill update for {proposal.get('skill_name', 'skill')}",
             summary=str(proposal.get("reason", "")),
-            rationale="Skill evolution proposed a prompt/config mutation from observed quality telemetry.",
+            rationale=(
+                "Skill evolution proposed a prompt/config mutation from observed quality telemetry."
+            ),
             affected_surfaces=["skills", "prompts", "telemetry"],
             before_state={
                 "skill_name": proposal.get("skill_name"),
@@ -369,12 +397,14 @@ class ImprovementGovernanceEvidenceMixin:
                 "field": proposal.get("field"),
                 "old_value": proposal.get("current_value"),
             },
-            evidence=[{
-                "kind": "skill_update_proposal",
-                "project_id": scoped_project_id,
-                "confidence": proposal.get("confidence"),
-                "created_at": proposal.get("created_at"),
-            }],
+            evidence=[
+                {
+                    "kind": "skill_update_proposal",
+                    "project_id": scoped_project_id,
+                    "confidence": proposal.get("confidence"),
+                    "created_at": proposal.get("created_at"),
+                }
+            ],
             confidence=max(0.0, min(1.0, float(proposal.get("confidence", 0.5)))),
             created_by="skill-manager",
         )
@@ -398,7 +428,9 @@ class ImprovementGovernanceEvidenceMixin:
             agent_id=str(proposal.get("source_agent_id", "skill-manager")),
             title=f"Review skill creation for {definition.get('name', 'new skill')}",
             summary=str(proposal.get("reason", "")),
-            rationale="Memento-Skills skill creation proposed a reusable skill from a high-quality trace.",
+            rationale=(
+                "Memento-Skills skill creation proposed a reusable skill from a high-quality trace."
+            ),
             affected_surfaces=["skills", "prompts", "agents"],
             before_state={"source_task_id": proposal.get("source_task_id")},
             proposed_change={"definition": definition},
@@ -406,12 +438,14 @@ class ImprovementGovernanceEvidenceMixin:
                 "strategy": "delete or disable the generated runtime skill definition",
                 "skill_name": definition.get("name"),
             },
-            evidence=[{
-                "kind": "memento_skill_creation",
-                "project_id": scoped_project_id,
-                "confidence": proposal.get("confidence"),
-                "test_result": proposal.get("test_result"),
-            }],
+            evidence=[
+                {
+                    "kind": "memento_skill_creation",
+                    "project_id": scoped_project_id,
+                    "confidence": proposal.get("confidence"),
+                    "test_result": proposal.get("test_result"),
+                }
+            ],
             confidence=max(0.0, min(1.0, float(proposal.get("confidence", 50)) / 100)),
             created_by="skill-manager",
         )

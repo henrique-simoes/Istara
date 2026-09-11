@@ -41,6 +41,7 @@ import { cn, phaseLabel } from "@/lib/utils";
 import type { ReclawDocument, DocumentContent } from "@/lib/types";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import InteractiveSuggestionBox from "@/components/common/InteractiveSuggestionBox";
+import QualitativeCodingText from "@/components/common/QualitativeCodingText";
 
 const PHASES = [
   { id: "", label: "All Phases" },
@@ -193,6 +194,7 @@ export default function DocumentsView() {
     }
     return "compact";
   });
+  const [docViewMode, setDocViewMode] = useState<"coding" | "formatted">("coding");
   const canWrite = canWriteActiveProject();
   const scopedDocuments = activeProjectId
     ? documents.filter((doc) => doc.project_id === activeProjectId)
@@ -993,6 +995,7 @@ function DocumentPreview({
   const atomicPath = doc.atomic_path || {};
   const hasAtomicPath = Object.keys(atomicPath).length > 0;
   const [metaPanelCollapsed, setMetaPanelCollapsed] = useState(false);
+  const [docViewMode, setDocViewMode] = useState<"coding" | "formatted">("coding");
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
@@ -1049,18 +1052,50 @@ function DocumentPreview({
               )}
 
               {content?.content ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       {content.type && [".mp3", ".wav", ".m4a", ".ogg"].includes(content.type) ? "Transcription" : "Document Content"}
                     </h3>
+                    {isMarkdownLike(content.type, content.file_name) && (
+                      <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+                        <button
+                          onClick={() => setDocViewMode("coding")}
+                          className={cn(
+                            "px-2.5 py-1 rounded-md font-medium transition-colors flex items-center gap-1",
+                            docViewMode === "coding"
+                              ? "bg-white dark:bg-slate-700 text-istara-600 dark:text-istara-400 shadow-xs"
+                              : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                          )}
+                        >
+                          <Tag size={12} />
+                          Qualitative Coding Canvas
+                        </button>
+                        <button
+                          onClick={() => setDocViewMode("formatted")}
+                          className={cn(
+                            "px-2.5 py-1 rounded-md font-medium transition-colors flex items-center gap-1",
+                            docViewMode === "formatted"
+                              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
+                              : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                          )}
+                        >
+                          <FileText size={12} />
+                          Formatted Preview
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  {isMarkdownLike(content.type, content.file_name) ? (
+                  {isMarkdownLike(content.type, content.file_name) && docViewMode === "formatted" ? (
                     <MarkdownDocument content={content.content} />
                   ) : (
-                    <pre className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200 font-mono leading-relaxed bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-                      {content.content}
-                    </pre>
+                    <QualitativeCodingText
+                      projectId={doc.project_id || ""}
+                      sourceDocumentId={doc.id}
+                      sourceType="document"
+                      text={content.content}
+                      className="bg-white dark:bg-slate-900 rounded-lg p-3 border border-slate-200 dark:border-slate-700"
+                    />
                   )}
                 </div>
               ) : !content?.media_url ? (

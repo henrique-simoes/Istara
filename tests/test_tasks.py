@@ -1,6 +1,7 @@
 """Tests for Tasks API routes — CRUD, move, attach/detach, lock/unlock."""
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -15,6 +16,7 @@ from app.models.finding import Nugget
 from app.models.project import Project
 from app.models.research_validity import EvidenceUnit, ResearchEvidenceEdge
 from app.models.task import Task, TaskStatus
+from app.models.task_review import TaskReviewEvent
 
 
 @pytest.fixture(autouse=True)
@@ -34,7 +36,9 @@ def auth_headers():
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _seed_project(name: str = "Tasks Test Project", *, is_paused: bool = False) -> Project:
+async def _seed_project(
+    name: str = "Tasks Test Project", *, is_paused: bool = False
+) -> Project:
     project = Project(
         id=str(uuid.uuid4()),
         name=f"{name} {uuid.uuid4()}",
@@ -117,7 +121,12 @@ async def _seed_document(project_id: str, title: str = "Task Document") -> Docum
 
 
 async def _seed_task(project_id: str, title: str = "Seeded Task") -> Task:
-    task = Task(id=str(uuid.uuid4()), project_id=project_id, title=title, status=TaskStatus.BACKLOG)
+    task = Task(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        title=title,
+        status=TaskStatus.BACKLOG,
+    )
     async with async_session() as db:
         db.add(task)
         await db.commit()
@@ -151,7 +160,9 @@ async def test_tasks_list_returns_list(auth_headers):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/tasks?project_id={project.id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/tasks?project_id={project.id}", headers=auth_headers
+        )
         assert response.status_code == 200
         task_ids = {task["id"] for task in response.json()}
         assert task_ids == {project_task.id}
@@ -180,7 +191,9 @@ async def test_task_by_id_routes_require_active_project_binding(auth_headers):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        missing_scope = await ac.get(f"/api/tasks/{other_task.id}", headers=auth_headers)
+        missing_scope = await ac.get(
+            f"/api/tasks/{other_task.id}", headers=auth_headers
+        )
         stale_read = await ac.get(
             f"/api/tasks/{other_task.id}?project_id={active_project.id}",
             headers=auth_headers,
@@ -248,9 +261,73 @@ async def test_agent_task_picker_skips_paused_project_tasks():
 
 
 @pytest.mark.asyncio
+async def test_quick_create_edit_lock_is_atomic_and_blocks_worker_claim(auth_headers):
+    """A task created for immediate editing cannot run before the editor saves it."""
+    from app.core.agent import AgentOrchestrator
+
+    await init_db()
+    settings.team_mode = True
+    project = await _seed_project("Atomic Quick Create")
+    agent_id = f"edit-lock-agent-{uuid.uuid4()}"
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/tasks",
+            headers=auth_headers,
+            json={
+                "project_id": project.id,
+                "title": "Configure me before execution",
+                "agent_id": agent_id,
+                "lock_for_edit": True,
+            },
+        )
+
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["locked_by"] == "user1"
+    lock_expiry = datetime.fromisoformat(payload["lock_expires_at"])
+    if lock_expiry.tzinfo is None:
+        lock_expiry = lock_expiry.replace(tzinfo=timezone.utc)
+    assert lock_expiry > datetime.now(timezone.utc)
+
+    orchestrator = AgentOrchestrator(agent_id=agent_id)
+    async with async_session() as db:
+        assert await orchestrator._pick_next_task(db) is None
+
+
+@pytest.mark.asyncio
+async def test_main_agent_fallback_skips_active_user_edit_lock():
+    """The unassigned-task fallback must honor the same editing lock as assigned work."""
+    from app.core.agent import AgentOrchestrator
+
+    await init_db()
+    project = await _seed_project("Locked Main Fallback")
+    locked_task = Task(
+        id=str(uuid.uuid4()),
+        project_id=project.id,
+        title="Do not claim while editing",
+        status=TaskStatus.BACKLOG,
+        agent_id=None,
+        priority="critical",
+        position=-1,
+        locked_by="user1",
+        locked_at=datetime.now(timezone.utc),
+        lock_expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+    )
+    async with async_session() as db:
+        db.add(locked_task)
+        await db.commit()
+
+        picked = await AgentOrchestrator(agent_id="istara-main")._pick_next_task(db)
+
+    assert picked is None or picked.id != locked_task.id
+
+
+@pytest.mark.asyncio
 async def test_agent_execute_task_defers_when_project_paused():
     """The execution path itself also guards against races after a project is paused."""
     from app.core.agent import AgentOrchestrator
+    from app.api.websocket import manager as websocket_manager
 
     await init_db()
     project = await _seed_project("Paused Direct Execution", is_paused=True)
@@ -261,6 +338,7 @@ async def test_agent_execute_task_defers_when_project_paused():
         db_task = await db.get(Task, task.id)
         db_project = await db.get(Project, project.id)
         await orchestrator._execute_task(db, db_task, db_project)
+        await websocket_manager.drain_notification_tasks()
         await db.refresh(db_task)
 
         assert db_task.status == TaskStatus.BACKLOG
@@ -351,7 +429,9 @@ async def test_human_approval_moves_review_task_to_done(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_task_review_side_effects_observe_committed_task(auth_headers, monkeypatch):
+async def test_task_review_side_effects_observe_committed_task(
+    auth_headers, monkeypatch
+):
     """Review side effects must run after commit so separate DB sessions never self-lock."""
     await init_db()
     project = await _seed_project("Review Side Effects")
@@ -360,9 +440,13 @@ async def test_task_review_side_effects_observe_committed_task(auth_headers, mon
     async def fake_side_effects(event, score=None):
         async with async_session() as db:
             task = await db.get(Task, event.task_id)
-            observed.append({"status": task.status.value, "review_state": task.review_state})
+            observed.append(
+                {"status": task.status.value, "review_state": task.review_state}
+            )
 
-    monkeypatch.setattr("app.core.task_review.record_review_side_effects", fake_side_effects)
+    monkeypatch.setattr(
+        "app.core.task_review.record_review_side_effects", fake_side_effects
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -372,7 +456,10 @@ async def test_task_review_side_effects_observe_committed_task(auth_headers, mon
             json={"project_id": project.id, "title": "Approve with side effects"},
         )
         task_id = created.json()["id"]
-        await ac.post(f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}", headers=auth_headers)
+        await ac.post(
+            f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}",
+            headers=auth_headers,
+        )
 
         approved = await ac.post(
             f"/api/tasks/{task_id}/review/approve?project_id={project.id}",
@@ -420,7 +507,10 @@ async def test_task_approval_blocks_uncoded_reportable_findings(auth_headers):
         blocked = await ac.post(
             f"/api/tasks/{task_id}/review/approve?project_id={project.id}",
             headers=auth_headers,
-            json={"reviewed_by": "tester", "note": "Trying to approve uncoded evidence."},
+            json={
+                "reviewed_by": "tester",
+                "note": "Trying to approve uncoded evidence.",
+            },
         )
         assert blocked.status_code == 409
         assert "no coded evidence applications" in blocked.json()["detail"]
@@ -452,7 +542,9 @@ async def test_task_approval_blocks_uncoded_reportable_findings(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance(auth_headers):
+async def test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance(
+    auth_headers,
+):
     """One accepted code application must not make every task finding reportable."""
     await init_db()
     project = await _seed_project("Item Level Report Gate")
@@ -526,7 +618,9 @@ async def test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance(aut
 
 
 @pytest.mark.asyncio
-async def test_task_report_gate_blocks_done_task_without_accepted_evidence(auth_headers):
+async def test_task_report_gate_blocks_done_task_without_accepted_evidence(
+    auth_headers,
+):
     """A Done task with only notes cannot become report content."""
     await init_db()
     project = await _seed_project("Empty Report Gate")
@@ -615,8 +709,15 @@ async def test_done_task_revision_returns_to_backlog_with_feedback(auth_headers)
             json={"project_id": project.id, "title": "Reopen wrong work"},
         )
         task_id = created.json()["id"]
-        await ac.post(f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}", headers=auth_headers)
-        await ac.post(f"/api/tasks/{task_id}/review/approve?project_id={project.id}", headers=auth_headers, json={})
+        await ac.post(
+            f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}",
+            headers=auth_headers,
+        )
+        await ac.post(
+            f"/api/tasks/{task_id}/review/approve?project_id={project.id}",
+            headers=auth_headers,
+            json={},
+        )
 
         revised = await ac.post(
             f"/api/tasks/{task_id}/review/request-revision?project_id={project.id}",
@@ -643,6 +744,71 @@ async def test_done_task_revision_returns_to_backlog_with_feedback(auth_headers)
 
 
 @pytest.mark.asyncio
+async def test_machine_failure_preserves_human_revision_instruction(auth_headers):
+    """A later machine failure must not replace the researcher's revision instruction."""
+    await init_db()
+    project = await _seed_project("Review History Preservation")
+    human_instruction = (
+        "Preserve the pricing quotes and rerun the synthesis with source spans."
+    )
+    machine_reason = "Agent execution failed after the provider timed out."
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/tasks",
+            headers=auth_headers,
+            json={"project_id": project.id, "title": "Preserve revision history"},
+        )
+        task_id = created.json()["id"]
+        await ac.post(
+            f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}",
+            headers=auth_headers,
+        )
+        revised = await ac.post(
+            f"/api/tasks/{task_id}/review/request-revision?project_id={project.id}",
+            headers=auth_headers,
+            json={"what_to_review": human_instruction, "next_status": "backlog"},
+        )
+        assert revised.status_code == 200
+
+    async with async_session() as db:
+        task = await db.get(Task, task_id)
+        assert task is not None
+        from app.core.task_review import SYSTEM_FAILED, record_task_review_event
+
+        event = await record_task_review_event(
+            db,
+            task,
+            outcome=SYSTEM_FAILED,
+            next_status=TaskStatus.IN_REVIEW,
+            next_review_state=SYSTEM_FAILED,
+            what_to_review=machine_reason,
+            created_by="test-agent",
+            failure_category="agent_execution_failure",
+            severity="major",
+            quality_score=0.1,
+        )
+        await db.commit()
+        await db.refresh(task)
+
+        events = (
+            (
+                await db.execute(
+                    select(TaskReviewEvent).where(TaskReviewEvent.task_id == task_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    assert task.what_to_review == human_instruction
+    assert task.last_review_feedback == machine_reason
+    assert event.what_to_review == machine_reason
+    assert {row.what_to_review for row in events} == {human_instruction, machine_reason}
+
+
+@pytest.mark.asyncio
 async def test_revision_cannot_send_task_back_to_review(auth_headers):
     """Rejected work must return to backlog or in progress, not In Review."""
     await init_db()
@@ -655,7 +821,10 @@ async def test_revision_cannot_send_task_back_to_review(auth_headers):
             json={"project_id": project.id, "title": "Invalid revision target"},
         )
         task_id = created.json()["id"]
-        await ac.post(f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}", headers=auth_headers)
+        await ac.post(
+            f"/api/tasks/{task_id}/move?status=in_review&project_id={project.id}",
+            headers=auth_headers,
+        )
         response = await ac.post(
             f"/api/tasks/{task_id}/review/request-revision?project_id={project.id}",
             headers=auth_headers,

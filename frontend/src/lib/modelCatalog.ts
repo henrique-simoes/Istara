@@ -1,0 +1,442 @@
+export interface MergedModelCatalogEntry {
+  name: string;
+  engine: "legacy" | "pi";
+  switchable: boolean;
+  provider_type?: string;
+  server_name?: string;
+  endpoint_id?: string;
+  size?: number;
+  [key: string]: unknown;
+}
+
+import type {
+  PiCatalogModel,
+  PiCatalogProvider,
+  PiEndpointInfo,
+} from "./types";
+
+/** Normalize a provider identity across underscore/dash/case spellings. */
+export function normalizeProviderId(value: string | null | undefined): string {
+  return (value || "").trim().toLowerCase().replace(/_/g, "-");
+}
+
+/**
+ * A chat-picker row. `configured` marks rows backed by a Settings Pi endpoint
+ * so the UI can highlight what the user already set up; `model` stays null for
+ * configured endpoints whose model id is absent from the shipped catalog.
+ */
+export interface ChatModelChoice {
+  key: string;
+  provider: PiCatalogProvider | null;
+  model: PiCatalogModel | null;
+  modelId: string;
+  endpointId?: string;
+  label: string;
+  providerLabel: string;
+  enabled: boolean;
+  configured: boolean;
+}
+
+function endpointMatchesProvider(
+  endpoint: Pick<PiEndpointInfo, "pi_provider" | "auth_provider" | "provider_kind">,
+  providerId: string,
+): boolean {
+  const target = normalizeProviderId(providerId);
+  if (!target) return false;
+  return [endpoint.pi_provider, endpoint.auth_provider, endpoint.provider_kind].some(
+    (candidate) => candidate != null && normalizeProviderId(candidate) === target,
+  );
+}
+
+/**
+ * Build the chat model picker rows: every catalog model (ready ones enabled),
+ * plus every credential-ready configured endpoint whose model id is absent from
+ * the catalog as a standalone enabled row. Ready rows sort first so what the
+ * user set up in Settings is highlighted at the top.
+ */
+export function buildChatModelChoices(args: {
+  providers: PiCatalogProvider[];
+  configured: PiEndpointInfo[];
+  legacyModels: string[];
+  engine: "pi" | "legacy";
+  modelOverride?: string | null;
+  endpointOverride?: string | null;
+}): ChatModelChoice[] {
+  const { providers, configured, legacyModels, engine, modelOverride, endpointOverride } = args;
+  const result: ChatModelChoice[] = [];
+  for (const provider of providers) {
+    for (const model of provider.models) {
+      const endpoint = configured.find(
+        (candidate) => candidate.model === model.id && endpointMatchesProvider(candidate, provider.id),
+      );
+      const ready = endpoint != null && isPiEndpointReady(endpoint);
+      result.push({
+        key: `${provider.id}:${model.id}`,
+        provider,
+        model,
+        modelId: model.id,
+        endpointId: endpoint?.endpoint_id,
+        label: model.name || model.id,
+        providerLabel: provider.display_name,
+        enabled: ready,
+        configured: ready,
+      });
+    }
+  }
+  // Configured endpoints with no catalog row stay selectable instead of
+  // vanishing: custom/local model ids are never in the shipped catalog.
+  for (const endpoint of configured) {
+    if (!isPiEndpointReady(endpoint)) continue;
+    const covered = result.some(
+      (choice) => choice.enabled && choice.endpointId === endpoint.endpoint_id,
+    );
+    if (covered) continue;
+    const providerLabel =
+      providers.find((p) => endpointMatchesProvider(endpoint, p.id))?.display_name ||
+      endpoint.pi_provider ||
+      endpoint.provider_kind ||
+      "Configured endpoint";
+    result.push({
+      key: `configured:${endpoint.endpoint_id}`,
+      provider: null,
+      model: null,
+      modelId: endpoint.model,
+      endpointId: endpoint.endpoint_id,
+      label: endpoint.model,
+      providerLabel,
+      enabled: true,
+      configured: true,
+    });
+  }
+  const legacyChoices: ChatModelChoice[] = engine === "legacy"
+    ? legacyModels.map((modelId) => ({
+        key: `legacy:${modelId}`,
+        provider: null,
+        model: null,
+        modelId,
+        label: modelId,
+        providerLabel: "Istara local/server",
+        enabled: true,
+        configured: false,
+      }))
+    : [];
+  // Legacy engine keeps the Istara transport rows first (parity), but ready
+  // Pi rows — matched or standalone — always precede disabled catalog rows so
+  // everything configured in Settings stays visible while browsing.
+  const enabledPi = result.filter((c) => c.enabled);
+  const disabledPi = result.filter((c) => !c.enabled);
+  const ordered =
+    engine === "legacy"
+      ? [...legacyChoices, ...enabledPi, ...disabledPi]
+      : [...enabledPi, ...disabledPi];
+  const overrideReady =
+    engine === "legacy" || isPiSessionOverrideReady(configured, modelOverride, endpointOverride);
+  if (
+    modelOverride &&
+    overrideReady &&
+    !ordered.some(
+      (c) =>
+        c.modelId === modelOverride &&
+        (!endpointOverride || c.endpointId === endpointOverride),
+    )
+  ) {
+    ordered.unshift({
+      key: `current:${modelOverride}`,
+      provider: null,
+      model: null,
+      endpointId: endpointOverride || undefined,
+      modelId: modelOverride,
+      label: modelOverride,
+      providerLabel: "Current session model",
+      enabled: true,
+      configured: false,
+    });
+  }
+  return ordered;
+}
+
+/** Resolve the selected row: session override, then default, then first enabled. */
+export function resolveChatModelChoice(
+  choices: ChatModelChoice[],
+  args: {
+    configured: PiEndpointInfo[];
+    engine: "pi" | "legacy";
+    modelOverride?: string | null;
+    endpointOverride?: string | null;
+    defaultEndpointId?: string | null;
+  },
+): ChatModelChoice | null {
+  const { configured, engine, modelOverride, endpointOverride, defaultEndpointId } = args;
+  const overrideReady =
+    engine === "legacy" || isPiSessionOverrideReady(configured, modelOverride, endpointOverride);
+  if (overrideReady) {
+    const selected =
+      (endpointOverride ? choices.find((c) => c.endpointId === endpointOverride) : undefined) ||
+      choices.find((c) => c.modelId === modelOverride);
+    if (selected) return selected;
+  }
+  if (defaultEndpointId) {
+    const preferred = choices.find((c) => c.endpointId === defaultEndpointId && c.enabled);
+    if (preferred) return preferred;
+  }
+  return choices.find((c) => c.enabled) || null;
+}
+
+/**
+ * Evidence-backed, provisional comparative summary for the engine selector.
+ *
+ * The summary text is grounded in the accepted Pi-vs-Istara benchmark bundle
+ * (``comparison-Istara-pi/reports/20260801T010602Z/scorecard.json``, verdict
+ * ``no_significant_difference``: no judged axis reaches significance at 95%
+ * CI). It stays PROVISIONAL — comparative model prose is never treated as
+ * accepted research evidence (Research Spine contract) — and always carries
+ * its provenance so readers can verify the claim at the source.
+ */
+export interface EngineComparativeSummary {
+  engine: "pi" | "legacy";
+  /** Short headline for the option. */
+  title: string;
+  /** Concise, evidence-backed summary shown in the selector. */
+  summary: string;
+  /** Evidence provenance: repo-relative artifacts that back the summary. */
+  provenance: string[];
+  /** Benchmark bundle timestamp the summary is grounded in. */
+  asOf: string;
+  /** Always true for selector summaries: never presented as accepted evidence. */
+  provisional: boolean;
+  shortDescription: string;
+  bestFor: string;
+  benchmarkRows: Array<{ label: string; value: string }>;
+}
+
+const ENGINE_BENCHMARK_BUNDLE = "comparison-Istara-pi/reports/20260801T010602Z/scorecard.json";
+
+/**
+ * Provisional 150-turn long-horizon slice (readiness5 Wave W4, 2026-09-11).
+ * Same model both engines (pi-zai-glm, served glm-5.3-flash, requested==served
+ * 302/302) over the 150-turn Double Diamond trajectory with 32 steerings.
+ * Reliability parity held (151/151 recorded turns success, 0 tool errors on
+ * both); the rows below are neutral per-engine medians, never a verdict.
+ */
+const ENGINE_LONG_HORIZON_SLICE = "docs/build-stream/w4-long-horizon-telemetry-20260911.json";
+
+/**
+ * One shared, canonical embedding identity for both engines. The selector
+ * must never offer a per-engine embedding model: switching engines cannot
+ * change the vector space (W8 invariant), so the UI surfaces this identity as
+ * safe metadata (model name only — never an endpoint, URL, or key).
+ */
+export const SHARED_EMBEDDING_IDENTITY_LABEL =
+  "Both engines embed with the same configured model; switching engines never changes the embedding space.";
+
+export const ENGINE_COMPARATIVE_SUMMARIES: EngineComparativeSummary[] = [
+  {
+    engine: "pi",
+    title: "Pi",
+    summary:
+      "Standalone agent runtime (pi-agent-core worker) with versioned wire protocol, provider catalog, and forced structured-output tool calls. In the accepted benchmark bundle no judged axis reaches significance at 95% CI: tool calling 0.81 vs 0.83, output quality 6.75 vs 6.64, research-spine 1.00 vs 0.81, skills/A2A tied at 1.00. 150-turn long-horizon slice (2026-09-11, glm-5.3-flash, 151 recorded turns): parity on reliability — 151/151 success with 0 tool errors and 32/32 steering — with a per-turn median of 18.7 s, 30 tool calls across 9 tools, and $0.31 metered cost.",
+    provenance: [ENGINE_BENCHMARK_BUNDLE, "docs/features/content/chat/model-controls/architecture.md", ENGINE_LONG_HORIZON_SLICE],
+    asOf: "2026-08-01",
+    provisional: true,
+    shortDescription: "A standalone, versioned agent runtime with a broad provider catalog and structured tool execution.",
+    bestFor: "Cloud providers, exact model/effort controls, and governed tool workflows.",
+    benchmarkRows: [
+      { label: "Tool calling", value: "0.81" },
+      { label: "Output quality", value: "6.75 / 10" },
+      { label: "Research-spine", value: "1.00" },
+      { label: "Skills / A2A", value: "1.00" },
+      { label: "150-turn median (2026-09-11)", value: "18.7 s" },
+      { label: "150-turn success (2026-09-11)", value: "151/151" },
+      { label: "150-turn cost (2026-09-11)", value: "$0.31 metered" },
+      { label: "150-turn tools (2026-09-11)", value: "30 calls · 9 tools" },
+    ],
+  },
+  {
+    engine: "legacy",
+    title: "Istara",
+    summary:
+      "In-process Istara executor over the shared Pi Model Management catalog; it preserves local and donated-compute loop semantics while provider/model selection and route identity stay governed in one plane. In the accepted benchmark bundle no judged axis reaches significance at 95% CI: tool calling 0.83 vs 0.81, output quality 6.64 vs 6.75, research-spine 0.81 vs 1.00, skills/A2A tied at 1.00. 150-turn long-horizon slice (2026-09-11, glm-5.3-flash, 151 recorded turns): parity on reliability — 151/151 success with 0 tool errors and 32/32 steering — with a per-turn median of 21.3 s, 43 tool calls across 13 tools (codebook, survey, and report tools exercised), and unmetered cost.",
+    provenance: [ENGINE_BENCHMARK_BUNDLE, "docs/features/content/chat/model-controls/architecture.md", ENGINE_LONG_HORIZON_SLICE],
+    asOf: "2026-08-01",
+    provisional: true,
+    shortDescription: "Istara's in-process executor with local and donated compute routed through the shared Pi Model Management catalog.",
+    bestFor: "Local models, donated compute, and workflows already attached to the governed catalog.",
+    benchmarkRows: [
+      { label: "Tool calling", value: "0.83" },
+      { label: "Output quality", value: "6.64 / 10" },
+      { label: "Research-spine", value: "0.81" },
+      { label: "Skills / A2A", value: "1.00" },
+      { label: "150-turn median (2026-09-11)", value: "21.3 s" },
+      { label: "150-turn success (2026-09-11)", value: "151/151" },
+      { label: "150-turn cost (2026-09-11)", value: "unmetered" },
+      { label: "150-turn tools (2026-09-11)", value: "43 calls · 13 tools" },
+    ],
+  },
+];
+
+/** Canonical engine option ids for the selector (values the backend accepts). */
+export const ENGINE_SELECTOR_OPTIONS = ["pi", "legacy"] as const;
+
+/**
+ * Pi endpoints are chat-selectable only after the backend has resolved their
+ * non-secret credential state. Missing/unknown status stays fail-closed so an
+ * older or partial response can never make an unverified endpoint look ready.
+ */
+export function isPiEndpointReady(endpoint: { credential_status?: string }): boolean {
+  return endpoint.credential_status === "ready";
+}
+
+/**
+ * A persisted chat-session override is usable only when the backend still
+ * resolves the exact endpoint/model pair as credential-ready. This prevents a
+ * stale session from turning a disabled catalog row back into a selectable
+ * model after credentials are removed or an endpoint disappears.
+ */
+export function isPiSessionOverrideReady(
+  configured: Array<{
+    endpoint_id?: string;
+    model?: string;
+    credential_status?: string;
+  }>,
+  modelOverride?: string | null,
+  endpointOverride?: string | null,
+): boolean {
+  if (!modelOverride) return false;
+  return configured.some((endpoint) =>
+    endpoint.model === modelOverride
+    && (!endpointOverride || endpoint.endpoint_id === endpointOverride)
+    && isPiEndpointReady(endpoint)
+  );
+}
+
+/** Settings status must preserve the difference between transport and chat readiness. */
+export function settingsLlmReadiness(
+  readiness?: { reachable?: boolean; chat_ready?: boolean } | null,
+): "disconnected" | "not_ready" | "ready" {
+  if (!readiness?.reachable) return "disconnected";
+  return readiness.chat_ready ? "ready" : "not_ready";
+}
+
+/**
+ * The legacy/Istara chat plane is sendable only after the backend has
+ * positively confirmed a ready transport. Pi performs its own credential and
+ * endpoint checks at dispatch time, so the catalog must not disable Pi sends
+ * based on the legacy readiness cache.
+ */
+export function isChatSendReady(
+  engine: "pi" | "legacy",
+  chatReady?: boolean | null,
+): boolean {
+  return engine === "pi" || chatReady === true;
+}
+
+/**
+ * Return only the model that is authoritative for the selected agentic engine.
+ * A local transport model is not a Pi default and must never fill an empty Pi
+ * provider selection in Settings.
+ */
+export function settingsDefaultChatModel(
+  models?: {
+    agentic_engine_default?: string | null;
+    default_model?: string | null;
+    active_model?: string | null;
+  } | null,
+  systemStatus?: {
+    agentic_engine_default?: string | null;
+    llm_readiness?: { reachable?: boolean; chat_ready?: boolean } | null;
+  } | null,
+): string | null {
+  const engine = models?.agentic_engine_default || systemStatus?.agentic_engine_default;
+  const model = engine === "pi"
+    ? models?.default_model
+    : systemStatus?.llm_readiness?.chat_ready
+      ? models?.active_model
+      : null;
+  return typeof model === "string" && model.trim() ? model.trim() : null;
+}
+
+/**
+ * Present both routing planes in the existing Settings model inventory.
+ * Every entry is identity-only: Pi Model Management is the sole write
+ * authority, so this compatibility inventory never advertises the retired
+ * classical provider/model switch endpoint.
+ */
+export function mergeModelCatalogs(
+  legacyModels: unknown[] | null | undefined,
+  piCatalog: unknown[] | null | undefined,
+): MergedModelCatalogEntry[] {
+  const merged: MergedModelCatalogEntry[] = [];
+  const seenLegacy = new Set<string>();
+  const seenPi = new Set<string>();
+
+  for (const raw of legacyModels || []) {
+    if (!raw || typeof raw !== "object") continue;
+    const model = raw as Record<string, unknown>;
+    const name = String(model.name || model.model || "").trim();
+    if (!name) continue;
+    const key = `${name}\u0000${String(model.server_name || model.provider_type || "")}`;
+    if (seenLegacy.has(key)) continue;
+    seenLegacy.add(key);
+    merged.push({ ...model, name, engine: "legacy", switchable: false });
+  }
+
+  for (const raw of piCatalog || []) {
+    if (!raw || typeof raw !== "object") continue;
+    const model = raw as Record<string, unknown>;
+    const name = String(model.model || model.name || "").trim();
+    const endpointId = String(model.endpoint_id || "").trim();
+    if (!name || !endpointId || seenPi.has(endpointId)) continue;
+    seenPi.add(endpointId);
+    merged.push({
+      ...model,
+      name,
+      endpoint_id: endpointId,
+      provider_type: String(model.provider_kind || model.provider_type || ""),
+      server_name: endpointId,
+      engine: "pi",
+      switchable: false,
+    });
+  }
+
+  return merged;
+}
+
+/**
+ * Accessible list state for the chat model picker's listbox body.
+ *
+ * Remediation W1.2 (blocker B4): ChatView used to swallow a catalog load
+ * failure into an empty catalog, making "broken" and "empty" indistinguishable.
+ * This pure mapping keeps the three states apart so the picker can render an
+ * explicit, screen-reader-announced error instead of a false "no matches".
+ */
+export type CatalogListState =
+  | { kind: "error"; message: string; announce: true }
+  | { kind: "no-match"; message: string; announce: false }
+  | { kind: "empty-catalog"; message: string; announce: false }
+  | { kind: "options"; message: null; announce: false };
+
+export function resolveCatalogListState(args: {
+  catalogError: boolean;
+  query: string;
+  matchCount: number;
+}): CatalogListState {
+  const { catalogError, query, matchCount } = args;
+  if (catalogError) {
+    return {
+      kind: "error",
+      message: "Model catalog failed to load. Check Settings → Pi Endpoints, then reopen the menu.",
+      announce: true,
+    };
+  }
+  if (matchCount === 0 && query.trim()) {
+    return { kind: "no-match", message: "No models match that search.", announce: false };
+  }
+  if (matchCount === 0) {
+    return {
+      kind: "empty-catalog",
+      message: "No models are configured yet. Add an endpoint in Settings.",
+      announce: false,
+    };
+  }
+  return { kind: "options", message: null, announce: false };
+}

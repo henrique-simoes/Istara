@@ -37,6 +37,10 @@ import { AgentAvatar, HeartbeatDot } from "./AgentVisuals";
 import { ALL_CAPABILITIES, ROLE_COLORS, ROLE_LABELS, STATE_COLORS } from "./agentViewConfig";
 import CreateAgentWizard from "./CreateAgentWizard";
 
+export function formatAgentOnboardingDescription(systemAgentCount: number): string {
+  return `${systemAgentCount} system agents handle research tasks, audits, and evaluations. Create custom agents for specialized work. Agents learn and evolve.`;
+}
+
 // ─── Recent Errors ───
 
 function RecentErrors({ agentId }: { agentId: string }) {
@@ -622,7 +626,7 @@ export default function AgentsView() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <ViewOnboarding viewId="agents" title="AI Research Agents" description="5 system agents handle research tasks, audits, and evaluations. Create custom agents for specialized work. Agents learn and evolve." chatPrompt="What do the agents do?" />
+      <ViewOnboarding viewId="agents" title="AI Research Agents" description={formatAgentOnboardingDescription(systemAgents.length)} chatPrompt="What do the agents do?" />
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">

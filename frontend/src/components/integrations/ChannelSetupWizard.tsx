@@ -25,17 +25,22 @@ type CredentialField = {
 };
 
 const CREDENTIAL_FIELDS: Record<string, CredentialField[]> = {
-  telegram: [{ key: "bot_token", label: "Bot Token", placeholder: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11", type: "password", required: true }],
+  telegram: [
+    { key: "bot_token", label: "Bot Token", placeholder: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11", type: "password", required: true },
+    { key: "api_base", label: "API Base URL (optional)", placeholder: "https://api.telegram.org/bot (or local test server)", type: "text" },
+  ],
   slack: [
     { key: "bot_token", label: "Bot Token", placeholder: "xoxb-...", type: "password", required: true },
     { key: "signing_secret", label: "Signing Secret", placeholder: "Slack signing secret", type: "password", required: true },
     { key: "app_token", label: "App Token", placeholder: "xapp-... (optional Socket Mode)", type: "password" },
+    { key: "api_base", label: "API Base URL (optional)", placeholder: "https://slack.com/api/ (or local test server)", type: "text" },
   ],
   whatsapp: [
     { key: "phone_number_id", label: "Phone Number ID", placeholder: "Your phone number ID", type: "text", required: true },
     { key: "access_token", label: "Access Token", placeholder: "WhatsApp Business API token", type: "password", required: true },
     { key: "verify_token", label: "Verify Token", placeholder: "Webhook verification token", type: "password", required: true },
     { key: "app_secret", label: "App Secret", placeholder: "Meta app secret for webhook signatures", type: "password", required: true },
+    { key: "api_base", label: "API Base URL (optional)", placeholder: "https://graph.facebook.com/v22.0 (or local test server)", type: "text" },
   ],
   google_chat: [
     { key: "webhook_url", label: "Webhook URL", placeholder: "https://chat.googleapis.com/v1/spaces/...", type: "text", required: true },

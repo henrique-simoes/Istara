@@ -3,13 +3,13 @@ stable_id: documents.suggestions
 title: Document Suggestions
 ui_path: Documents > Suggestions
 audience: researcher
-status: needs-verification
+status: verified
 related_features: ["documents.preview", "chat.overview"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/InteractiveSuggestionBox.tsx", "frontend/src/components/documents/DocumentsView.tsx"]
-api_references: ["backend/app/api/routes/documents.py"]
-test_references: []
-last_verified: 2026-05-15
+code_references: ["frontend/src/components/common/InteractiveSuggestionBox.tsx", "frontend/src/components/documents/DocumentsView.tsx", "frontend/src/lib/suggestionStream.ts"]
+api_references: ["backend/app/api/routes/sessions.py", "backend/app/api/routes/chat.py"]
+test_references: ["frontend/src/lib/suggestionStream.test.ts"]
+last_verified: 2026-08-31
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -33,7 +33,10 @@ Document Suggestions exists so the work represented by Documents > Suggestions h
 
 - Open Documents > Suggestions from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with document suggestions in the active project context.
-- Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- Review the provisional output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- Use Stop to cancel an active suggestion request. If no chat-ready model is
+  configured, the panel shows the server's Settings guidance instead of
+  remaining blank.
 
 ## Supported Workflows
 
@@ -48,8 +51,14 @@ Document Suggestions exists so the work represented by Documents > Suggestions h
 
 ## Caveats
 
-- Needs interactive verification for exact empty, loading, error, and permission-denied states.
-- Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
+- Organization suggestions do not rename or move files. They are provisional
+  chat guidance and are not accepted Research Spine evidence.
+- A project-scoped suggestion session can still be opened in Chat after it is
+  created. A model-readiness error must be resolved in Settings before a useful
+  answer can be generated.
+- Loading, unavailable-model error, and cancellation behavior were verified on
+  the published QA surface; permission-denied behavior remains contract-tested
+  elsewhere rather than exercised with a second live role in this walkthrough.
 
 ## Related Features
 
@@ -63,5 +72,5 @@ Document Suggestions exists so the work represented by Documents > Suggestions h
 ## Evidence
 
 - Source files: `frontend/src/components/common/InteractiveSuggestionBox.tsx`, `frontend/src/components/documents/DocumentsView.tsx`
-- API references: `backend/app/api/routes/documents.py`
-- Tests: none recorded
+- API references: `backend/app/api/routes/sessions.py`, `backend/app/api/routes/chat.py`
+- Tests: `frontend/src/lib/suggestionStream.test.ts`

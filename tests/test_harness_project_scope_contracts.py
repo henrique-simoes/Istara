@@ -48,7 +48,9 @@ def test_simulation_harness_does_not_fall_back_to_fake_or_first_project_ids() ->
     assert offenders == []
 
 
-def test_simulation_harness_by_id_task_agent_document_calls_are_project_scoped() -> None:
+def test_simulation_harness_by_id_task_agent_document_calls_are_project_scoped() -> (
+    None
+):
     unscoped_call = re.compile(
         r"(?:api\.(?:get|patch|delete|put|post)\(`|fetch\(`http://localhost:8000)"
         r"(?P<path>/api/(?:tasks|agents|documents)/[^`\"?]+)`"

@@ -49,6 +49,7 @@ Agent Loops exists so the work represented by Loops > Agent Loops has a stable, 
 ## Caveats
 
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
+- Universal system agents may remain visible in the Agents registry, but Agent Loops only renders project-scoped loop configurations. If the active project has no configured loops, the tab explains that system agents are managed outside the project instead of showing non-functional pause, resume, or interval controls.
 - Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
 
 ## Related Features

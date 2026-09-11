@@ -12,6 +12,7 @@ from app.core.auth import create_token
 def reset_rate_limiter():
     """Clear the in-memory login attempts between tests."""
     from app.api.routes.auth import _login_limiter
+
     _login_limiter.clear()
     yield
     _login_limiter.clear()
@@ -32,6 +33,7 @@ async def test_login_rate_limiter_function():
 
     # 6th attempt should raise
     from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc_info:
         await _check_login_rate(mock_request)
     assert exc_info.value.status_code == 429

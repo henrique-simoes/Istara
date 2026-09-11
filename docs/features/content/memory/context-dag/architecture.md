@@ -8,7 +8,7 @@ related_features: ["context.editor", "memory.knowledge", "chat.sessions"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/memory/MemoryView.tsx", "frontend/src/components/memory/ContextDAGView.tsx", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/contextDagApi.ts", "backend/app/api/routes/context_dag.py", "backend/app/core/context_dag.py"]
 api_references: ["backend/app/api/routes/context_dag.py"]
-test_references: ["tests/test_context_dag.py", "tests/test_project_scope_contracts.py"]
+test_references: ["tests/test_context_dag.py", "tests/test_context_dag_ui_contracts.py", "tests/test_project_scope_contracts.py"]
 last_verified: 2026-05-19
 compass: CF-SPEC-60 / CF-761
 ---
@@ -43,7 +43,9 @@ The Context DAG tab visualizes or inspects relationships across project context 
 - The feature is mounted through `frontend/src/components/memory/MemoryView.tsx` and the UI navigation path recorded in the inventory.
 - `ContextDAGView` derives `scopedSessions` from the active project before rendering the session selector and derives `scopedActiveSessionId` before calling context DAG structure, health, expand, grep, or compact APIs.
 - `backend/app/api/routes/context_dag.py` requires `project_id` on session-by-id routes and loads the session by both `session_id` and `project_id` before returning structure, health, expansion, search, node metadata, or compaction output.
+- Chat-triggered compaction is owned by a per-session task registry. Duplicate schedules reuse the active task, unexpected failures are logged, and application shutdown drains current-loop work while cancelling stale cross-loop tasks before the database engine closes.
 - When no active project session is selected, the DAG stays in the empty selection state instead of rendering or querying a session from another project.
+- History Search renders its result count with an explicit separator before the query label, including the zero-result state.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -54,6 +56,7 @@ The Context DAG tab visualizes or inspects relationships across project context 
 ## Tests And Verification
 
 - `tests/test_context_dag.py`
+- `tests/test_context_dag_ui_contracts.py`
 - `tests/test_project_scope_contracts.py`
 
 ## Related Features

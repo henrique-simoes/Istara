@@ -497,6 +497,7 @@ async def detect_capabilities_generic(
         return {}
 
     import httpx
+
     from app.config import settings
 
     result: dict[str, ModelCapability] = {}

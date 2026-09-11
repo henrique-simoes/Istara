@@ -10,7 +10,7 @@ Reports are NOT created per skill execution. They are created per study scope
 and progressively refined as analyses complete.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -64,13 +64,15 @@ class ProjectReport(Base):
 
     mece_categories_json: Mapped[str] = mapped_column(Text, default="[]")
     triangulation_matrix_json: Mapped[str] = mapped_column(Text, default="{}")
+    slide_instructions: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     def to_dict(self) -> dict:
@@ -78,14 +80,19 @@ class ProjectReport(Base):
         mece_categories = _json_list(self.mece_categories_json)
         content = _json_dict(self.content_json)
         return {
-            "id": self.id, "project_id": self.project_id,
-            "title": self.title, "layer": self.layer,
-            "report_type": self.report_type, "scope": self.scope,
+            "id": self.id,
+            "project_id": self.project_id,
+            "title": self.title,
+            "layer": self.layer,
+            "report_type": self.report_type,
+            "scope": self.scope,
             "executive_summary": self.executive_summary,
             "content": content,
-            "status": self.status, "version": self.version,
+            "status": self.status,
+            "version": self.version,
             "finding_count": len(finding_ids),
             "mece_categories": mece_categories,
+            "slide_instructions": self.slide_instructions,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

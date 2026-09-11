@@ -32,7 +32,16 @@ from app.core.validation_executor import ValidationExecutor, ValidationResult
 from app.core.report_manager import ReportManager, SCOPE_MAP, SYNTHESIS_SKILLS
 
 # Ensure ALL models are registered with Base (mirrors database.init_db imports)
-from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
+from app.models import (
+    agent,
+    codebook,
+    document,
+    finding,
+    message,
+    project,
+    session,
+    task,
+)  # noqa: F401
 from app.models import user  # noqa: F401
 from app.models import llm_server, method_metric  # noqa: F401
 from app.core.checkpoint import TaskCheckpoint  # noqa: F401
@@ -60,6 +69,7 @@ from app.models.autoresearch_experiment import AutoresearchExperiment  # noqa: F
 # Fixtures: in-memory async SQLite for model tests
 # ============================================================
 
+
 @pytest.fixture
 async def db_session():
     """Create an in-memory async SQLite session for model tests."""
@@ -71,7 +81,9 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with session_factory() as session:
         yield session
 
@@ -83,6 +95,7 @@ async def db_session():
 # ============================================================
 # 1. CodebookVersion Model Tests
 # ============================================================
+
 
 class TestValidationExecutor:
     """Test the ValidationExecutor multi-pass validation."""
@@ -99,7 +112,9 @@ class TestValidationExecutor:
         input_data = MagicMock()
 
         # Mock compute_registry.chat to simulate an LLM failure
-        with patch("app.core.validation_executor.ValidationExecutor._adversarial_review") as mock_review:
+        with patch(
+            "app.core.validation_executor.ValidationExecutor._adversarial_review"
+        ) as mock_review:
             mock_review.return_value = ValidationResult(
                 passed=True, method="adversarial_review", confidence=0.5
             )
@@ -161,7 +176,7 @@ class TestValidationExecutor:
         assert result.confidence == 0.7
 
     async def test_unknown_method_returns_default(self, executor):
-        """Unknown validation method returns passed=True with confidence=0.5."""
+        """Unknown validation methods fail closed instead of passing."""
         output = MagicMock()
         input_data = MagicMock()
 
@@ -169,31 +184,88 @@ class TestValidationExecutor:
             "nonexistent_method", output, input_data, "test-skill"
         )
         assert isinstance(result, ValidationResult)
-        assert result.passed is True
+        assert result.passed is False
         assert result.method == "nonexistent_method"
-        assert result.confidence == 0.5
+        assert result.confidence == 0.0
+        assert result.details == {
+            "status": "invalid_method",
+            "reason": "unknown_validation_method",
+            "skill_name": "test-skill",
+        }
 
     async def test_debate_rounds_with_insights(self, executor):
-        """debate_rounds with 2+ insights -> passes."""
+        """debate_rounds with grounded insights -> passes via stability."""
         output = MagicMock()
         output.insights = [
-            {"text": "Insight one"},
-            {"text": "Insight two"},
+            {"text": "Users struggle with navigation in settings"},
+            {"text": "Navigation in settings confuses users"},
         ]
+        output.facts = [{"text": "5 of 6 users failed to find navigation in settings"}]
+        output.nuggets = [{"text": "users struggle with navigation in settings menu"}]
 
         result = await executor._debate_rounds(output)
         assert result.passed is True
         assert result.method == "debate_rounds"
-        assert result.confidence == 0.6
+        assert result.confidence >= 0.4
 
     async def test_debate_rounds_single_insight(self, executor):
-        """debate_rounds with < 2 insights -> passes with 0.7 confidence."""
+        """debate_rounds without premises fails closed (ungrounded)."""
         output = MagicMock()
         output.insights = [{"text": "Only one"}]
+        output.facts = []
+        output.nuggets = []
 
         result = await executor._debate_rounds(output)
+        assert result.passed is False
+        assert result.confidence == 0.0
+
+    async def test_debate_rounds_recommendations_without_premises_fail_closed(
+        self, executor
+    ):
+        """debate_rounds with recs-only output fails closed (F3)."""
+        output = MagicMock()
+        output.insights = []
+        output.facts = []
+        output.nuggets = []
+        output.recommendations = [{"text": "Ship the redesign immediately"}]
+
+        result = await executor._debate_rounds(output)
+        assert result.passed is False
+        assert result.confidence == 0.0
+
+    async def test_full_ensemble_high_overlap_passes(self, executor):
+        """full_ensemble with high tag overlap passes."""
+        output = MagicMock()
+        output.nuggets = [
+            {"text": "Finding 1", "tags": ["nav", "ux", "perf"]},
+            {"text": "Finding 2", "tags": ["nav", "ux", "design"]},
+        ]
+
+        result = await executor._full_ensemble(output)
+        assert isinstance(result, ValidationResult)
+        assert result.method == "full_ensemble"
         assert result.passed is True
-        assert result.confidence == 0.7
+
+    async def test_full_ensemble_single_input_baseline_is_provisional(self, executor):
+        """F-W5-R1-4: single-input baseline must not claim 3-model consensus."""
+        output = MagicMock()
+        output.nuggets = [{"text": "Only finding", "tags": ["nav", "ux"]}]
+
+        result = await executor._full_ensemble(output)
+        assert result.method == "full_ensemble"
+        # Baseline still passes (weak gate) but reports honestly.
+        assert result.passed is True
+        assert result.details["model_count"] == 1
+        assert result.details["model_count"] != 3
+        assert result.details["mode"] == "baseline_provisional_single_input"
+        assert result.details["provisional"] is True
+        assert "NOT multi-model consensus" in result.details["warning"]
+
+        empty = MagicMock()
+        empty.nuggets = []
+        empty_result = await executor._full_ensemble(empty)
+        assert empty_result.details["model_count"] == 0
+        assert empty_result.details["provisional"] is True
 
     def test_validation_result_dataclass_defaults(self):
         """ValidationResult has correct defaults."""

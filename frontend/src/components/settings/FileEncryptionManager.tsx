@@ -64,7 +64,7 @@ export default function FileEncryptionManager() {
         File and Backup Encryption
       </h3>
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        Encrypt managed uploads, stored document text, and future backup archives at rest. Keep the key in a secrets manager, macOS Keychain, or the owner-only fallback key file; losing it makes encrypted files and backups unrecoverable.
+        Encrypt managed uploads, stored document text, and backup archives at rest. Search indexes (vector chunks, keyword index) and evidence-unit text stay plaintext for retrieval and rely on owner-only data-directory permissions. Keep the key in a secrets manager, macOS Keychain, or the owner-only fallback key file; losing it makes encrypted files and backups unrecoverable.
       </p>
 
       {message && <p className="mt-3 text-sm text-green-700 dark:text-green-400">{message}</p>}
@@ -124,7 +124,7 @@ export default function FileEncryptionManager() {
               onChange={(e) => setConfirmRotate(e.target.checked)}
               className="mt-1"
             />
-            I have a current backup and understand key rotation rewrites encrypted managed files, document text, and future backup key material.
+            I have a current backup and understand key rotation rewrites encrypted managed files, document text, and existing encrypted backup archives to the new key.
           </label>
         )}
 

@@ -6,9 +6,18 @@
 export const name = "Survey Integration";
 export const id = "55-survey-integration";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  // Surveys UI lives in the Integrations view (SurveysTab).
+  await browserViewCheck(ctx, checks, {
+    viewId: "integrations",
+    navLabel: "Integrations",
+    markers: ["Overview", "Integrations"],
+    screenshot: "55-integrations-view",
+  });
   const cleanup = { integrationIds: [], linkIds: [] };
   if (!ctx.projectId) {
     return [{ name: "Project available for survey integration", passed: false, detail: "No persistent project from runner" }];

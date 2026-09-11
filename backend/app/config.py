@@ -1,25 +1,183 @@
 """Istara application configuration."""
 
-from pathlib import Path
+import logging
+import os
+import re
 import subprocess
+from pathlib import Path
+from typing import Literal
 
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
+from app.core.env_secrets import SECRET_ENV_DENYLIST
+
+_logger = logging.getLogger(__name__)
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
+
+# --- Runtime environment precedence -----------------------------------------
+# Highest wins:
+#   1. Process/container environment for the server-auth and data-encryption
+#      secrets in SECRET_ENV_DENYLIST. A runtime env file may only SUPPLY these
+#      when the environment does not already set them, so rotating a secret
+#      through docker-compose is never silently ignored. (Files written by
+#      earlier builds still carry these keys, which is why the write-side
+#      denylist in env_persistence is necessary but not sufficient.)
+#   2. Runtime env file named by ISTARA_ENV_FILE, for every other key. UI-changed
+#      model/ensemble preferences are persisted there and must survive a
+#      restart, so they DO override the container environment.
+#   3. Opt-in runtime_overrides.env (ISTARA_RUNTIME_OVERRIDES), loaded BEFORE
+#      the ISTARA_ENV_FILE target so the primary write target of
+#      env_persistence._env_file_path() wins on conflict — the same
+#      first-match-wins order the writer uses.
+#   4. Process/container environment for every non-denylisted key.
+#   5. Static backend .env / .env.local, via pydantic-settings (_BACKEND_ENV_FILES).
+#
+# ISTARA_ENV_FILE is never honoured FROM a file: a runtime env file must not be
+# able to redirect the runtime env target it was itself loaded from.
+_FILE_UNSETTABLE_KEYS = frozenset({"ISTARA_ENV_FILE"})
+
+
+def _load_runtime_env_file(path: Path) -> bool:
+    """Merge a runtime env file into os.environ under the precedence rules above.
+
+    Returns True when the file parsed. A False return means the file must also
+    be withheld from pydantic-settings' ``env_file``, which would otherwise
+    raise the very same decode error and abort startup.
+    """
+    try:
+        from dotenv import dotenv_values
+
+        values = dotenv_values(str(path))
+    except Exception:
+        # Never silently swallow: a runtime env file that does not parse is an
+        # operator-visible misconfiguration, not a no-op.
+        _logger.warning("Ignoring unreadable runtime env file %s", path, exc_info=True)
+        return False
+    for key, value in values.items():
+        if value is None or key in _FILE_UNSETTABLE_KEYS:
+            continue
+        if key in SECRET_ENV_DENYLIST and os.environ.get(key, "").strip():
+            # The container environment is authoritative for secrets.
+            continue
+        os.environ[key] = value
+    return True
+
+
+def _runtime_overrides_enabled() -> bool:
+    return os.environ.get("ISTARA_RUNTIME_OVERRIDES", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+# ISTARA_ENV_FILE: writable runtime-env target for read-only containers
+# (deployed stacks persist pi endpoints / encryption keys there). When set it
+# is BOTH loaded at import (so runtime-persisted values reload on restart)
+# and used by env_persistence writers. Read it from the process environment
+# FIRST, so no file-sourced value can influence which file we then read.
+_RUNTIME_ENV_FILE = os.environ.get("ISTARA_ENV_FILE", "").strip()
+
+# `data/simulation-shared` is an external mount convention: nothing in this
+# repository provisions it (no compose volume, no script). The auto-load is
+# therefore opt-in via ISTARA_RUNTIME_OVERRIDES, so a stray CWD-relative
+# `./data/simulation-shared/runtime_overrides.env` cannot inject environment
+# into any process that merely happens to run from that directory.
+if _runtime_overrides_enabled():
+    for _candidate_override in (
+        Path("/app/data/simulation-shared/runtime_overrides.env"),
+        Path("./data/simulation-shared/runtime_overrides.env"),
+        _BACKEND_DIR / "data/simulation-shared/runtime_overrides.env",
+    ):
+        if _candidate_override.is_file():
+            _load_runtime_env_file(_candidate_override)
+            break  # first match wins, matching env_persistence._env_file_path()
+
+# The runtime file is also handed to pydantic-settings, where it ranks BELOW
+# os.environ. That is what makes rule 1 a precedence rule rather than erasure:
+# a denylisted secret still present in a file written by an earlier build keeps
+# working when the container supplies nothing, so already-encrypted data stays
+# decryptable — it just can no longer beat an operator-supplied value.
+_RUNTIME_ENV_FILE_USABLE = bool(_RUNTIME_ENV_FILE)
+if _RUNTIME_ENV_FILE and Path(_RUNTIME_ENV_FILE).is_file():
+    _RUNTIME_ENV_FILE_USABLE = _load_runtime_env_file(Path(_RUNTIME_ENV_FILE))
+
 _BACKEND_ENV_FILES = (
-    str(_BACKEND_DIR / ".env"),
-    str(_BACKEND_DIR / ".env.local"),
+    (_RUNTIME_ENV_FILE, str(_BACKEND_DIR / ".env"), str(_BACKEND_DIR / ".env.local"))
+    if _RUNTIME_ENV_FILE_USABLE
+    else (str(_BACKEND_DIR / ".env"), str(_BACKEND_DIR / ".env.local"))
 )
 
 
-def _read_macos_keychain_secret(service: str) -> str:
+class PiApiEndpoint(BaseModel):
+    """A Pi-only provider target.
+
+    These targets intentionally do not share the LLM-server/compute registry:
+    their identity is an authority boundary, not a model preference.
+    """
+
+    endpoint_id: str
+    provider_kind: Literal[
+        "openai_compat", "openai_responses", "anthropic_compat", "openai_codex"
+    ] = "openai_compat"
+    base_url: str
+    model: str
+    keychain_service: str
+    keychain_account: str = ""
+    timeout_ms: int = Field(default=30_000, ge=1, le=120_000)
+    max_retries: int = Field(default=0, ge=0, le=3)
+    # Trustworthy per-endpoint pricing (USD per 1M tokens) resolved from the
+    # deployment's contract. The worker feeds these into the pi-ai model rates so
+    # a real turn's usage is priced and the per-run ``max_cost_usd`` ceiling can
+    # fail closed. An endpoint left unpriced cannot enforce a cost budget: a
+    # budgeted run that spends tokens fails closed at the worker rather than
+    # silently reporting $0 (see pi-runtime/src/session.mjs).
+    cost_input_per_mtok: float = Field(default=0.0, ge=0.0)
+    cost_output_per_mtok: float = Field(default=0.0, ge=0.0)
+    cost_cache_read_per_mtok: float = Field(default=0.0, ge=0.0)
+    cost_cache_write_per_mtok: float = Field(default=0.0, ge=0.0)
+    # Static capability advertisement (the parity subset meaningful for exact
+    # endpoints). 0/False means "unknown" and fails capability admission closed
+    # when a caller explicitly requires that capability (min_context/vision).
+    context_window: int = Field(default=0, ge=0)
+    max_tokens: int = Field(default=0, ge=0)
+    supports_tools: bool = True
+    supports_vision: bool = False
+    # ``None`` preserves legacy endpoints whose model capability was not
+    # advertised; catalog-managed models set this explicitly so the runtime
+    # does not force provider defaults onto a non-reasoning model.
+    supports_reasoning: bool | None = None
+    # Provider-auth metadata is non-secret and lets the runtime choose the
+    # correct Pi transport (for example Codex Responses adds account headers).
+    pi_provider: str = ""
+    auth_provider: str = ""
+    auth_method: str = "api_key"
+    # Fernet-wrapped OAuth credential JSON. Never included in public endpoint views.
+    oauth_credential_encrypted: str = ""
+
+    @field_validator("endpoint_id", "base_url", "model", "keychain_service")
+    @classmethod
+    def required_value(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Pi endpoint fields must be non-empty")
+        return value
+
+
+def _read_macos_keychain_secret(service: str, account: str = "") -> str:
     """Read a local secret from macOS Keychain without logging its value."""
     if not service or not Path("/usr/bin/security").exists():
         return ""
+    command = ["/usr/bin/security", "find-generic-password"]
+    if account:
+        command.extend(["-a", account])
+    command.extend(["-s", service, "-w"])
     try:
         result = subprocess.run(
-            ["/usr/bin/security", "find-generic-password", "-s", service, "-w"],
+            command,
             capture_output=True,
             text=True,
             timeout=3,
@@ -30,6 +188,68 @@ def _read_macos_keychain_secret(service: str) -> str:
     if result.returncode != 0:
         return ""
     return result.stdout.strip()
+
+
+def _write_macos_keychain_secret(service: str, account: str, value: str) -> bool:
+    """Write a local secret into macOS Keychain (upsert) without logging it.
+
+    Compatible with ``_read_macos_keychain_secret`` (same service/account
+    scheme). Falls back to ``True`` on non-macOS hosts so endpoint config
+    still persists via the ``ISTARA_PI_SECRET_*`` env path instead.
+    """
+    if not service or not value:
+        return False
+    if not Path("/usr/bin/security").exists():
+        return True  # env-based custody on non-macOS
+    command = [
+        "/usr/bin/security",
+        "add-generic-password",
+        "-U",  # update if exists
+        "-a",
+        account or "default",
+        "-s",
+        service,
+        "-w",
+        value,
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except Exception:
+        return False
+    return result.returncode == 0
+
+
+def _pi_endpoint_secret_env_name(endpoint_id: str) -> str:
+    """Return the env var that supplies a Pi endpoint secret without Keychain."""
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", endpoint_id).strip("_").upper()
+    return f"ISTARA_PI_SECRET_{slug}"
+
+
+def _read_pi_endpoint_secret(
+    endpoint_id: str,
+    service: str,
+    account: str = "",
+    *,
+    keychain_reader=None,
+) -> str:
+    """Read a Pi endpoint secret: ``ISTARA_PI_SECRET_<ID>`` env first, then Keychain.
+
+    Parity with ``resolve_llm_fallback_api_key``: a configured environment value
+    wins, so non-macOS hosts (no ``/usr/bin/security``) can still bind endpoints.
+    *keychain_reader* lets the caller keep its own import seam; the secret value
+    is never logged.
+    """
+    env_value = os.environ.get(_pi_endpoint_secret_env_name(endpoint_id), "").strip()
+    if env_value:
+        return env_value
+    reader = keychain_reader or _read_macos_keychain_secret
+    return reader(service, account)
 
 
 class Settings(BaseSettings):
@@ -65,6 +285,13 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./data/istara.db"
     lance_db_path: str = "./data/lance_db"
+    # Optional override for the keyword FTS index directory (KEYWORD_INDEX_DIR).
+    # When unset, it stays beside data_dir; durable lanes point it at shared
+    # storage so chunks survive container recreates alongside LanceDB.
+    keyword_index_dir: str | None = None
+    # Previous data-encryption keys (comma-separated, oldest last, max 3 kept)
+    # so rows encrypted before a rotation stay readable. Never logged.
+    data_encryption_previous_keys: str = ""
     sqlite_busy_timeout_ms: int = 30000
 
     # Files
@@ -86,6 +313,10 @@ class Settings(BaseSettings):
     team_mode: bool = False
     jwt_secret: str = ""  # Auto-generated on first run if empty
     jwt_expire_minutes: int = 1440  # 24 hours
+    # Idle timeout for bound sessions (minutes). A session with no validated
+    # request inside this window is revoked on next use, bounding the theft
+    # window of a stolen token well below the absolute JWT expiry.
+    session_max_inactive_minutes: int = 480  # 8 hours
 
     # WebAuthn / passkeys. RP ID must match the production host domain.
     webauthn_rp_id: str = "localhost"
@@ -198,7 +429,78 @@ class Settings(BaseSettings):
     prompt_rag_top_k: int = 8  # Number of dynamic sections to retrieve
     self_evolution_enabled: bool = True  # Enable auto self-evolution scan
     self_evolution_auto_promote: bool = False  # Auto-promote (vs user approval)
-    autonomous_quality_agents_enabled: bool = False  # Dev/Admin QA loops only when explicitly enabled
+    autonomous_quality_agents_enabled: bool = (
+        False  # Dev/Admin QA loops only when explicitly enabled
+    )
+
+    # Pi replacement candidate (off unless explicitly selected by env/header).
+    pi_replacement_enabled: bool = False
+    pi_replacement_request_header: str = "x-istara-agent-engine"
+    pi_replacement_deepseek_base_url: str = "https://api.deepseek.com"
+    pi_replacement_deepseek_model: str = "deepseek-v4-pro"
+    pi_replacement_deepseek_keychain_service: str = "istara-pi-deepseek"
+    pi_replacement_deepseek_keychain_account: str = "openclaw"
+    # Default endpoint pricing (USD per 1M tokens). Sourced from the configured
+    # model's (deepseek-v4-pro) published list price as of 2026-07-20 so the
+    # built-in endpoint is priced out of the box and its per-run cost ceiling
+    # fails closed; operators override per env/.env with their own negotiated
+    # contract rate. Every category the endpoint can spend must be priced: pi-ai
+    # prices input, output, and cache-read (DeepSeek reports cache hits via
+    # ``prompt_cache_hit_tokens``) independently, and a cache-read turn on an
+    # endpoint that priced only input/output would otherwise fail closed as
+    # unpriced. DeepSeek bills cache writes at the cache-miss input rate and does
+    # not report a separate cache-write token count, so that category is never
+    # spent and needs no rate. Never zero — an unpriced real endpoint cannot
+    # enforce a cost budget.
+    pi_replacement_deepseek_cost_input_per_mtok: float = 0.435  # cache-miss input
+    pi_replacement_deepseek_cost_output_per_mtok: float = 0.87  # output
+    pi_replacement_deepseek_cost_cache_read_per_mtok: float = 0.003625  # cache-hit input
+    # JSON-compatible settings input.  Empty preserves the existing default
+    # endpoint without registering it as donated/shared compute.
+    pi_api_endpoints: list[PiApiEndpoint] = []
+    # Global generation default. Empty means the first connected provider
+    # endpoint is selected, with the built-in Pi endpoint as the final fallback.
+    pi_default_endpoint_id: str = ""
+    # Ordered Research Spine preferences. Empty preserves automatic selection
+    # from healthy, project-authorized Pi/donor routes. Preferences are tried
+    # first and the automatic catalog fills remaining independent coder slots.
+    pi_research_endpoint_ids: list[str] = []
+    # Bounded Pi runtime worker pool size (round-robin by session_key hash).
+    pi_worker_pool_size: int = 2
+    # Petals bridge (CF-335..338): expose consented donors as identity-pinned,
+    # OpenAI-compatible loopback endpoints for the Pi engine. Disabled by default.
+    petals_bridge_enabled: bool = False
+    petals_bridge_base_path: str = "/api/petals/v1"
+
+    # Synthetic reconciliation is a benchmark-only diagnostic. It is disabled
+    # by default and must be enabled explicitly in the isolated test container;
+    # synthetic receipts never satisfy the human/reportability gate.
+    research_validity_synthetic_reconciliation_enabled: bool = False
+
+    # Audio is a separate, explicit catalog. Empty provider fails closed;
+    # credentials are referenced by opaque keychain/encrypted-store handles.
+    audio_model_provider: str = ""
+    audio_model: str = "whisper-base"
+    audio_model_endpoint_id: str = "audio-default"
+    audio_model_credential_ref: str = ""
+    audio_model_mode: str = "local"
+    audio_model_languages: list[str] = []
+    audio_model_diarization: bool = False
+    audio_model_timestamps: bool = True
+    audio_model_speaker_count: str = "unknown"
+    audio_model_review_threshold: float = 0.7
+
+    # AgenticDispatcher engine default (master plan §5.1): the last resort after
+    # per-call override, request header, and the project's `agentic_engine`
+    # setting. Stays "legacy" until the owner flips the rollout.
+    agentic_engine_default: str = "legacy"
+    agentic_core: bool = False
+    # True when the configured Ollama-compatible provider plane is a
+    # deterministic wire stub (QA contract / connectivity-acceptance stacks),
+    # not a model service. Interactive LEGACY-plane chat fails closed instead
+    # of serving canned contract text as an assistant reply (CF-SPEC-1
+    # ITEM-002); the Pi plane stays exempt — it never touches the local stub.
+    llm_provider_contract_stub: bool = False
 
     # Meta-Hyperagent (optional layer that tunes subsystem parameters)
     meta_hyperagent_enabled: bool = False
@@ -227,13 +529,64 @@ class Settings(BaseSettings):
         "extra": "ignore",
     }
 
+    # Set by _resolve_persistent_paths; surfaced by log_storage_warnings() at
+    # startup rather than at import time (see F-9).
+    _ephemeral_lance_db: bool = PrivateAttr(default=False)
+
+    @model_validator(mode="after")
+    def _resolve_persistent_paths(self) -> "Settings":
+        """Ensure vector database paths resolve to persistent storage if available.
+
+        Only ever rewrites an UNSET ``lance_db_path``. ``model_fields_set`` is
+        the authoritative test: it covers every explicit source pydantic uses
+        (an env var in any case — pydantic-settings is case-insensitive, so a
+        lowercase ``lance_db_path`` counts — a ``.env`` entry, or an init
+        kwarg), where the old single-case ``os.environ["LANCE_DB_PATH"]`` probe
+        silently overrode a deliberate operator choice.
+        """
+        if "lance_db_path" in self.model_fields_set:
+            self._ephemeral_lance_db = False
+            return self
+        if self.lance_db_path == "./data/lance_db":
+            if Path("/app/data/simulation-shared").is_dir():
+                self.lance_db_path = "/app/data/simulation-shared/lance_db"
+            elif Path("./data/simulation-shared").is_dir():
+                self.lance_db_path = "./data/simulation-shared/lance_db"
+            elif "simulation-shared" in str(self.database_url):
+                db_clean = self.database_url.replace("sqlite+aiosqlite:///", "").replace(
+                    "sqlite:///", ""
+                )
+                shared_dir = Path(db_clean).parent
+                if shared_dir.is_dir():
+                    self.lance_db_path = str(shared_dir / "lance_db")
+            # Deferred, not emitted here: this validator runs at import time,
+            # before logging is configured, on every dev and test run.
+            # main.py's startup calls log_storage_warnings() once logging is up.
+            self._ephemeral_lance_db = self.lance_db_path == "./data/lance_db"
+        return self
+
+    def log_storage_warnings(self) -> None:
+        """Emit deferred storage warnings once application logging is configured."""
+        if getattr(self, "_ephemeral_lance_db", False):
+            _logger.warning(
+                "LanceDB path is ephemeral (%s); chunks will not survive "
+                "container restarts. Mount persistent simulation-shared storage "
+                "for the durable lane.",
+                self.lance_db_path,
+            )
+
     def resolve_llm_fallback_api_key(self) -> str:
         """Return fallback API key from env first, then the configured keychain service."""
         configured_key = self.llm_fallback_api_key.strip()
         if configured_key:
             return configured_key
+        return _read_macos_keychain_secret(self.llm_fallback_api_key_keychain_service.strip())
+
+    def resolve_pi_replacement_deepseek_api_key(self) -> str:
+        """Return the Pi candidate DeepSeek key from the configured Keychain item."""
         return _read_macos_keychain_secret(
-            self.llm_fallback_api_key_keychain_service.strip()
+            self.pi_replacement_deepseek_keychain_service.strip(),
+            self.pi_replacement_deepseek_keychain_account.strip(),
         )
 
     def ensure_dirs(self) -> None:

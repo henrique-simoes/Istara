@@ -8,6 +8,7 @@ from app.main import app
 from app.config import settings
 from app.core.rag import RAGContext, RetrievalResult
 from app.models.database import async_session, init_db
+from app.models.document import Document
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.core.auth import create_token
@@ -84,7 +85,9 @@ async def test_memory_search_returns_response(auth_headers):
     project = await _seed_project()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/memory/{project.id}/search", headers=auth_headers)
+        response = await ac.get(
+            f"/api/memory/{project.id}/search", headers=auth_headers
+        )
 
     assert response.status_code == 200
     assert response.json() == {"results": [], "query": "", "total": 0}
@@ -115,7 +118,9 @@ async def test_memory_routes_reject_unknown_project(auth_headers):
             headers=auth_headers,
             params={"q": "pricing"},
         )
-        stats_response = await ac.get("/api/memory/not-a-project/stats", headers=auth_headers)
+        stats_response = await ac.get(
+            "/api/memory/not-a-project/stats", headers=auth_headers
+        )
 
     assert list_response.status_code == 404
     assert search_response.status_code == 404
@@ -130,7 +135,9 @@ async def test_memory_routes_conceal_uninvited_projects_in_team_mode():
     visible = await _seed_project()
     hidden = await _seed_project()
     await _seed_member(visible.id, "researcher-1", "researcher")
-    headers = {"Authorization": f"Bearer {create_token('researcher-1', 'researcher', 'researcher')}"}
+    headers = {
+        "Authorization": f"Bearer {create_token('researcher-1', 'researcher', 'researcher')}"
+    }
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -142,12 +149,16 @@ async def test_memory_routes_conceal_uninvited_projects_in_team_mode():
 
 
 @pytest.mark.asyncio
-async def test_memory_search_supports_q_alias_and_metadata_filters(auth_headers, monkeypatch):
+async def test_memory_search_supports_q_alias_and_metadata_filters(
+    auth_headers, monkeypatch
+):
     await init_db()
     project = await _seed_project()
     captured: dict[str, object] = {}
 
-    async def fake_retrieve_context(project_id: str, query: str, top_k: int | None = None, **kwargs):
+    async def fake_retrieve_context(
+        project_id: str, query: str, top_k: int | None = None, **kwargs
+    ):
         captured.update(
             {
                 "project_id": project_id,
@@ -176,7 +187,12 @@ async def test_memory_search_supports_q_alias_and_metadata_filters(auth_headers,
         response = await ac.get(
             f"/api/memory/{project.id}/search",
             headers=auth_headers,
-            params={"q": "pricing", "top_k": 7, "source": "interview.pdf", "file_type": ".pdf"},
+            params={
+                "q": "pricing",
+                "top_k": 7,
+                "source": "interview.pdf",
+                "file_type": ".pdf",
+            },
         )
 
     assert response.status_code == 200
@@ -185,3 +201,33 @@ async def test_memory_search_supports_q_alias_and_metadata_filters(auth_headers,
     assert captured["source_filter"] == "interview.pdf"
     assert captured["file_type_filter"] == "pdf"
     assert response.json()["filters"] == {"source": "interview.pdf", "file_type": "pdf"}
+
+
+@pytest.mark.asyncio
+async def test_memory_sync_indexes_project_documents(auth_headers):
+    """POST /api/memory/{project_id}/sync indexes all project documents into search."""
+    await init_db()
+    project = await _seed_project()
+    doc_id = str(uuid.uuid4())
+    doc = Document(
+        id=doc_id,
+        project_id=project.id,
+        title="Customer Feedback Notes",
+        file_name="feedback.txt",
+        content_text="The onboarding experience was confusing for new enterprise users.",
+        content_preview="The onboarding experience was confusing...",
+    )
+    async with async_session() as db:
+        db.add(doc)
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(f"/api/memory/{project.id}/sync", headers=auth_headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["project_id"] == project.id
+    assert data["documents_indexed"] >= 1
+    assert data["chunks_indexed"] >= 1

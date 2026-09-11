@@ -6,8 +6,8 @@ import asyncio
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.agent import agent
@@ -20,9 +20,8 @@ from app.core.permissions import (
     require_project_access,
 )
 from app.models.database import get_db
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.skills.skill_manager import skill_manager
 from app.skills.registry import registry
+from app.skills.skill_manager import skill_manager
 
 router = APIRouter()
 
@@ -135,6 +134,7 @@ class SkillUpdateRequest(BaseModel):
 
 # --- Skill CRUD ---
 
+
 @router.get("/skills")
 async def list_skills(phase: str | None = None):
     """List all skill definitions with optional phase filter."""
@@ -154,6 +154,7 @@ async def list_skills(phase: str | None = None):
 
 
 # --- Routes with fixed paths MUST come before {name} parameterized routes ---
+
 
 @router.get("/skills/health/all")
 async def get_all_health(
@@ -199,6 +200,7 @@ async def get_all_proposals(
 
 
 # --- Skill Creation Proposals ---
+
 
 @router.get("/skills/creation-proposals/pending")
 async def get_pending_creation_proposals(
@@ -283,7 +285,7 @@ async def approve_creation_proposal(
     # Register the new skill in the runtime registry
     try:
         registry.register_from_definition(result["name"])
-    except Exception as e:
+    except Exception:
         # Skill file was written but runtime registration failed — not fatal
         pass
     try:
@@ -380,6 +382,7 @@ async def reject_creation_proposal(
 
 # --- Parameterized routes ---
 
+
 @router.get("/skills/{name}")
 async def get_skill(
     name: str,
@@ -453,6 +456,7 @@ async def toggle_skill(name: str, request: Request, enabled: bool = True):
 
 # --- Health & Usage (specific {name} routes) ---
 
+
 @router.get("/skills/{name}/health")
 async def get_skill_health(
     name: str,
@@ -469,6 +473,7 @@ async def get_skill_health(
 
 
 # --- Self-Improvement Proposals ---
+
 
 @router.post("/skills/proposals/{proposal_id}/approve")
 async def approve_proposal(
@@ -556,6 +561,7 @@ async def reject_proposal(
 
 # --- Skill Execution ---
 
+
 @router.post("/skills/{name}/execute")
 async def execute_skill(
     name: str,
@@ -596,7 +602,7 @@ async def execute_skill(
             ),
             timeout=timeout_seconds,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         raise HTTPException(
             status_code=504,
             detail=f"Skill execution timed out after {timeout_seconds:.3g}s",
@@ -665,7 +671,7 @@ async def plan_skill(
             ),
             timeout=timeout_seconds,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         raise HTTPException(
             status_code=504,
             detail=f"Skill plan timed out after {timeout_seconds:.3g}s",

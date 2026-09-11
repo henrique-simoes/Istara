@@ -7,7 +7,6 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Optional
 
 import aiosqlite
 
@@ -52,19 +51,30 @@ class EmbeddingCache:
     def _cache_key(model_name: str, text: str) -> str:
         return hashlib.sha256(f"{model_name}:{text}".encode()).hexdigest()
 
-    async def get(self, model_name: str, text: str) -> Optional[list[float]]:
+    async def get(self, model_name: str, text: str) -> list[float] | None:
+        from app.core.embedding_validation import validate_embedding_vectors
+
         key = self._cache_key(model_name, text)
         db = await self._ensure_db()
         try:
             async with db.execute("SELECT vector FROM cache WHERE key = ?", (key,)) as cur:
                 row = await cur.fetchone()
             if row:
-                return json.loads(row[0])
+                try:
+                    return validate_embedding_vectors([json.loads(row[0])], expected_count=1)[0]
+                except (TypeError, ValueError):
+                    logger.warning(
+                        "Ignoring malformed embedding cache entry for model %s", model_name
+                    )
+                    return None
             return None
         finally:
             await db.close()
 
     async def put(self, model_name: str, text: str, vector: list[float]) -> None:
+        from app.core.embedding_validation import validate_embedding_vectors
+
+        vector = validate_embedding_vectors([vector], expected_count=1)[0]
         key = self._cache_key(model_name, text)
         db = await self._ensure_db()
         try:

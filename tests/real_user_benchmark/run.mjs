@@ -25,7 +25,15 @@ import {
   exerciseResearchSpineValidation,
   exerciseSelfImprovementGovernance,
 } from "./lib/research-spine-probes.mjs";
-import { scoreRun, writeScorecardMarkdown } from "./lib/scoring.mjs";
+import { exerciseModelManagement } from "./lib/model-management-probes.mjs";
+import {
+  benchmarkExitCode,
+  benchmarkWorkloadForProfile,
+  liveAcceptanceBlockers,
+  normalizeAcceptanceProfile,
+  scoreRun,
+  writeScorecardMarkdown,
+} from "./lib/scoring.mjs";
 import {
   buildDonorModelSandboxConfig,
   dockerArgsForDonorModelSandbox,
@@ -35,15 +43,25 @@ import {
   validateDonorModelSandbox,
 } from "./lib/donor-sandboxes.mjs";
 import { inferProviderType } from "../../relay/lib/llm-proxy.mjs";
+import {
+  buildBenchmarkProvenance,
+  resolveGitCommitWithoutGit,
+  validateBenchmarkProvenance,
+} from "./lib/provenance.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "../..");
-const benchmarkModelRoot = resolve(homedir(), "Istara-Projects", "models");
+const benchmarkModelRoot = resolve(
+  process.env.ISTARA_BENCHMARK_MODEL_ROOT || join(homedir(), "Istara-Projects", "models"),
+);
 const systemPromptPath = join(__dirname, "system-prompt.md");
 const benchmarkRegistryPath = join(__dirname, "benchmark-registry.json");
 const systemPromptContent = readFileSync(systemPromptPath, "utf8");
 const benchmarkRegistry = JSON.parse(readFileSync(benchmarkRegistryPath, "utf8"));
 const systemPromptHash = createHash("sha256").update(systemPromptContent).digest("hex");
+const benchmarkRegistryHash = createHash("sha256")
+  .update(readFileSync(benchmarkRegistryPath))
+  .digest("hex");
 const systemPromptVersion = systemPromptContent.match(/^Version:\s*(.+)$/m)?.[1]?.trim() || "unknown";
 const LIVE_LLM_ENV_FILES = [
   join(repoRoot, ".env"),
@@ -117,6 +135,20 @@ function boolEnv(name, fallback = false) {
   const value = process.env[name];
   if (value === undefined || value === "") return fallback;
   return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
+}
+
+// The wrapper sets ISTARA_BENCHMARK_DOCKER_RUNNER=1 for the disposable Linux
+// runner. Do not trust that caller-controlled marker by itself: a direct host
+// invocation could otherwise spoof it and bypass the three-model Docker-only
+// refusal. Docker exposes /.dockerenv in the supported runner image; the
+// cgroup fallback keeps the check useful for runtimes that omit that marker.
+function runningInsideContainer() {
+  if (existsSync("/.dockerenv")) return true;
+  try {
+    return /(?:docker|containerd|kubepods)/i.test(readFileSync("/proc/1/cgroup", "utf8"));
+  } catch {
+    return false;
+  }
 }
 
 function parseEnvAssignment(rawLine, allowedKeys = null) {
@@ -483,8 +515,56 @@ function modelFamilyFromId(model) {
 
 const startSandbox = hasFlag("start-sandbox") || ["1", "true", "yes"].includes(String(process.env.ISTARA_BENCHMARK_START_SANDBOX || "").toLowerCase());
 const skipSandbox = ["1", "true", "yes"].includes(String(process.env.ISTARA_BENCHMARK_SKIP_SANDBOX || "").toLowerCase());
-const mode = arg("mode", process.env.ISTARA_BENCHMARK_MODE || "probe");
+// `--plan-only` is an ergonomic flag alias for `--mode plan-only` (benchmark
+// task B0-2): it resolves the engine plan without attempting live services.
+const mode = hasFlag("plan-only")
+  ? "plan-only"
+  : arg("mode", process.env.ISTARA_BENCHMARK_MODE || "probe");
 const runId = arg("run-id", makeRunId());
+const acceptanceProfileRaw = String(
+  arg("acceptance-profile", process.env.ISTARA_BENCHMARK_ACCEPTANCE_PROFILE || "combined") || "combined",
+).trim().toLowerCase();
+const acceptanceProfile = normalizeAcceptanceProfile(acceptanceProfileRaw);
+if (acceptanceProfileRaw !== acceptanceProfile) {
+  console.error(`Invalid --acceptance-profile=${acceptanceProfileRaw}; expected one of provider|petals|combined.`);
+  process.exit(2);
+}
+const providerAcceptanceSelected = acceptanceProfile !== "petals";
+const petalsAcceptanceSelected = acceptanceProfile !== "provider";
+const workload = benchmarkWorkloadForProfile(acceptanceProfile);
+const requireLongHorizon = boolEnv(
+  "ISTARA_BENCHMARK_REQUIRE_LONG_HORIZON",
+  Boolean(workload.longHorizon) && mode !== "plan-only",
+);
+const dockerRunnerMarker = boolEnv("ISTARA_BENCHMARK_DOCKER_RUNNER", false);
+const dockerContainerRuntime = runningInsideContainer();
+const dockerRunnerMode = dockerRunnerMarker && dockerContainerRuntime;
+// Only the containerized runner may turn its post-run marker into acceptance
+// evidence. A direct caller-supplied marker must not make a skipped horizon
+// workload appear verified.
+const longHorizonVerified = dockerRunnerMode
+  && boolEnv("ISTARA_BENCHMARK_LONG_HORIZON_VERIFIED", false);
+
+// ── Benchmark engine plumbing (benchmark task B0-2) ────────────────────────
+// `--engine pi|legacy|both` selects the AgenticDispatcher engine per request via
+// the `x-istara-agent-engine` header, threaded into every IstaraApiClient below.
+// `both` is a planning concept (the paired Python runner drives real pairing);
+// a single live client carries exactly one engine.
+const AGENT_ENGINE_HEADER = "x-istara-agent-engine";
+function resolveBenchmarkEngines(raw) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value) return [];
+  if (value === "both") return ["legacy", "pi"];
+  if (value === "pi" || value === "legacy") return [value];
+  console.error(`Invalid --engine=${raw}; expected one of pi|legacy|both.`);
+  process.exit(2);
+}
+const benchmarkEngines = resolveBenchmarkEngines(
+  arg("engine", process.env.ISTARA_BENCHMARK_ENGINE || ""),
+);
+// One live client carries a single engine header; `both` defers pairing to the
+// Python runner, so live mode leaves the header unset (dispatcher default).
+const benchmarkAgentEngine = benchmarkEngines.length === 1 ? benchmarkEngines[0] : "";
 const donorTopology = String(arg("donor-topology", process.env.ISTARA_BENCHMARK_DONOR_TOPOLOGY || "") || "").trim().toLowerCase();
 const useLocalThreeModelDonorTopology = THREE_MODEL_DONOR_TOPOLOGY_ALIASES.has(donorTopology);
 const resultsRoot = resolve(arg("results-dir", process.env.ISTARA_BENCHMARK_RESULTS_DIR || join(__dirname, ".results")));
@@ -497,15 +577,18 @@ const externalConnectionStringMode = boolEnv("ISTARA_BENCHMARK_EXTERNAL_CONNECTI
       || process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRINGS
       || process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRING,
   );
+const requireComputeDonation = boolEnv(
+  "ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION",
+  petalsAcceptanceSelected && mode !== "plan-only",
+);
 const startClientSandboxes = boolEnv(
   "ISTARA_BENCHMARK_START_CLIENT_SANDBOXES",
-  startSandbox || externalConnectionStringMode || (mode !== "plan-only" && boolEnv("ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION", true)),
+  startSandbox || externalConnectionStringMode || (mode !== "plan-only" && workload.petals && requireComputeDonation),
 );
 let runtimeResearcherCount = intArg("researcher-count", 1);
 const backendEnv = loadBackendEnv();
 const liveLlmProfile = liveLlmProfileFromTestingContract();
-const requireComputeDonation = boolEnv("ISTARA_BENCHMARK_REQUIRE_COMPUTE_DONATION", mode !== "plan-only");
-const requireLiveChat = boolEnv("ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT", requireComputeDonation || mode === "full");
+const requireLiveChat = boolEnv("ISTARA_BENCHMARK_REQUIRE_LIVE_CHAT", workload.chat && (requireComputeDonation || mode === "full"));
 const forceDonatedChat = boolEnv("ISTARA_BENCHMARK_FORCE_DONATED_CHAT", false);
 const defaultApiBase = startSandbox && !skipSandbox ? "http://localhost:18000" : "http://localhost:8000";
 const defaultFrontendUrl = startSandbox && !skipSandbox ? "http://localhost:13000" : "http://localhost:3000";
@@ -591,6 +674,14 @@ function profileValue(profile, keys) {
 function localThreeModelDonorPreset(index) {
   if (!useLocalThreeModelDonorTopology) return null;
   if (index === 1) {
+    if (dockerRunnerMode) {
+      return {
+        id: "donor-1-gemma4",
+        provider: "llamacpp",
+        host: "http://donor-gemma:8080",
+        model: process.env.ISTARA_BENCHMARK_DONOR_GEMMA_MODEL || PRIMARY_TEST_MODEL,
+      };
+    }
     return {
       id: "donor-1-gemma4",
       provider: "lmstudio",
@@ -784,7 +875,7 @@ function summarizeDonorProfile(profile) {
 let donorProfiles = buildDonorProfiles();
 const requireDistinctDonorEndpoints = boolEnv(
   "ISTARA_BENCHMARK_REQUIRE_DISTINCT_DONOR_ENDPOINTS",
-  donorProfiles.filter((profile) => profile.required).length > 1,
+  workload.petals && donorProfiles.filter((profile) => profile.required).length > 1,
 );
 const serverLmstudioModel = (
   process.env.ISTARA_BENCHMARK_SERVER_LMSTUDIO_MODEL ||
@@ -818,26 +909,36 @@ const serverStrictAutoRouting = (
   process.env.ISTARA_BENCHMARK_STRICT_AUTO_ROUTING ||
   (forceDonatedChat ? "true" : "false")
 ).trim();
-const maxChatTurns = nonNegativeIntArg("max-chat-turns", mode === "full" ? 100 : mode === "probe" ? 8 : 0);
-const maxTasks = nonNegativeIntArg("max-tasks", mode === "full" ? 55 : mode === "probe" ? 8 : 0);
-const maxUploads = nonNegativeIntArg("max-uploads", mode === "full" ? 140 : mode === "probe" ? 120 : 0);
-const codingValidationEnabled = boolEnv("ISTARA_BENCHMARK_RUN_CODING_VALIDATION", mode !== "plan-only");
-const codingValidationLimit = nonNegativeIntArg("coding-limit", mode === "full" ? 50 : mode === "probe" ? 12 : 0);
-const selfImprovementProbeEnabled = boolEnv("ISTARA_BENCHMARK_SELF_IMPROVEMENT_PROBE", mode !== "plan-only");
-const startAutoresearchExperiment = boolEnv("ISTARA_BENCHMARK_START_AUTORESEARCH_EXPERIMENT", false);
-const chatTimeoutMs = intArg("chat-timeout-ms", 120000);
+const requestedMaxChatTurns = nonNegativeIntArg("max-chat-turns", mode === "full" ? 100 : mode === "probe" ? 8 : 0);
+const requestedMaxTasks = nonNegativeIntArg("max-tasks", mode === "full" ? 55 : mode === "probe" ? 8 : 0);
+const requestedMaxUploads = nonNegativeIntArg("max-uploads", mode === "full" ? 140 : mode === "probe" ? 120 : 0);
+const maxChatTurns = workload.chat ? requestedMaxChatTurns : 0;
+const maxTasks = workload.tasks ? requestedMaxTasks : 0;
+const maxUploads = workload.corpus ? requestedMaxUploads : 0;
+const codingValidationEnabled = workload.coding && boolEnv(
+  "ISTARA_BENCHMARK_RUN_CODING_VALIDATION",
+  mode !== "plan-only",
+);
+const requestedCodingValidationLimit = nonNegativeIntArg("coding-limit", mode === "full" ? 50 : mode === "probe" ? 12 : 0);
+const codingValidationLimit = workload.coding ? requestedCodingValidationLimit : 0;
+const selfImprovementProbeEnabled = workload.selfImprovement && boolEnv("ISTARA_BENCHMARK_SELF_IMPROVEMENT_PROBE", mode !== "plan-only");
+const startAutoresearchExperiment = boolEnv("ISTARA_BENCHMARK_START_AUTORESEARCH_EXPERIMENT", false) && workload.selfImprovement;
+// ISTARA_BENCHMARK_CHAT_TIMEOUT_MS <= 0 (or "none") disables the client
+ // abort timer entirely — reasoning-model turns run as long as they run.
+ const _rawChatTimeout = process.env.ISTARA_BENCHMARK_CHAT_TIMEOUT_MS ?? "";
+ const chatTimeoutMs = /^none$/i.test(_rawChatTimeout.trim())
+   ? 0
+   : Number.parseInt(_rawChatTimeout, 10) > 0
+     ? Number.parseInt(_rawChatTimeout, 10)
+     : 0;
 const keepClientContainers = ["1", "true", "yes"].includes(
   String(process.env.ISTARA_BENCHMARK_KEEP_CLIENT_CONTAINERS || "").toLowerCase(),
 );
 const keepDonorModelContainers = ["1", "true", "yes"].includes(
   String(process.env.ISTARA_BENCHMARK_KEEP_DONOR_MODEL_CONTAINERS || "").toLowerCase(),
 );
-const hostManagedThreeModelRun = useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes;
-const hostManagedServerContainerNames = [
-  "istara-benchmark-backend",
-  "istara-benchmark-frontend",
-  "istara-benchmark-ollama",
-];
+const hostManagedThreeModelRun = workload.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes && !dockerRunnerMode;
+const dockerOwnedThreeModelRun = workload.petals && useLocalThreeModelDonorTopology && skipSandbox && startClientSandboxes && dockerRunnerMode;
 const stopColimaAfterRun = boolEnv("ISTARA_BENCHMARK_STOP_COLIMA_AFTER_RUN", hostManagedThreeModelRun);
 let colimaAutostartAttempted = false;
 let colimaStartedByBenchmark = false;
@@ -852,12 +953,45 @@ let latestColimaStorageSnapshot = null;
 
 const logger = new BenchmarkLogger({ rootDir: resultsRoot, runId, mode });
 logger.init();
+const benchmarkProvenance = buildBenchmarkProvenance({
+  sourceSha: process.env.ISTARA_BENCHMARK_SOURCE_SHA || resolveGitCommitWithoutGit(repoRoot),
+  sourceState: process.env.ISTARA_BENCHMARK_SOURCE_STATE,
+  runnerImage: process.env.ISTARA_BENCHMARK_RUNNER_IMAGE,
+  runnerImageId: process.env.ISTARA_BENCHMARK_RUNNER_IMAGE_ID,
+  backendImageId: process.env.ISTARA_BENCHMARK_BACKEND_IMAGE_ID,
+  frontendImageId: process.env.ISTARA_BENCHMARK_FRONTEND_IMAGE_ID,
+  engine: benchmarkAgentEngine,
+  isolation: process.env.ISTARA_BENCHMARK_STATE_ISOLATION,
+  stackProject: process.env.ISTARA_BENCHMARK_STACK_PROJECT,
+  runGroup: process.env.ISTARA_BENCHMARK_RUN_GROUP,
+  runOrder: process.env.ISTARA_BENCHMARK_RUN_ORDER,
+  armIndex: Number.parseInt(process.env.ISTARA_BENCHMARK_ARM_INDEX || "0", 10),
+  sourceSnapshotSha256: process.env.ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256,
+});
 logger.writeJson("run-metadata.json", {
   run_id: runId,
   mode,
+  acceptance_profile: acceptanceProfile,
+  provider_acceptance_selected: providerAcceptanceSelected,
+  petals_acceptance_selected: petalsAcceptanceSelected,
+  workload_scope: workload,
+  requested_limits: {
+    chat_turns: requestedMaxChatTurns,
+    tasks: requestedMaxTasks,
+    uploads: requestedMaxUploads,
+    coding_units: requestedCodingValidationLimit,
+  },
+  effective_limits: {
+    chat_turns: maxChatTurns,
+    tasks: maxTasks,
+    uploads: maxUploads,
+    coding_units: codingValidationLimit,
+  },
   started_at: new Date().toISOString(),
   cwd: process.cwd(),
   node: process.version,
+  provenance: benchmarkProvenance,
+  benchmark_registry_sha256: benchmarkRegistryHash,
   system_prompt: {
     source_path: systemPromptPath,
     version: systemPromptVersion,
@@ -877,6 +1011,9 @@ for (const warning of startupConfigWarnings) {
   logger.action("config.warning", warning);
 }
 logger.action("llm.config.sources", {
+  acceptance_profile: acceptanceProfile,
+  provider_acceptance_selected: providerAcceptanceSelected,
+  petals_acceptance_selected: petalsAcceptanceSelected,
   relay_provider: relayLlmProvider,
   relay_provider_source: relayLlmProviderSource,
   live_base_url_configured: Boolean(liveLlmProfile.baseUrl),
@@ -891,12 +1028,16 @@ logger.action("llm.config.sources", {
   relay_api_key_source: relayLlmApiKeySource,
   start_client_sandboxes: startClientSandboxes,
   host_managed_three_model_run: hostManagedThreeModelRun,
+  docker_runner_marker: dockerRunnerMarker,
+  docker_container_runtime: dockerContainerRuntime,
+  docker_runner_mode: dockerRunnerMode,
+  docker_owned_three_model_run: dockerOwnedThreeModelRun,
   stop_colima_after_run: stopColimaAfterRun,
   external_connection_string_mode: externalConnectionStringMode,
   researcher_count: runtimeResearcherCount,
   donor_topology: donorTopology || "manual/default",
   local_three_model_donor_topology: useLocalThreeModelDonorTopology,
-  donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
+  donor_count_requested: workload.petals ? donorProfiles.filter((profile) => profile.required).length : 0,
   donor_profiles: donorProfiles.map(summarizeDonorProfile),
   require_distinct_donor_endpoints: requireDistinctDonorEndpoints,
   coding_validation_enabled: codingValidationEnabled,
@@ -912,6 +1053,18 @@ logger.action("llm.config.sources", {
   server_lmstudio_auto_load_enabled: serverLmstudioAutoLoadEnabled,
   server_lmstudio_auto_context_reload: serverLmstudioAutoContextReload,
   server_strict_auto_routing: serverStrictAutoRouting,
+  requested_limits: {
+    chat_turns: requestedMaxChatTurns,
+    tasks: requestedMaxTasks,
+    uploads: requestedMaxUploads,
+    coding_units: requestedCodingValidationLimit,
+  },
+  effective_limits: {
+    chat_turns: maxChatTurns,
+    tasks: maxTasks,
+    uploads: maxUploads,
+    coding_units: codingValidationLimit,
+  },
 });
 logger.action("benchmark.registry.loaded", {
   registry_version: benchmarkRegistry.version,
@@ -927,6 +1080,11 @@ logger.action("benchmark.registry.loaded", {
 logger.appendReport(`# Istara Real User Benchmark Report\n\nRun ID: ${runId}\nMode: ${mode}\nStarted: ${new Date().toISOString()}\n\n`);
 
 const blockers = [];
+const unrelatedWorkflowFailures = [];
+if (boolEnv("ISTARA_BENCHMARK_REQUIRE_REPRODUCIBLE_RUN", mode === "full")) {
+  blockers.push(...validateBenchmarkProvenance(benchmarkProvenance));
+}
+let securityIntegrityBaseline = null;
 const featureResults = {
   uiVisited: false,
   uiOnboarding: false,
@@ -934,11 +1092,14 @@ const featureResults = {
   citedSources: false,
   findingsCreated: false,
   reportGenerated: false,
+  reportabilityVerified: false,
   loops: false,
   urlFetch: false,
   interfaces: false,
   multiDonorCompute: false,
   distinctDonorEndpoints: false,
+  piManagedEndpointCatalogued: false,
+  petalsBridgeStatus: false,
   researcherUi: false,
   adminUiRoleContract: false,
   multiUserCollaboration: false,
@@ -948,6 +1109,13 @@ const featureResults = {
   interviewProcess: false,
   naturalComputeOrchestration: false,
   codingValidation: false,
+  // Diagnostic-only signal: the current run proved independent model coding,
+  // reliability, grounding, and served donor identity before reconciliation.
+  // This must never be used as accepted/reportable Research Spine evidence.
+  ensembleCodingValidation: false,
+  // Optional isolated diagnostic: synthetic receipts prove API traceability
+  // only and never satisfy the human reconciliation/reportability gate.
+  syntheticReconciliationValidation: false,
   researchSpineTraceability: false,
   telemetryEvidence: false,
   reasoningBankEvidence: false,
@@ -966,12 +1134,12 @@ const sandbox = {
   relayAttempted: false,
   relayStarted: false,
   clientSandboxRequested: startClientSandboxes,
-  relayExpectedCount: donorProfiles.filter((profile) => profile.required).length,
+  relayExpectedCount: workload.petals ? donorProfiles.filter((profile) => profile.required).length : 0,
   relayStartedCount: 0,
-  researcherExpectedCount: runtimeResearcherCount,
+  researcherExpectedCount: workload.commonWorkflow ? runtimeResearcherCount : 0,
   researcherStartedCount: 0,
   modelServerAttempted: false,
-  modelServerExpectedCount: donorProfiles.filter((profile) => profile.required && profile.modelSandbox?.requested).length,
+  modelServerExpectedCount: workload.petals ? donorProfiles.filter((profile) => profile.required && profile.modelSandbox?.requested).length : 0,
   modelServerStartedCount: 0,
 };
 const relayClientContainers = [];
@@ -979,6 +1147,62 @@ const donorModelContainers = [];
 const extraSensitiveLogValues = new Set();
 let relayClientImageBuilt = false;
 let clientDockerReady = null;
+
+function buildScorecard(input) {
+  return scoreRun({
+    ...input,
+    acceptanceProfile: mode === "plan-only" ? null : acceptanceProfile,
+    codingValidationEnabled,
+    requireComputeDonation,
+    requireLongHorizon,
+    longHorizonVerified,
+    workloadScope: workload,
+    unrelatedWorkflowFailures,
+    connectionRevocation: input.connectionRevocation || null,
+  });
+}
+
+function failClosedForHostManagedThreeModelRun() {
+  if (!hostManagedThreeModelRun || mode === "plan-only") return false;
+  const message = "Docker-only benchmark policy forbids the host-managed three-model topology; run the Docker wrapper against the Compose stack instead.";
+  const evidence = {
+    policy: "docker-only",
+    host_managed_three_model_run: true,
+    start_sandbox: startSandbox,
+    skip_sandbox: skipSandbox,
+    start_client_sandboxes: startClientSandboxes,
+    api_base: apiBase,
+    frontend_url: frontendUrl,
+    action: "refused-before-live-services",
+  };
+  logger.writeJson("docker-only-policy.json", evidence);
+  logger.action("benchmark.docker_only.refused", evidence);
+  logger.issue({
+    area: "benchmark",
+    severity: "critical",
+    title: "Host-managed three-model topology refused",
+    detail: message,
+    evidence,
+  });
+  blockers.push(message);
+  const scorecard = buildScorecard({
+    mode,
+    metrics: logger.metrics,
+    integrationMatrix: [],
+    blockers,
+    completedTasks: 0,
+    chatTurns: 0,
+    uploadedDocuments: 0,
+    sandbox,
+    featureResults,
+  });
+  logger.writeJson("scorecard.json", scorecard);
+  logger.appendReport("The requested host-managed three-model topology was refused before any live service, model, or package operation because this benchmark is Docker-only. Use scripts/runner/docker-run.sh against the Compose stack.\n\n");
+  logger.appendReport(writeScorecardMarkdown(scorecard));
+  logger.finalize({ scorecard });
+  process.exitCode = benchmarkExitCode({ mode, blockers });
+  return true;
+}
 
 function redactForLog(value) {
   if (typeof value !== "string") return value;
@@ -1231,6 +1455,11 @@ function captureColimaStorageSnapshot(label, { recordIssue = false } = {}) {
 
 function dockerHostAccessArgs() {
   return process.platform === "linux" ? ["--add-host", "host.docker.internal:host-gateway"] : [];
+}
+
+function dockerBenchmarkNetworkArgs() {
+  const network = String(process.env.ISTARA_BENCHMARK_BACKEND_NETWORK || "").trim();
+  return network ? ["--network", network] : [];
 }
 
 function containerReachableUrl(url) {
@@ -1513,86 +1742,6 @@ function startServerSandboxIfRequested() {
   }
 }
 
-function assertHostManagedThreeModelTopology() {
-  if (!hostManagedThreeModelRun) return;
-  const issues = [];
-  try {
-    const apiUrl = new URL(apiBase);
-    if (["18000", "18001"].includes(apiUrl.port)) {
-      issues.push(`apiBase=${apiBase} looks like a benchmark-owned server sandbox; use the host Istara server such as http://localhost:8000.`);
-    }
-  } catch {
-    issues.push(`apiBase=${apiBase} is not a valid URL.`);
-  }
-  try {
-    const uiUrl = new URL(frontendUrl);
-    if (["13000", "13001"].includes(uiUrl.port)) {
-      issues.push(`frontendUrl=${frontendUrl} looks like a benchmark-owned frontend sandbox; use the host Istara frontend such as http://localhost:3000.`);
-    }
-  } catch {
-    issues.push(`frontendUrl=${frontendUrl} is not a valid URL.`);
-  }
-  const evidence = {
-    host_managed_three_model_run: true,
-    start_sandbox: startSandbox,
-    skip_sandbox: skipSandbox,
-    start_client_sandboxes: startClientSandboxes,
-    api_base: apiBase,
-    frontend_url: frontendUrl,
-    issues,
-  };
-  logger.writeJson("host-managed-topology-contract.json", evidence);
-  logger.action("topology.host_managed.contract", evidence);
-  if (issues.length) {
-    blockers.push("Host-managed three-model topology was configured against benchmark server-sandbox endpoints.");
-    logger.issue({
-      area: "compute-donation",
-      severity: "critical",
-      title: "Host-managed benchmark topology points at sandbox endpoints",
-      detail: issues.join(" "),
-    });
-  }
-}
-
-function cleanupHostManagedServerSandboxConflict(label) {
-  if (!hostManagedThreeModelRun || mode === "plan-only") return;
-  const daemon = ensureClientDockerDaemon(`host-managed-server-cleanup-${label}`);
-  if (!daemon.ok) return;
-  const result = runCommand(`docker-rm-host-managed-server-containers-${label}`, "docker", [
-    "rm",
-    "-f",
-    ...hostManagedServerContainerNames,
-  ], {
-    allowFailure: true,
-    timeoutMs: 60 * 1000,
-  });
-  const compose = composeCommand();
-  let composeDown = { status: 0, skipped: true };
-  if (compose.command) {
-    composeDown = runCommand(`docker-compose-host-managed-server-down-${label}`, compose.command, [
-      ...compose.prefixArgs,
-      "-p",
-      "istara-real-user-benchmark-server",
-      "-f",
-      "docker-compose.yml",
-      "-f",
-      "tests/real_user_benchmark/docker-compose.benchmark.yml",
-      "down",
-      "--remove-orphans",
-    ], {
-      allowFailure: true,
-      timeoutMs: 2 * 60 * 1000,
-    });
-  }
-  logger.action("sandbox.server.host_managed_cleanup", {
-    label,
-    removed_known_containers_status: result.status,
-    compose_flavor: compose.flavor,
-    compose_down_status: composeDown.status,
-    note: "Host-managed three-model runs keep Istara on the Mac Studio host and use Docker/Colima only for researcher clients plus donor model/relay containers.",
-  });
-}
-
 function startServerSandboxWithDocker(model) {
   const network = "istara-real-user-benchmark-net";
   const commands = [
@@ -1808,6 +1957,28 @@ async function startDonorModelSandbox(donor) {
 
   const daemon = ensureClientDockerDaemon(`donor-model-${donor.id}`);
   if (!daemon.ok) return { ok: false, skipped: true };
+  if (config.kind === "pi-managed") {
+    // Operator-managed Pi endpoint: no container lifecycle. Readiness is the
+    // probe below; catalog membership is cross-checked by model-management probes.
+    logger.action("sandbox.donor_model.managed", {
+      donor_id: donor.id,
+      kind: config.kind,
+      endpoint_id: config.endpointId,
+      host_url: hostSummary(config.hostUrl),
+    });
+    sandbox.modelServerStartedCount += 1;
+    const readiness = await waitForDonorModelEndpoint(donor);
+    if (!readiness.ok) {
+      blockers.push(`Donor ${donor.id} Pi-managed endpoint did not become ready.`);
+      logger.issue({
+        area: "compute-donation",
+        severity: "critical",
+        title: "Pi-managed donor endpoint readiness failed",
+        detail: readiness.error || "managed endpoint did not respond",
+      });
+    }
+    return { ok: Boolean(readiness.ok), managed: true, readiness };
+  }
   if (keepDonorModelContainers) {
     const inspect = runCommand(`docker-inspect-donor-model-${donor.id}`, "docker", [
       "inspect",
@@ -1929,6 +2100,7 @@ function startRelayClientSandbox(connectionString, donorProfile = donorProfiles[
   }
   if (!ensureRelayClientImage()) return;
   const containerName = `istara-rub-relay-${runId}-${donor.id}`.replace(/[^a-z0-9_.-]+/gi, "-").slice(0, 120);
+  const relayNetwork = String(process.env.ISTARA_BENCHMARK_BACKEND_NETWORK || "").trim();
   rememberConnectionStringSensitiveValues(connectionString);
   const relayConnection = rewriteRelayConnectionStringForContainer(connectionString);
   rememberConnectionStringSensitiveValues(relayConnection.connectionString);
@@ -1945,6 +2117,7 @@ function startRelayClientSandbox(connectionString, donorProfile = donorProfiles[
     connection_string_has_embedded_jwt: Boolean(embeddedJwt),
     connection_string_rewritten_for_container: Boolean(relayConnection.rewritten),
     connection_string_needs_container_reachable_url: Boolean(relayConnection.needsContainerReachableUrl),
+    docker_network: relayNetwork || null,
     rewrite_evidence: relayConnection.rewritten
       ? {
           before: relayConnection.before,
@@ -1974,6 +2147,7 @@ function startRelayClientSandbox(connectionString, donorProfile = donorProfiles[
     "--name",
     containerName,
     ...dockerHostAccessArgs(),
+    ...dockerBenchmarkNetworkArgs(),
     "-e",
     "ISTARA_CONNECTION_STRING",
     "-e",
@@ -2116,6 +2290,7 @@ main().catch((error) => {
     "run",
     "--rm",
     ...dockerHostAccessArgs(),
+    ...dockerBenchmarkNetworkArgs(),
     "-e",
     "ISTARA_CONNECTION_STRING",
     "-e",
@@ -2247,7 +2422,7 @@ function stopColimaIfRequested(label) {
   captureColimaStorageSnapshot(`after-colima-stop-${label}`, { recordIssue: false });
 }
 
-function preflightRelayLlmFromContainer(donorProfile = donorProfiles[0]) {
+async function preflightRelayLlmFromContainer(donorProfile = donorProfiles[0]) {
   const donor = donorProfile || donorProfiles[0];
   if (!requireComputeDonation || !startClientSandboxes || mode === "plan-only") {
     logger.action("compute.preflight.skip", {
@@ -2477,10 +2652,11 @@ main().catch((error) => {
   process.exit(1);
 });
 `;
-  const result = runCommand(`docker-run-relay-llm-preflight-${donor.id}`, "docker", [
+  const preflightArgs = [
     "run",
     "--rm",
     ...dockerHostAccessArgs(),
+    ...dockerBenchmarkNetworkArgs(),
     "-e",
     "ISTARA_RELAY_LLM_PROVIDER",
     "-e",
@@ -2493,17 +2669,29 @@ main().catch((error) => {
     "node",
     "-e",
     script,
-  ], {
-    env: {
-      ISTARA_RELAY_LLM_PROVIDER: donor.provider,
-      ISTARA_RELAY_LLM_HOST: donor.host,
-      ISTARA_RELAY_LLM_API_KEY: donor.apiKey,
-      ISTARA_RELAY_LLM_MODEL: donor.model,
-    },
-    redactStdout: true,
-    redactStderr: true,
-    timeoutMs: 2 * 60 * 1000,
-  });
+  ];
+  const preflightEnv = {
+    ISTARA_RELAY_LLM_PROVIDER: donor.provider,
+    ISTARA_RELAY_LLM_HOST: donor.host,
+    ISTARA_RELAY_LLM_API_KEY: donor.apiKey,
+    ISTARA_RELAY_LLM_MODEL: donor.model,
+  };
+  // A Compose-owned llama.cpp donor can answer /v1/models before its first
+  // generation is ready. Give a cold model a bounded readiness window, but
+  // never convert a persistent route/model failure into a pass.
+  const preflightDeadline = Date.now() + 180 * 1000;
+  let result;
+  do {
+    result = runCommand(`docker-run-relay-llm-preflight-${donor.id}`, "docker", preflightArgs, {
+      env: preflightEnv,
+      redactStdout: true,
+      redactStderr: true,
+      timeoutMs: 60 * 1000,
+    });
+    if (result.status === 0) break;
+    if (Date.now() >= preflightDeadline) break;
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 3000));
+  } while (Date.now() < preflightDeadline);
   let parsed = null;
   const lines = `${result.stdout || ""}\n${result.stderr || ""}`.trim().split(/\r?\n/).filter(Boolean);
   for (const line of lines.slice().reverse()) {
@@ -3183,6 +3371,7 @@ async function authenticateResearcherActors(inviteResults) {
       networkAccessToken: benchmarkNetworkToken,
       adminUsername: inviteResult.username,
       adminPassword: inviteResult.password,
+      agentEngine: benchmarkAgentEngine,
     });
     const researcherAuth = await researcherApi.authenticate();
     logger.action("researcher.auth.result", {
@@ -3211,7 +3400,16 @@ async function authenticateResearcherActors(inviteResults) {
 }
 
 async function linkProjectFolder(api, projectId, corpusDir) {
-  const folderPath = startSandbox && !skipSandbox ? `/benchmark-results/runs/${runId}/corpus` : corpusDir;
+  const folderPath = String(process.env.ISTARA_BENCHMARK_SHARED_CORPUS_DIR || "").trim()
+    || (startSandbox && !skipSandbox ? `/benchmark-results/runs/${runId}/corpus` : "");
+  if (!folderPath) {
+    logger.action("project.folder_link.skip", {
+      project_id: projectId,
+      reason: "No corpus path shared by both runner and backend; uploads remain the authoritative ingestion path.",
+      runner_corpus_path: corpusDir,
+    });
+    return false;
+  }
   try {
     const linked = await api.post(`/api/projects/${projectId}/link-folder`, { folder_path: folderPath });
     logger.action("project.folder_linked", { project_id: projectId, folder_path: folderPath, result: linked });
@@ -3370,7 +3568,7 @@ function connectionListFromPlan(config, keys) {
   return [];
 }
 
-function loadConnectionStringOverrides() {
+function loadConnectionStringOverrides({ donorProfilesForRun = donorProfiles } = {}) {
   const fileConfig = readJsonConfigFile(
     process.env.ISTARA_BENCHMARK_CONNECTION_STRINGS_FILE,
     "ISTARA_BENCHMARK_CONNECTION_STRINGS_FILE",
@@ -3399,7 +3597,7 @@ function loadConnectionStringOverrides() {
     ...parseConnectionStringList(process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRINGS),
     ...parseConnectionStringList(process.env.ISTARA_BENCHMARK_USER_INVITE_CONNECTION_STRING),
   ];
-  const computeFromProfiles = donorProfiles.map((profile) => profile.connectionString).filter(Boolean);
+  const computeFromProfiles = donorProfilesForRun.map((profile) => profile.connectionString).filter(Boolean);
   return {
     computeDonations: [...computeFromFile, ...computeFromEnv, ...computeFromProfiles],
     userInvites: [...userFromFile, ...userFromEnv],
@@ -3412,7 +3610,7 @@ function loadConnectionStringOverrides() {
   };
 }
 
-async function maybePromptForConnectionOverrides(overrides) {
+async function maybePromptForConnectionOverrides(overrides, { donorProfilesForRun = donorProfiles, researcherCount = runtimeResearcherCount } = {}) {
   if (!boolEnv("ISTARA_BENCHMARK_INTERACTIVE_CONNECTION_STRINGS", false)) return overrides;
   if (!process.stdin.isTTY) {
     blockers.push("Interactive connection string mode was requested, but stdin is not a TTY.");
@@ -3426,22 +3624,24 @@ async function maybePromptForConnectionOverrides(overrides) {
   }
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    const currentDonorCount = donorProfiles.filter((profile) => profile.required).length;
+    const currentDonorCount = donorProfilesForRun.filter((profile) => profile.required).length;
     const donorAnswer = await rl.question(`How many compute donor containers should this run start? [${currentDonorCount}] `);
     const donorCount = Number.parseInt(donorAnswer.trim(), 10);
     if (Number.isFinite(donorCount) && donorCount > 0 && donorCount !== currentDonorCount) {
       donorProfiles = buildDonorProfiles({ donorCountOverride: donorCount });
+      donorProfilesForRun = donorProfiles;
       sandbox.relayExpectedCount = donorProfiles.filter((profile) => profile.required).length;
       logger.action("connection.interactive.donor_count", {
         requested_count: donorCount,
         donor_profiles: donorProfiles.map(summarizeDonorProfile),
       });
     }
-    const researcherAnswer = await rl.question(`How many researcher invite/client containers should this run start? [${runtimeResearcherCount}] `);
-    const researcherCount = Number.parseInt(researcherAnswer.trim(), 10);
-    if (Number.isFinite(researcherCount) && researcherCount > 0) {
-      runtimeResearcherCount = researcherCount;
-      sandbox.researcherExpectedCount = runtimeResearcherCount;
+    const researcherAnswer = await rl.question(`How many researcher invite/client containers should this run start? [${researcherCount}] `);
+    const parsedResearcherCount = Number.parseInt(researcherAnswer.trim(), 10);
+    if (Number.isFinite(parsedResearcherCount) && parsedResearcherCount > 0) {
+      runtimeResearcherCount = parsedResearcherCount;
+      researcherCount = parsedResearcherCount;
+      sandbox.researcherExpectedCount = researcherCount;
     }
     const requiredDonors = donorProfiles.filter((profile) => profile.required);
     const computeDonations = [...overrides.computeDonations];
@@ -3450,7 +3650,7 @@ async function maybePromptForConnectionOverrides(overrides) {
       if (answer.trim()) computeDonations.push(answer.trim());
     }
     const userInvites = [...overrides.userInvites];
-    for (let index = userInvites.length; index < runtimeResearcherCount; index += 1) {
+    for (let index = userInvites.length; index < researcherCount; index += 1) {
       const answer = await rl.question(`Paste researcher invite connection string ${index + 1}, or leave blank to generate through the API when possible: `);
       if (answer.trim()) userInvites.push(answer.trim());
     }
@@ -3468,7 +3668,7 @@ async function maybePromptForConnectionOverrides(overrides) {
   }
 }
 
-function materializeConnectionStrings(generated, overrides) {
+function materializeConnectionStrings(generated, overrides, { donorProfilesForRun = donorProfiles, researcherCount = runtimeResearcherCount } = {}) {
   const computeOverrideStrings = overrides.computeDonations || [];
   const userOverrideStrings = overrides.userInvites || [];
   const output = {
@@ -3478,7 +3678,7 @@ function materializeConnectionStrings(generated, overrides) {
   };
   const generatedUserInvites = generated.userInvites || (generated.userInvite ? [generated.userInvite] : []);
   const generatedComputeDonations = generated.computeDonations || (generated.computeDonation ? [generated.computeDonation] : []);
-  const userCount = Math.max(runtimeResearcherCount, userOverrideStrings.length, generatedUserInvites.length);
+  const userCount = Math.max(researcherCount, userOverrideStrings.length, generatedUserInvites.length);
   for (let index = 0; index < userCount; index += 1) {
     const override = userOverrideStrings[index];
     const generatedInvite = generatedUserInvites[index];
@@ -3492,7 +3692,7 @@ function materializeConnectionStrings(generated, overrides) {
   }
   output.userInvite = output.userInvites[0] || generated.userInvite;
 
-  const requiredDonors = donorProfiles.filter((profile) => profile.required);
+  const requiredDonors = donorProfilesForRun.filter((profile) => profile.required);
   for (let index = 0; index < requiredDonors.length; index += 1) {
     const donor = requiredDonors[index];
     const override = computeOverrideStrings[index] || donor.connectionString;
@@ -3517,7 +3717,7 @@ function materializeConnectionStrings(generated, overrides) {
       compute_count: output.computeDonations.length,
       user_invite_count: output.userInvites.length,
     },
-    donor_profiles: donorProfiles.map(summarizeDonorProfile),
+    donor_profiles: donorProfilesForRun.map(summarizeDonorProfile),
   });
   logger.action("connection.plan.materialized", {
     external_mode: externalConnectionStringMode,
@@ -3528,8 +3728,77 @@ function materializeConnectionStrings(generated, overrides) {
   return output;
 }
 
+async function revokeGeneratedConnectionStrings(api, connectionStrings) {
+  const entries = [
+    ...(connectionStrings?.computeDonations || []).map((item) => ({ kind: "compute_donation", item })),
+    ...(connectionStrings?.userInvites || []).map((item) => ({ kind: "user_invite", item })),
+  ];
+  const results = [];
+  for (const { kind, item } of entries) {
+    const id = String(item?.id || "");
+    const external = item?.source === "external-override" || id.startsWith("external-");
+    if (external || !id) {
+      results.push({ kind, id, status: "skipped_external_or_unidentified", reason: external ? "external-override" : "missing-generated-id" });
+      continue;
+    }
+    try {
+      const response = await api.delete(`/api/connections/${encodeURIComponent(id)}`);
+      const ok = response?.status === "revoked" || response?.is_active === false;
+      results.push({ kind, id, status: ok ? "revoked" : "unexpected-response", response_status: response?.status || "" });
+      logger.action("connection.revoked", { kind, id, ok, response_status: response?.status || "" });
+      if (!ok) blockers.push(`Generated ${kind} ${id} did not confirm revocation.`);
+    } catch (error) {
+      results.push({ kind, id, status: "error", error: error.message });
+      blockers.push(`Generated ${kind} ${id} could not be revoked.`);
+      logger.issue({
+        area: "connection-string",
+        severity: "high",
+        title: `Generated ${kind} revocation failed`,
+        detail: error.message,
+        evidence: { id, kind },
+      });
+    }
+  }
+  const summary = {
+    attempted: results.filter((item) => ["revoked", "unexpected-response", "error"].includes(item.status)).length,
+    revoked: results.filter((item) => item.status === "revoked").length,
+    skipped_external_or_unidentified: results.filter((item) => item.status === "skipped_external_or_unidentified").length,
+    results,
+  };
+  logger.writeJson("connection-revocation-results.json", summary);
+  logger.action("connection.revocation.summary", summary);
+  return summary;
+}
+
+/**
+ * F-P2b: benchmark sessions pin a custom inference preset with an adequate
+ * completion budget. Default presets cap max_tokens, and reasoning-style
+ * models (deepseek-v4-flash et al at low effort) can spend that budget in the
+ * reasoning channel before any visible content emits — which the benchmark
+ * correctly rejects as "no assistant text". Env: ISTARA_BENCHMARK_SESSION_MAX_TOKENS.
+ */
+const benchSessionMaxTokens = Number.parseInt(
+  process.env.ISTARA_BENCHMARK_SESSION_MAX_TOKENS || "16384", 10,
+);
+
+async function ensureBenchSession(api, projectId, label) {
+  try {
+    const session = await api.post("/api/sessions", {
+      project_id: projectId,
+      title: `[RU-BENCH] ${label} ${runId}`,
+      inference_preset: "custom",
+      custom_temperature: 0.7,
+      custom_max_tokens: Number.isFinite(benchSessionMaxTokens) ? benchSessionMaxTokens : 16384,
+    });
+    return session?.id || null;
+  } catch (error) {
+    console.warn(`[bench] session preset setup failed (${error.message}); using server defaults`);
+    return null;
+  }
+}
+
 async function runChatBenchmark(api, projectId, turns, { actor = null, contributionMap = null } = {}) {
-  let sessionId = null;
+  let sessionId = await ensureBenchSession(api, projectId, actor?.key || "chat");
   const completed = [];
   for (const turn of turns) {
     const started = Date.now();
@@ -3601,6 +3870,12 @@ async function runCollaborativeChatBenchmark({ projectId, actors, turns }) {
   }
   const contributionMap = new Map();
   const sessions = new Map();
+  for (const a of activeActors) {
+    if (!sessions.get(a.key)) {
+      // eslint-disable-next-line no-await-in-loop
+      sessions.set(a.key, await ensureBenchSession(a.api, projectId, a.key || a.label || "actor"));
+    }
+  }
   let completed = 0;
   for (let index = 0; index < turns.length; index += 1) {
     const turn = turns[index];
@@ -3712,6 +3987,7 @@ async function runTaskAgentPass(api, projectId, task, plan, uploaded, { revision
     actor_role: actor?.role || "",
     weak_first_pass: weakFirstPass,
     response_chars: content.length,
+    response_preview: content.slice(0, 1200),
     event_count: response.events?.length || 0,
     session_id: response.session_id || "",
   });
@@ -3997,10 +4273,13 @@ async function exerciseFindingsReports(api, projectId) {
   }
   try {
     const brief = await api.post("/api/interfaces/handoff/brief", { project_id: projectId }, { timeoutMs: 180000 });
-    featureResults.reportGenerated = true;
-    logger.action("feature.report.generated", { result: preview(brief) });
+    logger.action("feature.design_brief.provisional", {
+      result: preview(brief),
+      reportable: false,
+      reason: "Interface handoff briefs remain provisional until a governed task report passes the Research Spine gate.",
+    });
   } catch (error) {
-    logger.action("feature.report.generated", { ok: false, error: error.message });
+    logger.action("feature.design_brief.provisional", { ok: false, error: error.message, reportable: false });
   }
 }
 
@@ -4070,11 +4349,6 @@ async function recordNaturalComputeOrchestration(api, projectId, beforeStats, la
   return result;
 }
 
-function compactTaskNote(note, fallback) {
-  const text = String(note || fallback || "").replace(/\s+/g, " ").trim();
-  return text.length > 280 ? `${text.slice(0, 277)}...` : text;
-}
-
 async function exerciseTaskBackedFindingsReports(api, projectId, taskWorkflow) {
   const approvedTasks = taskWorkflow?.approvedTasks || [];
   if (!approvedTasks.length) {
@@ -4082,61 +4356,55 @@ async function exerciseTaskBackedFindingsReports(api, projectId, taskWorkflow) {
     return false;
   }
   const sourceTasks = approvedTasks.slice(0, 3);
-  try {
-    const nugget = await api.post("/api/findings/nuggets", {
-      project_id: projectId,
-      text: `Approved task evidence: ${compactTaskNote(sourceTasks[0]?.agent_notes, sourceTasks[0]?.title)}`,
-      source: `task:${sourceTasks[0].id}`,
-      source_location: "approved_agent_notes",
-      tags: ["task-backed", "real-user-benchmark", "approved-work"],
-      phase: "discover",
-    });
-    const fact = await api.post("/api/findings/facts", {
-      project_id: projectId,
-      text: `Approved task review found usable evidence across ${sourceTasks.length} research task(s).`,
-      nugget_ids: [nugget.id],
-      phase: "define",
-    });
-    const insight = await api.post("/api/findings/insights", {
-      project_id: projectId,
-      text: "Only reviewed and approved agent work should advance into the reporting chain.",
-      fact_ids: [fact.id],
-      phase: "define",
-      impact: "high",
-    });
-    const recommendation = await api.post("/api/findings/recommendations", {
-      project_id: projectId,
-      text: "Generate leadership reporting from approved task outputs, preserving reviewer notes and source traceability.",
-      insight_ids: [insight.id],
-      phase: "deliver",
-      priority: "high",
-      effort: "medium",
-    });
-    featureResults.findingsCreated = true;
-    featureResults.approvedTaskFindings = true;
-    logger.action("feature.findings.task_backed.created", {
-      approved_task_ids: sourceTasks.map((task) => task.id),
-      nugget_id: nugget.id,
-      fact_id: fact.id,
-      insight_id: insight.id,
-      recommendation_id: recommendation.id,
-    });
-  } catch (error) {
+  let reportCount = 0;
+  const reportIds = [];
+  for (const task of sourceTasks) {
+    try {
+      const payload = await api.post(
+        `/api/tasks/${task.id}/reports?project_id=${encodeURIComponent(projectId)}`,
+        {},
+        { timeoutMs: 180000 },
+      );
+      const report = payload?.report || payload;
+      if (!report?.id) {
+        throw new Error("Task report response did not include a report id.");
+      }
+      reportCount += 1;
+      reportIds.push(report.id);
+      logger.action("feature.report.task_backed.generated", {
+        ok: true,
+        task_id: task.id,
+        report_id: report.id,
+        status: report.status || "draft",
+        reportable: true,
+      });
+    } catch (error) {
+      logger.action("feature.report.task_backed.generated", {
+        ok: false,
+        task_id: task.id,
+        error: error.message,
+        reportable: false,
+      });
+    }
+  }
+  featureResults.approvedTaskFindings = reportCount > 0;
+  featureResults.reportGenerated = reportCount > 0;
+  featureResults.reportabilityVerified = reportCount > 0;
+  featureResults.findingsCreated = reportCount > 0;
+  if (!reportCount) {
     logger.issue({
       area: "findings",
       severity: "medium",
-      title: "Could not create approved-task-backed findings",
-      detail: error.message,
+      title: "No approved task produced a Research Spine report",
+      detail: "The benchmark attempted the governed task report endpoint for approved tasks, but every task was blocked or returned an invalid report response. Taskless findings and interface handoff briefs are not counted as report evidence.",
+      evidence: {
+        approved_task_ids: sourceTasks.map((task) => task.id),
+        report_endpoint: "/api/tasks/{task_id}/reports",
+        report_ids: reportIds,
+      },
     });
   }
-  try {
-    const brief = await api.post("/api/interfaces/handoff/brief", { project_id: projectId }, { timeoutMs: 180000 });
-    featureResults.reportGenerated = true;
-    logger.action("feature.report.task_backed.generated", { result: preview(brief) });
-  } catch (error) {
-    logger.action("feature.report.task_backed.generated", { ok: false, error: error.message });
-  }
-  return Boolean(featureResults.approvedTaskFindings);
+  return Boolean(featureResults.reportabilityVerified);
 }
 
 function recordInterviewProcessEvidence({ uploaded, taskWorkflow }) {
@@ -4200,7 +4468,23 @@ function writePlanSnapshot(corpusSummary) {
     requested_full_chat_turns: 100,
     requested_completed_tasks: 50,
     requested_researcher_client_count: runtimeResearcherCount,
-    requested_compute_donor_count: donorProfiles.filter((profile) => profile.required).length,
+    acceptance_profile: acceptanceProfile,
+    provider_acceptance_selected: providerAcceptanceSelected,
+    petals_acceptance_selected: petalsAcceptanceSelected,
+    workload_scope: workload,
+    requested_limits: {
+      chat_turns: requestedMaxChatTurns,
+      tasks: requestedMaxTasks,
+      uploads: requestedMaxUploads,
+      coding_units: requestedCodingValidationLimit,
+    },
+    effective_limits: {
+      chat_turns: maxChatTurns,
+      tasks: maxTasks,
+      uploads: maxUploads,
+      coding_units: codingValidationLimit,
+    },
+    requested_compute_donor_count: workload.petals ? donorProfiles.filter((profile) => profile.required).length : 0,
     compute_donor_profiles: donorProfiles.map(summarizeDonorProfile),
     generated_chat_turn_templates: buildCollaborativeChatTurns({ total: 108 }),
     generated_task_templates: [buildInterviewProcessPlan(), ...buildTaskPlan({ total: 59 })],
@@ -4213,9 +4497,26 @@ function writePlanSnapshot(corpusSummary) {
 }
 
 async function main() {
+  if (failClosedForHostManagedThreeModelRun()) return;
   captureColimaStorageSnapshot("run-start", { recordIssue: true });
   logger.action("benchmark.start", {
     mode,
+    acceptance_profile: acceptanceProfile,
+    provider_acceptance_selected: providerAcceptanceSelected,
+    petals_acceptance_selected: petalsAcceptanceSelected,
+    workload_scope: workload,
+    requested_limits: {
+      chat_turns: requestedMaxChatTurns,
+      tasks: requestedMaxTasks,
+      uploads: requestedMaxUploads,
+      coding_units: requestedCodingValidationLimit,
+    },
+    effective_limits: {
+      chat_turns: maxChatTurns,
+      tasks: maxTasks,
+      uploads: maxUploads,
+      coding_units: codingValidationLimit,
+    },
     apiBase,
     frontendUrl,
     maxChatTurns,
@@ -4238,7 +4539,7 @@ async function main() {
     requireLiveChat,
     forceDonatedChat,
     researcher_count: runtimeResearcherCount,
-    donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
+    donor_count_requested: workload.petals ? donorProfiles.filter((profile) => profile.required).length : 0,
     donor_profiles: donorProfiles.map(summarizeDonorProfile),
     colima_storage_policy: colimaStoragePolicy,
     colima_storage_budget: colimaStorageBudget,
@@ -4266,8 +4567,17 @@ async function main() {
   writePlanSnapshot(corpus);
 
   if (mode === "plan-only") {
+    const enginePlan = benchmarkEngines.length ? benchmarkEngines : ["(default)"];
+    console.log("[plan-only] real-user benchmark — no live services attempted.");
+    for (const engine of enginePlan) {
+      const header =
+        engine === "(default)"
+          ? "(engine header unset — dispatcher default)"
+          : `${AGENT_ENGINE_HEADER}: ${engine}`;
+      console.log(`[plan-only] engine=${engine} -> ${header}`);
+    }
     blockers.push("Plan-only mode did not attempt live services.");
-    const scorecard = scoreRun({
+    const scorecard = buildScorecard({
       mode,
       metrics: { corpusDocuments: corpus.document_count },
       integrationMatrix: [],
@@ -4285,9 +4595,7 @@ async function main() {
     return;
   }
 
-  assertHostManagedThreeModelTopology();
   startServerSandboxIfRequested();
-  cleanupHostManagedServerSandboxConflict("pre-health");
   const api = new IstaraApiClient({
     apiBase,
     repoRoot,
@@ -4295,6 +4603,7 @@ async function main() {
     networkAccessToken: benchmarkNetworkToken,
     adminUsername: benchmarkAdminUsername,
     adminPassword: benchmarkAdminPassword,
+    agentEngine: benchmarkAgentEngine,
   });
   const health = await waitForHealth(api, startSandbox && !skipSandbox && sandbox.serverStarted ? 240000 : 15000);
   if (!health.ok) {
@@ -4305,7 +4614,7 @@ async function main() {
       title: "Istara API unreachable",
       detail: health.error || `status=${health.status}`,
     });
-    const scorecard = scoreRun({
+    const scorecard = buildScorecard({
       mode,
       metrics: { corpusDocuments: corpus.document_count },
       integrationMatrix: [],
@@ -4336,6 +4645,29 @@ async function main() {
     });
   }
 
+  if (auth.ok) {
+    try {
+      securityIntegrityBaseline = await api.get("/api/settings/security-integrity");
+      logger.writeJson("security-integrity-baseline.json", securityIntegrityBaseline);
+      const fieldHealth = securityIntegrityBaseline?.field_encryption || {};
+      if (fieldHealth.healthy !== true || Number(fieldHealth.decryption_failures || 0) > 0) {
+        blockers.push("Field-encryption integrity was already degraded before benchmark work began.");
+      }
+      const telemetryHealth = securityIntegrityBaseline?.telemetry_writes || {};
+      if (telemetryHealth.healthy !== true || Number(telemetryHealth.write_failures || 0) > 0) {
+        blockers.push("Telemetry evidence persistence was already degraded before benchmark work began.");
+      }
+    } catch (error) {
+      blockers.push("Security-integrity health could not be verified before the benchmark.");
+      logger.issue({
+        area: "security-integrity",
+        severity: "critical",
+        title: "Security integrity baseline unavailable",
+        detail: error.message,
+      });
+    }
+  }
+
   let project = null;
   let uploaded = [];
   let connectionStrings = {};
@@ -4344,41 +4676,97 @@ async function main() {
   let completedTasks = 0;
   let taskWorkflow = null;
   let researchSpineEvidence = null;
+  let connectionRevocation = null;
   let researcherInviteResults = [];
   let researcherActors = [];
 
   if (auth.ok) {
     project = await createProject(api);
-    await linkProjectFolder(api, project.id, logger.paths.corpus);
-    uploaded = await uploadCorpus(api, project.id, corpus.manifest, maxUploads);
+    if (workload.corpus) {
+      await linkProjectFolder(api, project.id, logger.paths.corpus);
+      uploaded = await uploadCorpus(api, project.id, corpus.manifest, maxUploads);
+    } else {
+      logger.action("corpus.upload.skip", { reason: "acceptance-profile-does-not-select-corpus" });
+    }
     if (uploaded.length > 0) featureResults.uploadedAndQueried = true;
 
-    const initialOverrides = loadConnectionStringOverrides();
-    const connectionOverrides = await maybePromptForConnectionOverrides(initialOverrides);
-    const requiredDonorCount = donorProfiles.filter((profile) => profile.required).length;
+    let selectedDonorProfiles = workload.petals ? donorProfiles : [];
+    let selectedResearcherCount = workload.commonWorkflow ? runtimeResearcherCount : 0;
+    const initialOverrides = loadConnectionStringOverrides({ donorProfilesForRun: selectedDonorProfiles });
+    const connectionOverrides = (workload.petals || workload.commonWorkflow)
+      ? await maybePromptForConnectionOverrides(initialOverrides, {
+          donorProfilesForRun: selectedDonorProfiles,
+          researcherCount: selectedResearcherCount,
+        })
+      : initialOverrides;
+    if (workload.petals) selectedDonorProfiles = donorProfiles;
+    if (workload.commonWorkflow) selectedResearcherCount = runtimeResearcherCount;
+    const requiredDonorCount = selectedDonorProfiles.filter((profile) => profile.required).length;
     const hasAllExternalOverrides = connectionOverrides.computeDonations.length >= requiredDonorCount
-      && connectionOverrides.userInvites.length >= runtimeResearcherCount;
+      && connectionOverrides.userInvites.length >= selectedResearcherCount;
     const shouldGenerateConnectionStrings = !hasAllExternalOverrides || boolEnv("ISTARA_BENCHMARK_GENERATE_CONNECTION_STRINGS_WITH_OVERRIDES", false);
     const generatedConnectionStrings = shouldGenerateConnectionStrings
       ? await createConnectionStrings(api, {
           projectId: project.id,
-          donorProfilesForRun: donorProfiles,
-          researcherCount: runtimeResearcherCount,
+          donorProfilesForRun: selectedDonorProfiles,
+          researcherCount: selectedResearcherCount,
         })
       : { userInvites: [], computeDonations: [] };
-    connectionStrings = materializeConnectionStrings(generatedConnectionStrings, connectionOverrides);
-    const requiredDonors = donorProfiles.filter((profile) => profile.required);
+    connectionStrings = materializeConnectionStrings(generatedConnectionStrings, connectionOverrides, {
+      donorProfilesForRun: selectedDonorProfiles,
+      researcherCount: selectedResearcherCount,
+    });
+    const requiredDonors = selectedDonorProfiles.filter((profile) => profile.required);
     const enabledRequiredDonors = requiredDonors.filter((profile) => profile.enabled);
     const endpointDiversity = {
       ...donorEndpointDiversity(enabledRequiredDonors),
+      selected: workload.petals,
       required_donor_count: requiredDonors.length,
       enabled_required_donor_count: enabledRequiredDonors.length,
       all_required_donors_enabled: enabledRequiredDonors.length === requiredDonors.length,
     };
     endpointDiversity.ok = endpointDiversity.all_required_donors_enabled
       && (!requireDistinctDonorEndpoints || endpointDiversity.distinct);
-    featureResults.distinctDonorEndpoints = endpointDiversity.ok;
+    // An unselected Petals plane must not emit a vacuous "distinct" result
+    // merely because its donor list is empty (`[].distinct === true`).
+    featureResults.distinctDonorEndpoints = workload.petals && endpointDiversity.ok;
     logger.writeJson("donor-endpoint-diversity.json", endpointDiversity);
+    // Kind-awareness: generated strings must decode to their expected kind
+    // (current connection_string kinds: user_invite / compute_donation).
+    for (const [expectedKind, items] of [["user_invite", connectionStrings.userInvites || []], ["compute_donation", connectionStrings.computeDonations || []]]) {
+      for (const item of items) {
+        const decodedKind = String(decodeConnectionStringPayloadUnsafe(item?.connection_string)?.payload?.kind || "");
+        logger.action("connection.kind.assert", { expected: expectedKind, decoded: decodedKind, id: item?.id || "" });
+        if (decodedKind && decodedKind !== expectedKind) {
+          blockers.push(`Connection string kind mismatch: expected ${expectedKind}, decoded ${decodedKind}.`);
+          logger.issue({
+            area: "connection-string",
+            severity: "high",
+            title: "Connection string kind mismatch",
+            detail: `Expected ${expectedKind}, decoded ${decodedKind} (id ${item?.id || "unknown"}).`,
+          });
+        }
+      }
+    }
+    // Pi Model Management cross-check: donor endpoint ids must resolve in the
+    // live model catalog; petals bridge status recorded (admin-gated).
+    if (mode !== "plan-only") {
+      const piEndpointIds = selectedDonorProfiles
+        .filter((profile) => profile?.modelSandbox?.kind === "pi-managed")
+        .map((profile) => profile.modelSandbox.endpointId)
+        .filter(Boolean);
+      try {
+        await exerciseModelManagement({
+          api,
+          projectId: project.id,
+          logger,
+          featureResults,
+          donorEndpointIds: piEndpointIds,
+        });
+      } catch (error) {
+        logger.action("model_management.probe", { step: "runner", ok: false, error: error.message });
+      }
+    }
     logger.action("compute.donor.endpoint_diversity", endpointDiversity);
     if (!endpointDiversity.ok && requireDistinctDonorEndpoints) {
       blockers.push("Required compute donors do not resolve to distinct runnable LLM endpoints.");
@@ -4390,19 +4778,23 @@ async function main() {
       });
     }
 
-    for (const donor of requiredDonors) {
-      await startDonorModelSandbox(donor);
+    if (workload.petals) {
+      for (const donor of requiredDonors) {
+        await startDonorModelSandbox(donor);
+      }
     }
 
     researcherInviteResults = [];
-    for (let index = 0; index < connectionStrings.userInvites.length; index += 1) {
-      const result = startInviteClientSandbox(connectionStrings.userInvites[index]?.connection_string || "", index);
-      if (result) researcherInviteResults.push(result);
-      await grantResearcherProjectAccess(api, project.id, result);
+    if (workload.commonWorkflow) {
+      for (let index = 0; index < connectionStrings.userInvites.length; index += 1) {
+        const result = startInviteClientSandbox(connectionStrings.userInvites[index]?.connection_string || "", index);
+        if (result) researcherInviteResults.push(result);
+        await grantResearcherProjectAccess(api, project.id, result);
+      }
     }
     logger.writeJson("connection-client-results.json", {
       attempted: researcherInviteResults.length > 0,
-      expected_count: runtimeResearcherCount,
+      expected_count: selectedResearcherCount,
       ok_count: researcherInviteResults.filter((result) => result.ok).length,
       results: researcherInviteResults.map((result) => ({
         ok: result.ok,
@@ -4415,10 +4807,10 @@ async function main() {
     researcherActors = await authenticateResearcherActors(researcherInviteResults);
 
     const activeDonorProfiles = [];
-    for (let index = 0; index < requiredDonors.length; index += 1) {
+    for (let index = 0; workload.petals && index < requiredDonors.length; index += 1) {
       const donor = requiredDonors[index];
       const donation = connectionStrings.computeDonations.find((item) => item.donor_id === donor.id) || connectionStrings.computeDonations[index];
-      const preflight = preflightRelayLlmFromContainer(donor);
+      const preflight = await preflightRelayLlmFromContainer(donor);
       const preflightOk = preflight?.ok === true || (preflight?.skipped === true && !requireComputeDonation);
       if (donation?.connection_string && donor.enabled && preflightOk) {
         activeDonorProfiles.push(donor);
@@ -4436,7 +4828,13 @@ async function main() {
         }
       }
     }
-    await verifyComputeDonation(api, project.id, { activeDonorProfiles });
+    if (workload.petals) {
+      await verifyComputeDonation(api, project.id, { activeDonorProfiles });
+    } else {
+      logger.action("compute.donation.verify.skip", { reason: "acceptance-profile-does-not-select-petals" });
+      logger.writeJson("compute-donation-results.json", { selected: false, reason: "acceptance-profile-does-not-select-petals" });
+    }
+    if (workload.commonWorkflow) {
     const adminActor = makeAdminActor(api);
 
     const uiResult = await runUiJourney({
@@ -4519,67 +4917,129 @@ async function main() {
     });
     completedTasks = taskWorkflow.approvals;
     recordInterviewProcessEvidence({ uploaded, taskWorkflow });
-    const expectedResearchSpineDonorRoutes = hostManagedThreeModelRun
-      ? Math.min(3, donorProfiles.filter((profile) => profile.required && profile.enabled).length)
-      : 0;
-    if (codingValidationEnabled && expectedResearchSpineDonorRoutes >= 2) {
-      const preCodingRelayHealth = await waitForHealthyRelayRoutes(
+    await recordNaturalComputeOrchestration(api, project.id, computeBeforeResearch, "after-collaborative-research");
+    }
+
+    if (workload.provider) {
+      const expectedResearchSpineDonorRoutes = (hostManagedThreeModelRun || dockerOwnedThreeModelRun)
+        ? Math.min(3, donorProfiles.filter((profile) => profile.required && profile.enabled).length)
+        : 0;
+      if (codingValidationEnabled && expectedResearchSpineDonorRoutes >= 2) {
+        const preCodingRelayHealth = await waitForHealthyRelayRoutes(
+          api,
+          project.id,
+          expectedResearchSpineDonorRoutes,
+          180000,
+          "before-research-spine-coding",
+        );
+        logger.writeJson("research-spine-pre-coding-relay-health.json", preCodingRelayHealth);
+        if (!preCodingRelayHealth.ok) {
+          blockers.push(`Research Spine coding did not have all required donor relays healthy: ${preCodingRelayHealth.alive_relay_count}/${expectedResearchSpineDonorRoutes}.`);
+          logger.issue({
+            area: "research-spine",
+            severity: "high",
+            title: "Required donor relays were not healthy before Research Spine coding",
+            detail: "The benchmark must prove the host donor plus both Colima donors can serve the coding pass. Registration or earlier technical probes are not enough.",
+            evidence: {
+              expected_distinct_donor_routes: expectedResearchSpineDonorRoutes,
+              alive_relay_count: preCodingRelayHealth.alive_relay_count,
+            },
+          });
+        }
+      }
+      researchSpineEvidence = await exerciseResearchSpineValidation({
         api,
-        project.id,
-        expectedResearchSpineDonorRoutes,
-        180000,
-        "before-research-spine-coding",
-      );
-      logger.writeJson("research-spine-pre-coding-relay-health.json", preCodingRelayHealth);
-      if (!preCodingRelayHealth.ok) {
-        blockers.push(`Research Spine coding did not have all required donor relays healthy: ${preCodingRelayHealth.alive_relay_count}/${expectedResearchSpineDonorRoutes}.`);
-        logger.issue({
-          area: "research-spine",
-          severity: "high",
-          title: "Required donor relays were not healthy before Research Spine coding",
-          detail: "The benchmark must prove the host donor plus both Colima donors can serve the coding pass. Registration or earlier technical probes are not enough.",
-          evidence: {
-            expected_distinct_donor_routes: expectedResearchSpineDonorRoutes,
-            alive_relay_count: preCodingRelayHealth.alive_relay_count,
-          },
-        });
+        projectId: project.id,
+        taskWorkflow,
+        logger,
+        featureResults,
+        blockers,
+        codingValidationEnabled,
+        codingValidationLimit,
+        expectedDistinctCoders: codingValidationEnabled ? 3 : 0,
+        expectedDistinctDonorRoutes: expectedResearchSpineDonorRoutes,
+        // Research Spine reliability is defined over raw evidence units coded by
+        // distinct model identities.  Source diversity remains a deterministic
+        // selection preference, but the contract does not require three source
+        // documents; a single interview/document may legitimately provide three
+        // independent spans.  Keep source count observable in the selection
+        // artifact without turning it into a false acceptance blocker.
+        expectedDistinctSources: 0,
+        syntheticReconciliationEnabled: boolEnv("ISTARA_BENCHMARK_SYNTHETIC_RECONCILIATION", false),
+      });
+    } else {
+      logger.action("research-spine.validation.skip", { reason: "acceptance-profile-does-not-select-provider" });
+      logger.writeJson("research-spine-results.json", { selected: false, reason: "acceptance-profile-does-not-select-provider" });
+    }
+    if (workload.commonWorkflow) {
+      await exerciseSelfImprovementGovernance({
+        api,
+        projectId: project.id,
+        taskWorkflow,
+        researchSpineEvidence,
+        logger,
+        featureResults,
+        runId,
+        selfImprovementProbeEnabled,
+        startAutoresearchExperiment,
+      });
+      await exerciseTaskBackedFindingsReports(api, project.id, taskWorkflow);
+      if (!featureResults.approvedTaskFindings) {
+        await exerciseFindingsReports(api, project.id);
       }
     }
-    researchSpineEvidence = await exerciseResearchSpineValidation({
-      api,
-      projectId: project.id,
-      taskWorkflow,
-      logger,
-      featureResults,
-      blockers,
-      codingValidationEnabled,
-      codingValidationLimit,
-      expectedDistinctCoders: expectedResearchSpineDonorRoutes,
-      expectedDistinctDonorRoutes: expectedResearchSpineDonorRoutes,
-    });
-    await exerciseSelfImprovementGovernance({
-      api,
-      projectId: project.id,
-      taskWorkflow,
-      researchSpineEvidence,
-      logger,
-      featureResults,
-      runId,
-      selfImprovementProbeEnabled,
-      startAutoresearchExperiment,
-    });
-    await exerciseTaskBackedFindingsReports(api, project.id, taskWorkflow);
-    if (!featureResults.approvedTaskFindings) {
-      await exerciseFindingsReports(api, project.id);
-    }
-    await recordNaturalComputeOrchestration(api, project.id, computeBeforeResearch, "after-collaborative-research");
   }
 
-  if (mode === "full" && chatTurnCount < 100) blockers.push(`Full run completed only ${chatTurnCount}/100 required chat turns.`);
-  if (mode === "full" && completedTasks < 50) blockers.push(`Full run completed only ${completedTasks}/50 required reviewed tasks.`);
+  blockers.push(...liveAcceptanceBlockers({
+    maxChatTurns,
+    chatTurnCount,
+    maxTasks,
+    completedTasks,
+    acceptanceProfile,
+    codingValidationEnabled,
+    requireComputeDonation,
+    requireLongHorizon,
+    longHorizonVerified,
+    featureResults,
+  }));
+  if (mode === "full" && workload.chat && chatTurnCount < 100) blockers.push(`Full run completed only ${chatTurnCount}/100 required chat turns.`);
+  if (mode === "full" && workload.tasks && completedTasks < 50) blockers.push(`Full run completed only ${completedTasks}/50 required reviewed tasks.`);
+
+  if (auth.ok) {
+    try {
+      const finalIntegrity = await api.get("/api/settings/security-integrity");
+      logger.writeJson("security-integrity-final.json", finalIntegrity);
+      const baselineFailures = Number(securityIntegrityBaseline?.field_encryption?.decryption_failures || 0);
+      const finalFailures = Number(finalIntegrity?.field_encryption?.decryption_failures || 0);
+      if (finalIntegrity?.field_encryption?.healthy !== true || finalFailures > baselineFailures) {
+        blockers.push(`Field-encryption integrity failed during the benchmark (${baselineFailures} -> ${finalFailures}).`);
+      }
+      const baselineTelemetryFailures = Number(securityIntegrityBaseline?.telemetry_writes?.write_failures || 0);
+      const finalTelemetryFailures = Number(finalIntegrity?.telemetry_writes?.write_failures || 0);
+      if (finalIntegrity?.telemetry_writes?.healthy !== true || finalTelemetryFailures > baselineTelemetryFailures) {
+        blockers.push(`Telemetry evidence persistence failed during the benchmark (${baselineTelemetryFailures} -> ${finalTelemetryFailures}).`);
+      }
+    } catch (error) {
+      blockers.push("Security-integrity health could not be verified after the benchmark.");
+      logger.issue({
+        area: "security-integrity",
+        severity: "critical",
+        title: "Security integrity final check unavailable",
+        detail: error.message,
+      });
+    }
+  }
+
+  if (auth.ok && (workload.petals || workload.commonWorkflow)) {
+    connectionRevocation = await revokeGeneratedConnectionStrings(api, connectionStrings);
+  } else {
+    connectionRevocation = { attempted: 0, revoked: 0, skipped_external_or_unidentified: 0, results: [], selected: false };
+    logger.writeJson("connection-revocation-results.json", connectionRevocation);
+    logger.action("connection.revocation.skip", { reason: "no-generated-connections-for-selected-profile" });
+  }
 
   captureColimaStorageSnapshot("before-scorecard", { recordIssue: true });
-  const scorecard = scoreRun({
+  const scorecard = buildScorecard({
     mode,
     metrics: { ...logger.metrics, corpusDocuments: corpus.document_count },
     integrationMatrix,
@@ -4589,11 +5049,28 @@ async function main() {
     uploadedDocuments: uploaded.length,
     sandbox,
     featureResults,
+    connectionRevocation,
   });
   logger.writeJson("scorecard.json", scorecard);
   const historyRecord = {
     run_id: runId,
     mode,
+    acceptance_profile: acceptanceProfile,
+    workload_scope: workload,
+    long_horizon_required: requireLongHorizon,
+    long_horizon_verified: longHorizonVerified,
+    requested_limits: {
+      chat_turns: requestedMaxChatTurns,
+      tasks: requestedMaxTasks,
+      uploads: requestedMaxUploads,
+      coding_units: requestedCodingValidationLimit,
+    },
+    effective_limits: {
+      chat_turns: maxChatTurns,
+      tasks: maxTasks,
+      uploads: maxUploads,
+      coding_units: codingValidationLimit,
+    },
     date: new Date().toISOString(),
     benchmark_id: benchmarkRegistry.benchmark_id,
     benchmark_registry_version: benchmarkRegistry.version,
@@ -4602,6 +5079,8 @@ async function main() {
     completed_tasks: completedTasks,
     uploaded_documents: uploaded.length,
     blocker_count: blockers.length,
+    unrelated_workflow_failures: [...unrelatedWorkflowFailures],
+    connection_revocation: connectionRevocation,
     compute_donation_verified: Boolean(featureResults.computeDonation),
     multi_donor_compute_verified: Boolean(featureResults.multiDonorCompute),
     natural_compute_orchestration_verified: Boolean(featureResults.naturalComputeOrchestration),
@@ -4611,6 +5090,12 @@ async function main() {
     approved_task_findings_verified: Boolean(featureResults.approvedTaskFindings),
     interview_process_verified: Boolean(featureResults.interviewProcess),
     coding_validation_verified: Boolean(featureResults.codingValidation),
+    ensemble_coding_verified: Boolean(featureResults.ensembleCodingValidation),
+    synthetic_reconciliation_verified: Boolean(featureResults.syntheticReconciliationValidation),
+    donor_endpoint_contract_verified: Boolean(featureResults.distinctDonorEndpoints),
+    research_spine_structure_present: Boolean(featureResults.researchSpineTraceability),
+    research_spine_validation_verified: scorecard.research_spine_validation_verified,
+    research_spine_donor_routes_verified: Boolean(featureResults.multiModelResearchSpineValidation),
     research_spine_traceability_verified: Boolean(featureResults.researchSpineTraceability),
     telemetry_evidence_verified: Boolean(featureResults.telemetryEvidence),
     reasoning_bank_evidence_verified: Boolean(featureResults.reasoningBankEvidence),
@@ -4621,14 +5106,18 @@ async function main() {
     rag_traceability_evidence_verified: Boolean(featureResults.ragTraceabilityEvidence),
     autoresearch_experiment_started: Boolean(startAutoresearchExperiment),
     host_managed_three_model_run: Boolean(hostManagedThreeModelRun),
+    docker_runner_marker: Boolean(dockerRunnerMarker),
+    docker_container_runtime: Boolean(dockerContainerRuntime),
+    docker_runner_mode: Boolean(dockerRunnerMode),
+    docker_owned_three_model_run: Boolean(dockerOwnedThreeModelRun),
     stop_colima_after_run: Boolean(stopColimaAfterRun),
     colima_autostart_attempted: Boolean(colimaAutostartAttempted),
     colima_started_by_benchmark: Boolean(colimaStartedByBenchmark),
-    compute_donor_count_requested: donorProfiles.filter((profile) => profile.required).length,
+    compute_donor_count_requested: workload.petals ? donorProfiles.filter((profile) => profile.required).length : 0,
     compute_donor_count_started: sandbox.relayStartedCount,
     donor_model_server_count_requested: sandbox.modelServerExpectedCount,
     donor_model_server_count_started: sandbox.modelServerStartedCount,
-    researcher_client_count_requested: runtimeResearcherCount,
+    researcher_client_count_requested: workload.commonWorkflow ? runtimeResearcherCount : 0,
     researcher_client_count_started: sandbox.researcherStartedCount,
     live_chat_verified: Boolean(featureResults.liveChat),
     researcher_actor_count: researcherActors.length,
@@ -4661,21 +5150,30 @@ async function main() {
   logger.appendReport(`Corpus documents generated: ${corpus.document_count}\n\n`);
   logger.appendReport(`Documents uploaded: ${uploaded.length}\n\n`);
   logger.appendReport(`Chat turns completed: ${chatTurnCount}\n\n`);
+  logger.appendReport(`Long-horizon two-call workload: ${longHorizonVerified ? "verified" : requireLongHorizon ? "blocked" : "not selected"}\n\n`);
   logger.appendReport(`Human-approved completed tasks: ${completedTasks}\n\n`);
   logger.appendReport(`Compute donation verified: ${featureResults.computeDonation ? "yes" : "no"}\n\n`);
   logger.appendReport(`Host-managed three-model topology: ${hostManagedThreeModelRun ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Docker runner marker/runtime: ${dockerRunnerMarker ? "set" : "unset"}/${dockerContainerRuntime ? "container" : "host-or-unknown"}\n\n`);
+  logger.appendReport(`Docker runner mode: ${dockerRunnerMode ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Docker-owned three-model topology: ${dockerOwnedThreeModelRun ? "yes" : "no"}\n\n`);
   logger.appendReport(`Stop Colima after benchmark resources are cleaned up: ${stopColimaAfterRun ? "yes" : "no"}\n\n`);
   logger.appendReport(`Compute donor containers: ${sandbox.relayStartedCount}/${donorProfiles.filter((profile) => profile.required).length} started\n\n`);
   logger.appendReport(`Donor model server containers: ${sandbox.modelServerStartedCount}/${sandbox.modelServerExpectedCount} started\n\n`);
-  logger.appendReport(`Distinct donor endpoints verified: ${featureResults.distinctDonorEndpoints ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Donor endpoint contract verified: ${featureResults.distinctDonorEndpoints ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Research Spine donor routes verified: ${scorecard.research_spine_donor_routes_verified ? "yes" : "no"}\n\n`);
   logger.appendReport(`Researcher client containers: ${sandbox.researcherStartedCount}/${runtimeResearcherCount} redeemed\n\n`);
   logger.appendReport(`Multi-donor compute verified: ${featureResults.multiDonorCompute ? "yes" : "no"}\n\n`);
   logger.appendReport(`Natural compute orchestration observed: ${featureResults.naturalComputeOrchestration ? "yes" : "no"}\n\n`);
   logger.appendReport(`Multi-user collaboration verified: ${featureResults.multiUserCollaboration ? "yes" : "no"}\n\n`);
   logger.appendReport(`Task review/revision loop verified: ${featureResults.taskReviewLoop ? "yes" : "no"}\n\n`);
   logger.appendReport(`Approved-task-backed Findings/reporting verified: ${featureResults.approvedTaskFindings ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Research Spine reportability receipt verified: ${featureResults.reportabilityVerified ? "yes" : "no"}\n\n`);
   logger.appendReport(`Research Spine coding validation observed: ${featureResults.codingValidation ? "yes" : "no"}\n\n`);
-  logger.appendReport(`Research Spine traceability observed: ${featureResults.researchSpineTraceability ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Research Spine ensemble coding evidence (pre-reconciliation): ${featureResults.ensembleCodingValidation ? "verified" : "not verified"}; this is not reportable evidence until governed reconciliation and Done-task gates pass.\n\n`);
+  logger.appendReport(`Synthetic reconciliation diagnostic (opt-in, non-reportable): ${featureResults.syntheticReconciliationValidation ? "verified" : "not requested or not verified"}; synthetic receipts never replace human review.\n\n`);
+  logger.appendReport(`Research Spine structural traceability present: ${scorecard.research_spine_structure_present ? "yes" : "no"}\n\n`);
+  logger.appendReport(`Research Spine accepted multi-model validation verified: ${scorecard.research_spine_validation_verified ? "yes" : "no"}\n\n`);
   logger.appendReport(`Telemetry evidence observed: ${featureResults.telemetryEvidence ? "yes" : "no"}\n\n`);
   logger.appendReport(`ReasoningBank process-memory probe verified: ${featureResults.reasoningBankEvidence ? "yes" : "no"}\n\n`);
   logger.appendReport(`Memento/skill health probe verified: ${featureResults.mementoSkillEvidence ? "yes" : "no"}\n\n`);
@@ -4699,6 +5197,7 @@ async function main() {
   cleanupDonorModelSandboxes();
   stopColimaIfRequested("run-complete");
   logger.finalize({ scorecard, project_id: project?.id || "", uploaded_documents: uploaded.length });
+  process.exitCode = benchmarkExitCode({ mode, blockers });
 }
 
 main().catch((error) => {
@@ -4708,7 +5207,7 @@ main().catch((error) => {
     title: "Benchmark crashed",
     detail: error.stack || error.message,
   });
-  const scorecard = scoreRun({
+  const scorecard = buildScorecard({
     mode,
     metrics: logger.metrics,
     integrationMatrix: [],

@@ -172,7 +172,7 @@
 <h2>Settings</h2>
 <ul>
 <li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../../settings/general/researcher.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
-<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../../settings/llm-servers/researcher.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="legacy llm server compatibility settings &gt; pi model management &gt; legacy compatibility pi model management owns provider/model configuration while legacy llmserver rows remain read-only migration input and petals donors join through the governed bridge."><a href="../../settings/llm-servers/researcher.html"><span>Legacy LLM Server Compatibility</span><small>Settings &gt; Pi Model Management &gt; Legacy Compatibility</small></a></li>
 <li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../../settings/users/researcher.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
 <li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../../settings/connection-strings/researcher.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
 <li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../../settings/security-factors/researcher.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Memory &gt; Health</dd></div>
     <div><dt>Component</dt><dd><code>MemoryView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>11</dd></div>
+    <div><dt>Tests</dt><dd>5</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../knowledge/researcher.html">Knowledge Memory</a>
 <a href="../../quality/dashboard/researcher.html">Quality Dashboard</a></div>
@@ -272,6 +272,27 @@
 <li>Project-scoped state or artifact updates associated with memory health.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
+<h2 id="embeddings-and-engine-selection">Embeddings And Engine Selection</h2>
+<ul>
+<li>Retrieval and memory features use one versioned embedding profile owned by Pi Model Management. The</li>
+</ul>
+<p>profile fixes the model and exact endpoint for Istara and Pi loop choices alike. Changing a classical</p>
+<p>chat provider does not change the vector model. Missing or mismatched profile endpoints fail visibly.</p>
+<ul>
+<li>Startup loads the saved profile before checking vector health. Each project index is bound to that</li>
+</ul>
+<p>profile version; Istara refuses to search or add vectors when the binding differs, even if dimensions</p>
+<p>happen to match. Changing profile versions therefore requires a governed re-index, not a settings flip.</p>
+<ul>
+<li>Both engine routes are still probed independently for model/dimension equality. Empty, malformed,</li>
+</ul>
+<p>non-numeric, non-finite, or wrong-dimension vectors are rejected before cache or index writes.</p>
+<ul>
+<li>Embedding results are still cached first, so repeated lookups do not call the model again; only cache misses go through the new dispatch path, and each one is counted once in usage accounting regardless of engine. All fourteen retrieval, memory, and agent features that embed text keep working unchanged.</li>
+<li>Usage reports distinguish provider-reported embedding tokens/cost from estimates: remote responses with usage remain exact, while responses without usage are visibly governed as estimates rather than exact zero consumption.</li>
+<li>Switching back to Istara changes orchestration but keeps the same Pi-owned embedding profile, cache</li>
+</ul>
+<p>namespace, and project-index binding. It does not return embeddings to a separate Ollama authority.</p>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
@@ -288,9 +309,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/memory/MemoryView.tsx</code>, <code>backend/app/core/vector_health.py</code></li>
+<li>Source files: <code>frontend/src/components/memory/MemoryView.tsx</code>, <code>backend/app/core/vector_health.py</code>, <code>backend/app/core/embeddings.py</code>, <code>backend/app/core/pi_runtime/embeddings_gateway.py</code>, <code>backend/app/core/agentic/dispatcher.py</code></li>
 <li>API references: <code>backend/app/api/routes/memory.py</code></li>
-<li>Tests: <code>tests/test_memory.py</code></li>
+<li>Tests: <code>tests/test_memory.py</code>, <code>tests/pi_production/test_w8_embeddings_gateway.py</code>, <code>tests/pi_migration/test_count_to_zero.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
@@ -302,6 +323,7 @@
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
+<li class="toc-level-2"><a href="#embeddings-and-engine-selection">Embeddings And Engine Selection</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>

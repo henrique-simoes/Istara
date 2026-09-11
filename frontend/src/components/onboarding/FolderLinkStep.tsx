@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FolderOpen, CheckCircle2, AlertTriangle } from "lucide-react";
 
 import { API_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 
 interface FolderLinkStepProps {
   projectId: string | null;
@@ -24,8 +25,9 @@ export default function FolderLinkStep({ projectId }: FolderLinkStepProps) {
     setLinking(true);
     setError(null);
     try {
-      const token = localStorage.getItem("istara_token");
+      const token = getToken();
       const res = await fetch(`${API_BASE}/api/projects/${projectId}/link-folder`, {
+        credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",

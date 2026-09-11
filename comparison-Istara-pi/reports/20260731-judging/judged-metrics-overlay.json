@@ -1,0 +1,1360 @@
+{
+ "B1-T3-canonical-a2a.debate_report.slice-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-a2a.debate_report.slice-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-autoresearch.governed_experiment.slice-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-autoresearch.governed_experiment.slice-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-benchmarks.evals.real_user.contract-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-benchmarks.evals.real_user.contract-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-channel.lifecycle.simulated_slice-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-channel.lifecycle.simulated_slice-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-channels.webhook.telegram.lifecycle-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-channels.webhook.telegram.lifecycle-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-chat.tool_loop.task_and_finding-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-chat.tool_loop.task_and_finding-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-documents.tools.slice-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-documents.tools.slice-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-memory.rag.slice-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-memory.rag.slice-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-memory.reasoningbank.memento.slice-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-memory.reasoningbank.memento.slice-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 4
+  }
+ },
+ "B1-T3-canonical-model.routing.telemetry.slice-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-model.routing.telemetry.slice-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-research.spine.step_tracker-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-research.spine.step_tracker-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 4
+  }
+ },
+ "B1-T3-canonical-skills.three_skill_slice-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-skills.three_skill_slice-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-steering.system_prompt.loop.slice-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-steering.system_prompt.loop.slice-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-structured_outputs.core_eval-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-structured_outputs.core_eval-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-task.plan_execute.lifecycle-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-task.plan_execute.lifecycle-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.collaboration_handoff-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.collaboration_handoff-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.debate_report-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.debate_report-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.delegation_chain-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.delegation_chain-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.backlog_to_review-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.backlog_to_review-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.evidence_grounding-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.evidence_grounding-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.provisional_gate-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.provisional_gate-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.report_generation-seed0-r0-legacy": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.report_generation-seed0-r0-pi": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-a2a.debate_report.slice-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-a2a.debate_report.slice-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-autoresearch.governed_experiment.slice-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-autoresearch.governed_experiment.slice-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-benchmarks.evals.real_user.contract-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-benchmarks.evals.real_user.contract-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-channel.lifecycle.simulated_slice-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-channel.lifecycle.simulated_slice-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-channels.webhook.telegram.lifecycle-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-channels.webhook.telegram.lifecycle-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-chat.tool_loop.task_and_finding-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-chat.tool_loop.task_and_finding-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-documents.tools.slice-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-documents.tools.slice-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-memory.rag.slice-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-memory.rag.slice-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-memory.reasoningbank.memento.slice-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-memory.reasoningbank.memento.slice-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-model.routing.telemetry.slice-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 6
+  }
+ },
+ "B1-T3-canonical-model.routing.telemetry.slice-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-research.spine.step_tracker-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-research.spine.step_tracker-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 4
+  }
+ },
+ "B1-T3-canonical-skills.three_skill_slice-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-skills.three_skill_slice-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-steering.system_prompt.loop.slice-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-steering.system_prompt.loop.slice-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-structured_outputs.core_eval-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-structured_outputs.core_eval-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-task.plan_execute.lifecycle-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B1-T3-canonical-task.plan_execute.lifecycle-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.collaboration_handoff-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.collaboration_handoff-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.debate_report-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.debate_report-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.delegation_chain-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-a2a-a2a.delegation_chain-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.backlog_to_review-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.backlog_to_review-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.evidence_grounding-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.evidence_grounding-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.provisional_gate-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.provisional_gate-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.report_generation-seed0-r0-legacy-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B3-T3-spine-spine.report_generation-seed0-r0-pi-self_moa": {
+  "output_quality": {
+   "correctness": 7
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_0-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_2-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.6666666666666666
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_4-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_6-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_8-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_10-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_12-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_14-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_16-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.3333333333333333
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_18-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_20-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_22-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_24-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_1-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_3-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.6666666666666666
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_5-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_7-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_9-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_11-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_13-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_15-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_17-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_19-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_1-1-0-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_3-2-1-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_5-3-1-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_7-3-3-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_9-3-5-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_11-3-7-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_13-3-9-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task0-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task2-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task4-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task6-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task0-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task2-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task4-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task6-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_0-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_2-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.6666666666666666
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_4-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_6-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_8-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_10-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_12-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_14-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_16-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.3333333333333333
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_18-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_20-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_22-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_24-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_1-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_3-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.6666666666666666
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_5-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_7-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": 0.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_9-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_11-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_13-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_15-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_17-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_19-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_1-1-0-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_3-2-1-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_5-3-1-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_7-3-3-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_9-3-5-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_11-3-7-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_13-3-9-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task0-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task2-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task4-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task6-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task0-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task2-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task4-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task6-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_1-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_3-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_5-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_7-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_9-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_11-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_13-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_15-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.75
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_17-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_19-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_21-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_23-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_0-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_2-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_4-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.75
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_6-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_8-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.75
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_10-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_12-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_14-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.75
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_16-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_18-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_0-0-0-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_2-2-0-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_4-3-0-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_6-3-2-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_8-3-4-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_10-3-6-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_12-3-8-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_14-3-10-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task1-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task3-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task5-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task7-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task1-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task3-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task5-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task7-seed0-r0-pi": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_1-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_3-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_5-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_7-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_9-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_11-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_13-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_15-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.75
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_17-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_19-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_21-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_simple_python.simple_python_23-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_0-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_2-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_4-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.75
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_6-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_8-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.75
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_10-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_12-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_14-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.75
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_16-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_multiple.multiple_18-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_0-0-0-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_2-2-0-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_4-3-0-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_6-3-2-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_8-3-4-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_10-3-6-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 0.5
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_12-3-8-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.bfcl_live_simple.live_simple_14-3-10-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": 1.0
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task1-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task3-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task5-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task7-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task1-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 1.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task3-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task5-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_retail.task7-seed0-r0-legacy": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ },
+ "B2-T3-industry-industry.tau_airline.task0-seed0-r0-pi-rt1": {
+  "tool_calling": {
+   "tool_name_accuracy": 0.0,
+   "argument_schema_validity": null
+  }
+ }
+}

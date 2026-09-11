@@ -21,7 +21,9 @@ def node_capacity_score(node: Any, *, now: float | None = None) -> float:
         return -1
     if getattr(node, "active_requests", 0) >= getattr(node, "max_active_requests", 0):
         return -1
-    if getattr(node, "health_state", "") == "cooldown" and current < getattr(node, "cooldown_until", 0):
+    if getattr(node, "health_state", "") == "cooldown" and current < getattr(
+        node, "cooldown_until", 0
+    ):
         return -1
 
     score = 100.0
@@ -59,13 +61,17 @@ def compute_capacity_envelope(nodes: list[Any]) -> dict:
         if getattr(node, "active_requests", 0) >= getattr(node, "max_active_requests", 0)
         and getattr(node, "max_active_requests", 0) > 0
     )
-    cpu_values = [getattr(node, "cpu_load_pct", 0) for node in nodes if getattr(node, "cpu_load_pct", 0)]
+    cpu_values = [
+        getattr(node, "cpu_load_pct", 0) for node in nodes if getattr(node, "cpu_load_pct", 0)
+    ]
     hardware_load_pct = round(sum(cpu_values) / len(cpu_values), 1) if cpu_values else 0.0
     return {
         "request_slots_total": total_slots,
         "request_slots_used": used_slots,
         "request_slots_available": available_slots,
-        "request_slot_utilization_pct": round((used_slots / total_slots) * 100, 1) if total_slots else 0.0,
+        "request_slot_utilization_pct": round((used_slots / total_slots) * 100, 1)
+        if total_slots
+        else 0.0,
         "saturated_nodes": saturated_nodes,
         "hardware_load_pct": hardware_load_pct,
     }

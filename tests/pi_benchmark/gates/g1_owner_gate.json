@@ -1,0 +1,11 @@
+{
+  "gate_id": "G1",
+  "name": "Owner Gate G1 — Judge & T2 Model Policy",
+  "status": "APPROVED",
+  "authorized_by": "user",
+  "authorized_at": "2026-07-22T14:32:34Z",
+  "live_model_permitted": true,
+  "judge_model": "gpt-5.6-luna",
+  "t2_local_policy": "enabled",
+  "notes": "User explicitly authorized G1 owner gate for B2/B3 live benchmark waves."
+}

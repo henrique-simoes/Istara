@@ -6,9 +6,16 @@
 export const name = "Data Security";
 export const id = "68-data-security";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "settings",
+    navLabel: "Settings",
+    markers: ["System Status", "Settings"],
+    screenshot: "68-settings-view",
+  });
   const appStatus = await api.get("/api/settings/status").catch(() => null);
   const teamMode = !!appStatus?.team_mode;
   const suffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;

@@ -2,22 +2,34 @@
 
 from __future__ import annotations
 
+import re
 import uuid
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import delete, select, func, update
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_project_scope import require_agent_assignable_to_project
-from app.models.database import get_db
-from app.models.session import ChatSession, InferencePreset, INFERENCE_PRESETS
-from app.models.message import Message
+from app.core.llm_thinking import normalize_model_effort, validate_model_effort
 from app.core.permissions import require_project_access
-from app.core.llm_thinking import ThinkingMode, normalize_thinking_mode
+from app.models.database import get_db
+from app.models.message import Message
+from app.models.session import INFERENCE_PRESETS, ChatSession, InferencePreset
 
 router = APIRouter()
+
+
+def _validate_chat_model_override(value: str | None) -> str | None:
+    """Reject embedding-only model names at the session persistence boundary."""
+    if value is None:
+        return value
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if re.search(r"(?:^|[-_:/])embed(?:ding)?(?:[-_:/]|$)", normalized.lower()):
+        raise ValueError("Embedding-only models cannot be used as chat overrides")
+    return normalized
 
 
 def require_project_id(project_id: str | None) -> str:
@@ -54,8 +66,19 @@ class CreateSessionRequest(BaseModel):
     title: str = Field(default="New Chat", min_length=1, max_length=255)
     agent_id: str | None = Field(default=None, max_length=255)
     model_override: str | None = Field(default=None, max_length=255)
+    endpoint_override: str | None = Field(default=None, max_length=120)
     inference_preset: InferencePreset = InferencePreset.MEDIUM
-    thinking_mode: ThinkingMode = "server_default"
+    thinking_mode: str = "server_default"
+
+    @field_validator("thinking_mode")
+    @classmethod
+    def validate_effort(cls, value: str) -> str:
+        return validate_model_effort(value)
+
+    @field_validator("model_override")
+    @classmethod
+    def validate_model_override(cls, value: str | None) -> str | None:
+        return _validate_chat_model_override(value)
 
     @field_validator("title")
     @classmethod
@@ -70,13 +93,24 @@ class UpdateSessionRequest(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     agent_id: str | None = Field(default=None, max_length=255)
     model_override: str | None = Field(default=None, max_length=255)
+    endpoint_override: str | None = Field(default=None, max_length=120)
     inference_preset: InferencePreset | None = None
     custom_temperature: float | None = Field(default=None, ge=0.0, le=2.0)
     custom_max_tokens: int | None = Field(default=None, ge=1, le=65536)
     custom_context_window: int | None = Field(default=None, ge=512, le=262144)
-    thinking_mode: ThinkingMode | None = None
+    thinking_mode: str | None = None
     starred: bool | None = None
     archived: bool | None = None
+
+    @field_validator("thinking_mode")
+    @classmethod
+    def validate_effort(cls, value: str | None) -> str | None:
+        return validate_model_effort(value) if value is not None else value
+
+    @field_validator("model_override")
+    @classmethod
+    def validate_model_override(cls, value: str | None) -> str | None:
+        return _validate_chat_model_override(value)
 
     @field_validator("title")
     @classmethod
@@ -100,15 +134,19 @@ async def list_sessions(
     await require_project_access(db, request, project_id, min_role="viewer")
     query = select(ChatSession).where(ChatSession.project_id == project_id)
     if not include_archived:
-        query = query.where(ChatSession.archived == False)
-    query = query.order_by(ChatSession.starred.desc(), ChatSession.last_message_at.desc().nullslast())
+        query = query.where(ChatSession.archived == False)  # noqa: E712 -- SQLAlchemy IS FALSE
+    query = query.order_by(
+        ChatSession.starred.desc(), ChatSession.last_message_at.desc().nullslast()
+    )
     result = await db.execute(query)
     sessions = result.scalars().all()
     return {"sessions": [s.to_dict() for s in sessions]}
 
 
 @router.post("/sessions", status_code=201)
-async def create_session(data: CreateSessionRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def create_session(
+    data: CreateSessionRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Create a new chat session."""
     await require_project_access(db, request, data.project_id, min_role="researcher")
     assigned_agent = await require_agent_assignable_to_project(
@@ -125,8 +163,9 @@ async def create_session(data: CreateSessionRequest, request: Request, db: Async
         title=data.title,
         agent_id=assigned_agent.id if assigned_agent else None,
         model_override=data.model_override,
+        endpoint_override=data.endpoint_override,
         inference_preset=data.inference_preset,
-        thinking_mode=normalize_thinking_mode(data.thinking_mode),
+        thinking_mode=normalize_model_effort(data.thinking_mode),
     )
     db.add(session)
     await db.commit()
@@ -192,7 +231,7 @@ async def update_session(
     updates = data.model_dump(exclude_unset=True)
     for key, value in updates.items():
         if key == "thinking_mode":
-            value = normalize_thinking_mode(value)
+            value = normalize_model_effort(value)
         elif key == "agent_id":
             assigned_agent = await require_agent_assignable_to_project(
                 db,
@@ -227,9 +266,8 @@ async def delete_session(
 
     # Clean up DAG nodes (no FK constraint on session_id)
     from app.models.context_dag import ContextDAGNode
-    await db.execute(
-        delete(ContextDAGNode).where(ContextDAGNode.session_id == session_id)
-    )
+
+    await db.execute(delete(ContextDAGNode).where(ContextDAGNode.session_id == session_id))
 
     await db.delete(session)
     await db.commit()
@@ -263,12 +301,17 @@ async def get_inference_presets():
 
 
 @router.get("/sessions/{project_id}/ensure-default")
-async def ensure_default_session(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def ensure_default_session(
+    project_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
     """Ensure a default session exists for a project. Returns or creates one."""
     await require_project_access(db, request, project_id, min_role="researcher")
     result = await db.execute(
         select(ChatSession)
-        .where(ChatSession.project_id == project_id, ChatSession.archived == False)
+        .where(
+            ChatSession.project_id == project_id,
+            ChatSession.archived == False,  # noqa: E712 -- SQLAlchemy IS FALSE
+        )
         .order_by(ChatSession.last_message_at.desc().nullslast(), ChatSession.created_at.desc())
         .limit(1)
     )

@@ -145,16 +145,20 @@ async function dbIntegrity(context) {
 }
 
 async function networkDiscovery(context) {
+  // Phase 6: the LLM Servers surface retired; discovery truth now lives in
+  // the unified model catalog (pi-managed + local/donated inventory).
   const apiBase = context.apiBase;
   const fetchImpl = context.fetchImpl || fetch;
   try {
-    const response = await fetchImpl(`${apiBase}/api/llm-servers`, { headers: authHeaders(context) });
+    const response = await fetchImpl(`${apiBase}/api/chat/model-catalog`, { headers: authHeaders(context) });
     if (!response.ok) {
       return [result("Network LLM discovery", false, `Status ${response.status}`, { status: response.status })];
     }
-    const servers = await response.json();
-    const list = Array.isArray(servers) ? servers : servers?.servers || [];
-    return [result("Network LLM discovery", list.length >= 1, `${list.length} server(s) discovered`)];
+    const catalog = await response.json();
+    const total =
+      (Array.isArray(catalog.configured) ? catalog.configured.length : 0) +
+      (Array.isArray(catalog.legacy_models) ? catalog.legacy_models.length : 0);
+    return [result("Network LLM discovery", total >= 1, `${total} routable model(s) across planes`)];
   } catch (error) {
     return [result("Network LLM discovery", false, error.message)];
   }
@@ -192,7 +196,7 @@ const BACKEND_API = ["backend/app/main.py", "backend/app/api/routes/projects.py"
 const BACKEND_AUTH = ["backend/app/api/routes/auth.py", "backend/app/core/auth.py"];
 const BACKEND_REPORTS = ["backend/app/api/routes/reports.py", "backend/app/core/report_manager.py"];
 const BACKEND_A2A = ["backend/app/api/routes/a2a.py", "backend/app/services/a2a.py"];
-const BACKEND_LLM = ["backend/app/api/routes/llm_servers.py", "backend/app/core/compute_registry.py"];
+const BACKEND_LLM = ["backend/app/core/pi_runtime/model_manager.py", "backend/app/core/pi_runtime/endpoints.py", "backend/app/core/compute_registry.py"];
 const BACKEND_VECTOR = ["backend/app/core/vector_health.py", "backend/app/api/routes/findings.py"];
 const RELAY = ["relay/lib/llm-proxy.mjs", "relay/lib/connection.mjs", "relay/lib/heartbeat.mjs"];
 const RELAY_SIMULATION = ["scripts/marathon/relay-simulator.mjs", "relay/lib/connection-string.mjs"];
@@ -260,9 +264,9 @@ export const CUSTOM_CHECKS = Object.freeze({
   tray_update_shows_result_dialog: sourceContract(DESKTOP_TRAY),
   tray_health_loop_state_change_rebuild: sourceContract(DESKTOP_HEALTH),
   tray_ansi_strip_from_script_output: sourceContract(DESKTOP_TRAY),
-  llm_server_api_key_add: sourceContract(BACKEND_LLM.concat(FRONTEND_SETTINGS)),
-  llm_server_auth_error_display: sourceContract(BACKEND_LLM.concat(FRONTEND_SETTINGS)),
-  llm_server_health_error_feedback: sourceContract(BACKEND_LLM.concat(FRONTEND_SETTINGS)),
+  llm_server_api_key_add: sourceContract(BACKEND_LLM.concat(["frontend/src/components/settings/PiModelManagement.tsx"])),
+  llm_server_auth_error_display: sourceContract(BACKEND_LLM.concat(["frontend/src/components/settings/PiModelManagement.tsx"])),
+  llm_server_health_error_feedback: sourceContract(BACKEND_LLM.concat(["frontend/src/components/settings/PiModelManagement.tsx"])),
   tour_waits_for_backend_health: sourceContract(FRONTEND_TOUR),
   tour_skip_persists_localstorage: sourceContract(FRONTEND_TOUR),
   relay_llm_api_key_passthrough: sourceContract(RELAY),

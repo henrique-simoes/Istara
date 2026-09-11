@@ -99,7 +99,9 @@ def test_live_llm_profile_can_follow_istara_lmstudio_host(monkeypatch):
     assert profile.model == "google/gemma-4-e4b"
 
 
-def test_live_compute_registry_uses_lmstudio_load_contract_for_lmstudio_port(monkeypatch):
+def test_live_compute_registry_uses_lmstudio_load_contract_for_lmstudio_port(
+    monkeypatch,
+):
     monkeypatch.setenv("ISTARA_LIVE_LLM_BASE_URL", "http://192.0.2.142:1234/v1")
     monkeypatch.setenv("ISTARA_LIVE_LLM_API_KEY", "primary-test-key")
 
@@ -156,19 +158,23 @@ def test_long_horizon_benchmark_requires_private_admin_password(tmp_path, monkey
     from tests.benchmarks import long_horizon_runner
 
     monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
-    monkeypatch.setattr(long_horizon_runner, "ADMIN_PASSWORD_ENV_FILES", (tmp_path / "missing.env",))
+    monkeypatch.setattr(
+        long_horizon_runner, "ADMIN_PASSWORD_ENV_FILES", (tmp_path / "missing.env",)
+    )
 
     with pytest.raises(RuntimeError, match="ADMIN_PASSWORD"):
         long_horizon_runner.load_admin_password()
 
-    source = (ROOT / "tests/benchmarks/long_horizon_runner.py").read_text(encoding="utf-8")
+    source = (ROOT / "tests/benchmarks/long_horizon_runner.py").read_text(
+        encoding="utf-8"
+    )
     assert 'admin_pass = "' not in source
 
 
 def test_scenario_20_supports_seeded_random_skill_subset():
-    scenario = (ROOT / "tests/simulation/scenarios/20-all-skills-comprehensive.mjs").read_text(
-        encoding="utf-8"
-    )
+    scenario = (
+        ROOT / "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+    ).read_text(encoding="utf-8")
 
     assert "ISTARA_SCENARIO20_SKILL_LIMIT" in scenario
     assert "ISTARA_SCENARIO20_SKILL_SEED" in scenario
@@ -182,9 +188,9 @@ def test_scenario_20_supports_seeded_random_skill_subset():
 
 
 def test_scenario_20_uses_canonical_corpus_instead_of_inline_research_generators():
-    scenario = (ROOT / "tests/simulation/scenarios/20-all-skills-comprehensive.mjs").read_text(
-        encoding="utf-8"
-    )
+    scenario = (
+        ROOT / "tests/simulation/scenarios/20-all-skills-comprehensive.mjs"
+    ).read_text(encoding="utf-8")
 
     assert "selectCanonicalCorpus" in scenario
     assert "skill-coverage-map.json" in scenario
@@ -215,10 +221,12 @@ def test_simulation_runner_retries_transient_auth_failures():
 def test_live_harnesses_use_reset_test_identity_contract():
     e2e = (ROOT / "tests/e2e_test.py").read_text(encoding="utf-8")
     marathon = (ROOT / "scripts/marathon/run-cycle.mjs").read_text(encoding="utf-8")
-    benchmark_client = (ROOT / "tests/real_user_benchmark/lib/api-client.mjs").read_text(
+    benchmark_client = (
+        ROOT / "tests/real_user_benchmark/lib/api-client.mjs"
+    ).read_text(encoding="utf-8")
+    benchmark_run = (ROOT / "tests/real_user_benchmark/run.mjs").read_text(
         encoding="utf-8"
     )
-    benchmark_run = (ROOT / "tests/real_user_benchmark/run.mjs").read_text(encoding="utf-8")
 
     assert "ISTARA_TEST_ADMIN_PASSWORD" in e2e
     assert "istara123" in e2e

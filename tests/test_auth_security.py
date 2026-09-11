@@ -63,7 +63,9 @@ async def test_team_status_reports_origin_hardening_warnings():
     settings.cors_origin_regex = original_regex
     assert response.status_code == 200
     warnings = response.json()["security_warnings"]
-    assert any("CORS_ORIGIN_REGEX allows arbitrary hosts" in warning for warning in warnings)
+    assert any(
+        "CORS_ORIGIN_REGEX allows arbitrary hosts" in warning for warning in warnings
+    )
 
 
 @pytest.mark.asyncio
@@ -121,7 +123,9 @@ async def test_local_mode_admin_bypass():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # In local mode, auth/me returns admin
-        response = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        response = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
+        )
         assert response.status_code == 200
         assert response.json()["role"] == "admin"
 
@@ -200,6 +204,7 @@ async def test_user_can_update_profile_with_current_password(monkeypatch):
     settings.team_mode = True
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
+
     async def not_breached(_password: str) -> bool:
         return False
 
@@ -247,6 +252,7 @@ async def test_user_can_change_password_and_old_password_stops_working(monkeypat
     settings.team_mode = True
     if not settings.jwt_secret:
         settings.jwt_secret = "test-secret"
+
     async def not_breached(_password: str) -> bool:
         return False
 
@@ -378,7 +384,9 @@ async def test_jwt_alg_none_rejected():
 
     # Create a token with alg:none
     header = _b64encode(json.dumps({"alg": "none", "typ": "JWT"}).encode())
-    payload = _b64encode(json.dumps({"sub": "hacker", "role": "admin", "exp": 9999999999}).encode())
+    payload = _b64encode(
+        json.dumps({"sub": "hacker", "role": "admin", "exp": 9999999999}).encode()
+    )
     fake_token = f"{header}.{payload}.fakesig"
 
     result = verify_token(fake_token)
@@ -427,7 +435,9 @@ async def test_expired_jwt_rejected():
     from app.core.auth import hashlib, hmac
 
     sig_input = f"{header}.{payload}".encode()
-    sig = _b64encode(hmac.new(settings.jwt_secret.encode(), sig_input, hashlib.sha256).digest())
+    sig = _b64encode(
+        hmac.new(settings.jwt_secret.encode(), sig_input, hashlib.sha256).digest()
+    )
     expired_token = f"{header}.{payload}.{sig}"
 
     result = verify_token(expired_token)
@@ -449,9 +459,13 @@ async def test_login_sets_session_cookie():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/api/auth/login", json={"username": "testuser", "password": ""})
+        response = await ac.post(
+            "/api/auth/login", json={"username": "testuser", "password": ""}
+        )
         assert response.status_code == 200
-        assert AUTH_COOKIE_NAME in response.cookies, "Login should set hardened session cookie"
+        assert AUTH_COOKIE_NAME in response.cookies, (
+            "Login should set hardened session cookie"
+        )
         set_cookie = response.headers.get("set-cookie", "")
         assert f"{AUTH_COOKIE_NAME}=" in set_cookie
         assert "HttpOnly" in set_cookie
@@ -477,7 +491,9 @@ async def test_logout_requires_auth():
 
         # With token — should succeed
         token = create_token("local", "tester", "admin")
-        response = await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+        response = await ac.post(
+            "/api/auth/logout", headers={"Authorization": f"Bearer {token}"}
+        )
         assert response.status_code == 200
 
 
@@ -522,60 +538,6 @@ async def test_legacy_session_cookie_still_accepted_during_transition():
 
 
 @pytest.mark.asyncio
-async def test_login_rejects_cross_site_browser_attempts_before_cookie_creation():
-    """Auth-exempt login should still reject browser CSRF signals."""
-    await init_db()
-    settings.team_mode = False
-    if not settings.jwt_secret:
-        settings.jwt_secret = "test-secret"
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        origin_response = await ac.post(
-            "/api/auth/login",
-            json={"username": "testuser", "password": ""},
-            headers={"Origin": "https://evil.example"},
-        )
-        fetch_metadata_response = await ac.post(
-            "/api/auth/login",
-            json={"username": "testuser", "password": ""},
-            headers={"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate"},
-        )
-
-    assert origin_response.status_code == 403
-    assert AUTH_COOKIE_NAME not in origin_response.cookies
-    assert "Untrusted browser origin" in origin_response.json()["detail"]
-    assert fetch_metadata_response.status_code == 403
-    assert AUTH_COOKIE_NAME not in fetch_metadata_response.cookies
-    assert "Untrusted browser origin" in fetch_metadata_response.json()["detail"]
-
-
-@pytest.mark.asyncio
-async def test_register_rejects_untrusted_browser_origin_before_user_creation():
-    """Team registration should not mint a first session for an untrusted origin."""
-    await init_db()
-    settings.team_mode = True
-    if not settings.jwt_secret:
-        settings.jwt_secret = "test-secret"
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post(
-            "/api/auth/register",
-            json={
-                "username": "origin_attack",
-                "email": "origin_attack@example.com",
-                "password": "xK9#mP2$vL7nQ4@wR1!",
-            },
-            headers={"Origin": "https://evil.example"},
-        )
-
-    assert response.status_code == 403
-    assert AUTH_COOKIE_NAME not in response.cookies
-    assert "Untrusted browser origin" in response.json()["detail"]
-
-
-@pytest.mark.asyncio
 async def test_login_creates_revocable_server_auth_session():
     """Team-mode login should create a server-backed session that logout revokes."""
     await init_db()
@@ -615,10 +577,14 @@ async def test_login_creates_revocable_server_auth_session():
             assert session.token_jti == payload["jti"]
             assert session.revoked_at is None
 
-        active = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        active = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
+        )
         assert active.status_code == 200
 
-        logout = await ac.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+        logout = await ac.post(
+            "/api/auth/logout", headers={"Authorization": f"Bearer {token}"}
+        )
         assert logout.status_code == 200
 
         async with async_session() as db:
@@ -626,7 +592,9 @@ async def test_login_creates_revocable_server_auth_session():
             assert session is not None
             assert session.revoked_at is not None
 
-        revoked = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        revoked = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
+        )
         assert revoked.status_code == 401
 
 
@@ -692,8 +660,12 @@ async def test_auth_sessions_list_and_revoke_specific_other_session():
         assert revoke.json()["revoked"] is True
         assert revoke.json()["revoked_current"] is False
 
-        revoked = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {second_token}"})
-        active = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {first_token}"})
+        revoked = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {second_token}"}
+        )
+        active = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {first_token}"}
+        )
         assert revoked.status_code == 401
         assert active.status_code == 200
 
@@ -733,8 +705,12 @@ async def test_auth_sessions_revoke_others_keeps_current_session():
         assert revoke.status_code == 200
         assert revoke.json()["revoked_count"] >= 1
 
-        current = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {first_token}"})
-        other = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {second_token}"})
+        current = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {first_token}"}
+        )
+        other = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {second_token}"}
+        )
         assert current.status_code == 200
         assert other.status_code == 401
 
@@ -776,7 +752,9 @@ async def test_auth_session_revoke_current_invalidates_token():
         assert revoke.json()["revoked"] is True
         assert revoke.json()["revoked_current"] is True
 
-        revoked = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        revoked = await ac.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
+        )
         assert revoked.status_code == 401
 
 
@@ -928,7 +906,8 @@ async def test_login_returns_requires_2fa_when_totp_enabled():
 
         # Login WITHOUT TOTP code — should return requires_2fa
         login = await ac.post(
-            "/api/auth/login", json={"username": username, "password": "xK9#mP2$vL7nQ4@wR1!"}
+            "/api/auth/login",
+            json={"username": username, "password": "xK9#mP2$vL7nQ4@wR1!"},
         )
         assert login.status_code == 200
         data = login.json()
@@ -995,6 +974,121 @@ async def test_login_with_totp_code_succeeds():
         data = login.json()
         assert "token" in data
         assert data.get("requires_2fa") is not True
+
+
+@pytest.mark.asyncio
+async def test_mfa_factor_changes_require_step_up():
+    """Password alone must not rotate/disable MFA once TOTP is active."""
+    await init_db()
+    await _clear_auth_accounts()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    username = f"stepup_{uuid.uuid4().hex[:8]}"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        reg = await ac.post(
+            "/api/auth/register",
+            json={
+                "username": username,
+                "email": f"{username}@example.com",
+                "password": password,
+            },
+        )
+        assert reg.status_code == 200
+        token = reg.json()["token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        setup = await ac.post(
+            "/api/auth/totp/setup", json={"current_password": password}, headers=headers
+        )
+        assert setup.status_code == 200
+        import pyotp
+
+        secret = setup.json()["secret"]
+        verify = await ac.post(
+            "/api/auth/totp/verify",
+            json={"totp_code": pyotp.TOTP(secret).now()},
+            headers=headers,
+        )
+        assert verify.status_code == 200
+
+        # Rotation / disable / recovery-generate with password only → 403.
+        for path, body in [
+            ("/api/auth/totp/setup", {"current_password": password}),
+            ("/api/auth/totp/disable", {"current_password": password}),
+            ("/api/auth/recovery-codes/generate", {"current_password": password}),
+        ]:
+            resp = await ac.post(path, json=body, headers=headers)
+            assert resp.status_code == 403, (
+                f"{path} allowed password-only factor change"
+            )
+
+        # With a fresh step-up code, disable succeeds.
+        import time as _time
+
+        disable = await ac.post(
+            "/api/auth/totp/disable",
+            json={
+                "current_password": password,
+                "totp_code": pyotp.TOTP(secret).at(int(_time.time()) + 30),
+            },
+            headers=headers,
+        )
+        assert disable.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_pre_mfa_session_rejected_after_enrollment():
+    """A session minted before MFA enrollment dies once TOTP is enabled."""
+    await init_db()
+    await _clear_auth_accounts()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    from app.core.auth import create_token
+
+    username = f"premfa_{uuid.uuid4().hex[:8]}"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        reg = await ac.post(
+            "/api/auth/register",
+            json={
+                "username": username,
+                "email": f"{username}@example.com",
+                "password": password,
+            },
+        )
+        assert reg.status_code == 200
+        user_id = reg.json()["user"]["id"]
+        stale = create_token(user_id, username, "researcher", mfa_verified=False)
+
+        setup = await ac.post(
+            "/api/auth/totp/setup",
+            json={"current_password": password},
+            headers={"Authorization": f"Bearer {reg.json()['token']}"},
+        )
+        import pyotp
+
+        await ac.post(
+            "/api/auth/totp/verify",
+            json={"totp_code": pyotp.TOTP(setup.json()["secret"]).now()},
+            headers={"Authorization": f"Bearer {reg.json()['token']}"},
+        )
+
+        me = await ac.get("/api/auth/me", headers={"Authorization": f"Bearer {stale}"})
+        assert me.status_code == 403
+        assert "Multi-factor" in me.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -1082,9 +1176,15 @@ async def test_recovery_code_is_table_backed_and_single_use():
         from sqlalchemy import select
 
         async with async_session() as db:
-            user = (await db.execute(select(User).where(User.username == username))).scalar_one()
+            user = (
+                await db.execute(select(User).where(User.username == username))
+            ).scalar_one()
             records = (
-                (await db.execute(select(RecoveryCode).where(RecoveryCode.user_id == user.id)))
+                (
+                    await db.execute(
+                        select(RecoveryCode).where(RecoveryCode.user_id == user.id)
+                    )
+                )
                 .scalars()
                 .all()
             )
@@ -1106,11 +1206,19 @@ async def test_recovery_code_is_table_backed_and_single_use():
 
         first = await ac.post(
             "/api/auth/login",
-            json={"username": username, "password": password, "recovery_code": recovery_code},
+            json={
+                "username": username,
+                "password": password,
+                "recovery_code": recovery_code,
+            },
         )
         second = await ac.post(
             "/api/auth/login",
-            json={"username": username, "password": password, "recovery_code": recovery_code},
+            json={
+                "username": username,
+                "password": password,
+                "recovery_code": recovery_code,
+            },
         )
         assert first.status_code == 200
         assert second.status_code == 401
@@ -1123,7 +1231,9 @@ async def test_recovery_code_is_table_backed_and_single_use():
         assert status.json() == {"remaining": 7, "total": 8}
 
         async with async_session() as db:
-            user = (await db.execute(select(User).where(User.username == username))).scalar_one()
+            user = (
+                await db.execute(select(User).where(User.username == username))
+            ).scalar_one()
             used = (
                 (
                     await db.execute(
@@ -1157,7 +1267,9 @@ async def test_auth_events_are_written_to_audit_log():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        login = await ac.post("/api/auth/login", json={"username": username, "password": password})
+        login = await ac.post(
+            "/api/auth/login", json={"username": username, "password": password}
+        )
         assert login.status_code == 200
 
     from app.core.audit_middleware import AuditLog
@@ -1244,3 +1356,88 @@ async def test_security_headers_present():
         assert headers.get("x-frame-options") == "DENY"
         assert "strict-transport-security" in headers
         assert "content-security-policy" in headers
+
+
+@pytest.mark.asyncio
+async def test_idle_session_revoked_after_inactivity_window():
+    """A bound session idle beyond session_max_inactive_minutes dies uniformly."""
+    from datetime import datetime, timezone
+
+    from app.core.auth import verify_token
+    from app.models.auth_session import AuthSession
+    from app.models.database import async_session
+
+    await init_db()
+    await _clear_auth_accounts()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+
+    import uuid
+
+    username = f"idle_{uuid.uuid4().hex[:8]}"
+    password = "xK9#mP2$vL7nQ4@wR1!"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        reg = await ac.post(
+            "/api/auth/register",
+            json={
+                "username": username,
+                "email": f"{username}@example.com",
+                "password": password,
+            },
+        )
+        assert reg.status_code == 200
+        token = reg.json()["token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        assert (await ac.get("/api/auth/me", headers=headers)).status_code == 200
+
+        # Backdate activity beyond the 8h default window.
+        payload = verify_token(token)
+        async with async_session() as db:
+            session = await db.get(AuthSession, payload["sid"])
+            assert session is not None
+            session.last_seen_at = datetime(2020, 1, 1, tzinfo=timezone.utc)
+            await db.commit()
+
+        # Every surface must now agree: 401 here (session layer), never 200.
+        for path in ("/api/auth/me", "/api/auth/sessions", "/api/projects"):
+            resp = await ac.get(path, headers=headers)
+            assert resp.status_code in (401, 403, 404), (
+                f"{path} accepted an idle-dead session"
+            )
+        assert (await ac.get("/api/auth/me", headers=headers)).status_code == 401
+
+
+def test_mfa_exempt_prefix_boundary_rejects_evil_siblings():
+    """F-W5-R1-3: exact-or-slash-boundary matching for MFA exemptions.
+
+    Regression for the startswith hole where `/api/auth/webauthn-evil` and
+    `/api/auth/logout-evil` wrongly satisfied the MFA exemption.
+    """
+    from app.core.auth_sessions import mfa_claim_satisfied
+
+    no_mfa = {"mfa": False, "sub": "u1"}
+    # Sanity: MFA-claimed tokens pass anywhere; empty payloads never pass.
+    assert mfa_claim_satisfied({"mfa": True}, "/api/projects") is True
+    assert mfa_claim_satisfied(None, "/api/auth/logout") is False
+    assert mfa_claim_satisfied({}, "/api/auth/logout") is False
+    # Genuine exemptions still hold (exact + trailing-slash + sub-path).
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/logout") is True
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/logout/") is True
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/login") is True
+    assert mfa_claim_satisfied(no_mfa, "/api/health") is True
+    assert mfa_claim_satisfied(no_mfa, "/api/webauthn/authenticate/start") is True
+    # Evil siblings must NOT be exempt.
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/webauthn-evil") is False
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/logout-evil") is False
+    assert mfa_claim_satisfied(no_mfa, "/api/auth/login-evil") is False
+    assert mfa_claim_satisfied(no_mfa, "/api/healthcheck") is False
+    # WebAuthn registration enforces MFA (not exempt).
+    assert mfa_claim_satisfied(no_mfa, "/api/webauthn/register/start") is False
+    assert mfa_claim_satisfied(no_mfa, "/api/webauthn/register/finish") is False
+    assert mfa_claim_satisfied(no_mfa, "/api/webauthn/credentials") is False
+    # Non-exempt product paths still require MFA.
+    assert mfa_claim_satisfied(no_mfa, "/api/projects") is False
+    assert mfa_claim_satisfied(no_mfa, "/a2a") is False

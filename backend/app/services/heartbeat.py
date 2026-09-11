@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -13,6 +13,40 @@ from app.models.agent import Agent, AgentState, HeartbeatStatus
 from app.models.database import async_session
 
 logger = logging.getLogger(__name__)
+
+_HEARTBEAT_COMMIT_RETRIES = 3
+_HEARTBEAT_COMMIT_BACKOFF_SECONDS = 0.05
+
+
+def _is_sqlite_lock_error(error: BaseException) -> bool:
+    """Return whether an exception represents SQLite's transient writer lock."""
+    message = str(error).lower()
+    return "database is locked" in message or "database table is locked" in message
+
+
+async def _commit_with_retry(db) -> None:  # noqa: ANN001
+    """Commit a heartbeat update without dropping a cycle on a transient lock.
+
+    SQLite has one writer at a time.  UI/audit/MCP writes can briefly occupy it;
+    rollback before retrying so SQLAlchemy does not leave the session in a failed
+    transaction state.  Other database failures remain visible to the supervisor.
+    """
+    for attempt in range(_HEARTBEAT_COMMIT_RETRIES):
+        try:
+            await db.commit()
+            return
+        except Exception as error:
+            if not _is_sqlite_lock_error(error) or attempt == _HEARTBEAT_COMMIT_RETRIES - 1:
+                raise
+            await db.rollback()
+            delay = _HEARTBEAT_COMMIT_BACKOFF_SECONDS * (attempt + 1)
+            logger.warning(
+                "Heartbeat commit hit a transient SQLite lock; retrying in %.2fs (%d/%d)",
+                delay,
+                attempt + 1,
+                _HEARTBEAT_COMMIT_RETRIES - 1,
+            )
+            await asyncio.sleep(delay)
 
 
 class HeartbeatManager:
@@ -45,11 +79,11 @@ class HeartbeatManager:
 
         async with async_session() as db:
             result = await db.execute(
-                select(Agent).where(Agent.is_active == True)
+                select(Agent).where(Agent.is_active == True)  # noqa: E712 -- SQLAlchemy IS TRUE
             )
             agents = result.scalars().all()
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             batch_update = []
 
             for agent in agents:
@@ -92,21 +126,26 @@ class HeartbeatManager:
                 if agent.heartbeat_status != new_status or agent.state != AgentState.STOPPED:
                     agent.heartbeat_status = new_status
                     agent.last_heartbeat_at = now
-                    batch_update.append({
-                        "agent_id": agent.id,
-                        "name": agent.name,
-                        "status": new_status.value,
-                        "state": agent.state.value,
-                    })
+                    batch_update.append(
+                        {
+                            "agent_id": agent.id,
+                            "name": agent.name,
+                            "status": new_status.value,
+                            "state": agent.state.value,
+                        }
+                    )
 
-            await db.commit()
+            await _commit_with_retry(db)
 
             # Broadcast all heartbeat updates in one batch
             if batch_update:
                 try:
-                    await ws_manager.broadcast("heartbeat_batch", {
-                        "agents": batch_update,
-                    })
+                    await ws_manager.broadcast(
+                        "heartbeat_batch",
+                        {
+                            "agents": batch_update,
+                        },
+                    )
                 except Exception:
                     pass  # Don't let WS errors stop heartbeat
 

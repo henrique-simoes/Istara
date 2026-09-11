@@ -3,6 +3,7 @@
 import { create } from "zustand";
 
 import { API_BASE } from "@/lib/runtimeConfig";
+import { clearToken, getToken, setToken } from "@/lib/tokenStore";
 
 interface User {
   id: string;
@@ -33,6 +34,7 @@ export interface AuthSession {
   auth_method: string;
   mfa_verified: boolean;
   ip_address: string;
+  ip_preview?: string;
   ip_hash?: string;
   user_agent: string;
   user_agent_hash?: string;
@@ -104,7 +106,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  token: typeof window !== "undefined" ? localStorage.getItem("istara_token") : null,
+  token: typeof window !== "undefined" ? getToken() : null,
   teamMode: false,
   hasUsers: true,
   insecure: false,
@@ -116,6 +118,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ username, password }),
       });
       if (!res.ok) {
@@ -127,7 +130,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ loading: false });
         return { requires_2fa: true, methods: data.methods || ["totp", "recovery_code"] };
       }
-      localStorage.setItem("istara_token", data.token);
+      setToken(data.token);
       if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
       window.dispatchEvent(new Event("istara:auth-changed"));
       set({ user: data.user, token: data.token, loading: false });
@@ -151,6 +154,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(body),
       });
       if (!res.ok) {
@@ -158,7 +162,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(err.detail || "Verification failed");
       }
       const data = await res.json();
-      localStorage.setItem("istara_token", data.token);
+      setToken(data.token);
       if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
       window.dispatchEvent(new Event("istara:auth-changed"));
       set({ user: data.user, token: data.token, loading: false });
@@ -175,6 +179,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ username, email, password, display_name: displayName || username }),
       });
       if (!res.ok) {
@@ -182,7 +187,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(err.detail || "Registration failed");
       }
       const data = await res.json();
-      localStorage.setItem("istara_token", data.token);
+      setToken(data.token);
       if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
       window.dispatchEvent(new Event("istara:auth-changed"));
       set({ user: data.user, token: data.token, loading: false });
@@ -199,7 +204,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    const token = get().token || (typeof window !== "undefined" ? localStorage.getItem("istara_token") : null);
+    const token = get().token || getToken();
     try {
       await fetch(`${API_BASE}/api/auth/logout`, {
         method: "POST",
@@ -210,7 +215,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Local state is still cleared if the server is unavailable.
     }
     if (typeof window !== "undefined") {
-      localStorage.removeItem("istara_token");
+      clearToken();
       localStorage.removeItem("istara_auth_user_id");
       window.dispatchEvent(new Event("istara:auth-changed"));
       window.location.reload();
@@ -220,10 +225,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   checkTeamStatus: async () => {
     try {
-      const _tk = localStorage.getItem("istara_token");
+      const _tk = getToken();
       const _hd: Record<string, string> = {};
       if (_tk) _hd["Authorization"] = `Bearer ${_tk}`;
-      const res = await fetch(`${API_BASE}/api/auth/team-status`, { headers: _hd });
+      const res = await fetch(`${API_BASE}/api/auth/team-status`, { headers: _hd, credentials: "include" });
       const data = await res.json();
       const status = {
         team_mode: Boolean(data.team_mode),
@@ -244,16 +249,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   fetchMe: async () => {
-    const _tk = localStorage.getItem("istara_token");
-    if (!_tk) return false;
+    const _tk = getToken();
+    if (!_tk && typeof document !== "undefined") {
+      // No bearer available; the cookie may still authenticate. Probe it.
+    }
     try {
       const res = await fetch(`${API_BASE}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${_tk}` },
+        headers: _tk ? { Authorization: `Bearer ${_tk}` } : {},
+        credentials: "include",
       });
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem("istara_auth_user_id", data.id);
         set({
+          // LoginScreen owns several raw credential/passkey/join flows and
+          // persists their JWT before asking fetchMe() to bootstrap the app.
+          // Hydrate the store from that authoritative browser value so
+          // store-backed protected actions do not remain unauthenticated.
+          token: _tk || get().token,
           user: {
             id: data.id,
             username: data.username,
@@ -268,7 +281,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
         return true;
       } else if (res.status === 401) {
-        localStorage.removeItem("istara_token");
+        clearToken();
         localStorage.removeItem("istara_auth_user_id");
         window.dispatchEvent(new Event("istara:auth-changed"));
         set({ user: null, token: null });
@@ -286,6 +299,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { token } = get();
     try {
       await fetch(`${API_BASE}/api/auth/preferences`, {
+        credentials: "include",
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -306,6 +320,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { token } = get();
     if (!token) throw new Error("Not authenticated");
     const res = await fetch(`${API_BASE}/api/auth/profile`, {
+      credentials: "include",
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -345,6 +360,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { token } = get();
     if (!token) throw new Error("Not authenticated");
     const res = await fetch(`${API_BASE}/api/auth/recovery-codes/generate`, {
+      credentials: "include",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -369,10 +385,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   listAuthSessions: async () => {
-    const { token } = get();
-    if (!token) throw new Error("Not authenticated");
+    // Cookie-tolerant like logout(): after a cookie-restored boot the memory
+    // bearer is null by design — the HttpOnly session cookie (sent via
+    // credentials:include) is the primary transport, not the absence of auth.
+    const bearer = get().token || getToken();
     const res = await fetch(`${API_BASE}/api/auth/sessions`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
       credentials: "include",
     });
     if (!res.ok) {
@@ -383,11 +401,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   revokeAuthSession: async (sessionId) => {
-    const { token } = get();
-    if (!token) throw new Error("Not authenticated");
+    // Cookie-tolerant like logout(): see listAuthSessions.
+    const bearer = get().token || getToken();
     const res = await fetch(`${API_BASE}/api/auth/sessions/${sessionId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
       credentials: "include",
     });
     if (!res.ok) {
@@ -398,11 +416,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   revokeOtherAuthSessions: async () => {
-    const { token } = get();
-    if (!token) throw new Error("Not authenticated");
+    // Cookie-tolerant like logout(): see listAuthSessions.
+    const bearer = get().token || getToken();
     const res = await fetch(`${API_BASE}/api/auth/sessions/revoke-others`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
       credentials: "include",
     });
     if (!res.ok) {
@@ -421,6 +439,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // 1. Start authentication
       const startRes = await fetch(`${API_BASE}/api/webauthn/authenticate/start`, {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username }),
@@ -436,6 +455,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // 3. Finish authentication
       const finishRes = await fetch(`${API_BASE}/api/webauthn/authenticate/finish`, {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -476,6 +496,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // 1. Start registration
       const startRes = await fetch(`${API_BASE}/api/webauthn/register/start`, {
+        credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -494,6 +515,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // 3. Finish registration
       const finishRes = await fetch(`${API_BASE}/api/webauthn/register/finish`, {
+        credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -522,10 +544,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   listPasskeys: async () => {
-    const { token } = get();
-    if (!token) throw new Error("Not authenticated");
+    // Cookie-tolerant like listAuthSessions(): after a cookie-restored reload
+    // the memory bearer is null by design — the HttpOnly session cookie (sent
+    // via credentials:include) is the primary transport, not the absence of
+    // auth. The backend falls back to the cookie when no bearer is present.
+    const bearer = get().token || getToken();
     const res = await fetch(`${API_BASE}/api/webauthn/credentials`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: "Failed to list passkeys" }));
@@ -535,11 +561,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   deletePasskey: async (credentialId) => {
-    const { token } = get();
-    if (!token) throw new Error("Not authenticated");
+    // Cookie-tolerant like listAuthSessions(): see listPasskeys.
+    const bearer = get().token || getToken();
     const res = await fetch(`${API_BASE}/api/webauthn/credentials/${credentialId}`, {
+      credentials: "include",
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: "Failed to delete passkey" }));

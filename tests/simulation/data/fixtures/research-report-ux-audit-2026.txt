@@ -80,7 +80,7 @@ across two sprint cycles.
    - Testing platform: Zoom with screen sharing
    - Recording: Zoom cloud recording + Hotjar session replay
    - Survey instrument: Qualtrics (pre-screening, post-task, post-session)
-   - Analysis: Dovetail for qualitative coding, SPSS for statistical analysis
+   - Analysis: Qualitative coding tools for open coding, statistical software for analysis
    - Participants used their own devices (5 desktop, 4 mobile, 3 tablet)
 
 --------------------------------------------------------------------------------

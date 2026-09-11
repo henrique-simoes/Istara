@@ -19,6 +19,8 @@ import { API_BASE } from "@/lib/runtimeConfig";
 import { useAgentStore } from "@/stores/agentStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
+import QualitativeCodingText from "@/components/common/QualitativeCodingText";
+import AudioPlayer from "./AudioPlayer";
 
 export function fileIcon(type: string) {
   if ([".mp3", ".wav", ".m4a", ".ogg"].includes(type)) return Volume2;
@@ -109,6 +111,7 @@ export function FilePreview({
   const [content, setContent] = useState<string | null>(null);
   const [previewMeta, setPreviewMeta] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [audioTime, setAudioTime] = useState<number>(0);
   const preRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
@@ -175,15 +178,19 @@ export function FilePreview({
   if ([".mp3", ".wav", ".m4a", ".ogg"].includes(fileType)) {
     return (
       <div className="p-4 space-y-4">
-        <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Volume2 size={16} className="text-istara-600" />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{filename}</span>
+        <div className="bg-slate-100 dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200 dark:border-slate-700/60 shadow-sm">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Volume2 size={16} className="text-istara-600 shrink-0" />
+              <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{filename}</span>
+            </div>
+            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-istara-50 dark:bg-istara-950/40 text-istara-700 dark:text-istara-300 border border-istara-200 dark:border-istara-800 shrink-0">
+              Audio Recording
+            </span>
           </div>
-          <audio
-            controls
-            className="w-full"
+          <AudioPlayer
             src={`${API_BASE}/api/files/${projectId}/serve/${encodeURIComponent(filename)}`}
+            onTimeUpdate={(t) => setAudioTime(t)}
           />
         </div>
 
@@ -202,26 +209,36 @@ export function FilePreview({
 
         {content && (
           <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2 px-1">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Transcription</h3>
-              {previewMeta?.transcription?.language && (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                  {previewMeta.transcription.language}
-                </span>
-              )}
-              {previewMeta?.transcription?.needs_review && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                  Review
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Transcription & Qualitative Coding
+                </h3>
+                {previewMeta?.transcription?.language && (
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                    {previewMeta.transcription.language}
+                  </span>
+                )}
+                {previewMeta?.transcription?.needs_review && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                    Review Needed
+                  </span>
+                )}
+              </div>
+              {audioTime > 0 && (
+                <span className="text-[11px] font-mono text-istara-600 dark:text-istara-400 flex items-center gap-1.5 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Synced: {Math.floor(audioTime / 60)}:{(Math.floor(audioTime % 60)).toString().padStart(2, "0")}
                 </span>
               )}
             </div>
-            <pre
-              ref={preRef}
-              onMouseUp={handleMouseUp}
-              className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 select-text cursor-text"
-            >
-              {content}
-            </pre>
+            <QualitativeCodingText
+              projectId={projectId}
+              sourceDocumentId={filename}
+              sourceType="interview"
+              text={content}
+              className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm"
+            />
           </div>
         )}
       </div>
@@ -249,48 +266,16 @@ export function FilePreview({
     );
   }
 
-  const patterns: string[] = [];
-  if (activeTag) patterns.push(escapeRegex(activeTag));
-  if (highlightText) patterns.push(escapeRegex(highlightText));
-
-  if (patterns.length > 0) {
-    const regex = new RegExp(`(${patterns.join("|")})`, "gi");
-    const parts = content.split(regex);
-    return (
-      <pre
-        ref={preRef}
-        onMouseUp={handleMouseUp}
-        className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed p-4 select-text cursor-text"
-      >
-        {parts.map((part, i) =>
-          regex.test(part) ? (
-            <mark
-              key={i}
-              className={cn(
-                "rounded px-0.5",
-                highlightText && part.toLowerCase() === highlightText.toLowerCase()
-                  ? "bg-amber-200 dark:bg-amber-800/50 text-amber-900 dark:text-amber-200"
-                  : "bg-purple-200 dark:bg-purple-800/50 text-purple-900 dark:text-purple-200"
-              )}
-            >
-              {part}
-            </mark>
-          ) : (
-            <span key={i}>{part}</span>
-          )
-        )}
-      </pre>
-    );
-  }
-
   return (
-    <pre
-      ref={preRef}
-      onMouseUp={handleMouseUp}
-      className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap font-mono leading-relaxed p-4 select-text cursor-text"
-    >
-      {content}
-    </pre>
+    <div className="p-4">
+      <QualitativeCodingText
+        projectId={projectId}
+        sourceDocumentId={filename}
+        sourceType="interview"
+        text={content}
+        className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800"
+      />
+    </div>
   );
 }
 

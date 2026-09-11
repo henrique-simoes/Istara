@@ -87,13 +87,19 @@ def scan_upload_file(
     )
 
     expected = _MAGIC_SIGNATURES.get(suffix)
-    if expected and data_head and not any(data_head.startswith(signature) for signature in expected):
+    if (
+        expected
+        and data_head
+        and not any(data_head.startswith(signature) for signature in expected)
+    ):
         verdict.allowed = False
         verdict.quarantine = True
         verdict.reason = f"{suffix} file signature did not match its extension"
         verdict.warnings.append("file_signature_mismatch")
 
-    scanner_command = (settings.upload_scanner_command or "").strip() if run_external_scanner else ""
+    scanner_command = (
+        (settings.upload_scanner_command or "").strip() if run_external_scanner else ""
+    )
     if scanner_command:
         verdict.scanner_enabled = True
         scanner_result = _run_scanner(scanner_command, path)

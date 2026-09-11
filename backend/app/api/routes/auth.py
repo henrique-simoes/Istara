@@ -48,7 +48,7 @@ from app.core.auth_sessions import (
     validate_auth_session,
 )
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
-from app.core.field_encryption import hash_field
+from app.core.field_encryption import hash_field, safe_decrypt_field
 from app.core.recovery_codes import (
     consume_recovery_code,
     recovery_code_status,
@@ -122,12 +122,14 @@ class TOTPSetupRequest(BaseModel):
     """Request to enable TOTP for a user."""
 
     current_password: str
+    totp_code: str | None = None
 
 
 class TOTPDisableRequest(BaseModel):
     """Request to disable TOTP for a user."""
 
     current_password: str
+    totp_code: str | None = None
 
 
 class TOTPVerifyRequest(BaseModel):
@@ -140,6 +142,7 @@ class RecoveryCodeRequest(BaseModel):
     """Generate new recovery codes."""
 
     current_password: str
+    totp_code: str | None = None
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -199,7 +202,7 @@ def _user_to_dict(user: User) -> dict:
     return {
         "id": user.id,
         "username": user.username,
-        "email": user.email or "",
+        "email": safe_decrypt_field(user.email),
         "role": user.role.value if hasattr(user.role, "value") else str(user.role),
         "display_name": user.display_name or user.username,
         "preferences": json.loads(user.preferences) if user.preferences else {},
@@ -239,6 +242,17 @@ async def _token_payload_from_request(
                 status_code=401,
                 detail="Invalid or revoked authentication session.",
             )
+        # Enforce the MFA claim (shared helper with the security
+        # middleware): pre-enrollment sessions die once TOTP is on.
+        from app.core.auth_sessions import mfa_claim_satisfied
+
+        if not mfa_claim_satisfied(payload, request.url.path or ""):
+            user = await db.get(User, payload.get("sub"))
+            if user is not None and getattr(user, "totp_enabled", False):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Multi-factor authentication required.",
+                )
     elif is_session_bound(payload):
         async with async_session() as session:
             if not await validate_auth_session(session, payload, request):
@@ -255,6 +269,27 @@ def _require_current_password(user: User, current_password: str) -> None:
         raise HTTPException(status_code=400, detail="Current password is required.")
     if not verify_password(current_password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid current password.")
+
+
+async def _require_mfa_step_up(
+    db: AsyncSession, user: User, totp_code: str | None, request: Request
+) -> None:
+    """Require a fresh second-factor proof before changing MFA factors.
+
+    Password-only possession must never rotate, disable, or replace the very
+    factor that protects the account (better-auth step-up convention). The
+    presented counter is atomically claimed so it cannot be replayed.
+    """
+    if not getattr(user, "totp_enabled", False):
+        return
+    if not totp_code:
+        raise HTTPException(
+            status_code=403,
+            detail="A current authenticator code is required to change MFA settings.",
+        )
+    _check_mfa_rate(request, user.id)
+    counter = _verify_totp_for_user(user, totp_code)
+    await _claim_totp_counter(db, user, counter)
 
 
 def _validate_username(username: str) -> str:
@@ -325,13 +360,43 @@ async def _ensure_not_last_admin_demoted_or_deleted(
         raise HTTPException(status_code=400, detail="At least one admin account must remain.")
 
 
-def _verify_totp_for_user(user: User, code: str) -> None:
-    """Verify a TOTP code and reject replay of accepted counters."""
+def _verify_totp_for_user(user: User, code: str) -> int:
+    """Verify a TOTP code and return its counter (replay-claimed by the caller).
+
+    The counter claim itself is atomic (see ``_claim_totp_counter``): this
+    helper performs the cryptographic check plus a best-effort in-memory
+    pre-check so obviously replayed codes fail fast.
+    """
     verified, counter = verify_totp_with_counter(user.totp_secret or "", code)
     if not verified or counter is None:
         raise HTTPException(status_code=401, detail="Invalid TOTP code.")
     last_counter = getattr(user, "totp_last_accepted_counter", None)
     if last_counter is not None and counter <= last_counter:
+        raise HTTPException(status_code=401, detail="TOTP code has already been used.")
+    return counter
+
+
+async def _claim_totp_counter(db: AsyncSession, user: User, counter: int) -> None:
+    """Atomically claim a TOTP counter via conditional UPDATE.
+
+    Parallel logins presenting the same code race here instead of in Python:
+    exactly one UPDATE matches, the loser gets a replay rejection. The ORM
+    object is refreshed so later commits in this request cannot resurrect it.
+    """
+    from sqlalchemy import update as _update
+
+    result = await db.execute(
+        _update(User)
+        .where(
+            User.id == user.id,
+            (
+                (User.totp_last_accepted_counter.is_(None))
+                | (User.totp_last_accepted_counter < counter)
+            ),
+        )
+        .values(totp_last_accepted_counter=counter)
+    )
+    if (result.rowcount or 0) == 0:
         raise HTTPException(status_code=401, detail="TOTP code has already been used.")
     user.totp_last_accepted_counter = counter
 
@@ -408,9 +473,7 @@ async def register(req: RegisterRequest, response: Response, request: Request):
 
             email_hash = hash_field(req.email)
             existing = await db.execute(
-                select(User).where(
-                    (User.username == username) | (User.email_hash == email_hash)
-                )
+                select(User).where((User.username == username) | (User.email_hash == email_hash))
             )
             if existing.scalars().first():
                 raise HTTPException(status_code=409, detail="Username or email already exists.")
@@ -554,7 +617,8 @@ async def login(
         elif req.totp_code:
             _check_mfa_rate(request, user.id)
             try:
-                _verify_totp_for_user(user, req.totp_code)
+                counter = _verify_totp_for_user(user, req.totp_code)
+                await _claim_totp_counter(db, user, counter)
             except HTTPException:
                 await record_auth_event(
                     request,
@@ -703,6 +767,8 @@ async def totp_setup(
         raise HTTPException(status_code=404, detail="User not found")
 
     _require_current_password(user, req.current_password)
+    # Rotating an active MFA secret requires proof of the old factor.
+    await _require_mfa_step_up(db, user, req.totp_code, request)
 
     secret = generate_totp_secret()
     if not secret:
@@ -751,7 +817,8 @@ async def totp_verify(req: TOTPVerifyRequest, request: Request, db: AsyncSession
         raise HTTPException(status_code=400, detail="TOTP setup expired. Start setup again.")
 
     _check_mfa_rate(request, user.id)
-    _verify_totp_for_user(user, req.totp_code)
+    counter = _verify_totp_for_user(user, req.totp_code)
+    await _claim_totp_counter(db, user, counter)
 
     user.totp_enabled = True
     user.totp_pending_expires_at = None
@@ -783,6 +850,7 @@ async def totp_disable(
         raise HTTPException(status_code=404, detail="User not found")
 
     _require_current_password(user, req.current_password)
+    await _require_mfa_step_up(db, user, req.totp_code, request)
 
     user.totp_enabled = False
     user.totp_secret = None
@@ -821,6 +889,7 @@ async def generate_recovery_codes_endpoint(
         raise HTTPException(status_code=404, detail="User not found")
 
     _require_current_password(user, req.current_password)
+    await _require_mfa_step_up(db, user, req.totp_code, request)
 
     codes = generate_recovery_codes()
     await _replace_user_recovery_codes(
@@ -901,10 +970,15 @@ async def get_me(request: Request):
         result = await db.execute(select(User).where(User.id == payload["sub"]))
         user = result.scalar_one_or_none()
         if user:
+            if not payload.get("mfa") and getattr(user, "totp_enabled", False):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Multi-factor authentication required.",
+                )
             return {
                 "id": user.id,
                 "username": user.username,
-                "email": user.email or "",
+                "email": safe_decrypt_field(user.email),
                 "role": user.role.value if hasattr(user.role, "value") else str(user.role),
                 "display_name": user.display_name or user.username,
                 "preferences": json.loads(user.preferences) if user.preferences else {},
@@ -1103,7 +1177,7 @@ async def list_users(request: Request, db: AsyncSession = Depends(get_db)):
         {
             "id": u.id,
             "username": u.username,
-            "email": u.email,
+            "email": safe_decrypt_field(u.email),
             "role": u.role.value if hasattr(u.role, "value") else u.role,
             "display_name": u.display_name,
             "totp_enabled": getattr(u, "totp_enabled", False),

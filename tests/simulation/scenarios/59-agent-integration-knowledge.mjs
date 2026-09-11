@@ -7,9 +7,17 @@
 export const name = "Agent Integration Knowledge";
 export const id = "59-agent-integration-knowledge";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "integrations",
+    navLabel: "Integrations",
+    markers: ["Overview", "Integrations"],
+    screenshot: "59-integrations-view",
+  });
   if (!ctx.projectId) {
     return [{ name: "Project available for integration knowledge", passed: false, detail: "No persistent project from runner" }];
   }
@@ -118,8 +126,22 @@ export async function run(ctx) {
       passed: analytics.per_question_stats !== undefined,
       detail: `Keys: ${Object.keys(analytics).join(", ")}`,
     });
-    // Cleanup
-    try { await api.delete(`/api/deployments/${tempDeploy.id}?${projectQuery}`); } catch (_) {}
+    // Cleanup is part of the scenario contract: a failed delete must be visible
+    // instead of silently leaking duplicate deployment cards into later runs.
+    try {
+      await api.delete(`/api/deployments/${tempDeploy.id}?${projectQuery}`);
+      checks.push({
+        name: "Deployment analytics cleanup removes temporary deployment",
+        passed: true,
+        detail: "DELETE returned 204",
+      });
+    } catch (e) {
+      checks.push({
+        name: "Deployment analytics cleanup removes temporary deployment",
+        passed: false,
+        detail: e.message,
+      });
+    }
   } catch (e) {
     checks.push({ name: "Deployment analytics endpoint returns data structure", passed: false, detail: e.message });
   }

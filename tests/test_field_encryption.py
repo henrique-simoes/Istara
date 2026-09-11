@@ -1,7 +1,6 @@
 """Tests for field-level encryption (Fernet symmetric encryption)."""
 
 import pytest
-from unittest.mock import patch, MagicMock
 
 from cryptography.fernet import Fernet
 
@@ -9,23 +8,34 @@ from app.core.field_encryption import (
     encrypt_field,
     decrypt_field,
     ensure_encryption_key,
+    reset_field_encryption_for_tests,
+    rotate_data_encryption_key,
+    FieldEncryptionUnavailable,
     CRYPTO_AVAILABLE,
-    _get_fernet,
+    encryption_health_snapshot,
+    reset_encryption_health_for_tests,
 )
 
 
 @pytest.fixture(autouse=True)
 def setup_encryption():
-    """Set a test encryption key and reset the Fernet instance."""
+    """Set a test encryption key and reset cached ciphers."""
     import app.core.field_encryption as fe
+
     # Set a test key in settings
     from app.config import settings
+
     original_key = settings.data_encryption_key
+    original_previous = settings.data_encryption_previous_keys
     settings.data_encryption_key = Fernet.generate_key().decode()
-    fe._fernet_instance = None  # Force re-creation with new key
+    settings.data_encryption_previous_keys = ""
+    reset_field_encryption_for_tests()
+    reset_encryption_health_for_tests()
     yield
     settings.data_encryption_key = original_key
-    fe._fernet_instance = None
+    settings.data_encryption_previous_keys = original_previous
+    reset_field_encryption_for_tests()
+    reset_encryption_health_for_tests()
 
 
 @pytest.mark.skipif(not CRYPTO_AVAILABLE, reason="cryptography not installed")
@@ -70,10 +80,14 @@ class TestFieldEncryption:
         result = decrypt_field("plain-text-value")
         assert result == "plain-text-value"
 
-    def test_decrypt_invalid_encrypted_returns_as_is(self):
-        """Invalid ENC: values (tampered) are returned unchanged, not crashed."""
+    def test_decrypt_invalid_encrypted_fails_closed(self):
+        """Invalid ENC: values (tampered) fail closed without leaking ciphertext."""
         result = decrypt_field("ENC:invalid-base64-data!!!")
-        assert "invalid" in result  # Returns ciphertext on failure
+        assert result == ""
+        health = encryption_health_snapshot()
+        assert health["decryption_failures"] == 1
+        assert health["healthy"] is False
+        assert health["last_failure_at"]
 
     def test_different_encryptions_produce_different_ciphertext(self):
         """Same plaintext should produce different ciphertext (random IV)."""
@@ -85,11 +99,13 @@ class TestFieldEncryption:
     def test_ensure_encryption_key_generates_valid_key(self):
         """ensure_encryption_key generates a valid Fernet key."""
         from app.config import settings
+
         # Clear the existing key to force generation
         original_key = settings.data_encryption_key
         settings.data_encryption_key = ""
         import app.core.field_encryption as fe
-        fe._fernet_instance = None
+
+        reset_field_encryption_for_tests()
 
         key = ensure_encryption_key()
         assert key is not None
@@ -101,4 +117,46 @@ class TestFieldEncryption:
 
         # Restore
         settings.data_encryption_key = original_key
-        fe._fernet_instance = None
+        reset_field_encryption_for_tests()
+
+    def test_encrypt_without_key_fails_closed(self):
+        """Missing key raises instead of storing plaintext."""
+        from app.config import settings
+
+        original_key = settings.data_encryption_key
+        settings.data_encryption_key = ""
+        reset_field_encryption_for_tests()
+        try:
+            with pytest.raises(FieldEncryptionUnavailable):
+                encrypt_field("must-not-persist")
+        finally:
+            settings.data_encryption_key = original_key
+            reset_field_encryption_for_tests()
+
+    def test_versioned_format_and_legacy_decrypt(self):
+        original = "rotate-me"
+        encrypted = encrypt_field(original)
+        assert encrypted.count(":") >= 2
+        assert decrypt_field(encrypted) == original
+        # Legacy unversioned rows still decrypt.
+        import app.core.field_encryption as fe
+
+        from app.config import settings
+
+        legacy_token = fe._fernet_for_material(settings.data_encryption_key).encrypt(
+            original.encode()
+        ).decode()
+        assert decrypt_field("ENC:" + legacy_token) == original
+
+    def test_rotation_keeps_old_rows_readable(self):
+        from app.config import settings
+
+        old_row = encrypt_field("long-lived-secret")
+        old_key = settings.data_encryption_key
+        result = rotate_data_encryption_key()
+        assert result["previous_key_count"] == 1
+        assert settings.data_encryption_key != old_key
+        assert old_key in settings.data_encryption_previous_keys
+        # Old row decrypts via retained previous key; new writes use new key.
+        assert decrypt_field(old_row) == "long-lived-secret"
+        assert decrypt_field(encrypt_field("fresh-secret")) == "fresh-secret"

@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0.0",
+  "record_id": "b1-t0-canonical-05-chat-interaction-seed0-pi",
+  "pair_id": "b1-t0-canonical-05-chat-interaction-seed0",
+  "phase": "B1",
+  "tier": "T0",
+  "engine": "pi",
+  "pack": "canonical",
+  "scenario": {
+    "id": "05-chat-interaction",
+    "title": "Chat interaction contract",
+    "seed": 0,
+    "order": "legacy_first"
+  },
+  "provenance": {
+    "git_sha": "e1c9c99",
+    "git_dirty": false,
+    "input_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "model_id": null,
+    "endpoint_fingerprint": "loopback-stub",
+    "ts": "2026-07-22T00:00:00Z"
+  },
+  "status": "ok",
+  "usage": {
+    "input_tokens": 128,
+    "output_tokens": 64,
+    "cache_tokens": 0,
+    "total_tokens": 192,
+    "cost_usd": 0,
+    "estimate": false,
+    "estimator": null
+  },
+  "metrics": {
+    "tool_calling": {
+      "tool_name_accuracy": 1.0,
+      "argument_schema_validity": 1.0,
+      "hallucinated_call_rate": 0.0,
+      "calls_per_success": 1.0,
+      "recovery_rate": null
+    },
+    "output_quality": {
+      "deterministic_pass": true
+    }
+  }
+}

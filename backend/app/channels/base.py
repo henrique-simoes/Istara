@@ -8,11 +8,10 @@ Supports multiple instances per platform (e.g. two Telegram bots).
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Callable, Awaitable
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +97,7 @@ class ChannelAdapter(ABC):
         """Check connection health. Override for platform-specific checks."""
         return {"status": "healthy" if self._running else "stopped", "platform": self.platform}
 
-    def on_message(self, callback: MessageCallback) -> None:
+    def on_message(self, callback: MessageCallback | None) -> None:
         """Register a callback for incoming messages."""
         self._callback = callback
 
@@ -149,6 +148,9 @@ class ChannelRouter:
             logger.warning(
                 "Unregistering running adapter '%s'; call stop first to be safe.", instance_id
             )
+        if adapter:
+            # Do not retain a router callback on an adapter that no longer belongs to it.
+            adapter.on_message(None)
 
     def get(self, instance_id: str) -> ChannelAdapter | None:
         return self._adapters.get(instance_id)
@@ -186,7 +188,9 @@ class ChannelRouter:
     async def _handle_message(self, message: IncomingMessage) -> OutgoingMessage | None:
         """Route an incoming message through the configured handler."""
         if self._handler is None:
-            logger.warning("ChannelRouter has no handler set; dropping message from %s", message.channel)
+            logger.warning(
+                "ChannelRouter has no handler set; dropping message from %s", message.channel
+            )
             return None
         return await self._handler(message)
 

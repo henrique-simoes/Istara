@@ -26,7 +26,12 @@ class GoogleFormsAdapter(SurveyPlatformAdapter):
     # ------------------------------------------------------------------
 
     def _headers(self) -> dict[str, str]:
-        token = self.config.get("access_token", "")
+        token = (
+            self.config.get("access_token", "")
+            or self.config.get("token", "")
+            or self.config.get("Service Account JSON", "")
+            or self.config.get("OAuth Bearer Token", "")
+        )
         if not token:
             raise ValueError("Google Forms access_token not configured")
         return {
@@ -145,12 +150,14 @@ class GoogleFormsAdapter(SurveyPlatformAdapter):
             requests_list: list[dict] = []
             for idx, q in enumerate(questions):
                 item = self._build_form_item(q, idx)
-                requests_list.append({
-                    "createItem": {
-                        "item": item,
-                        "location": {"index": idx},
+                requests_list.append(
+                    {
+                        "createItem": {
+                            "item": item,
+                            "location": {"index": idx},
+                        }
                     }
-                })
+                )
 
             await self._request(
                 "POST",
@@ -193,14 +200,18 @@ class GoogleFormsAdapter(SurveyPlatformAdapter):
                 ans_parts: list[str] = []
                 for ta in text_answers.get("answers", []):
                     ans_parts.append(ta.get("value", ""))
-                answers.append({
-                    "question": q_text,
-                    "answer": "; ".join(ans_parts) if ans_parts else "",
-                })
-            normalised.append({
-                "id": resp.get("responseId", ""),
-                "answers": answers,
-            })
+                answers.append(
+                    {
+                        "question": q_text,
+                        "answer": "; ".join(ans_parts) if ans_parts else "",
+                    }
+                )
+            normalised.append(
+                {
+                    "id": resp.get("responseId", ""),
+                    "answers": answers,
+                }
+            )
 
         return normalised
 

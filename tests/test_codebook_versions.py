@@ -63,7 +63,9 @@ async def test_codebook_versions_list_returns_response(auth_headers):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/codebook-versions/{project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/codebook-versions/{project_id}", headers=auth_headers
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -119,7 +121,9 @@ async def test_codebook_versions_latest_returns_response(auth_headers):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get(f"/api/codebook-versions/{project_id}/latest", headers=auth_headers)
+        response = await ac.get(
+            f"/api/codebook-versions/{project_id}/latest", headers=auth_headers
+        )
 
     assert response.status_code == 200
     assert response.json()["id"] == latest_id

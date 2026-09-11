@@ -15,14 +15,15 @@ export const reports = {
 };
 
 export const presentation = {
-  slideInstructions: (reportId: string, projectId: string) =>
+  slideInstructions: (reportId: string, projectId: string, regenerate: boolean = false) =>
     get<{
       report_id: string;
       project_id: string;
       title: string;
       instructions: string;
       methodology: string;
-    }>(`/api/presentation/reports/${reportId}/slide-instructions?project_id=${encodeURIComponent(projectId)}`),
+      cached?: boolean;
+    }>(`/api/presentation/reports/${reportId}/slide-instructions?project_id=${encodeURIComponent(projectId)}${regenerate ? "&regenerate=true" : ""}`),
 };
 
 export const codebookVersions = {
@@ -42,13 +43,35 @@ export const codebooks = {
 };
 
 export const codeApplications = {
-  list: (projectId: string, status?: string, taskId?: string) => {
+  list: (projectId: string, status?: string, taskId?: string, sourceDocumentId?: string, codeId?: string) => {
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (taskId) params.set("task_id", taskId);
+    if (sourceDocumentId) params.set("source_document_id", sourceDocumentId);
+    if (codeId) params.set("code_id", codeId);
     const query = params.toString();
     return get<CodeApplicationType[]>(`/api/code-applications/${projectId}${query ? `?${query}` : ""}`);
   },
+  create: (
+    projectId: string,
+    data: {
+      code_id: string;
+      codebook_version_id?: string | null;
+      source_document_id?: string | null;
+      source_text: string;
+      source_location?: string;
+      source_type?: string;
+      start_offset?: number | null;
+      end_offset?: number | null;
+      task_id?: string | null;
+      reasoning?: string;
+      speaker?: string;
+    }
+  ) => post<CodeApplicationType>(`/api/code-applications/${projectId}`, data),
+  delete: (applicationId: string, projectId: string) =>
+    del<{ deleted: boolean; id: string }>(
+      `/api/code-applications/${applicationId}?project_id=${encodeURIComponent(projectId)}`
+    ),
   pending: (projectId: string) =>
     get<CodeApplicationType[]>(`/api/code-applications/${projectId}/pending`),
   review: (
@@ -65,11 +88,6 @@ export const codeApplications = {
       rationale: rationale || "",
       accepted_code_id: acceptedCodeId || null,
     }),
-  bulkApprove: (projectId: string, minConfidence?: number) =>
-    post<{ approved_count: number }>(
-      `/api/code-applications/${projectId}/bulk-approve?min_confidence=${minConfidence || 0.9}`,
-      {}
-    ),
 };
 
 export const researchValidity = {

@@ -268,14 +268,7 @@ export const SETTINGS = {
   hardwareCard: 'h3:has-text("Hardware")',
   recommendedModelCard: 'h3:has-text("Recommended Model")',
   availableModelsCard: 'h3:has-text("Available Models")',
-  pullModelCard: 'h3:has-text("Pull New Model")',
-
-  /** Model switch buttons */
-  switchModelBtn: 'button:text("Switch")',
-  activeModelBadge: 'span:text("Active")',
-
-  /** Pull model input */
-  pullModelInput: 'input[placeholder*="qwen3:7b"]',
+  piModelManagement: '#pi-model-management-title',
 
   /** Refresh button */
   refreshBtn: 'button:has-text("Refresh")',

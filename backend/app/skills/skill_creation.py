@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.checkpoint import atomic_write
 from app.skills.skill_models import (
@@ -62,18 +62,20 @@ class SkillCreationMixin:
             raise ValueError(f"Skill already exists: {definition['name']}")
 
         proposal = SkillCreationProposal(
-            id=f"create_{definition['name']}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+            id=f"create_{definition['name']}_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
             proposed_definition=definition,
             source_task_id=source_task_id,
             source_agent_id=agent_id,
             reason=reason,
             confidence=confidence,
             project_id=scoped_project_id,
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
         )
         self._creation_proposals.append(proposal)
         self._save_creation_proposals()
-        logger.info("Proposed new skill creation: %s (confidence=%s)", definition["name"], confidence)
+        logger.info(
+            "Proposed new skill creation: %s (confidence=%s)", definition["name"], confidence
+        )
         return proposal
 
     def _matches_creation_project(
@@ -104,9 +106,7 @@ class SkillCreationMixin:
     ) -> list[SkillCreationProposal]:
         """Return the last N creation proposals."""
         return [
-            p
-            for p in self._creation_proposals
-            if self._matches_creation_project(p, project_id)
+            p for p in self._creation_proposals if self._matches_creation_project(p, project_id)
         ][-limit:]
 
     async def verify_skill_proposal(
@@ -166,7 +166,10 @@ class SkillCreationMixin:
                 result = {"passed": False, "issues": ["Could not instantiate skill for testing"]}
 
             test_path.unlink(missing_ok=True)
-            if loaded.name in self._definitions and self._definitions[loaded.name].path == test_path:
+            if (
+                loaded.name in self._definitions
+                and self._definitions[loaded.name].path == test_path
+            ):
                 del self._definitions[loaded.name]
 
             proposal.test_result = result
@@ -194,7 +197,9 @@ class SkillCreationMixin:
                 and proposal.status == "pending"
                 and self._matches_creation_project(proposal, project_id)
             ):
-                if isinstance(proposal.test_result, dict) and not proposal.test_result.get("passed", True):
+                if isinstance(proposal.test_result, dict) and not proposal.test_result.get(
+                    "passed", True
+                ):
                     logger.warning(
                         "Skill approval blocked; verification failed: %s",
                         proposal.test_result.get("issues"),
@@ -206,7 +211,7 @@ class SkillCreationMixin:
                 defn = proposal.proposed_definition
                 defn.setdefault("version", "1.0.0")
                 defn.setdefault("enabled", True)
-                defn["created_at"] = datetime.now(timezone.utc).isoformat()
+                defn["created_at"] = datetime.now(UTC).isoformat()
                 defn.setdefault(
                     "changelog",
                     [
@@ -230,7 +235,7 @@ class SkillCreationMixin:
                     logger.error("Failed to load approved skill %s: %s", defn["name"], e)
 
                 proposal.status = "approved"
-                proposal.reviewed_at = datetime.now(timezone.utc).isoformat()
+                proposal.reviewed_at = datetime.now(UTC).isoformat()
                 self._save_creation_proposals()
                 logger.info("Approved skill creation: %s", defn["name"])
                 return defn
@@ -250,7 +255,7 @@ class SkillCreationMixin:
                 and self._matches_creation_project(proposal, project_id)
             ):
                 proposal.status = "rejected"
-                proposal.reviewed_at = datetime.now(timezone.utc).isoformat()
+                proposal.reviewed_at = datetime.now(UTC).isoformat()
                 proposal.reject_reason = reason or None
                 self._save_creation_proposals()
                 logger.info("Rejected skill creation: %s - %s", proposal_id, reason)

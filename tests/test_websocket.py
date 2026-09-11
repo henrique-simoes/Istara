@@ -1,5 +1,6 @@
 """WebSocket flow tests — verify auth, connection, and event structure."""
 
+import asyncio
 import json
 import uuid
 
@@ -27,6 +28,7 @@ def reset_settings():
 # WebSocket auth token structure
 # ---------------------------------------------------------------------------
 
+
 def test_websocket_token_can_be_created():
     """A valid JWT token can be created for WebSocket auth."""
     if not settings.jwt_secret:
@@ -43,6 +45,7 @@ def test_websocket_token_contains_user_info():
     token = create_token("user1", "testuser", "admin")
 
     from app.core.auth import verify_token
+
     payload = verify_token(token)
     assert payload is not None
     assert payload["username"] == "testuser"
@@ -53,9 +56,11 @@ def test_websocket_token_contains_user_info():
 # WebSocket broadcast event structure
 # ---------------------------------------------------------------------------
 
+
 def test_steering_manager_has_queues():
     """SteeringManager has steering and follow-up queues."""
     from app.core.steering import SteeringManager
+
     manager = SteeringManager()
     status = manager.get_all_status()
     assert isinstance(status, dict)
@@ -64,6 +69,7 @@ def test_steering_manager_has_queues():
 def test_steering_queue_drain():
     """SteeringQueue drain returns items."""
     from app.core.steering import SteeringQueue
+
     queue = SteeringQueue()
     queue.enqueue({"message": "test"})
     items = queue.drain()
@@ -74,12 +80,84 @@ def test_steering_queue_drain():
 def test_websocket_manager_imports():
     """WebSocket manager module imports correctly."""
     from app.api.websocket import manager
+
     assert manager is not None
+
+
+@pytest.mark.asyncio
+async def test_task_progress_broadcast_preserves_terminal_outcome(monkeypatch):
+    """Consumers must receive failure/success semantics separately from numeric progress."""
+    from app.api import websocket as websocket_module
+
+    captured: dict[str, object] = {}
+
+    async def capture(event_type: str, data: dict) -> None:
+        captured["event_type"] = event_type
+        captured["data"] = data
+
+    monkeypatch.setattr(websocket_module.manager, "broadcast", capture)
+
+    await websocket_module.broadcast_task_progress(
+        "task-1",
+        1.0,
+        "Verification failed: no evidence",
+        outcome="verification_failed",
+        project_id="project-1",
+    )
+
+    assert captured == {
+        "event_type": "task_progress",
+        "data": {
+            "task_id": "task-1",
+            "progress": 1.0,
+            "notes": "Verification failed: no evidence",
+            "outcome": "verification_failed",
+            "project_id": "project-1",
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_notification_drain_discards_tasks_from_foreign_event_loops():
+    """A global manager must not gather tasks owned by a prior pytest event loop."""
+    from app.api.websocket import ConnectionManager
+
+    foreign_loop = asyncio.new_event_loop()
+    closed_loop = asyncio.new_event_loop()
+    try:
+        manager = ConnectionManager()
+        foreign_future = foreign_loop.create_future()
+        manager._notification_tasks.add(foreign_future)  # type: ignore[arg-type]
+
+        class ClosedLoopTask:
+            def done(self) -> bool:
+                return False
+
+            def get_loop(self):
+                return closed_loop
+
+            def cancel(self) -> None:
+                raise RuntimeError("event loop is closed")
+
+        closed_task = ClosedLoopTask()
+        manager._notification_tasks.add(closed_task)  # type: ignore[arg-type]
+        closed_loop.close()
+
+        await manager.drain_notification_tasks()
+
+        assert foreign_future not in manager._notification_tasks
+        assert foreign_future.cancelled()
+        assert closed_task not in manager._notification_tasks
+    finally:
+        foreign_loop.close()
+        if not closed_loop.is_closed():
+            closed_loop.close()
 
 
 # ---------------------------------------------------------------------------
 # WebSocket query parameter auth pattern
 # ---------------------------------------------------------------------------
+
 
 def test_websocket_auth_url_pattern():
     """WebSocket auth uses ?token= query parameter pattern."""
@@ -121,9 +199,18 @@ async def test_websocket_project_subscription_requires_membership():
         user_context = {"id": user_id, "username": "researcher", "role": "researcher"}
         admin_context = {"id": "admin", "username": "admin", "role": "admin"}
 
-        assert await _can_subscribe_to_project(db, user_context, visible_project_id) is True
-        assert await _can_subscribe_to_project(db, user_context, hidden_project_id) is False
-        assert await _can_subscribe_to_project(db, admin_context, hidden_project_id) is True
+        assert (
+            await _can_subscribe_to_project(db, user_context, visible_project_id)
+            is True
+        )
+        assert (
+            await _can_subscribe_to_project(db, user_context, hidden_project_id)
+            is False
+        )
+        assert (
+            await _can_subscribe_to_project(db, admin_context, hidden_project_id)
+            is True
+        )
         assert await _can_subscribe_to_project(db, user_context, None) is False
         assert await _can_subscribe_to_project(db, admin_context, None) is True
 
@@ -137,13 +224,22 @@ async def test_websocket_resolves_project_from_agent_id():
 
     async with async_session() as db:
         db.add(Project(id=project_id, name="Websocket agent project"))
-        db.add(Agent(id=agent_id, name="Realtime Agent", scope="project", project_id=project_id))
+        db.add(
+            Agent(
+                id=agent_id,
+                name="Realtime Agent",
+                scope="project",
+                project_id=project_id,
+            )
+        )
         await db.commit()
 
     from app.api.websocket import ConnectionManager
 
     manager = ConnectionManager()
-    resolved = await manager._resolve_project_id({"agent_id": agent_id, "thought": "project work"})
+    resolved = await manager._resolve_project_id(
+        {"agent_id": agent_id, "thought": "project work"}
+    )
 
     assert resolved == project_id
 
@@ -272,7 +368,9 @@ async def test_project_bound_websocket_events_with_conflicting_claims_are_not_br
         }
     ]
 
-    valid_project = await manager._resolve_project_id({"project_id": project_a, "task_id": task_a})
+    valid_project = await manager._resolve_project_id(
+        {"project_id": project_a, "task_id": task_a}
+    )
     conflict_project = await manager._resolve_project_id(
         {
             "project_id": project_a,
@@ -312,11 +410,21 @@ async def test_project_bound_websocket_events_without_scope_are_not_broadcast():
     global_ws = FakeWebSocket()
     manager = ConnectionManager()
     manager._connections = [
-        {"websocket": project_ws, "user_context": {"id": "u1"}, "active_project_id": "project-a"},
-        {"websocket": global_ws, "user_context": {"id": "admin"}, "active_project_id": None},
+        {
+            "websocket": project_ws,
+            "user_context": {"id": "u1"},
+            "active_project_id": "project-a",
+        },
+        {
+            "websocket": global_ws,
+            "user_context": {"id": "admin"},
+            "active_project_id": None,
+        },
     ]
 
-    await manager.broadcast("agent_thinking", {"agent_id": "missing-agent", "thought": "hidden"})
+    await manager.broadcast(
+        "agent_thinking", {"agent_id": "missing-agent", "thought": "hidden"}
+    )
 
     assert project_ws.sent == []
     assert global_ws.sent == []
@@ -363,7 +471,11 @@ async def test_websocket_broadcast_rechecks_project_membership():
     manager._connections = [
         {
             "websocket": project_ws,
-            "user_context": {"id": user_id, "username": "researcher", "role": "researcher"},
+            "user_context": {
+                "id": user_id,
+                "username": "researcher",
+                "role": "researcher",
+            },
             "active_project_id": project_id,
         }
     ]
@@ -420,7 +532,11 @@ async def test_global_notification_websocket_events_are_admin_only():
         },
         {
             "websocket": project_ws,
-            "user_context": {"id": user_id, "username": "researcher", "role": "researcher"},
+            "user_context": {
+                "id": user_id,
+                "username": "researcher",
+                "role": "researcher",
+            },
             "active_project_id": project_id,
         },
     ]
@@ -435,3 +551,120 @@ async def test_global_notification_websocket_events_are_admin_only():
 
     assert [event["type"] for event in admin_ws.sent] == ["resource_throttle"]
     assert project_ws.sent == []
+
+
+# ---------------------------------------------------------------------------
+# WebSocket MFA-claim parity with HTTP
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_websocket_rejects_pre_mfa_session_after_enrollment():
+    """A pre-MFA JWT must not subscribe to /ws once TOTP is enabled (HTTP: 403)."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    from starlette.testclient import TestClient
+
+    from app.core.auth import hash_password
+    from app.core.field_encryption import hash_field
+    from app.main import app
+    from app.models.user import User
+
+    uid = f"wsmfa-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(
+            User(
+                id=uid,
+                username=f"wsmfauser-{uid[-8:]}",
+                email=f"{uid}@example.com",
+                email_hash=hash_field(f"{uid}@example.com"),
+                password_hash=hash_password("xK9#mP2$vL7nQ4@wR1!"),
+                role="admin",
+                totp_enabled=True,
+            )
+        )
+        await db.commit()
+
+    stale = create_token(uid, "wsmfauser", "admin", mfa_verified=False)
+    fresh = create_token(uid, "wsmfauser", "admin", mfa_verified=True)
+    client = TestClient(app)
+    with pytest.raises(Exception) as excinfo:
+        with client.websocket_connect(f"/ws?token={stale}"):
+            pass
+    assert getattr(excinfo.value, "code", None) == 4001
+    with client.websocket_connect(f"/ws?token={fresh}") as ws:
+        first = ws.receive_json()
+        assert first["type"] == "connected"
+
+
+# ---------------------------------------------------------------------------
+# F-001/F-002: WS handshake accept/deny matrix (systemwide audit coverage)
+# ---------------------------------------------------------------------------
+
+
+async def test_ws_rejects_missing_and_invalid_token():
+    """F-001: /ws closes 4001 with no token or a garbage token."""
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    from starlette.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    with pytest.raises(Exception) as excinfo:
+        with client.websocket_connect("/ws"):
+            pass
+    assert getattr(excinfo.value, "code", None) == 4001
+    with pytest.raises(Exception) as excinfo:
+        with client.websocket_connect("/ws?token=garbage-token"):
+            pass
+    assert getattr(excinfo.value, "code", None) == 4001
+
+
+async def test_ws_denies_nonmember_project_with_4003():
+    """F-001: /ws closes 4003 when a non-member subscribes to a project."""
+    await init_db()
+    settings.team_mode = True
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    from starlette.testclient import TestClient
+
+    from app.main import app
+
+    project_id = f"wsdeny-{uuid.uuid4().hex[:8]}"
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="WS Deny Project"))
+        await db.commit()
+
+    stranger = create_token("ws-stranger", "wsstranger", "viewer")
+    client = TestClient(app)
+    with pytest.raises(Exception) as excinfo:
+        with client.websocket_connect(f"/ws?token={stranger}&project_id={project_id}"):
+            pass
+    assert getattr(excinfo.value, "code", None) == 4003
+
+
+async def test_relay_rejects_unauthenticated_and_accepts_network_token():
+    """F-002: /ws/relay closes 4001 with no credentials, accepts network token."""
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    original_network_token = settings.network_access_token
+    settings.network_access_token = "test-relay-token"
+    try:
+        from starlette.testclient import TestClient
+
+        from app.main import app
+
+        client = TestClient(app)
+        with pytest.raises(Exception) as excinfo:
+            with client.websocket_connect("/ws/relay"):
+                pass
+        assert getattr(excinfo.value, "code", None) == 4001
+        with client.websocket_connect("/ws/relay?access_token=test-relay-token"):
+            pass
+    finally:
+        settings.network_access_token = original_network_token

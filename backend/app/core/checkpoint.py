@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import String, Text, DateTime, select, delete
+from sqlalchemy import DateTime, String, Text, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.database import Base
 from app.models.agent import AgentState
+from app.models.database import Base
 
 logger = logging.getLogger(__name__)
 
@@ -37,15 +37,18 @@ class TaskCheckpoint(Base):
     # started, skill_selected, executing, findings_stored, verified
     checkpoint_data: Mapped[str] = mapped_column(Text, default="{}")
     agent_state: Mapped[str] = mapped_column(
-        String(20), default=AgentState.IDLE.value  # Capture AgentState enum value
+        String(20),
+        default=AgentState.IDLE.value,  # Capture AgentState enum value
     )
+    # timezone=True MUST match the UTC-aware defaults below: asyncpg rejects
+    # aware datetimes for TIMESTAMP WITHOUT TIME ZONE columns (F-P1).
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     def to_dict(self) -> dict:
@@ -62,7 +65,12 @@ class TaskCheckpoint(Base):
 
 
 async def create_checkpoint(
-    db: AsyncSession, task_id: str, agent_id: str, phase: str, data: dict | None = None, agent_state: AgentState = AgentState.IDLE
+    db: AsyncSession,
+    task_id: str,
+    agent_id: str,
+    phase: str,
+    data: dict | None = None,
+    agent_state: AgentState = AgentState.IDLE,
 ) -> None:
     """Create or update a task checkpoint.
 
@@ -81,7 +89,7 @@ async def create_checkpoint(
         existing.phase = phase
         existing.checkpoint_data = json.dumps(data or {})
         existing.agent_state = agent_state.value
-        existing.updated_at = datetime.now(timezone.utc)
+        existing.updated_at = datetime.now(UTC)
     else:
         cp = TaskCheckpoint(
             task_id=task_id,
@@ -95,7 +103,11 @@ async def create_checkpoint(
 
 
 async def update_checkpoint(
-    db: AsyncSession, task_id: str, phase: str, data: dict | None = None, agent_state: AgentState | str = None
+    db: AsyncSession,
+    task_id: str,
+    phase: str,
+    data: dict | None = None,
+    agent_state: AgentState | str = None,
 ) -> None:
     """Update an existing checkpoint's phase and data."""
     existing = await db.get(TaskCheckpoint, task_id)
@@ -107,15 +119,13 @@ async def update_checkpoint(
             existing.agent_state = agent_state.value
         elif agent_state is not None:
             existing.agent_state = agent_state
-        existing.updated_at = datetime.now(timezone.utc)
+        existing.updated_at = datetime.now(UTC)
         await db.commit()
 
 
 async def complete_checkpoint(db: AsyncSession, task_id: str) -> None:
     """Remove checkpoint — task completed successfully."""
-    await db.execute(
-        delete(TaskCheckpoint).where(TaskCheckpoint.task_id == task_id)
-    )
+    await db.execute(delete(TaskCheckpoint).where(TaskCheckpoint.task_id == task_id))
     await db.commit()
 
 
@@ -132,9 +142,8 @@ async def recover_incomplete(db: AsyncSession) -> list[dict]:
     from app.models.task import Task, TaskStatus
 
     # Enum values for comparison
-    WORKING_OR_ERROR = [AgentState.WORKING.value, AgentState.ERROR.value]
-    PAUSED = [AgentState.PAUSED.value]
-    
+    working_or_error = [AgentState.WORKING.value, AgentState.ERROR.value]
+
     result = await db.execute(select(TaskCheckpoint))
     checkpoints = result.scalars().all()
     recovered: list[dict] = []
@@ -144,8 +153,8 @@ async def recover_incomplete(db: AsyncSession) -> list[dict]:
         task = await db.get(Task, cp.task_id)
         if task:
             agent_state_recovered = AgentState(cp.agent_state) if cp.agent_state else None
-            
-            if agent_state_recovered and agent_state_recovered in WORKING_OR_ERROR:
+
+            if agent_state_recovered and agent_state_recovered in working_or_error:
                 logger.warning(
                     f"Recovering task {cp.task_id} from checkpoint phase={cp.phase}, "
                     f"agent_state={cp.agent_state}: TaskStatus.BACKLOG. Agent needs manual restart."
@@ -155,22 +164,25 @@ async def recover_incomplete(db: AsyncSession) -> list[dict]:
             elif agent_state_recovered and cp.phase != "started":
                 # Was paused mid-execution, put back in queue for manual recovery attempt
                 logger.warning(
-                    f"Recovering task {cp.task_id} from checkpoint phase={cp.phase}: TaskStatus.BACKLOG. "
+                    f"Recovering task {cp.task_id} from checkpoint "
+                    f"phase={cp.phase}: TaskStatus.BACKLOG. "
                     f"Agent was paused at interruption."
                 )
                 task.status = TaskStatus.BACKLOG
-            
-            recovered.append({
-                "task_id": cp.task_id,
-                "phase": cp.phase,
-                "agent_state_recovered": str(agent_state_recovered) if agent_state_recovered else "unknown",
-                "agent_id": cp.agent_id,
-            })
+
+            recovered.append(
+                {
+                    "task_id": cp.task_id,
+                    "phase": cp.phase,
+                    "agent_state_recovered": str(agent_state_recovered)
+                    if agent_state_recovered
+                    else "unknown",
+                    "agent_id": cp.agent_id,
+                }
+            )
 
         # Remove the orphaned checkpoint
-        await db.execute(
-            delete(TaskCheckpoint).where(TaskCheckpoint.task_id == cp.task_id)
-        )
+        await db.execute(delete(TaskCheckpoint).where(TaskCheckpoint.task_id == cp.task_id))
 
     await db.commit()
     return recovered

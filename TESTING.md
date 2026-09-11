@@ -56,6 +56,12 @@ Run commands from the repository root unless the command says otherwise.
 | Production rehearsal | `python scripts/production_rehearsal.py --json` | You need release-critical governed-evolution, compute, rollback, and dependency checks. | No live model by default |
 | Security benchmark | `python scripts/security_benchmark.py --fail-on-threshold` | Auth, authorization, sessions, WebAuthn, connection strings, pooled compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, or agentic-memory changes. | No |
 | Security benchmark tests | `pytest tests/test_security_benchmark.py -q` | You changed the control matrix, evidence paths, or trigger patterns. | No |
+| Feature-obligation classifier | `python scripts/check_feature_obligations.py --base origin/testing --head HEAD --json-out artifacts/feature-obligations.json` | You changed product behavior and need the fail-closed obligation report. | No |
+| QA capabilities check | `python scripts/check_qa_capabilities.py` | You changed `qa/runtime_capabilities.json` or the QA capability contract. | No |
+| Workflow contract check | `python scripts/check_workflow_contracts.py` | You changed public CI/promotion workflows or the badge-sync workflow. | No |
+| Required-checks contract | `python scripts/check_required_checks.py` | You renamed/added/removed a CI job, or changed `testing/required-checks.json`. | No |
+| QA compose render | `docker compose -f docker-compose.qa.yml --profile contract config --quiet` | You changed the disposable QA stack contract. | No (render only) |
+| QA developer entrypoint | `./scripts/istara-qa.sh render` | You want the documented QA lifecycle (render/up/wait/seed/qa/collect/reset/down). | `up` needs Docker |
 | Feature docs | `python scripts/feature_docs.py --seed-missing --generate-site --check` | UI/menu/route/store/agent/skill/model/test behavior changed. | No |
 | Feature docs tests | `pytest tests/test_feature_docs.py -q` | You changed feature docs inventory, source pages, glossary, generator, or generated site expectations. | No |
 | Frontend unit tests | `cd frontend` then `npm run test:unit` | You changed frontend logic covered by Vitest. | No |
@@ -63,6 +69,9 @@ Run commands from the repository root unless the command says otherwise.
 | Frontend lint | `cd frontend` then `npm run lint` | You changed frontend source. | No |
 | Frontend mutation | `cd frontend` then `npm run test:mutation` | You changed `src/lib/runtimeConfig.ts` or mutation harness config. | No |
 | Frontend build | `cd frontend` then `npm run build` | You need the full Next build gate. | No live backend |
+| Pi runtime contract tests | `cd pi-runtime` then `npm ci && npm test` | You changed Pi provider binding, protocol, model identity, budgets, or secret-flow behavior. | No live provider; uses deterministic and loopback fixtures |
+| Pi bump diff-proof gate | `python scripts/pi_bump_diff_proof.py verify` (offline) or `... proof <candidate>` before a bump | You changed Pi pins/lockfiles, the catalog projection, or the bump tooling; also step 0 of `docs/architecture/pi-compatibility-authority.md`. | `proof` needs npm network; `verify`/`verify-report` are offline |
+| Pi replacement lab tests | `cd labs/pi-replacement` then `npm ci && npm run validate` | You changed the standalone-Pi compatibility adapter or its contract fixtures. | No live provider |
 | Relay unit tests | `cd relay` then `npm test` | You changed relay connection strings, heartbeats, LLM proxying, or compute donation client code. | No |
 | Simulation static checks | `cd tests/simulation` then `npm run test:static` | You changed simulation runner, scenario, evaluator, or helper JavaScript and want syntax plus pure harness smoke coverage. | No |
 | Marathon config integrity | `pytest tests/test_marathon_config_integrity.py -q` | You changed `scripts/marathon/config.json`, scenario registration, or custom-check wiring. | No |
@@ -83,18 +92,33 @@ Run commands from the repository root unless the command says otherwise.
 | Real-user three-model deep probe | `npm --prefix tests/real_user_benchmark run probe:deep:three-model` | You want the validated Mac Studio LM Studio donor plus two Colima llama.cpp donors, two researchers, canonical corpus upload, Research Spine traceability, telemetry, donation, and governed self-improvement evidence. | Yes |
 | Real-user full | `npm --prefix tests/real_user_benchmark run full` | You are deliberately running the sandboxed comparison benchmark. | Yes, Docker/Colima and often live LLM |
 
+### Dual-core (Agentic Core) test matrix
+
+Chat resolves its engine as: operator flag > `x-istara-agent-engine` header > persisted
+`projects.agentic_engine` > global default. Suites that drive chat can pin either core:
+
+| Control | Effect |
+| --- | --- |
+| `node tests/simulation/run.mjs --scenario <id> --engine pi\|legacy\|both` | Threads the engine header into every harness request and pins the `[SIM]` project's `agentic_engine`; `both` is plan-only in this harness. |
+| Scenario 79 (`79-engine-selector`) | Config surface PLUS one bounded behavioral chat turn per core with usage-ledger routing evidence (`latest.engine`). Skips behavior when no LLM is connected. |
+| `ISTARA_MARATHON_ENGINE=pi\|legacy\|both ./scripts/marathon/start-marathon.sh …` | Runs each cycle scenario once per selected core; `both` executes legacy then pi and labels results `<id>[legacy]` / `<id>[pi]`. |
+| `ISTARA_E2E_ENGINE=pi python tests/e2e_test.py` | Adds a Pi-core journey turn next to the legacy turn in Phase 5. |
+| `ISTARA_LONG_HORIZON_ENGINE=pi ISTARA_API_URL=<base> python tests/benchmarks/long_horizon_runner.py` | Pins the long-horizon DAG trajectory to one core (also de-hardcodes the API base). |
+| `npm --prefix tests/real_user_benchmark run probe:pi` / `probe:legacy` | Bounded researcher benchmark on one core; `run.mjs` also accepts `--engine` directly. |
+| Stub-marked stacks | Backends with `LLM_PROVIDER_CONTRACT_STUB=true` (QA compose, VPS compose) reject interactive chat with SSE error `provider_stub_chat_blocked`; the simulation chat client surfaces this as an explicit error instead of a canned reply. Point behavioral suites at live-provider stacks or the Pi core. |
+
 ## Current Suite Topology
 
 This is the shape developers should expect when navigating the suite:
 
 | Area | Location | Current span | Notes |
 | --- | --- | --- | --- |
-| Python pytest suite | `tests/` | 1020 collected tests across 118 collected files at this checkpoint. There are 121 `test_*.py` files on disk because some files are splitters/pointers and `tests/e2e_test.py` is a standalone live script. | Default deterministic contract, security, governance, backend, and cross-surface coverage. |
+| Python pytest suite | `tests/` | 2384 collected tests (1 deselected; 2383 run) at the 2026-09-11 final certification on `25e2063d` with the exact CI command (`cd backend && pytest ../tests/ -q --tb=short -m "not live_llm"`, keyless, py3.12.13, both pi surfaces installed): 2377 passed / 6 skipped / 1 deselected, 0 failed. There are 164 `test_*.py` files directly under `tests/` plus suites under `tests/pi_production/`, `tests/pi_benchmark/`, `tests/pi_migration/`, `tests/pi_compat/`, `tests/benchmarks/`, and `tests/integration/`; some files are splitters/pointers and `tests/e2e_test.py` is a standalone live script. | Default deterministic contract, security, governance, backend, and cross-surface coverage. |
 | Backend mutation properties | `backend/tests/test_compute_capacity_properties.py` | 6 property tests for the mutmut backend cwd. | Wrapped by `scripts/run_backend_mutation.py`. |
-| Frontend unit tests | `frontend/src/**/*.test.ts` | Vitest tests for runtime config and model provider behavior. | Run with `npm run test:unit`. |
+| Frontend unit tests | `frontend/src/**/*.test.ts` | 23 test files, 121 tests at the 2026-09-11 final certification on `25e2063d` (node 24.20.0; runtime config, model providers/catalog, forms, navigation, OAuth poll lifecycle, cookie-tolerant auth custody). Frontend mutation on the same SHA: 90.77 (118 killed / 12 survived / 0 no-cov) ≥ break 75. | Run with `npm run test:unit`. |
 | Frontend mutation | `frontend/stryker.config.json` | Stryker target for `src/lib/runtimeConfig.ts`. | Thresholds are defined in the config. |
 | Relay unit tests | `relay/lib/**/*.test.mjs` | Node test runner coverage for relay connection strings, heartbeat payloads, and LLM proxy request behavior. | Run with `cd relay` then `npm test`. |
-| Simulation scenarios | `tests/simulation/scenarios/*.mjs` | 76 scenario files plus static helper tests under `tests/simulation/lib/*.test.mjs`. | Browser/API scenarios against a running app, registered through `tests/simulation/run.mjs`; `npm run test:static` is the PR-safe syntax/project-selection smoke layer. |
+| Simulation scenarios | `tests/simulation/scenarios/*.mjs` | 82 scenario files plus 11 static helper test files under `tests/simulation/lib/*.test.mjs` at the 2026-09-11 checkpoint (test:static 41/41; browser lane 2026-09-11: 15 PASS + 1 SKIP, 248 checks, 82 15/15 / 83 17/17 / 84 13/13; proven-extra 8 journeys, resolve 15/67/0). | Browser/API scenarios against a running app, registered through `tests/simulation/run.mjs`; `npm run test:static` is the PR-safe syntax/project-selection smoke layer. |
 | E2E script | `tests/e2e_test.py` | One phase-based live script. | Uses `ISTARA_ADMIN_USER` and `ISTARA_ADMIN_PASSWORD` when provided. Run with `python`, not `pytest`. |
 | AI eval registry | `tests/evals/registry.json`, `tests/evals/cases/` | Versioned subsystem evals. | Static mode is safe by default; live mode uses the configured private profile. |
 | Real-user benchmark | `tests/real_user_benchmark/` | Plan, probe, and full modes. | Longitudinal UX researcher benchmark with JSONL logs, scorecards, screenshots, and traces. |
@@ -104,18 +128,76 @@ This is the shape developers should expect when navigating the suite:
 
 ## CI Coverage
 
-GitHub Actions lives in `.github/workflows/ci.yml` and is split into five jobs:
+GitHub Actions lives in `.github/workflows/ci.yml`. It runs on `main`, `staging`,
+the long-lived public `testing` integration branch, on pull requests to those
+branches, weekly on a schedule, and on manual dispatch. CI is organized by
+**failure domain, not by technology**: every domain reports independently, no
+quality gate gates another quality gate, and a fail-closed `release-gate`
+aggregator fails on failure, cancellation, or unexplained skip of any required
+job. Required-check semantics are defined by the committed manifest
+`testing/required-checks.json`, contract-checked every run by
+`scripts/check_required_checks.py`; that manifest is the single source the
+owner-gated `main` branch-protection change consumes verbatim
+(`docs/promotion/branch-protection/`).
 
-| Job | What it runs |
+| Job (required context) | What it runs |
 | --- | --- |
-| `governance` | `scripts/check_integrity.py`, `scripts/check_ci_governance.py`, `scripts/check_test_harness.py`, `scripts/security_release_readiness.py`, `scripts/security_benchmark.py --fail-on-threshold`, PR change obligations, and PR security benchmark trigger checks. |
-| `backend` | Python install, compileall for governed surfaces, production rehearsal, harness contract smoke tests, property-based contract tests, backend mutation gate, governed evolution regressions, changed-file ruff gate, non-blocking full ruff/format checks, and `pytest ../tests/ -v --tb=short`. |
-| `frontend` | `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run test:unit`, `npm run test:mutation`, and `npm run build`. |
+| `hygiene` | `git diff --check` (blocking) and `python scripts/public_repo_quality_audit.py --check` (blocking). |
+| `feature-obligations` | `scripts/check_feature_obligations.py --base --head --json-out` (fail-closed classifier), `scripts/check_qa_capabilities.py`, `scripts/check_workflow_contracts.py`. Gates unknown paths before expensive jobs. |
+| `governance` | `scripts/check_integrity.py`, `scripts/check_ci_governance.py`, `scripts/check_test_harness.py`, `scripts/check_required_checks.py`, `scripts/security_release_readiness.py`, `scripts/security_benchmark.py --fail-on-threshold`, PR change obligations, and PR security benchmark trigger checks. Read-only (`contents: read`). |
+| `backend-format` | `ruff format --check .` at the exact project pin — its own job so formatting can never hide the test suite. |
+| `backend-lint` | Governed-surface `compileall`, repo-wide correctness classes `ruff check . --select F821,F811,F822` (blocking), the changed-file strict gate (blocking), and the 378-error style backlog (advisory, documented burn-down). |
+| `backend-test` | Installs both bundled pi surfaces (`npm ci` in `pi-runtime` and `labs/pi-replacement`), then production rehearsal, harness contract smoke tests, QA contract tests, property-based contract tests, governed evolution regressions, and the full backend suite. |
+| `backend-mutation` | `scripts/run_backend_mutation.py`. |
+| `frontend-lint` | `npm run lint` (independent). |
+| `frontend-typecheck` | `npx tsc --noEmit` (independent). |
+| `frontend-unit` | `npm run test:unit` (independent). |
+| `frontend-mutation` | `npm run test:mutation` (blocking; `break: 75` never lowered, `related: false` so no-coverage is honest) plus the widened `src/lib/*Api.ts` scope advisory-first (`npm run test:mutation:wide`, report always uploaded). |
+| `frontend-build` | `npm run build` (independent). |
 | `test-harness-js` | Relay dependencies plus `npm test`, simulation `npm run test:static`, and real-user benchmark `npm run check`. |
-| `desktop` | Rust toolchain setup and `cargo check` for `desktop/src-tauri`, currently continue-on-error for system dependency drift. |
+| `qa-contract-render` | Renders QA Compose profiles (`contract`, `synthetic`, `audit`, `ui`) — parse only, named honestly. Behavior-level QA contract tests live in `backend-test`. |
+| `ui-journeys` | Container-first browser lane: starts `docker-compose.qa.yml --profile ui` (loopback-only publication, unique project, synthetic data), waits for health, installs Playwright, and runs the simulation harness against the QA stack. Scope: smoke journeys on ordinary PRs to `testing`; the full PROVEN set on pushes, PRs to `main`, weekly, and dispatch. Registered-but-unproven scenarios are recorded as explicit `not_runnable` entries in the uploaded evidence — never silently skipped, never counted as passes. Missing capabilities (Docker unavailable, stack unhealthy) fail the job with a named reason. |
+| `desktop-check` | Rust toolchain + `cargo check` with no `continue-on-error`: honest status. Required since the 2026-09-10 owner decision (M-18); listed in `testing/required-checks.json` `required_contexts` and the `release-gate` needs list. |
+| `release-gate` | Fail-closed aggregator: passes only when every required context succeeded; fails on failure, cancellation, or unexplained skip. Its `needs` list is contract-checked against the manifest. |
 
-CI does not run the full simulation suite, marathon, real-user probe/full, or
-live LLM evals by default. Those need deliberate operator setup.
+### CI artifacts
+
+Every CI artifact name embeds the commit SHA so it can never be mistaken for
+another commit's: `istara-ui-journeys-<sha>` (journey summaries, selected
+scenarios, `not-runnable-journeys.json`, screenshots),
+`istara-frontend-mutation-<sha>` (raw Stryker JSON report with the
+killed/survived/no-coverage triple), `istara-release-gate-<sha>` (aggregator
+record of every required job result), plus `istara-feature-obligations` and
+`istara-security-scorecard`.
+
+### CI write policy
+
+No CI job writes to any branch (`scripts/check_workflow_contracts.py` fails on
+any `git push` inside `ci.yml`; `governance` runs `contents: read`). The README
+version-badge writeback is the only generated write path and lives in its own
+narrow workflow, `.github/workflows/badge-sync.yml`: push to `main` only, never
+`testing`/`staging`, `contents: write`, `[skip ci]` commit — so `testing` HEAD
+stays the exact, reproducible SHA the promotion gate verifies.
+
+The dedicated `qa-artifact.yml` workflow builds the disposable QA image; the
+`promote-testing.yml` workflow is the ONLY path that may create a promotion PR
+to `main`, and only after a protected-environment human approval that binds the
+exact source SHA. Nothing auto-merges.
+
+Before creating the PR, the promotion workflow verifies required checks are
+green for the exact SHA via `gh api .../actions/runs`; the workflow token binds
+`actions: read` (plus `contents`/`pull-requests` write) so that check is
+authorized on a normal runner (`scripts/check_workflow_contracts.py` enforces
+this permission contract).
+
+The in-repo workflow above and the GitHub repository-setting change (required
+contexts, approvals, admin enforcement, force-push policy) are strictly
+separated: the protection package is prepared in
+`docs/promotion/branch-protection/` and applied only by the owner, then verified
+by API read-back and a negative mergeability test.
+
+CI does not run the marathon, real-user probe/full, or live LLM evals. Those
+need deliberate operator setup.
 
 ## Project-Scoped Testing Rules
 
@@ -286,14 +368,16 @@ donated compute plus non-empty live chat. For harness debugging only, the README
 documents explicit opt-out variables.
 
 For real multi-donor compute validation, each required donor must resolve to a
-distinct provider/host endpoint. The canonical three-model probe is
-host-managed: Mac Studio runs Istara, the admin session, and the LM Studio
-donor; Colima runs only two researcher/client simulations plus their Qwen/Gemma
-llama.cpp donor endpoints. It skips the Istara server sandbox, starts disposable
-client/donor containers, removes benchmark-owned containers, and stops Colima
-after the run unless keep/debug flags are set. This mode is for deliberate live
-benchmark runs only and does not download models unless explicitly configured
-to do so.
+distinct provider/host endpoint. The historical host-managed three-model probe
+is refused before any live service, model, or package operation. The supported
+three-model probe is fully Docker-owned: the Compose project runs Istara, the
+admin flow, and the first donor; disposable Docker containers run the simulated
+researchers plus the second and third llama.cpp donors through the nested Docker
+socket. The Mac Studio is only the Docker host and SSH control plane. Model files
+must already exist under the configured read-only model root; the wrapper never
+downloads weights, installs host packages, manages Colima, or starts a
+host-managed Istara process. Benchmark-owned containers are removed after the
+run unless explicit keep/debug flags are set.
 
 ## Live LLM Contract
 

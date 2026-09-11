@@ -2,7 +2,7 @@
 """Autoresearch Experiment model — replaces Karpathy's results.tsv with a DB table."""
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -32,11 +32,14 @@ class AutoresearchExperiment(Base):
     kept: Mapped[bool] = mapped_column(Boolean, default=False)
     status: Mapped[str] = mapped_column(String(20), default="running")
     # running|completed|failed|reverted
+    engine: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    # pi|legacy — the per-experiment engine selected at the /start boundary and
+    # threaded into the runner; NULL for rows written before W6 added the field.
     config_snapshot: Mapped[str] = mapped_column(Text, default="{}")
     error_message: Mapped[str] = mapped_column(Text, default="")
     project_id: Mapped[str] = mapped_column(String(36), default="")
     started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -56,6 +59,7 @@ class AutoresearchExperiment(Base):
             "delta": self.delta,
             "kept": self.kept,
             "status": self.status,
+            "engine": self.engine,
             "config_snapshot": config_snapshot,
             "error_message": self.error_message,
             "project_id": self.project_id,

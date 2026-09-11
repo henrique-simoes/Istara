@@ -43,11 +43,15 @@ async def test_interview_pipeline_integration(auth_headers):
         assert response.status_code in (200, 404)
 
         # 2. Documents endpoint accessible
-        response = await ac.get(f"/api/documents?project_id={project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/documents?project_id={project_id}", headers=auth_headers
+        )
         assert response.status_code == 200
 
         # 3. Findings endpoints accessible
-        response = await ac.get(f"/api/findings/nuggets?project_id={project_id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/findings/nuggets?project_id={project_id}", headers=auth_headers
+        )
         assert response.status_code == 200
 
         # 4. Reports endpoint accessible

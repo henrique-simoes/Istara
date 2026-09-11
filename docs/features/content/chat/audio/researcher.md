@@ -15,6 +15,17 @@ compass: CF-SPEC-53 / CF-657
 
 # Chat Audio Conversation
 
+### Model availability
+
+Audio transcription is governed by an administrator-configured audio profile,
+and advertised capabilities are grounded in what the runtime can actually
+serve: local Whisper advertises support only when the local Whisper runtime is
+available; remote Whisper and diarized providers are configurable today but
+have no dispatch adapter yet, so they are advertised as unavailable until the
+adapter ships. An unconfigured, unsupported, or invalid profile is unavailable
+(typed 503, never a crash) and never falls back to a text model. Transcription
+output remains provisional until reviewed.
+
 ## What It Does
 
 The chat audio flow records user speech through the browser, sends it to the voice route, and returns transcription or voice-assisted chat input.

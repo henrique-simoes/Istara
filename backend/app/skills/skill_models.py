@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.config import settings
@@ -96,7 +96,7 @@ class SkillUpdateProposal:
         confidence: float = 0.5,
         project_id: str = "",
     ) -> None:
-        self.id = f"{skill_name}_{field}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+        self.id = f"{skill_name}_{field}_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
         self.project_id = str(project_id or "").strip()
         self.skill_name = skill_name
         self.field = field
@@ -105,7 +105,7 @@ class SkillUpdateProposal:
         self.reason = reason
         self.confidence = confidence
         self.status = "pending"
-        self.created_at = datetime.now(timezone.utc).isoformat()
+        self.created_at = datetime.now(UTC).isoformat()
         self.reviewed_at: str | None = None
 
     def to_dict(self) -> dict:

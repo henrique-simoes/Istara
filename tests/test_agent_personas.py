@@ -23,7 +23,9 @@ def test_piper_is_hardcoded_design_lead_with_persona():
     from app.models.agent import AgentRole
     from app.services.agent_service import SYSTEM_AGENTS
 
-    piper = next((agent for agent in SYSTEM_AGENTS if agent["id"] == "design-lead"), None)
+    piper = next(
+        (agent for agent in SYSTEM_AGENTS if agent["id"] == "design-lead"), None
+    )
 
     assert piper is not None
     assert piper["name"] == "Piper"

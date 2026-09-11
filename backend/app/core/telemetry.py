@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, func, or_
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.research_validity import research_validity_telemetry_contract, telemetry_operation_names
+from app.core.research_validity import (
+    research_validity_telemetry_contract,
+    telemetry_operation_names,
+)
 from app.models.database import async_session
 from app.models.telemetry_span import TelemetrySpan
 
@@ -21,6 +25,23 @@ logger = logging.getLogger(__name__)
 
 class TelemetryRecorder:
     """Records telemetry spans and model performance data to the local database."""
+
+    def __init__(self) -> None:
+        self._write_failures = 0
+        self._last_write_failure_at: str | None = None
+
+    def write_health_snapshot(self) -> dict[str, object]:
+        """Return value-free, process-local evidence-store health."""
+        return {
+            "healthy": self._write_failures == 0,
+            "write_failures": self._write_failures,
+            "last_failure_at": self._last_write_failure_at,
+        }
+
+    def reset_write_health_for_tests(self) -> None:
+        """Reset process-local counters for an isolated test baseline."""
+        self._write_failures = 0
+        self._last_write_failure_at = None
 
     async def record_span(
         self,
@@ -50,46 +71,63 @@ class TelemetryRecorder:
         tool_name: str | None = None,
         tool_success: bool | None = None,
         tool_duration_ms: float | None = None,
+        arguments_summary: str = "",
+        reasoning_bank_id: str | None = None,
         source: str = "production",
+        session: AsyncSession | None = None,
     ) -> None:
         """Write a telemetry span to the database."""
+        span = TelemetrySpan(
+            id=uuid.uuid4().hex[:36],
+            trace_id=trace_id,
+            parent_id=parent_id,
+            operation=operation,
+            skill_name=skill_name,
+            model_name=model_name,
+            agent_id=agent_id,
+            started_at=datetime.now(UTC),
+            duration_ms=duration_ms,
+            status=status,
+            quality_score=quality_score,
+            consensus_score=consensus_score,
+            reliability_score=reliability_score,
+            error_type=error_type,
+            error_message=(error_message or "")[:500] if error_message else None,
+            project_id=project_id,
+            task_id=task_id,
+            event_kind=event_kind,
+            route_id=route_id,
+            donor_id=donor_id,
+            retrieval_mode=retrieval_mode,
+            coding_run_id=coding_run_id,
+            evidence_unit_id=evidence_unit_id,
+            codebook_version_id=codebook_version_id,
+            temperature=temperature,
+            tool_name=tool_name,
+            tool_success=int(tool_success) if tool_success is not None else None,
+            tool_duration_ms=tool_duration_ms,
+            arguments_summary=(arguments_summary or "")[:500],
+            reasoning_bank_id=(reasoning_bank_id or "")[:100] or None,
+            source=source,
+        )
+        if session is not None:
+            # Keep telemetry in the caller's transaction.  A separate SQLite
+            # writer here can deadlock when the caller has already flushed a
+            # source/evidence row, and atomic lifecycle evidence is preferable
+            # to an eventually-consistent side write.
+            session.add(span)
+            return
         try:
             async with async_session() as session:
-                span = TelemetrySpan(
-                    id=uuid.uuid4().hex[:36],
-                    trace_id=trace_id,
-                    parent_id=parent_id,
-                    operation=operation,
-                    skill_name=skill_name,
-                    model_name=model_name,
-                    agent_id=agent_id,
-                    started_at=datetime.now(timezone.utc),
-                    duration_ms=duration_ms,
-                    status=status,
-                    quality_score=quality_score,
-                    consensus_score=consensus_score,
-                    reliability_score=reliability_score,
-                    error_type=error_type,
-                    error_message=(error_message or "")[:500] if error_message else None,
-                    project_id=project_id,
-                    task_id=task_id,
-                    event_kind=event_kind,
-                    route_id=route_id,
-                    donor_id=donor_id,
-                    retrieval_mode=retrieval_mode,
-                    coding_run_id=coding_run_id,
-                    evidence_unit_id=evidence_unit_id,
-                    codebook_version_id=codebook_version_id,
-                    temperature=temperature,
-                    tool_name=tool_name,
-                    tool_success=int(tool_success) if tool_success is not None else None,
-                    tool_duration_ms=tool_duration_ms,
-                    source=source,
-                )
                 session.add(span)
                 await session.commit()
         except Exception as e:
-            logger.debug(f"Telemetry span write failed: {e}")
+            # A missing research-validity span is an observability failure, not
+            # harmless debug noise. Keep request handling non-fatal while
+            # making the loss visible to operators and benchmark log capture.
+            self._write_failures += 1
+            self._last_write_failure_at = datetime.now(UTC).isoformat()
+            logger.warning("Telemetry span write failed: %s", e)
 
     async def record_research_validity_event(
         self,
@@ -114,6 +152,7 @@ class TelemetryRecorder:
         error_type: str | None = None,
         error_message: str | None = None,
         source: str = "production",
+        session: AsyncSession | None = None,
     ) -> None:
         """Record a content-free research-validity lifecycle event.
 
@@ -144,6 +183,7 @@ class TelemetryRecorder:
             evidence_unit_id=evidence_unit_id,
             codebook_version_id=codebook_version_id,
             source=source,
+            session=session,
         )
 
     async def record_json_parse(
@@ -170,6 +210,103 @@ class TelemetryRecorder:
             status="success" if success else "error",
             error_type=error_type,
             error_message=(error_message or "")[:500] if error_message else None,
+        )
+
+    async def record_tool_call(
+        self,
+        *,
+        tool_name: str,
+        duration_ms: float,
+        success: bool,
+        model_name: str = "",
+        project_id: str = "",
+        agent_id: str = "",
+        task_id: str | None = None,
+        trace_id: str | None = None,
+        parent_id: str | None = None,
+        error_type: str | None = None,
+        error_message: str | None = None,
+        arguments_summary: str = "",
+        reasoning_bank_id: str | None = None,
+        source: str = "production",
+        session: AsyncSession | None = None,
+    ) -> None:
+        """Record a canonical tool execution span following OpenTelemetry GenAI conventions."""
+        await self.record_span(
+            trace_id=trace_id or uuid.uuid4().hex[:36],
+            parent_id=parent_id,
+            operation="tool_call",
+            tool_name=tool_name,
+            tool_success=success,
+            tool_duration_ms=duration_ms,
+            duration_ms=duration_ms,
+            model_name=model_name,
+            status="success" if success else "error",
+            agent_id=agent_id,
+            project_id=project_id,
+            task_id=task_id,
+            error_type=error_type,
+            error_message=error_message,
+            arguments_summary=arguments_summary,
+            reasoning_bank_id=reasoning_bank_id,
+            source=source,
+            session=session,
+        )
+
+    async def record_steering_event(
+        self,
+        *,
+        project_id: str,
+        agent_id: str,
+        action: str,
+        trace_id: str | None = None,
+        task_id: str | None = None,
+        status: str = "success",
+        queue_depth: int | None = None,
+        error_message: str | None = None,
+        session: AsyncSession | None = None,
+    ) -> None:
+        """Record an agentic steering lifecycle event (queue, drain, abort)."""
+        await self.record_span(
+            trace_id=trace_id or uuid.uuid4().hex[:36],
+            operation="steering.event",
+            event_kind="agent_steering",
+            agent_id=agent_id,
+            project_id=project_id,
+            task_id=task_id,
+            status=status,
+            route_id=f"{action}:queue_depth={queue_depth}" if queue_depth is not None else action,
+            error_message=error_message,
+            session=session,
+        )
+
+    async def record_reliability_evaluation(
+        self,
+        *,
+        project_id: str,
+        coding_run_id: str,
+        metric_name: str,
+        score: float | None,
+        alpha: float | None = None,
+        threshold: float = 0.60,
+        rater_count: int = 3,
+        item_count: int = 0,
+        promotion_status: str = "accepted",
+        trace_id: str | None = None,
+        session: AsyncSession | None = None,
+    ) -> None:
+        """Record mathematical inter-coder reliability evaluation across multi-model ensemble."""
+        await self.record_span(
+            trace_id=trace_id or uuid.uuid4().hex[:36],
+            operation="coding_run.reliability",
+            event_kind="research_validity",
+            coding_run_id=coding_run_id,
+            project_id=project_id,
+            reliability_score=score,
+            consensus_score=alpha,
+            status="success" if promotion_status == "accepted" else "degraded",
+            route_id=f"{metric_name}:raters={rater_count}:items={item_count}:threshold={threshold}",
+            session=session,
         )
 
     async def record_model_performance(
@@ -211,7 +348,7 @@ class TelemetryRecorder:
                         quality_ema=quality,
                         best_quality=quality,
                         source="production",
-                        last_used=datetime.now(timezone.utc),
+                        last_used=datetime.now(UTC),
                     )
                     session.add(row)
                 else:
@@ -222,7 +359,7 @@ class TelemetryRecorder:
                     row.quality_ema = old_ema * (1 - alpha) + quality * alpha
                     if quality > (row.best_quality or 0):
                         row.best_quality = quality
-                    row.last_used = datetime.now(timezone.utc)
+                    row.last_used = datetime.now(UTC)
 
                 await session.commit()
         except Exception as e:
@@ -254,14 +391,78 @@ class TelemetryRecorder:
                         "project_id": r.project_id,
                         "skill_name": r.skill_name,
                         "model_name": r.model_name,
+                        "model": r.model_name,
                         "temperature": r.temperature,
                         "quality_ema": round(r.quality_ema or 0, 3),
                         "best_quality": round(r.best_quality or 0, 3),
                         "executions": r.executions,
+                        "total_calls": r.executions,
                         "source": r.source,
                     }
                     for r in rows
                 ]
+
+                # Model activity across all telemetry spans (OpenTelemetry GenAI conventions)
+                model_activity_stmt = (
+                    select(TelemetrySpan)
+                    .where(
+                        TelemetrySpan.project_id == project_id,
+                        TelemetrySpan.model_name != "",
+                    )
+                    .order_by(TelemetrySpan.created_at.desc())
+                    .limit(500)
+                )
+                model_spans_res = await session.execute(model_activity_stmt)
+                spans_by_model: dict[str, list[TelemetrySpan]] = {}
+                for sp in model_spans_res.scalars().all():
+                    spans_by_model.setdefault(sp.model_name, []).append(sp)
+
+                should_synthesize_leaderboard = not leaderboard
+                model_activity: list[dict] = []
+                for mn, mspans in spans_by_model.items():
+                    m_total = len(mspans)
+                    m_success = sum(1 for sp in mspans if sp.status == "success")
+                    m_durs = [sp.duration_ms for sp in mspans if sp.duration_ms > 0]
+                    m_qualities = [
+                        sp.quality_score for sp in mspans if sp.quality_score is not None
+                    ]
+                    m_ops = sorted({sp.operation for sp in mspans if sp.operation})
+                    m_qual = (
+                        (sum(m_qualities) / len(m_qualities))
+                        if m_qualities
+                        else round(m_success / max(m_total, 1), 3)
+                    )
+                    model_activity.append(
+                        {
+                            "model": mn,
+                            "model_name": mn,
+                            "total_calls": m_total,
+                            "success_count": m_success,
+                            "success_rate": round(m_success / max(m_total, 1), 3),
+                            "avg_duration_ms": round(sum(m_durs) / max(len(m_durs), 1), 1)
+                            if m_durs
+                            else 0.0,
+                            "quality_ema": round(m_qual, 3),
+                            "operations": m_ops,
+                        }
+                    )
+                    if should_synthesize_leaderboard:
+                        leaderboard.append(
+                            {
+                                "project_id": project_id,
+                                "skill_name": mspans[0].skill_name or "research_validity",
+                                "model_name": mn,
+                                "model": mn,
+                                "temperature": mspans[0].temperature or 0.2,
+                                "quality_ema": round(m_qual, 3),
+                                "best_quality": round(
+                                    max(m_qualities) if m_qualities else m_qual, 3
+                                ),
+                                "executions": m_total,
+                                "total_calls": m_total,
+                                "source": "spans_aggregated",
+                            }
+                        )
 
                 error_stmt = (
                     select(TelemetrySpan)
@@ -309,6 +510,8 @@ class TelemetryRecorder:
                             "success": 0,
                             "errors": {},
                             "durations": [],
+                            "agents": set(),
+                            "models": set(),
                         }
                     tool_stats[tname]["total"] += 1
                     if s.tool_success:
@@ -317,14 +520,40 @@ class TelemetryRecorder:
                         tool_stats[tname]["errors"][s.error_type] = (
                             tool_stats[tname]["errors"].get(s.error_type, 0) + 1
                         )
-                    if s.tool_duration_ms:
+                    if s.tool_duration_ms is not None and s.tool_duration_ms >= 0:
                         tool_stats[tname]["durations"].append(s.tool_duration_ms)
+                    if s.agent_id:
+                        tool_stats[tname]["agents"].add(s.agent_id)
+                    if s.model_name:
+                        tool_stats[tname]["models"].add(s.model_name)
+
+                total_tool_calls = sum(st["total"] for st in tool_stats.values())
+                total_tool_success = sum(st["success"] for st in tool_stats.values())
+                all_tool_durations = [d for st in tool_stats.values() for d in st["durations"]]
+                all_tool_errors = sorted({e for st in tool_stats.values() for e in st["errors"]})
+                tool_summary = {
+                    "total_calls": total_tool_calls,
+                    "overall_success_rate": round(total_tool_success / max(total_tool_calls, 1), 3)
+                    if total_tool_calls
+                    else 0.0,
+                    "distinct_tools": len(tool_stats),
+                    "avg_duration_ms": round(
+                        sum(all_tool_durations) / max(len(all_tool_durations), 1), 1
+                    )
+                    if all_tool_durations
+                    else 0.0,
+                    "error_types_observed": all_tool_errors,
+                }
 
                 tool_success_rates = []
                 for tname, stats in tool_stats.items():
                     durations = sorted(stats["durations"]) if stats["durations"] else [0]
                     p50 = durations[len(durations) // 2] if durations else 0
                     p90 = durations[int(len(durations) * 0.9)] if len(durations) > 1 else p50
+                    p95 = durations[int(len(durations) * 0.95)] if len(durations) > 1 else p90
+                    p99 = durations[int(len(durations) * 0.99)] if len(durations) > 10 else p95
+                    min_d = durations[0] if durations else 0
+                    max_d = durations[-1] if durations else 0
                     tool_success_rates.append(
                         {
                             "tool": tname,
@@ -335,9 +564,33 @@ class TelemetryRecorder:
                             ),
                             "p50_duration_ms": round(p50, 1),
                             "p90_duration_ms": round(p90, 1),
+                            "p95_duration_ms": round(p95, 1),
+                            "p99_duration_ms": round(p99, 1),
+                            "min_duration_ms": round(min_d, 1),
+                            "max_duration_ms": round(max_d, 1),
                             "error_types": stats["errors"],
+                            "agents": sorted(stats["agents"]),
+                            "models": sorted(stats["models"]),
                         }
                     )
+
+                tool_audit_trail = [
+                    {
+                        "id": s.id,
+                        "tool_name": s.tool_name or "unknown",
+                        "status": "success" if s.tool_success else "failure",
+                        "duration_ms": round(s.tool_duration_ms or s.duration_ms or 0, 1),
+                        "model_name": s.model_name or "unknown",
+                        "agent_id": s.agent_id or "",
+                        "task_id": s.task_id or "",
+                        "skill_name": s.skill_name or "",
+                        "timestamp": s.created_at.isoformat() if s.created_at else None,
+                        "arguments_summary": s.arguments_summary or "",
+                        "reasoning_bank_id": s.reasoning_bank_id,
+                        "error_type": s.error_type if not s.tool_success else None,
+                    }
+                    for s in tool_spans[:100]
+                ]
 
                 latency_stmt = (
                     select(TelemetrySpan)
@@ -364,12 +617,16 @@ class TelemetryRecorder:
                     sd = sorted(durs)
                     p50 = sd[len(sd) // 2] if sd else 0
                     p90 = sd[int(len(sd) * 0.9)] if len(sd) > 1 else p50
+                    p95 = sd[int(len(sd) * 0.95)] if len(sd) > 1 else p90
                     p99 = sd[int(len(sd) * 0.99)] if len(sd) > 10 else p90
+                    avg_ms = sum(sd) / max(len(sd), 1)
                     latency_percentiles.append(
                         {
                             "model": mn,
+                            "avg_ms": round(avg_ms, 1),
                             "p50_ms": round(p50, 1),
                             "p90_ms": round(p90, 1),
+                            "p95_ms": round(p95, 1),
                             "p99_ms": round(p99, 1),
                             "samples": len(sd),
                         }
@@ -408,11 +665,37 @@ class TelemetryRecorder:
                         }
                     )
 
+                # Steering summary for this project
+                steering_stmt = (
+                    select(TelemetrySpan)
+                    .where(
+                        TelemetrySpan.project_id == project_id,
+                        TelemetrySpan.operation == "steering.event",
+                    )
+                    .order_by(TelemetrySpan.created_at.desc())
+                    .limit(200)
+                )
+                steering_result = await session.execute(steering_stmt)
+                steering_spans = steering_result.scalars().all()
+                steering_counts: dict[str, int] = {}
+                for sp in steering_spans:
+                    act = sp.route_id.split(":")[0] if sp.route_id else "unknown"
+                    steering_counts[act] = steering_counts.get(act, 0) + 1
+                steering_summary = {
+                    "total_events": len(steering_spans),
+                    "action_counts": steering_counts,
+                }
+
                 return {
                     "project_id": project_id,
+                    "status": "ok",
                     "leaderboard": leaderboard,
+                    "model_activity": model_activity,
                     "error_taxonomy": error_taxonomy,
                     "tool_success_rates": tool_success_rates,
+                    "tool_summary": tool_summary,
+                    "tool_audit_trail": tool_audit_trail,
+                    "steering_summary": steering_summary,
                     "json_parse_success_rates": json_parse_success_rates,
                     "latency_percentiles": latency_percentiles,
                 }
@@ -421,9 +704,19 @@ class TelemetryRecorder:
             logger.warning(f"Model intelligence query failed: {e}")
             return {
                 "project_id": project_id,
+                "status": "unavailable",
+                "error_type": "telemetry_query_failed",
                 "leaderboard": [],
+                "model_activity": [],
                 "error_taxonomy": {},
                 "tool_success_rates": [],
+                "tool_audit_trail": [],
+                "tool_summary": {
+                    "total_calls": 0,
+                    "overall_success_rate": 0.0,
+                    "distinct_tools": 0,
+                },
+                "steering_summary": {"total_events": 0, "action_counts": {}},
                 "json_parse_success_rates": [],
                 "latency_percentiles": [],
             }
@@ -525,7 +818,9 @@ class TelemetryRecorder:
                     retrieval_mode_counts.get(span.retrieval_mode, 0) + 1
                 )
             if category == "donor_lifecycle":
-                donor_lifecycle_counts[span.operation] = donor_lifecycle_counts.get(span.operation, 0) + 1
+                donor_lifecycle_counts[span.operation] = (
+                    donor_lifecycle_counts.get(span.operation, 0) + 1
+                )
             if span.coding_run_id:
                 coding_run_ids.add(span.coding_run_id)
             if span.evidence_unit_id:

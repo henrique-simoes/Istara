@@ -138,7 +138,7 @@ export default function InterfacesOnboarding() {
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm mx-auto">
                 Interfaces bridges your research findings with actual design. Generate screens,
-                import from Figma, and hand off specs to developers -- all informed by your UX research.
+                import design systems, and hand off specs to developers -- all informed by your UX research.
               </p>
             </div>
           )}
@@ -147,10 +147,10 @@ export default function InterfacesOnboarding() {
           {currentStep === "stitch" && (
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                Stitch Setup (Google Gemini)
+                Generative AI Setup
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                Stitch uses Google Gemini to generate screen designs from your prompts.
+                Configure your Generative AI layout service to synthesize screen designs from structured prompts.
               </p>
 
               <div className="space-y-3">
@@ -158,7 +158,7 @@ export default function InterfacesOnboarding() {
                   type="password"
                   value={stitchKey}
                   onChange={(e) => setStitchKey(e.target.value)}
-                  placeholder="Google Gemini API key"
+                  placeholder="Generative Layout API key"
                   className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
 
@@ -180,15 +180,6 @@ export default function InterfacesOnboarding() {
                 {stitchError && (
                   <p className="text-sm text-red-600 dark:text-red-400">{stitchError}</p>
                 )}
-
-                <a
-                  href="https://aistudio.google.com/apikey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400"
-                >
-                  <ExternalLink size={12} /> Get your API key
-                </a>
               </div>
             </div>
           )}
@@ -197,10 +188,10 @@ export default function InterfacesOnboarding() {
           {currentStep === "figma" && (
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                Figma Setup
+                Design System Setup
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                Connect Figma to import existing designs and extract design systems.
+                Connect your external design tools to import existing designs and extract design systems.
               </p>
 
               <div className="space-y-3">
@@ -208,7 +199,7 @@ export default function InterfacesOnboarding() {
                   type="password"
                   value={figmaToken}
                   onChange={(e) => setFigmaToken(e.target.value)}
-                  placeholder="Figma personal access token"
+                  placeholder="Design system personal access token"
                   className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
 
@@ -230,15 +221,6 @@ export default function InterfacesOnboarding() {
                 {figmaError && (
                   <p className="text-sm text-red-600 dark:text-red-400">{figmaError}</p>
                 )}
-
-                <a
-                  href="https://www.figma.com/developers/api#access-tokens"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400"
-                >
-                  <ExternalLink size={12} /> Get your token
-                </a>
               </div>
             </div>
           )}
@@ -258,8 +240,8 @@ export default function InterfacesOnboarding() {
                       Important: External Data Sharing
                     </p>
                     <p className="text-sm text-amber-700 dark:text-amber-300">
-                      Sending data to Stitch or Figma breaks Istara&apos;s local-first approach.
-                      Your research data and prompts will be shared with external services (Google/Figma).
+                      Sending data to external layout or design tools extends beyond Istara&apos;s local-first boundary.
+                      Your research data and prompts will be shared with the configured external service.
                     </p>
                   </div>
                 </div>

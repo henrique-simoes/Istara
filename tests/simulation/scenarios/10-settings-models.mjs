@@ -78,13 +78,297 @@ export async function run(ctx) {
   const modelsSection = await availableModels.isVisible({ timeout: 2000 }).catch(() => false);
   checks.push({ name: "Available Models section", passed: modelsSection, detail: "" });
 
-  // Check Pull New Model input
-  const pullInput = await page.locator('input[placeholder*="qwen"]').first().isVisible({ timeout: 2000 }).catch(() => false);
-  checks.push({ name: "Pull model input visible", passed: pullInput, detail: "" });
+  // Pi Model Management is the only mutation surface; retired classical
+  // Switch/Pull affordances must not reappear in Settings.
+  const piManagement = await page.locator("#pi-model-management-title").first().isVisible({ timeout: 2000 }).catch(() => false);
+  checks.push({ name: "Pi Model Management visible", passed: piManagement, detail: "" });
+  const retiredSwitch = await page.locator('button:text("Switch")').count();
+  const retiredPull = await page.locator('h3:has-text("Pull New Model")').count();
+  checks.push({
+    name: "Classical model mutation controls absent",
+    passed: retiredSwitch === 0 && retiredPull === 0,
+    detail: `switch=${retiredSwitch}, pull=${retiredPull}`,
+  });
 
   // Check Refresh button
   const refreshBtn = await page.locator("text=Refresh").first().isVisible({ timeout: 2000 }).catch(() => false);
   checks.push({ name: "Refresh button visible", passed: refreshBtn, detail: "" });
+
+  // F-16: the AC-6 admission refusal must be remediable from the product's
+  // own add-model flow via operator contract-rate inputs. Real browser acts:
+  // open the add form, pick a provider+model, assert the rate fields exist.
+  try {
+    const addBtn = page.locator('button:has-text("Add a model")').first();
+    const addVisible = await addBtn.isVisible({ timeout: 3000 }).catch(() => false);
+    checks.push({ name: "Pi add-model flow opens", passed: addVisible, detail: "" });
+    if (addVisible) {
+      await addBtn.click();
+      await page.waitForTimeout(400);
+      const providerInput = page.locator('input[placeholder="Browse or search providers"]').first();
+      const providerVisible = await providerInput.isVisible({ timeout: 3000 }).catch(() => false);
+      checks.push({ name: "Pi provider picker visible", passed: providerVisible, detail: "" });
+      if (providerVisible) {
+        await providerInput.fill("zai");
+        await page.waitForTimeout(400);
+        const firstProvider = page.locator('[role="option"]').first();
+        if (await firstProvider.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await firstProvider.click();
+          await page.waitForTimeout(400);
+        }
+        const modelInput = page.locator('input[placeholder="Browse or search models"]').first();
+        const modelVisible = await modelInput.isVisible({ timeout: 3000 }).catch(() => false);
+        checks.push({ name: "Pi model picker visible", passed: modelVisible, detail: "" });
+        if (modelVisible) {
+          await modelInput.fill("glm-4.7");
+          await page.waitForTimeout(400);
+          const firstModel = page.locator('[role="option"]').first();
+          if (await firstModel.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await firstModel.click();
+            await page.waitForTimeout(400);
+          }
+        }
+      }
+      const rateIds = ["#pi-cost-input", "#pi-cost-output", "#pi-cost-cache-read", "#pi-cost-cache-write"];
+      let ratesVisible = 0;
+      for (const id of rateIds) {
+        if (await page.locator(id).first().isVisible({ timeout: 2000 }).catch(() => false)) ratesVisible++;
+      }
+      checks.push({
+        name: "Pi contract-rate inputs visible (F-16 remedy)",
+        passed: ratesVisible === rateIds.length,
+        detail: `${ratesVisible}/${rateIds.length} rate fields after provider+model selection`,
+      });
+      await screenshot("10-pi-contract-rates");
+      // Keyboard: the first rate field must be Tab-reachable with visible focus.
+      const firstRate = page.locator("#pi-cost-input").first();
+      if (await firstRate.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await firstRate.focus();
+        const focused = await page.evaluate(() => document.activeElement?.id || "").catch(() => "");
+        checks.push({
+          name: "Pi contract-rate field keyboard-focusable",
+          passed: focused === "pi-cost-input",
+          detail: `activeElement=${focused || "none"}`,
+        });
+      }
+    }
+  } catch (e) {
+    checks.push({ name: "Pi contract-rate inputs visible (F-16 remedy)", passed: false, detail: e.message });
+  }
+
+  // F-16 (API-behind-browser): a zero-priced catalog model posted without
+  // contract rates must refuse 400 pi_endpoint_unpriced naming the remedy
+  // and the API path. A refused POST persists nothing, so this is
+  // side-effect free; the successful rate-supply admission is covered by
+  // backend contract tests (no credential exists in the QA lane to custody).
+  try {
+    const catalog = await api.get("/api/settings/pi-catalog");
+    const providers = catalog.providers || [];
+    let target = null;
+    for (const p of providers) {
+      if (p.id === "dashscope") continue; // governed overlays are preflight-exempt
+      for (const m of (p.models || [])) {
+        const cost = m.cost || {};
+        if (Number(cost.input || 0) <= 0 && Number(cost.output || 0) <= 0) {
+          target = { provider: p.id, model: m.id };
+          break;
+        }
+      }
+      if (target) break;
+    }
+    checks.push({
+      name: "Zero-priced upstream model present in catalog (F-16 probe)",
+      passed: Boolean(target),
+      detail: target ? `${target.provider}/${target.model}` : "no $0 upstream model found",
+    });
+    if (target) {
+      const syntheticId = `sim-f16-${Date.now()}`;
+      const apiBase = process.env.ISTARA_API_URL || "http://localhost:8000";
+      const response = await fetch(`${apiBase}/api/settings/pi-endpoints`, {
+        method: "POST",
+        headers: api._headers(),
+        body: JSON.stringify({
+          endpoint_id: syntheticId,
+          provider_kind: "openai_compat",
+          base_url: "",
+          model: "",
+          pi_provider: target.provider,
+          pi_model: target.model,
+          keychain_service: `istara-pi-sim-${syntheticId}`,
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      const detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body).slice(0, 200);
+      checks.push({
+        name: "Zero-priced add refuses with remediable 400 (API-behind-browser)",
+        passed:
+          response.status === 400
+          && detail.includes("pi_endpoint_unpriced")
+          && detail.includes("cost_input_per_mtok")
+          && detail.includes("/api/settings/pi-endpoints"),
+        detail: `status=${response.status}, ${detail.slice(0, 160)}`,
+      });
+    }
+  } catch (e) {
+    checks.push({ name: "Zero-priced add refuses with remediable 400 (API-behind-browser)", passed: false, detail: e.message });
+  }
+
+  // ── W5.4 (update-and-release-proof wave): effort badge reflects the
+  // model's real pi-ai-inherited level count — for an inherited-MAP model
+  // (zai/glm-5.3: thinkingLevelMap low/high/max) and a MAPLESS reasoning
+  // model (zai/glm-4.7: map null, default ladder minus xhigh/max). The
+  // source of truth is the catalog's emitted `thinkingLevels` (DEC-M2: menus
+  // consume it as given); the badge text is "N provider-native levels".
+  try {
+    const catalog = await api.get("/api/settings/pi-catalog");
+    const providers = catalog.providers || [];
+    const findModel = (id) => {
+      for (const p of providers) {
+        const hit = (p.models || []).find((m) => m.id === id);
+        if (hit) return { provider: p.id, ...hit };
+      }
+      return null;
+    };
+    const mapped = findModel("glm-5.3");
+    const mapless = findModel("glm-4.7");
+    if (mapped && mapless) {
+      const mappedCount = (mapped.thinkingLevels || []).length;
+      const maplessCount = (mapless.thinkingLevels || []).length;
+      checks.push({
+        name: "Catalog emits inherited level counts (mapped + mapless)",
+        passed: mappedCount > 0 && maplessCount > 0,
+        detail: `glm-5.3 map=${JSON.stringify(mapped.thinkingLevelMap)} -> ${mappedCount} levels; glm-4.7 map=${JSON.stringify(mapless.thinkingLevelMap)} -> ${maplessCount} levels`,
+      });
+      // Real browser act: open Chat, pick each model in the composer's model
+      // listbox, and assert the badge carries the catalog-derived count.
+      await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(800);
+      const chatNav = page.locator('button[aria-label="Chat"]').first();
+      if (await chatNav.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await chatNav.click();
+        await page.waitForTimeout(800);
+        // F-19: #chat-model-listbox renders only inside `{open && ...}`
+        // (ChatModelControls.tsx), so it can never resolve while the picker
+        // is closed — the trigger MUST be clicked first. The stable trigger
+        // is `button[aria-haspopup="listbox"]`; the composer row carries two
+        // (agent picker, model picker), so try each until the listbox opens.
+        const searchInput = page.locator('input[aria-label="Search chat models"]').first();
+        const listbox = page.locator('#chat-model-listbox').first();
+        const triggers = page.locator('button[aria-haspopup="listbox"]');
+        const triggerCount = await triggers.count().catch(() => 0);
+        // F-25: ModelPicker unmounts the whole `{open && ...}` panel on
+        // select (`onClick={() => { onSelect(choice); setOpen(false); }}` in
+        // ChatModelControls.tsx), and `query` state outlives the panel — so
+        // the listbox MUST be reopened at the top of EVERY loop iteration
+        // and the stale query cleared before `fill`, or iteration 2 can
+        // never assert and degrades into a false declared skip.
+        const openListbox = async () => {
+          if (await listbox.isVisible({ timeout: 500 }).catch(() => false)) return true;
+          const n = await triggers.count().catch(() => 0);
+          for (let i = 0; i < n; i++) {
+            await triggers.nth(i).click().catch(() => {});
+            await page.waitForTimeout(300);
+            if (await listbox.isVisible({ timeout: 1500 }).catch(() => false)) return true;
+            await page.keyboard.press("Escape").catch(() => {});
+            await page.waitForTimeout(200);
+          }
+          return await listbox.isVisible({ timeout: 500 }).catch(() => false);
+        };
+        let listboxVisible = await openListbox();
+        if (triggerCount === 0) {
+          checks.push({ name: "Chat model listbox opens", passed: true, skipped: true, detail: "not_runnable: no listbox trigger in this lane (no active chat composer)" });
+        } else {
+          checks.push({ name: "Chat model listbox opens", passed: listboxVisible, detail: `${triggerCount} listbox trigger(s) tried` });
+        }
+        if (listboxVisible) {
+          for (const [modelId, expectedCount] of [["glm-5.3", mappedCount], ["glm-4.7", maplessCount]]) {
+            // F-25: the previous iteration's select closed the picker —
+            // reopen it here so this iteration's probe can execute.
+            const reopened = await openListbox();
+            if (!reopened) {
+              checks.push({
+                name: `Effort badge reflects inherited count for ${modelId}`,
+                passed: true,
+                skipped: true,
+                detail: "not_runnable: chat model picker did not reopen in this lane; catalog count asserted above",
+              });
+              continue;
+            }
+            if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+              // Clear the stale query left over from the previous iteration
+              // (`query` state outlives the unmounted panel) before filtering.
+              await searchInput.fill("");
+              await page.waitForTimeout(200);
+              await searchInput.fill(modelId);
+              await page.waitForTimeout(400);
+            }
+            const option = page.locator('#chat-model-listbox [role="option"]', { hasText: modelId }).first();
+            // F-25: the listbox is open here by construction, so an absent
+            // option genuinely means the model is not offered — only then is
+            // the declared not_runnable skip honest.
+            const listboxOpen = await listbox.isVisible({ timeout: 500 }).catch(() => false);
+            if (listboxOpen && await option.isVisible({ timeout: 2500 }).catch(() => false)) {
+              // W2: a rendered option may be honestly disabled (no
+              // chat-capable endpoint in the credential-free lane) —
+              // isVisible() is true for disabled rows, so clicking one waits
+              // for "enabled" until the scenario timeout. Detect disabled
+              // first and declare the lane honestly instead.
+              const disabled = await option.getAttribute("aria-disabled").catch(() => null);
+              if (disabled === "true") {
+                checks.push({
+                  name: `Effort badge reflects inherited count for ${modelId}`,
+                  passed: true,
+                  skipped: true,
+                  detail: "not_runnable: model offered but disabled (no chat-capable endpoint in the credential-free QA lane); selection impossible, catalog honesty asserted instead",
+                });
+              } else {
+              await option.click();
+              await page.waitForTimeout(500);
+              const badgeText = await page
+                .locator(":text('provider-native levels')")
+                .first()
+                .textContent({ timeout: 2500 })
+                .catch(() => "");
+              checks.push({
+                name: `Effort badge reflects inherited count for ${modelId}`,
+                passed: Boolean(badgeText && badgeText.includes(`${expectedCount} provider-native levels`)),
+                detail: `badge="${(badgeText || "").trim().slice(0, 80)}", expected ${expectedCount} levels`,
+              });
+              }
+            } else if (!listboxOpen) {
+              checks.push({
+                name: `Effort badge reflects inherited count for ${modelId}`,
+                passed: true,
+                skipped: true,
+                detail: "not_runnable: chat model picker closed before the option probe in this lane; catalog count asserted above",
+              });
+            } else {
+              // Credential-free QA lane: no configured endpoints -> no picker
+              // choices. Declared, not fabricated: the badge is skipped with
+              // the live requirement named (Full UI Testing Suite Contract 5).
+              checks.push({
+                name: `Effort badge reflects inherited count for ${modelId}`,
+                passed: true,
+                skipped: true,
+                detail: "not_runnable: model not offered in picker (no configured pi endpoint in the credential-free QA lane); catalog count asserted above",
+              });
+            }
+          }
+          await screenshot("10-effort-badge");
+        }
+      } else {
+        checks.push({ name: "Chat model listbox opens", passed: true, skipped: true, detail: "not_runnable: Chat nav not visible in this lane" });
+      }
+    } else {
+      checks.push({
+        name: "Catalog emits inherited level counts (mapped + mapless)",
+        passed: true,
+        skipped: true,
+        detail: "not_runnable: zai glm-5.3/glm-4.7 absent from this catalog build",
+      });
+    }
+  } catch (e) {
+    checks.push({ name: "Effort badge journey (W5.4)", passed: false, detail: e.message });
+  }
 
   return {
     checks,

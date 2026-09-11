@@ -17,14 +17,16 @@ export async function evaluate(ctx) {
   }
 
   // H1: Visibility of system status
-  const statusBar = await page.locator("text=Connected").isVisible().catch(() => false);
+  const statusIndicator = page.locator('[role="status"]').first();
+  const statusBar = await statusIndicator.isVisible().catch(() => false);
+  const statusText = await statusIndicator.textContent().catch(() => "");
   const statusIdle = await page.locator("text=Idle").isVisible().catch(() => false);
   scores.push({
     id: "H1",
     name: "Visibility of system status",
     score: statusBar && statusIdle ? 5 : statusBar ? 4 : 2,
     observations: [
-      statusBar ? "Status bar shows connection state" : "No visible connection indicator",
+      statusBar ? `Status bar shows connection state${statusText ? `: ${statusText.trim()}` : ""}` : "No visible connection indicator",
       statusIdle ? "Activity state (Idle) visible" : "No activity indicator",
     ],
     suggestions: statusBar ? [] : ["Add persistent status indicator showing system state"],

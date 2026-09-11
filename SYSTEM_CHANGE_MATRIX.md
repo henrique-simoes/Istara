@@ -206,7 +206,7 @@ pytest tests/test_feature_docs.py -q
 | versioning format | `scripts/set-version.sh`, `scripts/prepare-release.sh`, `VERSION`, `CHANGELOG.md`, updater logic, desktop tag checks, release workflow |
 | release workflow | `.github/workflows/build-installers.yml`, artifact naming, updater `latest.json`, release notes assumptions, `CHANGELOG.md` |
 | release preparation | `scripts/prepare-release.sh`, `CHANGELOG.md`, integrity/governance/rehearsal flow, release commit/tag sequence |
-| CI enforcement | `.github/workflows/ci.yml`, required checks, docs/checker steps, contributor workflow |
+| CI enforcement | `.github/workflows/ci.yml`, `.github/workflows/badge-sync.yml`, required checks (`testing/required-checks.json` manifest, contract-checked by `scripts/check_required_checks.py`), docs/checker steps, contributor workflow; failure-domain jobs with a fail-closed `release-gate` aggregator; CI jobs never push to any branch — the README badge writeback lives in the narrow main-only `badge-sync.yml` and never mutates `testing` (promotion source must remain reproducible); `promote-testing.yml` binds `actions: read` so its `gh api .../actions/runs` green-check is authorized; owner-gated protection package in `docs/promotion/branch-protection/` |
 | runtime update behavior | `backend/app/api/routes/updates.py`, `desktop/src-tauri/src/health.rs`, settings update UI, backup/update docs |
 | installer packaging | desktop build, bundled resources, source inclusion/exclusion, install docs |
 
@@ -255,6 +255,19 @@ If you add a new `reports` view:
 - add a simulation scenario or extend an existing one
 - update `docs/features/inventory.json` and the two source pages for the new view
 - regenerate feature docs with `python scripts/feature_docs.py --seed-missing --generate-site --check`
+
+### Pi embedding/control slice
+
+| Surface | Contract | Verification |
+| --- | --- | --- |
+| Embedding gateway/cache | one configured model and validated dimension across engines; cache hits checked against the engine's known dimension | W8 gateway tests, stale-dimension regression |
+| Chat controls | generation-only temperature/thinking/effort controls | chat/session contract tests |
+| Engine selector | explicit accessible Pi/Istara routing choice with evidence-backed provisional comparative summaries + shared embed identity in safe metadata | model catalog and project settings tests, scenario 79 |
+| Pi capability carry-through | catalog `thinkingLevels`/`thinkingLevelMap`/`compat` reach `/api/settings/pi-catalog` and the chat menu verbatim (menus never reimplement pi-ai's level filter); serializer declares every shipped field | `tests/pi_compat/test_capability_carry_through.py` |
+| Pi endpoint advertisement merge | tri-state `supports_reasoning`/`supports_vision` survive POST and sparse PUT; operator vetoes beat the pi-ai record; nothing enables beyond it; on a `pi_provider`/`pi_model` switch a persisted value equal to the OLD record is a tier-4 fill and refreshes (F-14) | `tests/pi_compat/test_capability_carry_through.py` |
+| Pi endpoint budget pricing | operator contract rates (tier 2) survive POST/PUT; upstream zero-priced registry models fail admission `pi_endpoint_unpriced` naming categories and the API path; overlays exempt; model-switch PUTs re-resolve rates before the preflight (F-14) | `tests/pi_compat/test_capability_carry_through.py` |
+| Effort vocabulary | `validate_model_effort` allowlist = pi-ai ladder + `server_default`/`auto`/`on`; unsupported efforts rejected, never silently clamped; ladder pinned to the projection | `tests/pi_compat/test_capability_carry_through.py`, chat/session contract tests |
+| Pi upstream bump gate | a pi-ai/pi-agent-core version bump ships only with a classified diff-proof (no unclassified/blocked consumed-surface or registry-removal diff) and exact lockstep pins + lockfiles + installed modules across `pi-runtime` and `labs/pi-replacement` | `tests/pi_compat/test_bump_diff_proof.py`, `tests/pi_migration/test_version_provenance.py` |
 
 ### Example 3: Change task status logic
 

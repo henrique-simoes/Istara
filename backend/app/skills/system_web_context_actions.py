@@ -103,7 +103,9 @@ async def _exec_browse_website(params: dict, project_id: str, agent_id: str) -> 
     if not task:
         return {"error": "task is required"}
 
-    return await browse_website(url=url, task=task, max_steps=max_steps)
+    return await browse_website(
+        url=url, task=task, max_steps=max_steps, project_id=project_id, agent_id=agent_id
+    )
 
 
 async def _latest_session_id(project_id: str) -> str | None:

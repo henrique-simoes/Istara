@@ -8,11 +8,13 @@ import {
   Shield,
   Activity,
   BarChart3,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { validation } from "@/lib/api";
 import { useProjectStore } from "@/stores/projectStore";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
+import ToolAuditTrailTable, { ToolAuditEntry } from "@/components/common/ToolAuditTrailTable";
 
 interface MethodStat {
   method: string;
@@ -33,6 +35,8 @@ export default function QualityView() {
   const projectId = useProjectStore((s) => s.activeProjectId);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [methods, setMethods] = useState<MethodStat[]>([]);
+  const [toolAuditTrail, setToolAuditTrail] = useState<ToolAuditEntry[]>([]);
+  const [toolSummary, setToolSummary] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [thresholds, setThresholds] = useState<Record<string, number>>({ nugget: 0.70, fact: 0.65, insight: 0.55, recommendation: 0.50 });
@@ -48,6 +52,11 @@ export default function QualityView() {
       validation.metrics(projectId)
     ]).then(([intel, metrics]) => {
       setLeaderboard(intel.leaderboard);
+      setToolAuditTrail(intel.tool_audit_trail || []);
+      setToolSummary(intel.tool_summary || null);
+      if ((intel as any).status === "unavailable") {
+        setError("Model intelligence temporarily unavailable; audit trail may be incomplete.");
+      }
       
       const stats: MethodStat[] = metrics.method_stats.map((s: any) => ({
         method: s.method,
@@ -83,6 +92,7 @@ export default function QualityView() {
     { id: "dual_run", name: "Dual Run", icon: Activity, desc: "Two model comparison" },
     { id: "adversarial_review", name: "Adversarial", icon: AlertTriangle, desc: "Model-on-model critique" },
     { id: "full_ensemble", name: "Full Ensemble", icon: BarChart3, desc: "3+ models, composite agreement" },
+    { id: "debate_rounds", name: "Debate Rounds", icon: MessageSquare, desc: "Iterative multi-model refinement" },
   ];
 
   return (
@@ -202,6 +212,9 @@ export default function QualityView() {
               )}
             </div>
           </div>
+
+          {/* Tool Reliability & Telemetry Audit Trail */}
+          <ToolAuditTrailTable entries={toolAuditTrail} summary={toolSummary} />
         </div>
 
         {/* Sidebar Status Column */}

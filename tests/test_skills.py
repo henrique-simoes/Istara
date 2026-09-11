@@ -67,7 +67,11 @@ async def test_skill_get_returns_skill(auth_headers):
         # Get the first skill from the list
         response = await ac.get("/api/skills", headers=auth_headers)
         if response.status_code == 200 and response.json():
-            skill_name = response.json().get("skills", [{}])[0].get("name", "card-sorting") if response.json().get("skills") else "card-sorting"
+            skill_name = (
+                response.json().get("skills", [{}])[0].get("name", "card-sorting")
+                if response.json().get("skills")
+                else "card-sorting"
+            )
             response = await ac.get(f"/api/skills/{skill_name}", headers=auth_headers)
             assert response.status_code in (200, 404)
 
@@ -78,7 +82,9 @@ async def test_skill_health_returns_response(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/skills/health/all?project_id=project-1", headers=auth_headers)
+        response = await ac.get(
+            "/api/skills/health/all?project_id=project-1", headers=auth_headers
+        )
         assert response.status_code == 200
 
 
@@ -88,7 +94,9 @@ async def test_skill_proposals_pending_returns_list(auth_headers):
     await init_db()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/api/skills/proposals/pending?project_id=project-1", headers=auth_headers)
+        response = await ac.get(
+            "/api/skills/proposals/pending?project_id=project-1", headers=auth_headers
+        )
         assert response.status_code == 200
         assert isinstance(response.json(), dict)
 
@@ -101,7 +109,9 @@ async def test_skill_project_surfaces_require_project_id(auth_headers):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         health = await ac.get("/api/skills/health/all", headers=auth_headers)
         proposals = await ac.get("/api/skills/proposals/all", headers=auth_headers)
-        creation = await ac.get("/api/skills/creation-proposals/all", headers=auth_headers)
+        creation = await ac.get(
+            "/api/skills/creation-proposals/all", headers=auth_headers
+        )
 
     assert health.status_code == 400
     assert proposals.status_code == 400
@@ -109,7 +119,9 @@ async def test_skill_project_surfaces_require_project_id(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_skill_improvement_proposals_are_filtered_by_project(monkeypatch, auth_headers):
+async def test_skill_improvement_proposals_are_filtered_by_project(
+    monkeypatch, auth_headers
+):
     """Skill update proposals from one project are invisible and immutable from another."""
     await init_db()
     original = skills_route.skill_manager._proposals
@@ -222,12 +234,16 @@ def test_skill_usage_does_not_auto_mutate_global_skill_lifecycle(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_skill_creation_proposals_are_filtered_by_project(monkeypatch, auth_headers):
+async def test_skill_creation_proposals_are_filtered_by_project(
+    monkeypatch, auth_headers
+):
     """Autonomous creation proposals keep their source project boundary."""
     await init_db()
     original = skills_route.skill_manager._creation_proposals
     skills_route.skill_manager._creation_proposals = []
-    monkeypatch.setattr(skills_route.skill_manager, "_save_creation_proposals", lambda: None)
+    monkeypatch.setattr(
+        skills_route.skill_manager, "_save_creation_proposals", lambda: None
+    )
 
     def definition(name: str) -> dict:
         return {
@@ -288,7 +304,9 @@ def test_skill_creation_proposal_requires_project_id(monkeypatch):
     """Autonomous skill creation must not create unscoped/global proposals."""
     original = skills_route.skill_manager._creation_proposals
     skills_route.skill_manager._creation_proposals = []
-    monkeypatch.setattr(skills_route.skill_manager, "_save_creation_proposals", lambda: None)
+    monkeypatch.setattr(
+        skills_route.skill_manager, "_save_creation_proposals", lambda: None
+    )
 
     definition = {
         "name": "auto-missing-project-skill",
@@ -351,7 +369,9 @@ async def test_execute_skill_enforces_route_timeout(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         await skills_route.execute_skill(
             "slow-skill",
-            skills_route.SkillExecuteRequest(project_id="project-1", timeout_seconds=0.1),
+            skills_route.SkillExecuteRequest(
+                project_id="project-1", timeout_seconds=0.1
+            ),
             _request(),
             db=None,
         )
@@ -447,7 +467,9 @@ async def test_execute_and_plan_reject_paused_project_before_agent_call(monkeypa
     with pytest.raises(HTTPException) as execute_exc:
         await skills_route.execute_skill(
             "paused-skill",
-            skills_route.SkillExecuteRequest(project_id="paused-project", timeout_seconds=0.1),
+            skills_route.SkillExecuteRequest(
+                project_id="paused-project", timeout_seconds=0.1
+            ),
             _request(),
             db=None,
         )
@@ -455,7 +477,9 @@ async def test_execute_and_plan_reject_paused_project_before_agent_call(monkeypa
     with pytest.raises(HTTPException) as plan_exc:
         await skills_route.plan_skill(
             "paused-skill",
-            skills_route.SkillPlanRequest(project_id="paused-project", timeout_seconds=0.1),
+            skills_route.SkillPlanRequest(
+                project_id="paused-project", timeout_seconds=0.1
+            ),
             _request(),
             db=None,
         )

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,12 +89,13 @@ async def ingest_responses(
 
     # Update link metadata
     link.response_count = (link.response_count or 0) + len(responses)
-    link.last_response_at = datetime.now(timezone.utc)
+    link.last_response_at = datetime.now(UTC)
 
     await db.commit()
 
     logger.info(
-        "Ingested %d provisional nuggets and %d evidence units from %d responses (skipped %d empty answers) for link %s",
+        "Ingested %d provisional nuggets and %d evidence units "
+        "from %d responses (skipped %d empty answers) for link %s",
         created,
         evidence_units_created,
         len(responses),

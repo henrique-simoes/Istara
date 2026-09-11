@@ -115,7 +115,11 @@ async def test_a2a_log_excludes_conflicting_project_claims(auth_headers):
     finally:
         async with async_session() as db:
             await db.execute(delete(A2AMessage).where(A2AMessage.id.in_(message_ids)))
-            await db.execute(delete(Agent).where(Agent.id.in_([visible_agent_id, hidden_agent_id])))
+            await db.execute(
+                delete(Agent).where(Agent.id.in_([visible_agent_id, hidden_agent_id]))
+            )
             await db.execute(delete(Task).where(Task.id.in_([task_a, task_b])))
-            await db.execute(delete(Project).where(Project.id.in_([project_a, project_b])))
+            await db.execute(
+                delete(Project).where(Project.id.in_([project_a, project_b]))
+            )
             await db.commit()

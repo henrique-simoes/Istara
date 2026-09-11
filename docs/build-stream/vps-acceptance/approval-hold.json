@@ -1,0 +1,28 @@
+{
+  "schema": "istara-build-stream/approval-hold/v1",
+  "id": "vps-acceptance-deployment",
+  "gate": "VPS acceptance deployment (F-1)",
+  "state": "pending",
+  "required_approval": "owner approval of VPS acceptance port contract (18443/tcp) + strict single-workload service definition",
+  "reference": "docs/build-stream/vps-acceptance/port-contract.md §5",
+  "approval_routed_at": "2026-08-22",
+  "approval_granted_at": null,
+  "distinct_from": "MECE master-plan approval gate (recorded in .compass-forge/conductor/plan-approved; synced into lifecycle status block by the owner-side conductor)",
+  "sync_preserved": true,
+  "sync_preservation_reason": "The owner-side 'docs: sync consensus owner-approval gate' process (conductor.py _sync_consensus_lifecycle_gate) rewrites ONLY the status/blocked_on/next_action lines of the lifecycle YAML header and never reads or writes this file. Verified against the sync source and the four observed sync commits (c316bd67, ab1afdcd, 6287182e, 466035e0, 70acb207), which touched only those lines.",
+  "recurrence_history": [
+    {"commit": "18cd7d32", "ledger": "L-40", "action": "hold first asserted in lifecycle status block blocked_on"},
+    {"commit": "c316bd67", "action": "sync clobber 1: blocked_on -> null"},
+    {"commit": "ab1afdcd", "action": "sync clobber: next_action -> stale planning text"},
+    {"commit": "6287182e", "action": "sync clobber 2 (after L-42 re-assertion)"},
+    {"commit": "466035e0", "action": "sync clobber 3 (after L-43 re-assertion, +73s)"},
+    {"commit": "70acb207", "action": "sync clobber 4 (live during r2 review, 20s tick)"},
+    {"commit": "f300e2a8", "ledger": "L-44", "action": "r2 reviewer re-assertion clobbered within the same tick; F-4 re-opened; fix task FIX-REREV-ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-qa-docs-vps-REVIEW-r2-hygiene created"}
+  ],
+  "fix_commit": null,
+  "flip_criteria": [
+    "owner approves port-contract.md §5 (18443/tcp) + strict single-workload service definition",
+    "VPS acceptance deployment performed and verified per vps skill (deploy, verify-isolation, verify-exposure, firewall/DOCKER-USER evidence, audit-anchor, rollback state, cleanup proof)",
+    "this record flipped state pending -> granted with a ledger entry citing the owner approval"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "fixture_class": "inherited",
+  "captured_at": "2026-09-08T09:32:25.986Z",
+  "endpoint": {
+    "provider_kind": "openai_compat",
+    "pi_provider": "zai",
+    "model": "glm-5.3",
+    "supports_reasoning": true,
+    "supports_vision": null,
+    "base_url_host": "api.z.ai"
+  },
+  "thinking_level": "max",
+  "request_body": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": [
+          {
+            "text": "fixture",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "glm-5.3",
+    "reasoning_effort": "max",
+    "stream": true,
+    "stream_options": {
+      "include_usage": true
+    },
+    "thinking": {
+      "clear_thinking": false,
+      "type": "enabled"
+    }
+  }
+}

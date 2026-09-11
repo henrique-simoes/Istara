@@ -7,9 +7,17 @@
 export const name = "Backup System";
 export const id = "51-backup-system";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
+
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "backup",
+    navLabel: "Backup",
+    markers: ["Create Full Backup", "Backup"],
+    screenshot: "51-backup-view",
+  });
   const cleanup = { backupIds: [] };
 
   // ── 1. GET /api/backups/config — returns config fields ──
@@ -104,17 +112,22 @@ export async function run(ctx) {
     checks.push({ name: "Backup has file_count > 0", passed: false, detail: "No backup created" });
   }
 
-  // ── 8. Backup has components object with database key ──
+  // ── 8. Backup has a canonical storage component ──
   if (fullBackup) {
     const comps = typeof fullBackup.components === "string" ? JSON.parse(fullBackup.components || "{}") : fullBackup.components || {};
-    const hasDb = comps.database !== undefined;
+    // Current backup manifests name the SQLite store `database` when it is
+    // present and expose the durable stores as `lance_db`, `keyword_index`,
+    // `uploads`, and `projects`. Minimal QA images may omit SQLite while still
+    // producing a valid, non-empty research-data backup.
+    const canonicalStorageKeys = ["database", "lance_db", "keyword_index", "uploads", "projects"];
+    const hasStorageComponent = canonicalStorageKeys.some((key) => comps[key] !== undefined);
     checks.push({
-      name: "Backup has components object with database key",
-      passed: !!hasDb,
+      name: "Backup has components object with canonical storage key",
+      passed: hasStorageComponent,
       detail: `components=${JSON.stringify(Object.keys(comps))}`,
     });
   } else {
-    checks.push({ name: "Backup has components object with database key", passed: false, detail: "No backup created" });
+    checks.push({ name: "Backup has components object with canonical storage key", passed: false, detail: "No backup created" });
   }
 
   // ── 9. GET /api/backups now includes the created backup ──
@@ -203,7 +216,8 @@ export async function run(ctx) {
     const newRetention = (config?.backup_retention_count || 10) + 5;
     const result = await api.post("/api/backups/config", { backup_retention_count: newRetention });
     const updated = await api.get("/api/backups/config");
-    const passed = updated.backup_retention_count === newRetention;
+    // Backend may echo numbers as strings; compare numerically.
+    const passed = Number(updated.backup_retention_count) === Number(newRetention);
     checks.push({
       name: "POST /api/backups/config updates settings (retention_count)",
       passed,

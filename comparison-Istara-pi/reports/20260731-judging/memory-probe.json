@@ -1,0 +1,41 @@
+{
+ "pi": {
+  "backend_rss_before": 35028992,
+  "backend_rss_after": 101040128,
+  "backend_rss_delta": 66011136,
+  "pi_worker_pid": 26615,
+  "pi_worker_rss_bytes": 132972544,
+  "text_len": 302,
+  "usage": {
+   "input_tokens": 12,
+   "output_tokens": 233,
+   "cache_read_tokens": 0,
+   "cache_write_tokens": 0,
+   "total_tokens": 245
+  }
+ },
+ "legacy": {
+  "backend_rss_before": 101122048,
+  "backend_rss_after": 107839488,
+  "backend_rss_delta": 6717440,
+  "pi_worker_pid": 26615,
+  "pi_worker_rss_bytes": 132972544,
+  "text_len": 290,
+  "usage": {
+   "input_tokens": 12,
+   "output_tokens": 118,
+   "cache_read_tokens": 0,
+   "cache_write_tokens": 0,
+   "total_tokens": 130
+  }
+ },
+ "retrieval_engine_independent": {
+  "suite": "rag",
+  "metrics": {
+   "context_precision_at_1": 1.0,
+   "context_recall_at_3": 1.0,
+   "retrieved_count": 3
+  },
+  "note": "retrieval quality is engine-independent (BM25/gold-doc harness); included as axis-5 retrieval evidence for BOTH engines equally"
+ }
+}

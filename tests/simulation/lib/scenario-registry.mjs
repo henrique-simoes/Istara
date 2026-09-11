@@ -1,3 +1,35 @@
+/**
+ * Registry integrity: every id must be unique — a duplicated id would let one
+ * scenario file satisfy two registry entries and break the selection bijection.
+ */
+export function findDuplicateScenarioIds(source = scenarioFiles) {
+  const seen = new Set();
+  const duplicates = new Set();
+  for (const id of source) {
+    if (seen.has(id)) duplicates.add(id);
+    seen.add(id);
+  }
+  return [...duplicates];
+}
+
+/**
+ * Credential-free release obligations (remediation plan B1/B4/B5,
+ * testing-to-main-remediation-20260909): these scenarios must reach a dated
+ * container-lane execution before any release claim; until then the ui-journeys
+ * ledger must name them explicitly as pending release obligations, never as a
+ * generic "not yet proven" crowd.
+ */
+export const releaseObligationIds = Object.freeze([
+  "82-quality-dashboard",
+  "83-chat-model-controls",
+  "84-token-session-lifecycle",
+]);
+
+/**
+ * Scenario ids for the container-first ui-journeys lane (Phase 2+). The list is
+ * the registry of record consumed by the runner, the CI selection resolver, and
+ * the not_runnable boundary ledger (D.8).
+ */
 export const scenarioFiles = Object.freeze([
   "01-health-check",
   "02-onboarding",
@@ -73,6 +105,12 @@ export const scenarioFiles = Object.freeze([
   "76-long-horizon-trajectory",
   "77-voice-transcription",
   "78-real-time-voice",
+  "79-engine-selector",
   "75-participant-simulation",
   "74-2fa-login-flow",
+  "80-channels-and-surveys-live-integration",
+  "81-project-settings",
+  "82-quality-dashboard",
+  "83-chat-model-controls",
+  "84-token-session-lifecycle",
 ]);

@@ -172,7 +172,7 @@
 <h2>Settings</h2>
 <ul>
 <li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../../settings/general/architecture.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
-<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../../settings/llm-servers/architecture.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="legacy llm server compatibility settings &gt; pi model management &gt; legacy compatibility pi model management owns provider/model configuration while legacy llmserver rows remain read-only migration input and petals donors join through the governed bridge."><a href="../../settings/llm-servers/architecture.html"><span>Legacy LLM Server Compatibility</span><small>Settings &gt; Pi Model Management &gt; Legacy Compatibility</small></a></li>
 <li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../../settings/users/architecture.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
 <li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../../settings/connection-strings/architecture.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
 <li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../../settings/security-factors/architecture.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
@@ -269,7 +269,9 @@
 <li>The feature is mounted through <code>frontend/src/components/memory/MemoryView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li><code>ContextDAGView</code> derives <code>scopedSessions</code> from the active project before rendering the session selector and derives <code>scopedActiveSessionId</code> before calling context DAG structure, health, expand, grep, or compact APIs.</li>
 <li><code>backend/app/api/routes/context_dag.py</code> requires <code>project_id</code> on session-by-id routes and loads the session by both <code>session_id</code> and <code>project_id</code> before returning structure, health, expansion, search, node metadata, or compaction output.</li>
+<li>Chat-triggered compaction is owned by a per-session task registry. Duplicate schedules reuse the active task, unexpected failures are logged, and application shutdown drains current-loop work while cancelling stale cross-loop tasks before the database engine closes.</li>
 <li>When no active project session is selected, the DAG stays in the empty selection state instead of rendering or querying a session from another project.</li>
+<li>History Search renders its result count with an explicit separator before the query label, including the zero-result state.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
@@ -280,6 +282,7 @@
 <h2 id="tests-and-verification">Tests And Verification</h2>
 <ul>
 <li><code>tests/test_context_dag.py</code></li>
+<li><code>tests/test_context_dag_ui_contracts.py</code></li>
 <li><code>tests/test_project_scope_contracts.py</code></li>
 </ul>
 <h2 id="related-features">Related Features</h2>

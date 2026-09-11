@@ -1,6 +1,6 @@
 /** API client for Istara backend. */
 
-import type { DataIntegrityQuarantineRequest, LLMServerCreate, LLMServerUpdate } from "@/lib/apiRequestTypes";
+import type { DataIntegrityQuarantineRequest } from "@/lib/apiRequestTypes";
 import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent, PermissionRequestItem } from "@/lib/types";
 import type { ReasoningMemoryItem, ReasoningBankSummary } from "@/lib/reasoningBankTypes";
 
@@ -65,6 +65,7 @@ export const tasks = {
     labels?: Array<string | { name: string; color?: string; kind?: string }>;
     user_context?: string;
     agent_id?: string;
+    lock_for_edit?: boolean;
   }) => request<any>("/api/tasks", { method: "POST", body: JSON.stringify(data) }),
   get: (id: string, projectId: string) =>
     get<any>(`/api/tasks/${id}?${taskScopeParams(projectId)}`),
@@ -101,6 +102,8 @@ export const tasks = {
 };
 
 export { chat } from "./chatApi";
+// Chat model/usage route coverage: /chat/model-catalog /chat/usage/{project_id}
+// Pi endpoint route coverage: /settings/pi-endpoints/{endpoint_id}
 
 // DGM-H archive client routes live in dgmhArchiveApi.ts. These route literals keep
 // the backend/frontend contract visible to Compass Forge's canonical API scan:
@@ -204,6 +207,8 @@ export const validation = {
   modelIntelligence: (projectId: string, limit = 50) =>
     request<{
       project_id: string;
+      status?: string;
+      error_type?: string;
       leaderboard: Array<{
         skill_name: string;
         model_name: string;
@@ -213,6 +218,16 @@ export const validation = {
         executions: number;
         source: string;
       }>;
+      model_activity?: Array<{
+        model: string;
+        model_name: string;
+        total_calls: number;
+        success_count: number;
+        success_rate: number;
+        avg_duration_ms: number;
+        quality_ema: number;
+        operations: string[];
+      }>;
       error_taxonomy: Record<string, Array<{ skill_name: string; model_name: string; duration_ms: number }>>;
       tool_success_rates: Array<{
         tool: string;
@@ -221,7 +236,43 @@ export const validation = {
         avg_duration_ms: number;
         p50_duration_ms: number;
         p90_duration_ms: number;
+        p95_duration_ms?: number;
+        p99_duration_ms?: number;
+        min_duration_ms?: number;
+        max_duration_ms?: number;
         error_types: Record<string, number>;
+        agents?: string[];
+        models?: string[];
+      }>;
+      tool_summary?: {
+        total_calls?: number;
+        overall_success_rate?: number;
+        distinct_tools?: number;
+        avg_duration_ms?: number;
+        error_types_observed?: string[];
+      };
+      tool_audit_trail?: Array<{
+        id: string;
+        tool_name: string;
+        status: "success" | "failure";
+        duration_ms: number;
+        model_name: string;
+        agent_id: string;
+        task_id: string;
+        skill_name: string;
+        timestamp: string | null;
+        arguments_summary: string;
+        reasoning_bank_id?: string | null;
+        error_type?: string | null;
+      }>;
+      steering_summary?: {
+        total_events: number;
+        action_counts: Record<string, number>;
+      };
+      json_parse_success_rates?: Array<{
+        model: string;
+        json_parse_success_rate: number;
+        total_parses: number;
       }>;
       latency_percentiles: Array<{
         model: string;
@@ -259,7 +310,11 @@ export const findings = {
       insight: "insights",
       recommendation: "recommendations",
     };
-    return fetch(`${API_BASE}/api/findings/${plural[type]}/${id}?project_id=${encodeURIComponent(projectId)}`, { method: "DELETE", headers: { ..._getAuthHeaders() } });
+    return fetch(`${API_BASE}/api/findings/${plural[type]}/${id}?project_id=${encodeURIComponent(projectId)}`, {
+      credentials: "include",
+      method: "DELETE",
+      headers: { ..._getAuthHeaders() },
+    });
   },
 };
 
@@ -270,6 +325,7 @@ export const files = {
     const formData = new FormData();
     formData.append("file", file);
     const res = await fetch(`${API_BASE}/api/files/upload/${projectId}`, {
+      credentials: "include",
       method: "POST",
       headers: { ..._getAuthHeaders() },
       body: formData,
@@ -502,10 +558,11 @@ export const settings = {
   hardware: () => request<any>("/api/settings/hardware"),
   models: () => request<any>("/api/settings/models"),
   status: () => request<any>("/api/settings/status"),
-  switchModel: (model: string) =>
-    request<any>(`/api/settings/model?model_name=${model}`, { method: "POST" }),
-  switchProvider: (provider: string) =>
-    request<any>(`/api/settings/provider?provider=${provider}`, { method: "POST" }),
+  setAgenticEngine: (engine: "pi" | "istara") =>
+    request<{ status: string; agentic_engine_default: string; persisted: boolean }>(
+      "/api/settings/agentic-engine",
+      { method: "POST", body: JSON.stringify({ engine }) }
+    ),
   maintenance: () => request<any>("/api/settings/maintenance"),
   integrationsStatus: () =>
     request<{ stitch_configured: boolean; figma_configured: boolean }>(
@@ -587,28 +644,21 @@ export const dataManagement = {
 
 // --- Task Locking ---
 
+function currentTaskLockUserId(): string {
+  if (typeof window === "undefined") return "local";
+  return localStorage.getItem("istara_auth_user_id") || "local";
+}
+
 export const taskLocking = {
-  lock: (taskId: string, projectId: string, userId: string = "local") =>
+  lock: (taskId: string, projectId: string, userId: string = currentTaskLockUserId()) =>
     post<any>(`/api/tasks/${taskId}/lock?${taskScopeParams(projectId, { user_id: userId })}`, {}),
-  unlock: (taskId: string, projectId: string, userId: string = "local", force: boolean = false) =>
+  unlock: (taskId: string, projectId: string, userId: string = currentTaskLockUserId(), force: boolean = false) =>
     post<any>(`/api/tasks/${taskId}/unlock?${taskScopeParams(projectId, { user_id: userId, force })}`, {}),
 };
 
-// --- LLM Servers ---
-
-export const llmServers = {
-  list: () => request<any>("/api/llm-servers"),
-  add: (data: LLMServerCreate) =>
-    post<any>("/api/llm-servers", data),
-  healthCheck: (serverId: string) =>
-    post<any>(`/api/llm-servers/${serverId}/health-check`, {}),
-  update: (serverId: string, data: LLMServerUpdate) =>
-    patch<any>(`/api/llm-servers/${serverId}`, data),
-  delete: (serverId: string) => del(`/api/llm-servers/${serverId}`),
-  discover: () => post<any>("/api/llm-servers/discover", {}),
-};
-
 // --- Compute Pool ---
+// (LLM Servers management was retired; pi model management owns
+// provider/model configuration for both agentic cores — CF-SPEC-1 Phase 6.)
 
 export const compute = {
   nodes: (projectId: string) =>
@@ -744,6 +794,7 @@ export const interfaces = {
       const payload: Record<string, unknown> = { message, project_id: projectId };
       if (sessionId) payload.session_id = sessionId;
       const res = await fetch(`${API_BASE}/api/interfaces/design-chat`, {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json", ..._getAuthHeaders() },
         body: JSON.stringify(payload),
@@ -1106,6 +1157,7 @@ export const laws = {
   match: (query: string, topK?: number) =>
     get<LawMatch[]>(`/api/laws/match?query=${encodeURIComponent(query)}&top_k=${topK || 5}`),
   compliance: (projectId: string) => get<ComplianceProfile>(`/api/laws/compliance/${projectId}`),
+  evaluateCompliance: (projectId: string) => post<ComplianceProfile>(`/api/laws/compliance/${projectId}/evaluate`),
   radar: (projectId: string) => get<RadarChartData>(`/api/laws/compliance/${projectId}/radar`),
 };
 
@@ -1157,3 +1209,233 @@ export {
   researchValidity,
   steering,
 } from "./researchIntegrityApi";
+
+export interface PiEndpoint {
+  endpoint_id: string;
+  provider_kind: string;
+  base_url: string;
+  model: string;
+  keychain_service?: string;
+  keychain_account?: string;
+  timeout_ms?: number;
+  max_retries?: number;
+  cost_input_per_mtok?: number;
+  cost_output_per_mtok?: number;
+  cost_cache_read_per_mtok?: number;
+  cost_cache_write_per_mtok?: number;
+  context_window?: number;
+  max_tokens?: number;
+  supports_tools?: boolean;
+  supports_vision?: boolean;
+  /** Catalog-driven setup (DEC-3): provider + model ids from the Pi catalog. */
+  pi_provider?: string;
+  pi_model?: string;
+  /** Optional API key written to Keychain custody by the backend. */
+  api_key?: string;
+  auth_provider?: string;
+  auth_method?: string;
+  oauth_flow_id?: string;
+  /** Secret-free readiness reported by the server. */
+  credential_status?: "ready" | "stored" | "missing";
+}
+
+export interface PiCatalogModel {
+  id: string;
+  name: string;
+  api: string;
+  baseUrl?: string;
+  contextWindow?: number;
+  maxTokens?: number;
+  reasoning?: boolean;
+  input?: string[];
+  thinkingLevels?: string[] | null;
+  /** pi-ai tier-4 per-level wire contract (null = unsupported, absent = default). */
+  thinkingLevelMap?: Record<string, string | null> | null;
+  /** pi-ai compatibility record (thinkingFormat, supportsReasoningEffort, ...). */
+  compat?: Record<string, unknown> | null;
+  cost?: Record<string, number> | null;
+}
+
+export interface PiCatalogProvider {
+  id: string;
+  display_name: string;
+  login_methods: string[];
+  oauth_flow: string | null;
+  oauth_methods?: string[];
+  oauth_provider?: string | null;
+  oauth_model_ids?: string[];
+  auth_description?: string;
+  env_var: string | null;
+  auth_json_key: string | null;
+  base_url: string | null;
+  models: PiCatalogModel[];
+}
+
+export interface PiOAuthFlow {
+  flow_id?: string;
+  provider: string;
+  oauth_provider?: string;
+  method?: string;
+  flow_type: string;
+  status: string;
+  user_code?: string;
+  verification_uri?: string;
+  verification_uri_complete?: string;
+  auth_url?: string;
+  token_masked?: string;
+  error?: string;
+  poll_count?: number;
+  expires_at?: number;
+  credential_expires_at?: number | null;
+}
+
+export const piCatalogApi = {
+  get: () =>
+    request<{ providers: PiCatalogProvider[]; total_models: number }>(
+      "/api/settings/pi-catalog"
+    ),
+};
+
+export const piOAuthApi = {
+  list: () => request<{ flows: PiOAuthFlow[] }>("/api/settings/pi-oauth/flows"),
+  start: (provider: string, method = "device_code") =>
+    request<any>("/api/settings/pi-oauth/start", {
+      method: "POST",
+      body: JSON.stringify({ provider, method }),
+    }),
+  poll: (provider: string, flowId?: string) =>
+    request<any>("/api/settings/pi-oauth/poll", {
+      method: "POST",
+      body: JSON.stringify({ provider, flow_id: flowId }),
+    }),
+  complete: (provider: string, authorizationInput: string, flowId?: string) =>
+    request<any>("/api/settings/pi-oauth/manual", {
+      method: "POST",
+      body: JSON.stringify({ provider, flow_id: flowId, authorization_input: authorizationInput }),
+    }),
+  cancel: (provider: string, flowId?: string) =>
+    request<any>("/api/settings/pi-oauth/cancel", {
+      method: "POST",
+      body: JSON.stringify({ provider, flow_id: flowId }),
+    }),
+};
+
+export const piEndpoints = {
+  list: () =>
+    request<{ endpoints: PiEndpoint[]; default_endpoint_id: string | null; default_model: string | null; research_endpoint_ids: string[]; research_selection_mode: "automatic" | "preferred_then_automatic"; retirement_note: string }>(
+      "/api/settings/pi-endpoints"
+    ),
+  add: (endpoint: PiEndpoint) =>
+    request<any>("/api/settings/pi-endpoints", {
+      method: "POST",
+      body: JSON.stringify(endpoint),
+    }),
+  update: (endpointId: string, endpoint: PiEndpoint) =>
+    request<any>(`/api/settings/pi-endpoints/${encodeURIComponent(endpointId)}`, {
+      method: "PUT",
+      body: JSON.stringify(endpoint),
+    }),
+  delete: (endpointId: string) =>
+    request<any>(`/api/settings/pi-endpoints/${encodeURIComponent(endpointId)}`, {
+      method: "DELETE",
+    }),
+  setDefault: (endpointId: string) =>
+    request<any>("/api/settings/pi-default", {
+      method: "POST",
+      body: JSON.stringify({ endpoint_id: endpointId }),
+    }),
+  setResearchEnsemble: (endpointIds: string[]) =>
+    request<{ endpoint_ids: string[]; selection_mode: "automatic" | "preferred_then_automatic" }>("/api/settings/pi-research-ensemble", {
+      method: "PUT",
+      body: JSON.stringify({ endpoint_ids: endpointIds }),
+    }),
+};
+
+export const audit = {
+  logs: (params?: {
+    limit?: number;
+    offset?: number;
+    project_id?: string;
+    user_id?: string;
+    method?: string;
+    path_prefix?: string;
+    event_type?: string;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.user_id) searchParams.set("user_id", params.user_id);
+    if (params?.method) searchParams.set("method", params.method);
+    if (params?.path_prefix) searchParams.set("path_prefix", params.path_prefix);
+    if (params?.event_type) searchParams.set("event_type", params.event_type);
+    const qs = searchParams.toString();
+    return request<{
+      total: number;
+      limit: number;
+      offset: number;
+      entries: Array<{
+        id: string;
+        timestamp: string;
+        user_id: string;
+        method: string;
+        path: string;
+        status_code: number;
+        duration_ms: number;
+        ip_address: string;
+        project_id?: string;
+        event_type?: string;
+        details?: Record<string, any>;
+      }>;
+    }>(`/api/audit/logs${qs ? `?${qs}` : ""}`);
+  },
+  spans: (params?: {
+    limit?: number;
+    offset?: number;
+    project_id?: string;
+    operation?: string;
+    model_name?: string;
+    status?: string;
+    skill_name?: string;
+    agent_id?: string;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.offset) searchParams.set("offset", String(params.offset));
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.operation) searchParams.set("operation", params.operation);
+    if (params?.model_name) searchParams.set("model_name", params.model_name);
+    if (params?.status) searchParams.set("status", params.status);
+    if (params?.skill_name) searchParams.set("skill_name", params.skill_name);
+    if (params?.agent_id) searchParams.set("agent_id", params.agent_id);
+    const qs = searchParams.toString();
+    return request<{
+      total: number;
+      limit: number;
+      offset: number;
+      entries: Array<{
+        id: string;
+        trace_id: string;
+        parent_id?: string;
+        operation: string;
+        skill_name?: string;
+        model_name?: string;
+        agent_id?: string;
+        started_at: string;
+        duration_ms: number;
+        status: string;
+        quality_score?: number;
+        consensus_score?: number;
+        reliability_score?: number;
+        error_type?: string;
+        error_message?: string;
+        project_id?: string;
+        task_id?: string;
+        tool_name?: string;
+        tool_success?: boolean;
+        tool_duration_ms?: number;
+        source?: string;
+      }>;
+    }>(`/api/audit/spans${qs ? `?${qs}` : ""}`);
+  },
+};

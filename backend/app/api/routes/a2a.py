@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings as app_settings
 from app.core.client_identity import BoundedWindowRateLimiter, get_client_ip
 from app.core.permissions import require_project_access
+from app.core.pi_replacement import record_pi_a2a_event
 from app.core.replay_cache import BoundedReplayCache
 from app.core.version import read_istara_version
 from app.models.database import async_session
@@ -125,6 +126,31 @@ async def _authorize_agent_card_request(request: Request) -> dict | JSONResponse
                 status_code=401,
                 content={"detail": "Invalid or revoked authentication session."},
             )
+        # Defense-in-depth MFA enforcement (F-W5-R1-3): the card endpoint
+        # lives outside the /api middleware namespace and performs its own
+        # auth, so it must enforce the MFA claim itself.
+        from app.core.auth_sessions import mfa_claim_satisfied
+
+        if not mfa_claim_satisfied(payload, request.url.path or ""):
+            from sqlalchemy import select as _select
+
+            from app.models.user import User as _User
+
+            _row = (
+                await db.execute(_select(_User).where(_User.id == str(payload.get("sub") or "")))
+            ).scalar_one_or_none()
+            if _row is not None and getattr(_row, "totp_enabled", False):
+                await _record_a2a_event(
+                    request,
+                    "a2a.agent_card.denied",
+                    user_id=str(payload.get("sub", "")),
+                    status_code=403,
+                    details={"reason": "mfa_required"},
+                )
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Multi-factor authentication required."},
+                )
         user_context = await current_user_context_for_payload(db, payload)
         if not user_context:
             await _record_a2a_event(
@@ -205,6 +231,21 @@ async def _authorize_a2a_request(request: Request) -> dict | JSONResponse:
     async with async_session() as db:
         if not await validate_auth_session(db, payload, request):
             return _a2a_jsonrpc_error(401, -32000, "Invalid or revoked authentication session.")
+        # Defense-in-depth MFA enforcement (F-W5-R1-3): JSON-RPC auth is
+        # route-level (outside /api middleware), so the MFA claim must be
+        # enforced here — the global middleware never sees this decision.
+        from app.core.auth_sessions import mfa_claim_satisfied as _mfa_ok
+
+        if not _mfa_ok(payload, request.url.path or ""):
+            from sqlalchemy import select as _select2
+
+            from app.models.user import User as _User2
+
+            _row2 = (
+                await db.execute(_select2(_User2).where(_User2.id == str(payload.get("sub") or "")))
+            ).scalar_one_or_none()
+            if _row2 is not None and getattr(_row2, "totp_enabled", False):
+                return _a2a_jsonrpc_error(403, -32003, "Multi-factor authentication required.")
         user_context = await current_user_context_for_payload(db, payload)
         if not user_context:
             return _a2a_jsonrpc_error(401, -32000, "Authenticated user no longer exists.")
@@ -230,9 +271,7 @@ def _a2a_metadata(value: object) -> dict:
         raise ValueError("message.metadata must be a JSON object")
     encoded = json.dumps(value, ensure_ascii=False).encode("utf-8")
     if len(encoded) > A2A_MAX_METADATA_BYTES:
-        raise ValueError(
-            f"message.metadata exceeds maximum size of {A2A_MAX_METADATA_BYTES} bytes"
-        )
+        raise ValueError(f"message.metadata exceeds maximum size of {A2A_MAX_METADATA_BYTES} bytes")
     return value
 
 
@@ -267,6 +306,14 @@ async def agent_card(request: Request):
         authorized = await _authorize_agent_card_request(request)
         if isinstance(authorized, JSONResponse):
             return authorized
+    petals_capabilities: dict = {}
+    if app_settings.petals_bridge_enabled:
+        try:
+            from app.core.petals_bridge import build_petals_capabilities
+
+            petals_capabilities = build_petals_capabilities()
+        except Exception:  # bridge unavailable — card stays valid without it
+            petals_capabilities = {}
     return {
         "name": "Istara",
         "description": (
@@ -280,6 +327,7 @@ async def agent_card(request: Request):
             "streaming": False,
             "push_notifications": False,
             "state_transition_history": True,
+            **petals_capabilities,
         },
         "skills": [
             {
@@ -387,9 +435,10 @@ async def a2a_jsonrpc(request: Request):
 
         body_hash = hashlib.sha256(raw_body).hexdigest()
         replay_key = hashlib.sha256(
-            f"{authorized.get('id', '')}:{method}:{json.dumps(req_id, sort_keys=True, default=str)}:{body_hash}".encode(
-                "utf-8"
-            )
+            (
+                f"{authorized.get('id', '')}:{method}:"
+                f"{json.dumps(req_id, sort_keys=True, default=str)}:{body_hash}"
+            ).encode()
         ).hexdigest()
         if _a2a_replay_cache.seen_or_store(
             replay_key,
@@ -466,6 +515,14 @@ async def a2a_jsonrpc(request: Request):
                     "from_agent_id": from_agent_id or "external",
                     "to_agent_id": to_agent_id or "istara-main",
                 },
+            )
+            await record_pi_a2a_event(
+                request=request,
+                project_id=project_id,
+                metadata=metadata,
+                message_id=msg["id"],
+                from_agent_id=from_agent_id or "external",
+                to_agent_id=to_agent_id or "istara-main",
             )
             return {
                 "jsonrpc": "2.0",
@@ -551,8 +608,8 @@ async def a2a_jsonrpc(request: Request):
                 req_id,
             )
 
-        from app.services import agent_service
         from app.api.agent_project_scope import filter_agent_dicts_for_project
+        from app.services import agent_service
 
         async with async_session() as db:
             denied = await _authorize_project_scope(

@@ -1,7 +1,7 @@
 """Project database model."""
 
 import enum
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, Enum, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.database import Base
 
 
-class ProjectPhase(str, enum.Enum):
+class ProjectPhase(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     """Double Diamond project phases."""
 
     DISCOVER = "discover"
@@ -26,22 +26,24 @@ class Project(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
-    phase: Mapped[ProjectPhase] = mapped_column(
-        Enum(ProjectPhase), default=ProjectPhase.DISCOVER
-    )
+    phase: Mapped[ProjectPhase] = mapped_column(Enum(ProjectPhase), default=ProjectPhase.DISCOVER)
     company_context: Mapped[str] = mapped_column(Text, default="")
     project_context: Mapped[str] = mapped_column(Text, default="")
     guardrails: Mapped[str] = mapped_column(Text, default="")
     is_paused: Mapped[bool] = mapped_column(Boolean, default=False)
     owner_id: Mapped[str] = mapped_column(String(36), default="")
     watch_folder_path: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    # Per-project agentic engine override ("pi" | "legacy" | None). Read by the
+    # AgenticDispatcher after the request header and before the global default
+    # (master plan §5.1); None means "follow the default".
+    agentic_engine: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     # Relationships
@@ -56,6 +58,12 @@ class Project(Base):
     sessions = relationship("ChatSession", back_populates="project", cascade="all, delete-orphan")
     codebooks = relationship("Codebook", back_populates="project", cascade="all, delete-orphan")
     documents = relationship("Document", back_populates="project", cascade="all, delete-orphan")
-    design_screens = relationship("DesignScreen", back_populates="project", cascade="all, delete-orphan")
-    design_briefs = relationship("DesignBrief", back_populates="project", cascade="all, delete-orphan")
-    design_decisions = relationship("DesignDecision", back_populates="project", cascade="all, delete-orphan")
+    design_screens = relationship(
+        "DesignScreen", back_populates="project", cascade="all, delete-orphan"
+    )
+    design_briefs = relationship(
+        "DesignBrief", back_populates="project", cascade="all, delete-orphan"
+    )
+    design_decisions = relationship(
+        "DesignDecision", back_populates="project", cascade="all, delete-orphan"
+    )

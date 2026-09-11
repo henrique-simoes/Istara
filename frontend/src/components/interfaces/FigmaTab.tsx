@@ -141,14 +141,14 @@ export default function FigmaTab() {
       <div className="max-w-2xl mx-auto space-y-8">
         {/* Privacy warning */}
         {!privacyAcknowledged && (
-          <PrivacyWarningBanner service="Figma" onAcknowledge={acknowledgePrivacy} />
+          <PrivacyWarningBanner service="Design System Service" onAcknowledge={acknowledgePrivacy} />
         )}
 
         {/* Configuration Section */}
         <section>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Figma Configuration</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Design System API Configuration</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            Connect your Figma account to import designs and extract design systems.
+            Connect your external design tools to import designs and extract design system tokens.
           </p>
 
           <div className="flex items-center gap-2 mb-3">
@@ -168,7 +168,7 @@ export default function FigmaTab() {
               type="password"
               value={apiToken}
               onChange={(e) => setApiToken(e.target.value)}
-              placeholder="Figma API token"
+              placeholder="Design System API token"
               className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
             <button
@@ -187,22 +187,13 @@ export default function FigmaTab() {
           {tokenError && (
             <p className="text-sm text-red-600 dark:text-red-400 mt-2">{tokenError}</p>
           )}
-
-          <a
-            href="https://www.figma.com/developers/api#access-tokens"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400 mt-2"
-          >
-            <ExternalLink size={12} /> Get your Figma API token
-          </a>
         </section>
 
-        {/* Google Stitch Configuration */}
+        {/* Generative Layout Configuration */}
         <section>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Google Stitch (Generative AI)</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Generative Layout Service</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            Connect Google Generative AI to enable AI-powered screen generation via the Stitch MCP protocol.
+            Connect generative AI services to enable automated screen generation via the layout protocol.
           </p>
 
           <div className="flex items-center gap-2 mb-3">
@@ -222,7 +213,7 @@ export default function FigmaTab() {
               type="password"
               value={stitchKey}
               onChange={(e) => setStitchKey(e.target.value)}
-              placeholder="Google API key"
+              placeholder="Generative Layout API key"
               className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
             />
             <button
@@ -236,32 +227,23 @@ export default function FigmaTab() {
           </div>
 
           {stitchSaved && (
-            <p className="text-sm text-green-600 dark:text-green-400 mt-2">{canManageIntegrations ? "Google API key saved successfully." : "Request sent to project admins."}</p>
+            <p className="text-sm text-green-600 dark:text-green-400 mt-2">{canManageIntegrations ? "Generative Layout API key saved successfully." : "Request sent to project admins."}</p>
           )}
           {stitchError && (
             <p className="text-sm text-red-600 dark:text-red-400 mt-2">{stitchError}</p>
           )}
-
-          <a
-            href="https://aistudio.google.com/app/apikey"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400 mt-2"
-          >
-            <ExternalLink size={12} /> Get your Google AI API key
-          </a>
         </section>
 
         {/* Import Section */}
         <section>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Import from Figma</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Import Design File</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            Paste a Figma file or frame URL to import designs into your project.
+            Paste a design file or frame URL to import designs into your project.
           </p>
 
           {!figmaConfigured ? (
             <p className="text-sm text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4">
-              Configure your Figma API token above to enable imports.
+              Configure your design system API token above to enable imports.
             </p>
           ) : (
             <>
@@ -297,14 +279,14 @@ export default function FigmaTab() {
 
         {/* Design System Section */}
         <section>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Design System</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Design System Tokens</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            Extract design tokens, colors, and components from a Figma file.
+            Extract design tokens, colors, typography, and components from an external design file.
           </p>
 
           {!figmaConfigured ? (
             <p className="text-sm text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4">
-              Configure your Figma API token above to extract design systems.
+              Configure your design system API token above to extract design systems.
             </p>
           ) : (
             <>
@@ -313,7 +295,7 @@ export default function FigmaTab() {
                   type="text"
                   value={fileKey}
                   onChange={(e) => setFileKey(e.target.value)}
-                  placeholder="Figma file key (from URL)"
+                  placeholder="Design file key or ID"
                   className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                 />
                 <button

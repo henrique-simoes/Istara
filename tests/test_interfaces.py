@@ -68,7 +68,9 @@ async def _seed_interface_config(
         return saved
 
 
-async def _seed_recommendation(project_id: str, text: str | None = None) -> Recommendation:
+async def _seed_recommendation(
+    project_id: str, text: str | None = None
+) -> Recommendation:
     rec = Recommendation(
         id=str(uuid.uuid4()),
         project_id=project_id,
@@ -176,14 +178,19 @@ async def test_interfaces_screens_surface_research_spine_state(auth_headers):
     payload = next(item for item in listed.json() if item["id"] == screen.id)
     assert payload["source_findings"] == [rec.id]
     assert payload["source_finding_details"][0]["id"] == rec.id
-    assert payload["source_finding_details"][0]["research_validity"]["status"] == "provisional"
+    assert (
+        payload["source_finding_details"][0]["research_validity"]["status"]
+        == "provisional"
+    )
     assert payload["research_validity"]["report_allowed"] is False
     assert fetched.status_code == 200
     assert fetched.json()["research_validity"]["blocked_source_ids"] == [rec.id]
 
 
 @pytest.mark.asyncio
-async def test_interfaces_screens_require_project_id_for_project_facing_api(auth_headers):
+async def test_interfaces_screens_require_project_id_for_project_facing_api(
+    auth_headers,
+):
     """Project-facing Interfaces screens never fall back to global lists."""
     await init_db()
     transport = ASGITransport(app=app)
@@ -221,7 +228,9 @@ async def test_interfaces_status_returns_response(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_interfaces_status_requires_project_id_for_project_facing_api(auth_headers):
+async def test_interfaces_status_requires_project_id_for_project_facing_api(
+    auth_headers,
+):
     """Project-facing Interfaces status never exposes global counts."""
     await init_db()
     transport = ASGITransport(app=app)
@@ -430,7 +439,10 @@ async def test_handoff_dev_spec_resolves_source_findings(auth_headers):
     assert "Developer Spec" in payload["content"]
     assert "(provisional)" in payload["content"]
     assert payload["dev_spec"]["source_findings"][0]["id"] == rec.id
-    assert payload["dev_spec"]["source_findings"][0]["research_validity"]["status"] == "provisional"
+    assert (
+        payload["dev_spec"]["source_findings"][0]["research_validity"]["status"]
+        == "provisional"
+    )
     assert payload["dev_spec"]["research_validity"]["report_allowed"] is False
 
 
@@ -443,16 +455,26 @@ async def test_figma_import_creates_design_screen(auth_headers, monkeypatch):
 
     from app.services.figma_service import figma_service
 
-    monkeypatch.setattr(figma_service, "get_file", AsyncMock(return_value={"name": "Checkout"}))
+    monkeypatch.setattr(
+        figma_service, "get_file", AsyncMock(return_value={"name": "Checkout"})
+    )
     monkeypatch.setattr(
         figma_service,
         "get_components",
-        AsyncMock(return_value={"meta": {"components": [{"name": "Button", "key": "btn"}]}}),
+        AsyncMock(
+            return_value={"meta": {"components": [{"name": "Button", "key": "btn"}]}}
+        ),
     )
     monkeypatch.setattr(
         figma_service,
         "get_styles",
-        AsyncMock(return_value={"meta": {"styles": [{"name": "Primary", "key": "pri", "style_type": "FILL"}]}}),
+        AsyncMock(
+            return_value={
+                "meta": {
+                    "styles": [{"name": "Primary", "key": "pri", "style_type": "FILL"}]
+                }
+            }
+        ),
     )
 
     transport = ASGITransport(app=app)
@@ -473,7 +495,9 @@ async def test_figma_import_creates_design_screen(auth_headers, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_figma_components_endpoint_matches_frontend_helper(auth_headers, monkeypatch):
+async def test_figma_components_endpoint_matches_frontend_helper(
+    auth_headers, monkeypatch
+):
     """The frontend components helper has a real backend endpoint."""
     await init_db()
     project = await _seed_project("Figma Components")
@@ -484,7 +508,9 @@ async def test_figma_components_endpoint_matches_frontend_helper(auth_headers, m
     monkeypatch.setattr(
         figma_service,
         "get_components",
-        AsyncMock(return_value={"meta": {"components": [{"name": "Card", "key": "card"}]}}),
+        AsyncMock(
+            return_value={"meta": {"components": [{"name": "Card", "key": "card"}]}}
+        ),
     )
 
     transport = ASGITransport(app=app)

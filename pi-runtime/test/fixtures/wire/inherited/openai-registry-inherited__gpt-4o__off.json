@@ -1,0 +1,30 @@
+{
+  "fixture_class": "inherited",
+  "captured_at": "2026-09-08T10:12:19.918Z",
+  "endpoint": {
+    "provider_kind": "openai_responses",
+    "pi_provider": "openai",
+    "model": "gpt-4o",
+    "supports_reasoning": null,
+    "supports_vision": null,
+    "base_url_host": "api.openai.com"
+  },
+  "thinking_level": "off",
+  "request_body": {
+    "input": [
+      {
+        "content": [
+          {
+            "text": "fixture",
+            "type": "input_text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "max_output_tokens": 4096,
+    "model": "gpt-4o",
+    "store": false,
+    "stream": true
+  }
+}

@@ -1,0 +1,122 @@
+[
+  {
+    "file": "zai-registry-inherited__glm-5.3__off.json",
+    "pi_provider": "zai",
+    "model": "glm-5.3",
+    "level": "off"
+  },
+  {
+    "file": "zai-registry-inherited__glm-5.3__low.json",
+    "pi_provider": "zai",
+    "model": "glm-5.3",
+    "level": "low"
+  },
+  {
+    "file": "zai-registry-inherited__glm-5.3__high.json",
+    "pi_provider": "zai",
+    "model": "glm-5.3",
+    "level": "high"
+  },
+  {
+    "file": "zai-registry-inherited__glm-5.3__max.json",
+    "pi_provider": "zai",
+    "model": "glm-5.3",
+    "level": "max"
+  },
+  {
+    "file": "codex-registry-inherited__gpt-5.6-luna__off.json",
+    "pi_provider": "openai-codex",
+    "model": "gpt-5.6-luna",
+    "level": "off"
+  },
+  {
+    "file": "codex-registry-inherited__gpt-5.6-luna__minimal.json",
+    "pi_provider": "openai-codex",
+    "model": "gpt-5.6-luna",
+    "level": "minimal"
+  },
+  {
+    "file": "codex-registry-inherited__gpt-5.6-luna__low.json",
+    "pi_provider": "openai-codex",
+    "model": "gpt-5.6-luna",
+    "level": "low"
+  },
+  {
+    "file": "codex-registry-inherited__gpt-5.6-luna__high.json",
+    "pi_provider": "openai-codex",
+    "model": "gpt-5.6-luna",
+    "level": "high"
+  },
+  {
+    "file": "codex-registry-inherited__gpt-5.6-luna__xhigh.json",
+    "pi_provider": "openai-codex",
+    "model": "gpt-5.6-luna",
+    "level": "xhigh"
+  },
+  {
+    "file": "codex-registry-inherited__gpt-5.6-luna__max.json",
+    "pi_provider": "openai-codex",
+    "model": "gpt-5.6-luna",
+    "level": "max"
+  },
+  {
+    "file": "qwen-registry-inherited__qwen3.7-plus__off.json",
+    "pi_provider": "qwen-token-plan",
+    "model": "qwen3.7-plus",
+    "level": "off"
+  },
+  {
+    "file": "qwen-registry-inherited__qwen3.7-plus__low.json",
+    "pi_provider": "qwen-token-plan",
+    "model": "qwen3.7-plus",
+    "level": "low"
+  },
+  {
+    "file": "qwen-registry-inherited__qwen3.7-plus__high.json",
+    "pi_provider": "qwen-token-plan",
+    "model": "qwen3.7-plus",
+    "level": "high"
+  },
+  {
+    "file": "anthropic-registry-inherited__claude-opus-4-7__low.json",
+    "pi_provider": "anthropic",
+    "model": "claude-opus-4-7",
+    "level": "low"
+  },
+  {
+    "file": "anthropic-registry-inherited__claude-opus-4-7__xhigh.json",
+    "pi_provider": "anthropic",
+    "model": "claude-opus-4-7",
+    "level": "xhigh"
+  },
+  {
+    "file": "openai-registry-inherited__gpt-4o__off.json",
+    "pi_provider": "openai",
+    "model": "gpt-4o",
+    "level": "off"
+  },
+  {
+    "file": "openai-registry-inherited__gpt-4o__low.json",
+    "pi_provider": "openai",
+    "model": "gpt-4o",
+    "level": "low"
+  },
+  {
+    "file": "openai-registry-inherited__gpt-4o__max.json",
+    "pi_provider": "openai",
+    "model": "gpt-4o",
+    "level": "max"
+  },
+  {
+    "file": "xai-registry-inherited__grok-4.3__low.json",
+    "pi_provider": "xai",
+    "model": "grok-4.3",
+    "level": "low"
+  },
+  {
+    "file": "xai-registry-inherited__grok-4.3__high.json",
+    "pi_provider": "xai",
+    "model": "grok-4.3",
+    "level": "high"
+  }
+]

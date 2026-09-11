@@ -1,0 +1,775 @@
+{
+  "agent_docs": [
+    "AGENTS.md"
+  ],
+  "boundaries": {
+    "backend": [
+      "backend/.dockerignore",
+      "backend/Dockerfile",
+      "backend/alembic.ini",
+      "backend/alembic/env.py",
+      "backend/alembic/script.py.mako",
+      "backend/alembic/versions/001_initial_schema.py",
+      "backend/alembic/versions/002_distributed_platform.py",
+      "backend/alembic/versions/003_add_mfa_columns.py",
+      "backend/alembic/versions/004_task_review_feedback.py",
+      "backend/alembic/versions/005_connection_strings.py",
+      "backend/alembic/versions/006_hash_connection_strings.py",
+      "backend/alembic/versions/007_reasoning_memory_items.py",
+      "backend/alembic/versions/008_improvement_governance.py",
+      "backend/alembic/versions/009_dgmh_archive.py",
+      "backend/alembic/versions/010_auth_sessions.py",
+      "backend/alembic/versions/011_auth_factor_hardening.py",
+      "backend/alembic/versions/012_checkpoint_agent_state.py",
+      "backend/alembic/versions/013_recovery_code_audit_events.py",
+      "backend/alembic/versions/014_chat_session_thinking_mode.py",
+      "backend/alembic/versions/015_permission_requests.py",
+      "backend/alembic/versions/016_project_interface_configs.py",
+      "backend/alembic/versions/017_mcp_audit_project_scope.py",
+      "backend/alembic/versions/018_loop_execution_project_scope.py",
+      "backend/alembic/versions/019_a2a_message_project_scope.py",
+      "backend/alembic/versions/020_finding_task_provenance.py",
+      "backend/alembic/versions/021_research_validity_contract.py",
+      "backend/alembic/versions/022_model_skill_stats_project_scope.py",
+      "backend/app/__init__.py",
+      "backend/app/agents/__init__.py",
+      "backend/app/agents/custom_worker.py",
+      "backend/app/agents/devops_agent.py",
+      "backend/app/agents/orchestrator.py",
+      "backend/app/agents/personas/design-lead/CORE.md",
+      "backend/app/agents/personas/design-lead/MEMORY.md",
+      "backend/app/agents/personas/design-lead/PROTOCOLS.md",
+      "backend/app/agents/personas/design-lead/SKILLS.md",
+      "backend/app/agents/personas/istara-devops/CORE.md",
+      "backend/app/agents/personas/istara-devops/MEMORY.md",
+      "backend/app/agents/personas/istara-devops/PROTOCOLS.md",
+      "backend/app/agents/personas/istara-devops/SKILLS.md",
+      "backend/app/agents/personas/istara-main/CORE.md",
+      "backend/app/agents/personas/istara-main/MEMORY.md",
+      "backend/app/agents/personas/istara-main/PROTOCOLS.md",
+      "backend/app/agents/personas/istara-main/SKILLS.md",
+      "backend/app/agents/personas/istara-sim/CORE.md",
+      "backend/app/agents/personas/istara-sim/MEMORY.md",
+      "backend/app/agents/personas/istara-sim/PROTOCOLS.md",
+      "backend/app/agents/personas/istara-sim/SKILLS.md",
+      "backend/app/agents/personas/istara-ui-audit/CORE.md",
+      "backend/app/agents/personas/istara-ui-audit/MEMORY.md"
+    ],
+    "frontend": [
+      "frontend/next-env.d.ts",
+      "frontend/postcss.config.js",
+      "frontend/src/app/layout.tsx",
+      "frontend/src/app/login/page.tsx",
+      "frontend/src/app/page.tsx",
+      "frontend/src/components/admin/AdminDashboard.tsx",
+      "frontend/src/components/agents/AgentTimeline.tsx",
+      "frontend/src/components/agents/AgentVisuals.tsx",
+      "frontend/src/components/agents/AgentsView.tsx",
+      "frontend/src/components/agents/CreateAgentWizard.tsx",
+      "frontend/src/components/agents/agentViewConfig.ts",
+      "frontend/src/components/auth/LoginScreen.tsx",
+      "frontend/src/components/autoresearch/AutoresearchView.tsx",
+      "frontend/src/components/autoresearch/ConfigPanel.tsx",
+      "frontend/src/components/autoresearch/ExperimentDashboard.tsx",
+      "frontend/src/components/autoresearch/ExperimentHistory.tsx",
+      "frontend/src/components/autoresearch/LeaderboardTab.tsx",
+      "frontend/src/components/chat/ChatSessionsSidebar.tsx",
+      "frontend/src/components/chat/ChatView.tsx",
+      "frontend/src/components/chat/chatViewParts.tsx",
+      "frontend/src/components/common/AutoSaveWarning.tsx",
+      "frontend/src/components/common/Celebration.tsx",
+      "frontend/src/components/common/ComputePoolView.tsx",
+      "frontend/src/components/common/ConfirmDialog.tsx",
+      "frontend/src/components/common/ContextPreview.tsx",
+      "frontend/src/components/common/DarkModeToggle.tsx",
+      "frontend/src/components/common/DonateComputeToggle.tsx",
+      "frontend/src/components/common/EnsembleHealthView.tsx",
+      "frontend/src/components/common/ErrorBoundary.tsx",
+      "frontend/src/components/common/FocusTrap.tsx",
+      "frontend/src/components/common/InteractiveSuggestionBox.tsx",
+      "frontend/src/components/common/KeyboardShortcuts.tsx",
+      "frontend/src/components/common/LoadingSkeleton.tsx",
+      "frontend/src/components/common/OllamaCheck.tsx",
+      "frontend/src/components/common/QualityView.tsx",
+      "frontend/src/components/common/SearchModal.tsx",
+      "frontend/src/components/common/SettingsView.tsx",
+      "frontend/src/components/common/SteeringInput.tsx",
+      "frontend/src/components/common/ToastNotification.tsx",
+      "frontend/src/components/common/Tooltip.tsx",
+      "frontend/src/components/common/UserManagement.tsx",
+      "frontend/src/components/common/UserMenu.tsx",
+      "frontend/src/components/common/VersionHistory.tsx",
+      "frontend/src/components/common/ViewOnboarding.tsx",
+      "frontend/src/components/documents/DocumentsView.tsx",
+      "frontend/src/components/findings/AtomicDrilldown.tsx",
+      "frontend/src/components/findings/CodeReviewQueue.tsx",
+      "frontend/src/components/findings/CodebookViewer.tsx",
+      "frontend/src/components/findings/FindingsView.tsx",
+      "frontend/src/components/findings/ProjectReportsView.tsx"
+    ],
+    "tests": [
+      "backend/tests/test_compute_capacity_properties.py",
+      "tests/__init__.py",
+      "tests/agentic_eval_contract.json",
+      "tests/benchmarks/long_horizon_runner.py",
+      "tests/benchmarks/run_benchmarks.py",
+      "tests/benchmarks/test_orchestration.py",
+      "tests/compute_cases/__init__.py",
+      "tests/compute_cases/api_routes.py",
+      "tests/compute_cases/common.py",
+      "tests/compute_cases/config.py",
+      "tests/compute_cases/relay_nodes.py",
+      "tests/compute_cases/retries.py",
+      "tests/compute_cases/routing.py",
+      "tests/compute_cases/stats_websocket.py",
+      "tests/compute_cases/status_contracts.py",
+      "tests/compute_cases/streaming_retries.py",
+      "tests/conftest.py",
+      "tests/document_corpus/README.md",
+      "tests/document_corpus/canonical/README.md",
+      "tests/document_corpus/canonical/expected-evidence-chain.json",
+      "tests/document_corpus/canonical/manifest.json",
+      "tests/document_corpus/canonical/playbook.md",
+      "tests/document_corpus/canonical/skill-coverage-map.json",
+      "tests/document_corpus/canonical/sources/ab-test/CR-121-ab-test-01.csv",
+      "tests/document_corpus/canonical/sources/ab-test/CR-122-ab-test-02.csv",
+      "tests/document_corpus/canonical/sources/ab-test/CR-123-ab-test-03.csv",
+      "tests/document_corpus/canonical/sources/ab-test/CR-124-ab-test-04.csv",
+      "tests/document_corpus/canonical/sources/accessibility/CR-135-accessibility-01.md",
+      "tests/document_corpus/canonical/sources/accessibility/CR-136-accessibility-02.md",
+      "tests/document_corpus/canonical/sources/accessibility/CR-137-accessibility-03.md",
+      "tests/document_corpus/canonical/sources/accessibility/CR-138-accessibility-04.md",
+      "tests/document_corpus/canonical/sources/accessibility/CR-139-accessibility-05.md",
+      "tests/document_corpus/canonical/sources/analytics/CR-115-analytics-01.csv",
+      "tests/document_corpus/canonical/sources/analytics/CR-116-analytics-02.csv",
+      "tests/document_corpus/canonical/sources/analytics/CR-117-analytics-03.csv",
+      "tests/document_corpus/canonical/sources/analytics/CR-118-analytics-04.csv",
+      "tests/document_corpus/canonical/sources/analytics/CR-119-analytics-05.csv",
+      "tests/document_corpus/canonical/sources/analytics/CR-120-analytics-06.csv",
+      "tests/document_corpus/canonical/sources/brief/CR-144-brief-01.md",
+      "tests/document_corpus/canonical/sources/brief/CR-145-brief-02.md",
+      "tests/document_corpus/canonical/sources/brief/CR-146-brief-03.md",
+      "tests/document_corpus/canonical/sources/brief/CR-147-brief-04.md",
+      "tests/document_corpus/canonical/sources/card-sort/CR-081-card-sort-01.csv",
+      "tests/document_corpus/canonical/sources/card-sort/CR-082-card-sort-02.csv",
+      "tests/document_corpus/canonical/sources/card-sort/CR-083-card-sort-03.csv",
+      "tests/document_corpus/canonical/sources/card-sort/CR-084-card-sort-04.csv",
+      "tests/document_corpus/canonical/sources/card-sort/CR-085-card-sort-05.csv",
+      "tests/document_corpus/canonical/sources/card-sort/CR-086-card-sort-06.csv",
+      "tests/document_corpus/canonical/sources/competitor/CR-125-competitor-01.md",
+      "tests/document_corpus/canonical/sources/competitor/CR-126-competitor-02.md"
+    ]
+  },
+  "ci_configs": [
+    ".github/workflows/build-installers.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/pages.yml",
+    ".github/workflows/scorecard.yml",
+    ".github/workflows/sync-staging.yml",
+    ".github/workflows/track-autoresearch.yml"
+  ],
+  "confidence_claims": [
+    {
+      "claim": "python package manifest exists.",
+      "confidence": "observed",
+      "data": {
+        "ecosystem": "python",
+        "path": "backend/pyproject.toml"
+      },
+      "signals": [
+        "Manifest path was scanned."
+      ],
+      "source_paths": [
+        "backend/pyproject.toml"
+      ]
+    },
+    {
+      "claim": "python package manifest exists.",
+      "confidence": "observed",
+      "data": {
+        "ecosystem": "python",
+        "path": "backend/requirements.txt"
+      },
+      "signals": [
+        "Manifest path was scanned."
+      ],
+      "source_paths": [
+        "backend/requirements.txt"
+      ]
+    },
+    {
+      "claim": "node package manifest exists.",
+      "confidence": "observed",
+      "data": {
+        "ecosystem": "node",
+        "path": "desktop/package.json"
+      },
+      "signals": [
+        "Manifest path was scanned."
+      ],
+      "source_paths": [
+        "desktop/package.json"
+      ]
+    },
+    {
+      "claim": "rust package manifest exists.",
+      "confidence": "observed",
+      "data": {
+        "ecosystem": "rust",
+        "path": "desktop/src-tauri/Cargo.toml"
+      },
+      "signals": [
+        "Manifest path was scanned."
+      ],
+      "source_paths": [
+        "desktop/src-tauri/Cargo.toml"
+      ]
+    },
+    {
+      "claim": "node package manifest exists.",
+      "confidence": "observed",
+      "data": {
+        "ecosystem": "node",
+        "path": "frontend/package.json"
+      },
+      "signals": [
+        "Manifest path was scanned."
+      ],
+      "source_paths": [
+        "frontend/package.json"
+      ]
+    },
+    {
+      "claim": "node package manifest exists.",
+      "confidence": "observed",
+      "data": {
+        "ecosystem": "node",
+        "path": "labs/pi-replacement/package.json"
+      },
+      "signals": [
+        "Manifest path was scanned."
+      ],
+      "source_paths": [
+        "labs/pi-replacement/package.json"
+      ]
+    },
+    {
+      "claim": "node package manifest exists.",
+      "confidence": "observed",
+      "data": {
+        "ecosystem": "node",
+        "path": "relay/package.json"
+      },
+      "signals": [
+        "Manifest path was scanned."
+      ],
+      "source_paths": [
+        "relay/package.json"
+      ]
+    },
+    {
+      "claim": "node package manifest exists.",
+      "confidence": "observed",
+      "data": {
+        "ecosystem": "node",
+        "path": "tests/real_user_benchmark/package.json"
+      },
+      "signals": [
+        "Manifest path was scanned."
+      ],
+      "source_paths": [
+        "tests/real_user_benchmark/package.json"
+      ]
+    },
+    {
+      "claim": "node package manifest exists.",
+      "confidence": "observed",
+      "data": {
+        "ecosystem": "node",
+        "path": "tests/simulation/package.json"
+      },
+      "signals": [
+        "Manifest path was scanned."
+      ],
+      "source_paths": [
+        "tests/simulation/package.json"
+      ]
+    },
+    {
+      "claim": "Framework detected: python.",
+      "confidence": "observed",
+      "data": {},
+      "signals": [
+        "Detected from package files and framework-shaped paths."
+      ],
+      "source_paths": []
+    },
+    {
+      "claim": "Framework detected: python-api.",
+      "confidence": "derived",
+      "data": {},
+      "signals": [
+        "Detected from package files and framework-shaped paths."
+      ],
+      "source_paths": []
+    },
+    {
+      "claim": "Framework detected: rust.",
+      "confidence": "observed",
+      "data": {},
+      "signals": [
+        "Detected from package files and framework-shaped paths."
+      ],
+      "source_paths": []
+    },
+    {
+      "claim": "Test command candidate: python -m pytest",
+      "confidence": "suggested",
+      "data": {},
+      "signals": [
+        "Python project files or Python sources detected."
+      ],
+      "source_paths": []
+    },
+    {
+      "claim": "Test command candidate: python -m unittest discover",
+      "confidence": "suggested",
+      "data": {},
+      "signals": [
+        "Stdlib fallback for Python tests."
+      ],
+      "source_paths": []
+    },
+    {
+      "claim": "Test command candidate: npm test",
+      "confidence": "suggested",
+      "data": {},
+      "signals": [
+        "package.json detected; verify script exists before running."
+      ],
+      "source_paths": []
+    },
+    {
+      "claim": "Test command candidate: cargo test",
+      "confidence": "suggested",
+      "data": {},
+      "signals": [
+        "Rust manifest detected."
+      ],
+      "source_paths": []
+    },
+    {
+      "claim": "Security-sensitive surfaces detected.",
+      "confidence": "derived",
+      "data": {
+        "count": 81
+      },
+      "signals": [
+        "Security-sensitive path tokens were found."
+      ],
+      "source_paths": [
+        "backend/alembic/versions/003_add_mfa_columns.py",
+        "backend/alembic/versions/010_auth_sessions.py",
+        "backend/alembic/versions/011_auth_factor_hardening.py",
+        "backend/alembic/versions/013_recovery_code_audit_events.py",
+        "backend/alembic/versions/014_chat_session_thinking_mode.py",
+        "backend/alembic/versions/015_permission_requests.py",
+        "backend/alembic/versions/017_mcp_audit_project_scope.py",
+        "backend/app/agents/personas/istara-ui-audit/CORE.md",
+        "backend/app/agents/personas/istara-ui-audit/MEMORY.md",
+        "backend/app/agents/personas/istara-ui-audit/PROTOCOLS.md",
+        "backend/app/agents/personas/istara-ui-audit/SKILLS.md",
+        "backend/app/agents/ui_audit_agent.py",
+        "backend/app/api/middleware/auth.py",
+        "backend/app/api/routes/admin.py",
+        "backend/app/api/routes/audit.py",
+        "backend/app/api/routes/auth.py",
+        "backend/app/api/routes/permission_requests.py",
+        "backend/app/api/routes/sessions.py",
+        "backend/app/api/routes/webauthn.py",
+        "backend/app/core/audit_middleware.py"
+      ]
+    }
+  ],
+  "docs": [
+    "README.md",
+    "README.pt-BR.md",
+    "docs/FEATURE_DOCUMENTATION_PROGRESS.md",
+    "docs/architecture/research-validity-contract.md",
+    "docs/architecture/self-improvement-governance-contract.md",
+    "docs/features/README.md",
+    "docs/features/content/admin/dashboard/architecture.md",
+    "docs/features/content/admin/dashboard/researcher.md",
+    "docs/features/content/agents/a2a/architecture.md",
+    "docs/features/content/agents/a2a/researcher.md",
+    "docs/features/content/agents/create/architecture.md",
+    "docs/features/content/agents/create/researcher.md",
+    "docs/features/content/agents/detail/architecture.md",
+    "docs/features/content/agents/detail/researcher.md",
+    "docs/features/content/agents/proposals/architecture.md",
+    "docs/features/content/agents/proposals/researcher.md",
+    "docs/features/content/agents/registry/architecture.md",
+    "docs/features/content/agents/registry/researcher.md",
+    "docs/features/content/auth/login/architecture.md",
+    "docs/features/content/auth/login/researcher.md",
+    "docs/features/content/autoresearch/config/architecture.md",
+    "docs/features/content/autoresearch/config/researcher.md",
+    "docs/features/content/autoresearch/dashboard/architecture.md",
+    "docs/features/content/autoresearch/dashboard/researcher.md",
+    "docs/features/content/autoresearch/experiments/architecture.md",
+    "docs/features/content/autoresearch/experiments/researcher.md",
+    "docs/features/content/autoresearch/leaderboard/architecture.md",
+    "docs/features/content/autoresearch/leaderboard/researcher.md",
+    "docs/features/content/backup/view/architecture.md",
+    "docs/features/content/backup/view/researcher.md",
+    "docs/features/content/chat/audio/architecture.md",
+    "docs/features/content/chat/audio/researcher.md",
+    "docs/features/content/chat/files/architecture.md",
+    "docs/features/content/chat/files/researcher.md",
+    "docs/features/content/chat/model-controls/architecture.md",
+    "docs/features/content/chat/model-controls/researcher.md",
+    "docs/features/content/chat/overview/architecture.md",
+    "docs/features/content/chat/overview/researcher.md",
+    "docs/features/content/chat/sessions/architecture.md",
+    "docs/features/content/chat/sessions/researcher.md",
+    "docs/features/content/chat/steering/architecture.md",
+    "docs/features/content/chat/steering/researcher.md",
+    "docs/features/content/compute/pool/architecture.md",
+    "docs/features/content/compute/pool/researcher.md",
+    "docs/features/content/context/editor/architecture.md",
+    "docs/features/content/context/editor/researcher.md",
+    "docs/features/content/documents/library/architecture.md",
+    "docs/features/content/documents/library/researcher.md",
+    "docs/features/content/documents/preview/architecture.md",
+    "docs/features/content/documents/preview/researcher.md",
+    "docs/features/content/documents/suggestions/architecture.md",
+    "docs/features/content/documents/suggestions/researcher.md",
+    "docs/features/content/documents/upload/architecture.md",
+    "docs/features/content/documents/upload/researcher.md",
+    "docs/features/content/ensemble/health/architecture.md",
+    "docs/features/content/ensemble/health/researcher.md",
+    "docs/features/content/findings/codebook/architecture.md",
+    "docs/features/content/findings/codebook/researcher.md",
+    "docs/features/content/findings/evidence/architecture.md",
+    "docs/features/content/findings/evidence/researcher.md",
+    "docs/features/content/findings/phase-tabs/architecture.md",
+    "docs/features/content/findings/phase-tabs/researcher.md",
+    "docs/features/content/findings/reports/architecture.md",
+    "docs/features/content/findings/reports/researcher.md",
+    "docs/features/content/findings/review/architecture.md",
+    "docs/features/content/findings/review/researcher.md",
+    "docs/features/content/findings/slide-instructions/architecture.md",
+    "docs/features/content/findings/slide-instructions/researcher.md",
+    "docs/features/content/history/version/architecture.md",
+    "docs/features/content/history/version/researcher.md",
+    "docs/features/content/integrations/deployment-dashboard/architecture.md",
+    "docs/features/content/integrations/deployment-dashboard/researcher.md",
+    "docs/features/content/integrations/deployments/architecture.md",
+    "docs/features/content/integrations/deployments/researcher.md",
+    "docs/features/content/integrations/mcp/architecture.md",
+    "docs/features/content/integrations/mcp/researcher.md",
+    "docs/features/content/integrations/messaging/architecture.md",
+    "docs/features/content/integrations/messaging/researcher.md",
+    "docs/features/content/integrations/overview/architecture.md",
+    "docs/features/content/integrations/overview/researcher.md",
+    "docs/features/content/integrations/surveys/architecture.md",
+    "docs/features/content/integrations/surveys/researcher.md",
+    "docs/features/content/interfaces/design-chat/architecture.md",
+    "docs/features/content/interfaces/design-chat/researcher.md",
+    "docs/features/content/interfaces/figma/architecture.md",
+    "docs/features/content/interfaces/figma/researcher.md",
+    "docs/features/content/interfaces/findings-picker/architecture.md",
+    "docs/features/content/interfaces/findings-picker/researcher.md",
+    "docs/features/content/interfaces/generate/architecture.md",
+    "docs/features/content/interfaces/generate/researcher.md",
+    "docs/features/content/interfaces/handoff/architecture.md",
+    "docs/features/content/interfaces/handoff/researcher.md",
+    "docs/features/content/interfaces/screens/architecture.md",
+    "docs/features/content/interfaces/screens/researcher.md",
+    "docs/features/content/interviews/files/architecture.md",
+    "docs/features/content/interviews/files/researcher.md",
+    "docs/features/content/interviews/preview-tags/architecture.md",
+    "docs/features/content/interviews/preview-tags/researcher.md",
+    "docs/features/content/interviews/transcription/architecture.md",
+    "docs/features/content/interviews/transcription/researcher.md"
+  ],
+  "entrypoints": [
+    "backend/app/main.py",
+    "backend/app/mcp/server.py",
+    "desktop/package.json",
+    "desktop/src-tauri/Cargo.toml",
+    "frontend/package.json",
+    "labs/pi-replacement/package.json",
+    "relay/package.json",
+    "tests/real_user_benchmark/package.json",
+    "tests/simulation/package.json"
+  ],
+  "frameworks": [
+    "python",
+    "python-api",
+    "rust"
+  ],
+  "languages": [
+    {
+      "files": 487,
+      "name": "Python"
+    },
+    {
+      "files": 133,
+      "name": "JavaScript"
+    },
+    {
+      "files": 122,
+      "name": "TypeScript/React"
+    },
+    {
+      "files": 50,
+      "name": "TypeScript"
+    },
+    {
+      "files": 12,
+      "name": "Rust"
+    },
+    {
+      "files": 1,
+      "name": "Ruby"
+    }
+  ],
+  "package_files": [
+    {
+      "ecosystem": "python",
+      "path": "backend/pyproject.toml"
+    },
+    {
+      "ecosystem": "python",
+      "path": "backend/requirements.txt"
+    },
+    {
+      "ecosystem": "node",
+      "path": "desktop/package.json"
+    },
+    {
+      "ecosystem": "rust",
+      "path": "desktop/src-tauri/Cargo.toml"
+    },
+    {
+      "ecosystem": "node",
+      "path": "frontend/package.json"
+    },
+    {
+      "ecosystem": "node",
+      "path": "labs/pi-replacement/package.json"
+    },
+    {
+      "ecosystem": "node",
+      "path": "relay/package.json"
+    },
+    {
+      "ecosystem": "node",
+      "path": "tests/real_user_benchmark/package.json"
+    },
+    {
+      "ecosystem": "node",
+      "path": "tests/simulation/package.json"
+    }
+  ],
+  "security_surfaces": [
+    "backend/alembic/versions/003_add_mfa_columns.py",
+    "backend/alembic/versions/010_auth_sessions.py",
+    "backend/alembic/versions/011_auth_factor_hardening.py",
+    "backend/alembic/versions/013_recovery_code_audit_events.py",
+    "backend/alembic/versions/014_chat_session_thinking_mode.py",
+    "backend/alembic/versions/015_permission_requests.py",
+    "backend/alembic/versions/017_mcp_audit_project_scope.py",
+    "backend/app/agents/personas/istara-ui-audit/CORE.md",
+    "backend/app/agents/personas/istara-ui-audit/MEMORY.md",
+    "backend/app/agents/personas/istara-ui-audit/PROTOCOLS.md",
+    "backend/app/agents/personas/istara-ui-audit/SKILLS.md",
+    "backend/app/agents/ui_audit_agent.py",
+    "backend/app/api/middleware/auth.py",
+    "backend/app/api/routes/admin.py",
+    "backend/app/api/routes/audit.py",
+    "backend/app/api/routes/auth.py",
+    "backend/app/api/routes/permission_requests.py",
+    "backend/app/api/routes/sessions.py",
+    "backend/app/api/routes/webauthn.py",
+    "backend/app/core/audit_middleware.py",
+    "backend/app/core/auth.py",
+    "backend/app/core/auth_audit.py",
+    "backend/app/core/auth_cookies.py",
+    "backend/app/core/auth_origins.py",
+    "backend/app/core/auth_sessions.py",
+    "backend/app/core/permissions.py",
+    "backend/app/core/token_counter.py",
+    "backend/app/models/auth_session.py",
+    "backend/app/models/mcp_audit_log.py",
+    "backend/app/models/permission_request.py",
+    "backend/app/models/session.py",
+    "backend/app/models/webauthn_challenge.py",
+    "backend/app/models/webauthn_credential.py",
+    "backend/app/skills/definitions/accessibility-audit.json",
+    "backend/app/skills/definitions/browser-ux-audit.json",
+    "backend/app/skills/definitions/design-system-audit.json",
+    "docs/features/content/admin/dashboard/architecture.md",
+    "docs/features/content/admin/dashboard/researcher.md",
+    "docs/features/content/auth/login/architecture.md",
+    "docs/features/content/auth/login/researcher.md",
+    "docs/features/content/chat/sessions/architecture.md",
+    "docs/features/content/chat/sessions/researcher.md",
+    "docs/features/content/settings/sessions/architecture.md",
+    "docs/features/content/settings/sessions/researcher.md",
+    "docs/features/glossary/webauthn.md",
+    "docs/features/site/features/admin/dashboard/architecture.html",
+    "docs/features/site/features/admin/dashboard/researcher.html",
+    "docs/features/site/features/auth/login/architecture.html",
+    "docs/features/site/features/auth/login/researcher.html",
+    "docs/features/site/features/chat/sessions/architecture.html",
+    "docs/features/site/features/chat/sessions/researcher.html",
+    "docs/features/site/features/settings/sessions/architecture.html",
+    "docs/features/site/features/settings/sessions/researcher.html",
+    "docs/features/site/glossary/webauthn.html",
+    "docs/scientific_audit/README.md",
+    "docs/scientific_audit/bibliography-audit.md",
+    "docs/scientific_audit/compute-donation-matrix.md",
+    "docs/scientific_audit/ensemble-method-matrix.md",
+    "docs/scientific_audit/readme-claim-truth-matrix.md",
+    "frontend/src/components/admin/AdminDashboard.tsx",
+    "frontend/src/components/auth/LoginScreen.tsx",
+    "frontend/src/components/chat/ChatSessionsSidebar.tsx",
+    "frontend/src/components/integrations/MCPAuditLog.tsx",
+    "frontend/src/components/settings/SessionManager.tsx",
+    "frontend/src/lib/sessionsApi.ts",
+    "frontend/src/stores/authStore.ts",
+    "frontend/src/stores/sessionStore.ts",
+    "scripts/generate-secrets.sh",
+    "scripts/public_repo_quality_audit.py",
+    "security/PROJECT_ISOLATION_COMPLETION_AUDIT.md",
+    "skills/deliver/design-system-audit/SKILL.md",
+    "skills/discover/accessibility-audit/SKILL.md",
+    "tests/simulation/scenarios/12-chat-sessions.mjs",
+    "tests/simulation/scenarios/26-model-session-persistence.mjs",
+    "tests/simulation/scenarios/30-event-wiring-audit.mjs",
+    "tests/simulation/scenarios/32-auth-flow.mjs",
+    "tests/simulation/scenarios/67-auth-enforcement.mjs",
+    "tests/test_auth_security.py",
+    "tests/test_project_rbac.py",
+    "tests/test_sessions.py",
+    "tests/test_webauthn.py"
+  ],
+  "test_command_suggestions": [
+    {
+      "command": "python -m pytest",
+      "confidence": "suggested",
+      "reason": "Python project files or Python sources detected."
+    },
+    {
+      "command": "python -m unittest discover",
+      "confidence": "suggested",
+      "reason": "Stdlib fallback for Python tests."
+    },
+    {
+      "command": "npm test",
+      "confidence": "suggested",
+      "reason": "package.json detected; verify script exists before running."
+    },
+    {
+      "command": "cargo test",
+      "confidence": "suggested",
+      "reason": "Rust manifest detected."
+    }
+  ],
+  "tests": [
+    "backend/tests/test_compute_capacity_properties.py",
+    "frontend/src/lib/modelProviders.test.ts",
+    "frontend/src/lib/runtimeConfig.test.ts",
+    "labs/pi-replacement/test/adapter.test.mjs",
+    "relay/lib/heartbeat.test.mjs",
+    "relay/lib/llm-proxy.test.mjs",
+    "scripts/test_llm_integration.py",
+    "tests/__init__.py",
+    "tests/benchmarks/long_horizon_runner.py",
+    "tests/benchmarks/run_benchmarks.py",
+    "tests/benchmarks/test_orchestration.py",
+    "tests/compute_cases/__init__.py",
+    "tests/compute_cases/api_routes.py",
+    "tests/compute_cases/common.py",
+    "tests/compute_cases/config.py",
+    "tests/compute_cases/relay_nodes.py",
+    "tests/compute_cases/retries.py",
+    "tests/compute_cases/routing.py",
+    "tests/compute_cases/stats_websocket.py",
+    "tests/compute_cases/status_contracts.py",
+    "tests/compute_cases/streaming_retries.py",
+    "tests/conftest.py",
+    "tests/document_corpus/generate-canonical-corpus.mjs",
+    "tests/document_corpus/shared-corpus.mjs",
+    "tests/document_corpus/shared-corpus.test.mjs",
+    "tests/e2e_test.py",
+    "tests/integration/test_llm_orchestration_real.py",
+    "tests/llm_test_config.py",
+    "tests/real_user_benchmark/lib/api-client.mjs",
+    "tests/real_user_benchmark/lib/api-client.test.mjs",
+    "tests/real_user_benchmark/lib/corpus.mjs",
+    "tests/real_user_benchmark/lib/corpus.test.mjs",
+    "tests/real_user_benchmark/lib/donor-sandboxes.mjs",
+    "tests/real_user_benchmark/lib/donor-sandboxes.test.mjs",
+    "tests/real_user_benchmark/lib/integration-discovery.mjs",
+    "tests/real_user_benchmark/lib/logger.mjs",
+    "tests/real_user_benchmark/lib/logger.test.mjs",
+    "tests/real_user_benchmark/lib/persona.mjs",
+    "tests/real_user_benchmark/lib/persona.test.mjs",
+    "tests/real_user_benchmark/lib/playwright-ui.mjs",
+    "tests/real_user_benchmark/lib/research-spine-probes.mjs",
+    "tests/real_user_benchmark/lib/research-spine-probes.test.mjs",
+    "tests/real_user_benchmark/lib/scoring.mjs",
+    "tests/real_user_benchmark/lib/scoring.test.mjs",
+    "tests/real_user_benchmark/lib/topology-contract.test.mjs",
+    "tests/real_user_benchmark/run.mjs",
+    "tests/simulation/evaluators/accessibility.mjs",
+    "tests/simulation/evaluators/heuristics.mjs",
+    "tests/simulation/evaluators/performance.mjs",
+    "tests/simulation/lib/api-client.mjs"
+  ],
+  "zones": {
+    "context_excluded_counts": {
+      "backup": 5,
+      "simulation-output": 18
+    },
+    "context_included_counts": {
+      "agent-docs": 2,
+      "asset": 10,
+      "contract": 16,
+      "docs": 517,
+      "source": 524,
+      "test": 460,
+      "unknown": 131
+    },
+    "default_excluded_count": 23,
+    "primary_zone_counts": {
+      "agent-docs": 2,
+      "asset": 10,
+      "backup": 5,
+      "contract": 16,
+      "docs": 520,
+      "simulation-output": 18,
+      "source": 528,
+      "test": 460,
+      "unknown": 131
+    },
+    "source_like_count": 1006,
+    "zone_counts": {
+      "agent-docs": 2,
+      "asset": 54,
+      "backup": 5,
+      "contract": 22,
+      "docs": 667,
+      "fixture": 5,
+      "generated": 7,
+      "security-sensitive": 81,
+      "simulation-output": 18,
+      "source": 675,
+      "test": 461,
+      "unknown": 127
+    }
+  }
+}

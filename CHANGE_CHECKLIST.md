@@ -28,6 +28,15 @@ Before making ANY change:
 - [ ] Verify authentication/authorization impact
 - [ ] Plan database migration strategy (if needed)
 - [ ] **Plan test coverage using the Three-Layer Testing Mandate (see below)**
+- [ ] Run the feature-obligation classifier and check every changed path is owned by `testing/feature_coverage.yml` (or is on the audited allowlist); unowned paths fail closed
+- [ ] Run `python scripts/check_qa_capabilities.py` when `qa/runtime_capabilities.json` or the provider capability contract changes
+- [ ] Run `python scripts/check_workflow_contracts.py` when public CI/promotion workflows change
+- [ ] Keep CI-generated commits (e.g. README badge sync) on `main` only — never let a workflow push a generated commit to `testing` (it would move the promotion source and invalidate the exact-SHA human gate)
+- [ ] Keep the promotion workflow's required-checks step authorized: bind `actions: read` in `promote-testing.yml`'s `permissions` — the `gh api .../actions/runs` call 403s without it on a normal runner and blocks the only promotion path
+- [ ] Render the QA compose contract (`docker compose -f docker-compose.qa.yml --profile contract config --quiet`) when the disposable QA stack changes
+- [ ] Keep synthetic QA data provisional-only (`is_qa_provisional`); never let a QA lane promote synthetic rows to accepted/reportable states
+- [ ] Do not reference private hosts or endpoints (`multivac`, LAN IPs, localhost fingerprints) in public workflows or QA artifacts
+- [ ] Keep `LLMs/` and `Model_Finetuning/` protected; QA reset/seed never touches them
 
 ### Compass Swarm and Repository Intelligence
 
@@ -749,6 +758,7 @@ pytest tests/
 node tests/simulation/run.mjs
 python scripts/check_integrity.py
 python scripts/check_ci_governance.py
+python scripts/check_required_checks.py  # after renaming/adding/removing a CI job
 ```
 
 ### Production Deployment
@@ -783,6 +793,18 @@ curl http://localhost:8000/api/compute/nodes \
 ```
 
 ---
+
+## Pi model-management changes
+
+- Keep chat generation controls separate from embedding identity.
+- Test malformed cached vectors and model/dimension mismatch fail-closed
+  behavior; cache hits are validated against the engine's known embedding
+  dimension (stale-dimension entries are re-embedded, never served).
+- Keep the project engine selector explicit and accessible: `Pi` and `Istara`
+  describe routing, not different vector spaces. The selector shows
+  evidence-backed provisional comparative summaries with provenance (from the
+  accepted `comparison-Istara-pi` benchmark bundle) and exposes the shared
+  embedding model as safe metadata.
 
 ## REFERENCES
 

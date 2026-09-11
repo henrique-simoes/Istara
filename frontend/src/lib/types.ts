@@ -20,6 +20,9 @@ export interface Project {
   is_paused: boolean;
   owner_id: string;
   watch_folder_path: string | null;
+  agentic_engine?: string | null;
+  global_agentic_engine?: string;
+  embed_model?: string;
   current_user_project_role?: "viewer" | "researcher" | "project_admin" | null;
   created_at: string;
   updated_at: string;
@@ -50,6 +53,7 @@ export interface Task {
   id: string;
   project_id: string;
   agent_id: string | null;
+  codebook_id?: string | null;
   title: string;
   description: string;
   status: TaskStatus;
@@ -77,6 +81,9 @@ export interface Task {
   human_feedback_score: number | null;
   review_severity: string | null;
   review_failure_category: string | null;
+  locked_by: string | null;
+  locked_at: string | null;
+  lock_expires_at: string | null;
   validation_method: string | null;
   consensus_score: number | null;
   health?: {
@@ -149,6 +156,15 @@ export interface TaskQualitySummary {
   recent_review_events: TaskReviewEvent[];
 }
 
+export interface ToolCallExecution {
+  id?: string;
+  tool: string;
+  params?: Record<string, any> | string;
+  result?: string;
+  status?: "pending" | "running" | "completed" | "error";
+  duration_ms?: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -157,6 +173,8 @@ export interface ChatMessage {
   sources?: { source: string; score: number; page?: number }[];
   agent_id?: string;
   agent_name?: string;
+  thoughts?: string[];
+  tool_calls?: ToolCallExecution[];
 }
 
 export interface FindingResearchValidity {
@@ -313,7 +331,90 @@ export interface AgentCapacityCheck {
 }
 
 export type InferencePreset = "lightweight" | "medium" | "high" | "custom";
-export type ThinkingMode = "server_default" | "off" | "auto" | "on";
+/** Provider-native effort levels are open-ended (xhigh/max/etc.). */
+export type ThinkingMode = "server_default" | "off" | "auto" | "on" | (string & {});
+
+export interface PiCatalogModel {
+  id: string;
+  name: string;
+  api: string;
+  baseUrl?: string;
+  contextWindow?: number;
+  maxTokens?: number;
+  reasoning?: boolean;
+  input?: string[];
+  thinkingLevels?: string[] | null;
+  /** pi-ai tier-4 per-level wire contract (null = unsupported, absent = default). */
+  thinkingLevelMap?: Record<string, string | null> | null;
+  /** pi-ai compatibility record (thinkingFormat, supportsReasoningEffort, ...). */
+  compat?: Record<string, unknown> | null;
+  cost?: Record<string, number> | null;
+}
+
+export interface PiCatalogProvider {
+  id: string;
+  display_name: string;
+  login_methods: string[];
+  oauth_flow: string | null;
+  oauth_methods?: string[];
+  oauth_provider?: string | null;
+  oauth_model_ids?: string[];
+  auth_description?: string;
+  env_var: string | null;
+  auth_json_key: string | null;
+  base_url: string | null;
+  models: PiCatalogModel[];
+}
+
+export interface PiEndpointInfo {
+  endpoint_id: string;
+  model: string;
+  provider_kind: string;
+  pi_provider?: string;
+  auth_provider?: string;
+  auth_method?: string;
+  context_window?: number;
+  max_tokens?: number;
+  supports_tools?: boolean;
+  supports_vision?: boolean;
+  kind?: string;
+  credential_status?: "ready" | "missing" | "unavailable";
+  availability_reason?: string | null;
+}
+
+export interface ChatUsage {
+  input_tokens: number;
+  output_tokens: number;
+  cache_read: number;
+  cache_write: number;
+  total_tokens: number;
+  cost_usd: number;
+  turns: number;
+  row_count: number;
+  exact: boolean;
+  estimated: boolean;
+  latest?: {
+    model: string;
+    endpoint_id: string;
+    engine: string;
+    stop_reason: string;
+    input_tokens: number;
+    output_tokens?: number;
+    cache_read?: number;
+    cache_write?: number;
+    total_tokens?: number;
+    cost_usd?: number;
+    estimate?: boolean;
+    created_at: string | null;
+  } | null;
+  last_turn?: {
+    usage: Record<string, unknown>;
+    model: string;
+    endpoint_id?: string | null;
+    stop_reason?: string | null;
+    effort?: string;
+  };
+}
 
 export interface ChatSession {
   id: string;
@@ -321,6 +422,7 @@ export interface ChatSession {
   title: string;
   agent_id: string | null;
   model_override: string | null;
+  endpoint_override?: string | null;
   inference_preset: InferencePreset;
   custom_temperature: number | null;
   custom_max_tokens: number | null;

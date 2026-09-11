@@ -5,12 +5,9 @@ through the actual API to verify everything works as a real user would experienc
 """
 
 import asyncio
-import json
 import logging
-import uuid
-from datetime import datetime, timezone
-
 import os
+from datetime import UTC, datetime
 
 import httpx
 
@@ -30,6 +27,7 @@ class UserSimAgent:
         self._client: httpx.AsyncClient | None = None
         # Task execution worker
         from app.core.sub_agent_worker import SubAgentWorker
+
         self._worker = SubAgentWorker("istara-sim", check_interval=30)
         self._worker_task: asyncio.Task | None = None
 
@@ -57,9 +55,7 @@ class UserSimAgent:
 
         while self._running:
             try:
-                await broadcast_agent_status(
-                    "working", "User Simulation: testing API endpoints..."
-                )
+                await broadcast_agent_status("working", "User Simulation: testing API endpoints...")
                 report = await self.run_simulation()
                 self._reports.append(report)
                 if len(self._reports) > 10:
@@ -93,7 +89,7 @@ class UserSimAgent:
 
     async def run_simulation(self) -> dict:
         """Run a full user simulation cycle."""
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
         results: list[dict] = []
 
         client = await self._get_client()
@@ -108,7 +104,10 @@ class UserSimAgent:
         # Test 3: Create a test project
         project_name = f"Sim Test {datetime.now().strftime('%H:%M')}"
         result = await self._test_endpoint(
-            client, "Create Project", "POST", "/api/projects",
+            client,
+            "Create Project",
+            "POST",
+            "/api/projects",
             json={"name": project_name, "description": "Automated simulation test"},
         )
         results.append(result)
@@ -116,47 +115,57 @@ class UserSimAgent:
 
         if project_id:
             # Test 4: Get project
-            results.append(await self._test_endpoint(
-                client, "Get Project", "GET", f"/api/projects/{project_id}"
-            ))
+            results.append(
+                await self._test_endpoint(
+                    client, "Get Project", "GET", f"/api/projects/{project_id}"
+                )
+            )
 
             # Test 5: Create a task
             result = await self._test_endpoint(
-                client, "Create Task", "POST", "/api/tasks",
-                json={"project_id": project_id, "title": "Test interview analysis", "skill_name": "user-interviews"},
+                client,
+                "Create Task",
+                "POST",
+                "/api/tasks",
+                json={
+                    "project_id": project_id,
+                    "title": "Test interview analysis",
+                    "skill_name": "user-interviews",
+                },
             )
             results.append(result)
-            task_id = result.get("response", {}).get("id") if result["success"] else None
 
             # Test 6: List tasks
-            results.append(await self._test_endpoint(
-                client, "List Tasks", "GET", f"/api/tasks?project_id={project_id}"
-            ))
+            results.append(
+                await self._test_endpoint(
+                    client, "List Tasks", "GET", f"/api/tasks?project_id={project_id}"
+                )
+            )
 
             # Test 7: Get findings summary
-            results.append(await self._test_endpoint(
-                client, "Findings Summary", "GET", f"/api/findings/summary/{project_id}"
-            ))
+            results.append(
+                await self._test_endpoint(
+                    client, "Findings Summary", "GET", f"/api/findings/summary/{project_id}"
+                )
+            )
 
             # Test 8: List skills
-            results.append(await self._test_endpoint(
-                client, "List Skills", "GET", "/api/skills"
-            ))
+            results.append(await self._test_endpoint(client, "List Skills", "GET", "/api/skills"))
 
             # Test 9: Get hardware info
-            results.append(await self._test_endpoint(
-                client, "Hardware Info", "GET", "/api/settings/hardware"
-            ))
+            results.append(
+                await self._test_endpoint(client, "Hardware Info", "GET", "/api/settings/hardware")
+            )
 
             # Test 10: System status
-            results.append(await self._test_endpoint(
-                client, "System Status", "GET", "/api/settings/status"
-            ))
+            results.append(
+                await self._test_endpoint(client, "System Status", "GET", "/api/settings/status")
+            )
 
             # Test 11: Check audit endpoints
-            results.append(await self._test_endpoint(
-                client, "DevOps Audit", "GET", "/api/audit/devops/latest"
-            ))
+            results.append(
+                await self._test_endpoint(client, "DevOps Audit", "GET", "/api/audit/devops/latest")
+            )
 
             # Cleanup: delete test project
             await self._test_endpoint(
@@ -174,7 +183,10 @@ class UserSimAgent:
             "failed": failed,
             "pass_rate": round(passed / max(len(results), 1) * 100, 1),
             "results": results,
-            "summary": f"{passed}/{len(results)} tests passed ({round(passed / max(len(results), 1) * 100)}%)",
+            "summary": (
+                f"{passed}/{len(results)} tests passed "
+                f"({round(passed / max(len(results), 1) * 100)}%)"
+            ),
         }
 
     async def _test_endpoint(
@@ -198,8 +210,12 @@ class UserSimAgent:
                 "path": path,
                 "status_code": resp.status_code,
                 "success": success,
-                "response_time_ms": resp.elapsed.total_seconds() * 1000 if hasattr(resp, 'elapsed') else 0,
-                "response": resp.json() if success and resp.headers.get("content-type", "").startswith("application/json") else {},
+                "response_time_ms": resp.elapsed.total_seconds() * 1000
+                if hasattr(resp, "elapsed")
+                else 0,
+                "response": resp.json()
+                if success and resp.headers.get("content-type", "").startswith("application/json")
+                else {},
                 "error": None if success else resp.text[:200],
             }
         except Exception as e:

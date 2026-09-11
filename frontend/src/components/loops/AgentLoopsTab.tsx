@@ -6,7 +6,7 @@ import { useLoopsStore } from "@/stores/loopsStore";
 import { useAgentStore } from "@/stores/agentStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
-import type { Agent } from "@/lib/types";
+import type { Agent, AgentLoopConfig } from "@/lib/types";
 
 const INTERVAL_PRESETS = [15, 30, 60, 120, 300];
 
@@ -28,6 +28,24 @@ const ROLE_COLORS: Record<string, string> = {
   custom: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 };
 
+/**
+ * Join the project-scoped loop response with the metadata response.
+ *
+ * The agents endpoint intentionally includes universal system agents for
+ * registry visibility, while the loops endpoint only returns agents that are
+ * mutable in the active project.  A missing config therefore means the agent
+ * must not receive project loop controls (pause/resume or interval updates).
+ */
+export function mergeProjectAgentLoops(
+  agents: Agent[],
+  agentLoops: AgentLoopConfig[],
+): Array<{ agent: Agent; loopConfig: AgentLoopConfig }> {
+  return agents.flatMap((agent) => {
+    const loopConfig = agentLoops.find((loop) => loop.agent_id === agent.id);
+    return loopConfig ? [{ agent, loopConfig }] : [];
+  });
+}
+
 export default function AgentLoopsTab() {
   const { agentLoops, fetchAgentLoops, updateAgentConfig, pauseAgent, resumeAgent, loading } = useLoopsStore();
   const { agents, fetchAgents } = useAgentStore();
@@ -39,10 +57,7 @@ export default function AgentLoopsTab() {
   }, [activeProjectId, fetchAgentLoops, fetchAgents]);
 
   // Merge agent data with loop config
-  const agentWithLoops = agents.map((agent) => {
-    const loopConfig = agentLoops.find((l) => l.agent_id === agent.id);
-    return { agent, loopConfig };
-  });
+  const agentWithLoops = mergeProjectAgentLoops(agents, agentLoops);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -57,10 +72,15 @@ export default function AgentLoopsTab() {
         </button>
       </div>
 
-      {agents.length === 0 && !loading ? (
+      {agentWithLoops.length === 0 && !loading ? (
         <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-slate-500">
           <Activity size={40} className="mb-3 opacity-50" />
-          <p className="text-sm">No agents found.</p>
+          <p className="text-sm">No project-scoped agent loops found.</p>
+          {agents.length > 0 && (
+            <p className="mt-1 max-w-sm text-center text-xs">
+              Universal system agents are managed outside the active project.
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -68,7 +88,7 @@ export default function AgentLoopsTab() {
             <AgentLoopCard
               key={agent.id}
               agent={agent}
-              loopConfig={loopConfig || null}
+              loopConfig={loopConfig}
               onUpdateConfig={(data) => updateAgentConfig(agent.id, data, activeProjectId)}
               onPause={() => pauseAgent(agent.id, activeProjectId)}
               onResume={() => resumeAgent(agent.id, activeProjectId)}

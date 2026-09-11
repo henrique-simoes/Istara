@@ -38,7 +38,9 @@ async def test_chat_history_persistence(auth_headers):
         assert isinstance(before, list)
 
         # Verify history endpoint is functional
-        response = await ac.get("/api/chat/history/test-project?limit=10", headers=auth_headers)
+        response = await ac.get(
+            "/api/chat/history/test-project?limit=10", headers=auth_headers
+        )
         assert response.status_code == 200
 
 
@@ -49,5 +51,7 @@ async def test_chat_auth_required():
     settings.team_mode = True
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("/api/chat", json={"message": "test", "project_id": "test"})
+        response = await ac.post(
+            "/api/chat", json={"message": "test", "project_id": "test"}
+        )
         assert response.status_code == 401

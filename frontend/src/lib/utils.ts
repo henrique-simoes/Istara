@@ -31,6 +31,15 @@ export function phaseLabel(phase: string): string {
   return labels[phase] || phase;
 }
 
+// W8 UX parity: per-project agent engine indicator/selector.
+// null/undefined means "inherit the global default" (legacy until the owner flips it).
+const PI_ENGINE_VALUES = new Set(["pi", "pi-candidate", "pi-replacement", "deepseek-pi"]);
+
+export function agentEngineLabel(engine: string | null | undefined): string {
+  // CF-SPEC-12: the legacy engine's public UI name is "Istara".
+  return engine && PI_ENGINE_VALUES.has(engine.trim().toLowerCase()) ? "Pi" : "Istara";
+}
+
 export function statusLabel(status: string): string {
   const labels: Record<string, string> = {
     backlog: "Backlog",

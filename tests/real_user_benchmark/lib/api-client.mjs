@@ -9,7 +9,16 @@ function parseEnvFileValue(content, key) {
 }
 
 export class IstaraApiClient {
-  constructor({ apiBase, repoRoot, logger, networkAccessToken = "", adminUsername = "", adminPassword = "" }) {
+  constructor({
+    apiBase,
+    repoRoot,
+    logger,
+    networkAccessToken = "",
+    adminUsername = "",
+    adminPassword = "",
+    chatHeaders = {},
+    agentEngine = "",
+  }) {
     this.apiBase = apiBase.replace(/\/$/, "");
     this.repoRoot = repoRoot;
     this.logger = logger;
@@ -18,6 +27,8 @@ export class IstaraApiClient {
     this.networkAccessToken = networkAccessToken;
     this.adminUsername = adminUsername;
     this.adminPassword = adminPassword;
+    this.chatHeaders = { ...chatHeaders };
+    if (agentEngine) this.chatHeaders["x-istara-agent-engine"] = agentEngine;
   }
 
   headers(extra = {}) {
@@ -213,14 +224,26 @@ export class IstaraApiClient {
     return data;
   }
 
-  async sendChat({ projectId, message, sessionId = null, maxHistory = 30, timeoutMs = 240000 }) {
+  async sendChat({
+    projectId,
+    message,
+    sessionId = null,
+    maxHistory = 30,
+    timeoutMs = 240000,
+    headers = {},
+    agentEngine = "",
+  }) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const timeout = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
     const started = Date.now();
     try {
       const response = await fetch(`${this.apiBase}/api/chat`, {
         method: "POST",
-        headers: this.headers(),
+        headers: this.headers({
+          ...this.chatHeaders,
+          ...(agentEngine ? { "x-istara-agent-engine": agentEngine } : {}),
+          ...headers,
+        }),
         body: JSON.stringify({
           project_id: projectId,
           message,
@@ -246,7 +269,7 @@ export class IstaraApiClient {
         session_id: parsed.session_id || sessionId,
       };
     } finally {
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
     }
   }
 }
@@ -265,6 +288,9 @@ export function parseSse(raw) {
       events.push(event);
       if (event.type === "chunk" && event.content) content += event.content;
       if (event.type === "error") errors.push(event.message || JSON.stringify(event));
+      if (event.type === "usage" && event.stop_reason === "turn_budget_exceeded") {
+        errors.push("turn_budget_exceeded: model stopped before completing the tool-backed turn");
+      }
       if (event.session_id) sessionId = event.session_id;
     } catch {
       content += body;

@@ -1,5 +1,7 @@
 """Laws of UX API — query the knowledge base and compute compliance profiles."""
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +29,9 @@ async def get_laws_for_heuristic(heuristic_id: str):
 
 
 @router.get("/match")
-async def match_laws(query: str = Query(..., min_length=1), top_k: int = Query(default=5, ge=1, le=30)):
+async def match_laws(
+    query: str = Query(..., min_length=1), top_k: int = Query(default=5, ge=1, le=30)
+):
     """Find relevant laws for a text query using keyword matching."""
     matches = laws_service.match_text(query, top_k=top_k)
     return [
@@ -45,12 +49,47 @@ async def get_compliance(
     """Compute UX Law compliance profile for a project from tagged findings."""
     await require_project_access(db, request, project_id, min_role="viewer")
 
-    result = await db.execute(
-        select(Nugget).where(Nugget.project_id == project_id)
-    )
+    result = await db.execute(select(Nugget).where(Nugget.project_id == project_id))
     nuggets = result.scalars().all()
     nugget_dicts = [{"id": n.id, "tags": n.tags, "text": n.text} for n in nuggets]
     profile = laws_service.compute_compliance_profile(nugget_dicts)
+    return profile
+
+
+@router.post("/compliance/{project_id}/evaluate")
+async def evaluate_compliance(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Evaluate project findings against the 30 UX Laws, tag matches,
+    and return compliance profile."""
+    await require_project_access(db, request, project_id, min_role="researcher")
+
+    result = await db.execute(select(Nugget).where(Nugget.project_id == project_id))
+    nuggets = result.scalars().all()
+
+    tagged_count = 0
+    for nugget in nuggets:
+        current_tags = []
+        if nugget.tags:
+            try:
+                parsed = json.loads(nugget.tags) if isinstance(nugget.tags, str) else nugget.tags
+                current_tags = parsed if isinstance(parsed, list) else []
+            except Exception:
+                current_tags = [nugget.tags] if nugget.tags else []
+
+        enriched = laws_service.enrich_tags(list(current_tags), nugget.text)
+        if len(enriched) > len(current_tags):
+            nugget.tags = json.dumps(enriched)
+            tagged_count += 1
+
+    if tagged_count > 0:
+        await db.commit()
+
+    nugget_dicts = [{"id": n.id, "tags": n.tags, "text": n.text} for n in nuggets]
+    profile = laws_service.compute_compliance_profile(nugget_dicts)
+    profile["newly_tagged_nuggets"] = tagged_count
     return profile
 
 
@@ -63,9 +102,7 @@ async def get_radar(
     """Get radar chart data for the compliance profile."""
     await require_project_access(db, request, project_id, min_role="viewer")
 
-    result = await db.execute(
-        select(Nugget).where(Nugget.project_id == project_id)
-    )
+    result = await db.execute(select(Nugget).where(Nugget.project_id == project_id))
     nuggets = result.scalars().all()
     nugget_dicts = [{"id": n.id, "tags": n.tags, "text": n.text} for n in nuggets]
     profile = laws_service.compute_compliance_profile(nugget_dicts)

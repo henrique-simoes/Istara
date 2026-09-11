@@ -1,13 +1,15 @@
 import type { BackupConfig, BackupRecord } from "@/lib/types";
 import { API_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 
 function authHeaders(): Record<string, string> {
-  const token = typeof window === "undefined" ? "" : localStorage.getItem("istara_token");
+  const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function json<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...authHeaders(), ...options?.headers },
     ...options,
   });
@@ -23,7 +25,7 @@ export const backups = {
   verify: (id: string) => json<any>(`/api/backups/${id}/verify`, { method: "POST" }),
   remove: (id: string) => json<void>(`/api/backups/${id}`, { method: "DELETE" }),
   download: async (id: string) => {
-    const res = await fetch(`${API_BASE}/api/backups/${id}/download`, { headers: { ...authHeaders() } });
+    const res = await fetch(`${API_BASE}/api/backups/${id}/download`, { credentials: "include", headers: { ...authHeaders() } });
     if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as any).detail || `Download failed: ${res.status}`);
     return res.blob();
   },
@@ -33,7 +35,8 @@ export const backups = {
   uploadRestore: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return fetch(`${API_BASE}/api/backups/upload-restore`, { method: "POST", headers: authHeaders(), body: formData }).then(async (r) => {
+    return fetch(`${API_BASE}/api/backups/upload-restore`, {
+credentials: "include", method: "POST", headers: authHeaders(), body: formData }).then(async (r) => {
       if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as any).detail || `Upload failed: ${r.status}`);
       return r.json();
     });

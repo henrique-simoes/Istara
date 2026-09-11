@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Float, String, Text
@@ -14,7 +14,7 @@ from app.models.database import Base
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _loads_json(value: str | None, fallback: Any) -> Any:
@@ -46,7 +46,9 @@ class ImprovementProposal(Base):
     rationale: Mapped[str] = mapped_column(Text, default="")
     affected_surfaces_json: Mapped[str] = mapped_column(Text, default="[]")
     risk_level: Mapped[str] = mapped_column(String(20), default="medium", index=True)
-    approval_policy: Mapped[str] = mapped_column(String(30), default="approval_required", index=True)
+    approval_policy: Mapped[str] = mapped_column(
+        String(30), default="approval_required", index=True
+    )
     status: Mapped[str] = mapped_column(String(30), default="proposed", index=True)
     before_state_json: Mapped[str] = mapped_column(Text, default="{}")
     proposed_change_json: Mapped[str] = mapped_column(Text, default="{}")

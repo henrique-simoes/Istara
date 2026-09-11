@@ -5,29 +5,19 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import time
 from collections.abc import AsyncGenerator
-from typing import Any
-
-import httpx
 
 from app.config import settings
 from app.core.compute_capacity import compute_capacity_envelope
-from app.core.compute_node import ComputeNode
-from app.core.compute_route_evidence import attach_route_evidence
+from app.core.compute_node import ComputeNode, _hydrate_local_resources
 from app.core.compute_registry_helpers import (
-    TRANSIENT_CHAT_BASE_DELAY_S,
     TRANSIENT_CHAT_MAX_ATTEMPTS,
-    TRANSIENT_CHAT_MAX_DELAY_S,
-    TRANSIENT_HTTP_STATUS_CODES,
-    _hydrate_local_resources,
     _looks_like_context_length_error,
     _looks_like_model_availability_error,
-    _positive_number,
-    _redacted_endpoint_for_log,
     _server_endpoint_identity,
     _unique_model_names,
 )
+from app.core.compute_route_evidence import attach_route_evidence
 from app.core.llm_output import (
     ThinkingContentFilter,
     visible_assistant_content,
@@ -35,17 +25,23 @@ from app.core.llm_output import (
 )
 from app.core.llm_schema_adapter import provider_response_format_fields
 from app.core.llm_thinking import apply_thinking_control
-from app.core.token_counter import count_tokens
 
 logger = logging.getLogger("app.core.compute_registry")
+
+
+class ChatTruncatedEmptyResponse(RuntimeError):  # noqa: N818 - typed domain failure, not builtin-style error
+    """The model exhausted its token budget on reasoning and returned no usable answer.
+
+    Raised instead of reporting success on finish_reason="length" with empty content
+    (F-12): callers must see a typed failure, increase the budget, or switch to a
+    non-reasoning model — never receive a silent empty "ok".
+    """
 
 
 def _hardware_resource_key(node: ComputeNode) -> tuple[str, str]:
     host = getattr(node, "host", "") or getattr(node, "provider_host", "") or ""
     if host:
-        _, hostname, _, _ = _server_endpoint_identity(
-            host, source=getattr(node, "source", "")
-        )
+        _, hostname, _, _ = _server_endpoint_identity(host, source=getattr(node, "source", ""))
         if hostname == "local":
             return ("machine", "local")
         return ("machine", hostname)
@@ -65,16 +61,12 @@ def _unique_hardware_resource_nodes(nodes: list[ComputeNode]) -> list[ComputeNod
         if getattr(node, "ram_total_gb", 0) > getattr(current, "ram_total_gb", 0):
             resources[key] = node
             continue
-        if getattr(node, "ram_total_gb", 0) == getattr(
-            current, "ram_total_gb", 0
-        ) and getattr(node, "ram_available_gb", 0) > getattr(
-            current, "ram_available_gb", 0
-        ):
+        if getattr(node, "ram_total_gb", 0) == getattr(current, "ram_total_gb", 0) and getattr(
+            node, "ram_available_gb", 0
+        ) > getattr(current, "ram_available_gb", 0):
             resources[key] = node
             continue
-        if getattr(node, "is_healthy", False) and not getattr(
-            current, "is_healthy", False
-        ):
+        if getattr(node, "is_healthy", False) and not getattr(current, "is_healthy", False):
             resources[key] = node
     return list(resources.values())
 
@@ -198,9 +190,7 @@ class ComputeRegistryInvocationMixin:
         ]
         if not project_donors:
             return False
-        return not any(
-            self._node_supports_model(node, requested) for node in project_donors
-        )
+        return not any(self._node_supports_model(node, requested) for node in project_donors)
 
     async def chat(
         self,
@@ -228,17 +218,12 @@ class ComputeRegistryInvocationMixin:
         require_vision = self._messages_require_vision(msgs)
         if require_vision and not explicit_model_requested:
             model = None
-        elif (
-            not explicit_model_requested
-            and self._project_donor_should_choose_native_model(
-                model,
-                project_id=project_id,
-            )
+        elif not explicit_model_requested and self._project_donor_should_choose_native_model(
+            model,
+            project_id=project_id,
         ):
             model = None
-        strict_requested_model = (
-            settings.strict_auto_routing and explicit_model_requested
-        )
+        strict_requested_model = settings.strict_auto_routing and explicit_model_requested
         if min_context <= 0:
             min_context = self._estimate_context_tokens(
                 msgs,
@@ -248,6 +233,7 @@ class ComputeRegistryInvocationMixin:
             )
 
         lmstudio_load_recovery_used = False
+        truncated_empty_error: ChatTruncatedEmptyResponse | None = None
         for node in self._select_candidates(
             require_tools=bool(tools),
             require_vision=require_vision,
@@ -400,18 +386,37 @@ class ComputeRegistryInvocationMixin:
 
                         choice = data["choices"][0]
                         message = choice["message"]
+                        finish_reason = choice.get("finish_reason")
+                        visible_content = visible_assistant_content(message)
+
+                        # F-12: a reasoning model can spend the whole max_tokens budget on
+                        # reasoning and return finish_reason="length" with an empty or
+                        # truncated answer. An empty answer is NEVER a silent success —
+                        # fail closed with a typed error; a partial answer is delivered
+                        # with explicit truncation evidence, never silently "stop".
+                        if finish_reason == "length" and not visible_content.strip():
+                            raise ChatTruncatedEmptyResponse(
+                                f"model returned finish_reason=length with empty content "
+                                f"(reasoning exhausted the token budget on {resolved_model})"
+                            )
 
                         result: dict = {
                             "message": {
                                 "role": "assistant",
-                                "content": visible_assistant_content(message),
-                            }
+                                "content": visible_content,
+                            },
+                            "finish_reason": finish_reason or "stop",
                         }
+                        if finish_reason == "length":
+                            result["truncated"] = True
+                        if isinstance(data.get("usage"), dict):
+                            # Propagate provider-reported usage so exact accounting
+                            # (dispatcher ledger, benchmark capture) works instead of
+                            # falling back to text estimation.
+                            result["usage"] = data["usage"]
                         if message.get("tool_calls"):
                             result["message"]["tool_calls"] = message["tool_calls"]
-                            result["finish_reason"] = choice.get(
-                                "finish_reason", "tool_calls"
-                            )
+                            result["finish_reason"] = choice.get("finish_reason", "tool_calls")
 
                         self._record_success(
                             node,
@@ -436,6 +441,12 @@ class ComputeRegistryInvocationMixin:
                         )
                         raise
                     except Exception as e:
+                        if isinstance(e, ChatTruncatedEmptyResponse):
+                            # Preserve the actionable failure after checking any
+                            # remaining eligible node. Collapsing this into the
+                            # generic no-node error hides that the model ran but
+                            # exhausted its answer budget on hidden reasoning.
+                            truncated_empty_error = e
                         if _looks_like_model_availability_error(e):
                             loaded_recovery_models = [
                                 name
@@ -443,10 +454,7 @@ class ComputeRegistryInvocationMixin:
                                 if not require_vision
                                 or self._node_supports_vision_model(node, name)
                             ]
-                            if (
-                                node.provider_type == "lmstudio"
-                                and not loaded_recovery_models
-                            ):
+                            if node.provider_type == "lmstudio" and not loaded_recovery_models:
                                 if lmstudio_load_recovery_used:
                                     logger.warning(
                                         "ComputeRegistry: skipped additional LM Studio "
@@ -537,10 +545,10 @@ class ComputeRegistryInvocationMixin:
             finally:
                 node.active_requests -= 1
 
+        if truncated_empty_error is not None:
+            raise truncated_empty_error
         if require_vision:
-            raise RuntimeError(
-                "No vision-capable compute nodes available for image chat"
-            )
+            raise RuntimeError("No vision-capable compute nodes available for image chat")
         raise RuntimeError("No compute nodes available for chat")
 
     async def chat_stream(
@@ -554,6 +562,7 @@ class ComputeRegistryInvocationMixin:
         min_context: int = 0,
         thinking_mode: str | None = None,
         project_id: str | None = None,
+        strict_model_routing: bool | None = None,
     ) -> AsyncGenerator[str | dict, None]:
         """Streaming chat -- yields str chunks and dict for tool calls."""
         explicit_model_requested = bool(
@@ -568,16 +577,13 @@ class ComputeRegistryInvocationMixin:
         require_vision = self._messages_require_vision(msgs)
         if require_vision and not explicit_model_requested:
             model = None
-        elif (
-            not explicit_model_requested
-            and self._project_donor_should_choose_native_model(
-                model,
-                project_id=project_id,
-            )
+        elif not explicit_model_requested and self._project_donor_should_choose_native_model(
+            model,
+            project_id=project_id,
         ):
             model = None
-        strict_requested_model = (
-            settings.strict_auto_routing and explicit_model_requested
+        strict_requested_model = explicit_model_requested and (
+            settings.strict_auto_routing if strict_model_routing is None else strict_model_routing
         )
         if min_context <= 0:
             min_context = self._estimate_context_tokens(msgs, max_tokens, tools=tools)
@@ -694,9 +700,7 @@ class ComputeRegistryInvocationMixin:
                                 emitted_chunk = True
                                 yield {
                                     "tool_calls": data["message"]["tool_calls"],
-                                    "finish_reason": data.get(
-                                        "finish_reason", "tool_calls"
-                                    ),
+                                    "finish_reason": data.get("finish_reason", "tool_calls"),
                                 }
                         else:
                             payload = {
@@ -738,9 +742,7 @@ class ComputeRegistryInvocationMixin:
                                             tool_call_mode = True
                                             for tc_delta in delta["tool_calls"]:
                                                 idx = tc_delta.get("index", 0)
-                                                while (
-                                                    len(accumulated_tool_calls) <= idx
-                                                ):
+                                                while len(accumulated_tool_calls) <= idx:
                                                     accumulated_tool_calls.append(
                                                         {
                                                             "id": "",
@@ -758,14 +760,10 @@ class ComputeRegistryInvocationMixin:
                                                 if fn.get("name"):
                                                     tc["function"]["name"] = fn["name"]
                                                 if fn.get("arguments"):
-                                                    tc["function"]["arguments"] += fn[
-                                                        "arguments"
-                                                    ]
+                                                    tc["function"]["arguments"] += fn["arguments"]
                                             continue
 
-                                        content = content_filter.push(
-                                            delta.get("content", "")
-                                        )
+                                        content = content_filter.push(delta.get("content", ""))
                                         if content:
                                             emitted_chunk = True
                                             yield content
@@ -812,19 +810,14 @@ class ComputeRegistryInvocationMixin:
                         )
                         raise
                     except Exception as e:
-                        if not emitted_chunk and _looks_like_model_availability_error(
-                            e
-                        ):
+                        if not emitted_chunk and _looks_like_model_availability_error(e):
                             loaded_recovery_models = [
                                 name
                                 for name in self._node_explicit_loaded_model_names(node)
                                 if not require_vision
                                 or self._node_supports_vision_model(node, name)
                             ]
-                            if (
-                                node.provider_type == "lmstudio"
-                                and not loaded_recovery_models
-                            ):
+                            if node.provider_type == "lmstudio" and not loaded_recovery_models:
                                 if lmstudio_load_recovery_used:
                                     logger.warning(
                                         "ComputeRegistry: skipped additional LM Studio "
@@ -898,8 +891,7 @@ class ComputeRegistryInvocationMixin:
                             )
                         else:
                             logger.warning(
-                                "ComputeRegistry: stream failed on %s after %s "
-                                "attempt(s): %s",
+                                "ComputeRegistry: stream failed on %s after %s attempt(s): %s",
                                 node.name,
                                 attempt,
                                 e,
@@ -913,9 +905,7 @@ class ComputeRegistryInvocationMixin:
                 node.active_requests -= 1
 
         if require_vision:
-            raise RuntimeError(
-                "No vision-capable compute nodes available for image chat"
-            )
+            raise RuntimeError("No vision-capable compute nodes available for image chat")
         raise RuntimeError("No compute nodes available for streaming")
 
     async def embed(
@@ -998,9 +988,7 @@ class ComputeRegistryInvocationMixin:
             node.active_requests += 1
             try:
                 if node.source in ("relay", "browser") and node.websocket:
-                    result = await node.embed_batch(
-                        texts, model=model, project_id=project_id
-                    )
+                    result = await node.embed_batch(texts, model=model, project_id=project_id)
                     self._record_success(node)
                     return result
 
@@ -1022,10 +1010,7 @@ class ComputeRegistryInvocationMixin:
                     )
                     resp.raise_for_status()
                     self._record_success(node)
-                    return [
-                        item.get("embedding", [])
-                        for item in resp.json().get("data", [])
-                    ]
+                    return [item.get("embedding", []) for item in resp.json().get("data", [])]
 
             except Exception as e:
                 if hasattr(e, "response") and hasattr(e.response, "text"):
@@ -1036,9 +1021,7 @@ class ComputeRegistryInvocationMixin:
                         e.response.text,
                     )
                 else:
-                    logger.warning(
-                        f"ComputeRegistry: embed_batch failed on {node.name}: {e}"
-                    )
+                    logger.warning(f"ComputeRegistry: embed_batch failed on {node.name}: {e}")
                 self._record_auxiliary_failure(node, e)
             finally:
                 node.active_requests -= 1
@@ -1052,8 +1035,7 @@ class ComputeRegistryInvocationMixin:
             try:
                 if node.source in ("relay", "browser"):
                     for name in _unique_model_names(
-                        list(node.loaded_models or [])
-                        + list(node.model_capabilities.keys())
+                        list(node.loaded_models or []) + list(node.model_capabilities.keys())
                     ):
                         all_models.append(self._model_record_for_node(node, name))
                     continue
@@ -1064,13 +1046,9 @@ class ComputeRegistryInvocationMixin:
                     data = resp.json()
                     models = data.get("models", [])
                 else:
-                    resp = await client.get(
-                        node._openai_endpoint("models"), timeout=10.0
-                    )
+                    resp = await client.get(node._openai_endpoint("models"), timeout=10.0)
                     data = resp.json()
-                    models = [
-                        {"name": m.get("id", ""), **m} for m in data.get("data", [])
-                    ]
+                    models = [{"name": m.get("id", ""), **m} for m in data.get("data", [])]
                 for m in models:
                     m["_server"] = node.name
                     m["_server_id"] = node.node_id
@@ -1081,18 +1059,12 @@ class ComputeRegistryInvocationMixin:
                             m.update(
                                 {
                                     "supports_tools": caps.get("supports_tools", False),
-                                    "supports_vision": caps.get(
-                                        "supports_vision", False
-                                    ),
+                                    "supports_vision": caps.get("supports_vision", False),
                                     "supports_audio": caps.get("supports_audio", False),
                                     "supports_json": caps.get("supports_json", False),
                                     "context_length": caps.get("context_length"),
-                                    "trained_context_length": caps.get(
-                                        "trained_context_length"
-                                    ),
-                                    "loaded_context_length": caps.get(
-                                        "loaded_context_length"
-                                    ),
+                                    "trained_context_length": caps.get("trained_context_length"),
+                                    "loaded_context_length": caps.get("loaded_context_length"),
                                     "parameter_count": caps.get("parameter_count"),
                                     "quantization": caps.get("quantization"),
                                     "is_loaded": caps.get("is_loaded"),
@@ -1189,11 +1161,7 @@ class ComputeRegistryInvocationMixin:
     def total_capacity(self) -> int:
         """Total number of alive donated compute nodes (relay/browser)."""
         return len(
-            [
-                n
-                for n in self._nodes.values()
-                if n.source in ("relay", "browser") and n.is_alive()
-            ]
+            [n for n in self._nodes.values() if n.source in ("relay", "browser") and n.is_alive()]
         )
 
     def available_models_list(self) -> list[str]:
@@ -1214,9 +1182,7 @@ class ComputeRegistryInvocationMixin:
     # Unified Stats
     # ================================================================
 
-    def _nodes_visible_for_project(
-        self, project_id: str | None = None
-    ) -> list[ComputeNode]:
+    def _nodes_visible_for_project(self, project_id: str | None = None) -> list[ComputeNode]:
         if not project_id:
             return list(self._nodes.values())
         return [

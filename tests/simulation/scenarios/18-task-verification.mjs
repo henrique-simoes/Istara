@@ -3,9 +3,16 @@
 export const name = "Task Self-Verification";
 export const id = "18-task-verification";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "tasks",
+    navLabel: "Tasks",
+    markers: ["Backlog", "In Progress"],
+    screenshot: "18-tasks-view",
+  });
 
   if (!ctx.projectId) {
     return { checks: [{ name: "Skip — no project", passed: false, detail: "No project ID" }], passed: 0, failed: 1 };

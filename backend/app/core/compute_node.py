@@ -10,6 +10,9 @@ from app.core.compute_node_models import ComputeNodeModelMixin
 from app.core.compute_node_transport import ComputeNodeTransportMixin
 from app.core.compute_registry_helpers import infer_provider_type
 
+# Cached snapshot of local machine resources used by _hydrate_local_resources.
+_LOCAL_RESOURCE_SNAPSHOT: dict[str, Any] | None = None
+
 
 @dataclass
 class ComputeNode(ComputeNodeTransportMixin, ComputeNodeModelMixin, ComputeNodeInvocationMixin):
@@ -58,6 +61,11 @@ class ComputeNode(ComputeNodeTransportMixin, ComputeNodeModelMixin, ComputeNodeI
     priority: int = 10
     latency_ms: float = 0
     active_requests: int = 0
+
+    # Petals bridge (DEC-11): donor consent to serve Pi-engine traffic through the
+    # A2A-bridged loopback shim. Default OFF — a donor never serves Pi traffic
+    # unless explicitly opted in.
+    pi_served: bool = False
     max_active_requests: int = 4
     is_local: bool = False
     is_relay: bool = False
@@ -95,3 +103,78 @@ class ComputeNode(ComputeNodeTransportMixin, ComputeNodeModelMixin, ComputeNodeI
 
     def __post_init__(self) -> None:
         self.provider_type = infer_provider_type(self.provider_type, self.host)
+
+
+def _hydrate_local_resources(node: ComputeNode) -> None:
+    """Fill local-node hardware fields so compute stats do not report 0 GB."""
+    global _LOCAL_RESOURCE_SNAPSHOT
+    if node.source != "local":
+        return
+    if node.ram_total_gb and node.ram_available_gb and node.cpu_cores:
+        return
+    if _LOCAL_RESOURCE_SNAPSHOT:
+        if not node.ram_total_gb:
+            node.ram_total_gb = _LOCAL_RESOURCE_SNAPSHOT.get("ram_total_gb", 0) or 0
+        if not node.ram_available_gb:
+            node.ram_available_gb = _LOCAL_RESOURCE_SNAPSHOT.get("ram_available_gb", 0) or 0
+        if not node.cpu_cores:
+            node.cpu_cores = _LOCAL_RESOURCE_SNAPSHOT.get("cpu_cores", 0) or 0
+        if not node.cpu_load_pct:
+            node.cpu_load_pct = _LOCAL_RESOURCE_SNAPSHOT.get("cpu_load_pct", 0) or 0
+        if not node.gpu_name:
+            node.gpu_name = str(_LOCAL_RESOURCE_SNAPSHOT.get("gpu_name", "") or "")
+        if not node.gpu_vram_mb:
+            node.gpu_vram_mb = int(_LOCAL_RESOURCE_SNAPSHOT.get("gpu_vram_mb", 0) or 0)
+        return
+    try:
+        from app.core.hardware import detect_hardware
+
+        profile = detect_hardware()
+        _LOCAL_RESOURCE_SNAPSHOT = {
+            "ram_total_gb": profile.total_ram_gb,
+            "ram_available_gb": profile.available_ram_gb,
+            "cpu_cores": profile.cpu_cores,
+            "cpu_load_pct": 0,
+            "gpu_name": profile.gpu.name if profile.gpu else "",
+            "gpu_vram_mb": profile.gpu.vram_mb if profile.gpu else 0,
+        }
+        if not node.ram_total_gb:
+            node.ram_total_gb = profile.total_ram_gb
+        if not node.ram_available_gb:
+            node.ram_available_gb = profile.available_ram_gb
+        if not node.cpu_cores:
+            node.cpu_cores = profile.cpu_cores
+        if profile.gpu:
+            if not node.gpu_name:
+                node.gpu_name = profile.gpu.name
+            if not node.gpu_vram_mb:
+                node.gpu_vram_mb = profile.gpu.vram_mb
+        return
+    except Exception:
+        pass
+
+    try:
+        import os
+
+        import psutil
+
+        mem = psutil.virtual_memory()
+        cpu_load_pct = psutil.cpu_percent(interval=0)
+        _LOCAL_RESOURCE_SNAPSHOT = {
+            "ram_total_gb": round(mem.total / (1024**3), 1),
+            "ram_available_gb": round(mem.available / (1024**3), 1),
+            "cpu_cores": os.cpu_count() or 1,
+            "cpu_load_pct": round(cpu_load_pct, 1),
+            "gpu_name": "",
+            "gpu_vram_mb": 0,
+        }
+        if not node.ram_total_gb:
+            node.ram_total_gb = _LOCAL_RESOURCE_SNAPSHOT["ram_total_gb"]
+        if not node.ram_available_gb:
+            node.ram_available_gb = _LOCAL_RESOURCE_SNAPSHOT["ram_available_gb"]
+        if not node.cpu_cores:
+            node.cpu_cores = _LOCAL_RESOURCE_SNAPSHOT["cpu_cores"]
+        if not node.cpu_load_pct:
+            node.cpu_load_pct = _LOCAL_RESOURCE_SNAPSHOT["cpu_load_pct"]
+    except Exception:
+        pass

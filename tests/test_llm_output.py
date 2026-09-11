@@ -106,7 +106,10 @@ def test_visible_content_preserves_structured_json_blocks():
         ],
     }
 
-    assert '"summary": "User flow friction was concentrated at onboarding."' in visible_assistant_content(message)
+    assert (
+        '"summary": "User flow friction was concentrated at onboarding."'
+        in visible_assistant_content(message)
+    )
 
 
 def test_streaming_filter_suppresses_split_thinking_block():
@@ -139,7 +142,10 @@ def test_streaming_filter_suppresses_split_gemma_thought_channel():
 
 
 def test_thinking_control_injects_off_directive_once():
-    messages = [{"role": "system", "content": "Base system."}, {"role": "user", "content": "Hi"}]
+    messages = [
+        {"role": "system", "content": "Base system."},
+        {"role": "user", "content": "Hi"},
+    ]
 
     controlled = apply_thinking_control(messages, "off")
     controlled_again = apply_thinking_control(controlled, "off")

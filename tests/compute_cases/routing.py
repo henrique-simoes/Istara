@@ -1,5 +1,6 @@
 from tests.compute_cases.common import *
 
+
 def test_select_candidates_filters_saturated_nodes_and_prefers_score():
     registry = ComputeRegistry()
     saturated = ComputeNode(
@@ -62,7 +63,9 @@ def test_openai_compatible_endpoint_paths_respect_provider_base_url():
 def test_relay_provider_inference_preserves_openai_compatible_contracts():
     assert _infer_relay_provider_type("http://192.0.2.142:1234", None) == "lmstudio"
     assert _infer_relay_provider_type("http://192.0.2.142:1234", "ollama") == "lmstudio"
-    assert _infer_relay_provider_type("http://example.test:9999/v1", "ollama") == ("openai_compat")
+    assert _infer_relay_provider_type("http://example.test:9999/v1", "ollama") == (
+        "openai_compat"
+    )
     assert _infer_relay_provider_type("http://192.0.2.142:11434", None) == "ollama"
     assert (
         _infer_relay_provider_type(
@@ -293,7 +296,9 @@ def test_sorted_servers_filters_donated_nodes_by_project_scope():
     registry.register_node(other_relay)
 
     unscoped_ids = {node.node_id for node in registry._sorted_servers()}
-    project_ids = {node.node_id for node in registry._sorted_servers(project_id="project-a")}
+    project_ids = {
+        node.node_id for node in registry._sorted_servers(project_id="project-a")
+    }
 
     assert unscoped_ids == {"local"}
     assert project_ids == {"local", "relay-a"}
@@ -347,10 +352,14 @@ def test_resolve_model_prefers_explicit_capability_over_advertised_fallback():
         },
     )
 
-    assert node._resolve_model("gemini-3.1-flash-lite-preview") == ("gemini-3.1-flash-lite-preview")
+    assert node._resolve_model("gemini-3.1-flash-lite-preview") == (
+        "gemini-3.1-flash-lite-preview"
+    )
 
 
-def test_configured_openai_primary_uses_pinned_model_when_models_list_is_broader(monkeypatch):
+def test_configured_openai_primary_uses_pinned_model_when_models_list_is_broader(
+    monkeypatch,
+):
     monkeypatch.setattr(
         settings,
         "lmstudio_host",
@@ -367,7 +376,10 @@ def test_configured_openai_primary_uses_pinned_model_when_models_list_is_broader
     )
 
     assert node._resolve_model(None) == "gemini-3.1-flash-lite-preview"
-    assert node._resolve_model("gemini-3.1-flash-lite-preview") == "gemini-3.1-flash-lite-preview"
+    assert (
+        node._resolve_model("gemini-3.1-flash-lite-preview")
+        == "gemini-3.1-flash-lite-preview"
+    )
 
 
 def test_network_openai_fallback_keeps_own_advertised_model(monkeypatch):

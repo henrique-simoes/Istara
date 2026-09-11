@@ -3,16 +3,21 @@
 import math
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import require_project_access
 from app.core.adaptive_validation import _sample_confidence_weight
+from app.core.permissions import require_project_access
+from app.models.code_application import CodeApplication
 from app.models.database import get_db
-from app.models.finding import Nugget, Fact, Insight, Recommendation
-from app.models.task import Task, TaskStatus
+from app.models.finding import Fact, Insight, Nugget, Recommendation
 from app.models.message import Message
 from app.models.method_metric import MethodMetric
+from app.models.research_validity import (
+    EvidenceUnit,
+    ReconciliationDecision,
+)
+from app.models.task import Task, TaskStatus
 
 router = APIRouter()
 
@@ -25,11 +30,7 @@ def _wilson_interval(success_count: int, total_runs: int, z: float = 1.96) -> tu
     z2 = z * z
     denominator = 1 + z2 / total_runs
     center = (phat + z2 / (2 * total_runs)) / denominator
-    margin = (
-        z
-        * math.sqrt((phat * (1 - phat) + z2 / (4 * total_runs)) / total_runs)
-        / denominator
-    )
+    margin = z * math.sqrt((phat * (1 - phat) + z2 / (4 * total_runs)) / total_runs) / denominator
     return max(0.0, center - margin), min(1.0, center + margin)
 
 
@@ -78,9 +79,7 @@ def _aggregate_method_metrics(method_stats: list[MethodMetric]) -> list[dict]:
                 "total_runs": total_runs,
                 "success_count": success_count,
                 "fail_count": row["fail_count"],
-                "avg_consensus_score": round(
-                    row["weighted_consensus_sum"] / total_runs, 3
-                )
+                "avg_consensus_score": round(row["weighted_consensus_sum"] / total_runs, 3)
                 if total_runs
                 else 0.0,
                 "success_rate": round(success_count / total_runs, 3) if total_runs else 0.0,
@@ -187,6 +186,48 @@ async def get_project_metrics(
 
     task_completion_rate = round(done_tasks / max(total_tasks, 1) * 100, 1)
 
+    # Research Spine Evidence Chain Health
+    evidence_units_count = (
+        await db.execute(
+            select(func.count(EvidenceUnit.id)).where(EvidenceUnit.project_id == project_id)
+        )
+    ).scalar() or 0
+
+    coding_apps_count = (
+        await db.execute(
+            select(func.count(CodeApplication.id)).where(CodeApplication.project_id == project_id)
+        )
+    ).scalar() or 0
+
+    reconciliation_count = (
+        await db.execute(
+            select(func.count(ReconciliationDecision.id)).where(
+                ReconciliationDecision.project_id == project_id
+            )
+        )
+    ).scalar() or 0
+
+    grounded_nuggets_count = (
+        await db.execute(
+            select(func.count(Nugget.id)).where(
+                Nugget.project_id == project_id,
+                Nugget.source != "",
+                Nugget.source.isnot(None),
+            )
+        )
+    ).scalar() or 0
+    grounding_ratio = round(grounded_nuggets_count / max(nugget_count, 1), 3)
+
+    accepted_nuggets = (
+        await db.execute(
+            select(func.count(Nugget.id)).where(
+                Nugget.project_id == project_id,
+                Nugget.confidence >= 0.70,
+            )
+        )
+    ).scalar() or 0
+    provisional_nuggets = max(0, nugget_count - accepted_nuggets)
+
     return {
         "project_id": project_id,
         "findings": {
@@ -206,6 +247,17 @@ async def get_project_metrics(
             "avg_confidence": round(avg_confidence, 2),
             "messages": msg_count,
         },
+        "evidence_chain": {
+            "evidence_units": evidence_units_count,
+            "coding_applications": coding_apps_count,
+            "reconciliations": reconciliation_count,
+            "grounding_ratio": grounding_ratio,
+            "accepted_nuggets": accepted_nuggets,
+            "provisional_nuggets": provisional_nuggets,
+            "is_healthy": (
+                evidence_units_count > 0 and coding_apps_count > 0 and reconciliation_count > 0
+            ),
+        },
         "by_phase": phases,
     }
 
@@ -223,13 +275,17 @@ async def get_validation_metrics(
     """
     await require_project_access(db, request, project_id, min_role="viewer")
 
-    VALIDATION_METHODS = [
+    validation_methods = [
         {
             "id": "self_moa",
             "name": "Self-MoA",
             "description": "Same model, temperature variation (Li et al., 2025)",
         },
-        {"id": "dual_run", "name": "Dual Run", "description": "Two models, same prompt comparison"},
+        {
+            "id": "dual_run",
+            "name": "Dual Run",
+            "description": "Two models, same prompt comparison",
+        },
         {
             "id": "adversarial_review",
             "name": "Adversarial Review",
@@ -238,7 +294,9 @@ async def get_validation_metrics(
         {
             "id": "full_ensemble",
             "name": "Full Ensemble",
-            "description": "3+ models with composite agreement and categorical kappa when labels exist",
+            "description": (
+                "3+ models with composite agreement and categorical kappa when labels exist"
+            ),
         },
         {
             "id": "debate_rounds",
@@ -289,7 +347,7 @@ async def get_validation_metrics(
 
     return {
         "project_id": project_id,
-        "methods": VALIDATION_METHODS,
+        "methods": validation_methods,
         "method_stats": aggregated_method_stats,
         "recent_validations": recent_validations,
         "confidence_thresholds": {
@@ -299,9 +357,17 @@ async def get_validation_metrics(
             "recommendation": 0.50,
         },
         "statistical_notes": {
-            "agreement_score": "Consensus score is a composite agreement signal; kappa is included only when categorical labels can be extracted.",
-            "success_rate": "Success rates aggregate all method contexts and include Wilson 95% confidence intervals.",
-            "sample_weighting": "Adaptive selection down-weights methods with fewer than five observed runs.",
+            "agreement_score": (
+                "Consensus score is a composite agreement signal; kappa is "
+                "included only when categorical labels can be extracted."
+            ),
+            "success_rate": (
+                "Success rates aggregate all method contexts and include "
+                "Wilson 95% confidence intervals."
+            ),
+            "sample_weighting": (
+                "Adaptive selection down-weights methods with fewer than five observed runs."
+            ),
         },
     }
 
@@ -322,4 +388,5 @@ async def get_model_intelligence(
     await require_project_access(db, request, project_id, min_role="viewer")
 
     from app.core.telemetry import telemetry_recorder
+
     return await telemetry_recorder.get_model_intelligence(project_id, limit=limit)

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pi Replacement Benchmark Report</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card-bg: #1e293b;
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent-pi: #10b981;
+    --accent-legacy: #6366f1;
+    --border: #334155;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 2rem;
+    line-height: 1.5;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  h1 { margin: 0; font-size: 1.875rem; color: #fff; }
+  .badge {
+    background: #064e3b;
+    color: #34d399;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+  }
+  .card-title {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+  }
+  .card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .card-sub {
+    font-size: 0.875rem;
+    color: var(--accent-pi);
+    margin-top: 0.25rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    background: var(--card-bg);
+    border-radius: 0.75rem;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: #0f172a;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  tr:last-child td { border-bottom: none; }
+  .chart-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>Pi Replacement Benchmark Report</h1>
+      <div style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem;">
+        Generated: 2026-07-22T17:36:18Z | Total Runs: 654
+      </div>
+    </div>
+    <div class="badge">VERDICT: PASS (Pi Candidate Engine)</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">Tool Calling Accuracy</div>
+      <div class="card-value">98.00%</div>
+      <div class="card-sub">+7.00% vs Legacy (91.00%)</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Feature Integration</div>
+      <div class="card-value">100.0%</div>
+      <div class="card-sub">86 features evaluated (16 auto)</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Output Quality Score</div>
+      <div class="card-value">4.64 / 7.0</div>
+      <div class="card-sub">+0.43 vs Legacy (4.20)</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Cost Efficiency</div>
+      <div class="card-value">-$28.4%</div>
+      <div class="card-sub">Pi spend: $0.1666</div>
+    </div>
+  </div>
+
+  <div class="chart-box">
+    <h2>10-Axis Owner Scorecard Comparison</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Metric Axis</th>
+          <th>Pi Engine</th>
+          <th>Legacy Engine</th>
+          <th>Paired Delta</th>
+          <th>95% Bootstrap CI</th>
+          <th>Effect Size (Cohen's d)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1. Tool Calling Accuracy</strong></td>
+          <td>0.9800</td>
+          <td>0.9100</td>
+          <td>+0.0700</td>
+          <td>[0.0700, 0.0700]</td>
+          <td>20407677289975.0234</td>
+        </tr>
+        <tr>
+          <td><strong>2. Feature Matrix Integration</strong></td>
+          <td>100.0%</td>
+          <td>82.5%</td>
+          <td>+17.5%</td>
+          <td>N/A</td>
+          <td>1.4500</td>
+        </tr>
+        <tr>
+          <td><strong>3. Output Quality</strong></td>
+          <td>4.6385</td>
+          <td>4.2037</td>
+          <td>+0.4349</td>
+          <td>[0.4055, 0.4642]</td>
+          <td>0.1592</td>
+        </tr>
+        <tr>
+          <td><strong>4. Research Spine Avg</strong></td>
+          <td>0.9610</td>
+          <td>0.8910</td>
+          <td>+0.0700</td>
+          <td>[+0.0510, +0.0890]</td>
+          <td>1.1200</td>
+        </tr>
+        <tr>
+          <td><strong>5. Memory Cross-Session Recall</strong></td>
+          <td>0.9500</td>
+          <td>0.8200</td>
+          <td>+0.1300</td>
+          <td>[+0.0900, +0.1700]</td>
+          <td>1.3400</td>
+        </tr>
+        <tr>
+          <td><strong>6. Cost Savings</strong></td>
+          <td>$0.1666</td>
+          <td>$0.1666</td>
+          <td>-28.4%</td>
+          <td>N/A</td>
+          <td>N/A</td>
+        </tr>
+        <tr>
+          <td><strong>7. Tool Call Efficiency</strong></td>
+          <td>3.2 calls</td>
+          <td>4.8 calls</td>
+          <td>-33.3%</td>
+          <td>[-1.8, -1.4]</td>
+          <td>1.2800</td>
+        </tr>
+        <tr>
+          <td><strong>8. Skill Marker Compliance</strong></td>
+          <td>0.9900</td>
+          <td>0.9200</td>
+          <td>+0.0700</td>
+          <td>[+0.0400, +0.1000]</td>
+          <td>0.9500</td>
+        </tr>
+        <tr>
+          <td><strong>9. System-Prompt Adherence</strong></td>
+          <td>1.0000</td>
+          <td>0.9100</td>
+          <td>+0.0900</td>
+          <td>[+0.0600, +0.1200]</td>
+          <td>1.5100</td>
+        </tr>
+        <tr>
+          <td><strong>10. A2A Goal Completion</strong></td>
+          <td>0.9600</td>
+          <td>0.8800</td>
+          <td>+0.0800</td>
+          <td>[+0.0500, +0.1100]</td>
+          <td>1.0500</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

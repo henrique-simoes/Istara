@@ -232,7 +232,9 @@ async def test_reasoning_bank_api_creates_and_retrieves_memory(auth_headers):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        missing_scope = await ac.get("/api/reasoning-bank/memories", headers=auth_headers)
+        missing_scope = await ac.get(
+            "/api/reasoning-bank/memories", headers=auth_headers
+        )
         assert missing_scope.status_code == 400
         assert missing_scope.json()["detail"] == "project_id is required"
 
@@ -286,7 +288,9 @@ async def test_reasoning_bank_api_creates_and_retrieves_memory(auth_headers):
         assert "Relevant Reasoning Memory" in body["context"]
         assert all(item["project_id"] == project_id for item in body["memories"])
 
-        summary = await ac.get(f"/api/reasoning-bank/summary?project_id={project_id}", headers=auth_headers)
+        summary = await ac.get(
+            f"/api/reasoning-bank/summary?project_id={project_id}", headers=auth_headers
+        )
         assert summary.status_code == 200
         assert summary.json()["total"] == 1
 

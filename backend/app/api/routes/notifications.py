@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Iterable
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -201,8 +201,7 @@ async def list_notifications(
     if search:
         like_pattern = f"%{search}%"
         query = query.where(
-            Notification.title.ilike(like_pattern)
-            | Notification.message.ilike(like_pattern)
+            Notification.title.ilike(like_pattern) | Notification.message.ilike(like_pattern)
         )
     if dt_from:
         query = query.where(Notification.created_at >= dt_from)
@@ -347,9 +346,7 @@ async def update_preferences(
     for item in preferences:
         # Check if preference for this category already exists
         result = await db.execute(
-            select(NotificationPreference).where(
-                NotificationPreference.category == item.category
-            )
+            select(NotificationPreference).where(NotificationPreference.category == item.category)
         )
         pref = result.scalar_one_or_none()
 

@@ -6,9 +6,16 @@
 export const name = "Docker Security & Infrastructure";
 export const id = "64-docker-security";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "settings",
+    navLabel: "Settings",
+    markers: ["System Status", "Settings"],
+    screenshot: "64-settings-view",
+  });
   if (!ctx.projectId) {
     return [{ name: "Project available for Docker security checks", passed: false, detail: "No persistent project from runner" }];
   }

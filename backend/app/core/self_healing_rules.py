@@ -5,7 +5,7 @@ All actions are fire-and-forget; failures are logged, never propagate.
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -25,34 +25,51 @@ class SelfHealingRules:
 
     def __init__(self) -> None:
         self._error_counts: dict[str, list[datetime]] = {}
+        self._attempt_counts: dict[str, list[datetime]] = {}
         self._circuit_open: dict[str, bool] = {}
         self._last_resource_warn: dict[str, datetime] = {}
 
+    def _prune(self, timestamps: list[datetime], now: datetime) -> list[datetime]:
+        cutoff = now - timedelta(minutes=_ERROR_RATE_WINDOW_MINUTES)
+        return [timestamp for timestamp in timestamps if timestamp >= cutoff]
+
     def _track_error(self, key: str) -> None:
-        now = datetime.now(timezone.utc)
-        if key not in self._error_counts:
-            self._error_counts[key] = []
-        self._error_counts[key] = [
-            t
-            for t in self._error_counts[key]
-            if (now - t).total_seconds() < _ERROR_RATE_WINDOW_MINUTES * 60
-        ]
-        self._error_counts[key].append(now)
+        now = datetime.now(UTC)
+        errors = self._prune(self._error_counts.get(key, []), now)
+        errors.append(now)
+        self._error_counts[key] = errors
+
+    def _track_attempt(self, key: str, *, failed: bool) -> None:
+        """Track one attempt and, when applicable, its failure.
+
+        Error rates are fractions of observed attempts in the rolling window,
+        not errors per minute. Keeping the denominator explicit prevents the
+        UI from displaying impossible percentages such as 167%.
+        """
+        now = datetime.now(UTC)
+        attempts = self._prune(self._attempt_counts.get(key, []), now)
+        attempts.append(now)
+        self._attempt_counts[key] = attempts
+        if failed:
+            self._track_error(key)
 
     def _error_rate(self, key: str) -> float:
-        now = datetime.now(timezone.utc)
-        cutoff = now - timedelta(minutes=_ERROR_RATE_WINDOW_MINUTES)
-        recent = [t for t in self._error_counts.get(key, []) if t >= cutoff]
-        window_seconds = _ERROR_RATE_WINDOW_MINUTES * 60
-        return len(recent) / (window_seconds / 60.0)
+        now = datetime.now(UTC)
+        attempts = self._prune(self._attempt_counts.get(key, []), now)
+        errors = self._prune(self._error_counts.get(key, []), now)
+        self._attempt_counts[key] = attempts
+        self._error_counts[key] = errors
+        if not attempts:
+            return 0.0
+        return min(len(errors) / len(attempts), 1.0)
 
     async def evaluate_span(self, span: "TelemetrySpan") -> list[dict]:
         """Evaluate a telemetry span and return any triggered self-healing actions."""
         actions = []
         key = f"{span.project_id}:{span.skill_name}:{span.model_name}"
+        self._track_attempt(key, failed=span.status == "error")
 
         if span.status == "error":
-            self._track_error(key)
             rate = self._error_rate(key)
 
             if rate > _ERROR_RATE_HIGH_THRESHOLD:
@@ -63,8 +80,12 @@ class SelfHealingRules:
                         "key": key,
                         "error_rate": round(rate, 3),
                         "threshold": _ERROR_RATE_HIGH_THRESHOLD,
-                        "message": f"High error rate detected ({rate:.0%} over {_ERROR_RATE_WINDOW_MINUTES}min) for {span.skill_name}. "
-                        f"Consider reviewing model configuration or switching to a more reliable model.",
+                        "message": (
+                            f"High error rate detected ({rate:.0%} over "
+                            f"{_ERROR_RATE_WINDOW_MINUTES}min) for {span.skill_name}. "
+                            f"Consider reviewing model configuration "
+                            f"or switching to a more reliable model."
+                        ),
                         "auto_action": "none",
                     }
                 )
@@ -81,15 +102,18 @@ class SelfHealingRules:
                         "model": span.model_name,
                         "duration_ms": round(span.duration_ms, 1),
                         "threshold_ms": 120_000,
-                        "message": f"Skill '{span.skill_name}' took {span.duration_ms / 1000:.0f}s on model {span.model_name}. "
-                        f"This may indicate model overload.",
+                        "message": (
+                            f"Skill '{span.skill_name}' took "
+                            f"{span.duration_ms / 1000:.0f}s on model {span.model_name}. "
+                            f"This may indicate model overload."
+                        ),
                         "auto_action": "none",
                     }
                 )
 
         if span.operation == "tool_call" and span.tool_success is False:
             tool_key = f"tool:{span.tool_name}"
-            self._track_error(tool_key)
+            self._track_attempt(tool_key, failed=True)
             rate = self._error_rate(tool_key)
             if rate > _ERROR_RATE_HIGH_THRESHOLD:
                 actions.append(
@@ -104,6 +128,9 @@ class SelfHealingRules:
                     }
                 )
 
+        elif span.operation == "tool_call" and span.tool_success is True:
+            self._track_attempt(f"tool:{span.tool_name}", failed=False)
+
         return actions
 
     async def evaluate_all(self, project_id: str) -> dict:
@@ -111,9 +138,10 @@ class SelfHealingRules:
         try:
             async with self._get_session() as session:
                 from sqlalchemy import select
+
                 from app.models.telemetry_span import TelemetrySpan
 
-                cutoff = datetime.now(timezone.utc) - timedelta(minutes=_ERROR_RATE_WINDOW_MINUTES)
+                cutoff = datetime.now(UTC) - timedelta(minutes=_ERROR_RATE_WINDOW_MINUTES)
                 result = await session.execute(
                     select(TelemetrySpan).where(
                         TelemetrySpan.project_id == project_id,
@@ -130,7 +158,7 @@ class SelfHealingRules:
 
                 return {
                     "project_id": project_id,
-                    "evaluated_at": datetime.now(timezone.utc).isoformat(),
+                    "evaluated_at": datetime.now(UTC).isoformat(),
                     "window_minutes": _ERROR_RATE_WINDOW_MINUTES,
                     "total_issues": len(all_actions),
                     "by_trigger": {t: len(items) for t, items in by_trigger.items()},
@@ -140,7 +168,7 @@ class SelfHealingRules:
             logger.warning(f"Self-healing evaluation failed: {e}")
             return {
                 "project_id": project_id,
-                "evaluated_at": datetime.now(timezone.utc).isoformat(),
+                "evaluated_at": datetime.now(UTC).isoformat(),
                 "total_issues": 0,
                 "by_trigger": {},
                 "actions": [],

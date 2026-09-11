@@ -3,8 +3,9 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +17,12 @@ from app.models.research_deployment import ResearchDeployment
 from app.services.research_validity_service import persist_task_nugget_evidence_units
 
 logger = logging.getLogger(__name__)
+
+
+def _indefinite_article(value: str) -> str:
+    """Return the article that matches the first sound of a deployment type."""
+    word = value.strip().lower()
+    return "an" if word and word[0] in "aeiou" else "a"
 
 
 def _normalize_channel_instance_ids(channel_instance_ids: list[str]) -> list[str]:
@@ -35,9 +42,7 @@ async def validate_channel_instances_for_project(
     if not scoped_ids:
         return []
 
-    result = await db.execute(
-        select(ChannelInstance).where(ChannelInstance.id.in_(scoped_ids))
-    )
+    result = await db.execute(select(ChannelInstance).where(ChannelInstance.id.in_(scoped_ids)))
     instances = {instance.id: instance for instance in result.scalars().all()}
     if set(instances) != set(scoped_ids):
         raise ValueError("Channel instance not found")
@@ -115,6 +120,56 @@ async def list_deployments(
     return list(result.scalars().all())
 
 
+async def delete_deployment(
+    db: AsyncSession,
+    deployment_id: str,
+    *,
+    project_id: str,
+) -> bool:
+    """Delete one deployment and its project-owned conversation history.
+
+    Deployments intentionally do not have a database foreign key to channel
+    conversations, so cleanup must remove the dependent rows explicitly. Every
+    delete predicate includes the active project boundary to prevent a cleanup
+    request from crossing tenants or deleting a conversation that has been
+    mis-associated with another project.
+    """
+    deployment = await get_deployment(db, deployment_id, project_id=project_id)
+    if deployment is None:
+        return False
+
+    conversation_ids_result = await db.execute(
+        select(ChannelConversation.id).where(
+            ChannelConversation.deployment_id == deployment_id,
+            ChannelConversation.project_id == project_id,
+        )
+    )
+    conversation_ids = list(conversation_ids_result.scalars().all())
+    if conversation_ids:
+        await db.execute(
+            sa_delete(ChannelMessage).where(
+                ChannelMessage.thread_id.in_(conversation_ids),
+                ChannelMessage.project_id == project_id,
+            )
+        )
+        await db.execute(
+            sa_delete(ChannelConversation).where(
+                ChannelConversation.id.in_(conversation_ids),
+                ChannelConversation.project_id == project_id,
+            )
+        )
+
+    await db.delete(deployment)
+    await db.commit()
+    logger.info(
+        "Deleted deployment %s and %d conversation(s) for project %s",
+        deployment_id,
+        len(conversation_ids),
+        project_id,
+    )
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Lifecycle
 # ---------------------------------------------------------------------------
@@ -137,7 +192,8 @@ async def activate_deployment(
     config = json.loads(deployment.config_json)
     intro = config.get(
         "intro_message",
-        f"Hi! We're conducting a {deployment.deployment_type}. Your responses are valuable to us.",
+        f"Hi! We're conducting {_indefinite_article(deployment.deployment_type)} "
+        f"{deployment.deployment_type}. Your responses are valuable to us.",
     )
     first_q = questions[0]["text"] if questions else "Please share your thoughts."
 
@@ -256,7 +312,7 @@ async def handle_response(
 
     # Advance question index
     conversation.current_question_index += 1
-    conversation.last_message_at = datetime.now(timezone.utc)
+    conversation.last_message_at = datetime.now(UTC)
 
     # Check if all scripted questions have been answered
     if conversation.current_question_index >= len(questions):
@@ -271,14 +327,12 @@ async def handle_response(
 
         # Mark completed
         conversation.state = "completed"
-        conversation.completed_at = datetime.now(timezone.utc)
+        conversation.completed_at = datetime.now(UTC)
         deployment.current_responses += 1
         await db.commit()
         return {
             "action": "complete",
-            "thank_you": config.get(
-                "thank_you_message", "Thank you for your responses!"
-            ),
+            "thank_you": config.get("thank_you_message", "Thank you for your responses!"),
             "nugget_id": nugget.id,
         }
 
@@ -308,8 +362,6 @@ async def _generate_adaptive_followup(
         return None
 
     try:
-        from app.core.llm_router import llm_router
-
         prompt = (
             f"You are a UX researcher conducting a {deployment.deployment_type}.\n"
             f'The participant just answered: "{last_response}"\n'
@@ -320,11 +372,19 @@ async def _generate_adaptive_followup(
             "Only output the question text, nothing else."
         )
 
-        result = await llm_router.chat(
-            [{"role": "user", "content": prompt}],
+        # W5: the adaptive follow-up goes through the AgenticDispatcher
+        # (``channel.followup``).
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
+        outcome = await agentic.completion(
+            purpose="channel.followup",
             project_id=deployment.project_id,
+            system=None,
+            messages=[{"role": "user", "content": prompt}],
+            params=TurnParams(),
         )
-        followup = result.get("content", "").strip()
+        followup = outcome.text.strip()
         if followup and followup.upper() != "NONE":
             return followup
     except Exception as e:
@@ -398,13 +458,9 @@ async def get_deployment_analytics(
         sum(completion_times) / len(completion_times) if completion_times else 0
     )
 
-    response_rate = (
-        len(completed) / len(conversations) * 100 if conversations else 0
-    )
+    response_rate = len(completed) / len(conversations) * 100 if conversations else 0
     completion_rate = (
-        len(completed) / deployment.target_responses * 100
-        if deployment.target_responses
-        else 0
+        len(completed) / deployment.target_responses * 100 if deployment.target_responses else 0
     )
 
     return {
@@ -426,24 +482,20 @@ async def get_deployment_analytics(
         "most_answered_questions": sorted(
             per_question_stats, key=lambda x: x["response_count"], reverse=True
         ),
-        "least_answered_questions": sorted(
-            per_question_stats, key=lambda x: x["response_count"]
-        ),
+        "least_answered_questions": sorted(per_question_stats, key=lambda x: x["response_count"]),
     }
 
 
 async def get_deployment_overview(db: AsyncSession, project_id: str) -> dict:
     """Cross-deployment summary for a project."""
     result = await db.execute(
-        select(ResearchDeployment).where(
-            ResearchDeployment.project_id == project_id
-        )
+        select(ResearchDeployment).where(ResearchDeployment.project_id == project_id)
     )
     deployments = list(result.scalars().all())
     active = [d for d in deployments if d.state == "active"]
 
     # Count conversations in last 24h
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    cutoff = datetime.now(UTC) - timedelta(hours=24)
     conv_result = await db.execute(
         select(func.count(ChannelConversation.id))
         .join(
@@ -467,9 +519,7 @@ async def get_deployment_overview(db: AsyncSession, project_id: str) -> dict:
                 "type": d.deployment_type,
                 "state": d.state,
                 "progress": round(
-                    d.current_responses / d.target_responses * 100
-                    if d.target_responses
-                    else 0,
+                    d.current_responses / d.target_responses * 100 if d.target_responses else 0,
                     1,
                 ),
                 "current_responses": d.current_responses,
@@ -477,9 +527,7 @@ async def get_deployment_overview(db: AsyncSession, project_id: str) -> dict:
             }
             for d in active
         ],
-        "completed_deployments": len(
-            [d for d in deployments if d.state == "completed"]
-        ),
+        "completed_deployments": len([d for d in deployments if d.state == "completed"]),
         "last_24h_conversations_initiated": recent_conversations,
     }
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.checkpoint import atomic_write
 from app.skills.skill_models import SkillUpdateProposal
@@ -75,7 +75,7 @@ class SkillProposalMixin:
                 and self._matches_project(proposal, project_id)
             ):
                 proposal.status = "approved"
-                proposal.reviewed_at = datetime.now(timezone.utc).isoformat()
+                proposal.reviewed_at = datetime.now(UTC).isoformat()
                 try:
                     self.update_skill(
                         proposal.skill_name,
@@ -103,7 +103,7 @@ class SkillProposalMixin:
                 and self._matches_project(proposal, project_id)
             ):
                 proposal.status = "rejected"
-                proposal.reviewed_at = datetime.now(timezone.utc).isoformat()
+                proposal.reviewed_at = datetime.now(UTC).isoformat()
                 if reason:
                     proposal.reason += f" [Rejected: {reason}]"
                 self._save_proposals()

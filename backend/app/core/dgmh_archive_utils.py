@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 ARCHIVE_STATUS = {
@@ -36,7 +36,7 @@ _SECRET_PATTERNS = [
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def clean_string(value: Any, *, max_chars: int = 4000) -> str:
@@ -144,7 +144,9 @@ def mutation_kind(source_system: str, proposed_change: dict) -> str:
         "skill_evolution": "skill_design",
         "self_evolution": "persona_promotion",
     }
-    return mapping.get(source_system, normalize_token(proposed_change.get("mutation_kind", "proposal")))
+    return mapping.get(
+        source_system, normalize_token(proposed_change.get("mutation_kind", "proposal"))
+    )
 
 
 def status_from_governance(status: str) -> str:

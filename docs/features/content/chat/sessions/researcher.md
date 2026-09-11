@@ -35,6 +35,7 @@ Chat Sessions exists so the work represented by Chat > Sessions has a stable, di
 - Use the visible controls in this surface to work with chat sessions in the active project context.
 - Rename, star, delete, and reopen sessions only inside the active project; stale sessions from another project are cleared before the new project's list loads.
 - Attach agents only from the active project's visible agent list; the backend rejects stale agent ids from other projects before saving or using the session.
+- Select chat-capable models only; embedding-only model overrides are rejected when a session is created or updated, including stale direct API values.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows

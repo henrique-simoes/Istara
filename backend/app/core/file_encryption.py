@@ -8,8 +8,8 @@ import os
 import stat
 import subprocess
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 from app.config import settings
 
@@ -128,9 +128,19 @@ def resolve_file_encryption_key(*, create: bool = False) -> str:
 
 
 def replace_file_encryption_key(key: str) -> None:
-    """Persist a replacement master key using the configured storage strategy."""
+    """Persist a replacement master key using the configured storage strategy.
+
+    Env-configured deployments also mirror to the env file so rotation
+    survives restarts; Keychain/file strategies persist as before.
+    """
     if settings.file_encryption_key:
         settings.file_encryption_key = key
+        try:
+            from app.core.env_persistence import persist_env_value
+
+            persist_env_value("FILE_ENCRYPTION_KEY", key)
+        except Exception:
+            pass
         return
     if not _write_macos_keychain_secret(settings.file_encryption_keychain_service, key):
         _write_key_file(key)
@@ -299,4 +309,3 @@ def managed_upload_files() -> list[Path]:
     if not root.exists():
         return []
     return [path for path in root.rglob("*") if path.is_file()]
-

@@ -1,6 +1,6 @@
 # Istara Security Benchmark
 
-Last reviewed: 2026-05-19
+Last reviewed: 2026-08-24
 
 This benchmark is the release gate for Istara changes that touch authentication, authorization, sessions, passkeys, secrets, connection strings, pooled compute, MCP/tool execution, webhooks, LLM provider access, autoresearch, self-evolution, or agentic orchestration.
 
@@ -77,6 +77,7 @@ The following areas are always treated as ASVS Level 3 style surfaces even when 
 - MCP client/server tools, webhook ingress, channel integrations, WhatsApp/Telegram connectors, Interfaces Figma/Stitch configuration, and any public callback endpoint.
 - A2A JSON-RPC, loop/background process dashboards, autoresearch, skill evolution, Hyperagent/DGM-H proposals, Memento-style agent creation, ReasoningBank memories, rollback, and proposal approval.
 - Prompt-RAG, vector/RAG, BM25, LLMLingua-style compression, model routing, ensemble/consensus, telemetry, and audit logs where prompt or memory content may affect tool use.
+- Project evidence-chain metrics (`GET /api/metrics/{project_id}`, `GET /api/metrics/{project_id}/model-intelligence`), audit reads (`GET /api/audit/logs`, `GET /api/audit/spans`), audit middleware, and History/VersionHistory surfaces. These routes must enforce project scoping (`require_project_access` when `project_id` is present, global-admin otherwise) and keep telemetry content-free (parameter names and lesson handles only).
 - Chat voice transcription uploads: callers must submit the active
   `project_id`, the project must exist and be visible to the caller, and
   researcher-level project access must be proven before uploaded audio bytes
@@ -90,12 +91,14 @@ project-owned MCP client descriptors, project-only ReasoningBank retrieval defau
 untrusted ReasoningBank retrieval wrapping, and backup
 exclusion of secret-like files plus protected local `LLMs/` and
 `Model_Finetuning/` artifact folders.
-Global LLM server inventory, registration, network discovery, deletion, and
-manual health-check endpoints are shared infrastructure surfaces, not
-project-content lists, but they are still security-sensitive: team-mode callers
+Pi Model Management is the authoritative provider/model surface for both loop
+modes; the classical LLM Server CRUD endpoint is retired. Team-mode callers
 must be global admins before provider endpoint status, capability metadata,
-router health, model/provider switches, hardware/integration/vector/data
-integrity metadata, or explicit health/discovery probes are exposed. The public
+model/provider switches, hardware/integration/vector/data integrity metadata,
+or explicit probes are exposed. A donated relay/browser node enters the Pi
+catalog only through the Petals bridge after explicit consent, current-health,
+and project-scope checks; the loopback hop is credentialed and identity-pinned,
+and it fails closed without a paid-provider fallback. The public
 `/api/settings/status` health endpoint remains unauthenticated for login,
 onboarding, and status bars, but it must be passive and redacted: no provider
 endpoint details, active model identifiers, embedding model identifiers, RAG
@@ -308,6 +311,20 @@ belongs only on dedicated admin reporting surfaces such as
 separate from the project-facing `/api/compute/*` routes. Team-mode wildcard
 donation scopes are rejected during relay validation so legacy all-project
 strings cannot process arbitrary project content.
+
+Formal Research Spine coding is also a security/governance boundary: it
+requires three distinct model identities, complete evidence-unit coverage from
+each admitted coder, numeric current-run Fleiss' Kappa and Krippendorff's Alpha,
+and exact route provenance. Same-model replicas and one/two-model operational
+validation cannot be represented as independent multi-model research evidence.
+
+Remote comparative benchmarks execute dependencies and test code in disposable
+Docker runners. Authoritative results record source revision/state,
+digest-qualified runner identity, deployed backend/frontend image identities,
+engine arm, run group, and the declared isolation mode; missing provenance or
+benchmark blockers cause a non-zero result. Host-side orchestration may invoke
+Docker, but no benchmark dependency or model workload is installed or executed
+directly on the Mac Studio host.
 
 ## Compass Forge Contract
 

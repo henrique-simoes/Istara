@@ -51,6 +51,37 @@ def test_qualitative_coding_prompt_deterministically_injects_protocol_blocks():
     assert "Code evidence units, not keywords" in prompt
 
 
+def test_coding_application_rejects_quote_outside_referenced_evidence_unit():
+    from types import SimpleNamespace
+
+    from app.services.research_validity_service import _usable_coding_applications
+
+    unit = SimpleNamespace(
+        id="eu-grounding-1",
+        stable_id="stable-grounding-1",
+        unit_index=1,
+        source_text="The participant could not find the invitation control.",
+    )
+    parsed = {
+        "applications": [
+            {
+                "evidence_unit_id": unit.id,
+                "codes": ["invitation-discovery"],
+                "quote": "The participant loved the invitation control.",
+            }
+        ]
+    }
+
+    assert (
+        _usable_coding_applications(
+            parsed,
+            unit_by_id={unit.id: unit},
+            units=[unit],
+        )
+        == []
+    )
+
+
 def test_contract_marks_visible_findings_as_provisional_until_reportable():
     from app.core.research_validity import RESEARCH_VALIDITY_CONTRACT
 
@@ -148,6 +179,7 @@ def test_static_research_artifact_constructors_stay_inside_approved_boundaries()
         "backend/app/core/agent_research.py",
         "backend/app/core/report_manager.py",
         "backend/app/services/deployment_service.py",
+        "backend/app/services/inbound_processor.py",
         "backend/app/services/survey_ingestion.py",
         "backend/app/skills/design_tools.py",
     }
@@ -460,45 +492,55 @@ async def test_deployment_response_enters_spine_as_source_evidence_unit():
 
 @pytest.mark.asyncio
 async def test_channel_deployment_skill_outputs_candidate_artifacts(monkeypatch):
-    from app.core.ollama import ollama
+    from types import SimpleNamespace
+
     from app.skills.base import SkillInput
     from app.skills.discover.channel_deployment import ChannelResearchDeploymentSkill
 
-    async def fake_chat(**_kwargs):
-        return {
-            "message": {
-                "content": json.dumps(
-                    {
-                        "themes": [{"name": "permission anxiety", "frequency": 1}],
-                        "nuggets": [
-                            {
-                                "text": "Participant hesitated at the export permission prompt.",
-                                "source": "deployment:onboarding:response:1",
-                                "source_quote": "I am not sure what this export permission does.",
-                                "tags": ["trust", "permissions"],
-                            }
-                        ],
-                        "insights": [
-                            {
-                                "text": "Export permissions create trust friction.",
-                                "confidence": "medium",
-                                "impact": "high",
-                            }
-                        ],
-                        "recommendations": [
-                            {
-                                "text": "Clarify export permission scope before granting access.",
-                                "priority": "high",
-                                "effort": "medium",
-                            }
-                        ],
-                        "data_quality": {"overall_quality": "medium"},
-                    }
-                )
+    analysis_payload = {
+        "themes": [{"name": "permission anxiety", "frequency": 1}],
+        "nuggets": [
+            {
+                "text": "Participant hesitated at the export permission prompt.",
+                "source": "deployment:onboarding:response:1",
+                "source_quote": "I am not sure what this export permission does.",
+                "tags": ["trust", "permissions"],
             }
-        }
+        ],
+        "insights": [
+            {
+                "text": "Export permissions create trust friction.",
+                "confidence": "medium",
+                "impact": "high",
+            }
+        ],
+        "recommendations": [
+            {
+                "text": "Clarify export permission scope before granting access.",
+                "priority": "high",
+                "effort": "medium",
+            }
+        ],
+        "data_quality": {"overall_quality": "medium"},
+    }
 
-    monkeypatch.setattr(ollama, "chat", fake_chat)
+    class _StubAgentic:
+        """W9: the skill analyzes through the dispatcher's structured verb."""
+
+        async def structured(self, **kwargs):  # noqa: ANN001
+            assert kwargs.get("purpose") == "skill.discover_analyze"
+            assert kwargs.get("project_id") == "proj-channel-skill"
+            return SimpleNamespace(
+                text=json.dumps(analysis_payload),
+                value=analysis_payload,
+                status="success",
+                usage={},
+                stop_reason="stop",
+                endpoint_id="ep-stub",
+                tool_calls=[],
+            )
+
+    monkeypatch.setattr("app.core.agentic.agentic", _StubAgentic())
 
     output = await ChannelResearchDeploymentSkill().execute(
         SkillInput(
@@ -683,6 +725,49 @@ def test_reused_model_identity_is_not_counted_as_independent_ensemble():
     assert result["method"] == "invalid_independence"
     assert result["promotion_status"] == "needs_reconciliation"
     assert "reused a model identity" in result["fallback_reason"]
+    assert result["item_promotion_statuses"] == {"eu-1": "needs_reconciliation"}
+    assert result["accepted_evidence_unit_ids"] == []
+    assert result["reconciliation_evidence_unit_ids"] == ["eu-1"]
+
+
+def test_provider_served_identity_is_the_independence_boundary():
+    from app.core.research_validity import evaluate_reliability_gate
+
+    applications = []
+    for coder_id, configured_model in (
+        ("coder-a", "alias-a"),
+        ("coder-b", "alias-b"),
+        ("coder-c", "alias-c"),
+    ):
+        applications.append(
+            {
+                "coder_id": coder_id,
+                "model_name": configured_model,
+                "served_model": "provider/shared-model",
+                "model_checkpoint": configured_model,
+                "provider_account_handle": "account-safe-handle",
+                "endpoint_id": f"endpoint-{coder_id}",
+                "prompt_hash": "prompt-sha256",
+                "codebook_version_id": "codebook-v1",
+                "protocol_version": "protocol-v1",
+                "decoding_profile": {"temperature": 0.2},
+                "conversation_scope": "fresh_session_per_coder_call",
+                "cache_scope": "provider_prefix_cache_no_response_reuse",
+                "evidence_unit_id": "eu-1",
+                "codes": ["nav"],
+            }
+        )
+
+    result = evaluate_reliability_gate(
+        applications,
+        minimum_distinct_models=3,
+        require_rater_provenance=True,
+    )
+
+    assert result["method"] == "invalid_independence"
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["distinct_model_count"] == 1
+    assert "reused a model identity" in result["fallback_reason"]
 
 
 def test_single_model_path_is_lower_assurance():
@@ -725,6 +810,56 @@ async def test_research_validity_summary_route_uses_project_scope(admin_auth_hea
             response.json()["report_gate"]
             == "accepted_reconciled_evidence_from_approved_done_tasks_only"
         )
+
+
+@pytest.mark.asyncio
+async def test_research_validity_summary_counts_only_reconciled_applications(
+    admin_auth_headers,
+):
+    """Summary acceptance counts must match the fail-closed report gate."""
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import app
+    from app.models.code_application import CodeApplication
+    from app.models.database import async_session, init_db
+    from app.models.project import Project
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"proj-summary-reconciliation-{suffix}"
+    await init_db()
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Summary reconciliation"))
+        db.add_all(
+            [
+                CodeApplication(
+                    id=f"ca-summary-unreconciled-{suffix}",
+                    project_id=project_id,
+                    code_id=f"unreconciled-code-{suffix}",
+                    promotion_status="accepted",
+                    review_status="approved",
+                    reconciliation_status="unreconciled",
+                ),
+                CodeApplication(
+                    id=f"ca-summary-reconciled-{suffix}",
+                    project_id=project_id,
+                    code_id=f"reconciled-code-{suffix}",
+                    promotion_status="accepted",
+                    review_status="approved",
+                    reconciliation_status="accepted",
+                ),
+            ]
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/research-validity/{project_id}/summary",
+            headers=admin_auth_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["accepted_code_application_count"] == 1
 
 
 @pytest.mark.asyncio
@@ -799,8 +934,16 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
     project_id = f"proj-coding-run-{suffix}"
     task_id = f"task-coding-run-{suffix}"
     unit_ids = [f"eu-coding-1-{suffix}", f"eu-coding-2-{suffix}"]
+    source_quotes = {
+        unit_id: f"Participant struggled with invitation setup {index}."
+        for index, unit_id in enumerate(unit_ids, 1)
+    }
 
     class FakeCoderNode:
+        """Selection-only coder node: W9 runs the coding through the
+        dispatcher (``_pi_coder_runner``), so the node only carries the
+        attributes ``_select_project_coders`` reads."""
+
         def __init__(self, node_id: str, model_name: str) -> None:
             self.node_id = node_id
             self.name = node_id
@@ -809,36 +952,41 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
             self.is_healthy = True
             self.loaded_models = [model_name]
             self.model_capabilities = {}
-            self.served_request_count = 0
+            self.provider_account_handle = f"account-{node_id}"
 
-        async def chat(self, messages, **kwargs):  # noqa: ANN001
+    class _StubAgentic:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def structured(self, **kwargs):  # noqa: ANN001
+            from types import SimpleNamespace
+
+            assert kwargs["purpose"] == "validity.coder"
             assert kwargs["project_id"] == project_id
-            assert "<qualitative_coding_protocol>" in messages[-1]["content"]
-            self.served_request_count += 1
+            assert "<qualitative_coding_protocol>" in kwargs["messages"][-1]["content"]
+            self.calls += 1
             applications = [
                 {
                     "evidence_unit_id": unit_id,
                     "codes": ["collaboration-disorientation"],
                     "primary_code": "collaboration-disorientation",
-                    "quote": f"quote for {unit_id}",
+                    "quote": source_quotes[unit_id],
                     "confidence": 0.92,
                     "rationale": "The participant is blocked by team invitation setup.",
                 }
                 for unit_id in unit_ids
             ]
-            return {
-                "message": {"content": json.dumps({"applications": applications})},
-                "_istara_route": {
-                    "node_id": self.node_id,
-                    "node_source": self.source,
-                    "provider_type": self.provider_type,
-                    "route_kind": "chat",
-                    "project_id": kwargs["project_id"],
-                    "model": self.loaded_models[0],
-                    "outcome": "served",
-                    "served_request_count": self.served_request_count,
-                },
-            }
+            return SimpleNamespace(
+                text=json.dumps({"applications": applications}),
+                value={"applications": applications},
+                status="success",
+                usage={},
+                stop_reason="stop",
+                endpoint_id="ep-stub",
+                model=kwargs["params"].model,
+                served_model=kwargs["params"].model,
+                tool_calls=[],
+            )
 
     class FakeRouter:
         def __init__(self) -> None:
@@ -854,6 +1002,15 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
 
     await init_db()
     monkeypatch.setattr(research_validity_service, "llm_router", FakeRouter())
+    stub = _StubAgentic()
+    monkeypatch.setattr("app.core.agentic.agentic", stub)
+    # Isolate from the engine-plane lookup (covered by the W7 suite): this
+    # test exercises the legacy-engine coder-selection path.
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr(
+        research_validity_service, "_use_pi_coding_plane", AsyncMock(return_value=False)
+    )
 
     async with async_session() as db:
         for index, unit_id in enumerate(unit_ids, 1):
@@ -879,12 +1036,15 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
             created_by="test-researcher",
         )
 
-        assert result["promotion_status"] == "accepted"
+        # Perfect raw agreement across only one observed category has expected
+        # agreement 1.0, so Fleiss' kappa is undefined rather than evidence of
+        # beyond-chance reliability.
+        assert result["promotion_status"] == "needs_reconciliation"
         assert (
             result["reliability_method"]
             == "fleiss_kappa_with_krippendorff_alpha_companion"
         )
-        assert result["kappa"] == 1.0
+        assert result["kappa"] is None
         assert result["rater_count"] == 3
         assert result["code_application_count"] == 6
         assert {route["model"] for route in result["route_evidence"]} == {
@@ -918,8 +1078,8 @@ async def test_independent_coding_run_persists_model_codes_and_reliability(monke
 
     assert len(app_rows) == 6
     assert len(coder_rows) == 3
-    assert {row.reliability_status for row in app_rows} == {"accepted"}
-    assert {row.promotion_status for row in app_rows} == {"accepted"}
+    assert {row.reliability_status for row in app_rows} == {"needs_reconciliation"}
+    assert {row.promotion_status for row in app_rows} == {"needs_reconciliation"}
     assert {row.task_id for row in app_rows} == {task_id}
 
 
@@ -939,6 +1099,8 @@ async def test_independent_coding_run_repairs_empty_model_application_response(
     unit_id = f"eu-coding-repair-{suffix}"
 
     class RepairableCoderNode:
+        """Selection-only coder node (see the dispatcher note above)."""
+
         node_id = "node-repair"
         name = "node-repair"
         source = "local"
@@ -947,51 +1109,57 @@ async def test_independent_coding_run_repairs_empty_model_application_response(
         loaded_models = ["model-repair"]
         model_capabilities = {}
 
+    class _StubAgentic:
         def __init__(self) -> None:
             self.calls = 0
 
-        async def chat(self, messages, **kwargs):  # noqa: ANN001
+        async def structured(self, **kwargs):  # noqa: ANN001
+            from types import SimpleNamespace
+
+            assert kwargs["project_id"] == project_id
             self.calls += 1
             if self.calls == 1:
-                content = json.dumps({"items": []})
+                value = {"items": []}
             else:
-                content = json.dumps(
-                    {
-                        "code_applications": [
-                            {
-                                "stable_id": "repair-source#EU-0001",
-                                "unit_index": 1,
-                                "codes": ["repairable_coding_output"],
-                                "quote": "Participant needs clearer prep guidance.",
-                                "confidence": 0.72,
-                                "rationale": "The evidence unit describes a guidance gap.",
-                            }
-                        ]
-                    }
-                )
-            return {
-                "message": {"content": content},
-                "_istara_route": {
-                    "node_id": self.node_id,
-                    "node_source": self.source,
-                    "provider_type": self.provider_type,
-                    "route_kind": "chat",
-                    "project_id": kwargs["project_id"],
-                    "model": self.loaded_models[0],
-                    "outcome": "served",
-                    "served_request_count": self.calls,
-                },
-            }
+                value = {
+                    "code_applications": [
+                        {
+                            "stable_id": "repair-source#EU-0001",
+                            "unit_index": 1,
+                            "codes": ["repairable_coding_output"],
+                            "quote": "Participant needs clearer prep guidance.",
+                            "confidence": 0.72,
+                            "rationale": "The evidence unit describes a guidance gap.",
+                        }
+                    ]
+                }
+            return SimpleNamespace(
+                text=json.dumps(value),
+                value=value,
+                status="success",
+                usage={},
+                stop_reason="stop",
+                endpoint_id="ep-stub",
+                model=kwargs["params"].model,
+                served_model=kwargs["params"].model,
+                tool_calls=[],
+            )
 
-    node = RepairableCoderNode()
+    stub = _StubAgentic()
 
     class FakeRouter:
         def _sorted_servers(self, **kwargs):  # noqa: ANN001
             assert kwargs["project_id"] == project_id
-            return [node]
+            return [RepairableCoderNode()]
 
     await init_db()
     monkeypatch.setattr(research_validity_service, "llm_router", FakeRouter())
+    monkeypatch.setattr("app.core.agentic.agentic", stub)
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr(
+        research_validity_service, "_use_pi_coding_plane", AsyncMock(return_value=False)
+    )
 
     async with async_session() as db:
         db.add(
@@ -1026,7 +1194,7 @@ async def test_independent_coding_run_repairs_empty_model_application_response(
             .all()
         )
 
-    assert node.calls == 2
+    assert stub.calls == 2
     assert result["code_application_count"] == 1
     assert len(app_rows) == 1
     assert app_rows[0].code_id == "repairable_coding_output"
@@ -1080,12 +1248,177 @@ async def test_task_research_validity_gate_blocks_unreconciled_report_inputs():
         app.promotion_status = "accepted"
         await db.commit()
 
+        still_blocked = await assess_task_research_validity(
+            db,
+            project_id=project_id,
+            task_id=task_id,
+        )
+        assert still_blocked["report_allowed"] is False
+        assert "unreconciled code application" in still_blocked["reason"]
+
+        # Reliability agreement is not human reconciliation.  Only the
+        # explicit reconciliation state makes coded evidence reportable.
+        app.reconciliation_status = "accepted"
+        app.review_status = "approved"
+        await db.commit()
+
         allowed = await assess_task_research_validity(
             db,
             project_id=project_id,
             task_id=task_id,
         )
         assert allowed["report_allowed"] is True
+
+
+@pytest.mark.asyncio
+async def test_task_research_validity_gate_rejects_stale_acceptance_after_newer_blocked_run():
+    """A failed re-code must invalidate acceptance inherited from an older run."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.models.code_application import CodeApplication
+    from app.models.database import async_session, init_db
+    from app.models.research_validity import CodingRun
+    from app.services.research_validity_service import assess_task_research_validity
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"proj-stale-run-{suffix}"
+    task_id = f"task-stale-run-{suffix}"
+    accepted_run_id = f"run-accepted-{suffix}"
+    now = datetime.now(UTC)
+    await init_db()
+
+    async with async_session() as db:
+        db.add_all(
+            [
+                CodingRun(
+                    id=accepted_run_id,
+                    project_id=project_id,
+                    task_id=task_id,
+                    status="completed",
+                    promotion_status="accepted",
+                    created_at=now - timedelta(minutes=1),
+                ),
+                CodeApplication(
+                    id=f"ca-accepted-{suffix}",
+                    project_id=project_id,
+                    task_id=task_id,
+                    coding_run_id=accepted_run_id,
+                    evidence_unit_id=f"eu-{suffix}",
+                    code_id="previously-accepted-code",
+                    promotion_status="accepted",
+                    reliability_status="accepted",
+                    reconciliation_status="accepted",
+                ),
+                CodingRun(
+                    id=f"run-blocked-{suffix}",
+                    project_id=project_id,
+                    task_id=task_id,
+                    status="blocked",
+                    promotion_status="blocked",
+                    fallback_reason="Current model route is unavailable.",
+                    created_at=now,
+                ),
+            ]
+        )
+        await db.commit()
+
+        result = await assess_task_research_validity(
+            db,
+            project_id=project_id,
+            task_id=task_id,
+        )
+
+    assert result["report_allowed"] is False
+    assert "Latest task coding run is not accepted" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_task_research_validity_gate_revokes_acceptance_for_changed_or_deleted_source():
+    """Accepted codes cannot outlive the exact governed raw-source version."""
+    from app.models.code_application import CodeApplication
+    from app.models.database import async_session, init_db
+    from app.models.document import Document
+    from app.models.project import Project
+    from app.models.research_validity import CodingRun, EvidenceUnit
+    from app.services.research_validity_service import assess_task_research_validity
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"proj-deleted-source-{suffix}"
+    task_id = f"task-deleted-source-{suffix}"
+    document_id = f"doc-deleted-source-{suffix}"
+    evidence_unit_id = f"eu-deleted-source-{suffix}"
+    run_id = f"run-deleted-source-{suffix}"
+    await init_db()
+
+    async with async_session() as db:
+        source = Document(
+            id=document_id,
+            project_id=project_id,
+            title="Participant interview",
+            version=1,
+        )
+        db.add_all(
+            [
+                Project(id=project_id, name="Deleted source gate"),
+                source,
+                EvidenceUnit(
+                    id=evidence_unit_id,
+                    project_id=project_id,
+                    task_id=task_id,
+                    source_document_id=document_id,
+                    source_id=f"document:{document_id}:v1",
+                    stable_id=f"document:{document_id}:v1:0",
+                    source_text="The participant could not find the invitation control.",
+                    metadata_json=json.dumps(
+                        {"document_id": document_id, "document_version": 1}
+                    ),
+                ),
+                CodingRun(
+                    id=run_id,
+                    project_id=project_id,
+                    task_id=task_id,
+                    status="completed",
+                    promotion_status="accepted",
+                ),
+                CodeApplication(
+                    id=f"ca-deleted-source-{suffix}",
+                    project_id=project_id,
+                    task_id=task_id,
+                    coding_run_id=run_id,
+                    evidence_unit_id=evidence_unit_id,
+                    source_document_id=document_id,
+                    code_id="invite-friction",
+                    promotion_status="accepted",
+                    reliability_status="accepted",
+                    reconciliation_status="accepted",
+                ),
+            ]
+        )
+        await db.commit()
+
+        before = await assess_task_research_validity(
+            db, project_id=project_id, task_id=task_id
+        )
+        assert before["report_allowed"] is True
+
+        source.version = 2
+        await db.commit()
+        superseded = await assess_task_research_validity(
+            db, project_id=project_id, task_id=task_id
+        )
+        assert superseded["report_allowed"] is False
+        assert "deleted or superseded source" in superseded["reason"]
+
+        source.version = 1
+        await db.commit()
+        await db.delete(source)
+        await db.commit()
+        after = await assess_task_research_validity(
+            db, project_id=project_id, task_id=task_id
+        )
+
+    assert after["report_allowed"] is False
+    assert "deleted or superseded source" in after["reason"]
 
 
 @pytest.mark.asyncio
@@ -1437,6 +1770,63 @@ async def test_evidence_graph_traceability_fails_closed_without_task_gate():
         trace["report_dependencies"][0]["report_allowed_by_research_validity"] is False
     )
     assert trace["summary"]["blocked_report_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_evidence_graph_traceability_binds_explicit_taskless_coding_run(
+    admin_auth_headers,
+):
+    """Project-level coding runs remain observable without weakening gates."""
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import app
+    from app.models.database import async_session, init_db
+    from app.models.research_validity import CodingRun
+    from app.services.research_validity_service import build_evidence_graph_traceability
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"proj-taskless-trace-{suffix}"
+    run_id = f"run-taskless-trace-{suffix}"
+    await init_db()
+    async with async_session() as db:
+        db.add(
+            CodingRun(
+                id=run_id,
+                project_id=project_id,
+                task_id=None,
+                status="blocked",
+                promotion_status="blocked",
+                reliability_method="no_coders",
+                fallback_reason="insufficient_distinct_pi_models",
+            )
+        )
+        await db.commit()
+
+        trace = await build_evidence_graph_traceability(
+            db,
+            project_id=project_id,
+            coding_run_id=run_id,
+        )
+
+    assert trace["filters"]["coding_run_id"] == run_id
+    assert [row["id"] for row in trace["coding_runs"]] == [run_id]
+    assert trace["summary"]["coding_run_count"] == 1
+    assert trace["summary"]["code_application_count"] == 0
+    assert trace["summary"]["evidence_graph_edge_count"] == 0
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(
+            f"/api/research-validity/{project_id}/traceability",
+            params={"coding_run_id": run_id},
+            headers=admin_auth_headers,
+        )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["filters"]["coding_run_id"] == run_id
+    assert payload["coding_runs"][0]["id"] == run_id
+    assert payload["code_applications"] == []
+    assert payload["summary"]["blocked_report_count"] == 0
 
 
 @pytest.mark.asyncio

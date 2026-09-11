@@ -98,6 +98,17 @@ export default function ContextEditor() {
     setSaving(false);
   };
 
+  const handleDiscard = () => {
+    if (project) {
+      setValues({
+        company_context: project.company_context || "",
+        project_context: project.project_context || "",
+        guardrails: project.guardrails || "",
+      });
+      setHasChanges(false);
+    }
+  };
+
   if (!activeProjectId || !project) {
     return (
       <div className="flex-1 flex items-center justify-center text-slate-400">
@@ -121,19 +132,32 @@ export default function ContextEditor() {
               The agent reads them before every task.
             </p>
           </div>
-          <button
-            onClick={handleSaveAll}
-            disabled={saving}
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ml-4",
-              saved
-                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                : "bg-istara-600 text-white hover:bg-istara-700"
+          <div className="flex items-center gap-2 ml-4">
+            {hasChanges && (
+              <button
+                onClick={handleDiscard}
+                disabled={saving}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                aria-label="Discard unsaved changes"
+              >
+                Discard
+              </button>
             )}
-          >
-            <Save size={14} />
-            {saved ? "Saved!" : saving ? "Saving..." : "Save All"}
-          </button>
+            <button
+              onClick={handleSaveAll}
+              disabled={saving}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                saved
+                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                  : "bg-istara-600 text-white hover:bg-istara-700 shadow-sm"
+              )}
+              aria-label="Save all context changes"
+            >
+              <Save size={14} />
+              {saved ? "Saved!" : saving ? "Saving..." : "Save All"}
+            </button>
+          </div>
         </div>
 
         {/* Context sections */}
@@ -180,14 +204,16 @@ export default function ContextEditor() {
                       setHasChanges(true);
                     }}
                     placeholder={section.placeholder}
+                    aria-label={section.label}
                     rows={8}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-3 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent resize-y"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-3 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent resize-y"
                   />
                   <div className="flex justify-end mt-2">
                     <button
                       onClick={() => handleSave(section.field)}
                       disabled={saving}
-                      className="text-sm text-istara-600 hover:text-istara-700 font-medium"
+                      className="text-xs text-istara-600 hover:text-istara-700 dark:text-istara-400 dark:hover:text-istara-300 font-semibold px-3 py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      aria-label={`Save ${section.label}`}
                     >
                       {saving ? "Saving..." : `Save ${section.label}`}
                     </button>

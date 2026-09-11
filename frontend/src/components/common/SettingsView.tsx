@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Plus, Server, Trash2, Users, Lock, Gauge, Download } from "lucide-react";
-import { settings as settingsApi, llmServers, telemetry as telemetryApi } from "@/lib/api";
+import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Server, Users, Gauge, Download } from "lucide-react";
+import { settings as settingsApi, telemetry as telemetryApi } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
 import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
@@ -19,10 +19,13 @@ import ViewOnboarding from "@/components/common/ViewOnboarding";
 import { resetAllOnboarding } from "@/hooks/useViewOnboarding";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import {
-  MODEL_PROVIDER_OPTIONS,
-  defaultHostForProvider,
-  providerLabel,
-} from "@/lib/modelProviders";
+  mergeModelCatalogs,
+  settingsDefaultChatModel,
+  settingsLlmReadiness,
+} from "@/lib/modelCatalog";
+import AgenticCoreSection from "@/components/settings/AgenticCoreSection";
+import PiModelManagement from "@/components/settings/PiModelManagement";
+import { providerLabel } from "@/lib/modelProviders";
 
 function formatGb(value?: number | null): string {
   return Number.isFinite(value) && Number(value) > 0
@@ -38,6 +41,7 @@ export default function SettingsView() {
   const [models, setModels] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const canManageInfrastructure = capabilities.canManageLlmInfrastructure;
+  const mergedModels = mergeModelCatalogs(models?.models, models?.pi_catalog);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -84,6 +88,9 @@ export default function SettingsView() {
       </div>
     );
   }
+
+  const llmReadiness = settingsLlmReadiness(systemStatus?.llm_readiness);
+  const defaultChatModel = settingsDefaultChatModel(models, systemStatus);
 
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-6">
@@ -141,9 +148,13 @@ export default function SettingsView() {
             <span className="text-sm text-slate-500">
               LLM{models?.provider ? ` (${providerLabel(models.provider)})` : ""}:
             </span>
-            {systemStatus?.services?.llm === "connected" ? (
+            {llmReadiness === "ready" ? (
               <span className="flex items-center gap-1 text-sm text-green-600 font-medium">
-                <Wifi size={14} /> Connected
+                <Wifi size={14} /> Chat ready
+              </span>
+            ) : llmReadiness === "not_ready" ? (
+              <span className="flex items-center gap-1 text-sm text-amber-600 font-medium">
+                <Wifi size={14} /> Reachable, chat unavailable
               </span>
             ) : (
               <span className="flex items-center gap-1 text-sm text-red-500 font-medium">
@@ -151,11 +162,12 @@ export default function SettingsView() {
               </span>
             )}
           </div>
+
           {canManageInfrastructure && (
             <>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-500">Server Model:</span>
-                <span className="text-sm font-mono">{models?.active_model || "—"}</span>
+                <span className="text-sm text-slate-500">Default Chat Model:</span>
+                <span className="text-sm font-mono">{defaultChatModel || "Not configured"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-slate-500">Embed Model:</span>
@@ -165,6 +177,21 @@ export default function SettingsView() {
           )}
         </div>
       </div>
+
+      {/* Agentic Core — first-class configuration, not a status-grid dropdown */}
+      {(models?.agentic_engine_default || systemStatus?.agentic_engine_default) && (
+        <AgenticCoreSection
+          scope="global"
+          value={(models?.agentic_engine_default || systemStatus?.agentic_engine_default) === "pi" ? "pi" : "legacy"}
+          canManage={canManageInfrastructure}
+          onChange={async (engine) => {
+            if (!canManageInfrastructure) return;
+            const result = await settingsApi.setAgenticEngine(engine === "pi" ? "pi" : "istara");
+            setModels((current: any) => current ? { ...current, agentic_engine_default: result.agentic_engine_default === "pi" ? "pi" : "legacy" } : current);
+            setSystemStatus((current: any) => current ? { ...current, agentic_engine_default: result.agentic_engine_default === "pi" ? "pi" : "legacy" } : current);
+          }}
+        />
+      )}
 
       {/* Hardware */}
       {canManageInfrastructure && hardware && (
@@ -246,15 +273,15 @@ export default function SettingsView() {
       )}
 
       {/* Available Models */}
-      {canManageInfrastructure && models?.models && models.models.length > 0 && (
+      {canManageInfrastructure && mergedModels.length > 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
           <h3 className="font-medium text-slate-900 dark:text-white mb-3">Available Models</h3>
           <div className="space-y-2">
-            {models.models.map((model: any) => {
-              const label = providerLabel(model.provider_type);
+            {mergedModels.map((model) => {
+              const label = providerLabel(typeof model.provider_type === "string" ? model.provider_type : null);
               return (
                 <div
-                  key={`${model.name}-${model.server_name || ""}`}
+                  key={`${model.engine}-${model.endpoint_id || model.name}-${model.server_name || ""}`}
                   className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-900"
                 >
                   <div className="min-w-0 flex-1">
@@ -278,24 +305,21 @@ export default function SettingsView() {
                       </span>
                     </div>
                   </div>
-                  {model.name === models.active_model ? (
+                  {model.engine === "pi" ? (
+                    <span
+                      aria-label="Pi catalog model"
+                      className="text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded-full px-2 py-0.5 ml-2 shrink-0"
+                    >
+                      Managed by Pi
+                    </span>
+                  ) : model.name === models.active_model ? (
                     <span className="text-xs bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 rounded-full px-2 py-0.5 ml-2 shrink-0">
-                      Active
+                      Active transport
                     </span>
                   ) : (
-                    <button
-                      onClick={async () => {
-                        try {
-                          await settingsApi.switchModel(model.name);
-                          await fetchAll();
-                        } catch (e) {
-                          console.error("Failed to switch model:", e);
-                        }
-                      }}
-                      className="text-xs px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-istara-100 hover:text-istara-700 transition-colors ml-2 shrink-0"
-                    >
-                      Switch
-                    </button>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 rounded-full px-2 py-0.5 ml-2 shrink-0">
+                      Compatibility inventory
+                    </span>
                   )}
                 </div>
               );
@@ -304,44 +328,8 @@ export default function SettingsView() {
         </div>
       )}
 
-      {/* Pull new model */}
-      {canManageInfrastructure && (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-          <h3 className="font-medium text-slate-900 dark:text-white mb-2">Pull New Model</h3>
-          <p className="text-xs text-slate-500 mb-3">
-            {models?.provider === "lmstudio"
-              ? "Load models through LM Studio's UI, or enter a model name to switch."
-              : models?.provider === "ollama"
-              ? "Download a new model from the Ollama registry."
-              : "Use the provider's model manager, or enter an advertised model name to switch."}
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="e.g., qwen3:7b, llama3:8b, mistral:latest"
-              className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-istara-500"
-              onKeyDown={async (e) => {
-                if (e.key === "Enter") {
-                  const input = e.target as HTMLInputElement;
-                  const model = input.value.trim();
-                  if (model) {
-                    try {
-                      await settingsApi.switchModel(model);
-                      input.value = "";
-                      await fetchAll();
-                    } catch (err) {
-                      console.error("Failed to pull model:", err);
-                    }
-                  }
-                }
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* LLM Servers */}
-      {capabilities.canManageLlmInfrastructure && <LLMServersSection />}
+      {/* Pi Model Management — replaces the legacy LLM Servers section (owner decision 2026-08-23) */}
+      {capabilities.canManageLlmInfrastructure && <PiModelManagement />}
 
       {/* Telemetry (Local-first, No phone-home) */}
       {capabilities.canManageTelemetry && <TelemetrySection />}
@@ -428,6 +416,7 @@ function TelemetrySection() {
   } | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<string | null>(null);
+  const [persistenceNotice, setPersistenceNotice] = useState<string | null>(null);
 
   const fetchTelemetryStatus = async () => {
     try {
@@ -445,7 +434,18 @@ function TelemetrySection() {
     try {
       const result = await telemetryApi.toggle(!telemetryEnabled);
       setTelemetryEnabled(result.telemetry_enabled);
-    } catch {}
+      setPersistenceNotice(
+        result.message.toLowerCase().includes("persistence is unavailable")
+          ? result.message
+          : null,
+      );
+    } catch (error) {
+      setPersistenceNotice(
+        error instanceof Error
+          ? `Telemetry update failed: ${error.message}`
+          : "Telemetry update failed. Try again.",
+      );
+    }
   };
 
   const handleExport = async () => {
@@ -525,251 +525,21 @@ function TelemetrySection() {
         </div>
       )}
 
+      {persistenceNotice && (
+        <div
+          className="mb-3 text-xs p-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded border border-amber-100 dark:border-amber-800"
+          role="status"
+        >
+          {persistenceNotice}
+        </div>
+      )}
+
       <div className="text-xs text-slate-400">
         Status: <span className={telemetryEnabled ? "text-green-500 font-medium" : "text-slate-500"}>
           {telemetryEnabled ? "Recording active" : "Recording paused"}
         </span>
         {telemetryEnabled && " • Data stored locally in SQLite."}
       </div>
-    </div>
-  );
-}
-
-function LLMServersSection() {
-  const { user, teamMode } = useAuthStore();
-  const [servers, setServers] = useState<any[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newHost, setNewHost] = useState("");
-  const [newType, setNewType] = useState("openai_compat");
-  const [newApiKey, setNewApiKey] = useState("");
-  const [addError, setAddError] = useState<string | null>(null);
-  const selectedProvider = MODEL_PROVIDER_OPTIONS.find((option) => option.value === newType);
-  const canManageLLMServers = !teamMode || user?.role === "admin";
-
-  const fetchServers = useCallback(async () => {
-    if (!canManageLLMServers) {
-      setServers([]);
-      return;
-    }
-    try {
-      const data = await llmServers.list();
-      setServers(data.servers || []);
-    } catch {}
-  }, [canManageLLMServers]);
-
-  useEffect(() => {
-    if (!canManageLLMServers) {
-      setServers([]);
-      return;
-    }
-    void fetchServers();
-  }, [canManageLLMServers, fetchServers]);
-
-  const handleAdd = async () => {
-    if (!canManageLLMServers || !newName.trim() || !newHost.trim()) return;
-    setAddError(null);
-    try {
-      const result = await llmServers.add({
-        name: newName.trim(),
-        provider_type: newType,
-        host: newHost.trim(),
-        api_key: newApiKey.trim() || undefined,
-      });
-      setNewName("");
-      setNewHost("");
-      setNewApiKey("");
-      setShowAdd(false);
-      await fetchServers();
-      // If the server was added but is unhealthy, show a toast with guidance
-      if (result && !result.is_healthy) {
-        window.dispatchEvent(
-          new CustomEvent("istara:toast", {
-            detail: {
-              type: "warning",
-              title: "Server Unreachable",
-              message: `${newName.trim()} was added but could not connect. Check the host URL and API key.`,
-            },
-          })
-        );
-      }
-    } catch (err: any) {
-      setAddError(err.message || "Failed to add server");
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!canManageLLMServers) return;
-    try {
-      await llmServers.delete(id);
-      await fetchServers();
-    } catch (err: any) {
-      window.dispatchEvent(
-        new CustomEvent("istara:toast", {
-          detail: {
-            type: "error",
-            title: "Delete Failed",
-            message: err.message || "Failed to remove server",
-          },
-        })
-      );
-    }
-  };
-
-  const handleHealthCheck = async (id: string) => {
-    if (!canManageLLMServers) return;
-    try {
-      await llmServers.healthCheck(id);
-      await fetchServers();
-    } catch (err: any) {
-      window.dispatchEvent(
-        new CustomEvent("istara:toast", {
-          detail: {
-            type: "error",
-            title: "Health Check Failed",
-            message: err.message || "Could not reach server",
-          },
-        })
-      );
-    }
-  };
-
-  if (!canManageLLMServers) {
-    return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
-            <Server size={18} />
-            LLM Servers
-          </h3>
-          <Lock size={16} className="text-slate-400" aria-hidden="true" />
-        </div>
-        <p className="text-sm text-slate-500">
-          Global admin access is required to manage shared provider endpoints.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
-          <Server size={18} />
-          LLM Servers
-        </h3>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
-          className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
-          aria-label="Add LLM server"
-        >
-          <Plus size={16} />
-        </button>
-      </div>
-
-      <p className="text-xs text-slate-500 mb-3">
-        Connect to Ollama, LM Studio, Anthropic, or any OpenAI-compatible model server.
-      </p>
-
-      {showAdd && (
-        <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg space-y-2">
-          <input
-            type="text"
-            placeholder="Server name"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
-          />
-          <input
-            type="text"
-            placeholder="Host URL (e.g. http://192.168.1.100:1234 or https://api.anthropic.com)"
-            value={newHost}
-            onChange={(e) => setNewHost(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
-          />
-          <select
-            value={newType}
-            onChange={(e) => {
-              const nextType = e.target.value;
-              setNewType(nextType);
-              if (!newHost.trim()) {
-                setNewHost(defaultHostForProvider(nextType));
-              }
-            }}
-            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
-            aria-label="Provider type"
-          >
-            {MODEL_PROVIDER_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          {selectedProvider && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {selectedProvider.description}
-            </p>
-          )}
-          <input
-            type="password"
-            placeholder="API key (leave blank if server has no auth)"
-            value={newApiKey}
-            onChange={(e) => setNewApiKey(e.target.value)}
-            className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
-            aria-label="API key"
-          />
-          {addError && (
-            <p className="text-xs text-red-500">{addError}</p>
-          )}
-          <button
-            onClick={handleAdd}
-            className="w-full py-1.5 bg-istara-600 hover:bg-istara-700 text-white text-sm font-medium rounded"
-          >
-            Add Server
-          </button>
-        </div>
-      )}
-
-      {servers.length > 0 ? (
-        <div className="space-y-2">
-          {servers.map((s) => (
-            <div key={s.id} className="flex items-center gap-2 p-2 rounded border border-slate-100 dark:border-slate-700">
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${s.is_healthy ? "bg-green-500" : "bg-red-500"}`} title={s.is_healthy ? "Connected" : (s.health_error || "Unreachable")} />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-800 dark:text-slate-200 flex items-center gap-1">
-                  {s.name}
-                  {s.has_api_key && <span title="API key configured"><Lock size={10} className="text-slate-400" /></span>}
-                </div>
-                <div className="text-xs text-slate-400 truncate">
-                  {s.host} ({providerLabel(s.provider_type)})
-                </div>
-                {!s.is_healthy && s.health_error && (
-                  <div className="text-xs text-red-500 mt-0.5 truncate" title={s.health_error}>{s.health_error.length > 60 ? s.health_error.slice(0, 60) + "…" : s.health_error}</div>
-                )}
-              </div>
-              <button
-                onClick={() => handleHealthCheck(s.id)}
-                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400"
-                aria-label="Check health"
-                title="Health check"
-              >
-                <RefreshCw size={12} />
-              </button>
-              <button
-                onClick={() => handleDelete(s.id)}
-                className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500"
-                aria-label="Remove server"
-              >
-                <Trash2 size={12} />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-slate-400">
-          No external servers. Local and OpenAI-compatible servers can be added here.
-        </p>
-      )}
     </div>
   );
 }

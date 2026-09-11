@@ -25,7 +25,9 @@ const config = defineConfig([
       "react/no-unescaped-entities": "off",
     },
   },
-  globalIgnores([".next/**", "next-env.d.ts", "node_modules/**"]),
+  // Generated directories that git ignores must also be lint-ignored (M-16):
+  // a leftover Stryker sandbox produced ~232 phantom lint errors.
+  globalIgnores([".next/**", "next-env.d.ts", "node_modules/**", ".stryker-tmp/**"]),
 ]);
 
 export default config;

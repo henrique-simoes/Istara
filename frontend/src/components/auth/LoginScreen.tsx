@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 
 import { API_BASE } from "@/lib/runtimeConfig";
+import { getToken, setToken } from "@/lib/tokenStore";
 
 interface LoginScreenProps {
   onLogin: () => Promise<boolean | void>;
@@ -43,6 +44,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     const checkServer = async (attempt = 0): Promise<void> => {
       try {
         const res = await fetch(`${API_BASE}/api/auth/team-status`, {
+          credentials: "include",
           signal: AbortSignal.timeout(5000),
         });
         const d = await res.json();
@@ -109,6 +111,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       const { startAuthentication } = await import("@simplewebauthn/browser");
 
       const startRes = await fetch(`${API_BASE}/api/webauthn/authenticate/start`, {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: username.trim() }),
@@ -122,6 +125,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       const assertion = await startAuthentication({ optionsJSON: startData.publicKey });
 
       const finishRes = await fetch(`${API_BASE}/api/webauthn/authenticate/finish`, {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -140,7 +144,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         throw new Error(err.detail || "Passkey verification failed");
       }
       const data = await finishRes.json();
-      localStorage.setItem("istara_token", data.token);
+      setToken(data.token);
       await onLogin();
     } catch (err) {
       if (err instanceof TypeError && err.message === "Failed to fetch") {
@@ -160,7 +164,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       if (typeof window !== "undefined" && !window.PublicKeyCredential) {
         throw new Error("This browser does not support passkeys. You can set one up later from Settings on a supported browser.");
       }
-      const token = localStorage.getItem("istara_token");
+      const token = getToken();
       const userId = localStorage.getItem("istara_auth_user_id");
       if (!token || !userId || !username.trim()) {
         throw new Error("Your session is not ready for passkey setup. You can set one up later from Settings.");
@@ -168,6 +172,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       const { startRegistration } = await import("@simplewebauthn/browser");
 
       const startRes = await fetch(`${API_BASE}/api/webauthn/register/start`, {
+        credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -183,6 +188,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       const attestation = await startRegistration({ optionsJSON: startData.publicKey });
 
       const finishRes = await fetch(`${API_BASE}/api/webauthn/register/finish`, {
+        credentials: "include",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -227,6 +233,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         setLoading(true);
         try {
           const res = await fetch(`${API_BASE}/api/connections/validate`, {
+            credentials: "include",
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ connection_string: connectionString.trim() }),
@@ -247,6 +254,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       setLoading(true);
       try {
         const res = await fetch(`${API_BASE}/api/connections/redeem`, {
+          credentials: "include",
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -261,7 +269,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           throw new Error(data.detail || "Redemption failed");
         }
         const data = await res.json();
-        localStorage.setItem("istara_token", data.token);
+        setToken(data.token);
         if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
         setRecoveryCodes(data.recovery_codes || []);
         setRecoveryCodesConfirmed(false);
@@ -303,6 +311,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       setLoading(true);
       try {
         const res = await fetch(`${API_BASE}/api/auth/register`, {
+          credentials: "include",
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -317,7 +326,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           throw new Error(data.detail || "Registration failed");
         }
         const data = await res.json();
-        localStorage.setItem("istara_token", data.token);
+        setToken(data.token);
         if (data.user?.id) localStorage.setItem("istara_auth_user_id", data.user.id);
         setRecoveryCodes(data.recovery_codes || []);
         setRecoveryCodesConfirmed(false);
@@ -341,6 +350,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         setLoading(true);
         try {
           const res = await fetch(`${API_BASE}/api/auth/login`, {
+            credentials: "include",
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username: username.trim(), password }),
@@ -356,7 +366,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             setLoading(false);
             return;
           }
-          localStorage.setItem("istara_token", data.token);
+          setToken(data.token);
           await onLogin();
         } catch (err) {
           if (err instanceof TypeError && err.message === "Failed to fetch") {
@@ -388,6 +398,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             body.totp_code = totpCode.trim();
           }
           const res = await fetch(`${API_BASE}/api/auth/login`, {
+            credentials: "include",
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
@@ -397,7 +408,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             throw new Error(data.detail || "Verification failed");
           }
           const data = await res.json();
-          localStorage.setItem("istara_token", data.token);
+          setToken(data.token);
           await onLogin();
         } catch (err) {
           if (err instanceof TypeError && err.message === "Failed to fetch") {

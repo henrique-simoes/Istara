@@ -1,0 +1,7 @@
+{
+  "scope-boundary": "When a researcher deletes a Document backed by a file inside settings.upload_dir, remove that managed upload artifact and its indexed source so automatic sync cannot resurrect it. Only USER_UPLOAD documents may trigger managed-file cleanup; PROJECT_FILE documents and any path outside the managed upload root must remain untouched. Preserve the existing 204 response, project authorization, and Research Spine records for unrelated documents.",
+  "contract-compatibility": "Keep DELETE /api/documents/{document_id} authorization, project scoping, and 204 response unchanged. Cleanup is best-effort and path-safe; missing files are acceptable, but an external or watch-folder file must never be unlinked.",
+  "verification-bar": "Add focused async API tests covering managed USER_UPLOAD deletion removes the file and row, while PROJECT_FILE deletion leaves the external file untouched. Run the focused document suite, relevant full backend regression, feature-doc generation check, Compass Forge gates, and a rebuilt Mac Studio QA upload-delete-sync browser/API acceptance.",
+  "rollback": "Revert the small route/test change; no schema or migration is required. QA cleanup is limited to the disposable istara-qa-testing-20260829 project after exact inventory and backup checks.",
+  "docs": "Run python scripts/feature_docs.py --seed-missing --generate-site --check. Append the synchronized Build Stream ledger entry with the causal defect, safety boundary, tests, gates, and live QA evidence."
+}

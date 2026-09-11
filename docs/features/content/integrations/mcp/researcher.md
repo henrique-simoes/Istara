@@ -8,8 +8,8 @@ related_features: ["skills.catalog", "agents.registry"]
 related_glossary: ["mcp"]
 code_references: ["frontend/src/components/integrations/MCPTab.tsx", "frontend/src/components/integrations/MCPServerSetup.tsx", "frontend/src/components/integrations/MCPAccessPolicyEditor.tsx", "frontend/src/components/integrations/MCPAuditLog.tsx", "backend/app/api/routes/mcp.py"]
 api_references: ["backend/app/api/routes/mcp.py"]
-test_references: ["tests/test_mcp.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
+test_references: ["tests/test_mcp.py", "tests/test_mcp_ui_contracts.py", "frontend/src/lib/mcpUrl.test.ts", "tests/test_project_scope_contracts.py"]
+last_verified: 2026-09-02
 compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-759; CF-SPEC-60 / CF-776
 ---
 
@@ -47,7 +47,10 @@ MCP Integrations exists so the work represented by Integrations > MCP has a stab
 - Project-scoped MCP server registrations associated with the selected project.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 - Discovery, deletion, health checks, cached tool views, and tool calls only operate on MCP servers owned by the active project.
+- If a server save is rejected (for example, because the URL or headers are invalid), the setup form remains available and shows the returned error so the researcher can correct the input.
+- The setup form keeps Test Connection and Save Server disabled until the URL is an absolute HTTP(S) endpoint without embedded credentials or query parameters, and shows an inline correction message for malformed values.
 - Admin MCP audit review in the Integrations MCP tab is filtered to the active project. Cross-project MCP audit aggregation is reserved for explicit global-admin reporting surfaces.
+- If an external MCP health check or tool call fails, the UI receives stable credential/network guidance; private endpoint and transport exception details stay in server logs.
 
 ## Caveats
 

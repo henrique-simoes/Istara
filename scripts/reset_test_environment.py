@@ -66,19 +66,27 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Reset only the local Istara test database/artifacts and seed test users."
     )
-    parser.add_argument("--confirm", required=True, help=f"Must equal {RESET_CONFIRMATION}")
+    parser.add_argument(
+        "--confirm", required=True, help=f"Must equal {RESET_CONFIRMATION}"
+    )
     parser.add_argument("--admin-username", default=DEFAULT_ADMIN_USERNAME)
     parser.add_argument("--admin-password", default=DEFAULT_ADMIN_PASSWORD)
-    parser.add_argument("--researchers", type=int, default=0, help="Number of researcher_N users.")
+    parser.add_argument(
+        "--researchers", type=int, default=0, help="Number of researcher_N users."
+    )
     parser.add_argument("--researcher-password", default=DEFAULT_RESEARCHER_PASSWORD)
-    parser.add_argument("--dry-run", action="store_true", help="Print actions without deleting files.")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print actions without deleting files."
+    )
     return parser.parse_args()
 
 
 def require_confirmation(args: argparse.Namespace) -> None:
     enabled = os.environ.get(RESET_ENV_FLAG, "").lower() in {"1", "true", "yes"}
     if not enabled:
-        raise SystemExit(f"Refusing reset: set {RESET_ENV_FLAG}=1 to confirm local destructive intent.")
+        raise SystemExit(
+            f"Refusing reset: set {RESET_ENV_FLAG}=1 to confirm local destructive intent."
+        )
     if args.confirm != RESET_CONFIRMATION:
         raise SystemExit(f"Refusing reset: --confirm must be {RESET_CONFIRMATION}.")
     if args.researchers < 0:
@@ -94,7 +102,9 @@ def resolve_sqlite_path(database_url: str) -> Path:
         )
     raw_path = database_url.removeprefix(prefix)
     if raw_path in {"", ":memory:"}:
-        raise SystemExit("Refusing reset: in-memory or empty SQLite path is not resettable.")
+        raise SystemExit(
+            "Refusing reset: in-memory or empty SQLite path is not resettable."
+        )
     path = Path(raw_path)
     if not path.is_absolute():
         path = BACKEND_ROOT / path
@@ -103,8 +113,13 @@ def resolve_sqlite_path(database_url: str) -> Path:
         (PROJECT_ROOT / "data").resolve(),
         (BACKEND_ROOT / "data").resolve(),
     }
-    if not any(data_root == resolved.parent or data_root in resolved.parents for data_root in allowed_data_roots):
-        raise SystemExit(f"Refusing reset: SQLite path is outside the local data directory: {resolved}")
+    if not any(
+        data_root == resolved.parent or data_root in resolved.parents
+        for data_root in allowed_data_roots
+    ):
+        raise SystemExit(
+            f"Refusing reset: SQLite path is outside the local data directory: {resolved}"
+        )
     return resolved
 
 
@@ -147,7 +162,9 @@ def assert_not_protected(path: Path) -> None:
     resolved = path.resolve()
     for protected in PROTECTED_PATHS:
         if resolved == protected or protected in resolved.parents:
-            raise SystemExit(f"Refusing reset: protected local artifact path would be touched: {resolved}")
+            raise SystemExit(
+                f"Refusing reset: protected local artifact path would be touched: {resolved}"
+            )
 
 
 def remove_path(path: Path, *, dry_run: bool) -> None:

@@ -7,9 +7,16 @@
 export const name = "Meta-Hyperagent";
 export const id = "52-meta-hyperagent";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "meta-hyperagent",
+    navLabel: "Meta-Agent",
+    markers: ["Meta-Hyperagent", "Meta"],
+    screenshot: "52-meta-view",
+  });
   const projectId = typeof ctx.projectId === "string" ? ctx.projectId.trim() : "";
   const scopedSkipDetail = "[skipped] No active project id; scoped endpoint not called";
 

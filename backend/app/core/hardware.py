@@ -133,7 +133,9 @@ def _detect_apple_gpu() -> GpuInfo | None:
                 text=True,
                 timeout=5,
             )
-            chip_name = chip_result.stdout.strip() if chip_result.returncode == 0 else "Apple Silicon"
+            chip_name = (
+                chip_result.stdout.strip() if chip_result.returncode == 0 else "Apple Silicon"
+            )
             return GpuInfo(vendor="Apple", name=chip_name, vram_mb=vram_mb)
     except (subprocess.TimeoutExpired, ValueError):
         pass
@@ -142,7 +144,7 @@ def _detect_apple_gpu() -> GpuInfo | None:
 
 def detect_hardware() -> HardwareProfile:
     """Detect system hardware capabilities."""
-    import psutil  # noqa: delayed import — psutil may not be in all envs
+    import psutil  # noqa: F401 — delayed import, psutil may not be in all envs
 
     mem = psutil.virtual_memory()
     total_ram_gb = round(mem.total / (1024**3), 1)
@@ -175,7 +177,9 @@ def recommend_model(profile: HardwareProfile) -> ModelRecommendation:
                 quantization="Q5_K_M",
                 context_length=8192,
                 gpu_layers=-1,
-                reason=f"Apple Silicon with {profile.total_ram_gb}GB unified memory — full GPU offload",
+                reason=(
+                    f"Apple Silicon with {profile.total_ram_gb}GB unified memory — full GPU offload"
+                ),
             )
         if ram >= 6:
             return ModelRecommendation(
@@ -190,7 +194,10 @@ def recommend_model(profile: HardwareProfile) -> ModelRecommendation:
             quantization="Q4_K_M",
             context_length=4096,
             gpu_layers=-1,
-            reason=f"Apple Silicon with limited RAM ({profile.total_ram_gb}GB) — smaller model for comfort",
+            reason=(
+                f"Apple Silicon with limited RAM ({profile.total_ram_gb}GB) — "
+                "smaller model for comfort"
+            ),
         )
 
     # Discrete GPU path

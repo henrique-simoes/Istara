@@ -2,8 +2,7 @@
 
 import pytest
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
 
 class TestTelemetrySpanModel:
@@ -57,6 +56,18 @@ class TestTelemetrySpanModel:
         forbidden = {"prompt", "response", "user_content", "file_content", "url"}
         for field in forbidden:
             assert field not in columns, f"TelemetrySpan should not store {field}"
+
+    def test_trace_identifiers_fit_prefixed_agentic_ids(self):
+        from app.models.telemetry_span import TelemetrySpan
+
+        trace_column = TelemetrySpan.__table__.c.trace_id
+        parent_column = TelemetrySpan.__table__.c.parent_id
+
+        # Usage and agentic paths prefix a 32-character UUID hex value. The
+        # schema must preserve the complete provenance handle rather than
+        # truncating it or rejecting the telemetry write.
+        assert trace_column.type.length >= len(f"agentic-{uuid.uuid4().hex}")
+        assert parent_column.type.length >= len(f"agentic-{uuid.uuid4().hex}")
 
 
 class TestAgentHooks:
@@ -168,10 +179,14 @@ class TestTelemetryRecorder:
         project_b = await telemetry_recorder.get_model_intelligence("project-b")
 
         project_a_models = {
-            row["model_name"] for row in project_a["leaderboard"] if row["skill_name"] == skill_name
+            row["model_name"]
+            for row in project_a["leaderboard"]
+            if row["skill_name"] == skill_name
         }
         project_b_models = {
-            row["model_name"] for row in project_b["leaderboard"] if row["skill_name"] == skill_name
+            row["model_name"]
+            for row in project_b["leaderboard"]
+            if row["skill_name"] == skill_name
         }
         assert project_a_models == {model_a}
         assert project_b_models == {model_b}
@@ -194,6 +209,10 @@ class TestTelemetryRecorder:
                 project_id="proj-123",
             )
             assert result is None
+            health = recorder.write_health_snapshot()
+            assert health["healthy"] is False
+            assert health["write_failures"] == 1
+            assert health["last_failure_at"]
 
     @pytest.mark.asyncio
     async def test_research_validity_audit_summarizes_content_free_handles(self):
@@ -292,14 +311,17 @@ class TestTelemetryRecorder:
         register_builtin_hooks()
 
         context = {"_start_time": 0, "skill_name": "test"}
-        
-        with patch("app.core.telemetry.telemetry_recorder.record_span", new_callable=AsyncMock) as mock_record:
+
+        with patch(
+            "app.core.telemetry.telemetry_recorder.record_span", new_callable=AsyncMock
+        ) as mock_record:
             # 1. Test disabled (default)
             with patch.object(settings, "telemetry_enabled", False):
                 await agent_hooks.fire("pre_task", context)
                 await agent_hooks.fire("post_task", context)
                 # Wait a bit
                 import asyncio
+
                 await asyncio.sleep(0.01)
                 # Should not record spans if disabled
                 assert mock_record.call_count == 0
@@ -324,3 +346,319 @@ class TestModelIntelligenceEndpoint:
         assert any("model-intelligence" in r for r in routes), (
             f"model-intelligence route not found in {routes}"
         )
+
+
+class TestEnhancedToolAndSteeringTelemetry:
+    @pytest.mark.asyncio
+    async def test_record_tool_call_persists_canonical_otel_span(self):
+        from app.core.telemetry import telemetry_recorder
+        from app.models.database import async_session, init_db
+        from app.models.telemetry_span import TelemetrySpan
+        from sqlalchemy import select
+
+        await init_db()
+        project_id = f"proj-tool-{uuid.uuid4().hex[:8]}"
+        trace_id = f"trace-tool-{uuid.uuid4().hex[:8]}"
+
+        await telemetry_recorder.record_tool_call(
+            tool_name="search_documents",
+            duration_ms=42.5,
+            success=True,
+            project_id=project_id,
+            agent_id="test-agent",
+            trace_id=trace_id,
+            task_id="task-123",
+        )
+
+        async with async_session() as session:
+            stmt = select(TelemetrySpan).where(
+                TelemetrySpan.project_id == project_id,
+                TelemetrySpan.operation == "tool_call",
+            )
+            res = await session.execute(stmt)
+            span = res.scalar_one_or_none()
+
+            assert span is not None
+            assert span.tool_name == "search_documents"
+            assert span.tool_success == 1
+            assert span.tool_duration_ms == 42.5
+            assert span.status == "success"
+            assert span.agent_id == "test-agent"
+            assert span.task_id == "task-123"
+
+    @pytest.mark.asyncio
+    async def test_tool_audit_metadata_persists_content_free_handles(self):
+        from app.core.telemetry import telemetry_recorder
+        from app.models.database import async_session, init_db
+        from app.models.telemetry_span import TelemetrySpan
+        from sqlalchemy import select
+
+        await init_db()
+        project_id = f"proj-tool-audit-{uuid.uuid4().hex[:8]}"
+
+        await telemetry_recorder.record_tool_call(
+            tool_name="search_documents",
+            duration_ms=18.0,
+            success=True,
+            project_id=project_id,
+            arguments_summary="query, phase",
+            reasoning_bank_id="lesson-123",
+        )
+
+        async with async_session() as session:
+            span = (
+                await session.execute(
+                    select(TelemetrySpan).where(
+                        TelemetrySpan.project_id == project_id,
+                        TelemetrySpan.operation == "tool_call",
+                    )
+                )
+            ).scalar_one()
+
+            assert span.arguments_summary == "query, phase"
+            assert span.reasoning_bank_id == "lesson-123"
+
+    def test_content_free_arguments_summary_never_includes_values(self):
+        from app.skills.system_actions import _content_free_arguments_summary
+
+        summary = _content_free_arguments_summary(
+            {
+                "query": "elderly accessibility constraints",
+                "phase": "discover",
+                "_trace_id": "secret-trace",
+                "_model_name": "secret-model",
+            }
+        )
+        assert summary == "phase, query"
+        assert "elderly" not in summary
+        assert "secret" not in summary
+
+    @pytest.mark.asyncio
+    async def test_record_steering_event_persists_action_and_queue_depth(self):
+        from app.core.telemetry import telemetry_recorder
+        from app.models.database import async_session, init_db
+        from app.models.telemetry_span import TelemetrySpan
+        from sqlalchemy import select
+
+        await init_db()
+        project_id = f"proj-steer-{uuid.uuid4().hex[:8]}"
+
+        await telemetry_recorder.record_steering_event(
+            project_id=project_id,
+            agent_id="istara-main",
+            action="steer_queued",
+            queue_depth=3,
+        )
+
+        async with async_session() as session:
+            stmt = select(TelemetrySpan).where(
+                TelemetrySpan.project_id == project_id,
+                TelemetrySpan.operation == "steering.event",
+            )
+            res = await session.execute(stmt)
+            span = res.scalar_one_or_none()
+
+            assert span is not None
+            assert span.event_kind == "agent_steering"
+            assert span.agent_id == "istara-main"
+            assert "steer_queued:queue_depth=3" in span.route_id
+
+    @pytest.mark.asyncio
+    async def test_record_reliability_evaluation_persists_research_metrics(self):
+        from app.core.telemetry import telemetry_recorder
+        from app.models.database import async_session, init_db
+        from app.models.telemetry_span import TelemetrySpan
+        from sqlalchemy import select
+
+        await init_db()
+        project_id = f"proj-reliability-{uuid.uuid4().hex[:8]}"
+
+        await telemetry_recorder.record_reliability_evaluation(
+            project_id=project_id,
+            coding_run_id="run-kripp-1",
+            metric_name="fleiss_kappa",
+            score=0.74,
+            alpha=0.71,
+            threshold=0.60,
+            rater_count=3,
+            item_count=12,
+            promotion_status="accepted",
+        )
+
+        async with async_session() as session:
+            stmt = select(TelemetrySpan).where(
+                TelemetrySpan.project_id == project_id,
+                TelemetrySpan.operation == "coding_run.reliability",
+            )
+            res = await session.execute(stmt)
+            span = res.scalar_one_or_none()
+
+            assert span is not None
+            assert span.reliability_score == 0.74
+            assert span.consensus_score == 0.71
+            assert span.status == "success"
+            assert "fleiss_kappa:raters=3:items=12:threshold=0.6" in span.route_id
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_telemetry_integration(self):
+        from app.skills.system_actions import execute_tool
+        from app.models.database import async_session, init_db
+        from app.models.telemetry_span import TelemetrySpan
+        from sqlalchemy import select
+
+        await init_db()
+        project_id = f"proj-exec-{uuid.uuid4().hex[:8]}"
+
+        # 1. Unknown tool
+        unknown_res = await execute_tool("nonexistent_tool_xyz", {}, project_id=project_id)
+        assert unknown_res["success"] is False
+
+        # 2. Known tool (search_documents)
+        known_res = await execute_tool(
+            "search_documents",
+            {"query": "test query"},
+            project_id=project_id,
+            agent_id="test-agent",
+        )
+        assert known_res["success"] is True
+
+        async with async_session() as session:
+            stmt = select(TelemetrySpan).where(
+                TelemetrySpan.project_id == project_id,
+                TelemetrySpan.operation == "tool_call",
+            ).order_by(TelemetrySpan.created_at.asc())
+            res = await session.execute(stmt)
+            spans = res.scalars().all()
+
+            assert len(spans) == 2
+            # Span 0: unknown tool
+            assert spans[0].tool_name == "nonexistent_tool_xyz"
+            assert spans[0].tool_success == 0
+            assert spans[0].error_type == "unknown_tool"
+
+            # Span 1: search_documents
+            assert spans[1].tool_name == "search_documents"
+            assert spans[1].tool_success == 1
+            assert spans[1].tool_duration_ms > 0
+            assert spans[1].agent_id == "test-agent"
+
+    @pytest.mark.asyncio
+    async def test_get_model_intelligence_includes_enhanced_aggregates(self):
+        from app.core.telemetry import telemetry_recorder
+        from app.models.database import init_db
+
+        await init_db()
+        project_id = f"proj-intel-{uuid.uuid4().hex[:8]}"
+
+        await telemetry_recorder.record_tool_call(
+            tool_name="create_task",
+            duration_ms=10.0,
+            success=True,
+            project_id=project_id,
+        )
+        await telemetry_recorder.record_tool_call(
+            tool_name="create_task",
+            duration_ms=20.0,
+            success=True,
+            project_id=project_id,
+        )
+        await telemetry_recorder.record_tool_call(
+            tool_name="create_task",
+            duration_ms=30.0,
+            success=False,
+            error_type="validation_error",
+            project_id=project_id,
+        )
+        await telemetry_recorder.record_steering_event(
+            project_id=project_id,
+            agent_id="istara-main",
+            action="steer_queued",
+        )
+
+        intel = await telemetry_recorder.get_model_intelligence(project_id)
+
+        assert "tool_summary" in intel
+        assert intel["tool_summary"]["total_calls"] == 3
+        assert intel["tool_summary"]["distinct_tools"] == 1
+        assert intel["tool_summary"]["overall_success_rate"] == 0.667
+
+        assert "steering_summary" in intel
+        assert intel["steering_summary"]["total_events"] == 1
+        assert intel["steering_summary"]["action_counts"].get("steer_queued") == 1
+
+        tool_rates = intel["tool_success_rates"]
+        assert len(tool_rates) == 1
+        assert tool_rates[0]["tool"] == "create_task"
+        assert tool_rates[0]["p50_duration_ms"] == 20.0
+        assert tool_rates[0]["min_duration_ms"] == 10.0
+        assert tool_rates[0]["max_duration_ms"] == 30.0
+
+    @pytest.mark.asyncio
+    async def test_tool_telemetry_industry_standards_and_model_attribution(self):
+        from app.core.telemetry import telemetry_recorder
+        from app.skills.system_actions import execute_tool
+        from app.models.database import async_session, init_db
+        from app.models.telemetry_span import TelemetrySpan
+        from sqlalchemy import select
+
+        await init_db()
+        project_id = f"proj-industry-{uuid.uuid4().hex[:8]}"
+
+        # Execute tool passing calling model name
+        res = await execute_tool(
+            "search_documents",
+            {"query": "elderly accessibility constraints"},
+            project_id=project_id,
+            agent_id="cleo-orchestrator",
+            model_name="gpt-5.6-luna",
+        )
+        assert res["success"] is True
+
+        # Directly record a tool call for another model
+        await telemetry_recorder.record_tool_call(
+            tool_name="create_task",
+            duration_ms=45.0,
+            success=True,
+            model_name="qwen3.7-max-2026-06-08",
+            agent_id="sage-agent",
+            project_id=project_id,
+        )
+
+        async with async_session() as session:
+            stmt = select(TelemetrySpan).where(
+                TelemetrySpan.project_id == project_id,
+                TelemetrySpan.operation == "tool_call",
+            ).order_by(TelemetrySpan.created_at.asc())
+            spans = (await session.execute(stmt)).scalars().all()
+            assert len(spans) == 2
+            assert spans[0].model_name == "gpt-5.6-luna"
+            assert spans[0].agent_id == "cleo-orchestrator"
+            assert spans[1].model_name == "qwen3.7-max-2026-06-08"
+            assert spans[1].agent_id == "sage-agent"
+
+        intel = await telemetry_recorder.get_model_intelligence(project_id)
+
+        # Check tool summary enrichments
+        assert "tool_summary" in intel
+        assert intel["tool_summary"]["total_calls"] == 2
+        assert intel["tool_summary"]["distinct_tools"] == 2
+        assert "avg_duration_ms" in intel["tool_summary"]
+
+        # Check tool success rates enrichments
+        rates = {r["tool"]: r for r in intel["tool_success_rates"]}
+        assert "search_documents" in rates
+        assert "gpt-5.6-luna" in rates["search_documents"]["models"]
+        assert "cleo-orchestrator" in rates["search_documents"]["agents"]
+        assert "p99_duration_ms" in rates["search_documents"]
+
+        # Check model activity summary
+        assert "model_activity" in intel
+        activity_models = {m["model_name"] for m in intel["model_activity"]}
+        assert "gpt-5.6-luna" in activity_models
+        assert "qwen3.7-max-2026-06-08" in activity_models
+
+        # Check leaderboard synthesis from spans
+        assert len(intel["leaderboard"]) >= 2
+        leaderboard_models = {entry["model"] for entry in intel["leaderboard"]}
+        assert "gpt-5.6-luna" in leaderboard_models
+        assert "qwen3.7-max-2026-06-08" in leaderboard_models

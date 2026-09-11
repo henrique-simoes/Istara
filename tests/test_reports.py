@@ -48,7 +48,7 @@ async def test_slide_instructions_fallback_when_llm_unavailable(auth_headers):
 
     transport = ASGITransport(app=app)
     with patch(
-        "app.api.routes.presentation.llm_router.chat",
+        "app.api.routes.presentation.agentic.completion",
         new=AsyncMock(side_effect=RuntimeError("LLM unavailable")),
     ):
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -101,3 +101,62 @@ async def test_slide_instructions_require_active_project_scope(auth_headers):
     assert wrong_scope.json()["detail"] == "Report not found"
     assert right_scope.status_code == 200
     assert right_scope.json()["project_id"] == "reports-active-scope"
+
+
+@pytest.mark.asyncio
+async def test_slide_instructions_caching_and_persistence(auth_headers):
+    """Slide instructions must be persisted to the DB and returned from cache on subsequent calls."""
+    await init_db()
+    report_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add(
+            ProjectReport(
+                id=report_id,
+                project_id="reports-caching",
+                title="Caching Report",
+                executive_summary="Executive summary for caching test.",
+            )
+        )
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    mock_turn = AsyncMock()
+    mock_turn.text = "Generated high-impact slide instructions."
+
+    with patch("app.api.routes.presentation.agentic.completion", return_value=mock_turn) as mock_comp:
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            # 1. First call: generates and caches
+            r1 = await ac.get(
+                f"/api/presentation/reports/{report_id}/slide-instructions?project_id=reports-caching",
+                headers=auth_headers,
+            )
+            assert r1.status_code == 200
+            assert r1.json()["cached"] is False
+            assert r1.json()["instructions"] == "Generated high-impact slide instructions."
+            assert mock_comp.call_count == 1
+
+            # Verify persisted in database
+            async with async_session() as db:
+                saved = await db.get(ProjectReport, report_id)
+                assert saved.slide_instructions == "Generated high-impact slide instructions."
+
+            # 2. Second call: returns cached without calling LLM
+            r2 = await ac.get(
+                f"/api/presentation/reports/{report_id}/slide-instructions?project_id=reports-caching",
+                headers=auth_headers,
+            )
+            assert r2.status_code == 200
+            assert r2.json()["cached"] is True
+            assert r2.json()["instructions"] == "Generated high-impact slide instructions."
+            assert mock_comp.call_count == 1  # Not called again!
+
+            # 3. Call with regenerate=True: re-runs generation
+            mock_turn.text = "Regenerated fresh slide instructions."
+            r3 = await ac.get(
+                f"/api/presentation/reports/{report_id}/slide-instructions?project_id=reports-caching&regenerate=true",
+                headers=auth_headers,
+            )
+            assert r3.status_code == 200
+            assert r3.json()["cached"] is False
+            assert r3.json()["instructions"] == "Regenerated fresh slide instructions."
+            assert mock_comp.call_count == 2

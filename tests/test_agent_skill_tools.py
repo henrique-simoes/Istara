@@ -92,7 +92,9 @@ async def test_rank_skill_candidates_uses_reasoning_bank_and_memento(monkeypatch
     async def fake_telemetry_quality_boost(*_args, **_kwargs):
         return {}
 
-    monkeypatch.setattr(agent_skill_tools, "_telemetry_quality_boost", fake_telemetry_quality_boost)
+    monkeypatch.setattr(
+        agent_skill_tools, "_telemetry_quality_boost", fake_telemetry_quality_boost
+    )
     monkeypatch.setattr("app.core.reasoning_bank.reasoning_bank", FakeReasoningBank())
 
     try:

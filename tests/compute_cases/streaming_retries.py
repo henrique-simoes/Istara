@@ -1,5 +1,6 @@
 from tests.compute_cases.common import *
 
+
 class _FailingStreamResponse:
     def __init__(self, path: str, status_code: int):
         self.path = path
@@ -18,7 +19,9 @@ class _FailingStreamResponse:
             request=request,
             json={"error": {"message": "stream provider overloaded"}},
         )
-        raise httpx.HTTPStatusError("stream provider overloaded", request=request, response=response)
+        raise httpx.HTTPStatusError(
+            "stream provider overloaded", request=request, response=response
+        )
 
     async def aiter_lines(self):
         if False:
@@ -60,6 +63,7 @@ class _SuccessfulStreamClient:
         self.paths.append(path)
         return _SuccessfulStreamResponse()
 
+
 async def test_chat_stream_retries_transient_errors_before_fallback(monkeypatch):
     registry = ComputeRegistry()
     primary_client = _FailingStreamClient(status_code=503)
@@ -98,7 +102,10 @@ async def test_chat_stream_retries_transient_errors_before_fallback(monkeypatch)
     registry.register_node(primary)
     registry.register_node(fallback)
 
-    chunks = [chunk async for chunk in registry.chat_stream([{"role": "user", "content": "hello"}])]
+    chunks = [
+        chunk
+        async for chunk in registry.chat_stream([{"role": "user", "content": "hello"}])
+    ]
 
     assert chunks == ["fallback streamed"]
     assert primary_client.calls == 5
@@ -106,3 +113,54 @@ async def test_chat_stream_retries_transient_errors_before_fallback(monkeypatch)
     assert fallback_client.calls == 1
     assert fallback_client.paths == ["v1/chat/completions"]
     assert fallback.is_healthy is True
+
+
+@pytest.mark.asyncio
+async def test_strict_model_stream_does_not_fallback_after_pinned_node_fails(
+    monkeypatch,
+):
+    registry = ComputeRegistry()
+    deepseek_client = _FailingStreamClient(status_code=503)
+    fallback_client = _SuccessfulStreamClient()
+    deepseek = ComputeNode(
+        node_id="pi-deepseek-candidate",
+        name="Pi DeepSeek",
+        host="https://api.deepseek.example",
+        source="network",
+        provider_type="openai_compat",
+        is_healthy=True,
+        priority=0,
+        loaded_models=["deepseek-v4-pro"],
+    )
+    fallback = ComputeNode(
+        node_id="local-fallback",
+        name="Local fallback",
+        host="http://192.0.2.142:1234",
+        source="network",
+        provider_type="openai_compat",
+        is_healthy=True,
+        priority=10,
+        loaded_models=["local-model"],
+    )
+
+    async def deepseek_get_client():
+        return deepseek_client
+
+    async def fallback_get_client():
+        return fallback_client
+
+    monkeypatch.setattr(deepseek, "_get_client", deepseek_get_client)
+    monkeypatch.setattr(fallback, "_get_client", fallback_get_client)
+    registry.register_node(deepseek)
+    registry.register_node(fallback)
+
+    with pytest.raises(RuntimeError, match="No compute nodes available for streaming"):
+        async for _ in registry.chat_stream(
+            [{"role": "user", "content": "hello"}],
+            model="deepseek-v4-pro",
+            strict_model_routing=True,
+        ):
+            pass
+
+    assert deepseek_client.calls == 5
+    assert fallback_client.calls == 0

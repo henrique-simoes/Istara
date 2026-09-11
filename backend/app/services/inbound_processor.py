@@ -5,19 +5,22 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import and_, select
 
 from app.api.websocket import broadcast_channel_status
 from app.channels.base import IncomingMessage, OutgoingMessage
+from app.core.pi_runtime.seams import build_pi_channel_reply
 from app.models.channel_conversation import ChannelConversation
 from app.models.channel_instance import ChannelInstance
 from app.models.channel_message import ChannelMessage
 from app.models.database import async_session
+from app.models.finding import Nugget
 from app.models.project import Project
 from app.models.research_deployment import ResearchDeployment
 from app.services.adaptive_interview import get_next_action, update_conversation_metadata
+from app.services.research_validity_service import persist_task_nugget_evidence_units
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +92,7 @@ async def _get_or_create_conversation(
         deployment_id=deployment_id,
         state="intro" if deployment_id else "active",
         current_question_index=0,
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     db.add(conversation)
     await db.flush()
@@ -144,7 +147,7 @@ async def process_inbound_channel_message(
 
         deployment = await _active_deployment_for_instance(db, instance)
         project_id = deployment.project_id if deployment else instance.project_id
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         conversation = await _get_or_create_conversation(
             db,
@@ -203,13 +206,89 @@ async def process_inbound_channel_message(
                 )
             except Exception:
                 pass
+            # H-8: persist and commit the inbound row BEFORE running the Pi turn.
+            # A crash mid-turn must never roll the inbound record back with the
+            # transaction; the outbound reply is written in a fresh session below.
             await db.commit()
+
+            pi_response = await build_pi_channel_reply(
+                message_channel=message.channel,
+                channel_id=message.channel_id,
+                instance_id=message.instance_id,
+                project_id=project_id,
+                inbound_message_id=inbound_msg.id,
+                inbound_text=message.text,
+                metadata=metadata,
+            )
+            if pi_response is not None and pi_response.text:
+                # Persist the real Pi channel reply in a new session so the
+                # transcript matches what the router sends back.
+                async with async_session() as out_db:
+                    out_db.add(
+                        ChannelMessage(
+                            id=str(uuid.uuid4()),
+                            channel_instance_id=message.instance_id,
+                            project_id=project_id,
+                            direction="outbound",
+                            sender_id="system",
+                            sender_name="Istara",
+                            content=pi_response.text,
+                            content_type="text",
+                            thread_id=conversation.id,
+                            metadata_json=json.dumps(pi_response.metadata or {}),
+                        )
+                    )
+                    out_instance = await out_db.get(ChannelInstance, message.instance_id)
+                    if out_instance is not None:
+                        out_instance.message_count = (out_instance.message_count or 0) + 1
+                    await out_db.commit()
             await broadcast_channel_status(
                 message.instance_id,
                 "active",
                 f"Recorded message from {message.sender_id}",
             )
-            return None
+            return pi_response
+
+        # Research Spine Compliance: persist incoming participant answer
+        # as provisional Nugget & EvidenceUnits
+        if message.text and conversation.state in {"intro", "questions", "probing", "wrap_up"}:
+            questions = _safe_json_list(deployment.questions_json)
+            q_idx = conversation.current_question_index
+            if 0 < q_idx <= len(questions):
+                q_text = questions[q_idx - 1].get("text", f"Question {q_idx}")
+            elif questions:
+                q_text = questions[0].get("text", "Initial Question")
+            else:
+                q_text = "Research Question"
+
+            source_location = (
+                f"channel:{message.channel}:conv:{conversation.id}:msg:{inbound_msg.id}"
+            )
+            source_text = f"Q: {q_text}\nA: {message.text}"
+            nugget = Nugget(
+                id=str(uuid.uuid4()),
+                project_id=project_id,
+                text=source_text,
+                source=f"channel:{message.channel}:{deployment.name}",
+                source_location=source_location,
+                tags=json.dumps(
+                    [deployment.deployment_type, f"channel:{message.channel}", "channel-research"]
+                ),
+                phase="discover",
+            )
+            db.add(nugget)
+            await persist_task_nugget_evidence_units(
+                db,
+                project_id=project_id,
+                task_id=None,
+                nugget_id=nugget.id,
+                source_text=source_text,
+                source_location=source_location,
+                method=f"deployment:{deployment.deployment_type}",
+                phase="discover",
+                source_type="channel_response",
+                candidate_only=False,
+            )
 
         action = await get_next_action(conversation, deployment, message.text)
         action_state = _state_value(action.get("state"), conversation.state)
@@ -248,6 +327,7 @@ async def process_inbound_channel_message(
 
         if action.get("action") == "complete":
             conversation.completed_at = now
+            deployment.current_responses = (deployment.current_responses or 0) + 1
 
         try:
             from app.core.improvement_governance import improvement_governance
@@ -258,7 +338,9 @@ async def process_inbound_channel_message(
                 source_id=inbound_msg.external_message_id or inbound_msg.id,
                 project_id=project_id,
                 agent_id="channel-router",
-                summary="Inbound channel message was persisted and routed through deployment logic.",
+                summary=(
+                    "Inbound channel message was persisted and routed through deployment logic."
+                ),
                 evidence={
                     "passed": True,
                     "platform": message.channel,

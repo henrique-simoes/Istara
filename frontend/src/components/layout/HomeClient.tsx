@@ -43,6 +43,7 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
 import { API_BASE } from "@/lib/runtimeConfig";
 import { VIEW_NAMES, isKnownView, isProjectRequiredView, isViewAllowed } from "@/lib/navigation";
+import { getToken } from "@/lib/tokenStore";
 
 const VIEW_STORAGE_KEY = "istara_active_view";
 
@@ -98,15 +99,20 @@ export default function HomeClient() {
     const authStore = useAuthStore.getState();
     const status = await authStore.checkTeamStatus();
 
-    const token = localStorage.getItem("istara_token");
+    const token = getToken();
     if (!token && !status.team_mode && !status.insecure) {
       await authStore.login("local", "");
       setAuthenticated(true);
       return true;
     }
     if (!token) {
-      setAuthenticated(false);
-      return false;
+      // No bearer in memory or legacy storage — but the HttpOnly session
+      // cookie may still authenticate (memory-only custody deliberately
+      // leaves no reload-surviving token). Probe it before dropping to the
+      // login screen, or reload persistence via cookie transport is dead.
+      const restored = await authStore.fetchMe();
+      setAuthenticated(restored);
+      return restored;
     }
 
     const valid = await authStore.fetchMe();
@@ -134,7 +140,7 @@ export default function HomeClient() {
         const authStore = useAuthStore.getState();
         const status = await authStore.checkTeamStatus();
 
-        const token = localStorage.getItem("istara_token");
+        const token = getToken();
         if (!token) {
           if (!status.team_mode && !status.insecure) {
             await authStore.login("local", "");
@@ -143,9 +149,15 @@ export default function HomeClient() {
             }
             return;
           }
+          // Team-mode lane without a bearer: the HttpOnly session cookie
+          // may still authenticate after a reload (memory-only custody).
+          // Probe it before surrendering to the login screen.
+          const restored = await authStore.fetchMe();
           if (!cancelled) {
-            setAuthenticated(false);
-            setTourReady(false);
+            setAuthenticated(restored);
+            if (!restored) {
+              setTourReady(false);
+            }
           }
           return;
         }
@@ -195,7 +207,8 @@ export default function HomeClient() {
       // loads before backend, causing empty project list and wrong tour state.
       for (let i = 0; i < 15; i++) {
         try {
-          const res = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(2000) });
+          const res = await fetch(`${API_BASE}/api/health`, {
+          credentials: "include", signal: AbortSignal.timeout(2000) });
           if (res.ok) break;
         } catch {
           // Backend not ready yet

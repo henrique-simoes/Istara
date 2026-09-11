@@ -1,0 +1,453 @@
+"""CF-SPEC-1 Phase 6: unified model-source resolution and the execution-only
+pi bridge. Locks DEC-10 precedence: explicit selection through the Pi-managed
+catalog; donations untouched; the bridge never advertises capacity."""
+
+import json
+
+import pytest
+
+from app.config import settings
+
+
+class _FakeEndpointInfo:
+    def __init__(
+        self,
+        endpoint_id: str,
+        model: str,
+        provider_kind: str = "openai_compat",
+        kind: str = "remote",
+    ):
+        self.endpoint_id = endpoint_id
+        self.model = model
+        self.provider_kind = provider_kind
+        self.kind = kind
+
+
+class _FakeManager:
+    def __init__(self, endpoints: list[tuple[str, str]], secret: str = "sk-test"):
+        self._endpoints = [
+            (*e, "openai_compat", "remote")
+            if len(e) == 2
+            else (*e, "remote")
+            if len(e) == 3
+            else e
+            for e in endpoints
+        ]
+        self._secret = secret
+
+    def catalog(self):
+        return [_FakeEndpointInfo(*e) for e in self._endpoints]
+
+    async def ensure_db_projection(self):
+        return None
+
+    def resolve(self, *, endpoint_id=None, model=None, **_kw):
+        target = None
+        for entry in self._endpoints:
+            eid, m = entry[0], entry[1]
+            if endpoint_id and eid == endpoint_id:
+                target = (eid, m)
+                break
+            if model and m == model:
+                target = (eid, m)
+                break
+        if not target:
+            from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+            raise PiEndpointResolutionError("no_matching_pi_endpoint")
+        from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
+
+        return ResolvedPiEndpoint(
+            endpoint_id=target[0],
+            provider_kind="openai_compat",
+            base_url="https://provider.test/v1",
+            model=target[1],
+            api_key=self._secret,
+            timeout_ms=30000,
+            max_retries=2,
+        )
+
+
+@pytest.fixture(autouse=True)
+def _restore_settings():
+    yield
+    settings.llm_provider_contract_stub = False
+
+
+def test_package_and_module_dispatcher_singletons_are_one_authority():
+    """Both public import paths must expose the same Pi-aware dispatcher."""
+    from app.core.agentic import agentic as package_agentic
+    from app.core.agentic.dispatcher import agentic as module_agentic
+
+    assert package_agentic is module_agentic
+
+
+@pytest.mark.asyncio
+async def test_explicit_model_resolves_to_pi_managed(monkeypatch):
+    from app.core.agentic import model_source as ms
+
+    monkeypatch.setattr(
+        ms, "_pi_manager", lambda: _FakeManager([("ep1", "deepseek-v4-pro")])
+    )
+    source = await ms.resolve_model_source("deepseek-v4-pro")
+    assert source is not None and source.plane == "pi-managed"
+    assert source.endpoint_id == "ep1" and source.api_key  # executable secret present
+
+
+@pytest.mark.asyncio
+async def test_legacy_loop_source_loads_persisted_pi_catalog_before_selection(
+    monkeypatch,
+):
+    from app.core.agentic import model_source as ms
+
+    class _ProjectedManager(_FakeManager):
+        async def ensure_db_projection(self):
+            self._endpoints.append(
+                ("pi-llm-persisted", "persisted-model", "openai_compat")
+            )
+
+    monkeypatch.setattr(ms, "_pi_manager", lambda: _ProjectedManager([]))
+    source = await ms.resolve_model_source("persisted-model")
+
+    assert source is not None
+    assert source.endpoint_id == "pi-llm-persisted"
+
+
+@pytest.mark.asyncio
+async def test_explicit_local_model_resolves_through_pi_manager(monkeypatch):
+    from app.core.agentic import model_source as ms
+
+    monkeypatch.setattr(settings, "ollama_model", "qwen3:latest", raising=False)
+    monkeypatch.setattr(
+        ms,
+        "_pi_manager",
+        lambda: _FakeManager([("pi-local-ollama", "qwen3:latest")]),
+    )
+    source = await ms.resolve_model_source("qwen3:latest")
+    assert source is not None and source.plane == "pi-managed"
+    assert source.endpoint_id == "pi-local-ollama"
+
+
+@pytest.mark.asyncio
+async def test_default_local_model_is_resolved_by_pi_manager(monkeypatch):
+    """Both loop modes must use the Pi catalog, including local providers."""
+    from app.core.agentic import model_source as ms
+
+    monkeypatch.setattr(settings, "ollama_model", "qwen3:latest", raising=False)
+    monkeypatch.setattr(
+        ms,
+        "_pi_manager",
+        lambda: _FakeManager([("pi-local-ollama", "qwen3:latest")]),
+    )
+
+    source = await ms.resolve_model_source(None)
+
+    assert source is not None
+    assert source.plane == "pi-managed"
+    assert source.endpoint_id == "pi-local-ollama"
+
+
+@pytest.mark.asyncio
+async def test_stub_plane_filters_pi_catalog_local_entries(monkeypatch):
+    """A stub-marked deployment must not execute its Pi local catalog entry."""
+    from app.core.agentic import model_source as ms
+
+    monkeypatch.setattr(
+        ms,
+        "_pi_manager",
+        lambda: _FakeManager(
+            [
+                ("pi-local-ollama", "qwen3:latest", "openai_compat", "local"),
+                ("pi-remote", "deepseek-v4-pro"),
+            ]
+        ),
+    )
+    settings.llm_provider_contract_stub = True
+
+    source = await ms.resolve_model_source(None)
+
+    assert source is not None
+    assert source.endpoint_id == "pi-remote"
+
+
+@pytest.mark.asyncio
+async def test_stub_plane_is_invisible_when_marked(monkeypatch):
+    from app.core.agentic import model_source as ms
+
+    monkeypatch.setattr(ms, "_pi_manager", lambda: _FakeManager([]))
+    monkeypatch.setattr(settings, "ollama_model", "qwen3:latest", raising=False)
+    settings.llm_provider_contract_stub = True
+    assert await ms.resolve_model_source("qwen3:latest") is None
+    assert await ms.resolve_model_source(None) is None
+    assert await ms.has_non_stub_source() is False
+
+
+@pytest.mark.asyncio
+async def test_stub_marked_stack_falls_back_to_pi_managed_default(monkeypatch):
+    """DEC-10: Istara on a stub plane uses the configured pi endpoint instead."""
+    from app.core.agentic import model_source as ms
+
+    monkeypatch.setattr(
+        ms, "_pi_manager", lambda: _FakeManager([("ep-deepseek", "deepseek-v4-pro")])
+    )
+    settings.llm_provider_contract_stub = True
+    source = await ms.resolve_model_source(None)
+    assert source is not None and source.plane == "pi-managed"
+
+
+@pytest.mark.asyncio
+async def test_unknown_explicit_model_leaves_donation_path_untouched(monkeypatch):
+    from app.core.agentic import model_source as ms
+
+    monkeypatch.setattr(
+        ms, "_pi_manager", lambda: _FakeManager([("ep1", "deepseek-v4-pro")])
+    )
+    assert await ms.resolve_model_source("some-donated-model") is None
+
+
+def _sse_lines(chunks: list[dict]) -> list[str]:
+    lines = ["data: " + json.dumps(c) for c in chunks]
+    lines.append("data: [DONE]")
+    return [line + "\n" for line in lines]
+
+
+def _capture_line_iter(lines: list[str], captured: dict):
+    """line_iter factory whose urllib spy captures the outgoing request.
+
+    The spy is restored after the yielded lines are exhausted (the bridge
+    consumes them inside its for-loop)."""
+
+    def factory():
+        import urllib.request as ur
+
+        real = ur.urlopen
+
+        def spy(request, *a, **kw):
+            captured["request"] = request
+            return iter(lines)
+
+        ur.urlopen = spy
+
+        def gen():
+            try:
+                yield from lines
+            finally:
+                ur.urlopen = real
+
+        return gen()
+
+    return factory
+
+
+@pytest.mark.asyncio
+async def test_bridge_streams_content_and_exact_usage():
+    from app.core.agentic.model_source import ModelSource
+    from app.core.agentic.pi_bridge import stream_openai_chat
+
+    sse = _sse_lines(
+        [
+            {
+                "choices": [
+                    {
+                        "delta": {"role": "assistant", "content": "PO"},
+                        "finish_reason": None,
+                    }
+                ]
+            },
+            {"choices": [{"delta": {"content": "NG"}, "finish_reason": None}]},
+            {
+                "choices": [{"delta": {}, "finish_reason": "stop"}],
+                "usage": {
+                    "prompt_tokens": 11,
+                    "completion_tokens": 2,
+                    "total_tokens": 13,
+                },
+            },
+        ]
+    )
+    captured: dict = {}
+    forwarded: list[str] = []
+    message = await stream_openai_chat(
+        source=ModelSource(
+            plane="pi-managed",
+            endpoint_id="ep1",
+            base_url="https://provider.test",
+            api_key="sk-live",
+            model="deepseek-v4-pro",
+        ),
+        history=[{"role": "user", "content": "hi"}],
+        system="sys",
+        stream_cb=lambda event: forwarded.append(event.get("text", "")),
+        line_iter=_capture_line_iter(sse, captured),
+    )
+
+    from app.core.agentic.pi_bridge import build_bridge_request
+
+    req = build_bridge_request(
+        base_url="https://provider.test",
+        payload={
+            "model": "deepseek-v4-pro",
+            "messages": [{"role": "system", "content": "sys"}],
+            "stream": True,
+        },
+        api_key="sk-live",
+    )
+    assert req.full_url.endswith("/v1/chat/completions")
+    assert req.headers.get("Authorization") == "Bearer sk-live"
+    assert req.headers.get("User-agent") == "istara-pi-runtime/1.0"
+    body = json.loads(req.data.decode())
+    assert body["model"] == "deepseek-v4-pro" and body["stream"] is True
+    assert body["messages"][0]["role"] == "system"
+
+    assert message["content"] == "PONG"
+    meta = message["_bridge_meta"]
+    assert meta["usage"]["total_tokens"] == 13 and meta["usage"]["estimate"] is False
+    assert meta["endpoint_id"] == "ep1" and meta["plane"] == "pi-managed"
+    assert "".join(forwarded) == "PONG"
+
+
+@pytest.mark.asyncio
+async def test_bridge_surfaces_tool_calls():
+    from app.core.agentic.model_source import ModelSource
+    from app.core.agentic.pi_bridge import stream_openai_chat
+
+    sse = _sse_lines(
+        [
+            {
+                "choices": [
+                    {
+                        "delta": {
+                            "tool_calls": [
+                                {
+                                    "index": 0,
+                                    "id": "call_1",
+                                    "function": {
+                                        "name": "search",
+                                        "arguments": '{"query":',
+                                    },
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            {
+                "choices": [
+                    {
+                        "delta": {
+                            "tool_calls": [
+                                {"index": 0, "function": {"arguments": '"cats"}'}}
+                            ]
+                        },
+                        "finish_reason": "tool_calls",
+                    }
+                ]
+            },
+        ]
+    )
+    source = ModelSource(
+        plane="pi-managed",
+        endpoint_id="ep1",
+        base_url="https://p.test",
+        api_key="k",
+        model="m",
+    )
+    message = await stream_openai_chat(
+        source=source,
+        history=[{"role": "user", "content": "q"}],
+        line_iter=lambda: iter(sse),
+    )
+    calls = message["tool_calls"]
+    assert len(calls) == 1
+    assert calls[0]["function"]["name"] == "search"
+    assert json.loads(calls[0]["function"]["arguments"]) == {"query": "cats"}
+
+
+@pytest.mark.asyncio
+async def test_codex_family_excluded_from_istara_bridge(monkeypatch):
+    """openai_codex endpoints are Pi-engine-native; the Istara bridge must not
+    select them (Responses API != /v1/chat/completions). Fallback skips to the
+    next compatible pi-managed endpoint."""
+    from app.core.agentic import model_source as ms
+
+    monkeypatch.setattr(
+        ms,
+        "_pi_manager",
+        lambda: _FakeManager(
+            [
+                ("pi-codex-luna", "gpt-5.6-luna", "openai_codex"),
+                ("ep-deepseek", "deepseek-v4-flash"),
+            ]
+        ),
+    )
+    settings.llm_provider_contract_stub = (
+        True  # hide the local plane so the pi fallback is exercised
+    )
+    source = await ms.resolve_model_source(None)
+    assert source is not None and source.endpoint_id == "ep-deepseek"
+
+
+@pytest.mark.asyncio
+async def test_pi_source_resolution_skips_unauthorized_petals_and_passes_project_scope(
+    monkeypatch,
+):
+    """Legacy preflight must use the requested project's governed donor view.
+
+    Petals projections are intentionally visible in the manager catalog, but
+    only the project's allow-list may make one executable. The resolver must
+    skip an earlier donor from another project and continue to a later
+    authorized endpoint instead of making catalog order a cross-project
+    availability oracle.
+    """
+    from app.core.agentic import model_source as ms
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    class _ProjectScopedManager(_FakeManager):
+        def __init__(self):
+            super().__init__(
+                [
+                    ("pi-petals-other", "shared-model"),
+                    ("pi-petals-project-a", "shared-model"),
+                ]
+            )
+            self.project_ids: list[str | None] = []
+
+        def resolve(self, *, endpoint_id=None, model=None, project_id=None, **kwargs):
+            self.project_ids.append(project_id)
+            if endpoint_id == "pi-petals-other" and project_id == "project-a":
+                raise PiEndpointResolutionError("petals_project_not_authorized")
+            # Resolve by exact endpoint in the fake; the real manager also
+            # preserves endpoint identity when a model name is duplicated.
+            return super().resolve(endpoint_id=endpoint_id, model=None, **kwargs)
+
+    manager = _ProjectScopedManager()
+    monkeypatch.setattr(ms, "_pi_manager", lambda: manager)
+    settings.llm_provider_contract_stub = True
+
+    source = await ms.resolve_model_source("shared-model", project_id="project-a")
+
+    assert source is not None
+    assert source.endpoint_id == "pi-petals-project-a"
+    assert manager.project_ids == ["project-a", "project-a"]
+
+
+@pytest.mark.asyncio
+async def test_has_non_stub_source_is_false_for_cross_project_petals(monkeypatch):
+    """A stub-marked legacy chat cannot be admitted by another project's donor."""
+    from app.core.agentic import model_source as ms
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    class _OtherProjectManager(_FakeManager):
+        def resolve(self, *, endpoint_id=None, model=None, project_id=None, **kwargs):
+            if endpoint_id == "pi-petals-other":
+                raise PiEndpointResolutionError("petals_project_not_authorized")
+            return super().resolve(endpoint_id=endpoint_id, model=model, **kwargs)
+
+    monkeypatch.setattr(
+        ms,
+        "_pi_manager",
+        lambda: _OtherProjectManager([("pi-petals-other", "donated-model")]),
+    )
+    settings.llm_provider_contract_stub = True
+
+    assert await ms.has_non_stub_source("project-a") is False

@@ -32,7 +32,16 @@ from app.core.validation_executor import ValidationExecutor, ValidationResult
 from app.core.report_manager import ReportManager, SCOPE_MAP, SYNTHESIS_SKILLS
 
 # Ensure ALL models are registered with Base (mirrors database.init_db imports)
-from app.models import agent, codebook, document, finding, message, project, session, task  # noqa: F401
+from app.models import (
+    agent,
+    codebook,
+    document,
+    finding,
+    message,
+    project,
+    session,
+    task,
+)  # noqa: F401
 from app.models import user  # noqa: F401
 from app.models import llm_server, method_metric  # noqa: F401
 from app.core.checkpoint import TaskCheckpoint  # noqa: F401
@@ -61,6 +70,7 @@ from app.models.research_validity import EvidenceUnit  # noqa: F401
 # Fixtures: in-memory async SQLite for model tests
 # ============================================================
 
+
 @pytest.fixture
 async def db_session():
     """Create an in-memory async SQLite session for model tests."""
@@ -72,7 +82,9 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with session_factory() as session:
         yield session
 
@@ -84,6 +96,7 @@ async def db_session():
 # ============================================================
 # 1. CodebookVersion Model Tests
 # ============================================================
+
 
 class TestCodeApplicationModel:
     """Test the CodeApplication ORM model."""
@@ -130,7 +143,9 @@ class TestCodeApplicationModel:
             select(CodeApplication).where(CodeApplication.project_id == "proj-004")
         )
         loaded = result.scalar_one()
-        assert loaded.source_text == "The dashboard takes 10 seconds to load every morning"
+        assert (
+            loaded.source_text == "The dashboard takes 10 seconds to load every morning"
+        )
         assert loaded.source_location == "interview_p2_marcus.txt:L18"
         assert "performance delay" in loaded.reasoning
 
@@ -194,6 +209,7 @@ class TestCodeApplicationModel:
 
     async def test_agent_routes_recommendations_to_reports(self, db_session):
         """Stored recommendations are included in the report convergence path."""
+
         class PhaseStub:
             value = "discover"
 
@@ -227,8 +243,14 @@ class TestCodeApplicationModel:
         orchestrator = AgentOrchestrator()
         with (
             patch("app.core.agent_research.registry.get", return_value=SkillStub()),
-            patch("app.core.report_manager.report_manager.route_findings", new_callable=AsyncMock) as route_findings,
-            patch("app.services.research_validity_service.run_independent_coding_run", new_callable=AsyncMock) as coding_run,
+            patch(
+                "app.core.report_manager.report_manager.route_findings",
+                new_callable=AsyncMock,
+            ) as route_findings,
+            patch(
+                "app.services.research_validity_service.run_independent_coding_run",
+                new_callable=AsyncMock,
+            ) as coding_run,
         ):
             coding_run.return_value = {
                 "id": "coding-run-route-recs",
@@ -240,21 +262,31 @@ class TestCodeApplicationModel:
                 "distinct_model_count": 3,
                 "fallback_reason": "",
             }
-            await orchestrator._store_findings(db_session, "proj-route-recs", output, task)
+            await orchestrator._store_findings(
+                db_session, "proj-route-recs", output, task
+            )
 
         route_findings.assert_not_awaited()
         coding_run.assert_awaited_once()
 
         stored_recs = await db_session.execute(
-            select(finding.Recommendation).where(finding.Recommendation.project_id == "proj-route-recs")
+            select(finding.Recommendation).where(
+                finding.Recommendation.project_id == "proj-route-recs"
+            )
         )
         rec = stored_recs.scalar_one()
         assert rec.task_id == task.id
         evidence_units = (
-            await db_session.execute(
-                select(EvidenceUnit).where(EvidenceUnit.project_id == "proj-route-recs")
+            (
+                await db_session.execute(
+                    select(EvidenceUnit).where(
+                        EvidenceUnit.project_id == "proj-route-recs"
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(evidence_units) == 1
         assert evidence_units[0].task_id == task.id
 

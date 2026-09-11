@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -26,6 +25,7 @@ router = APIRouter()
 # Request / response schemas
 # ---------------------------------------------------------------------------
 
+
 class CreateChannelRequest(BaseModel):
     platform: str  # telegram|slack|whatsapp|google_chat
     name: str
@@ -43,6 +43,14 @@ class SendMessageRequest(BaseModel):
     channel_id: str
     text: str
     metadata: dict | None = None
+
+
+class SimulateInboundRequest(BaseModel):
+    sender_id: str = "participant-1"
+    sender_name: str = "Research Participant"
+    text: str
+    metadata: dict | None = None
+    project_id: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -79,8 +87,8 @@ async def _get_project_channel_or_404(
 @router.get("/channels")
 async def list_channels(
     request: Request,
-    platform: Optional[str] = Query(None, description="Filter by platform"),
-    project_id: Optional[str] = Query(None, description="Filter by project"),
+    platform: str | None = Query(None, description="Filter by platform"),
+    project_id: str | None = Query(None, description="Filter by project"),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     """List all channel instances, optionally filtered by platform."""
@@ -100,9 +108,7 @@ async def create_channel(
 ) -> dict:
     """Create a new channel instance."""
     scoped_project_id = _require_project_id(body.project_id)
-    await get_active_project_or_404(
-        db, request, scoped_project_id, min_role="project_admin"
-    )
+    await get_active_project_or_404(db, request, scoped_project_id, min_role="project_admin")
     try:
         instance = await channel_service.create_channel_instance(
             db,
@@ -120,7 +126,7 @@ async def create_channel(
 async def get_channel(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Get details of a single channel instance."""
@@ -135,7 +141,7 @@ async def update_channel(
     instance_id: str,
     body: UpdateChannelRequest,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Update a channel instance."""
@@ -168,7 +174,7 @@ async def update_channel(
 async def delete_channel(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Delete a channel instance (stops it first if running)."""
@@ -190,16 +196,14 @@ async def delete_channel(
 async def start_channel(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Start a channel instance (instantiate adapter and begin polling/listening)."""
     scoped_project_id, _ = await _get_project_channel_or_404(
         db, request, instance_id, project_id, min_role="project_admin"
     )
-    await get_active_project_or_404(
-        db, request, scoped_project_id, min_role="project_admin"
-    )
+    await get_active_project_or_404(db, request, scoped_project_id, min_role="project_admin")
     try:
         result = await channel_service.start_channel_instance(
             db, instance_id, project_id=scoped_project_id
@@ -218,7 +222,7 @@ async def start_channel(
 async def stop_channel(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Stop a running channel instance."""
@@ -241,7 +245,7 @@ async def stop_channel(
 async def health_check_channel(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Run a health check on a channel instance."""
@@ -263,7 +267,7 @@ async def health_check_channel(
 async def get_channel_messages(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -285,16 +289,14 @@ async def get_channel_messages(
 async def get_channel_conversations(
     instance_id: str,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
     """Get conversations for a channel instance."""
     scoped_project_id, _ = await _get_project_channel_or_404(
         db, request, instance_id, project_id, min_role="viewer"
     )
-    return await channel_service.get_conversations(
-        db, instance_id, project_id=scoped_project_id
-    )
+    return await channel_service.get_conversations(db, instance_id, project_id=scoped_project_id)
 
 
 @router.post("/channels/{instance_id}/send")
@@ -302,7 +304,7 @@ async def send_channel_message(
     instance_id: str,
     body: SendMessageRequest,
     request: Request,
-    project_id: Optional[str] = Query(None, description="Active project"),
+    project_id: str | None = Query(None, description="Active project"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Send a manual message through a channel instance."""
@@ -325,3 +327,36 @@ async def send_channel_message(
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/channels/{instance_id}/simulate-inbound")
+async def simulate_inbound_channel_message(
+    instance_id: str,
+    body: SimulateInboundRequest,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Simulate an incoming participant message on a channel instance and process it."""
+    scoped_project_id, instance = await _get_project_channel_or_404(
+        db, request, instance_id, project_id or body.project_id, min_role="project_admin"
+    )
+    from app.channels.base import IncomingMessage
+    from app.services.inbound_processor import process_inbound_channel_message
+
+    incoming = IncomingMessage(
+        channel=instance.platform,
+        channel_id=instance.id,
+        sender_id=body.sender_id or "participant-1",
+        sender_name=body.sender_name or "Research Participant",
+        text=body.text,
+        instance_id=instance.id,
+        metadata=body.metadata or {},
+    )
+    outgoing = await process_inbound_channel_message(incoming)
+    return {
+        "status": "processed",
+        "inbound_received": True,
+        "instance_id": instance_id,
+        "reply": outgoing.text if outgoing else None,
+    }

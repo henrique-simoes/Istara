@@ -20,7 +20,7 @@ def test_agent_by_id_mutations_require_active_project_scope() -> None:
     guard = read_repo("backend/app/api/agent_project_scope.py")
 
     for expected in (
-        "const agentProjectPath = (id: string, projectId: string, suffix = \"\")",
+        'const agentProjectPath = (id: string, projectId: string, suffix = "")',
         "update: (id: string, data: Record<string, unknown>, projectId: string)",
         "delete: (id: string, projectId: string) => del(agentProjectPath(id, projectId))",
         "pause: (id: string, projectId: string)",
@@ -80,7 +80,7 @@ def test_agent_by_id_mutations_require_active_project_scope() -> None:
         "async def update_memory(",
         "async def export_agent(",
         "project_id: str | None = None",
-        "scope=\"project\"",
+        'scope="project"',
         "project_id=scoped_project_id",
     ):
         assert expected in route

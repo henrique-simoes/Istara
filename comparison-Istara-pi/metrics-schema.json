@@ -1,0 +1,570 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://istara.local/comparison-Istara-pi/metrics-schema.json",
+  "title": "Pi-vs-Legacy benchmark run record",
+  "description": "Contract for a single paired-benchmark run record (one engine arm of one scenario/seed). Authored as task B0-1 of the Pi-vs-Legacy benchmark program (master plan §10). Every downstream asset — runner, feature-criteria compiler, JudgeLayer, and the report generator — validates its output against this schema. One record is emitted per (scenario × seed × engine) run; the two engine arms of a pair share `pair_id`. See comparison-Istara-pi/README.md.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "record_id",
+    "pair_id",
+    "phase",
+    "tier",
+    "engine",
+    "scenario",
+    "pack",
+    "provenance",
+    "status",
+    "usage"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "description": "Semantic version of THIS schema. Records whose major version differs from the report generator's are rejected, not silently pooled. Minor 1.1.0: added 'industry' to the pack enum (additive).",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "record_id": {
+      "description": "Globally unique id for this single run record; reruns get a new id and never overwrite prior evidence.",
+      "type": "string",
+      "minLength": 1
+    },
+    "pair_id": {
+      "description": "Shared by the two engine arms (pi + legacy) of the same scenario/seed/fixture pair. A pair with a missing arm is reported, never dropped.",
+      "type": "string",
+      "minLength": 1
+    },
+    "phase": {
+      "description": "Benchmark phase (master plan §10.4).",
+      "type": "string",
+      "enum": [
+        "B1",
+        "B2",
+        "B3",
+        "B4"
+      ]
+    },
+    "tier": {
+      "description": "Determinism tier (master plan §10.1.2). Mandatory on every record; the report generator asserts no table mixes tiers.",
+      "type": "string",
+      "enum": [
+        "T0",
+        "T1",
+        "T2",
+        "T3"
+      ]
+    },
+    "engine": {
+      "description": "Engine under test for this arm. Selected per-call via the dispatcher header x-istara-agent-engine.",
+      "type": "string",
+      "enum": [
+        "pi",
+        "legacy"
+      ]
+    },
+    "pack": {
+      "description": "Scenario pack this record belongs to (master plan §10.3).",
+      "type": "string",
+      "enum": [
+        "canonical",
+        "spine",
+        "a2a",
+        "features",
+        "probes",
+        "industry",
+        "deep_research"
+      ]
+    },
+    "scenario": {
+      "description": "Scenario identity within the pack.",
+      "type": "object",
+      "required": [
+        "id",
+        "seed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "order": {
+          "description": "Which arm ran first for this pair, to expose and control order bias.",
+          "type": "string",
+          "enum": [
+            "legacy_first",
+            "pi_first"
+          ]
+        }
+      }
+    },
+    "provenance": {
+      "description": "Immutable run provenance. Endpoint fingerprints MUST be redacted before write (master plan §10.6); raw URLs/tokens/connection strings never reach an artifact.",
+      "type": "object",
+      "required": [
+        "git_sha",
+        "git_dirty",
+        "input_sha256",
+        "ts"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "git_sha": {
+          "type": "string",
+          "minLength": 7
+        },
+        "git_dirty": {
+          "type": "boolean"
+        },
+        "input_sha256": {
+          "description": "Hash of the byte-identical fixture/input shared by both arms of the pair.",
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "model_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "endpoint_fingerprint": {
+          "description": "Redacted, non-identifying fingerprint of the endpoint (never a raw URL, token, or connection string).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ts": {
+          "description": "ISO-8601 UTC timestamp. Normalized out before the report reproducibility (byte-identity) check.",
+          "type": "string"
+        }
+      }
+    },
+    "status": {
+      "description": "Run outcome. `not_runnable` and `invalid_pair` are counted in every denominator/table, never silently dropped (master plan §10.1.6).",
+      "type": "string",
+      "enum": [
+        "ok",
+        "not_runnable",
+        "invalid_pair"
+      ]
+    },
+    "not_runnable_reason": {
+      "description": "Required when status is not_runnable; a machine-readable typed reason.",
+      "type": "string",
+      "enum": [
+        "engine_unsupported",
+        "feature_unavailable",
+        "startup_failure",
+        "timeout",
+        "budget_exceeded",
+        "attribution_mismatch",
+        "redaction_failure",
+        "owner_budget_not_approved",
+        "other"
+      ]
+    },
+    "usage": {
+      "description": "Token/cost accounting (axis 6, master plan §5.5). `estimate` is mandatory: Pi rows are exact from the ledger; legacy rows are provider-reported when available (estimate=false) else estimated (estimate=true). Exact and estimated values are NEVER summed into one column downstream (acceptance A15).",
+      "type": "object",
+      "required": [
+        "estimate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cache_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "total_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "estimate": {
+          "description": "true when any figure in this block is estimated rather than provider-reported/ledger-exact.",
+          "type": "boolean"
+        },
+        "estimator": {
+          "description": "Name of the estimator when estimate=true (e.g. the pricing table + heuristic used).",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "metrics": {
+      "description": "The ten owner axes (master plan §10.2). Each axis block is optional per-record (only packs that exercise an axis populate it) but its shape is defined here so downstream assets extend a shared contract. Axis 6 (tokens/cost) lives in the top-level `usage` block.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tool_calling": {
+          "description": "Axis 1. Vocabulary from tests/agentic_eval_contract.json.",
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "tool_name_accuracy": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "argument_schema_validity": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "hallucinated_call_rate": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "calls_per_success": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "recovery_rate": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          }
+        },
+        "feature_integration": {
+          "description": "Axis 2. Per-feature criteria_scores compiled from docs/features/inventory.json. Features whose criteria cannot be auto-derived are counted as `criteria: manual`, never skipped.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "feature_id": {
+              "type": "string"
+            },
+            "criteria": {
+              "description": "`auto` when every criterion is machine-derivable; `manual` when at least one is not (still counted and reported).",
+              "type": "string",
+              "enum": [
+                "auto",
+                "manual"
+              ]
+            },
+            "criteria_scores": {
+              "$ref": "#/$defs/feature_criteria_scores"
+            }
+          }
+        },
+        "output_quality": {
+          "description": "Axis 3. Deterministic checks (reuse scripts/run_istara_evals.py) plus judge rubric 1-7.",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "spine_phase": {
+          "description": "Axis 4. Per-phase scores over the 10-phase research-validity taxonomy.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "intent": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "context": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "plan": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "tool_selection": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "execution": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "recovery": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "grounding": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "synthesis": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "review": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "governance": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          }
+        },
+        "memory_load": {
+          "description": "Axis 5. Memory items/tokens per step, retrieval precision@1/recall@3, cross-session recall, worker/backend RSS.",
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "memory_items": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "memory_tokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "precision_at_1": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "recall_at_3": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "worker_rss_bytes": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "backend_rss_bytes": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          }
+        },
+        "tool_efficiency": {
+          "description": "Axis 7. Efficiency frontier: quality vs tool_calls.",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "skills": {
+          "description": "Axis 8. Per-skill contract: expected phase, output-schema validity, marker compliance, ordering.",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "prompt_adherence": {
+          "description": "Axis 9. Protected-block survival, persona-constraint compliance, injection resistance, thinking-leak rate.",
+          "type": "object",
+          "additionalProperties": true
+        },
+        "a2a": {
+          "description": "Axis 10. Rounds, messages, tool_calls, wall-clock, tokens vs judge-scored quality; dominance analysis.",
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "paired_stats": {
+      "$ref": "#/$defs/paired_stats"
+    },
+    "extensions": {
+      "description": "Forward-compat escape hatch for downstream assets that need record-level fields not yet in this schema. Kept separate so the top level stays a strict contract (additionalProperties:false).",
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    {
+      "description": "A not_runnable record must carry a typed reason.",
+      "if": {
+        "properties": {
+          "status": {
+            "const": "not_runnable"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "not_runnable_reason"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "feature_criteria_scores": {
+      "description": "Axis 2 per-feature criteria scores (master plan §10.2). Each criterion is a 0..1 score or null when not applicable.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reachable": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "project_scoped": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "expected_action": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "engine_behavior": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence_emitted": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "graceful_failure": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "paired_stats": {
+      "description": "Paired comparison statistics (master plan §10.1.5). Populated by the report generator, not the runner. A delta whose bootstrap CI crosses zero is reported as `no detected difference`, never rounded up to a win.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "delta": {
+          "description": "Per-scenario paired delta (pi minus legacy) for the axis metric under comparison.",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "effect_size": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "bootstrap_ci": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "low": {
+              "type": "number"
+            },
+            "high": {
+              "type": "number"
+            },
+            "resamples": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "confidence": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "exclusiveMaximum": 1
+            }
+          },
+          "required": [
+            "low",
+            "high",
+            "resamples"
+          ]
+        },
+        "no_detected_difference": {
+          "description": "true when the bootstrap CI crosses zero.",
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

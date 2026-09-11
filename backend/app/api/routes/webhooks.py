@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 import hashlib
 import json
+import logging
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
@@ -52,6 +52,7 @@ def _reject_replay(
 # ---------------------------------------------------------------------------
 # WhatsApp webhooks
 # ---------------------------------------------------------------------------
+
 
 @router.get("/whatsapp/{instance_id}")
 async def whatsapp_verify(
@@ -114,6 +115,7 @@ async def whatsapp_webhook(instance_id: str, request: Request) -> dict:
 # Google Chat webhooks
 # ---------------------------------------------------------------------------
 
+
 @router.post("/google-chat/{instance_id}")
 async def google_chat_webhook(instance_id: str, request: Request) -> dict:
     """Google Chat webhook receiver (POST).
@@ -139,6 +141,79 @@ async def google_chat_webhook(instance_id: str, request: Request) -> dict:
         channel="google-chat",
         instance_id=instance_id,
         authenticator=token or "",
+        raw_body=raw_body,
+    )
+
+    try:
+        data = json.loads(raw_body.decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    await adapter.handle_webhook(data)
+    return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Slack webhooks
+# ---------------------------------------------------------------------------
+
+
+@router.post("/slack/{instance_id}")
+async def slack_webhook(instance_id: str, request: Request) -> dict:
+    """Slack Events API receiver (POST)."""
+    from app.channels.slack import SlackAdapter
+
+    adapter = channel_router.get(instance_id)
+    if adapter is None or not isinstance(adapter, SlackAdapter):
+        raise HTTPException(status_code=404, detail="Slack instance not found")
+
+    raw_body = await request.body()
+    try:
+        data = json.loads(raw_body.decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    # Handle Slack URL verification challenge
+    if data.get("type") == "url_verification":
+        return {"challenge": data.get("challenge", "")}
+
+    timestamp = request.headers.get("x-slack-request-timestamp")
+    signature = request.headers.get("x-slack-signature")
+    if not adapter.verify_signature(raw_body, timestamp, signature):
+        raise HTTPException(status_code=403, detail="Invalid Slack webhook signature")
+
+    _reject_replay(
+        channel="slack",
+        instance_id=instance_id,
+        authenticator=signature or "",
+        raw_body=raw_body,
+    )
+
+    await adapter.handle_webhook(data)
+    return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Telegram webhooks
+# ---------------------------------------------------------------------------
+
+
+@router.post("/telegram/{instance_id}")
+async def telegram_webhook(instance_id: str, request: Request) -> dict:
+    """Telegram Bot webhook receiver (POST)."""
+    from app.channels.telegram import TelegramAdapter
+
+    adapter = channel_router.get(instance_id)
+    if adapter is None or not isinstance(adapter, TelegramAdapter):
+        raise HTTPException(status_code=404, detail="Telegram instance not found")
+
+    raw_body = await request.body()
+    secret_token = request.headers.get("x-telegram-bot-api-secret-token", "")
+
+    _reject_replay(
+        channel="telegram",
+        instance_id=instance_id,
+        authenticator=secret_token or "telegram",
         raw_body=raw_body,
     )
 

@@ -6,10 +6,10 @@ audience: researcher
 status: documented
 related_features: ["tasks.kanban", "tasks.attachments"]
 related_glossary: ["scr"]
-code_references: ["frontend/src/components/kanban/TaskEditor.tsx", "frontend/src/stores/taskStore.ts", "backend/app/api/routes/tasks.py"]
+code_references: ["frontend/src/components/kanban/TaskEditor.tsx", "frontend/src/components/kanban/KanbanBoard.tsx", "frontend/src/lib/api.ts", "frontend/src/stores/taskStore.ts", "backend/app/api/routes/tasks.py", "backend/app/core/agent_lifecycle.py"]
 api_references: ["backend/app/api/routes/tasks.py"]
-test_references: ["tests/test_tasks.py"]
-last_verified: 2026-05-15
+test_references: ["frontend/src/stores/taskStore.test.ts", "tests/test_tasks.py"]
+last_verified: 2026-08-31
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -40,6 +40,9 @@ Task Editor exists so the work represented by Tasks > Task Editor has a stable, 
 - Start from Tasks > Task Editor when the current research task needs task editor.
 - Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
 - Move to related surfaces when needed: tasks.kanban, tasks.attachments.
+- A newly created task opens here before any agent can claim it. Add the intended skill, files, context, instructions, links, and labels while the header says the task is locked for editing.
+- Save records changes but keeps the reservation. Done Editing saves, releases the reservation, and only then makes Backlog or In Progress work available to the assigned agent.
+- If saving or releasing the reservation fails, the editor stays open and shows the error; your task is not silently handed to an agent with partial configuration.
 
 ## Inputs, Outputs, And Expected Outcomes
 
@@ -62,6 +65,6 @@ Task Editor exists so the work represented by Tasks > Task Editor has a stable, 
 
 ## Evidence
 
-- Source files: `frontend/src/components/kanban/TaskEditor.tsx`, `frontend/src/stores/taskStore.ts`, `backend/app/api/routes/tasks.py`
+- Source files: `frontend/src/components/kanban/TaskEditor.tsx`, `frontend/src/components/kanban/KanbanBoard.tsx`, `frontend/src/lib/api.ts`, `frontend/src/stores/taskStore.ts`, `backend/app/api/routes/tasks.py`, `backend/app/core/agent_lifecycle.py`
 - API references: `backend/app/api/routes/tasks.py`
-- Tests: `tests/test_tasks.py`
+- Tests: `frontend/src/stores/taskStore.test.ts`, `tests/test_tasks.py`

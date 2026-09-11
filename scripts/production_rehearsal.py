@@ -30,24 +30,13 @@ def rehearse() -> dict:
     from app.core.sandbox_evaluation import sandbox_evaluation
     from app.main import app
 
-    actual_routes = {getattr(route, "path", "") for route in app.routes}
-    required_routes = {
-        "/api/improvement-governance/proposals",
-        "/api/improvement-governance/proposals/{proposal_id}/sandbox-evaluation",
-        "/api/improvement-governance/feature-contract",
-        "/api/dgmh-archive/variants",
-        "/api/reasoning-bank/retrieve",
-        "/api/compute/stats",
-        "/api/ws/relay",
-    }
-    missing_routes = sorted(required_routes - actual_routes)
-    record(
-        checks,
-        "critical_api_routes_registered",
-        not missing_routes,
-        {"missing": missing_routes},
-    )
+    # FastAPI >= 0.118 defers include_router into lazy _IncludedRouter
+    # wrappers whose .path is "" until materialized. Derive HTTP routes from
+    # the OpenAPI schema (forces materialization) and keep WebSocket routes
+    # from the raw table.
+    from app.core.route_introspection import iter_route_paths
 
+    actual_routes = iter_route_paths(app)
     feature_names = {
         item["feature"] for item in improvement_governance.feature_contract_matrix()
     }

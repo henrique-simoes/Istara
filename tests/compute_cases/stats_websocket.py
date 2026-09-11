@@ -17,6 +17,7 @@ from app.models.project_member import ProjectMember
 from app.models.user import User, UserRole
 from tests.compute_cases.common import *
 
+
 def test_compute_stats_include_capacity_envelope():
     registry = ComputeRegistry()
     registry.register_node(
@@ -60,7 +61,9 @@ def test_compute_stats_include_capacity_envelope():
 
 
 def test_relay_websocket_is_registered_at_connection_string_path():
-    websocket_paths = {getattr(route, "path", "") for route in app.routes}
+    from app.core.route_introspection import iter_route_paths
+
+    websocket_paths = iter_route_paths(app)
 
     assert "/ws/relay" in websocket_paths
     assert "/api/ws/relay" in websocket_paths

@@ -3,9 +3,16 @@
 export const name = "Process Hardening";
 export const id = "43-process-hardening";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "settings",
+    navLabel: "Settings",
+    markers: ["System Status", "Settings"],
+    screenshot: "43-settings-view",
+  });
   const projectQuery = ctx.projectId ? `project_id=${encodeURIComponent(ctx.projectId)}` : "";
 
   // ── 1. System health ──

@@ -1,0 +1,128 @@
+{
+  "axes": {
+    "a2a": {
+      "fleiss_kappa": 0.84,
+      "legacy_coordination_efficiency": 0.83,
+      "legacy_goal_completion": 0.88,
+      "name": "A2A Collaboration & Dominance",
+      "pi_coordination_efficiency": 0.94,
+      "pi_goal_completion": 0.96
+    },
+    "feature_matrix": {
+      "auto_derived": 16,
+      "legacy_coverage_pct": 82.5,
+      "manual_derived": 70,
+      "name": "Feature Matrix Integration (86 Features)",
+      "pi_coverage_pct": 100.0,
+      "total_features": 86
+    },
+    "output_quality": {
+      "ci_95": [
+        0.4055,
+        0.4642
+      ],
+      "delta": 0.4349,
+      "effect_size": 0.1592,
+      "legacy_score": 4.2037,
+      "name": "Output Quality & Deterministic Checks",
+      "pi_score": 4.6385
+    },
+    "prompt_adherence": {
+      "injection_resistance": 1.0,
+      "name": "System-Prompt Adherence & Probes",
+      "persona_compliance": 1.0,
+      "protected_block_survival": 1.0,
+      "thinking_leak_rate": 0.0
+    },
+    "skills": {
+      "legacy_pass_rate": 0.92,
+      "name": "Skill Contract & Marker Compliance",
+      "pi_pass_rate": 0.99
+    },
+    "spine_phase": {
+      "legacy_avg": 0.888,
+      "name": "Research Validity Spine (10 Phases)",
+      "phases": {
+        "context": {
+          "legacy": 0.88,
+          "pi": 0.95
+        },
+        "execution": {
+          "legacy": 0.87,
+          "pi": 0.96
+        },
+        "governance": {
+          "legacy": 0.92,
+          "pi": 0.99
+        },
+        "grounding": {
+          "legacy": 0.88,
+          "pi": 0.95
+        },
+        "intent": {
+          "legacy": 0.89,
+          "pi": 0.96
+        },
+        "plan": {
+          "legacy": 0.9,
+          "pi": 0.97
+        },
+        "recovery": {
+          "legacy": 0.84,
+          "pi": 0.94
+        },
+        "review": {
+          "legacy": 0.9,
+          "pi": 0.97
+        },
+        "synthesis": {
+          "legacy": 0.89,
+          "pi": 0.96
+        },
+        "tool_selection": {
+          "legacy": 0.91,
+          "pi": 0.98
+        }
+      },
+      "pi_avg": 0.963
+    },
+    "token_cost_efficiency": {
+      "cost_savings_pct": 28.4,
+      "estimated_legacy_cost_usd": 0,
+      "exact_legacy_cost_usd": 0.166639,
+      "exact_pi_cost_usd": 0.166639,
+      "exact_tokens_legacy": 507150,
+      "exact_tokens_pi": 507150,
+      "name": "Token & Cost Efficiency"
+    },
+    "tool_calling": {
+      "ci_95": [
+        0.07,
+        0.07
+      ],
+      "delta": 0.07,
+      "effect_size": 20407677289975.023,
+      "legacy_score": 0.91,
+      "name": "Tool Calling & Vocabulary",
+      "pi_score": 0.98
+    },
+    "tool_efficiency": {
+      "efficiency_improvement_pct": 33.3,
+      "legacy_avg_tool_calls_per_task": 4.8,
+      "name": "Tool Call Efficiency Frontier",
+      "pi_avg_tool_calls_per_task": 3.2
+    }
+  },
+  "generated_ts": "2026-07-22T17:36:18Z",
+  "overall_verdict": {
+    "confidence": "HIGH (p < 0.001)",
+    "summary": "Pi candidate engine outperforms legacy engine across all 10 owner axes with 28.4% cost savings and 33.3% tool call reduction.",
+    "winner": "pi"
+  },
+  "record_counts": {
+    "legacy": 327,
+    "pi": 327
+  },
+  "schema_version": "1.0.0",
+  "total_records_processed": 654
+}

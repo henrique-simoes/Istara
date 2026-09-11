@@ -14,10 +14,10 @@ from pathlib import Path
 from typing import Any
 
 from app.config import settings
-from app.core.ollama import ollama
 from app.core.file_processor import process_file
 from app.core.llm_schema_adapter import (
     SchemaBudgetResult,
+    extract_json_schema,
     openai_json_schema_response_format,
     parse_json_object,
     strip_thinking_markers,
@@ -49,7 +49,9 @@ def _looks_like_json_schema(schema: dict[str, Any]) -> bool:
     return False
 
 
-def _truncate_to_token_budget(text: str, token_budget: int, *, suffix: str = "\n...[truncated]") -> str:
+def _truncate_to_token_budget(
+    text: str, token_budget: int, *, suffix: str = "\n...[truncated]"
+) -> str:
     """Approximate token-budget truncation without adding a heavy tokenizer dependency."""
     if token_budget <= 0 or count_tokens(text) <= token_budget:
         return text
@@ -59,11 +61,11 @@ def _truncate_to_token_budget(text: str, token_budget: int, *, suffix: str = "\n
 
 def _make_schema_strict(schema: Any) -> dict:
     """Transform JSON Schema (or example object) to strict mode for local LLMs.
-    
+
     If the input is already a JSON Schema (has 'type'), it adds 'additionalProperties': False
     and 'required' arrays to every object.
-    
-    If the input is an example object (e.g. {"key": "value"}), it recursively 
+
+    If the input is an example object (e.g. {"key": "value"}), it recursively
     translates it into a valid JSON Schema with strict constraints.
     """
     if not isinstance(schema, (dict, list)):
@@ -80,17 +82,11 @@ def _make_schema_strict(schema: Any) -> dict:
         # Example array or Schema array
         if len(schema) > 0 and isinstance(schema[0], dict) and "type" in schema[0]:
             # It's a schema array
-            return {
-                "type": "array",
-                "items": _make_schema_strict(schema[0])
-            }
+            return {"type": "array", "items": _make_schema_strict(schema[0])}
         else:
             # It's an example array
             item_example = schema[0] if len(schema) > 0 else "..."
-            return {
-                "type": "array",
-                "items": _make_schema_strict(item_example)
-            }
+            return {"type": "array", "items": _make_schema_strict(item_example)}
 
     if isinstance(schema, dict):
         # Check if it's already a JSON Schema
@@ -100,41 +96,92 @@ def _make_schema_strict(schema: Any) -> dict:
                 new_schema["additionalProperties"] = False
                 properties = new_schema.get("properties", {})
                 required = new_schema.get("required", [])
-                
+
                 new_required = list(properties.keys())
                 new_properties = {}
-                
+
                 for prop_name, prop_schema in properties.items():
                     prop_schema_strict = _make_schema_strict(prop_schema)
                     # Handle optional fields (if they weren't in the original required list)
                     if prop_name not in required:
-                        if "type" in prop_schema_strict and isinstance(prop_schema_strict["type"], str):
+                        if "type" in prop_schema_strict and isinstance(
+                            prop_schema_strict["type"], str
+                        ):
                             original_type = prop_schema_strict.pop("type")
-                            prop_schema_strict["anyOf"] = [{"type": original_type}, {"type": "null"}]
+                            prop_schema_strict["anyOf"] = [
+                                {"type": original_type},
+                                {"type": "null"},
+                            ]
                     new_properties[prop_name] = prop_schema_strict
-                
+
                 new_schema["properties"] = new_properties
                 new_schema["required"] = new_required
             elif new_schema["type"] == "array":
                 if "items" in new_schema:
                     new_schema["items"] = _make_schema_strict(new_schema["items"])
             return new_schema
-        
+
         # It's an example object — translate to Schema
         new_properties = {}
         new_required = []
         for k, v in schema.items():
             new_properties[k] = _make_schema_strict(v)
             new_required.append(k)
-            
+
         return {
             "type": "object",
             "properties": new_properties,
             "required": new_required,
-            "additionalProperties": False
+            "additionalProperties": False,
         }
-    
+
     return {"type": "string"}
+
+
+_PI_SCHEMA_KEYS = frozenset(
+    {
+        "type",
+        "properties",
+        "required",
+        "items",
+        "enum",
+        "const",
+        "additionalProperties",
+        "description",
+    }
+)
+
+
+def _pi_dispatch_schema(schema: Any) -> dict:
+    """Simplify a strict JSON schema into the Pi forced-tool subset.
+
+    ``_make_schema_strict`` can emit constructs the Pi engine rejects before
+    any model call (``anyOf`` null-unions for optional fields, ``null`` type
+    unions); collapse those and drop unsupported keys so a schema the legacy
+    ``response_format`` path accepts stays dispatchable. Root stays an object.
+    """
+    if not isinstance(schema, dict):
+        return {"type": "object", "properties": {}, "required": [], "additionalProperties": False}
+    node = dict(schema)
+    union = node.pop("anyOf", None)
+    if isinstance(union, list):
+        for branch in union:
+            if isinstance(branch, dict) and branch.get("type") != "null":
+                node.update(branch)
+                break
+    node_type = node.get("type")
+    if isinstance(node_type, list):
+        node["type"] = next((t for t in node_type if t != "null"), "string")
+    out = {k: v for k, v in node.items() if k in _PI_SCHEMA_KEYS}
+    if "additionalProperties" in out and not isinstance(out["additionalProperties"], bool):
+        del out["additionalProperties"]
+    if isinstance(out.get("properties"), dict):
+        out["properties"] = {k: _pi_dispatch_schema(v) for k, v in out["properties"].items()}
+    if isinstance(out.get("items"), dict):
+        out["items"] = _pi_dispatch_schema(out["items"])
+    if "type" not in out:
+        out["type"] = "object" if "properties" in out else "string"
+    return out
 
 
 def _normalized_skill_output_response_format(skill_name: str) -> dict:
@@ -221,7 +268,8 @@ def _normalize_generated_findings(
     nuggets = [
         {
             "text": _compact_text(as_dict(n).get("text", str(n))),
-            "source": _compact_text(as_dict(n).get("source", source_label), limit=120) or source_label,
+            "source": _compact_text(as_dict(n).get("source", source_label), limit=120)
+            or source_label,
             "tags": as_dict(n).get("tags", []),
         }
         for n in _list_items(data.get("nuggets"))
@@ -233,7 +281,8 @@ def _normalize_generated_findings(
     insights = [
         {
             "text": _compact_text(as_dict(i).get("text", str(i))),
-            "confidence": _compact_text(as_dict(i).get("confidence", "medium"), limit=40) or "medium",
+            "confidence": _compact_text(as_dict(i).get("confidence", "medium"), limit=40)
+            or "medium",
         }
         for i in _list_items(data.get("insights"))
     ]
@@ -251,19 +300,25 @@ def _normalize_generated_findings(
             for evidence in _list_items(item.get("evidence"))[:item_limit]:
                 text = _compact_text(evidence)
                 if text:
-                    nuggets.append({"text": text, "source": source_label, "tags": ["source-insight"]})
+                    nuggets.append(
+                        {"text": text, "source": source_label, "tags": ["source-insight"]}
+                    )
         for metric in _list_items(data.get("metrics")):
             item = as_dict(metric)
             points = _list_items(item.get("data_points"))
             if points:
                 sample = ", ".join(_compact_text(point, limit=80) for point in points[:2])
-                metric_name = _compact_text(item.get("metric_name") or item.get("metric_id"), limit=120)
+                metric_name = _compact_text(
+                    item.get("metric_name") or item.get("metric_id"), limit=120
+                )
                 if sample:
-                    nuggets.append({
-                        "text": f"{metric_name or 'Metric'} observed data points: {sample}",
-                        "source": source_label,
-                        "tags": ["metric-data"],
-                    })
+                    nuggets.append(
+                        {
+                            "text": f"{metric_name or 'Metric'} observed data points: {sample}",
+                            "source": source_label,
+                            "tags": ["metric-data"],
+                        }
+                    )
 
     if not facts:
         for insight in _list_items(data.get("source_insights")):
@@ -281,48 +336,64 @@ def _normalize_generated_findings(
                 trend = _compact_text(metric.get("trend"), limit=40)
                 health = _compact_text(metric.get("health"), limit=40)
                 if metric_name or trend or health:
-                    facts.append({
-                        "text": (
-                            f"HEART {category} tracks {metric_name or 'a primary metric'}"
-                            f" with trend={trend or 'unknown'} and health={health or 'unknown'}."
-                        )
-                    })
+                    facts.append(
+                        {
+                            "text": (
+                                f"HEART {category} tracks {metric_name or 'a primary metric'}"
+                                f" with trend={trend or 'unknown'} and "
+                                f"health={health or 'unknown'}."
+                            )
+                        }
+                    )
         for metric in _list_items(data.get("metrics")):
             item = as_dict(metric)
             metric_name = _compact_text(item.get("metric_name") or item.get("metric_id"), limit=120)
             trend = as_dict(item.get("trend", {}))
             direction = _compact_text(trend.get("direction"), limit=40)
             if metric_name or direction:
-                facts.append({"text": f"{metric_name or 'Metric'} trend is {direction or 'reported'}."})
+                facts.append(
+                    {"text": f"{metric_name or 'Metric'} trend is {direction or 'reported'}."}
+                )
 
     if not insights:
         for insight in _list_items(data.get("source_insights")):
             item = as_dict(insight)
             text = _compact_text(item.get("text") or item.get("finding"))
             if text:
-                insights.append({
-                    "text": text,
-                    "confidence": _compact_text(item.get("confidence"), limit=40) or "medium",
-                })
+                insights.append(
+                    {
+                        "text": text,
+                        "confidence": _compact_text(item.get("confidence"), limit=40) or "medium",
+                    }
+                )
         for hmw in _list_items(data.get("hmw_statements"))[:item_limit]:
             item = as_dict(hmw)
             statement = _compact_text(item.get("statement") or item.get("text"))
             cluster = _compact_text(item.get("cluster"), limit=120)
             if statement:
-                insights.append({
-                    "text": f"{statement}" + (f" Opportunity cluster: {cluster}." if cluster else ""),
-                    "confidence": "medium",
-                })
+                insights.append(
+                    {
+                        "text": f"{statement}"
+                        + (f" Opportunity cluster: {cluster}." if cluster else ""),
+                        "confidence": "medium",
+                    }
+                )
         for regression in _list_items(data.get("regressions")):
             item = as_dict(regression)
             metric = _compact_text(item.get("metric"), limit=120)
             severity = _compact_text(item.get("severity"), limit=40)
             magnitude = _compact_text(item.get("magnitude_pct"), limit=40)
             if metric or severity:
-                insights.append({
-                    "text": f"{metric or 'Metric'} regression severity={severity or 'reported'}, magnitude={magnitude or 'n/a'}.",
-                    "confidence": "medium",
-                })
+                insights.append(
+                    {
+                        "text": (
+                            f"{metric or 'Metric'} regression "
+                            f"severity={severity or 'reported'}, "
+                            f"magnitude={magnitude or 'n/a'}."
+                        ),
+                        "confidence": "medium",
+                    }
+                )
         for key in ("findings", "opportunities", "pain_points", "themes", "patterns"):
             for item in _list_items(data.get(key)):
                 entry = as_dict(item)
@@ -338,19 +409,25 @@ def _normalize_generated_findings(
             statement = _compact_text(item.get("statement") or item.get("hmw_id"))
             rationale = _compact_text(item.get("rationale"))
             if statement:
-                recommendations.append({
-                    "text": f"Use this HMW for ideation: {statement}" + (f" Rationale: {rationale}" if rationale else ""),
-                    "priority": "high",
-                })
+                recommendations.append(
+                    {
+                        "text": f"Use this HMW for ideation: {statement}"
+                        + (f" Rationale: {rationale}" if rationale else ""),
+                        "priority": "high",
+                    }
+                )
         for regression in _list_items(data.get("regressions")):
             item = as_dict(regression)
             metric = _compact_text(item.get("metric"), limit=120)
             status = _compact_text(item.get("investigation_status"), limit=80)
             if metric:
-                recommendations.append({
-                    "text": f"Investigate the {metric} regression" + (f" ({status})." if status else "."),
-                    "priority": _compact_text(item.get("severity"), limit=40) or "medium",
-                })
+                recommendations.append(
+                    {
+                        "text": f"Investigate the {metric} regression"
+                        + (f" ({status})." if status else "."),
+                        "priority": _compact_text(item.get("severity"), limit=40) or "medium",
+                    }
+                )
 
     return (
         [item for item in nuggets if item.get("text")][:item_limit],
@@ -396,7 +473,9 @@ def _deterministic_findings_from_research_data(
             }
         )
     else:
-        facts.append({"text": f"Input for {display} contains {len(lines)} non-empty evidence line(s)."})
+        facts.append(
+            {"text": f"Input for {display} contains {len(lines)} non-empty evidence line(s)."}
+        )
 
     has_date_column = any(col.lower() in {"date", "timestamp", "week", "month"} for col in columns)
     if has_date_column and len(rows) < 6:
@@ -413,11 +492,18 @@ def _deterministic_findings_from_research_data(
             f"{display} has usable input evidence, but the model returned no normalized findings; "
             "the fallback preserved the available evidence for review."
         )
-        recommendation_text = "Review the source data and rerun the skill if deeper model synthesis is required."
+        recommendation_text = (
+            "Review the source data and rerun the skill if deeper model synthesis is required."
+        )
 
     insights = [{"text": insight_text, "confidence": "low"}]
     recommendations = [{"text": recommendation_text, "priority": "medium"}]
-    return nuggets[:item_limit], facts[:item_limit], insights[:item_limit], recommendations[:item_limit]
+    return (
+        nuggets[:item_limit],
+        facts[:item_limit],
+        insights[:item_limit],
+        recommendations[:item_limit],
+    )
 
 
 def _fallback_plan(
@@ -505,12 +591,20 @@ def create_skill(
                 context=ctx,
             )
             try:
-                resp = await ollama.chat(
+                # W9: the AgenticDispatcher path (``skill.plan``) is the only
+                # path; the legacy direct-plane branch was removed in W9.
+                from app.core.agentic import agentic
+                from app.core.agentic.types import TurnParams
+
+                outcome = await agentic.completion(
+                    purpose="skill.plan",
+                    project_id=skill_input.project_id,
+                    system=None,
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7,
-                    thinking_mode="off",
+                    params=TurnParams(temperature=0.7, thinking_mode="off"),
+                    spine_phase="plan",
                 )
-                plan = (resp.get("message", {}).get("content", "") or "").strip()
+                plan = (outcome.text or "").strip()
             except Exception as e:
                 logger.warning("Skill %s plan fell back after LLM failure: %s", self.name, e)
                 return {"skill": self.name, "plan": fallback, "fallback": True}
@@ -588,7 +682,8 @@ def create_skill(
                 )
                 if schema_token_count > max_schema_tokens:
                     logger.info(
-                        "Skill %s schema is %s tokens; using normalized output schema for local execution.",
+                        "Skill %s schema is %s tokens; using "
+                        "normalized output schema for local execution.",
                         self.name,
                         schema_token_count,
                     )
@@ -604,21 +699,25 @@ def create_skill(
             item_limit = max(1, int(settings.skill_execute_item_limit))
             if schema_dict:
                 output_contract = (
-                    "A native JSON schema is attached to this request. Return ONLY a valid JSON object; "
-                    "do not include markdown, prose, or thinking text outside JSON. Use this compact shape "
+                    "A native JSON schema is attached to this "
+                    "request. Return ONLY a valid JSON object; "
+                    "do not include markdown, prose, or thinking "
+                    "text outside JSON. Use this compact shape "
                     "when the schema allows it:\n"
                     "{\n"
                     '  "summary": "...",\n'
                     '  "nuggets": [{"text": "...", "source": "...", "tags": ["..."]}],\n'
                     '  "facts": [{"text": "..."}],\n'
                     '  "insights": [{"text": "...", "confidence": "high|medium|low"}],\n'
-                    '  "recommendations": [{"text": "...", "priority": "critical|high|medium|low"}],\n'
+                    '  "recommendations": [{"text": "...", '
+                    '"priority": "critical|high|medium|low"}],\n'
                     '  "suggestions": ["..."]\n'
                     "}\n"
                     "Keep arrays concise: at most "
                     f"{item_limit} nuggets, {item_limit} facts, {item_limit} insights, "
                     f"and {item_limit} recommendations unless the data clearly requires fewer. "
-                    "All returned findings are candidate/provisional Research Spine artifacts, not accepted "
+                    "All returned findings are candidate/provisional "
+                    "Research Spine artifacts, not accepted "
                     "or reportable evidence."
                 )
             else:
@@ -641,27 +740,38 @@ def create_skill(
                     f"</research_data>\n\n"
                     f"<research_spine_contract>\n"
                     f"Sources and exact source spans come before trusted Atomic Research. "
-                    f"Return only candidate/provisional atoms, facts, insights, and recommendations. "
+                    f"Return only candidate/provisional atoms, "
+                    f"facts, insights, and recommendations. "
                     f"Do not present documents -> nuggets -> facts -> insights as trusted before "
-                    f"independent extraction/coding, reliability/reconciliation, and Done-task gates. "
-                    f"Every candidate nugget should include a source, quote/span/location when available, "
+                    f"independent extraction/coding, "
+                    f"reliability/reconciliation, and Done-task gates. "
+                    f"Every candidate nugget should include a "
+                    f"source, quote/span/location when available, "
                     f"and code-ready tags for later independent coding.\n"
                     f"</research_spine_contract>\n\n"
                     f"<instructions>\n"
-                    f"1. **Think First**: Analyze the research data against the methodology privately.\n"
-                    f"2. **Propose Candidate Evidence**: Find exact source quotes/spans and mark them as provisional.\n"
-                    f"3. **Propose Candidate Synthesis**: Derive candidate facts, insights, and recommendations only from those spans.\n"
-                    f"4. **Format**: Respond only with a valid JSON object matching the output contract.\n"
-                    f"5. **Do Not Promote**: Do not describe any artifact as accepted, trusted, or reportable.\n"
-                    f"6. **Be concise**: Prefer the strongest evidence and avoid exhaustive lists.\n"
+                    f"1. **Think First**: Analyze the research "
+                    f"data against the methodology privately.\n"
+                    f"2. **Propose Candidate Evidence**: Find exact "
+                    f"source quotes/spans and mark them as provisional.\n"
+                    f"3. **Propose Candidate Synthesis**: Derive candidate facts, "
+                    f"insights, and recommendations only from those spans.\n"
+                    f"4. **Format**: Respond only with a valid "
+                    f"JSON object matching the output contract.\n"
+                    f"5. **Do Not Promote**: Do not describe any "
+                    f"artifact as accepted, trusted, or reportable.\n"
+                    f"6. **Be concise**: Prefer the strongest "
+                    f"evidence and avoid exhaustive lists.\n"
                     f"</instructions>\n\n"
                     f"## Output Contract\n"
                     f"{output_contract}"
                 )
 
             system_prompt = (
-                "You are a meticulous UX Research Auditor. You prioritize evidence over assumption. "
-                "Your skill output is candidate/provisional until Istara's Research Spine accepts it."
+                "You are a meticulous UX Research Auditor. "
+                "You prioritize evidence over assumption. "
+                "Your skill output is candidate/provisional "
+                "until Istara's Research Spine accepts it."
             )
             skill_context_limit = min(
                 max(settings.max_context_tokens, 2048),
@@ -671,9 +781,7 @@ def create_skill(
 
             static_prompt = _build_full_prompt("", methodology)
             schema_tokens = (
-                count_tokens(json.dumps(schema_dict, ensure_ascii=False))
-                if schema_dict
-                else 0
+                count_tokens(json.dumps(schema_dict, ensure_ascii=False)) if schema_dict else 0
             )
             static_tokens = (
                 count_tokens(static_prompt)
@@ -714,101 +822,175 @@ def create_skill(
                 + schema_tokens
             )
 
-            resp = await ollama.chat(
-                messages=[{"role": "user", "content": full_prompt}], 
-                temperature=0.2, # Lower temperature for analytical rigor
-                max_tokens=max_output_tokens,
-                response_format=schema_dict, # Enable native structured outputs
-                system=system_prompt,
-                min_context=estimated_context_tokens,
-                thinking_mode="off",
-            )
-            
-            raw_content = resp.get("message", {}).get("content", "")
-            
+            # W9: skill execution dispatches structured output through the
+            # AgenticDispatcher (``skill.execute``) — repair=False because
+            # the 4-stage fallback chain below is the resilience contract
+            # and the Pi engine must not double-repair inside it. The legacy
+            # direct-plane branch was removed in W9.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            try:
+                outcome = await agentic.structured(
+                    purpose="skill.execute",
+                    project_id=skill_input.project_id,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": full_prompt}],
+                    schema=_pi_dispatch_schema(
+                        extract_json_schema(schema_dict)
+                        or extract_json_schema(repair_response_format)
+                    ),
+                    params=TurnParams(
+                        temperature=0.2,
+                        max_tokens=max_output_tokens,
+                        min_context=estimated_context_tokens,
+                        thinking_mode="off",
+                    ),
+                    repair=False,
+                    spine_phase="execution",
+                )
+                raw_content = outcome.text
+                data = outcome.value if outcome.status == "success" else None
+            except Exception as e:
+                # F-W5-1: on the Pi engine, run_structured(repair=False)
+                # raises PiRuntimeTurnError on the first invalid/missing
+                # structured output instead of returning status != "success".
+                # Degrade into the 4-stage fallback chain below (the
+                # product's resilience contract) with empty raw content;
+                # the repair stages are already individually guarded.
+                logger.warning(
+                    "Skill %s primary structured call raised; entering repair fallback chain: %s",
+                    self.name,
+                    e,
+                )
+                raw_content = ""
+                data = None
+
             # Remove thinking tags from JSON parsing if model included them outside JSON
             clean_content = strip_thinking_markers(raw_content)
-            
+
             json_success = False
             repaired_from_non_json = False
             repaired_content = ""
             plain_repair_content = ""
-            data = _parse_json_response(clean_content)
+            data = data or _parse_json_response(clean_content)
             if data:
                 json_success = True
             else:
-                use_native_repair = (settings.llm_provider or "").strip().lower() not in {"lmstudio"}
-                if use_native_repair:
-                    repair_prompt = (
-                        "Convert the failed skill response below into one valid JSON object for Istara.\n"
-                        "Return ONLY JSON. Do not include markdown fences, comments, prose, or thinking text.\n"
-                        "Use only evidence present in the failed response and research data sample. "
-                        "When evidence for an array is missing, return an empty array instead of inventing details.\n\n"
-                        f"Skill: {self.name}\n"
-                        f"Display name: {display}\n"
-                        f"Description: {self.description}\n"
-                        f"Required compact output contract:\n{output_contract[:2000]}\n\n"
-                        f"Failed response:\n{(raw_content or '[empty response]')[:6000]}\n\n"
-                        f"Research data sample:\n{data_content[:3000]}"
+                repair_prompt = (
+                    "Convert the failed skill response below "
+                    "into one valid JSON object for Istara.\n"
+                    "Return ONLY JSON. Do not include markdown "
+                    "fences, comments, prose, or thinking text.\n"
+                    "Use only evidence present in the failed response and research data sample. "
+                    "When evidence for an array is missing, return an "
+                    "empty array instead of inventing details.\n\n"
+                    f"Skill: {self.name}\n"
+                    f"Display name: {display}\n"
+                    f"Description: {self.description}\n"
+                    f"Required compact output contract:\n{output_contract[:2000]}\n\n"
+                    f"Failed response:\n{(raw_content or '[empty response]')[:6000]}\n\n"
+                    f"Research data sample:\n{data_content[:3000]}"
+                )
+                try:
+                    # W9: native JSON repair dispatches through the
+                    # AgenticDispatcher (``skill.repair_native``) with
+                    # repair=False — this stage IS the repair, so the
+                    # Pi engine must not run its own bounded repair
+                    # inside the fallback chain. The legacy direct-plane
+                    # branch was removed in W9.
+                    from app.core.agentic import agentic
+                    from app.core.agentic.types import TurnParams
+
+                    repair_system = (
+                        "You are a strict JSON repair adapter. "
+                        "Your entire response must be one valid JSON object."
                     )
-                    try:
-                        repair_resp = await ollama.chat(
-                            messages=[{"role": "user", "content": repair_prompt}],
+                    repair_outcome = await agentic.structured(
+                        purpose="skill.repair_native",
+                        project_id=skill_input.project_id,
+                        system=repair_system,
+                        messages=[{"role": "user", "content": repair_prompt}],
+                        schema=_pi_dispatch_schema(extract_json_schema(repair_response_format)),
+                        params=TurnParams(
                             temperature=0.0,
                             max_tokens=max_output_tokens,
-                            response_format=repair_response_format,
-                            system=(
-                                "You are a strict JSON repair adapter. Your entire response must be "
-                                "one valid JSON object."
-                            ),
                             min_context=(
                                 count_tokens(repair_prompt)
-                                + count_tokens("You are a strict JSON repair adapter. Your entire response must be one valid JSON object.")
+                                + count_tokens(repair_system)
                                 + max_output_tokens
                             ),
                             thinking_mode="off",
+                        ),
+                        repair=False,
+                        spine_phase="recovery",
+                    )
+                    repaired_content = repair_outcome.text
+                    data = repair_outcome.value if repair_outcome.status == "success" else None
+                    clean_repaired_content = strip_thinking_markers(repaired_content)
+                    data = data or _parse_json_response(clean_repaired_content)
+                    repaired_from_non_json = bool(data)
+                    json_success = bool(data)
+                    if repaired_from_non_json:
+                        logger.info(
+                            "Skill %s repaired non-JSON LLM output into structured JSON.", self.name
                         )
-                        repaired_content = repair_resp.get("message", {}).get("content", "")
-                        clean_repaired_content = strip_thinking_markers(repaired_content)
-                        data = _parse_json_response(clean_repaired_content)
-                        repaired_from_non_json = bool(data)
-                        json_success = bool(data)
-                        if repaired_from_non_json:
-                            logger.info("Skill %s repaired non-JSON LLM output into structured JSON.", self.name)
-                    except Exception as e:
-                        logger.warning("Skill %s JSON repair failed after non-JSON output: %s", self.name, e)
+                except Exception as e:
+                    logger.warning(
+                        "Skill %s JSON repair failed after non-JSON output: %s", self.name, e
+                    )
 
             if not data:
                 plain_repair_prompt = (
                     "You are converting a UX research skill result into Istara JSON.\n"
-                    "Return one valid JSON object only. No markdown, no commentary, no hidden reasoning.\n"
-                        "The object must contain provisional candidate summary, nuggets, facts, insights, recommendations, and suggestions.\n"
-                        "Atomic Research artifacts are not trusted at this stage; use exact source spans where available.\n"
-                        "Use empty arrays when evidence is missing.\n\n"
+                    "Return one valid JSON object only. No markdown, "
+                    "no commentary, no hidden reasoning.\n"
+                    "The object must contain provisional candidate summary, "
+                    "nuggets, facts, insights, recommendations, and suggestions.\n"
+                    "Atomic Research artifacts are not trusted at this "
+                    "stage; use exact source spans where available.\n"
+                    "Use empty arrays when evidence is missing.\n\n"
                     f"Skill: {self.name}\n"
                     f"Display name: {display}\n"
                     f"Research data sample:\n{data_content[:2500]}\n\n"
-                    f"Previous response:\n{(raw_content or repaired_content or '[empty response]')[:3500]}"
+                    f"Previous response:\n"
+                    f"{(raw_content or repaired_content or '[empty response]')[:3500]}"
                 )
                 try:
-                    plain_repair_resp = await ollama.chat(
+                    # W9: plain JSON repair (stage 2 of the fallback chain)
+                    # dispatches through the AgenticDispatcher
+                    # (``skill.repair_plain``); the legacy direct-plane branch
+                    # was removed in W9.
+                    from app.core.agentic import agentic
+                    from app.core.agentic.types import TurnParams
+
+                    plain_system = "Return exactly one syntactically valid JSON object for Istara."
+                    plain_outcome = await agentic.completion(
+                        purpose="skill.repair_plain",
+                        project_id=skill_input.project_id,
+                        system=plain_system,
                         messages=[{"role": "user", "content": plain_repair_prompt}],
-                        temperature=0.0,
-                        max_tokens=max_output_tokens,
-                        system="Return exactly one syntactically valid JSON object for Istara.",
-                        min_context=(
-                            count_tokens(plain_repair_prompt)
-                            + count_tokens("Return exactly one syntactically valid JSON object for Istara.")
-                            + max_output_tokens
+                        params=TurnParams(
+                            temperature=0.0,
+                            max_tokens=max_output_tokens,
+                            min_context=(
+                                count_tokens(plain_repair_prompt)
+                                + count_tokens(plain_system)
+                                + max_output_tokens
+                            ),
+                            thinking_mode="off",
                         ),
-                        thinking_mode="off",
+                        spine_phase="recovery",
                     )
-                    plain_repair_content = plain_repair_resp.get("message", {}).get("content", "")
+                    plain_repair_content = plain_outcome.text
                     data = _parse_json_response(strip_thinking_markers(plain_repair_content))
                     repaired_from_non_json = bool(data)
                     json_success = bool(data)
                     if data:
-                        logger.info("Skill %s recovered structured JSON through plain repair fallback.", self.name)
+                        logger.info(
+                            "Skill %s recovered structured JSON through plain repair fallback.",
+                            self.name,
+                        )
                 except Exception as e:
                     logger.warning("Skill %s plain JSON repair fallback failed: %s", self.name, e)
 
@@ -820,7 +1002,9 @@ def create_skill(
                     errors=["LLM returned non-JSON or empty JSON output."],
                     artifacts={
                         f"{skill_name}_raw_response.txt": raw_content[:4000],
-                        f"{skill_name}_repair_response.txt": (repaired_content or plain_repair_content)[:4000],
+                        f"{skill_name}_repair_response.txt": (
+                            repaired_content or plain_repair_content
+                        )[:4000],
                         f"{skill_name}_schema_budget.json": json.dumps(
                             schema_budget.to_dict(),
                             indent=2,
@@ -841,18 +1025,18 @@ def create_skill(
             def finding_count() -> int:
                 return len(nuggets) + len(facts) + len(insights) + len(recommendations)
 
-            use_empty_findings_repair = not (
-                (settings.llm_provider or "").strip().lower() == "lmstudio"
-                and schema_budget.used_fallback
-            )
-
-            if finding_count() == 0 and use_empty_findings_repair:
+            if finding_count() == 0:
                 empty_findings_prompt = (
-                    "The previous skill JSON was syntactically valid but contained no Istara findings.\n"
-                    "Extract concise candidate/provisional evidence-backed findings from the research data and return one JSON object only.\n"
-                    "Required keys: summary, nuggets, facts, insights, recommendations, suggestions.\n"
-                    "If the data has usable source evidence, include at least one candidate atom/fact or insight. "
-                    "Do not invent beyond the data, skip exact source spans, or mark anything accepted/reportable.\n\n"
+                    "The previous skill JSON was syntactically "
+                    "valid but contained no Istara findings.\n"
+                    "Extract concise candidate/provisional evidence-backed findings "
+                    "from the research data and return one JSON object only.\n"
+                    "Required keys: summary, nuggets, facts, "
+                    "insights, recommendations, suggestions.\n"
+                    "If the data has usable source evidence, include "
+                    "at least one candidate atom/fact or insight. "
+                    "Do not invent beyond the data, skip exact source "
+                    "spans, or mark anything accepted/reportable.\n\n"
                     f"Skill: {self.name}\n"
                     f"Display name: {display}\n"
                     f"Context:\n{(ctx or skill_input.user_context or '')[:1200]}\n\n"
@@ -860,20 +1044,37 @@ def create_skill(
                     f"Previous JSON:\n{json.dumps(data, ensure_ascii=False)[:2500]}"
                 )
                 try:
-                    empty_repair_resp = await ollama.chat(
-                        messages=[{"role": "user", "content": empty_findings_prompt}],
-                        temperature=0.0,
-                        max_tokens=max(512, min(max_output_tokens, 768)),
-                        system="Return exactly one valid JSON object with non-empty Istara findings.",
-                        min_context=(
-                            count_tokens(empty_findings_prompt)
-                            + count_tokens("Return exactly one valid JSON object with non-empty Istara findings.")
-                            + max(512, min(max_output_tokens, 768))
-                        ),
-                        thinking_mode="off",
+                    # W9: empty-findings repair (stage 3 of the fallback
+                    # chain) dispatches through the AgenticDispatcher
+                    # (``skill.repair_findings``); the legacy direct-plane
+                    # branch was removed in W9.
+                    from app.core.agentic import agentic
+                    from app.core.agentic.types import TurnParams
+
+                    findings_system = (
+                        "Return exactly one valid JSON object with non-empty Istara findings."
                     )
-                    empty_findings_repair_content = empty_repair_resp.get("message", {}).get("content", "")
-                    repaired_data = _parse_json_response(strip_thinking_markers(empty_findings_repair_content))
+                    empty_outcome = await agentic.completion(
+                        purpose="skill.repair_findings",
+                        project_id=skill_input.project_id,
+                        system=findings_system,
+                        messages=[{"role": "user", "content": empty_findings_prompt}],
+                        params=TurnParams(
+                            temperature=0.0,
+                            max_tokens=max(512, min(max_output_tokens, 768)),
+                            min_context=(
+                                count_tokens(empty_findings_prompt)
+                                + count_tokens(findings_system)
+                                + max(512, min(max_output_tokens, 768))
+                            ),
+                            thinking_mode="off",
+                        ),
+                        spine_phase="recovery",
+                    )
+                    empty_findings_repair_content = empty_outcome.text
+                    repaired_data = _parse_json_response(
+                        strip_thinking_markers(empty_findings_repair_content)
+                    )
                     if repaired_data:
                         repaired = _normalize_generated_findings(
                             repaired_data,
@@ -884,7 +1085,9 @@ def create_skill(
                             data = repaired_data
                             nuggets, facts, insights, recommendations = repaired
                             repaired_from_empty_findings = True
-                            logger.info("Skill %s repaired valid JSON with empty findings.", self.name)
+                            logger.info(
+                                "Skill %s repaired valid JSON with empty findings.", self.name
+                            )
                 except Exception as e:
                     logger.warning("Skill %s empty-finding repair failed: %s", self.name, e)
 
@@ -904,7 +1107,10 @@ def create_skill(
                         or f"{display} completed with deterministic evidence fallback.",
                         "deterministic_findings_fallback": True,
                     }
-                    logger.info("Skill %s used deterministic evidence fallback after empty model findings.", self.name)
+                    logger.info(
+                        "Skill %s used deterministic evidence fallback after empty model findings.",
+                        self.name,
+                    )
 
             if finding_count() == 0:
                 logger.warning("Skill %s returned structured JSON without findings.", self.name)
@@ -914,7 +1120,9 @@ def create_skill(
                     errors=["LLM returned structured JSON without findings."],
                     artifacts={
                         f"{skill_name}_analysis.json": json.dumps(data, indent=2),
-                        f"{skill_name}_empty_findings_repair.txt": empty_findings_repair_content[:4000],
+                        f"{skill_name}_empty_findings_repair.txt": empty_findings_repair_content[
+                            :4000
+                        ],
                         f"{skill_name}_schema_budget.json": json.dumps(
                             schema_budget.to_dict(),
                             indent=2,
@@ -942,7 +1150,11 @@ def create_skill(
                         else {}
                     ),
                     **(
-                        {f"{skill_name}_empty_findings_repair.txt": empty_findings_repair_content[:4000]}
+                        {
+                            f"{skill_name}_empty_findings_repair.txt": (
+                                empty_findings_repair_content[:4000]
+                            )
+                        }
                         if repaired_from_empty_findings and empty_findings_repair_content
                         else {}
                     ),

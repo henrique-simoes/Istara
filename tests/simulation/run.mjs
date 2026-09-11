@@ -10,7 +10,9 @@
  *   node run.mjs --scenario-timeout-ms 7200000 # Override per-scenario timeout
  */
 
-import { chromium } from "playwright";
+// playwright is imported lazily inside main() so that `--dry-run` engine-plan
+// resolution (benchmark task B0-2) works in environments without the browser
+// dependency installed. A live run imports it on demand right before launch.
 import { mkdirSync, writeFileSync, readFileSync, existsSync, symlinkSync, unlinkSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -21,7 +23,15 @@ import {
   SIMULATION_PROJECT_NAME,
   selectCanonicalSimulationProject,
 } from "./lib/project-selection.mjs";
-import { scenarioFiles } from "./lib/scenario-registry.mjs";
+import { scenarioFiles, findDuplicateScenarioIds } from "./lib/scenario-registry.mjs";
+import {
+  assertNoDuplicateScenarioIds,
+  assertRequestedScenariosMatch,
+} from "./lib/scenario-selection.mjs";
+import {
+  setAuthToken as setClientAuthToken,
+  setDefaultEngine as setClientDefaultEngine,
+} from "./lib/api-client.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RESULTS_DIR = join(__dirname, ".results");
@@ -31,9 +41,55 @@ const RUNS_DIR = join(RESULTS_DIR, "runs");
 const args = process.argv.slice(2);
 const headless = !args.includes("--headless=false");
 const singleScenario = args.includes("--scenario") ? args[args.indexOf("--scenario") + 1] : null;
+const multiScenarios = args.includes("--scenarios")
+  ? args[args.indexOf("--scenarios") + 1].split(",").map((s) => s.trim()).filter(Boolean)
+  : null;
 const skipEval = args.includes("--skip-eval");
 const skipSkills = args.includes("--skip-skills");
 const scenarioTimeoutArgIndex = args.indexOf("--scenario-timeout-ms");
+
+// ── Benchmark engine plumbing (benchmark task B0-2) ────────────────────────
+// `--engine pi|legacy|both` selects the AgenticDispatcher engine per request via
+// the `x-istara-agent-engine` header (honored by the dispatcher; see
+// backend/app/core/agentic/dispatcher.py). `--dry-run` resolves and prints the
+// engine plan and exits WITHOUT launching a browser or any services, so the
+// plumbing is verifiable in CI/T0 (plan acceptance A2).
+const AGENT_ENGINE_HEADER = "x-istara-agent-engine";
+const rawEngine = args.includes("--engine") ? args[args.indexOf("--engine") + 1] : null;
+const dryRun = args.includes("--dry-run");
+
+function resolveEngines(raw) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (value === "both") return ["legacy", "pi"];
+  if (value === "pi" || value === "legacy") return [value];
+  console.error(`Invalid --engine=${raw}; expected one of pi|legacy|both.`);
+  process.exit(2);
+}
+const selectedEngines = rawEngine !== null ? resolveEngines(rawEngine) : [];
+// A single browser context carries one engine; `both` is a planning-only concept
+// here (the paired Python runner drives real pairing). Live runs use the first
+// concrete engine when exactly one is selected.
+const liveEngineHeader = selectedEngines.length === 1 ? selectedEngines[0] : null;
+if (liveEngineHeader) {
+  // Consume the computed plan (B0-2 completion): every request the shared
+  // client makes — including chat-producing paths — now carries the header,
+  // and the [SIM] project fixture is pinned to the same persisted choice.
+  setClientDefaultEngine(liveEngineHeader);
+}
+
+if (dryRun) {
+  const plan = selectedEngines.length ? selectedEngines : ["(default)"];
+  console.log("[dry-run] Istara simulation harness — no browser or services launched.");
+  console.log(`[dry-run] scenario: ${singleScenario || "all"}`);
+  for (const engine of plan) {
+    const header =
+      engine === "(default)"
+        ? "(engine header unset — dispatcher default)"
+        : `${AGENT_ENGINE_HEADER}: ${engine}`;
+    console.log(`[dry-run] engine=${engine} -> ${header}`);
+  }
+  process.exit(0);
+}
 
 function parsePositiveInteger(value, fallback, label) {
   if (value === undefined || value === null || value === "") return fallback;
@@ -49,8 +105,33 @@ const API_BASE = process.env.ISTARA_API_URL || "http://localhost:8000";
 const FRONTEND = process.env.ISTARA_FRONTEND_URL || "http://localhost:3000";
 const FIXED_TEST_MODEL = (process.env.ISTARA_FIXED_LLM_TEST_MODEL || "google/gemma-4-e4b").trim();
 
-let fixedModelOriginal = null;
-let fixedModelApplied = false;
+// Intercept Node-level fetch requests directed at loopback backend so scenarios
+// with hardcoded localhost:8000 / 127.0.0.1:8000 resolve to API_BASE in Docker.
+if (API_BASE !== "http://localhost:8000" && API_BASE !== "http://127.0.0.1:8000") {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = function (resource, options) {
+    if (typeof resource === "string") {
+      resource = resource.replace(/^http:\/\/(?:localhost|127\.0\.0\.1):8000/, API_BASE);
+    } else if (resource instanceof URL) {
+      if (
+        (resource.hostname === "localhost" || resource.hostname === "127.0.0.1") &&
+        resource.port === "8000"
+      ) {
+        const target = new URL(API_BASE);
+        resource.protocol = target.protocol;
+        resource.host = target.host;
+        resource.port = target.port;
+      }
+    } else if (resource && typeof resource.url === "string") {
+      const newUrl = resource.url.replace(/^http:\/\/(?:localhost|127\.0\.0\.1):8000/, API_BASE);
+      if (newUrl !== resource.url) {
+        resource = new Request(newUrl, resource);
+      }
+    }
+    return originalFetch.call(this, resource, options);
+  };
+}
+
 
 function requestJson(method, url, { headers = {}, body = null, timeoutMs = 0, label = "" } = {}) {
   return new Promise((resolve, reject) => {
@@ -172,7 +253,23 @@ async function ensureBrowserScenarioState(page, { projectId = null, activeView =
   await page.evaluate(
     ({ token, userId, projectId: selectedProjectId, activeView: selectedView }) => {
       localStorage.setItem("istara_token", token);
-      localStorage.removeItem("istara_tour_state");
+      localStorage.setItem(
+        "istara_tour_state",
+        JSON.stringify({
+          active: false,
+          isOnboarding: false,
+          step: 16,
+          folderPath: "",
+          createdProjectId: selectedProjectId || "",
+          role: "admin",
+          hasExistingProjects: true,
+          teamModeEnabled: false,
+          connectionStringGenerated: true,
+          llmConnected: true,
+          llmProvider: "openai",
+          llmModel: "gpt-4o",
+        })
+      );
       if (userId) {
         localStorage.setItem("istara_auth_user_id", userId);
         localStorage.setItem(`istara_tour_completed_${userId}`, "true");
@@ -196,6 +293,7 @@ async function ensureBrowserScenarioState(page, { projectId = null, activeView =
     }
   );
   await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator('#main-content, main, nav').first().waitFor({ state: "visible", timeout: 15000 }).catch(() => {});
   return true;
 }
 
@@ -204,6 +302,14 @@ async function ensureBrowserScenarioState(page, { projectId = null, activeView =
 const apiClient = {
   _token: null,
   _userId: null,
+
+  _setToken(token) {
+    this._token = token || null;
+    // Keep the module-level REST/chat client in lockstep with the harness
+    // authentication state. Without this, API methods use the token while
+    // imported chat/authHeaders helpers silently remain anonymous.
+    setClientAuthToken(this._token || "");
+  },
 
   _useLocalSignedToken(username) {
     if (!["1", "true", "yes"].includes(String(process.env.ISTARA_E2E_ALLOW_LOCAL_TOKEN || "").toLowerCase())) {
@@ -240,7 +346,7 @@ const apiClient = {
         lastError = `${pythonBin} returned an empty token`;
         continue;
       }
-      this._token = token;
+      this._setToken(token);
       this._userId = "simulation-admin";
       console.log("  ✅ Authenticated with local signed simulation token");
       return true;
@@ -253,7 +359,7 @@ const apiClient = {
   async authenticate() {
     const providedToken = String(process.env.ISTARA_TEST_AUTH_TOKEN || "").trim();
     if (providedToken) {
-      this._token = providedToken;
+      this._setToken(providedToken);
       try {
         const meRes = await fetch(`${API_BASE}/api/auth/me`, {
           headers: this._headers(),
@@ -324,7 +430,7 @@ const apiClient = {
       }
       if (res.ok) {
         const data = await res.json();
-        this._token = data.token || data.access_token;
+        this._setToken(data.token || data.access_token);
         this._userId = data.user?.id || null;
         if (!this._userId && this._token) {
           try {
@@ -351,6 +457,7 @@ const apiClient = {
   _headers() {
     const h = { "Content-Type": "application/json" };
     if (this._token) h["Authorization"] = `Bearer ${this._token}`;
+    if (liveEngineHeader) h[AGENT_ENGINE_HEADER] = liveEngineHeader;
     return h;
   },
 
@@ -468,7 +575,12 @@ async function loadGenerators() {
 // ── Scenarios ───────────────────────────────────────────────
 
 async function loadScenarios() {
+  // Fail-closed registry integrity (N-R1): a duplicated id would let one
+  // scenario file satisfy two registry entries and break the selection
+  // bijection, so the run refuses to start instead of silently double-running.
+  assertNoDuplicateScenarioIds(scenarioFiles, findDuplicateScenarioIds);
   const scenarios = [];
+  const importFailures = [];
   for (const file of scenarioFiles) {
     // --skip-skills omits the long-running all-skills comprehensive test
     if (skipSkills && file === "20-all-skills-comprehensive") continue;
@@ -476,9 +588,21 @@ async function loadScenarios() {
       const mod = await import(`./scenarios/${file}.mjs`);
       scenarios.push({ id: mod.id || file, name: mod.name || file, run: mod.run });
     } catch (e) {
-      console.warn(`⚠ Could not load scenario ${file}: ${e.message}`);
+      // Fail closed: a scenario that cannot be imported is a release failure,
+      // never a warning that silently shrinks the executable set (B1/W2.3).
+      importFailures.push(`${file}: ${e.message}`);
     }
   }
+  if (importFailures.length > 0) {
+    throw new Error(
+      `Scenario import failed for ${importFailures.length} registered scenario(s):\n` +
+        importFailures.map((failure) => `  - ${failure}`).join("\n")
+    );
+  }
+  // Fail closed on a requested id that matches nothing: a typo in --scenario
+  // / --scenarios must never masquerade as a green empty run. Substring
+  // selection still works for real ids.
+  assertRequestedScenariosMatch(scenarios, { singleScenario, multiScenarios });
   return scenarios;
 }
 
@@ -499,6 +623,12 @@ async function loadEvaluators() {
 }
 
 async function applyFixedTestModel() {
+  // Model selection is governed by Pi Model Management. The harness validates
+  // its requested identity but never mutates or restores classical global state.
+  if (/^(1|true|yes)$/i.test(String(process.env.ISTARA_FIXED_LLM_SKIP || ""))) {
+    console.log(`  Fixed test model pinning skipped (ISTARA_FIXED_LLM_SKIP); turns resolve via the unified provider plane.`);
+    return null;
+  }
   if (!FIXED_TEST_MODEL) return null;
 
   const statusRes = await fetch(`${API_BASE}/api/settings/models`, {
@@ -508,65 +638,17 @@ async function applyFixedTestModel() {
     throw new Error(`Could not inspect active model before fixed-model test run (${statusRes.status})`);
   }
 
-  const before = await statusRes.json();
-  const activeBefore = before.active_model || "";
-  if (activeBefore === FIXED_TEST_MODEL) {
-    console.log(`  Using fixed test model: ${FIXED_TEST_MODEL}`);
-    return FIXED_TEST_MODEL;
-  }
-
-  fixedModelOriginal = activeBefore || null;
-  const switchRes = await fetch(
-    `${API_BASE}/api/settings/model?model_name=${encodeURIComponent(FIXED_TEST_MODEL)}`,
-    {
-      method: "POST",
-      headers: apiClient._headers(),
-    }
-  );
-  if (!switchRes.ok) {
-    throw new Error(`Could not apply fixed test model ${FIXED_TEST_MODEL} (${switchRes.status})`);
-  }
-
-  const switched = await switchRes.json();
-  if (switched.status !== "switched" || switched.model !== FIXED_TEST_MODEL) {
-    throw new Error(`Fixed test model switch returned unexpected response: ${JSON.stringify(switched)}`);
-  }
-
-  const verifyRes = await fetch(`${API_BASE}/api/settings/models`, {
-    headers: apiClient._headers(),
-  });
-  const verify = verifyRes.ok ? await verifyRes.json() : {};
-  if (verify.active_model && verify.active_model !== FIXED_TEST_MODEL) {
-    throw new Error(`Fixed test model did not stick: expected ${FIXED_TEST_MODEL}, got ${verify.active_model}`);
-  }
-
-  fixedModelApplied = true;
-  console.log(`  Applied fixed test model: ${FIXED_TEST_MODEL}`);
-  return FIXED_TEST_MODEL;
-}
-
-async function restoreFixedTestModel() {
-  if (!fixedModelApplied || !fixedModelOriginal || fixedModelOriginal === FIXED_TEST_MODEL) {
-    return;
-  }
-
-  try {
-    const restoreRes = await fetch(
-      `${API_BASE}/api/settings/model?model_name=${encodeURIComponent(fixedModelOriginal)}`,
-      {
-        method: "POST",
-        headers: apiClient._headers(),
-      }
+  const inventory = await statusRes.json();
+  const known = Array.isArray(inventory.pi_catalog)
+    && inventory.pi_catalog.some((entry) => entry?.model === FIXED_TEST_MODEL);
+  if (!known) {
+    throw new Error(
+      `Fixed test model ${FIXED_TEST_MODEL} is not admitted by Pi Model Management; configure an endpoint before the run`,
     );
-    if (restoreRes.ok) {
-      console.log(`  Restored original model: ${fixedModelOriginal}`);
-      fixedModelApplied = false;
-    } else {
-      console.log(`  Could not restore original model ${fixedModelOriginal} (${restoreRes.status})`);
-    }
-  } catch (e) {
-    console.log(`  Could not restore original model ${fixedModelOriginal}: ${e.message}`);
   }
+
+  console.log(`  Fixed test model admitted by Pi Model Management: ${FIXED_TEST_MODEL}`);
+  return FIXED_TEST_MODEL;
 }
 
 // ── Report Generation ───────────────────────────────────────
@@ -774,6 +856,7 @@ async function main() {
   startCaffeinate();
 
   // Launch browser with generous timeouts so nothing times out prematurely
+  const { chromium } = await import("playwright");
   const browser = await chromium.launch({
     headless,
     args: [
@@ -786,10 +869,74 @@ async function main() {
   const context = await browser.newContext({
     viewport: DESKTOP_VIEWPORT,
     colorScheme: "dark",
+    bypassCSP: true,
+    // Thread the selected benchmark engine onto every frontend-originated API
+    // request (benchmark task B0-2); unset means the dispatcher default engine.
+    ...(liveEngineHeader
+      ? { extraHTTPHeaders: { [AGENT_ENGINE_HEADER]: liveEngineHeader } }
+      : {}),
   });
+  if (liveEngineHeader) {
+    console.log(`Simulation engine: ${AGENT_ENGINE_HEADER}=${liveEngineHeader}`);
+  }
   await context.grantPermissions(["microphone"], { origin: new URL(FRONTEND).origin }).catch(() => {});
   context.setDefaultTimeout(PLAYWRIGHT_ACTION_TIMEOUT_MS);
   context.setDefaultNavigationTimeout(PLAYWRIGHT_NAV_TIMEOUT_MS);
+
+  // Route client-side API requests to API_BASE so browser code reaching for loopback
+  // (127.0.0.1:8000 / localhost:8000) or /api/ endpoints resolves to the configured
+  // backend server across Docker networks with origin aligned to CORS config.
+  try {
+    const apiTarget = new URL(API_BASE);
+    await context.route(/.*(?::8000)?\/api\/.*/, async (route) => {
+      const req = route.request();
+      const targetUrl = new URL(req.url());
+      targetUrl.protocol = apiTarget.protocol;
+      targetUrl.host = apiTarget.host;
+      targetUrl.port = apiTarget.port;
+
+      const headers = { ...req.headers() };
+      headers.origin = "http://localhost:3000";
+
+      try {
+        const response = await route.fetch({
+          url: targetUrl.toString(),
+          headers,
+        });
+        const responseHeaders = response.headers();
+        responseHeaders["access-control-allow-origin"] = req.headers().origin || "*";
+        responseHeaders["access-control-allow-credentials"] = "true";
+        await route.fulfill({
+          response,
+          headers: responseHeaders,
+        });
+      } catch {
+        await route.continue().catch(() => {});
+      }
+    });
+  } catch (e) {
+    console.warn(`  ⚠ Route proxy setup warning: ${e.message}`);
+  }
+
+  // Inject token and bypass onboarding across all future page navigations
+  if (apiClient._token) {
+    await context.addInitScript(
+      ({ token, userId }) => {
+        try {
+          localStorage.setItem("istara_token", token);
+          localStorage.setItem("istara_tour_state", JSON.stringify({ active: false, isOnboarding: false, step: 16, hasExistingProjects: true }));
+          if (userId) {
+            localStorage.setItem("istara_auth_user_id", userId);
+            localStorage.setItem(`istara_tour_completed_${userId}`, "true");
+          } else {
+            localStorage.setItem("istara_tour_completed_anonymous", "true");
+          }
+        } catch {}
+      },
+      { token: apiClient._token, userId: apiClient._userId }
+    );
+  }
+
   const page = await context.newPage();
   page.setDefaultTimeout(PLAYWRIGHT_ACTION_TIMEOUT_MS);
   page.setDefaultNavigationTimeout(PLAYWRIGHT_NAV_TIMEOUT_MS);
@@ -799,7 +946,7 @@ async function main() {
     await page.goto(FRONTEND, { waitUntil: "domcontentloaded" });
     await page.evaluate(({ token, userId }) => {
       localStorage.setItem("istara_token", token);
-      localStorage.removeItem("istara_tour_state");
+      localStorage.setItem("istara_tour_state", JSON.stringify({ active: false, isOnboarding: false, step: 16, hasExistingProjects: true }));
       if (userId) {
         localStorage.setItem("istara_auth_user_id", userId);
         localStorage.setItem(`istara_tour_completed_${userId}`, "true");
@@ -866,6 +1013,16 @@ async function main() {
     if (canonical) {
       simProjectId = canonical.id;
       console.log(`  Reusing existing project: ${simProjectId}`);
+      if (liveEngineHeader) {
+        // Keep the persisted project choice in lockstep with the selected
+        // engine so header-level and project-level routing agree (CF-SPEC-1).
+        try {
+          await apiClient.patch(`/api/projects/${simProjectId}`, { agentic_engine: liveEngineHeader });
+          console.log(`  Project agentic_engine pinned: ${liveEngineHeader}`);
+        } catch (e) {
+          console.log(`  Could not pin project agentic_engine (${e.message}) — relying on header`);
+        }
+      }
     }
 
     // Create the canonical project if it doesn't exist
@@ -874,12 +1031,21 @@ async function main() {
         name: SIM_PROJECT_NAME,
         description: "Persistent simulation project — all automated tests run against this single project.",
         company_context: "TechStart Inc — B2B SaaS project management platform. Target: mid-market teams (50-500 employees). Culture: data-driven, move fast, user-centric.",
+        ...(liveEngineHeader ? { agentic_engine: liveEngineHeader } : {}),
       });
       simProjectId = created.id;
-      console.log(`  Created new project: ${simProjectId}`);
+      console.log(`  Created new project: ${simProjectId}${liveEngineHeader ? ` (agentic_engine=${liveEngineHeader})` : ""}`);
     }
 
     if (simProjectId) {
+      await context.addInitScript(
+        ({ projectId }) => {
+          try {
+            if (projectId) localStorage.setItem("istara-active-project", projectId);
+          } catch {}
+        },
+        { projectId: simProjectId }
+      );
       await ensureBrowserScenarioState(page, { projectId: simProjectId, activeView: "chat" });
     }
   } catch (e) {
@@ -905,15 +1071,22 @@ async function main() {
   // ── Run ALL scenarios — never skip, never bail early ──────
   // Each scenario gets a generous timeout. If it exceeds the timeout, it is
   // marked as TIMEOUT (a failure) and the runner moves on to the next scenario.
-  console.log(`\nRunning ${singleScenario ? "scenario " + singleScenario : `${scenarios.length} scenarios`}...`);
+  const scenarioCountText = singleScenario
+    ? `scenario ${singleScenario}`
+    : multiScenarios
+    ? `selected scenarios (${multiScenarios.join(", ")})`
+    : `${scenarios.length} scenarios`;
+  console.log(`\nRunning ${scenarioCountText}...`);
   console.log(`  Per-scenario timeout: ${SCENARIO_TIMEOUT_MS / 60000} minutes\n`);
 
   const scenarioResults = [];
   const scenarioProgress = new Map();
 
   function recordScenarioProgress(scenarioId, partial = {}) {
+    const prev = scenarioProgress.get(scenarioId) || {};
     const snapshot = {
-      id: scenarioId,
+      ...prev,
+      scenarioId,
       updatedAt: new Date().toISOString(),
       ...partial,
     };
@@ -928,6 +1101,7 @@ async function main() {
 
   for (const scenario of scenarios) {
     if (singleScenario && !scenario.id.includes(singleScenario)) continue;
+    if (multiScenarios && !multiScenarios.some((s) => scenario.id.includes(s))) continue;
 
     process.stdout.write(`  ${scenario.id}: ${scenario.name}... `);
     const scenarioStart = Date.now();
@@ -1095,9 +1269,6 @@ async function main() {
 
   console.log();
 
-  // Restore the operator's model choice before bringing background work back.
-  await restoreFixedTestModel();
-
   // Resume Istara operations after simulation tests complete
   if (maintenancePaused) {
     try {
@@ -1121,7 +1292,6 @@ async function main() {
 // Safety: resume Istara operations and stop caffeinate on crash or interrupt
 async function emergencyCleanup() {
   stopCaffeinate();
-  await restoreFixedTestModel();
   try {
     await fetch(`${API_BASE}/api/settings/maintenance/resume`, {
       method: "POST",

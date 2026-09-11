@@ -1,12 +1,21 @@
 # Research-Validity Architecture Contract
 
-Spec: CF-SPEC-124 / CF-1590
+Governance: repo-rooted contract (this file). Prior header cited an external
+spec/task numbering with no corresponding object in this repository's
+Compass Forge state (corrected 2026-09-09, W2 control-plane-lifecycle, M-21;
+content otherwise untouched). Spine compliance is enforced per AGENTS.md and
+this release proceeds under CF-SPEC-30.
 
 This contract is non-negotiable for future Istara changes. It turns the
 scientific research workflow into a product architecture contract, not a
 best-effort prompt convention.
 
 ## System-Wide Research Spine
+
+Audio profiles are governed inputs to this spine, not a shortcut around it:
+interview, microphone, and channel transcription preserve raw audio
+segments/provenance and remain provisional until reliability, reconciliation,
+and human review gates pass.
 
 Istara is a research system before it is a collection of features. Every
 feature that ingests, creates, processes, retrieves, summarizes, validates,
@@ -63,12 +72,51 @@ Sources
 - Model coders must work independently before reliability is computed.
 - Fleiss' Kappa, Cohen's Kappa, Krippendorff's Alpha, and companion metrics are
   computed on coded evidence-unit matrices, not final-answer keyword buckets.
-- With 3+ distinct healthy project-authorized models, Istara defaults to the
-  full multi-model coding/reliability path.
-- With exactly 2 distinct healthy project-authorized models, Istara uses a
-  two-coder reliability path.
-- With 1 model, Istara may use a constrained Self-MoA-style path, but it is
-  marked lower assurance and cannot be reported as full ensemble reliability.
+- A governed Research Spine coding run requires at least three distinct healthy,
+  project-authorized **model identities**. Endpoint replicas serving the same
+  model do not create independent raters. Public coding-run requests therefore
+  require `max_coders` in the range 3–5, and selection fails closed when that
+  many distinct models are unavailable.
+- Every admitted coder must return a valid application for every selected
+  evidence unit. Its quote must be non-empty and an exact contiguous substring
+  of that resolved evidence unit's raw `source_text`; a valid unit identifier
+  alone is not grounding, and synthesized or paraphrased quotes are rejected.
+  One bounded repair is allowed; a still-incomplete coder is excluded. If
+  complete, source-grounded coverage from the requested number of distinct
+  models is not available, the run cannot accept or promote any code
+  application.
+- Each coder/evidence-unit pair must have exactly one rating. Duplicate
+  applications are retained as an integrity signal and fail the reliability
+  gate closed; they must not be unioned into a synthetic rating before Fleiss'
+  Kappa, Cohen's Kappa, or Krippendorff's Alpha is computed.
+- Each structured coder response must report the model identity actually served
+  by the provider, and that identity must equal the model selected by Pi Model
+  Management. A missing or different served identity is a transport/provenance
+  failure and blocks the coder before any application can enter the reliability
+  matrix; the requested model parameter is not evidence of the model that ran.
+  The Pi worker must carry the provider-response receipt as `served_model` from
+  its streamed response through `run.completed`, the Python engine, and the
+  dispatcher; a configured/request `model` field is retained separately for
+  routing and must never be promoted into this proof field.
+- Projected Petals coders are authorized at both selection and dispatch: the
+  Pi Model Manager filters donor entries by the research project, and the
+  loopback bridge re-checks the donor allowlist before forwarding the request.
+  Research-purpose requests without a project are rejected. The bridge route
+  receipt (`route_kind=petals_bridge`, donor node, served model, and endpoint)
+  must survive the Pi frame mapper and dispatcher into persisted
+  `CodingRunCoder`/Research Spine provenance; a generic `pi` label is not an
+  acceptable substitute for donated-compute evidence.
+- One- or two-model Self-MoA, dual-run, debate, and adversarial checks remain
+  useful response-level operational signals, but they are lower-assurance
+  validation, not formal Research Spine coding reliability, and cannot promote
+  research artifacts.
+- Three-or-more-coder runs require numeric Fleiss' Kappa and Krippendorff's
+  Alpha calculated from the current run's full evidence-unit coding matrix;
+  missing, stale, non-numeric, or out-of-domain metrics fail the gate closed.
+  Fleiss/Cohen kappa and Krippendorff alpha are each constrained to their
+  finite theoretical domain `[-1, 1]`; negative alpha remains a valid
+  disagreement signal within that domain. Cohen's Kappa is retained for
+  eligible pairwise comparisons, not substituted for the multi-rater gate.
 - The default promotion threshold is `kappa >= 0.60` unless a governed project
   policy explicitly overrides it.
 - Low-agreement unreconciled evidence cannot become accepted findings or report
@@ -153,11 +201,17 @@ Sources
 ## Coding-Run Orchestration
 
 `run_independent_coding_run` is the product path for model coding over
-evidence units. It selects distinct healthy project-authorized model identities
-through Compute Manager, injects the protected protocol/codebook/evidence-unit
+evidence units. It obtains one request-scoped `PiExecutionService` and its
+paired `PiModelManager`, selects distinct healthy project-authorized model
+identities from that same manager snapshot, and carries the service through
+structured dispatch. It injects the protected protocol/codebook/evidence-unit
 blocks, asks each coder to return structured qualitative code applications,
-persists coder route evidence, computes the reliability gate, and marks code
-applications as accepted, needs reconciliation, needs human review, or blocked.
+admits only applications whose returned quote exactly occurs in the referenced
+raw evidence unit, persists coder route evidence, and leaves dispatcher usage
+accounting attached to the same request. It then computes the reliability gate
+and marks code applications as accepted, needs reconciliation, needs human
+review, or blocked. A manager/service mismatch or provider identity drift must
+fail closed rather than silently falling back to a process-wide Pi service.
 Researchers may start project-scoped runs through
 `POST /api/research-validity/{project_id}/coding-runs`; the route requires
 researcher project access and carries no admin-only dependency.
@@ -221,7 +275,12 @@ The project-scoped traceability route
 for those GraphRAG questions. It joins reports, finding IDs, task-linked coding
 runs, code applications, reconciliation decisions, and evidence graph edges so
 Istara can answer which reports or tasks still depend on low-agreement evidence.
-It is read-only, honors project access, records `graph+hybrid` retrieval
+Project-level coding runs (which intentionally have no task ID) can be bound
+with the optional `coding_run_id` query parameter; this exposes the exact run,
+including a blocked run with zero applications, without broadening the default
+project trace. The filter is project-scoped and does not change reportability:
+blocked, unreconciled, or otherwise unaccepted rows remain non-reportable. The
+route is read-only, honors project access, records `graph+hybrid` retrieval
 telemetry, and does not promote or synthesize new findings by itself.
 
 ## Telemetry Contract

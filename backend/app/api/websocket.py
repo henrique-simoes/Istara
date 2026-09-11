@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -97,6 +97,40 @@ class ConnectionManager:
 
     def __init__(self) -> None:
         self._connections: list[dict[str, Any]] = []
+        self._notification_tasks: set[asyncio.Task[None]] = set()
+
+    def _track_notification_task(self, task: asyncio.Task[None]) -> None:
+        """Keep fire-and-forget persistence attached to the app lifecycle."""
+        self._notification_tasks.add(task)
+        task.add_done_callback(self._notification_tasks.discard)
+
+    async def drain_notification_tasks(self) -> None:
+        """Wait for notification writes before a loop or app shuts down."""
+        current_loop = asyncio.get_running_loop()
+        pending: list[asyncio.Task[None]] = []
+        for task in tuple(self._notification_tasks):
+            if task.done():
+                self._notification_tasks.discard(task)
+                continue
+            if task.get_loop() is current_loop:
+                pending.append(task)
+                continue
+
+            # The manager is process-global while async tests and some reload
+            # paths use short-lived event loops. A task owned by another loop
+            # cannot be gathered here; cancel and forget it so it cannot leak
+            # into the next loop or make shutdown/tests fail cross-loop.
+            try:
+                task.cancel()
+            except RuntimeError:
+                # A loop that has already been closed cannot accept the
+                # cancellation callback. It is no longer runnable, so only
+                # remove the stale task from this manager's active set.
+                pass
+            self._notification_tasks.discard(task)
+
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
 
     async def connect(
         self,
@@ -182,8 +216,7 @@ class ConnectionManager:
             return True
         metadata = data.get("metadata")
         return isinstance(metadata, dict) and any(
-            isinstance(metadata.get(key), str) and metadata[key].strip()
-            for key in reference_keys
+            isinstance(metadata.get(key), str) and metadata[key].strip() for key in reference_keys
         )
 
     @staticmethod
@@ -285,11 +318,13 @@ class ConnectionManager:
                 event_type,
             )
             return
-        message = json.dumps({
-            "type": event_type,
-            "data": data,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        message = json.dumps(
+            {
+                "type": event_type,
+                "data": data,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
 
         disconnected = []
         if project_id:
@@ -327,24 +362,31 @@ class ConnectionManager:
         for conn in disconnected:
             self.disconnect(conn)
 
-        # Persist notification asynchronously — never block broadcasts
-        asyncio.create_task(self._persist_notification(event_type, data))
+        # Persist notification asynchronously — never block broadcasts. Keep a
+        # reference so shutdown/tests can drain the task before closing the DB
+        # event loop (otherwise AsyncSession.close may be left unawaited).
+        self._track_notification_task(
+            asyncio.create_task(self._persist_notification(event_type, data))
+        )
 
     async def _persist_notification(self, event_type: str, data: dict) -> None:
         """Persist a notification record from a broadcast event."""
         try:
             from app.services.notification_service import persist_notification
+
             await persist_notification(event_type, data)
         except Exception:
             pass  # Never block broadcasts
 
     async def send_to(self, websocket: WebSocket, event_type: str, data: dict) -> None:
         """Send an event to a specific client."""
-        message = json.dumps({
-            "type": event_type,
-            "data": data,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        message = json.dumps(
+            {
+                "type": event_type,
+                "data": data,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
         await websocket.send_text(message)
 
 
@@ -383,8 +425,13 @@ async def websocket_endpoint(websocket: WebSocket):
             token = auth_header[7:]
     if token:
         from app.core.auth import verify_token
-        from app.core.auth_sessions import current_user_context_for_payload, validate_auth_session
+        from app.core.auth_sessions import (
+            current_user_context_for_payload,
+            mfa_claim_satisfied,
+            validate_auth_session,
+        )
         from app.models.database import async_session
+        from app.models.user import User
 
         payload = verify_token(token)
         if not payload:
@@ -397,6 +444,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     reason="Invalid or revoked authentication session",
                 )
                 return
+            if not mfa_claim_satisfied(payload, websocket.url.path or "/ws"):
+                from sqlalchemy import select as _select
+
+                _user = (
+                    await db.execute(_select(User).where(User.id == str(payload.get("sub") or "")))
+                ).scalar_one_or_none()
+                if _user is not None and getattr(_user, "totp_enabled", False):
+                    await websocket.close(code=4001, reason="Multi-factor authentication required")
+                    return
             user_context = await current_user_context_for_payload(db, payload)
             if not user_context:
                 await websocket.close(code=4001, reason="Authenticated user no longer exists")
@@ -418,9 +474,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         # Send initial status
-        await manager.send_to(websocket, "connected", {
-            "message": "Connected to Istara real-time updates.",
-        })
+        await manager.send_to(
+            websocket,
+            "connected",
+            {
+                "message": "Connected to Istara real-time updates.",
+            },
+        )
 
         # Keep connection alive, handle incoming messages
         while True:
@@ -430,7 +490,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 message = json.loads(data)
                 if message.get("type") == "ping":
                     await manager.send_to(websocket, "pong", {})
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Send keepalive ping
                 try:
                     await manager.send_to(websocket, "ping", {})
@@ -446,7 +506,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
 # Helper functions for broadcasting events from other modules
 
-async def broadcast_agent_status(status: str, details: str = "", project_id: str | None = None) -> None:
+
+async def broadcast_agent_status(
+    status: str, details: str = "", project_id: str | None = None
+) -> None:
     """Broadcast agent status update."""
     data = {"status": status, "details": details}
     if project_id:
@@ -454,101 +517,148 @@ async def broadcast_agent_status(status: str, details: str = "", project_id: str
     await manager.broadcast("agent_status", data)
 
 
-async def broadcast_task_progress(task_id: str, progress: float, notes: str = "") -> None:
-    """Broadcast task progress update."""
-    await manager.broadcast("task_progress", {
+async def broadcast_task_progress(
+    task_id: str,
+    progress: float,
+    notes: str = "",
+    *,
+    outcome: str | None = None,
+    project_id: str | None = None,
+) -> None:
+    """Broadcast task progress with terminal meaning separate from percentage."""
+    data = {
         "task_id": task_id,
         "progress": progress,
         "notes": notes,
-    })
+    }
+    if outcome:
+        data["outcome"] = outcome
+    if project_id:
+        data["project_id"] = project_id
+    await manager.broadcast("task_progress", data)
 
 
-async def broadcast_agent_thinking(agent_id: str, step: int, thought: str, total_steps: int = 0) -> None:
+async def broadcast_agent_thinking(
+    agent_id: str, step: int, thought: str, total_steps: int = 0
+) -> None:
     """Broadcast agent thinking/reasoning progress for real-time UI updates."""
-    await manager.broadcast("agent_thinking", {
-        "agent_id": agent_id,
-        "step": step,
-        "total_steps": total_steps,
-        "thought": thought,
-    })
+    await manager.broadcast(
+        "agent_thinking",
+        {
+            "agent_id": agent_id,
+            "step": step,
+            "total_steps": total_steps,
+            "thought": thought,
+        },
+    )
 
 
-async def broadcast_plan_progress(task_id: str, plan_step: int, total_steps: int, step_desc: str, step_status: str) -> None:
+async def broadcast_plan_progress(
+    task_id: str, plan_step: int, total_steps: int, step_desc: str, step_status: str
+) -> None:
     """Broadcast research plan step execution progress."""
-    await manager.broadcast("plan_progress", {
-        "task_id": task_id,
-        "plan_step": plan_step,
-        "total_steps": total_steps,
-        "step_description": step_desc,
-        "step_status": step_status,
-    })
+    await manager.broadcast(
+        "plan_progress",
+        {
+            "task_id": task_id,
+            "plan_step": plan_step,
+            "total_steps": total_steps,
+            "step_description": step_desc,
+            "step_status": step_status,
+        },
+    )
 
 
 async def broadcast_file_processed(filename: str, chunks: int, project_id: str) -> None:
     """Broadcast file processing completion."""
-    await manager.broadcast("file_processed", {
-        "filename": filename,
-        "chunks": chunks,
-        "project_id": project_id,
-    })
+    await manager.broadcast(
+        "file_processed",
+        {
+            "filename": filename,
+            "chunks": chunks,
+            "project_id": project_id,
+        },
+    )
 
 
 async def broadcast_suggestion(message: str, project_id: str, action: str = "") -> None:
     """Broadcast a suggestion to the user."""
-    await manager.broadcast("suggestion", {
-        "message": message,
-        "project_id": project_id,
-        "action": action,
-    })
+    await manager.broadcast(
+        "suggestion",
+        {
+            "message": message,
+            "project_id": project_id,
+            "action": action,
+        },
+    )
 
 
 async def broadcast_finding_created(
     finding_type: str, count: int, project_id: str, task_title: str = ""
 ) -> None:
     """Broadcast when new findings are stored after skill execution."""
-    await manager.broadcast("finding_created", {
-        "message": f"{count} {finding_type}(s) from: {task_title}" if task_title else f"{count} new {finding_type}(s) created",
-        "finding_type": finding_type,
-        "count": count,
-        "project_id": project_id,
-    })
+    await manager.broadcast(
+        "finding_created",
+        {
+            "message": f"{count} {finding_type}(s) from: {task_title}"
+            if task_title
+            else f"{count} new {finding_type}(s) created",
+            "finding_type": finding_type,
+            "count": count,
+            "project_id": project_id,
+        },
+    )
 
 
-async def broadcast_resource_throttle(reason: str, resources: Optional[dict] = None) -> None:
+async def broadcast_resource_throttle(reason: str, resources: dict | None = None) -> None:
     """Broadcast a resource throttle event (agent paused due to hardware)."""
-    await manager.broadcast("resource_throttle", {
-        "reason": reason,
-        "resources": resources or {},
-    })
+    await manager.broadcast(
+        "resource_throttle",
+        {
+            "reason": reason,
+            "resources": resources or {},
+        },
+    )
 
 
 async def broadcast_task_queue_update(
     project_id: str, pending: int, in_progress: int, completed: int
 ) -> None:
     """Broadcast task queue depth so users see progress."""
-    await manager.broadcast("task_queue_update", {
-        "project_id": project_id,
-        "pending": pending,
-        "in_progress": in_progress,
-        "completed": completed,
-    })
+    await manager.broadcast(
+        "task_queue_update",
+        {
+            "project_id": project_id,
+            "pending": pending,
+            "in_progress": in_progress,
+            "completed": completed,
+        },
+    )
 
 
-async def broadcast_document_event(event: str, document_id: str, title: str, project_id: str) -> None:
+async def broadcast_document_event(
+    event: str, document_id: str, title: str, project_id: str
+) -> None:
     """Broadcast document created/updated/deleted event."""
-    await manager.broadcast(event, {
-        "document_id": document_id,
-        "title": title,
-        "project_id": project_id,
-    })
+    await manager.broadcast(
+        event,
+        {
+            "document_id": document_id,
+            "title": title,
+            "project_id": project_id,
+        },
+    )
 
 
-async def broadcast_backup_event(event: str, backup_id: str, details: Optional[dict] = None) -> None:
+async def broadcast_backup_event(event: str, backup_id: str, details: dict | None = None) -> None:
     """Broadcast a backup lifecycle event (started, completed, failed, etc.)."""
-    await manager.broadcast(event, {
-        "backup_id": backup_id,
-        **(details or {}),
-    })
+    await manager.broadcast(
+        event,
+        {
+            "backup_id": backup_id,
+            **(details or {}),
+        },
+    )
 
 
 async def broadcast_meta_proposal(
@@ -572,32 +682,39 @@ async def broadcast_deployment_response(
     deployment_id: str, conversation_id: str, message_data: dict
 ) -> None:
     """Broadcast when a participant responds to a deployment question."""
-    await manager.broadcast("deployment_response", {
-        "deployment_id": deployment_id,
-        "conversation_id": conversation_id,
-        **message_data,
-    })
+    await manager.broadcast(
+        "deployment_response",
+        {
+            "deployment_id": deployment_id,
+            "conversation_id": conversation_id,
+            **message_data,
+        },
+    )
 
 
 async def broadcast_deployment_finding(
     deployment_id: str, finding_type: str, finding_data: dict
 ) -> None:
     """Broadcast when a new finding is extracted from a deployment response."""
-    await manager.broadcast("deployment_finding", {
-        "deployment_id": deployment_id,
-        "finding_type": finding_type,
-        **finding_data,
-    })
+    await manager.broadcast(
+        "deployment_finding",
+        {
+            "deployment_id": deployment_id,
+            "finding_type": finding_type,
+            **finding_data,
+        },
+    )
 
 
-async def broadcast_deployment_progress(
-    deployment_id: str, stats: dict
-) -> None:
+async def broadcast_deployment_progress(deployment_id: str, stats: dict) -> None:
     """Broadcast deployment progress/analytics update."""
-    await manager.broadcast("deployment_progress", {
-        "deployment_id": deployment_id,
-        **stats,
-    })
+    await manager.broadcast(
+        "deployment_progress",
+        {
+            "deployment_id": deployment_id,
+            **stats,
+        },
+    )
 
 
 async def broadcast(event: dict) -> None:
@@ -609,19 +726,25 @@ async def broadcast(event: dict) -> None:
 
 async def broadcast_channel_status(instance_id: str, status: str, detail: str = "") -> None:
     """Broadcast a channel instance status change (started, stopped, healthy, unhealthy)."""
-    await manager.broadcast("channel_status", {
-        "instance_id": instance_id,
-        "status": status,
-        "detail": detail,
-    })
+    await manager.broadcast(
+        "channel_status",
+        {
+            "instance_id": instance_id,
+            "status": status,
+            "detail": detail,
+        },
+    )
 
 
 async def broadcast_channel_message(instance_id: str, message_data: dict) -> None:
     """Broadcast a channel message event (inbound or outbound)."""
-    await manager.broadcast("channel_message", {
-        "instance_id": instance_id,
-        **message_data,
-    })
+    await manager.broadcast(
+        "channel_message",
+        {
+            "instance_id": instance_id,
+            **message_data,
+        },
+    )
 
 
 async def broadcast_autoresearch_progress(experiment_data: dict) -> None:
@@ -638,23 +761,30 @@ async def broadcast_autoresearch_complete(loop_type: str, summary: dict) -> None
 # Steering events — mid-execution message injection
 # ---------------------------------------------------------------------------
 
+
 async def broadcast_steering_message(agent_id: str, message: str, source: str = "user") -> None:
     """Broadcast that a steering message was received and queued."""
-    await manager.broadcast("steering_message", {
-        "agent_id": agent_id,
-        "message": message,
-        "source": source,
-        "direction": "queued",
-    })
+    await manager.broadcast(
+        "steering_message",
+        {
+            "agent_id": agent_id,
+            "message": message,
+            "source": source,
+            "direction": "queued",
+        },
+    )
 
 
 async def broadcast_steering_response(agent_id: str, response: str) -> None:
     """Broadcast the agent's response to a steering message."""
-    await manager.broadcast("steering_message", {
-        "agent_id": agent_id,
-        "response": response,
-        "direction": "response",
-    })
+    await manager.broadcast(
+        "steering_message",
+        {
+            "agent_id": agent_id,
+            "response": response,
+            "direction": "response",
+        },
+    )
 
 
 async def broadcast_agent_idle(agent_id: str) -> None:

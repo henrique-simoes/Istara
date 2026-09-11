@@ -36,7 +36,9 @@ async def create_project(project_id: str, name: str = "Meta Project") -> None:
         await db.commit()
 
 
-async def create_paused_project(project_id: str, name: str = "Paused Meta Project") -> None:
+async def create_paused_project(
+    project_id: str, name: str = "Paused Meta Project"
+) -> None:
     async with async_session() as db:
         db.add(Project(id=project_id, name=name, is_paused=True))
         await db.commit()
@@ -107,6 +109,37 @@ async def test_meta_hyperagent_toggle_rejects_paused_project(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_meta_hyperagent_toggle_reports_runtime_when_env_is_read_only(
+    auth_headers, monkeypatch
+):
+    """A read-only Docker image must not turn a valid toggle into a 500."""
+    from app.api.routes import meta_hyperagent as meta_routes
+
+    await init_db()
+    project_id = f"meta-read-only-{uuid.uuid4().hex[:8]}"
+    await create_project(project_id)
+
+    def raise_read_only(*_args, **_kwargs):
+        raise OSError("read-only filesystem")
+
+    monkeypatch.setattr(meta_routes, "persist_env_value", raise_read_only)
+    monkeypatch.setattr(meta_routes.meta_hyperagent, "start", lambda **_kwargs: None)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            f"/api/meta-hyperagent/toggle?project_id={project_id}",
+            headers=auth_headers,
+            json={"enabled": True},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["enabled"] is True
+    assert payload["persisted"] is False
+    assert "runtime" in payload["message"].lower()
+
+
+@pytest.mark.asyncio
 async def test_meta_agent_proposals_returns_list(auth_headers):
     """GET /api/meta-hyperagent/proposals returns proposals."""
     await init_db()
@@ -168,7 +201,9 @@ async def test_meta_hyperagent_start_retains_task_and_stop_cancels(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_meta_hyperagent_stops_before_proposing_when_project_is_paused(monkeypatch):
+async def test_meta_hyperagent_stops_before_proposing_when_project_is_paused(
+    monkeypatch,
+):
     from app.core.meta_hyperagent import MetaHyperagent
 
     await init_db()
@@ -338,10 +373,16 @@ async def test_meta_hyperagent_filters_proposals_by_project():
     mh._variants = []
     mh._recent_observations = []
 
-    assert [p["id"] for p in mh.get_pending_proposals(project_id="project-a")] == ["proposal-a"]
-    assert [p["id"] for p in mh.get_pending_proposals(project_id="project-b")] == ["proposal-b"]
+    assert [p["id"] for p in mh.get_pending_proposals(project_id="project-a")] == [
+        "proposal-a"
+    ]
+    assert [p["id"] for p in mh.get_pending_proposals(project_id="project-b")] == [
+        "proposal-b"
+    ]
     assert mh.reject_proposal("proposal-b", project_id="project-a") is None
-    assert mh.reject_proposal("proposal-a", project_id="project-a")["status"] == "rejected"
+    assert (
+        mh.reject_proposal("proposal-a", project_id="project-a")["status"] == "rejected"
+    )
 
 
 @pytest.mark.asyncio

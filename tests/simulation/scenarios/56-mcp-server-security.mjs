@@ -6,9 +6,16 @@
 export const name = "MCP Server Security";
 export const id = "56-mcp-server-security";
 
+import { browserViewCheck } from "../lib/view-check.mjs";
 export async function run(ctx) {
   const { api } = ctx;
   const checks = [];
+  await browserViewCheck(ctx, checks, {
+    viewId: "integrations",
+    navLabel: "Integrations",
+    markers: ["Overview", "Integrations"],
+    screenshot: "56-integrations-view",
+  });
   let initialStatus = null;
   let initialPolicy = null;
 

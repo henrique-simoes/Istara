@@ -1,5 +1,9 @@
 """Context DAG API — inspect, search, and manage the conversation DAG."""
+
 from __future__ import annotations
+
+import asyncio
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -8,10 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.context_dag import context_dag
 from app.core.permissions import ProjectRole, get_visible_project_or_404
-from app.models.database import get_db
 from app.models.context_dag import ContextDAGNode
+from app.models.database import get_db
 from app.models.session import ChatSession
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -68,17 +73,21 @@ async def _require_dag_node(
 
 # ---- Request models ----
 
+
 class ExpandRequest(BaseModel):
     """Request body for expanding a DAG node."""
+
     node_id: str = Field(..., min_length=1, max_length=36)
 
 
 class GrepRequest(BaseModel):
     """Request body for searching conversation history."""
+
     query: str = Field(..., min_length=1, max_length=500)
 
 
 # ---- Endpoints ----
+
 
 @router.get("/context-dag/{session_id}")
 async def get_dag_structure(
@@ -179,8 +188,14 @@ async def force_compact(
     """Force DAG compaction for a session (creates summary nodes for uncovered messages)."""
     await _require_session_access(db, request, session_id, project_id, min_role="researcher")
     try:
-        await context_dag.compact_if_needed(session_id)
+        task = context_dag.schedule_compaction(session_id)
+        compacted = False
+        try:
+            await asyncio.wait_for(asyncio.shield(task), timeout=2.5)
+            compacted = True
+        except TimeoutError:
+            logger.info("DAG compaction for %s continues in background", session_id)
         health = await context_dag.get_health(session_id)
-        return {"compacted": True, "status": "ok", "health": health}
+        return {"compacted": compacted, "status": "ok", "health": health, "scheduled": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -7,6 +7,7 @@ This folder records the durable audit results for the ensemble validation, compu
 Files:
 
 - `ensemble-method-matrix.md`: implementation truth table for validation methods and scientific claims.
+- `three-model-research-spine-audit.md`: methodological, statistical, and qualitative audit of the frontier three-model ensemble Research Spine execution (Luna, Qwen 3.7 Max, GLM 5.2).
 - `compute-donation-matrix.md`: compute manager, relay donation, and Petals-inspired architecture classification.
 - `readme-claim-truth-matrix.md`: README and README.pt-BR claim audit.
 - `bibliography-audit.md`: primary source references and wording guidance.

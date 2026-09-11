@@ -1,0 +1,263 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  buildRealProvider,
+  captureProviderFetch,
+  filterParamsForApi,
+  modelCapabilities,
+  modelLimits,
+  resolveCapabilities,
+} from "../src/provider.mjs";
+
+test("codex responses strips temperature, keeps retries and reasoning", () => {
+  const params = { temperature: 0.7, maxRetries: 2, reasoning: "minimal", maxTokens: 512 };
+  const wire = filterParamsForApi(params, "openai-codex-responses");
+  assert.equal(wire.temperature, undefined);
+  assert.equal(wire.maxRetries, 2);
+  assert.equal(wire.reasoning, "minimal");
+  assert.equal(wire.maxTokens, 512);
+});
+
+test("other apis keep every mapped param", () => {
+  const params = { temperature: 0.4, maxTokens: 128 };
+  const wire = filterParamsForApi(params, "openai-chat-completions");
+  assert.deepEqual(wire, params);
+});
+
+test("null/undefined params yield an empty wire set without throwing", () => {
+  assert.deepEqual(filterParamsForApi(null, "openai-codex-responses"), {});
+});
+
+test("provider model limits use resolved endpoint capabilities instead of a 4096 cap", () => {
+  assert.deepEqual(
+    modelLimits({ context_window: 128000, max_tokens: 16384 }, { maxTokens: 12000 }),
+    { contextWindow: 128000, maxTokens: 16384 },
+  );
+  assert.deepEqual(
+    modelLimits({ context_window: 0, max_tokens: 0 }, { maxTokens: 12000 }),
+    { contextWindow: 128000, maxTokens: 12000 },
+  );
+});
+
+test("deepseek identity enables explicit thinking controls for forced structured tools", () => {
+  assert.deepEqual(
+    modelCapabilities({ pi_provider: "deepseek" }, "openai-completions"),
+    {
+      reasoning: true,
+      thinkingLevels: undefined,
+      compat: { thinkingFormat: "deepseek" },
+    },
+  );
+});
+
+test("qwen identities emit the Qwen thinking compatibility contract", () => {
+  assert.deepEqual(
+    modelCapabilities({ pi_provider: "qwen-token-plan" }, "openai-completions"),
+    {
+      reasoning: true,
+      thinkingLevels: undefined,
+      compat: { thinkingFormat: "qwen", supportsReasoningEffort: false },
+    },
+  );
+});
+
+test("explicit non-reasoning catalog models do not inherit Qwen thinking", () => {
+  assert.deepEqual(
+    modelCapabilities(
+      { pi_provider: "dashscope", supports_reasoning: false },
+      "openai-completions",
+    ),
+    { reasoning: false, thinkingLevels: undefined, compat: undefined },
+  );
+});
+
+test("Qwen thinking level becomes enable_thinking without reasoning_effort", async () => {
+  // qwen3.7-plus resolves through the governed-custom/identity fallback in
+  // worker tests via provider id qwen-token-plan; either way the wire contract
+  // is the boolean enable_thinking with no reasoning_effort.
+  const binding = await buildRealProvider({
+    endpoint_id: "qwen-plus",
+    provider_kind: "openai_compat",
+    pi_provider: "qwen-token-plan",
+    base_url: "https://provider.test/v1",
+    model: "qwen3.7-plus",
+    api_key: "test-key",
+    params: { thinking_level: "high", max_tokens: 64 },
+  });
+  let payload;
+  const stream = binding.stream(
+    binding.model,
+    { messages: [{ role: "user", content: [{ type: "text", text: "probe" }] }] },
+    {
+      fetch: async () => { throw new Error("network_should_not_be_called"); },
+      onPayload: (candidate) => {
+        payload = candidate;
+        throw new Error("payload_captured");
+      },
+    },
+  );
+  for await (const _event of stream) { /* the payload hook terminates before network */ }
+  binding.dispose();
+  assert.equal(payload.enable_thinking, true);
+  assert.equal(payload.reasoning_effort, undefined);
+  assert.equal(payload.model, "qwen3.7-plus");
+});
+
+test("catalog vision capability reaches the embedded pi-ai model binding", async () => {
+  const binding = await buildRealProvider({
+    endpoint_id: "qwen-plus-vision",
+    provider_kind: "openai_compat",
+    pi_provider: "dashscope",
+    base_url: "https://provider.test/v1",
+    model: "qwen3.7-plus",
+    api_key: "test-key",
+    supports_vision: true,
+    params: {},
+  });
+  try {
+    assert.deepEqual(binding.model.input, ["text", "image"]);
+  } finally {
+    binding.dispose();
+  }
+});
+
+test("Codex identity inherits the pi-ai registry record (authority flip)", async () => {
+  // FLIPPED (G6, plan task 4.4): the former test asserted the hand-written
+  // codex branch {thinkingLevels: ["xhigh","max","minimal"]} — a restatement
+  // of registry knowledge that lost the minimal→"low" mapping and the tool
+  // compat flags, so xhigh/max clamped to high on the wire. The pi-ai record
+  // for openai-codex/gpt-5.6-luna is the authority (tier 4): the level menu is
+  // the full ladder via thinkingLevelMap {xhigh:"xhigh", max:"max",
+  // minimal:"low"}, and the record's compat flags
+  // (supportsAdditionalTools etc.) now select deferredToolsMode.
+  const { capabilities } = await resolveCapabilities(
+    { pi_provider: "openai-codex", model: "gpt-5.6-luna", base_url: "https://chatgpt.com/backend-api" },
+    "openai-codex-responses",
+  );
+  assert.equal(capabilities.reasoning, true);
+  assert.deepEqual(capabilities.thinkingLevelMap, { xhigh: "xhigh", max: "max", minimal: "low" });
+  assert.deepEqual(capabilities.compat, {
+    supportsOpenAIGrammarTools: true,
+    supportsAdditionalTools: true,
+    supportsToolSearch: true,
+  });
+  // pi-ai's own derivation of the supported menu (DEC-M2): all 7 levels.
+  assert.deepEqual(capabilities.supportedPiLevels, ["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
+});
+
+test("Codex identity capture forces the observable SSE transport", async () => {
+  const previousWebSocket = globalThis.WebSocket;
+  let websocketAttempts = 0;
+  let fetchCalls = 0;
+  globalThis.WebSocket = class {
+    constructor() {
+      websocketAttempts += 1;
+      throw new Error("websocket_should_not_be_used_for_identity_receipts");
+    }
+  };
+  const binding = await buildRealProvider({
+    endpoint_id: "codex-luna",
+    provider_kind: "openai_codex",
+    pi_provider: "openai-codex",
+    base_url: "https://provider.test/backend-api",
+    model: "gpt-5.6-luna",
+    api_key: "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoidGVzdC1hY2NvdW50In19.sig",
+    params: { thinking_level: "high", max_tokens: 32 },
+  });
+  try {
+    const stream = binding.stream(
+      binding.model,
+      { messages: [{ role: "user", content: [{ type: "text", text: "probe" }] }] },
+      {
+        fetch: async () => {
+          fetchCalls += 1;
+          return new Response("{}", { status: 401, statusText: "Unauthorized" });
+        },
+      },
+    );
+    for await (const _event of stream) { /* terminal error is expected */ }
+  } finally {
+    binding.dispose();
+    if (previousWebSocket === undefined) delete globalThis.WebSocket;
+    else globalThis.WebSocket = previousWebSocket;
+  }
+  assert.equal(websocketAttempts, 0);
+  assert.equal(fetchCalls, 1);
+});
+
+test("provider identity observer captures a split non-SSE JSON response", async () => {
+  const observed = [];
+  const payload = JSON.stringify({ response: { model: "served-json-model" } });
+  const encoded = new TextEncoder().encode(payload);
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoded.slice(0, 11));
+      controller.enqueue(encoded.slice(11));
+      controller.close();
+    },
+  });
+  const wrapped = captureProviderFetch(
+    async () => new Response(body, { headers: { "content-type": "application/json" } }),
+    { add: (model) => { if (model) observed.push(model); } },
+  );
+  const response = await wrapped("http://provider.test/v1/chat/completions");
+  assert.equal(await response.text(), payload);
+  assert.deepEqual(observed, ["served-json-model"]);
+});
+
+test("zai identity names the thinking format and inherits pi-ai support flags", () => {
+  // Tier-5 fallback for an UNKNOWN zai model (registry miss): we own the
+  // identity (thinkingFormat zai — gateway URLs may hide the provider) and
+  // pi-ai owns the support matrix (supportsReasoningEffort falls back to its
+  // detected false via per-field merge). Registry-known zai models inherit the
+  // full record instead — see the flipped wire test below.
+  assert.deepEqual(
+    modelCapabilities({ pi_provider: "zai", supports_reasoning: true }, "openai-completions"),
+    { reasoning: true, thinkingLevels: undefined, compat: { thinkingFormat: "zai" } },
+  );
+  assert.deepEqual(
+    modelCapabilities({ pi_provider: "zhipu-ai", supports_reasoning: false }, "openai-completions"),
+    { reasoning: false, thinkingLevels: undefined, compat: undefined },
+  );
+});
+
+test("Zai thinking level inherits reasoning_effort from the pi-ai record (authority flip)", async () => {
+  // FLIPPED (G6, plan task 4.4): the former test bound glm-5.3-flash — an id
+  // that does not exist in pi-ai 0.84.3 (S-E2) — and asserted the DEFECTIVE
+  // wire (no reasoning_effort at any level) as correct. The registry record
+  // for zai/glm-5.3 is the authority: compat.supportsReasoningEffort:true and
+  // the thinkingLevelMap must reach the request body.
+  const binding = await buildRealProvider({
+    endpoint_id: "zai-glm",
+    provider_kind: "openai_compat",
+    pi_provider: "zai",
+    base_url: "https://api.z.ai/api/paas/v4",
+    model: "glm-5.3",
+    api_key: "test-key",
+    supports_reasoning: true,
+    params: { thinking_level: "low", max_tokens: 64 },
+  });
+  let payload;
+  const stream = binding.stream(
+    binding.model,
+    { messages: [{ role: "user", content: [{ type: "text", text: "probe" }] }] },
+    {
+      fetch: async () => { throw new Error("network_should_not_be_called"); },
+      onPayload: (candidate) => {
+        payload = candidate;
+        throw new Error("payload_captured");
+      },
+    },
+  );
+  for await (const _event of stream) { /* the payload hook terminates before network */ }
+  binding.dispose();
+  assert.deepEqual(payload.thinking, { type: "enabled", clear_thinking: false });
+  assert.equal(payload.reasoning_effort, "low");
+  assert.equal(payload.model, "glm-5.3");
+  // The binding carries the content-free capability receipt naming the
+  // authority that served the turn.
+  assert.equal(binding.capability_receipt.capability_source, "pi_builtin");
+  assert.equal(binding.capability_receipt.reasoning, true);
+  assert.deepEqual(binding.capability_receipt.supported_pi_levels, ["low", "high", "max"]);
+});

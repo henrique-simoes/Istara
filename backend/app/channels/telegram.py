@@ -15,8 +15,8 @@ import os
 import re
 from pathlib import Path
 
-from app.config import settings
 from app.channels.base import ChannelAdapter, IncomingMessage, OutgoingMessage
+from app.config import settings
 from app.core.channel_resilience import CircuitBreaker
 
 logger = logging.getLogger(__name__)
@@ -49,6 +49,11 @@ class TelegramAdapter(ChannelAdapter):
         self._bot_token: str = self.config.get("bot_token", "") or os.getenv(
             "TELEGRAM_BOT_TOKEN", ""
         )
+        self._base_url: str | None = (
+            self.config.get("base_url")
+            or self.config.get("api_base")
+            or os.getenv("TELEGRAM_API_BASE")
+        )
         self._app = None  # telegram.ext.Application instance
         self._breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0)
 
@@ -66,7 +71,7 @@ class TelegramAdapter(ChannelAdapter):
     def _clean_path_component(value: str | None, default: str = "file") -> str:
         """Return a filesystem-safe single path component."""
         cleaned = _SAFE_NAME_RE.sub("_", value or "").strip("._-")
-        return (cleaned[:120] if cleaned else default)
+        return cleaned[:120] if cleaned else default
 
     @staticmethod
     def _safe_suffix(suffix: str | None, default: str = ".bin") -> str:
@@ -140,21 +145,16 @@ class TelegramAdapter(ChannelAdapter):
                 "TelegramAdapter is not enabled (missing bot_token / TELEGRAM_BOT_TOKEN)"
             )
 
-        self._app = ApplicationBuilder().token(self._bot_token).build()
+        builder = ApplicationBuilder().token(self._bot_token)
+        if self._base_url:
+            builder = builder.base_url(self._base_url)
+        self._app = builder.build()
 
         # Register handlers for different message types
-        self._app.add_handler(
-            MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_text)
-        )
-        self._app.add_handler(
-            MessageHandler(filters.VOICE, self._handle_voice)
-        )
-        self._app.add_handler(
-            MessageHandler(filters.PHOTO, self._handle_photo)
-        )
-        self._app.add_handler(
-            MessageHandler(filters.Document.ALL, self._handle_document)
-        )
+        self._app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_text))
+        self._app.add_handler(MessageHandler(filters.VOICE, self._handle_voice))
+        self._app.add_handler(MessageHandler(filters.PHOTO, self._handle_photo))
+        self._app.add_handler(MessageHandler(filters.Document.ALL, self._handle_document))
 
         # Manual startup sequence (run_polling blocks, so we do it step-by-step)
         await self._app.initialize()
@@ -185,7 +185,10 @@ class TelegramAdapter(ChannelAdapter):
 
         from app.core.channel_resilience import retry_with_backoff
 
-        chat_id = int(message.channel_id)
+        try:
+            chat_id: int | str = int(message.channel_id)
+        except (ValueError, TypeError):
+            chat_id = str(message.channel_id)
         metadata = message.metadata or {}
 
         # Handle attachments one at a time so a text-send failure does not resend files.
@@ -194,14 +197,10 @@ class TelegramAdapter(ChannelAdapter):
 
                 async def _send_document(path: str = file_path) -> None:
                     with open(path, "rb") as document:
-                        await self._app.bot.send_document(
-                            chat_id=chat_id, document=document
-                        )
+                        await self._app.bot.send_document(chat_id=chat_id, document=document)
 
                 await self._breaker.call(
-                    lambda: retry_with_backoff(
-                        _send_document, max_retries=3, base_delay=1.0
-                    )
+                    lambda: retry_with_backoff(_send_document, max_retries=3, base_delay=1.0)
                 )
 
         # Build optional reply markup
@@ -254,6 +253,37 @@ class TelegramAdapter(ChannelAdapter):
                 "error": str(exc),
             }
 
+    async def handle_webhook(self, data: dict) -> None:
+        """Handle incoming Telegram update from a webhook POST."""
+        if _TELEGRAM_AVAILABLE and self._app is not None:
+            update = Update.de_json(data, self._app.bot)
+            if update and update.message:
+                if update.message.text:
+                    msg = self._build_incoming(update, text=update.message.text)
+                    await self._dispatch(msg)
+                elif update.message.voice:
+                    await self._handle_voice(update, None)  # type: ignore[arg-type]
+                elif update.message.photo:
+                    await self._handle_photo(update, None)  # type: ignore[arg-type]
+                elif update.message.document:
+                    await self._handle_document(update, None)  # type: ignore[arg-type]
+        else:
+            message = data.get("message", {})
+            text = message.get("text", "")
+            chat = message.get("chat", {})
+            user = message.get("from", {})
+            if text and chat and user:
+                msg = IncomingMessage(
+                    channel="telegram",
+                    channel_id=str(chat.get("id", "")),
+                    sender_id=str(user.get("id", "")),
+                    sender_name=user.get("first_name", "") or str(user.get("id", "")),
+                    text=text,
+                    instance_id=self.instance_id,
+                    metadata={"content_type": "text"},
+                )
+                await self._dispatch(msg)
+
     # -- Internal handlers ----------------------------------------------------
 
     def _build_incoming(
@@ -275,16 +305,12 @@ class TelegramAdapter(ChannelAdapter):
             metadata={"content_type": content_type},
         )
 
-    async def _handle_text(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle plain text messages."""
         msg = self._build_incoming(update, text=update.message.text or "")
         await self._dispatch(msg)
 
-    async def _handle_voice(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _handle_voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle voice messages -- download, transcribe, and dispatch."""
         try:
             voice = update.message.voice
@@ -308,7 +334,8 @@ class TelegramAdapter(ChannelAdapter):
             transcription_text = "[Voice message — transcription unavailable]"
             transcription_tags = []
             try:
-                from app.core.transcription import transcribe_audio, convert_audio_to_wav
+                from app.core.transcription import convert_audio_to_wav, transcribe_audio
+
                 wav_path = convert_audio_to_wav(str(audio_path))
                 result = transcribe_audio(wav_path)
                 transcription_text = result.text
@@ -333,9 +360,7 @@ class TelegramAdapter(ChannelAdapter):
         except Exception:
             logger.exception("Error handling voice message on %s", self.name)
 
-    async def _handle_photo(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _handle_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle photo messages."""
         try:
             # Get the largest photo size
@@ -367,9 +392,7 @@ class TelegramAdapter(ChannelAdapter):
         except Exception:
             logger.exception("Error handling photo message on %s", self.name)
 
-    async def _handle_document(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _handle_document(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle document/file messages."""
         try:
             doc = update.message.document

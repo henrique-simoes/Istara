@@ -9,7 +9,7 @@ related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodeReviewQueue.tsx", "frontend/src/lib/researchIntegrityApi.ts"]
 api_references: ["backend/app/api/routes/code_applications.py", "backend/app/api/routes/codebooks.py"]
 test_references: ["tests/test_code_applications.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
+last_verified: 2026-08-26
 compass: CF-SPEC-78 / CF-1005
 ---
 
@@ -45,6 +45,8 @@ Findings Code Review exists so the work represented by Findings > Review has a s
 
 - Project-scoped state or artifact updates associated with findings code review.
 - Approve/reject actions carry the active project id so stale queue items or links from another project cannot change records in the current project.
+- A coding run is not report-ready from model agreement alone. Every code application must show approved review, accepted/reconciled reconciliation state, and a linked decision; clients can scope the review list by `coding_run_id`.
+- High confidence does not authorize bulk acceptance. The old bulk-approve compatibility route refuses the request without changing data; use the per-application review controls so each decision is recorded in the reconciliation ledger.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
 ## Caveats

@@ -11,12 +11,12 @@ This replaces the single-prompt approach where the LLM was asked to
 """
 
 import json
-import uuid
-from collections import Counter
+import logging
 
-from app.core.ollama import ollama
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
-from app.skills.skill_factory import _extract_text_from_files, _parse_json_response
+from app.skills.skill_factory import _extract_text_from_files
+
+logger = logging.getLogger(__name__)
 
 
 def cohen_kappa(coder_a: list[list[str]], coder_b: list[list[str]], all_codes: list[str]) -> dict:
@@ -36,10 +36,14 @@ def cohen_kappa(coder_a: list[list[str]], coder_b: list[list[str]], all_codes: l
     n_items = len(coder_a)
     if n_items == 0 or not all_codes:
         return {
-            "kappa": 0.0, "interpretation": "poor",
-            "observed_agreement": 0.0, "expected_agreement": 0.0,
-            "n_items_coded": 0, "n_codes_used": 0,
-            "per_code_kappa": [], "low_agreement_codes": [],
+            "kappa": 0.0,
+            "interpretation": "poor",
+            "observed_agreement": 0.0,
+            "expected_agreement": 0.0,
+            "n_items_coded": 0,
+            "n_codes_used": 0,
+            "per_code_kappa": [],
+            "low_agreement_codes": [],
         }
 
     per_code_results = []
@@ -69,19 +73,25 @@ def cohen_kappa(coder_a: list[list[str]], coder_b: list[list[str]], all_codes: l
         else:
             code_kappa = (po - pe) / (1 - pe)
 
-        per_code_results.append({
-            "code": code,
-            "agreement_pct": round(po * 100, 1),
-            "kappa": round(code_kappa, 3),
-            "frequency_a": tp + fn,
-            "frequency_b": tp + fp,
-        })
+        per_code_results.append(
+            {
+                "code": code,
+                "agreement_pct": round(po * 100, 1),
+                "kappa": round(code_kappa, 3),
+                "frequency_a": tp + fn,
+                "frequency_b": tp + fp,
+            }
+        )
 
         total_agree += po
         total_items_checked += 1
 
     # Overall kappa = average of per-code kappas (macro average)
-    overall_kappa = sum(r["kappa"] for r in per_code_results) / len(per_code_results) if per_code_results else 0.0
+    overall_kappa = (
+        sum(r["kappa"] for r in per_code_results) / len(per_code_results)
+        if per_code_results
+        else 0.0
+    )
     overall_agreement = total_agree / total_items_checked if total_items_checked > 0 else 0.0
 
     # Landis & Koch interpretation
@@ -109,8 +119,12 @@ def cohen_kappa(coder_a: list[list[str]], coder_b: list[list[str]], all_codes: l
         "n_codes_used": len(all_codes),
         "per_code_kappa": per_code_results,
         "low_agreement_codes": [
-            {"code": r["code"], "kappa": r["kappa"], "issue": "Low inter-coder agreement",
-             "resolution": "Review code definition for ambiguity"}
+            {
+                "code": r["code"],
+                "kappa": r["kappa"],
+                "issue": "Low inter-coder agreement",
+                "resolution": "Review code definition for ambiguity",
+            }
             for r in low_agreement
         ],
     }
@@ -139,18 +153,26 @@ def krippendorff_alpha(coders: list[list[list[str]]], all_codes: list[str]) -> d
     n_coders = len(coders)
     if n_coders == 0 or not all_codes:
         return {
-            "alpha": 0.0, "interpretation": "unreliable",
-            "n_coders": 0, "n_items": 0, "n_codes": 0,
-            "per_code_alpha": [], "unreliable_codes": [],
+            "alpha": 0.0,
+            "interpretation": "unreliable",
+            "n_coders": 0,
+            "n_items": 0,
+            "n_codes": 0,
+            "per_code_alpha": [],
+            "unreliable_codes": [],
         }
 
     # All coders must have the same number of items; use the minimum if they differ
     n_items = min(len(c) for c in coders) if coders else 0
     if n_items == 0:
         return {
-            "alpha": 0.0, "interpretation": "unreliable",
-            "n_coders": n_coders, "n_items": 0, "n_codes": len(all_codes),
-            "per_code_alpha": [], "unreliable_codes": [],
+            "alpha": 0.0,
+            "interpretation": "unreliable",
+            "n_coders": n_coders,
+            "n_items": 0,
+            "n_codes": len(all_codes),
+            "per_code_alpha": [],
+            "unreliable_codes": [],
         }
 
     per_code_results = []
@@ -189,9 +211,12 @@ def krippendorff_alpha(coders: list[list[list[str]]], all_codes: list[str]) -> d
             total_do_numerator += disagreements / (m_u - 1)
 
         if total_pairable == 0:
-            per_code_results.append({
-                "code": code, "alpha": 0.0,
-            })
+            per_code_results.append(
+                {
+                    "code": code,
+                    "alpha": 0.0,
+                }
+            )
             continue
 
         do = total_do_numerator / total_pairable  # observed disagreement (normalized)
@@ -209,9 +234,12 @@ def krippendorff_alpha(coders: list[list[list[str]]], all_codes: list[str]) -> d
                         n_zeros += 1
         n_total = n_ones + n_zeros
         if n_total < 2:
-            per_code_results.append({
-                "code": code, "alpha": 0.0,
-            })
+            per_code_results.append(
+                {
+                    "code": code,
+                    "alpha": 0.0,
+                }
+            )
             continue
 
         # For nominal metric: De = (n_ones * n_zeros) / (n_total * (n_total - 1) / 2)
@@ -223,10 +251,12 @@ def krippendorff_alpha(coders: list[list[list[str]]], all_codes: list[str]) -> d
         else:
             code_alpha = 1.0 - (do / de)
 
-        per_code_results.append({
-            "code": code,
-            "alpha": round(code_alpha, 3),
-        })
+        per_code_results.append(
+            {
+                "code": code,
+                "alpha": round(code_alpha, 3),
+            }
+        )
 
     # Overall alpha = average of per-code alphas (macro average)
     if per_code_results:
@@ -245,9 +275,14 @@ def krippendorff_alpha(coders: list[list[list[str]]], all_codes: list[str]) -> d
         interpretation = "unreliable"
 
     unreliable_codes = [
-        {"code": r["code"], "alpha": r["alpha"], "issue": "Below reliability threshold",
-         "resolution": "Review code definition and coder training"}
-        for r in per_code_results if r["alpha"] < 0.667
+        {
+            "code": r["code"],
+            "alpha": r["alpha"],
+            "issue": "Below reliability threshold",
+            "resolution": "Review code definition and coder training",
+        }
+        for r in per_code_results
+        if r["alpha"] < 0.667
     ]
 
     return {
@@ -279,10 +314,13 @@ Data to code:
 Respond in JSON:
 {{
   "codebook": [
-    {{"code": "code-name", "definition": "clear definition", "inclusion_criteria": "when to apply", "exclusion_criteria": "when NOT to apply", "examples": ["example phrase"]}}
+    {{"code": "code-name", "definition": "clear definition", \
+"inclusion_criteria": "when to apply", "exclusion_criteria": \
+"when NOT to apply", "examples": ["example phrase"]}}
   ],
   "coding_results": [
-    {{"item_id": "seg_1", "text": "verbatim phrase (3-30 words)", "source": "filename or location", "codes": ["code1", "code2"]}}
+    {{"item_id": "seg_1", "text": "verbatim phrase (3-30 words)", \
+"source": "filename or location", "codes": ["code1", "code2"]}}
   ]
 }}"""
 
@@ -330,12 +368,117 @@ Respond in JSON:
     {{"item_id": "seg_1", "final_codes": ["code1"], "rationale": "brief explanation"}}
   ],
   "codebook_refinements": [
-    {{"code": "code-name", "issue": "why it caused disagreement", "refined_definition": "improved definition"}}
+    {{"code": "code-name", "issue": "why it caused disagreement", \
+"refined_definition": "improved definition"}}
   ],
   "themes": [
-    {{"name": "theme name", "definition": "what this theme captures", "codes": ["code1", "code2"], "prevalence": "dominant|common|minor", "description": "narrative description"}}
+    {{"name": "theme name", "definition": "what this theme captures", \
+"codes": ["code1", "code2"], "prevalence": "dominant|common|minor", \
+"description": "narrative description"}}
   ]
 }}"""
+
+# Structured-output schemas for the AgenticDispatcher path (Pi
+# forced-tool subset). Each schema formalizes the keys the skill reads
+# out of the dispatcher's parsed structured value below.
+
+_THEME_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "definition": {"type": "string"},
+        "codes": {"type": "array", "items": {"type": "string"}},
+        "prevalence": {"type": "string"},
+        "description": {"type": "string"},
+    },
+}
+
+_CODER_A_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "codebook": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string"},
+                    "definition": {"type": "string"},
+                    "inclusion_criteria": {"type": "string"},
+                    "exclusion_criteria": {"type": "string"},
+                    "examples": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+        "coding_results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "item_id": {"type": "string"},
+                    "text": {"type": "string"},
+                    "source": {"type": "string"},
+                    "codes": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+    },
+    "required": ["codebook", "coding_results"],
+}
+
+_CODER_B_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "coding_results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "item_id": {"type": "string"},
+                    "codes": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+    },
+    "required": ["coding_results"],
+}
+
+_RECONCILIATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "reconciled": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "item_id": {"type": "string"},
+                    "final_codes": {"type": "array", "items": {"type": "string"}},
+                    "rationale": {"type": "string"},
+                },
+            },
+        },
+        "codebook_refinements": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string"},
+                    "issue": {"type": "string"},
+                    "refined_definition": {"type": "string"},
+                },
+            },
+        },
+        "themes": {"type": "array", "items": _THEME_SCHEMA},
+    },
+    "required": ["reconciled"],
+}
+
+_THEMES_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "themes": {"type": "array", "items": _THEME_SCHEMA},
+    },
+    "required": ["themes"],
+}
 
 
 class KappaIntercoderSkill(BaseSkill):
@@ -387,39 +530,82 @@ class KappaIntercoderSkill(BaseSkill):
             "5. **Minimum thresholds** — Kappa >= 0.60 for exploratory, >= 0.80 for confirmatory\n"
             "Format as Markdown."
         )
-        resp = await ollama.chat(messages=[{"role": "user", "content": prompt}], temperature=0.7)
-        return {"skill": self.name, "plan": resp.get("message", {}).get("content", "")}
+        # W9: the AgenticDispatcher path (``skill.kappa_plan``) is the only
+        # path; the legacy direct-plane branch was removed in W9.
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
+        outcome = await agentic.completion(
+            purpose="skill.kappa_plan",
+            project_id=skill_input.project_id,
+            system=None,
+            messages=[{"role": "user", "content": prompt}],
+            params=TurnParams(temperature=0.7),
+            spine_phase="plan",
+        )
+        text = outcome.text
+        return {"skill": self.name, "plan": text}
 
     async def execute(self, skill_input: SkillInput) -> SkillOutput:
         content = _extract_text_from_files(skill_input.files) if skill_input.files else ""
         if not content and not skill_input.user_context:
-            return SkillOutput(success=False, summary="No input provided.", errors=["Provide files or context."])
+            return SkillOutput(
+                success=False, summary="No input provided.", errors=["Provide files or context."]
+            )
 
         from pathlib import Path
+
         file_sources = [Path(f).name for f in skill_input.files] if skill_input.files else []
         source_label = ", ".join(file_sources[:3]) if file_sources else self.name
 
-        ctx = "\n".join(filter(None, [
-            skill_input.company_context, skill_input.project_context, skill_input.user_context
-        ]))
+        ctx = "\n".join(
+            filter(
+                None,
+                [
+                    skill_input.company_context,
+                    skill_input.project_context,
+                    skill_input.user_context,
+                ],
+            )
+        )
 
         # --- Step 1: Coder A — open coding ---
         prompt_a = CODER_A_PROMPT.format(
             context=ctx or "N/A",
             content=content or skill_input.user_context or "N/A",
         )
-        resp_a = await ollama.chat(
-            messages=[{"role": "user", "content": prompt_a}],
-            temperature=0.3,
-        )
-        data_a = _parse_json_response(resp_a.get("message", {}).get("content", ""))
+        # W9: Coder A open coding goes through the AgenticDispatcher
+        # (``skill.kappa_code_a``) as a structured call; the legacy
+        # direct-plane branch was removed in W9.
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
+        try:
+            outcome_a = await agentic.structured(
+                purpose="skill.kappa_code_a",
+                project_id=skill_input.project_id,
+                system=None,
+                messages=[{"role": "user", "content": prompt_a}],
+                schema=_CODER_A_SCHEMA,
+                params=TurnParams(temperature=0.3),
+                spine_phase="execution",
+            )
+            data_a = outcome_a.value if outcome_a.status == "success" else {}
+        except Exception as e:
+            # F-W5-2: the Pi engine raises PiRuntimeTurnError on invalid
+            # structured output instead of returning status != "success";
+            # degrade to the same empty-coding fallback (which returns a
+            # graceful SkillOutput failure below).
+            logger.warning("Intercoder Coder A raised; degrading to empty coding: %s", e)
+            data_a = {}
 
         codebook_entries = data_a.get("codebook", [])
         coding_a = data_a.get("coding_results", [])
 
         if not coding_a:
             return SkillOutput(
-                success=False, summary="Coder A produced no coding results.",
+                success=False,
+                summary="Coder A produced no coding results.",
                 errors=["First coding pass returned empty results."],
             )
 
@@ -435,11 +621,29 @@ class KappaIntercoderSkill(BaseSkill):
             context=ctx or "N/A",
             segments=segments_text,
         )
-        resp_b = await ollama.chat(
-            messages=[{"role": "user", "content": prompt_b}],
-            temperature=0.3,
-        )
-        data_b = _parse_json_response(resp_b.get("message", {}).get("content", ""))
+        # W9: Coder B independent re-coding goes through the
+        # AgenticDispatcher (``skill.kappa_code_b``) as a structured call;
+        # the legacy direct-plane branch was removed in W9.
+        from app.core.agentic import agentic
+        from app.core.agentic.types import TurnParams
+
+        try:
+            outcome_b = await agentic.structured(
+                purpose="skill.kappa_code_b",
+                project_id=skill_input.project_id,
+                system=None,
+                messages=[{"role": "user", "content": prompt_b}],
+                schema=_CODER_B_SCHEMA,
+                params=TurnParams(temperature=0.3),
+                spine_phase="execution",
+            )
+            data_b = outcome_b.value if outcome_b.status == "success" else {}
+        except Exception as e:
+            # F-W5-2: the Pi engine raises PiRuntimeTurnError on invalid
+            # structured output instead of returning status != "success";
+            # degrade to the same empty-coding fallback.
+            logger.warning("Intercoder Coder B raised; degrading to empty coding: %s", e)
+            data_b = {}
         coding_b = data_b.get("coding_results", [])
 
         # Build lookup for Coder B results
@@ -461,15 +665,17 @@ class KappaIntercoderSkill(BaseSkill):
             coder_b_codes.append(b_codes)
 
             agreed = set(a_codes) == set(b_codes)
-            combined_results.append({
-                "item_id": item_id,
-                "text": item.get("text", ""),
-                "source": item.get("source", source_label),
-                "coder_a": a_codes,
-                "coder_b": b_codes,
-                "final": list(set(a_codes) | set(b_codes)),  # union until reconciliation
-                "agreed": agreed,
-            })
+            combined_results.append(
+                {
+                    "item_id": item_id,
+                    "text": item.get("text", ""),
+                    "source": item.get("source", source_label),
+                    "coder_a": a_codes,
+                    "coder_b": b_codes,
+                    "final": list(set(a_codes) | set(b_codes)),  # union until reconciliation
+                    "agreed": agreed,
+                }
+            )
 
         all_codes = sorted(all_codes_set)
         reliability = cohen_kappa(coder_a_codes, coder_b_codes, all_codes)
@@ -484,26 +690,53 @@ class KappaIntercoderSkill(BaseSkill):
 
         if disagreements:
             disagree_text = json.dumps(
-                [{"item_id": d["item_id"], "text": d["text"],
-                  "coder_a": d["coder_a"], "coder_b": d["coder_b"]}
-                 for d in disagreements],
+                [
+                    {
+                        "item_id": d["item_id"],
+                        "text": d["text"],
+                        "coder_a": d["coder_a"],
+                        "coder_b": d["coder_b"],
+                    }
+                    for d in disagreements
+                ],
                 indent=2,
             )
             prompt_r = RECONCILIATION_PROMPT.format(
                 codebook=codebook_text,
                 disagreements=disagree_text,
             )
-            resp_r = await ollama.chat(
-                messages=[{"role": "user", "content": prompt_r}],
-                temperature=0.3,
-            )
-            data_r = _parse_json_response(resp_r.get("message", {}).get("content", ""))
+            # W9: disagreement reconciliation goes through the
+            # AgenticDispatcher (``skill.kappa_reconcile``) as a structured
+            # call; the legacy direct-plane branch was removed in W9.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            try:
+                outcome_r = await agentic.structured(
+                    purpose="skill.kappa_reconcile",
+                    project_id=skill_input.project_id,
+                    system=None,
+                    messages=[{"role": "user", "content": prompt_r}],
+                    schema=_RECONCILIATION_SCHEMA,
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="synthesis",
+                )
+                data_r = outcome_r.value if outcome_r.status == "success" else {}
+            except Exception as e:
+                # F-W5-2: the Pi engine raises PiRuntimeTurnError on
+                # invalid structured output instead of returning
+                # status != "success"; degrade to the same empty-result
+                # fallback (unreconciled codes keep coder union).
+                logger.warning("Intercoder reconcile raised; degrading to union codes: %s", e)
+                data_r = {}
 
             # Apply reconciled codes
             reconciled_by_id = {r["item_id"]: r for r in data_r.get("reconciled", [])}
             for item in combined_results:
                 if item["item_id"] in reconciled_by_id:
-                    item["final"] = reconciled_by_id[item["item_id"]].get("final_codes", item["final"])
+                    item["final"] = reconciled_by_id[item["item_id"]].get(
+                        "final_codes", item["final"]
+                    )
 
             themes = data_r.get("themes", [])
             codebook_refinements = data_r.get("codebook_refinements", [])
@@ -517,32 +750,61 @@ class KappaIntercoderSkill(BaseSkill):
                 f'{{"themes": [{{"name": "...", "definition": "...", "codes": ["..."], '
                 f'"prevalence": "dominant|common|minor", "description": "..."}}]}}'
             )
-            resp_t = await ollama.chat(
-                messages=[{"role": "user", "content": prompt_themes}],
-                temperature=0.3,
-            )
-            data_t = _parse_json_response(resp_t.get("message", {}).get("content", ""))
+            # W9: theme extraction (all-agreed path) goes through the
+            # AgenticDispatcher (``skill.kappa_themes``) as a structured
+            # call; the legacy direct-plane branch was removed in W9.
+            from app.core.agentic import agentic
+            from app.core.agentic.types import TurnParams
+
+            try:
+                outcome_t = await agentic.structured(
+                    purpose="skill.kappa_themes",
+                    project_id=skill_input.project_id,
+                    system=None,
+                    messages=[{"role": "user", "content": prompt_themes}],
+                    schema=_THEMES_SCHEMA,
+                    params=TurnParams(temperature=0.3),
+                    spine_phase="synthesis",
+                )
+                data_t = outcome_t.value if outcome_t.status == "success" else {}
+            except Exception as e:
+                # F-W5-2: the Pi engine raises PiRuntimeTurnError on
+                # invalid structured output instead of returning
+                # status != "success"; degrade to the same no-themes
+                # fallback.
+                logger.warning("Intercoder themes raised; degrading to no themes: %s", e)
+                data_t = {}
             themes = data_t.get("themes", [])
 
         # --- Build output ---
         nuggets = [
-            {"text": r["text"], "source": r.get("source", source_label),
-             "tags": r["final"]}
+            {"text": r["text"], "source": r.get("source", source_label), "tags": r["final"]}
             for r in combined_results
         ]
         insights = [
-            {"text": f"Cohen's Kappa = {reliability['kappa']} ({reliability['interpretation']}), "
-                     f"Krippendorff's Alpha = {alpha_result['alpha']} ({alpha_result['interpretation']}). "
-                     f"{len(disagreements)} of {len(combined_results)} segments had disagreements.",
-             "confidence": "high" if reliability["kappa"] >= 0.60 and alpha_result["alpha"] >= 0.667 else "medium"}
+            {
+                "text": (
+                    f"Cohen's Kappa = {reliability['kappa']} "
+                    f"({reliability['interpretation']}), Krippendorff's Alpha = "
+                    f"{alpha_result['alpha']} ({alpha_result['interpretation']}). "
+                    f"{len(disagreements)} of {len(combined_results)} segments had disagreements."
+                ),
+                "confidence": "high"
+                if reliability["kappa"] >= 0.60 and alpha_result["alpha"] >= 0.667
+                else "medium",
+            }
         ]
 
         # Add theme-based insights
         for theme in themes:
-            insights.append({
-                "text": f"Theme: {theme.get('name', 'Unnamed')} — {theme.get('description', '')}",
-                "confidence": "medium",
-            })
+            insights.append(
+                {
+                    "text": (
+                        f"Theme: {theme.get('name', 'Unnamed')} — {theme.get('description', '')}"
+                    ),
+                    "confidence": "medium",
+                }
+            )
 
         full_artifact = {
             "codebook": codebook_entries,

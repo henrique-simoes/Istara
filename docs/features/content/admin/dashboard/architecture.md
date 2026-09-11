@@ -9,7 +9,7 @@ related_glossary: ["wcag"]
 code_references: ["frontend/src/components/admin/AdminDashboard.tsx", "backend/app/api/routes/admin.py", "backend/app/api/routes/permission_requests.py", "backend/app/core/compute_registry_invocation.py", "tests/real_user_benchmark/run.mjs", "tests/real_user_benchmark/lib/donor-sandboxes.mjs"]
 api_references: ["backend/app/api/routes/admin.py", "backend/app/api/routes/permission_requests.py"]
 test_references: ["tests/test_project_rbac.py", "tests/test_compute.py", "tests/test_project_scope_contracts.py", "tests/test_harness_project_scope_contracts.py", "tests/simulation/lib/project-selection.test.mjs", "tests/real_user_benchmark/run.mjs", "tests/real_user_benchmark/lib/donor-sandboxes.test.mjs"]
-last_verified: 2026-05-20
+last_verified: 2026-09-01
 compass: CF-SPEC-60 / CF-754; CF-SPEC-63 / CF-815; CF-SPEC-72 / CF-927; CF-SPEC-115; CF-SPEC-116; CF-SPEC-118; CF-SPEC-121
 ---
 
@@ -39,6 +39,9 @@ The Admin dashboard provides administrator-only operational controls and visibil
 - The feature is mounted through `frontend/src/components/admin/AdminDashboard.tsx` and the UI navigation path recorded in the inventory.
 - The dashboard should prefer partial data with an explicit section error over all-or-nothing loading.
 - The dashboard loads compute capacity through the admin-only aggregate endpoint instead of reusing project-facing `/api/compute/*` routes.
+- The Access section reads `/api/admin/access`, which orders memberships by their persisted `added_at` timestamp and resolves project/user labels without exposing internal database errors.
+- User emails in the Admin user list and Access view are fail-closed: unreadable encrypted values render as empty rather than leaking ciphertext (see `safe_decrypt_field`).
+- Project deletion removes memberships explicitly before commit, keeping this Access view free of stale rows even when SQLite does not enforce foreign-key cascades.
 - The dashboard's donation-string action sends `allowed_project_ids` for the chosen project so donated compute does not become a global content processor.
 - When the server has no network access token yet, compute donation string generation creates one before signing the donation string; invite strings for human users remain separate and do not include relay credentials.
 - The dashboard may list and review pending permission requests without `project_id` only because the route checks global admin status; Project Settings must pass the active project id for the same permission-request APIs.

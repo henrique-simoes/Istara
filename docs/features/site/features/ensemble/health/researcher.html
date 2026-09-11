@@ -172,7 +172,7 @@
 <h2>Settings</h2>
 <ul>
 <li data-search-item data-search-text="system status and models settings &gt; system status and models settings shows backend, llm, hardware, model recommendation, and available model status for the local installation."><a href="../../settings/general/researcher.html"><span>System Status And Models</span><small>Settings &gt; System Status And Models</small></a></li>
-<li data-search-item data-search-text="llm server settings settings &gt; llm servers settings manages configured llm providers, server endpoints, provider labels, and active model switching."><a href="../../settings/llm-servers/researcher.html"><span>LLM Server Settings</span><small>Settings &gt; LLM Servers</small></a></li>
+<li data-search-item data-search-text="legacy llm server compatibility settings &gt; pi model management &gt; legacy compatibility pi model management owns provider/model configuration while legacy llmserver rows remain read-only migration input and petals donors join through the governed bridge."><a href="../../settings/llm-servers/researcher.html"><span>Legacy LLM Server Compatibility</span><small>Settings &gt; Pi Model Management &gt; Legacy Compatibility</small></a></li>
 <li data-search-item data-search-text="user management settings &gt; users user management supports team member visibility and administrative user operations."><a href="../../settings/users/researcher.html"><span>User Management</span><small>Settings &gt; Users</small></a></li>
 <li data-search-item data-search-text="connection strings settings &gt; connection strings connection string settings provide governed admin-only configuration for sensitive external or local service connection data."><a href="../../settings/connection-strings/researcher.html"><span>Connection Strings</span><small>Settings &gt; Connection Strings</small></a></li>
 <li data-search-item data-search-text="passkeys and two-factor authentication settings &gt; security factors settings includes passkey and totp management for strengthening account authentication."><a href="../../settings/security-factors/researcher.html"><span>Passkeys And Two-Factor Authentication</span><small>Settings &gt; Security Factors</small></a></li>
@@ -228,7 +228,7 @@
       <h1>Ensemble Health</h1>
       <p class="lede">Ensemble Health surfaces health and consensus signals for Istara&#x27;s multi-model or multi-agent ensemble behavior.</p>
     </div>
-    <span class="status-chip">needs-verification</span>
+    <span class="status-chip">documented</span>
   </div>
   <nav class="audience-tabs" aria-label="Documentation audience">
     <a href="researcher.html" aria-current="page">Researcher</a>
@@ -237,8 +237,8 @@
   <dl class="meta-grid">
     <div><dt>UI Path</dt><dd>Ensemble Health</dd></div>
     <div><dt>Component</dt><dd><code>EnsembleHealthView</code></dd></div>
-    <div><dt>Source Refs</dt><dd>2</dd></div>
-    <div><dt>Tests</dt><dd>0</dd></div>
+    <div><dt>Source Refs</dt><dd>6</dd></div>
+    <div><dt>Tests</dt><dd>4</dd></div>
   </dl>
   <div class="link-cluster" aria-label="Related feature links"><a href="../../quality/dashboard/researcher.html">Quality Dashboard</a>
 <a href="../../compute/pool/researcher.html">Compute Pool</a></div>
@@ -266,6 +266,17 @@
 <li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
 <li>Move to related surfaces when needed: quality.dashboard, compute.pool.</li>
 </ul>
+<h2 id="how-validation-confidence-is-established">How Validation Confidence Is Established</h2>
+<ul>
+<li>W7&#x27;s dual-run, full-ensemble, Self-MoA, adversarial review, debate, and structured-judge call sites now use the shared dispatcher unconditionally. The dispatcher resolves the selected engine; a legacy selection remains available for rollback through its permanent legacy executor.</li>
+<li>Full ensemble requests carry the minimum response width plus one optional spare. The legacy route accepts exactly the minimum number of healthy distinct servers and consults the spare only when an earlier server fails; three healthy servers therefore remain a full three-response ensemble rather than degrading to dual-run. If the spare restores the minimum width, the aggregate result and usage/telemetry outcome are successful while the failed sample remains available for diagnostics. The Pi route receives the governed minimum directly because it has no spare-retry loop; a sub-minimum set of valid responses is downgraded instead of being labeled a complete ensemble.</li>
+<li>“Different models” means distinct model identities for independent validation, not merely different endpoint IDs. Replicas may improve availability but cannot provide independent raters; the system does not invent diversity when the required model identities are unavailable.</li>
+<li>When distinct endpoints cannot be selected, validation degrades to the documented lower-assurance path or reports unavailable/blocked. A failed judge is not a pass. These outcomes keep unvalidated work out of accepted research evidence and reports.</li>
+<li>W8 now routes embedding-based comparison through <code>agentic.embed</code>: Pi uses the <code>EmbeddingsGateway</code>, while legacy keeps the unchanged <code>ollama.embed*</code> plane. This preserves the vector-space and fail-closed boundaries for both engines.</li>
+<li>Self-healing signals in Ensemble Health express a bounded failed-attempt fraction over the rolling 15-minute window. A displayed percentage is never allowed to exceed 100%, even when the panel is reopened or refreshed repeatedly.</li>
+</ul>
+<h2 id="rollback">Rollback</h2>
+<p>Choose the <code>legacy</code> engine for the project (or keep the legacy global default) to return validation calls to the dispatcher&#x27;s preserved legacy route. Engine selection changes the executor, not the product call-site path.</p>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Project-scoped state or artifact updates associated with ensemble health.</li>
@@ -287,9 +298,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/common/EnsembleHealthView.tsx</code>, <code>backend/app/core/consensus.py</code></li>
+<li>Source files: <code>frontend/src/components/common/EnsembleHealthView.tsx</code>, <code>backend/app/core/consensus.py</code>, <code>backend/app/core/validation.py</code>, <code>backend/app/core/validation_executor.py</code>, <code>backend/app/services/research_validity_service.py</code>, <code>backend/app/core/agentic/dispatcher.py</code></li>
 <li>API references: <code>backend/app/api/routes/metrics.py</code></li>
-<li>Tests: none recorded</li>
+<li>Tests: <code>tests/pi_production/test_w7_validation.py</code>, <code>tests/test_validation_project_scope.py</code>, <code>tests/test_research_validity_contract.py</code>, <code>tests/test_metrics.py</code></li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
@@ -300,6 +311,8 @@
 <li class="toc-level-2"><a href="#where-it-lives">Where It Lives</a></li>
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
+<li class="toc-level-2"><a href="#how-validation-confidence-is-established">How Validation Confidence Is Established</a></li>
+<li class="toc-level-2"><a href="#rollback">Rollback</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>

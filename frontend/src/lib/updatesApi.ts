@@ -1,4 +1,5 @@
 import { API_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 
 type UpdateConfirmation = {
   confirm: "PREPARE_UPDATE" | "APPLY_UPDATE";
@@ -21,6 +22,9 @@ export type UpdateInfo = {
   downloads?: Record<string, string>;
   method?: string;
   source_checkout_includes_latest_release?: boolean;
+  install_type?: "docker" | "git" | "package";
+  can_auto_update?: boolean;
+  docker_command?: string;
   message?: string;
   error?: string;
 };
@@ -39,13 +43,13 @@ type UpdateApplyResult = {
 };
 
 function getAuthHeaders(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const token = localStorage.getItem("istara_token");
+  const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...getAuthHeaders(), ...options?.headers },
     ...options,
   });

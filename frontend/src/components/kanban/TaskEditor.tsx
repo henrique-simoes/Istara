@@ -2,11 +2,12 @@
 
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertTriangle, Bot, CheckCircle2, ClipboardList, FileStack, FileText, Globe, Network, Plus, RotateCcw, Save, Send, ShieldCheck, Tags, Trash2, User, X, Zap } from "lucide-react";
+import { AlertTriangle, ArrowLeft, BookOpen, Bot, CheckCircle2, ClipboardList, FileStack, FileText, Globe, Network, PlayCircle, Plus, RotateCcw, Save, Send, ShieldCheck, Tags, Trash2, User, X, Zap } from "lucide-react";
 import { useTaskStore } from "@/stores/taskStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { documents as documentsApi, tasks as tasksApi } from "@/lib/api";
+import { codebookVersions as codebookApi, documents as documentsApi, taskLocking, tasks as tasksApi } from "@/lib/api";
 import { researchValidity } from "@/lib/researchIntegrityApi";
+import { loadTaskDocumentReferences, resolveTaskDocumentTitle } from "@/lib/taskDocumentTitles";
 import type { EvidenceGraphTraceabilityType, Task, TaskAtomicPath, TaskQualitySummary } from "@/lib/types";
 
 const SKILL_OPTIONS = [
@@ -98,6 +99,8 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [skillName, setSkillName] = useState(task.skill_name);
+  const [codebookId, setCodebookId] = useState(task.codebook_id || "");
+  const [availableCodebooks, setAvailableCodebooks] = useState<Array<{ id: string; version: string; methodology?: string; change_log?: string }>>([]);
   const [userContext, setUserContext] = useState(task.user_context);
   const [instructions, setInstructions] = useState(task.instructions || "");
   const [urls, setUrls] = useState<string[]>(task.urls || []);
@@ -110,6 +113,7 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const [showDocPicker, setShowDocPicker] = useState<"input" | "output" | null>(null);
   const [docsLoading, setDocsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [whatToReview, setWhatToReview] = useState(task.what_to_review || task.last_review_feedback || "");
   const [revisionTarget, setRevisionTarget] = useState<"backlog" | "in_progress">("backlog");
   const [quality, setQuality] = useState<TaskQualitySummary | null>(null);
@@ -121,15 +125,27 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   const docPickerRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
   const hasActiveTaskProject = Boolean(activeProjectId && activeProjectId === task.project_id);
+  const hasAttachedDocuments = inputDocs.length > 0 || outputDocs.length > 0;
+
+  useEffect(() => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return;
+    codebookApi.list(activeProjectId).then((cbs) => {
+      setAvailableCodebooks(cbs);
+    }).catch((err) => {
+      console.error("Failed to load codebooks for task editor:", err);
+    });
+  }, [activeProjectId, task.project_id]);
 
   const saveDraft = useCallback(async () => {
-    if (saving || !activeProjectId || activeProjectId !== task.project_id) return;
+    if (saving || !activeProjectId || activeProjectId !== task.project_id) return false;
     setSaving(true);
+    setSaveError("");
     try {
       await updateTask(task.id, {
         title,
         description,
         skill_name: skillName,
+        codebook_id: codebookId || null,
         user_context: userContext,
         instructions,
         urls,
@@ -138,19 +154,37 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         input_document_ids: inputDocs,
         output_document_ids: outputDocs,
       }, activeProjectId);
+      return true;
     } catch (e) {
       console.error("Failed to save task:", e);
+      setSaveError(e instanceof Error ? e.message : "Istara could not save this task.");
+      return false;
     } finally {
       setSaving(false);
     }
-  }, [activeProjectId, description, inputDocs, instructions, labels, outputDocs, saving, skillName, task.id, task.project_id, title, updateTask, urls, userContext, whatToReview]);
+  }, [activeProjectId, codebookId, description, inputDocs, instructions, labels, outputDocs, saving, skillName, task.id, task.project_id, title, updateTask, urls, userContext, whatToReview]);
+
+  const releaseLock = useCallback(async () => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return false;
+    try {
+      await taskLocking.unlock(task.id, activeProjectId);
+      return true;
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not release the editing lock.");
+      return false;
+    }
+  }, [activeProjectId, task.id, task.project_id]);
 
   const closeWithSave = useCallback(async () => {
     if (closingRef.current) return;
     closingRef.current = true;
-    await saveDraft();
+    const saved = await saveDraft();
+    if (!saved || !(await releaseLock())) {
+      closingRef.current = false;
+      return;
+    }
     onClose();
-  }, [onClose, saveDraft]);
+  }, [onClose, releaseLock, saveDraft]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -196,13 +230,34 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
   }, [activeProjectId, refreshReviewEvidence, task.id, task.project_id]);
 
   useEffect(() => {
-    if (!showDocPicker || !activeProjectId) return;
+    // Resolve attached document titles as soon as a task is reopened. Loading
+    // only after opening the picker left existing chips displaying UUIDs.
+    if (
+      !activeProjectId ||
+      activeProjectId !== task.project_id ||
+      (!showDocPicker && !hasAttachedDocuments)
+    ) {
+      if (!hasAttachedDocuments) setProjectDocuments([]);
+      return;
+    }
+    let cancelled = false;
+    setProjectDocuments([]);
     setDocsLoading(true);
-    documentsApi.list({ project_id: activeProjectId, page_size: 100 })
-      .then((data) => setProjectDocuments((data.documents || []).map((d: any) => ({ id: d.id, title: d.title }))))
-      .catch(() => setProjectDocuments([]))
-      .finally(() => setDocsLoading(false));
-  }, [showDocPicker, activeProjectId]);
+    loadTaskDocumentReferences(
+      documentsApi,
+      activeProjectId,
+      [...inputDocs, ...outputDocs],
+    )
+      .then((documents) => {
+        if (!cancelled) setProjectDocuments(documents);
+      })
+      .finally(() => {
+        if (!cancelled) setDocsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProjectId, hasAttachedDocuments, inputDocs, outputDocs, showDocPicker, task.project_id]);
 
   useEffect(() => {
     if (!showDocPicker) return;
@@ -213,7 +268,9 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, [showDocPicker]);
 
-  const getDocTitle = (docId: string) => projectDocuments.find((d) => d.id === docId)?.title || `${docId.slice(0, 12)}...`;
+  const getDocTitle = (docId: string) => {
+    return resolveTaskDocumentTitle(projectDocuments, docId, docsLoading);
+  };
   const addDocument = (docId: string, target: "input" | "output") => {
     if (target === "input" && !inputDocs.includes(docId)) setInputDocs([...inputDocs, docId]);
     if (target === "output" && !outputDocs.includes(docId)) setOutputDocs([...outputDocs, docId]);
@@ -235,27 +292,91 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
 
   const approve = async () => {
     if (!activeProjectId || activeProjectId !== task.project_id) return;
-    await saveDraft();
-    await approveTask(task.id, activeProjectId, whatToReview || "Human approved task output.");
+    if (!(await saveDraft())) return;
+    try {
+      await approveTask(task.id, activeProjectId, whatToReview || "Human approved task output.");
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not approve this task.");
+      return;
+    }
+    if (!(await releaseLock())) return;
     onClose();
   };
   const flagRevision = async () => {
     if (!activeProjectId || activeProjectId !== task.project_id) return;
-    await saveDraft();
-    await requestRevision(task.id, {
-      what_to_review: whatToReview,
-      next_status: revisionTarget,
-      labels,
-      skill_name: skillName,
-      input_document_ids: inputDocs,
-      urls,
-    }, activeProjectId);
+    if (!(await saveDraft())) return;
+    try {
+      await requestRevision(task.id, {
+        what_to_review: whatToReview,
+        next_status: revisionTarget,
+        labels,
+        skill_name: skillName,
+        input_document_ids: inputDocs,
+        urls,
+      }, activeProjectId);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not request a revision.");
+      return;
+    }
+    if (!(await releaseLock())) return;
+    onClose();
+  };
+  const resumeInProgress = async () => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return;
+    if (!(await saveDraft())) return;
+    try {
+      await requestRevision(
+        task.id,
+        {
+          what_to_review: whatToReview.trim() || "Resumed in progress by researcher.",
+          next_status: "in_progress",
+          labels,
+          skill_name: skillName,
+          input_document_ids: inputDocs,
+          urls,
+        },
+        activeProjectId
+      );
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not resume this task.");
+      return;
+    }
+    if (!(await releaseLock())) return;
+    onClose();
+  };
+  const returnToBacklog = async () => {
+    if (!activeProjectId || activeProjectId !== task.project_id) return;
+    if (!(await saveDraft())) return;
+    try {
+      await requestRevision(
+        task.id,
+        {
+          what_to_review: whatToReview.trim() || "Returned to backlog by researcher.",
+          next_status: "backlog",
+          labels,
+          skill_name: skillName,
+          input_document_ids: inputDocs,
+          urls,
+        },
+        activeProjectId
+      );
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not return this task to backlog.");
+      return;
+    }
+    if (!(await releaseLock())) return;
     onClose();
   };
   const sendReport = async () => {
     if (!activeProjectId || activeProjectId !== task.project_id) return;
-    await saveDraft();
-    await tasksApi.createReport(task.id, activeProjectId);
+    if (!(await saveDraft())) return;
+    try {
+      await tasksApi.createReport(task.id, activeProjectId);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Istara could not create the report.");
+      return;
+    }
+    if (!(await releaseLock())) return;
     onClose();
   };
 
@@ -314,12 +435,12 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         : acceptedCodeApplicationCount === 0
           ? "Accept or reconcile coded evidence before reporting."
           : "";
-  const doneGateReason = needsCodingBeforeReport
-    ? "Run a coding pass and accept or reconcile coded evidence before marking this research task Done."
+  const doneGateAdvisory = needsCodingBeforeReport
+    ? "Human approval marks this task Done. Note: Findings remain gated from Reports until qualitative coding and reconciliation pass."
     : researchValidityBlocked
-      ? "Resolve low-agreement or unreconciled coded evidence before marking this research task Done."
+      ? "Human approval marks this task Done. Note: Low-agreement or unreconciled evidence must be resolved before downstream reporting."
       : "";
-  const canMarkDone = !researchValidityBlocked;
+  const canMarkDone = task.status === "in_review";
   const traceSummary = traceability?.summary || {};
   const traceReportDependencyCount = traceability?.report_dependencies?.length || 0;
   const traceLowAgreementCount = traceSummary.low_agreement_dependency_count || traceability?.low_agreement_dependencies?.length || 0;
@@ -338,10 +459,10 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-700 dark:bg-slate-900">
           <div className="min-w-0">
             <h3 id="task-editor-title" className="truncate text-base font-semibold text-slate-900 dark:text-white">Task Details</h3>
-            <p className="text-xs text-slate-500">Autosaves when the dialog closes.</p>
+            <p className="text-xs text-slate-500">Reserved from agents while editing. Saves before the dialog closes.</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">{saving ? "Saving..." : "Saved on close"}</span>
+            <span className="text-xs text-slate-400">{saving ? "Saving..." : "Locked for editing"}</span>
             <button onClick={closeWithSave} className="rounded p-2 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close task editor"><X size={18} /></button>
           </div>
         </div>
@@ -361,30 +482,46 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
                   {SKILL_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </Field>
-              <Field label="Task Labels" icon={<Tags size={13} />}>
-                <div className="space-y-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    {labels.map((label, idx) => (
-                      <button
-                        key={`${labelName(label)}-${idx}`}
-                        onClick={() => setLabels(labels.filter((_, i) => i !== idx))}
-                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-white"
-                        style={{ background: tagColor(label) }}
-                        title={`${tagDescription(label)} Click to remove.`}
-                      >
-                        {isSystemTag(label) && <span className="text-[9px] uppercase opacity-80">system</span>}
-                        <span>{labelName(label)}</span>
-                      </button>
-                    ))}
-                    {labels.length === 0 && <span className="text-xs text-slate-400">No labels yet.</span>}
-                  </div>
-                  <div className="flex gap-2">
-                    <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLabel(); } }} className="field-input min-w-0 flex-1" placeholder="Label" />
-                    <IconButton onClick={addLabel} label="Add label"><Plus size={14} /></IconButton>
-                  </div>
-                </div>
+              <Field label="Governing Codebook" icon={<BookOpen size={13} />}>
+                <select
+                  value={codebookId}
+                  onChange={(e) => setCodebookId(e.target.value)}
+                  className="field-input"
+                  aria-label="Select governing codebook"
+                >
+                  <option value="">None (Auto or default)</option>
+                  {availableCodebooks.map((cb) => (
+                    <option key={cb.id} value={cb.id}>
+                      v{cb.version} ({cb.methodology || "Codebook TA"})
+                    </option>
+                  ))}
+                </select>
               </Field>
             </div>
+
+            <Field label="Task Labels" icon={<Tags size={13} />}>
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {labels.map((label, idx) => (
+                    <button
+                      key={`${labelName(label)}-${idx}`}
+                      onClick={() => setLabels(labels.filter((_, i) => i !== idx))}
+                      className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-white"
+                      style={{ background: tagColor(label) }}
+                      title={`${tagDescription(label)} Click to remove.`}
+                    >
+                      {isSystemTag(label) && <span className="text-[9px] uppercase opacity-80">system</span>}
+                      <span>{labelName(label)}</span>
+                    </button>
+                  ))}
+                  {labels.length === 0 && <span className="text-xs text-slate-400">No labels yet.</span>}
+                </div>
+                <div className="flex gap-2">
+                  <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLabel(); } }} className="field-input min-w-0 flex-1" placeholder="Label" />
+                  <IconButton onClick={addLabel} label="Add label"><Plus size={14} /></IconButton>
+                </div>
+              </div>
+            </Field>
 
             <Field label="Specific Instructions" icon={<ClipboardList size={13} />}>
               <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={4} className="field-input resize-y" />
@@ -450,26 +587,66 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
               {canReview ? (
                 <div className="space-y-3">
                   <textarea value={whatToReview} onChange={(e) => setWhatToReview(e.target.value)} rows={6} className="field-input resize-y" placeholder="What should agents review, correct, repeat, or preserve?" />
-                  <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => setRevisionTarget("backlog")} className={revisionTarget === "backlog" ? "review-choice-active" : "review-choice"}>Backlog</button>
-                    <button onClick={() => setRevisionTarget("in_progress")} className={revisionTarget === "in_progress" ? "review-choice-active" : "review-choice"}>In Progress</button>
-                  </div>
+                  {(quality?.recent_review_events?.length ?? 0) > 0 && (
+                    <details className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+                      <summary className="cursor-pointer text-xs font-medium text-slate-700 dark:text-slate-200">
+                        Recent review history ({quality?.recent_review_events.length})
+                      </summary>
+                      <div className="mt-2 space-y-2" aria-label="Recent review history">
+                        {quality?.recent_review_events.map((event) => (
+                          <div key={event.id} className="rounded border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
+                            <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500">
+                              <span className="font-medium uppercase tracking-wide">{event.outcome.replace(/_/g, " ")}</span>
+                              <span>{event.created_by}</span>
+                            </div>
+                            <p className="mt-1 whitespace-pre-wrap text-xs text-slate-700 dark:text-slate-300">
+                              {event.what_to_review || "No written instruction."}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
                   {task.status === "in_review" && (
-                    <button
-                      onClick={approve}
-                      disabled={!canMarkDone}
-                      title={canMarkDone ? "Approve this task as Done." : doneGateReason}
-                      className="primary-action disabled:opacity-40"
-                    >
-                      <CheckCircle2 size={16} /> Mark Done
-                    </button>
+                    <div className="space-y-2 pt-1">
+                      <button
+                        onClick={approve}
+                        disabled={!canMarkDone}
+                        title="Human approve this task as Done."
+                        className="primary-action w-full flex items-center justify-center gap-2 py-2"
+                      >
+                        <CheckCircle2 size={16} /> Approve as Done
+                      </button>
+                      {doneGateAdvisory && (
+                        <p className="rounded bg-sky-50 px-2.5 py-1.5 text-xs text-sky-800 dark:bg-sky-950/40 dark:text-sky-200">
+                          {doneGateAdvisory}
+                        </p>
+                      )}
+                      <p className="text-xs font-medium text-slate-500 pt-1">Direct task actions:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={resumeInProgress}
+                          className="secondary-action flex items-center justify-center gap-1.5 py-2 text-xs font-medium"
+                          title="Directly resume task in progress"
+                        >
+                          <PlayCircle size={14} /> Resume In Progress
+                        </button>
+                        <button
+                          onClick={returnToBacklog}
+                          className="secondary-action flex items-center justify-center gap-1.5 py-2 text-xs font-medium"
+                          title="Directly return task to backlog"
+                        >
+                          <ArrowLeft size={14} /> Return to Backlog
+                        </button>
+                      </div>
+                      <p className="text-xs font-medium text-slate-500 pt-1">Or request agent revision with notes:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => setRevisionTarget("backlog")} className={revisionTarget === "backlog" ? "review-choice-active" : "review-choice"}>Target: Backlog</button>
+                        <button onClick={() => setRevisionTarget("in_progress")} className={revisionTarget === "in_progress" ? "review-choice-active" : "review-choice"}>Target: In Progress</button>
+                      </div>
+                      <button onClick={flagRevision} disabled={!whatToReview.trim()} className="secondary-action w-full flex items-center justify-center gap-2 disabled:opacity-40" title={whatToReview.trim() ? "Submit written feedback for agent revision" : "Enter notes in 'What to Review' above"}><RotateCcw size={16} /> Request Revision with Notes</button>
+                    </div>
                   )}
-                  {task.status === "in_review" && !canMarkDone && (
-                    <p className="rounded bg-amber-50 px-2 py-1.5 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                      {doneGateReason}
-                    </p>
-                  )}
-                  <button onClick={flagRevision} disabled={!whatToReview.trim()} className="secondary-action disabled:opacity-40"><RotateCcw size={16} /> Not Successful</button>
                   {task.status === "done" && task.review_state === "approved" && (
                     <button
                       onClick={sendReport}
@@ -583,8 +760,9 @@ export default function TaskEditor({ task, onClose }: TaskEditorProps) {
         </div>
 
         <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-slate-200 bg-white px-5 py-3 dark:border-slate-700 dark:bg-slate-900">
-          <button onClick={saveDraft} disabled={saving || !title.trim() || !hasActiveTaskProject} className="secondary-action disabled:opacity-40"><Save size={15} /> Save</button>
-          <button onClick={closeWithSave} className="primary-action">Done Editing</button>
+          {saveError && <p role="alert" className="mr-auto text-xs text-red-600 dark:text-red-400">{saveError}</p>}
+          <button onClick={() => void saveDraft()} disabled={saving || !title.trim() || !hasActiveTaskProject} className="secondary-action disabled:opacity-40"><Save size={15} /> Save</button>
+          <button onClick={closeWithSave} disabled={saving || !title.trim() || !hasActiveTaskProject} className="primary-action disabled:opacity-40">Done Editing</button>
         </div>
       </div>
     </div>

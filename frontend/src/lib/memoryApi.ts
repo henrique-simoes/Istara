@@ -1,12 +1,14 @@
 import { API_BASE } from "@/lib/runtimeConfig";
+import { getToken } from "@/lib/tokenStore";
 
 function authHeaders(): Record<string, string> {
-  const token = typeof window === "undefined" ? "" : localStorage.getItem("istara_token");
+  const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function json<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...authHeaders(), ...options?.headers },
     ...options,
   });
@@ -78,4 +80,12 @@ export const memory = {
       `/api/memory/${encodeURIComponent(projectId)}/source/${encodeURIComponent(sourceName)}`,
       { method: "DELETE" }
     ),
+  sync: (projectId: string) =>
+    json<{
+      status: string;
+      project_id: string;
+      documents_indexed: number;
+      chunks_indexed: number;
+      sources: string[];
+    }>(`/api/memory/${encodeURIComponent(projectId)}/sync`, { method: "POST" }),
 };

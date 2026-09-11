@@ -497,6 +497,10 @@ User sends message
 - **OpenAI Codex team** (2026) — Inline compression as default primitive, not emergency fallback. Compress tool outputs before they enter context.
 - **ACON Framework** (Microsoft Research, 2025) — Adaptive context control for tool observations. 26-54% token reduction with 95%+ accuracy across AppWorld, OfficeBench, Multi-obj QA.
 
+### Governed Prompt-String Fidelity
+
+Structural refactors (line-length wraps, `W291` trailing-whitespace cleanups, implicit-concatenation re-splits) must not change the **runtime bytes** of a governed prompt — a prompt is an input contract, so re-splitting a JSON example or dropping a byte silently changes model behavior. Two dispatch-capturing regressions pin the exact text: `tests/pi_production/test_w5_report_manager.py::test_mece_prompt_json_example_stays_verbatim_and_parseable` (the `report.mece` Minto categorization prompt; the example is also `json.loads`-parsed from the message actually dispatched to the model) and `tests/pi_production/test_w5_discover.py::test_diary_plan_prompt_matches_pre_change_bytes` (the `skill.discover_plan` diary-study plan prompt, including its trailing-space byte). Where lint requires avoiding source-level trailing whitespace, keep the byte by using explicit line concatenation inside the expression (`"…(structured + open-ended), \n"`).
+
 ---
 
 ## Context & Memory System
@@ -1561,6 +1565,7 @@ Notification types added to EVENT_METADATA: `update_available`, `update_started`
 ### CI/CD Release Flow
 Regular CI and installer publishing are related but distinct:
 - `.github/workflows/ci.yml` runs governance + build/test checks for normal development
+- CI-generated writebacks (the governance job's README version-badge sync) are restricted to `main`, the release branch; CI never pushes a generated commit to `testing`/`staging`, so `testing` HEAD stays a stable, reproducible promotion source (enforced by `scripts/check_workflow_contracts.py`)
 - `.github/workflows/build-installers.yml` publishes installers/releases on **release-worthy** pushes to `main`
 - `.github/workflows/pages.yml` regenerates the living feature documentation site, verifies `tests/test_feature_docs.py`, uploads `docs/features/site`, and deploys it to GitHub Pages from the `github-pages` environment
 - tag pushes (`v*`) and manual dispatch remain available for explicit release control or rebuilds
@@ -1700,10 +1705,14 @@ System tray application for macOS, Windows, and Linux. **Mode-aware manager only
 `.github/workflows/ci.yml` enforces repository governance on pushes to `main` and pull requests:
 - Active governance docs must be coherent: `python scripts/check_integrity.py`
 - CI/CD governance must be self-consistent: `python scripts/check_ci_governance.py`
+- The required-checks manifest must match the job graph: `python scripts/check_required_checks.py`
 - The industry-standard security benchmark must pass: `python scripts/security_benchmark.py --fail-on-threshold`
 - Change obligations must be satisfied: `python scripts/check_change_obligations.py`
 - That governance check fails when architecture/process/release-sensitive code changes without corresponding updates to `Tech.md`, tests, or Istara persona files
+- CI is organized by failure domain (format, lint, tests, mutation, build, governance, QA contracts, UI journeys each report independently); the fail-closed `release-gate` aggregator fails on failure, cancellation, and unexplained skip; required-check semantics live in `testing/required-checks.json`
 - Backend CI compiles release-critical governed surfaces, runs `python scripts/production_rehearsal.py --json`, and then runs the dedicated governed evolution regression pair: `tests/test_improvement_governance.py` and `tests/test_compute.py`
+- Backend CI installs BOTH bundled pi surfaces (`npm ci` in `pi-runtime` and `labs/pi-replacement`) before the full backend suite, because `scripts/pi_bump_diff_proof.py verify` fails closed when either surface has no installed `@earendil-works` packages; the full-suite step reaches the pi lockstep diff-proof with both surfaces built, and the gate is never weakened or skipped
+- No CI job writes to any branch; the README badge writeback lives in the narrow main-only `badge-sync.yml` workflow
 
 Legacy generated agent wrappers and one-off diagnostic registers are no longer blocking CI/CD governance sources. Compass Forge is the local-first control plane for repository onboarding, impact analysis, gates, work orders, and evidence. CI therefore guards against accidentally re-promoting retired generators or retired markdown drift checks back into release governance.
 
@@ -1770,7 +1779,7 @@ Reusable AI suggestion panel with chat session linking. Replaces static text box
 
 **Error Extraction Fix:** `api.ts` now handles FastAPI validation errors (422) where `detail` is an array of `{ loc, msg, type }` objects. Extracts `msg` fields and joins with semicolons instead of showing `[object Object]`.
 
-**LLM Server API Key Support:** Settings > LLM Servers now has an optional API key field when adding servers. Keys are encrypted on save (`encrypt_field`), passed as `Authorization: Bearer` header to the LLM provider. The health check detects 401/403 auth failures and reports `health_error: "API key required"` — displayed as red text below the server entry. Relay nodes accept `--llm-api-key` flag for authenticated local LLMs. The relay admin configures the key once; users connecting via relay don't need separate keys.
+**RETIRED (CF-SPEC-1 Phase 6):** The LLM Servers management surface was removed; pi model management owns provider/model configuration for both agentic cores. Historical note: Settings > LLM Servers had an optional API key field when adding servers. Keys are encrypted on save (`encrypt_field`), passed as `Authorization: Bearer` header to the LLM provider. The health check detects 401/403 auth failures and reports `health_error: "API key required"` — displayed as red text below the server entry. Relay nodes accept `--llm-api-key` flag for authenticated local LLMs. The relay admin configures the key once; users connecting via relay don't need separate keys.
 
 **Tour Timing Fix:** `HomeClient.tsx` now waits for backend health (`GET /api/health`) with up to 15 retries (2s each) before checking projects and starting the tour. Prevents the race condition where frontend loads before backend, causing empty project list and wrong tour state or missing tour.
 
@@ -2066,6 +2075,17 @@ Pessimistic locking prevents multiple users/agents from working on the same task
 - **Agent awareness**: `_pick_next_task()` skips locked tasks.
 - **Endpoints**: `POST /tasks/{id}/lock`, `POST /tasks/{id}/unlock`.
 
+### Pi Capability Authority
+
+Pi/pi-ai is the authority for provider/model capability semantics; Istara inherits, restricts, or projects it — never restates it (build-stream `2026-09-08-pi-capability-inheritance`):
+
+- **Projection**: `backend/app/core/pi_runtime/data/pi_models_catalog.json` is a generated, provenance-stamped projection of pi-ai's registry (emit via `python scripts/generate_pi_catalog.py`; `--check` is a byte-identity drift gate). `PiCatalogModel` (`catalog.py`) declares `thinkingLevelMap`/`compat` so the tier-4 fields reach `/api/settings/pi-catalog` and the frontend menus; a new upstream model field fails `tests/pi_compat/test_capability_carry_through.py` loudly instead of being silently dropped.
+- **Restriction**: endpoint capability advertisements are tri-state and monotonic — an operator `supports_reasoning:false` veto survives POST and sparse PUT and beats the record; nothing may enable beyond the record; explicit `null` defers to tier 4. `endpoint_policy.prepare_pi_endpoint_payload` enforces the merge law, with provenance on identity change: a sparse PUT that switches `pi_provider`/`pi_model` refreshes any persisted rate/advertisement that merely equals the OLD record (a tier-4 fill) while genuine operator overrides (values differing from the old record) survive (F-14).
+- **Pricing**: pi-ai owns list price; operator contract rates (tier 2) survive POST/PUT. Admission rejects a registry model whose input/output rates resolve to $0 (`pi_endpoint_unpriced`, naming the unpriced categories and the `POST`/`PUT /api/settings/pi-endpoints` remedy path; 115 of 1,354 upstream records at pin 0.85.1 — input or output rate not positive, governed overlays excluded) unless tier-2 rates are supplied — including on model-switch PUTs, which re-resolve rates before the preflight (F-14); the Settings add-model form exposes the same contract-rate fields (F-16). Governed overlays are exempt (hand-owned pricing) and the mid-run `cost_budget_unpriced` terminal remains as defense in depth.
+- **Effort vocabulary**: `llm_thinking.PI_THINKING_LEVEL_LADDER` mirrors pi-ai's `EXTENDED_THINKING_LEVELS`; `validate_model_effort` rejects non-ladder tokens (`unsupported_model_effort`) instead of letting the worker clamp silently, and a conformance test pins the ladder against the projection's `thinkingLevelMap` key union.
+- **Bind boundary**: `_bind_payload` forwards `supports_reasoning` AND `supports_vision` (the worker's modality restriction was unreachable before the vision signal was forwarded).
+- **Routine bumps**: adopting a new pi-ai release is a classified, gated maintenance action — `scripts/pi_bump_diff_proof.py` diff-proofs the candidate before the pin moves, every consumed-surface/registry-removal diff must be classified (§8 taxonomy; unclassified fails the gate), and `EXPECTED_PINS` keeps both bundled surfaces in exact lockstep. Runbook and law: `docs/architecture/pi-compatibility-authority.md`.
+
 ### LLM Router
 
 > **Note:** As of the ComputeRegistry unification, `llm_router.py` and `compute_pool.py` are thin wrappers over `compute_registry.py`. See the "ComputeRegistry — Single Source of Truth" section for the current architecture.
@@ -2076,7 +2096,7 @@ A provider-agnostic routing layer that supports Ollama, LM Studio, and any OpenA
 - **Priority-based routing**: Requests go to the highest-priority healthy server with automatic failover.
 - **Background health checks**: Every 60 seconds across all registered servers.
 - **On-demand health re-probe**: `GET /api/settings/status` calls `check_all_health()` before returning, so the status is always fresh rather than reading the cached 60-second flag.
-- **CRUD API**: `GET/POST/PATCH/DELETE /llm-servers` for managing external endpoints.
+- **RETIRED (Phase 6):** the `/llm-servers` CRUD API was removed. Provider/model configuration lives in pi model management (`backend/app/core/pi_runtime/model_manager.py`, Settings > Pi Model Management).
 - **LLMServer model**: Stored in DB with provider_type, host, API key, priority, health status, and latency.
 
 **Files**: `backend/app/core/llm_router.py`, `backend/app/models/llm_server.py`, `backend/app/api/routes/llm_servers.py`
@@ -2089,7 +2109,7 @@ Automatic discovery of LLM servers (LM Studio, Ollama, OpenAI-compatible) on the
 - **Model-aware routing**: Each discovered server's available models are captured. The router picks the correct model per server — if the configured model isn't available on a remote server, it uses whatever model is loaded there.
 - **Startup integration**: Discovery runs at startup before `auto_detect_provider`, so network servers are available immediately when the local LLM is down.
 - **Persistence**: Discovered servers are saved to the DB and registered with the LLM Router. Duplicates (by host URL) are skipped.
-- **On-demand rescan**: `POST /api/llm-servers/discover` triggers a new network scan at any time.
+- **RETIRED (Phase 6):** network discovery now reports through the unified model catalog (`GET /api/chat/model-catalog`).
 - **No hardcoded IPs**: Works on any subnet — detects the local network automatically via `socket.getaddrinfo` and UDP connect trick.
 
 **Files**: `backend/app/core/network_discovery.py`, `backend/app/main.py` (startup integration)
@@ -2785,6 +2805,45 @@ The `featured_mcp_servers.json` knowledge file stores pre-configured server defi
 
 ## Docker & Security Infrastructure
 
+### Public Testing Branch & CI Automation (2026-08)
+
+Istara's public release testing is now provider-agnostic and human-gated:
+
+- **Feature obligation registry:** `testing/feature_coverage.yml` is the single
+  authority mapping every changed behavioral path to deterministic
+  obligations. `scripts/check_feature_obligations.py` fails closed on unowned
+  paths and emits a stable JSON obligation report; `qa/runtime_capabilities.json`
+  is the consulted runtime/provider capability declaration.
+- **Testing integration branch:** `.github/workflows/ci.yml` triggers on
+  `main`, `staging`, the long-lived `testing` branch, pull requests, a weekly
+  schedule, and manual dispatch. The `feature-obligations` job gates unknown
+  paths before expensive jobs; the `qa-artifact` job builds a disposable QA
+  image with immutable digest + provenance/SBOM. Jobs are split by failure
+  domain and report independently; `release-gate` aggregates fail-closed;
+  `testing/required-checks.json` is the required-checks manifest
+  (contract-checked by `scripts/check_required_checks.py`) and the verbatim
+  source for the owner-gated `main` branch-protection package in
+  `docs/promotion/branch-protection/`.
+- **Disposable QA runtime:** `docker-compose.qa.yml` provides profile-gated QA
+  stacks (`contract`, `synthetic`, `reset`, `audit`, `live`, `ui`) with unique
+  project names (`istara-qa-<run-id>`), no fixed container names, no live model
+  services, internal networks, and loopback-only UI publish. Contract-capable
+  profiles use the in-network `qa-provider-stub`, a non-model Ollama-compatible
+  adapter that returns exact identities and fixed-dimension vectors so the real
+  provider and `assert_vector_space_invariant` gates execute without contacting
+  a host provider. `scripts/istara-qa.sh` is the developer entrypoint.
+- **Human-gated promotion:** `promote-testing.yml` is the only workflow that
+  may create a promotion PR to `main`, and only after a protected-environment
+  approval that binds the exact source SHA, evidence manifest, and image
+  digest. No workflow auto-merges; a changed SHA invalidates the approval.
+  The promotion step verifies required checks for the exact SHA via
+  `gh api .../actions/runs` with an `actions: read`-scoped workflow token
+  (enforced by `scripts/check_workflow_contracts.py`).
+- **Research Spine boundary:** synthetic QA seeds (`qa/corpora/`) ingest through
+  the real evidence-unit path with `is_qa_provisional = true` and can never
+  reach accepted/reportable states (`qa/scripts/seed_synthetic.py`,
+  `tests/test_synthetic_provisional_boundary.py`).
+
 ### Deployment Modes
 
 | Mode | Command | TLS | Auth | Use Case |
@@ -3180,3 +3239,15 @@ The April 30 stabilization pass aligned backend persistence, frontend surfaces, 
 ### Persona Integrity
 
 System agents must have complete persona directories with `CORE.md`, `SKILLS.md`, `PROTOCOLS.md`, and `MEMORY.md`. Piper/design-lead is a first-class system agent and must follow the same persona-file contract as the other built-in agents.
+
+### Model management and vector safety
+
+The Pi and Istara engines share one configured embedding model. The Pi gateway
+records endpoint/model identity and validates vectors; startup dimension probes
+fail closed on divergence. Cache hits are validated against the engine's known
+embedding dimension for that model (established by the startup probes and every
+validated provider response): a numeric entry written under a different
+embedding model/dimension is discarded and re-embedded rather than served, and
+an entry whose dimension cannot be verified yet is treated as a miss (fail
+closed). Chat temperature, thinking, and effort controls are generation
+controls only.

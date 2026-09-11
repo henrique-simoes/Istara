@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.database import Base
 
 
-class NotificationSeverity(str, enum.Enum):
+class NotificationSeverity(str, enum.Enum):  # noqa: UP042 -- StrEnum would change str(member)
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -25,9 +25,7 @@ class Notification(Base):
 
     __tablename__ = "notifications"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     type: Mapped[str] = mapped_column(String(50))  # WS event type
     title: Mapped[str] = mapped_column(String(500), default="")
     message: Mapped[str] = mapped_column(Text, default="")
@@ -40,7 +38,7 @@ class Notification(Base):
     action_target: Mapped[str] = mapped_column(String(500), default="")
     metadata_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
     def to_dict(self) -> dict:
@@ -76,21 +74,19 @@ class NotificationPreference(Base):
 
     __tablename__ = "notification_preferences"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     category: Mapped[str] = mapped_column(String(50))
     agent_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     show_toast: Mapped[bool] = mapped_column(Boolean, default=True)
     show_center: Mapped[bool] = mapped_column(Boolean, default=True)
     email_forward: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     def to_dict(self) -> dict:

@@ -59,11 +59,15 @@ async def test_agent_work_cycle_integration(auth_headers):
         assert isinstance(skills, list), "Skills should be a list"
 
         # 3. Verify tasks endpoint is accessible
-        response = await ac.get(f"/api/tasks?project_id={project.id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/tasks?project_id={project.id}", headers=auth_headers
+        )
         assert response.status_code == 200
 
         # 4. Verify findings endpoints are accessible
-        response = await ac.get(f"/api/findings/nuggets?project_id={project.id}", headers=auth_headers)
+        response = await ac.get(
+            f"/api/findings/nuggets?project_id={project.id}", headers=auth_headers
+        )
         assert response.status_code == 200
 
         # 5. Verify memory endpoint is accessible
@@ -83,7 +87,10 @@ async def test_steering_integration_with_agents(auth_headers):
         response = await ac.post(
             "/api/steering/istara-main",
             headers=auth_headers,
-            json={"message": "Integration test steering message", "project_id": project.id},
+            json={
+                "message": "Integration test steering message",
+                "project_id": project.id,
+            },
         )
         assert response.status_code in (200, 404)
 

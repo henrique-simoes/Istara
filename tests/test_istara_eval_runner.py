@@ -198,7 +198,10 @@ def test_custom_eval_output_dir_is_guarded(tmp_path):
         runner.resolve_eval_output_dir(config, {"short_head": "abc123", "dirty": True})
 
     config.allow_unignored_output = True
-    assert runner.resolve_eval_output_dir(config, {"short_head": "abc123", "dirty": True}) == tmp_path
+    assert (
+        runner.resolve_eval_output_dir(config, {"short_head": "abc123", "dirty": True})
+        == tmp_path
+    )
 
 
 def test_dag_validator_rejects_cycles():

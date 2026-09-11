@@ -29,6 +29,7 @@ def auth_headers():
 # 401 responses are JSON, not HTML
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_unauth_response_is_json():
     """401 responses return JSON, not HTML stack traces."""
@@ -45,6 +46,7 @@ async def test_unauth_response_is_json():
 # ---------------------------------------------------------------------------
 # 404 responses are JSON
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_not_found_response_is_json(auth_headers):
@@ -63,6 +65,7 @@ async def test_not_found_response_is_json(auth_headers):
 # 422 validation errors are structured
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_validation_error_is_structured(auth_headers):
     """422 responses have structured validation error details."""
@@ -78,6 +81,7 @@ async def test_validation_error_is_structured(auth_headers):
 # ---------------------------------------------------------------------------
 # Invalid JWT returns 401, not 500
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_invalid_jwt_returns_401():
@@ -97,6 +101,7 @@ async def test_invalid_jwt_returns_401():
 # Missing required fields return 422
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_missing_required_fields_returns_422(auth_headers):
     """Missing required fields in request body returns 422."""
@@ -111,6 +116,7 @@ async def test_missing_required_fields_returns_422(auth_headers):
 # Non-existent project returns 404
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_nonexistent_project_returns_404(auth_headers):
     """Non-existent project ID returns 404."""
@@ -124,6 +130,7 @@ async def test_nonexistent_project_returns_404(auth_headers):
 # ---------------------------------------------------------------------------
 # Health endpoint never requires auth
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_health_endpoint_never_requires_auth():

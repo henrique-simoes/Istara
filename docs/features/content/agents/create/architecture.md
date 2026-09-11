@@ -47,6 +47,7 @@ Create Agent supports configuring new agents and their role-facing metadata insi
 - The backend requires project-admin access for the supplied project id and creates custom agents with `scope="project"` and the matching `project_id` in the first database write.
 - Imported agent configs follow the same active-project rule: the frontend attaches the active project id, the backend rejects missing `project_id`, and the imported agent is created as project-scoped instead of becoming a universal/global custom agent.
 - Proposal-approved agents use the same scoped creation path so generated agents do not transiently exist as universal agents before metadata is patched.
+- The create request validates `role` against the shared `AgentRole` enum (`task_executor`, `devops_audit`, `ui_audit`, `ux_evaluation`, `user_simulation`, `design_lead`, or `custom`) at the API boundary. Unsupported values return a 422 validation response instead of leaking an enum conversion error as HTTP 500.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -57,7 +58,7 @@ Create Agent supports configuring new agents and their role-facing metadata insi
 
 ## Tests And Verification
 
-- `tests/test_agents.py` covers missing project ids and verifies created custom agents are project-scoped.
+- `tests/test_agents.py` covers missing project ids, rejects unsupported roles with a 422 validation response, and verifies created custom agents are project-scoped.
 - `tests/test_agent_mutation_scope.py` verifies imported agent configs require and preserve the active project id.
 - `tests/test_agent_scope_contracts.py` pins the frontend/store/API/backend project-scope contract, including imported agent configs.
 

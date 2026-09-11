@@ -8,27 +8,15 @@ import logging
 import re
 from pathlib import Path
 
-
-def _get_version() -> str:
-    try:
-        vf = Path(__file__).resolve().parents[3] / "VERSION"
-        return vf.read_text().strip() if vf.exists() else "dev"
-    except Exception:
-        return "dev"
-
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.orchestrator import meta_orchestrator
-from app.agents.ux_eval_agent import ux_eval_agent
 from app.agents.user_sim_agent import user_sim_agent
-from app.config import settings
-from app.core.improvement_governance import improvement_governance
-from app.core.permissions import get_active_project_or_404, require_project_access
-from app.core.security_middleware import require_admin_from_request
+from app.agents.ux_eval_agent import ux_eval_agent
 from app.api.agent_project_scope import (
     agent_project_id,
     clean_project_id,
@@ -40,12 +28,26 @@ from app.api.agent_project_scope import (
     require_agent_collection_scope,
     require_project_owned_agent,
 )
+from app.config import settings
+from app.core.improvement_governance import improvement_governance
+from app.core.permissions import get_active_project_or_404, require_project_access
+from app.core.security_middleware import require_admin_from_request
+from app.models.agent import AgentRole
 from app.models.database import get_db
-from app.services import agent_service, a2a
+from app.services import a2a, agent_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _get_version() -> str:
+    try:
+        vf = Path(__file__).resolve().parents[3] / "VERSION"
+        return vf.read_text().strip() if vf.exists() else "dev"
+    except Exception:
+        return "dev"
+
 
 AVATAR_CONTENT_TYPES = {
     "image/png": ".png",
@@ -104,10 +106,10 @@ def _resolve_avatar_path(avatar_path: str) -> Path:
 
 class CreateAgentRequest(BaseModel):
     name: str
-    role: str = "custom"
+    role: AgentRole = AgentRole.CUSTOM
     system_prompt: str = ""
     capabilities: list[str] | None = None
-    heartbeat_interval: int = 60
+    heartbeat_interval: int = Field(default=60, ge=10, le=3600)
     project_id: str | None = None
 
 
@@ -115,7 +117,7 @@ class UpdateAgentRequest(BaseModel):
     name: str | None = None
     system_prompt: str | None = None
     capabilities: list[str] | None = None
-    heartbeat_interval: int | None = None
+    heartbeat_interval: int | None = Field(default=None, ge=10, le=3600)
     state: str | None = None
     is_active: bool | None = None
 
@@ -233,6 +235,7 @@ async def create_agent(
     # participate in the self-evolution pipeline (same as system agents)
     try:
         from app.core.self_evolution import self_evolution
+
         await self_evolution.create_persona_for_custom_agent(
             agent["id"], data.name, data.system_prompt
         )
@@ -242,6 +245,7 @@ async def create_agent(
     # Auto-scaffold persona files for the new agent
     try:
         from app.core.agent_identity import scaffold_persona
+
         scaffold_persona(
             agent_id=agent["id"],
             name=data.name,
@@ -254,12 +258,14 @@ async def create_agent(
 
     try:
         from app.api.websocket import manager as ws_manager
+
         await ws_manager.broadcast("agent_created", {**agent, "project_id": scoped_project_id})
     except Exception:
         pass
     # Start the custom agent's work loop
     try:
         from app.agents.custom_worker import start_custom_agent
+
         await start_custom_agent(agent["id"], agent["name"])
     except Exception:
         pass
@@ -298,12 +304,18 @@ async def update_agent(
 
 
 @router.delete("/agents/{agent_id}", status_code=204)
-async def delete_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def delete_agent(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Soft-delete a project-owned agent from the active project."""
     await require_project_owned_agent(db, request, agent_id, project_id)
     # Stop custom agent worker if running
     try:
         from app.agents.custom_worker import stop_custom_agent
+
         await stop_custom_agent(agent_id)
     except Exception:
         pass
@@ -312,29 +324,45 @@ async def delete_agent(agent_id: str, request: Request, project_id: str | None =
 
 
 @router.post("/agents/{agent_id}/pause")
-async def pause_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def pause_agent(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     await require_project_owned_agent(db, request, agent_id, project_id)
     from app.models.agent import AgentState
+
     if not await agent_service.set_agent_state(db, agent_id, AgentState.PAUSED):
         raise HTTPException(status_code=404, detail="Agent not found")
     return {"status": "paused"}
 
 
 @router.post("/agents/{agent_id}/resume")
-async def resume_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def resume_agent(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     await require_project_owned_agent(db, request, agent_id, project_id)
     from app.models.agent import AgentState
+
     if not await agent_service.set_agent_state(db, agent_id, AgentState.IDLE):
         raise HTTPException(status_code=404, detail="Agent not found")
     return {"status": "resumed"}
 
 
 @router.post("/agents/{agent_id}/restart")
-async def restart_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def restart_agent(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Reset an agent from ERROR state back to IDLE, clearing error counters."""
     await require_project_owned_agent(db, request, agent_id, project_id)
-    from app.models.agent import AgentState, HeartbeatStatus
-    from app.models.agent import Agent
+    from app.models.agent import Agent, AgentState, HeartbeatStatus
 
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
@@ -370,7 +398,9 @@ async def set_agent_scope(
     if new_scope not in {"universal", "project"}:
         raise HTTPException(status_code=422, detail="scope must be 'universal' or 'project'")
     if new_scope == "project" and not project_id:
-        raise HTTPException(status_code=422, detail="project_id is required for project-scoped agents")
+        raise HTTPException(
+            status_code=422, detail="project_id is required for project-scoped agents"
+        )
 
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
@@ -408,13 +438,18 @@ async def request_promotion(
         raise HTTPException(status_code=400, detail="project_id is required")
 
     # Create a notification for admins
-    from app.models.notification import Notification
     import uuid
+
+    from app.models.notification import Notification
+
     notif = Notification(
         id=str(uuid.uuid4()),
         type="agent_promotion_request",
         title=f"Agent Promotion Request: {agent.name}",
-        message=f"A user has requested that agent '{agent.name}' be promoted from project scope to universal scope.",
+        message=(
+            f"A user has requested that agent '{agent.name}' be promoted "
+            "from project scope to universal scope."
+        ),
         category="agent_promotion",
         severity="info",
         agent_id=agent_id,
@@ -494,9 +529,9 @@ async def get_identity(
 ):
     """Get an agent's full identity from its persona MD files."""
     from app.core.agent_identity import (
-        load_agent_identity,
-        get_agent_display_name,
         IDENTITY_FILES,
+        get_agent_display_name,
+        load_agent_identity,
         persona_file_path,
     )
 
@@ -522,7 +557,13 @@ async def get_identity(
 
 
 @router.put("/agents/{agent_id}/identity")
-async def update_identity(agent_id: str, data: dict, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def update_identity(
+    agent_id: str,
+    data: dict,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Update an agent's local persona overlay files."""
     await require_project_owned_agent(db, request, agent_id, project_id)
     from app.core.agent_identity import (
@@ -581,12 +622,12 @@ async def update_identity(agent_id: str, data: dict, request: Request, project_i
 async def list_personas(request: Request):
     """List all agents that have persona directories."""
     require_admin_from_request(request)
-    from app.core.agent_identity import list_agent_personas, get_agent_display_name
+    from app.core.agent_identity import get_agent_display_name, list_agent_personas
+
     personas = list_agent_personas()
     return {
         "personas": [
-            {"agent_id": p, "display_name": get_agent_display_name(p) or p}
-            for p in personas
+            {"agent_id": p, "display_name": get_agent_display_name(p) or p} for p in personas
         ]
     }
 
@@ -605,6 +646,7 @@ async def get_learnings(
 ):
     """Get an agent's structured learnings."""
     from app.core.agent_learning import agent_learning
+
     scoped_project_id = clean_project_id(project_id)
     if not scoped_project_id:
         raise HTTPException(status_code=400, detail="project_id is required")
@@ -629,7 +671,11 @@ async def get_learnings(
 
 
 async def _require_self_evolution_project_scope(
-    db: AsyncSession, request: Request, project_id: str | None, *, min_role: str = "project_admin",
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+    *,
+    min_role: str = "project_admin",
 ) -> str:
     require_admin_from_request(request)
     scoped_project_id = clean_project_id(project_id)
@@ -645,25 +691,43 @@ async def _require_self_evolution_project_scope(
 
 
 @router.get("/agents/{agent_id}/evolution/candidates")
-async def get_evolution_candidates(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def get_evolution_candidates(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Scan an agent's learnings for patterns ready for promotion."""
     scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
     await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)
     from app.core.self_evolution import self_evolution
+
     candidates = await self_evolution.scan_for_promotions(agent_id, project_id=scoped_project_id)
-    return {"agent_id": agent_id, "project_id": scoped_project_id, "candidates": candidates, "count": len(candidates)}
+    return {
+        "agent_id": agent_id,
+        "project_id": scoped_project_id,
+        "candidates": candidates,
+        "count": len(candidates),
+    }
 
 
 @router.post("/agents/{agent_id}/evolution/promote/{learning_id}")
 async def promote_learning(
-    agent_id: str, learning_id: int, request: Request, target_file: str | None = None,
-    project_id: str | None = None, db: AsyncSession = Depends(get_db),
+    agent_id: str,
+    learning_id: int,
+    request: Request,
+    target_file: str | None = None,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
 ):
     """Promote a specific learning into the agent's persona files."""
     scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
     await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)
     from app.core.self_evolution import self_evolution
-    result = await self_evolution.promote_learning(agent_id, learning_id, target_file, project_id=scoped_project_id)
+
+    result = await self_evolution.promote_learning(
+        agent_id, learning_id, target_file, project_id=scoped_project_id
+    )
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "Promotion failed"))
     try:
@@ -674,11 +738,17 @@ async def promote_learning(
 
 
 @router.post("/agents/{agent_id}/evolution/auto")
-async def auto_evolve(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def auto_evolve(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Run the full self-evolution cycle (auto-promote mature patterns)."""
     scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
     await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)
     from app.core.self_evolution import self_evolution
+
     promotions = await self_evolution.auto_evolve(agent_id, project_id=scoped_project_id)
     for promotion in promotions:
         try:
@@ -694,13 +764,21 @@ async def auto_evolve(agent_id: str, request: Request, project_id: str | None = 
 
 
 @router.get("/agents/evolution/scan")
-async def scan_all_evolution(request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def scan_all_evolution(
+    request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)
+):
     """Scan all agents for promotable learnings."""
     scoped_project_id = await _require_self_evolution_project_scope(db, request, project_id)
     from app.core.self_evolution import self_evolution
+
     results = await self_evolution.scan_all_agents(project_id=scoped_project_id)
     total = sum(len(v) for v in results.values())
-    return {"project_id": scoped_project_id, "agents_with_candidates": len(results), "total_candidates": total, "results": results}
+    return {
+        "project_id": scoped_project_id,
+        "agents_with_candidates": len(results),
+        "total_candidates": total,
+        "results": results,
+    }
 
 
 # ───── Agent Creation Proposals (Memento-Skills) ─────
@@ -924,7 +1002,7 @@ async def get_prompt_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Get compression stats for an agent's system prompt."""
-    from app.core.agent_identity import load_agent_identity, _estimate_tokens
+    from app.core.agent_identity import _estimate_tokens, load_agent_identity
     from app.core.prompt_compressor import compress_prompt
 
     await require_agent_by_id(db, request, agent_id, project_id=project_id)
@@ -965,14 +1043,14 @@ async def compose_prompt_for_query(
     query — critical for verifying that small models receive relevant
     context rather than the entire persona.
     """
+    from app.core.agent_identity import _estimate_tokens, load_agent_identity
     from app.core.prompt_rag import (
+        _extract_identity_anchor,
+        _keyword_similarity,
+        _tokenize,
         compose_dynamic_prompt,
         index_agent_sections,
-        _extract_identity_anchor,
-        _tokenize,
-        _keyword_similarity,
     )
-    from app.core.agent_identity import load_agent_identity, _estimate_tokens
 
     await require_agent_by_id(db, request, agent_id, project_id=project_id)
 
@@ -996,13 +1074,15 @@ async def compose_prompt_for_query(
     section_scores = []
     for section in all_sections:
         score = _keyword_similarity(query_tokens, section)
-        section_scores.append({
-            "header": section.header,
-            "filename": section.filename,
-            "score": round(score, 4),
-            "tokens": section.token_estimate,
-            "included": section.header in composed or section.content[:80] in composed,
-        })
+        section_scores.append(
+            {
+                "header": section.header,
+                "filename": section.filename,
+                "score": round(score, 4),
+                "tokens": section.token_estimate,
+                "included": section.header in composed or section.content[:80] in composed,
+            }
+        )
 
     section_scores.sort(key=lambda x: x["score"], reverse=True)
 
@@ -1014,9 +1094,9 @@ async def compose_prompt_for_query(
         "full_tokens": _estimate_tokens(full_identity),
         "composed_tokens": _estimate_tokens(composed),
         "anchor_tokens": _estimate_tokens(anchor),
-        "savings_percent": round(
-            (1 - len(composed) / len(full_identity)) * 100, 1
-        ) if full_identity else 0,
+        "savings_percent": round((1 - len(composed) / len(full_identity)) * 100, 1)
+        if full_identity
+        else 0,
         "total_sections": len(all_sections),
         "sections_included": sum(1 for s in section_scores if s["included"]),
         "section_scores": section_scores[:20],  # Top 20 for diagnostics
@@ -1043,7 +1123,13 @@ async def get_memory(
 
 
 @router.patch("/agents/{agent_id}/memory")
-async def update_memory(agent_id: str, updates: dict, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def update_memory(
+    agent_id: str,
+    updates: dict,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     await require_project_owned_agent(db, request, agent_id, project_id)
     memory = await agent_service.update_agent_memory(db, agent_id, updates)
     return {"agent_id": agent_id, "memory": memory}
@@ -1155,7 +1241,12 @@ class AgentExportData(BaseModel):
 
 
 @router.get("/agents/{agent_id}/export")
-async def export_agent(agent_id: str, request: Request, project_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def export_agent(
+    agent_id: str,
+    request: Request,
+    project_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Export an agent's configuration as a portable JSON config."""
     agent = await require_project_owned_agent(db, request, agent_id, project_id)
     serialized = agent.to_dict()

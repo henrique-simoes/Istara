@@ -41,6 +41,7 @@ Tasks can reference project files or documents so research work stays connected 
 - The feature is mounted through `frontend/src/components/kanban/TaskEditor.tsx` and the UI navigation path recorded in the inventory.
 - Attachment and detachment routes require the active `project_id`, load the task by both id and project, and then verify the document belongs to the same project before updating task input or output document ids.
 - The Task Editor opens the document picker only for the active project and sends task updates with the same active project scope.
+- When an existing task is reopened, the editor eagerly loads the active project's document metadata so attached chips show document titles without requiring the picker to be opened. If metadata cannot be resolved, the UI shows a non-identifying `Document unavailable` state rather than exposing a UUID fragment.
 - Attached documents and task outputs feed retrieval, but the research-validity chain is task-linked evidence units, code applications, and coding runs. Document-heavy task work must not use generic retrieval chunks as coding identity; accepted/reconciled task-linked evidence is the substrate that later report routing checks.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.

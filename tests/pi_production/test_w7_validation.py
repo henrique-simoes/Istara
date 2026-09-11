@@ -1,0 +1,1978 @@
+"""W7 contract coverage — validation/consensus/dual-coder migration (master plan §8 W7).
+
+The seven chat call sites in ``app/core/validation.py`` (``dual_run``,
+``full_ensemble``, ``self_moa`` ensembles; ``adversarial_review`` and
+``debate_rounds`` completions), ``app/core/validation_executor.py``
+(LLM-as-judge), and ``app/services/research_validity_service.py``
+(dual-coder) route through the AgenticDispatcher — ``ensemble`` →
+``validation.dual_run`` / ``validation.full_ensemble`` / ``validation.self_moa``,
+``completion`` → ``validation.adversarial`` / ``validation.debate``,
+``structured`` → ``validation.judge`` / ``validity.coder``. W9 retired the
+per-site legacy ``llm_router`` / ``server`` / ``compute_registry`` /
+``coder.node`` fallthrough branches: the dispatcher path is the only path
+(the dispatcher's own legacy engine preserves the pre-dispatcher behavior
+for legacy-engine projects).
+
+Covered here (all stubbed/static — no live model activity):
+
+* static: each migrated function dispatches through the planned verb with
+  the planned purpose slugs; the judge schema and the coding schema stay
+  inside the Pi forced-tool subset;
+* behavior: the dispatcher stub records each call (verb, purpose, params,
+  endpoint pinning), the legacy plane stubs are never called, and the
+  fail-closed ``distinct=True`` rule degrades down the existing chain
+  (dual_run → self_moa; full_ensemble → dual_run; dual-coder → blocked
+  coding run) instead of fabricating diversity from fewer endpoints.
+"""
+
+from __future__ import annotations
+
+import ast
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+# Import-order guard: this suite imports app.services.research_validity_service
+# inside test bodies. That module pulls app.core.research_validity, which sits
+# on a latent module-level import cycle (research_validity -> skills.intercoder
+# -> skill_factory -> file_processor -> embeddings -> pi_runtime.engine ->
+# telemetry -> research_validity) that only resolves when the dispatcher plane
+# (app.core.agentic) has been initialized first in the process. The cycle is
+# pre-existing architecture debt outside this wave's files; initializing the
+# plane here keeps a standalone run of this file green.
+import app.core.agentic  # noqa: F401
+from app.config import settings
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+VALIDATION = REPO_ROOT / "backend/app/core/validation.py"
+VALIDATION_EXECUTOR = REPO_ROOT / "backend/app/core/validation_executor.py"
+VALIDITY_SERVICE = REPO_ROOT / "backend/app/services/research_validity_service.py"
+VALIDITY_ROUTE = REPO_ROOT / "backend/app/services/research_validity_route_evidence.py"
+
+SPINE_PHASES = {
+    "intent",
+    "context",
+    "plan",
+    "tool_selection",
+    "execution",
+    "recovery",
+    "grounding",
+    "synthesis",
+    "review",
+    "governance",
+}
+
+ALLOWED_SCHEMA_KEYS = {
+    "type",
+    "properties",
+    "required",
+    "items",
+    "enum",
+    "const",
+    "additionalProperties",
+    "description",
+}
+
+
+# ── helpers ─────────────────────────────────────────────────────────────
+
+
+def _function_source(path: Path, function_name: str) -> str:
+    text = path.read_text(encoding="utf-8")
+    tree = ast.parse(text)
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        ):
+            return ast.get_source_segment(text, node) or ""
+    raise AssertionError(f"{function_name} not found in {path}")
+
+
+def _check_schema_subset(node, path: str = "$") -> None:
+    """Recursively assert a schema stays inside the Pi forced-tool subset."""
+    if not isinstance(node, dict):
+        return
+    extra = set(node) - ALLOWED_SCHEMA_KEYS
+    assert not extra, f"{path}: disallowed schema keys {extra}"
+    if "additionalProperties" in node:
+        assert isinstance(node["additionalProperties"], bool), (
+            f"{path}.additionalProperties must be bool"
+        )
+    for key, value in node.get("properties", {}).items():
+        _check_schema_subset(value, f"{path}.properties.{key}")
+    if "items" in node:
+        _check_schema_subset(node["items"], f"{path}.items")
+
+
+class _StubAgentic:
+    """Recording stand-in for the ``agentic`` dispatcher singleton."""
+
+    def __init__(
+        self,
+        *,
+        texts: list[str] | None = None,
+        value: dict | None = None,
+        raise_on: dict | None = None,
+        fail_samples: bool = False,
+        structured_endpoint_id: str = "ep-structured",
+        structured_model: str | None = None,
+    ) -> None:
+        self.calls: list[tuple[str, dict]] = []
+        self._texts = list(texts) if texts is not None else None
+        self._value = value if value is not None else {}
+        self._raise_on = raise_on or {}
+        self._fail_samples = fail_samples
+        self._structured_endpoint_id = structured_endpoint_id
+        self._structured_model = structured_model
+
+    def _next_text(self) -> str:
+        return self._texts.pop(0) if self._texts else "dispatcher text"
+
+    async def completion(self, **kwargs):
+        self.calls.append(("completion", kwargs))
+        if "completion" in self._raise_on:
+            raise self._raise_on["completion"]
+        if len(self.calls) in self._raise_on.get("completion_calls", set()):
+            raise RuntimeError("scripted completion failure")
+        return SimpleNamespace(
+            text=self._next_text(),
+            status="success",
+            usage={},
+            stop_reason="stop",
+            endpoint_id=f"ep-{len(self.calls)}",
+            tool_calls=[],
+        )
+
+    async def ensemble(self, **kwargs):
+        self.calls.append(("ensemble", kwargs))
+        if "ensemble" in self._raise_on:
+            raise self._raise_on["ensemble"]
+        n = kwargs.get("n") or 1
+        samples = [
+            SimpleNamespace(
+                text="" if self._fail_samples else self._next_text(),
+                status="error" if self._fail_samples else "success",
+                usage={},
+                stop_reason="stop",
+                endpoint_id=f"ep-{index}",
+                tool_calls=[],
+            )
+            for index in range(n)
+        ]
+        return SimpleNamespace(
+            samples=samples,
+            endpoint_ids=[f"ep-{index}" for index in range(n)],
+            usage={},
+            status="error" if self._fail_samples else "success",
+        )
+
+    async def structured(self, **kwargs):
+        self.calls.append(("structured", kwargs))
+        if "structured" in self._raise_on:
+            raise self._raise_on["structured"]
+        return SimpleNamespace(
+            text="",
+            value=self._value,
+            status="success",
+            usage={},
+            stop_reason="stop",
+            endpoint_id=self._structured_endpoint_id,
+            model=(
+                self._structured_model
+                if self._structured_model is not None
+                else getattr(kwargs.get("params"), "model", None)
+            ),
+            served_model=(
+                self._structured_model
+                if self._structured_model is not None
+                else getattr(kwargs.get("params"), "model", None)
+            ),
+            tool_calls=[],
+        )
+
+
+class _StubLlmRouter:
+    """Legacy stand-in for ``llm_router`` returning queued response texts."""
+
+    def __init__(
+        self, texts: list[str] | None = None, servers: list | None = None
+    ) -> None:
+        self.calls: list[dict] = []
+        self._texts = list(texts) if texts is not None else ["legacy text"]
+        self._servers = servers or []
+
+    def _sorted_servers(self, **kwargs):
+        return self._servers
+
+    async def chat(self, messages=None, **kwargs):
+        self.calls.append({"messages": messages, **kwargs})
+        content = self._texts.pop(0) if self._texts else "legacy text"
+        return {"message": {"content": content}}
+
+
+@pytest.fixture
+def _agentic_core_on(monkeypatch):
+    monkeypatch.setattr("app.config.settings.agentic_core", True)
+
+
+@pytest.fixture
+def _no_embeddings(monkeypatch):
+    async def _embed(texts, project_id=None):
+        return []
+
+    monkeypatch.setattr("app.core.validation._get_embeddings", _embed)
+
+
+# ── static: dispatcher verbs with planned purpose slugs ──────────────────
+
+
+def test_w7_validation_functions_dispatch_through_agentic_verbs():
+    expected = {
+        "dual_run": ("_dispatch_ensemble", 'purpose="validation.dual_run"'),
+        "full_ensemble": ("_dispatch_ensemble", 'purpose="validation.full_ensemble"'),
+        "self_moa": ("_dispatch_ensemble", 'purpose="validation.self_moa"'),
+        "adversarial_review": (
+            "agentic.completion",
+            'purpose="validation.adversarial"',
+        ),
+        "debate_rounds": ("agentic.completion", 'purpose="validation.debate"'),
+    }
+    for function_name, (verb, purpose) in expected.items():
+        source = _function_source(VALIDATION, function_name)
+        assert "agentic_core" not in source, (
+            f"{function_name}: the W9 dispatcher path must be unconditional"
+        )
+        assert verb in source, f"{function_name}: missing {verb}"
+        assert purpose in source, f"{function_name}: missing {purpose}"
+        for legacy_call in ("server.chat", "llm_router.chat"):
+            assert legacy_call not in source, (
+                f"{function_name}: the legacy branch must be retired"
+            )
+    helper = _function_source(VALIDATION, "_dispatch_ensemble")
+    assert "agentic.ensemble" in helper, (
+        "the ensemble sites must dispatch via agentic.ensemble"
+    )
+
+
+def test_w7_executor_judge_dispatches_structured():
+    source = _function_source(VALIDATION_EXECUTOR, "_adversarial_review")
+    assert "agentic_core" not in source
+    assert "agentic.structured" in source
+    assert 'purpose="validation.judge"' in source
+    assert "compute_registry.chat" not in source, "the legacy branch must be retired"
+
+
+def test_w7_validity_dual_coder_dispatches_through_pi_runner():
+    runner = _function_source(VALIDITY_ROUTE, "_pi_coder_runner")
+    assert "agentic.structured" in runner and 'purpose="validity.coder"' in runner
+    assert "endpoint_id" in runner, (
+        "the coder's exact Pi endpoint identity must be pinned"
+    )
+    selection = _function_source(VALIDITY_SERVICE, "_select_pi_coders")
+    assert "resolve_distinct" in selection
+    orchestration = _function_source(VALIDITY_SERVICE, "run_independent_coding_run")
+    assert (
+        "_use_pi_coding_plane" in orchestration and "_select_pi_coders" in orchestration
+    )
+    assert "_select_project_coders" in orchestration, (
+        "project-coder selection still serves injected runners and legacy-engine projects"
+    )
+    assert "coder.node.chat" not in orchestration, (
+        "the direct per-node dispatch must be retired"
+    )
+
+
+def test_w7_schemas_stay_inside_pi_forced_tool_subset():
+    from app.core import validation_executor
+    from app.services import research_validity_service
+
+    for schema in (
+        validation_executor._JUDGE_SCHEMA,
+        research_validity_service.CODING_RESPONSE_SCHEMA,
+    ):
+        assert schema.get("type") == "object"
+        _check_schema_subset(schema)
+
+
+# ── behavior: dual_run ───────────────────────────────────────────────────
+
+
+async def test_dual_run_flag_on_dispatches_distinct_ensemble(
+    monkeypatch, _agentic_core_on, _no_embeddings
+):
+    dispatcher_stub = _StubAgentic(texts=["resp-a", "resp-b"])
+    router_stub = _StubLlmRouter()
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.llm_router.llm_router", router_stub)
+
+    from app.core.validation import dual_run
+
+    result = await dual_run("prompt", system="sys", project_id="p1", max_tokens=37)
+
+    assert router_stub.calls == [], "flag on must not call the legacy plane directly"
+    method, kwargs = dispatcher_stub.calls[0]
+    assert method == "ensemble"
+    assert kwargs["purpose"] == "validation.dual_run"
+    assert kwargs["n"] == 2 and kwargs["distinct"] is True
+    assert kwargs["project_id"] == "p1"
+    assert kwargs["params"].max_tokens == 37
+    assert kwargs["spine_phase"] in SPINE_PHASES
+    assert result.method == "dual_run"
+    assert result.responses == ["resp-a", "resp-b"]
+    assert result.metadata["endpoint_ids"] == ["ep-0", "ep-1"]
+
+
+async def test_dual_run_flag_on_insufficient_distinct_endpoints_falls_back_to_self_moa(
+    monkeypatch, _agentic_core_on, _no_embeddings
+):
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    dispatcher_stub = _StubAgentic(texts=["solo-a", "solo-b"])
+    calls = {"n": 0}
+    real_ensemble = dispatcher_stub.ensemble
+
+    async def _ensemble(**kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            dispatcher_stub.calls.append(("ensemble", kwargs))
+            raise PiEndpointResolutionError("insufficient_distinct_pi_endpoints")
+        return await real_ensemble(**kwargs)
+
+    dispatcher_stub.ensemble = _ensemble
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.llm_router.llm_router", _StubLlmRouter())
+
+    from app.core.validation import dual_run
+
+    result = await dual_run("prompt", project_id="p1")
+
+    first, second = [
+        kwargs for method, kwargs in dispatcher_stub.calls if method == "ensemble"
+    ]
+    assert first["distinct"] is True and first["n"] == 2
+    assert second["purpose"] == "validation.self_moa"
+    assert second["distinct"] is False and second["n"] == 2, (
+        "fail-closed: degrade to the labeled single-model variation, never fabricate diversity"
+    )
+    assert result.method == "self_moa"
+    assert result.metadata["assurance"] == "single_model_temperature_variation"
+
+
+# ── behavior: full_ensemble / self_moa ───────────────────────────────────
+
+
+async def test_full_ensemble_flag_on_dispatches_min_responses_plus_one_distinct(
+    monkeypatch, _agentic_core_on, _no_embeddings
+):
+    dispatcher_stub = _StubAgentic(texts=["r1", "r2", "r3", "r4"])
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.llm_router.llm_router", _StubLlmRouter())
+
+    from app.core.validation import full_ensemble
+
+    result = await full_ensemble("prompt", min_responses=3, project_id="p1")
+
+    method, kwargs = dispatcher_stub.calls[0]
+    assert method == "ensemble"
+    assert kwargs["purpose"] == "validation.full_ensemble"
+    assert kwargs["n"] == 4 and kwargs["distinct"] is True
+    assert result.method == "full_ensemble"
+    assert result.metadata["n_responses"] == 4
+
+
+async def test_full_ensemble_flag_on_insufficient_distinct_falls_back_to_dual_run(
+    monkeypatch, _agentic_core_on, _no_embeddings
+):
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    dispatcher_stub = _StubAgentic(texts=["d1", "d2"])
+    calls = {"n": 0}
+    real_ensemble = dispatcher_stub.ensemble
+
+    async def _ensemble(**kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            dispatcher_stub.calls.append(("ensemble", kwargs))
+            raise PiEndpointResolutionError("insufficient_distinct_pi_endpoints")
+        return await real_ensemble(**kwargs)
+
+    dispatcher_stub.ensemble = _ensemble
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.llm_router.llm_router", _StubLlmRouter())
+
+    from app.core.validation import full_ensemble
+
+    result = await full_ensemble("prompt", min_responses=3, project_id="p1")
+
+    purposes = [
+        kwargs["purpose"]
+        for method, kwargs in dispatcher_stub.calls
+        if method == "ensemble"
+    ]
+    assert purposes == ["validation.full_ensemble", "validation.dual_run"]
+    assert result.method == "dual_run", (
+        "fail-closed degradation down the existing chain"
+    )
+
+
+async def test_full_ensemble_partial_success_does_not_claim_full_width(
+    monkeypatch, _agentic_core_on, _no_embeddings
+):
+    """A failed spare cannot make a sub-minimum result look like full MoA."""
+    from app.core.validation import full_ensemble
+
+    calls: list[dict] = []
+
+    async def _dispatch(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            return (
+                ["r1", "r2"],
+                [{"endpoint_id": "ep-a"}, {"endpoint_id": "ep-b"}],
+                ["ep-a", "ep-b", "ep-c", "ep-d"],
+            )
+        return (
+            ["d1", "d2"],
+            [{"endpoint_id": "ep-d1"}, {"endpoint_id": "ep-d2"}],
+            ["ep-d1", "ep-d2"],
+        )
+
+    monkeypatch.setattr("app.core.validation._dispatch_ensemble", _dispatch)
+
+    result = await full_ensemble("prompt", min_responses=3, project_id="p1")
+
+    assert calls[0]["n"] == 4 and calls[0]["minimum_n"] == 3
+    assert calls[0]["distinct"] is True
+    assert calls[1]["purpose"] == "validation.dual_run"
+    assert result.method == "dual_run"
+    assert result.responses == ["d1", "d2"]
+
+
+async def test_self_moa_flag_on_dispatches_temperature_sweep_single_endpoint(
+    monkeypatch, _agentic_core_on, _no_embeddings
+):
+    dispatcher_stub = _StubAgentic(texts=["t1", "t2", "t3"])
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.llm_router.llm_router", _StubLlmRouter())
+
+    from app.core.validation import self_moa
+
+    result = await self_moa("prompt", n=3, project_id="p1")
+
+    method, kwargs = dispatcher_stub.calls[0]
+    assert method == "ensemble"
+    assert kwargs["purpose"] == "validation.self_moa"
+    assert kwargs["distinct"] is False
+    assert kwargs["n"] == 3
+    assert kwargs["temperatures"] == [0.3, 0.7, 1.0]
+    assert result.metadata["assurance"] == "single_model_temperature_variation"
+    assert result.metadata["temperatures"] == [0.3, 0.7, 1.0]
+
+
+# ── behavior: adversarial_review / debate_rounds ────────────────────────
+
+
+async def test_adversarial_review_flag_on_dispatches_completion(
+    monkeypatch, _agentic_core_on, _no_embeddings
+):
+    dispatcher_stub = _StubAgentic(texts=["the critique"])
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.llm_router.llm_router", _StubLlmRouter())
+
+    from app.core.validation import adversarial_review
+
+    result = await adversarial_review("q", "initial", system="sys", project_id="p1")
+
+    method, kwargs = dispatcher_stub.calls[0]
+    assert method == "completion"
+    assert kwargs["purpose"] == "validation.adversarial"
+    assert kwargs["params"].temperature == 0.3
+    assert kwargs["system"] == "sys"
+    assert kwargs["spine_phase"] in SPINE_PHASES
+    assert result.metadata["review_text"] == "the critique"
+    assert result.responses == ["initial", "the critique"]
+    assert result.best_response == "initial"
+
+
+async def test_adversarial_review_flag_on_dispatch_failure_returns_empty_result(
+    monkeypatch, _agentic_core_on, _no_embeddings
+):
+    dispatcher_stub = _StubAgentic(raise_on={"completion": RuntimeError("worker down")})
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.llm_router.llm_router", _StubLlmRouter())
+
+    from app.core.validation import adversarial_review
+
+    result = await adversarial_review("q", "initial", project_id="p1")
+
+    assert result.responses == []
+    assert result.consensus.confidence == "insufficient", (
+        "dispatch failure must degrade to the existing validation-unavailable result"
+    )
+
+
+async def test_debate_rounds_flag_on_dispatches_initial_plus_rounds(
+    monkeypatch, _agentic_core_on, _no_embeddings
+):
+    dispatcher_stub = _StubAgentic(texts=["r0", "r1", "r2"])
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.llm_router.llm_router", _StubLlmRouter())
+
+    from app.core.validation import debate_rounds
+
+    result = await debate_rounds("prompt", rounds=2, project_id="p1")
+
+    completions = [
+        kwargs for method, kwargs in dispatcher_stub.calls if method == "completion"
+    ]
+    assert len(completions) == 3, "initial + 2 rounds"
+    assert all(kwargs["purpose"] == "validation.debate" for kwargs in completions)
+    assert completions[0]["params"].temperature == 0.7
+    assert all(kwargs["params"].temperature == 0.5 for kwargs in completions[1:])
+    assert result.best_response == "r2"
+    assert result.metadata["rounds_completed"] == 2
+
+
+async def test_debate_rounds_flag_on_round_failure_breaks_like_legacy(
+    monkeypatch, _agentic_core_on, _no_embeddings
+):
+    dispatcher_stub = _StubAgentic(texts=["r0"])
+    real_completion = dispatcher_stub.completion
+    calls = {"n": 0}
+
+    async def _completion(**kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            dispatcher_stub.calls.append(("completion", kwargs))
+            raise RuntimeError("round failed")
+        return await real_completion(**kwargs)
+
+    dispatcher_stub.completion = _completion
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.llm_router.llm_router", _StubLlmRouter())
+
+    from app.core.validation import debate_rounds
+
+    result = await debate_rounds("prompt", rounds=2, project_id="p1")
+
+    assert result.responses == ["r0"]
+    assert result.metadata["rounds_completed"] == 0
+    assert result.best_response == "r0"
+
+
+# ── behavior: validation_executor judge ──────────────────────────────────
+
+
+def _executor_io():
+    output = SimpleNamespace(
+        nuggets=[{"text": "users struggled with invites", "tags": ["ux"]}],
+        facts=[{"text": "invites are confusing"}],
+        insights=[],
+    )
+    input_data = SimpleNamespace(project_id="p1")
+    return output, input_data
+
+
+async def test_judge_flag_on_dispatches_structured(monkeypatch, _agentic_core_on):
+    scores = {
+        "code_quality": 4,
+        "evidence": 4,
+        "chain": 4,
+        "hallucination_free": 5,
+        "depth": 4,
+        "overall": 4,
+    }
+    dispatcher_stub = _StubAgentic(value=scores)
+    registry_stub = _StubLlmRouter()
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.compute_registry.compute_registry", registry_stub)
+
+    from app.core.validation_executor import ValidationExecutor
+
+    output, input_data = _executor_io()
+    result = await ValidationExecutor()._adversarial_review(output, input_data)
+
+    assert registry_stub.calls == [], "flag on must not call the legacy plane directly"
+    method, kwargs = dispatcher_stub.calls[0]
+    assert method == "structured"
+    assert kwargs["purpose"] == "validation.judge"
+    assert kwargs["params"].temperature == 0.3
+    assert kwargs["schema"]["type"] == "object"
+    assert kwargs["spine_phase"] in SPINE_PHASES
+    assert result.passed and result.confidence == 4 / 5
+    assert result.details == scores
+
+
+async def test_judge_flag_on_raise_fails_closed_as_unavailable(
+    monkeypatch, _agentic_core_on
+):
+    from app.core.pi_runtime.endpoints import PiRuntimeTurnError
+
+    dispatcher_stub = _StubAgentic(
+        raise_on={
+            "structured": PiRuntimeTurnError("error", "structured_output_missing")
+        }
+    )
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.compute_registry.compute_registry", _StubLlmRouter())
+
+    from app.core.validation_executor import ValidationExecutor
+
+    output, input_data = _executor_io()
+    result = await ValidationExecutor()._adversarial_review(output, input_data)
+
+    assert not result.passed and result.confidence == 0.0
+    assert result.details == {
+        "status": "unavailable",
+        "reason": "judge_dispatch_failed",
+        "error": "pi_runtime_turn_error:structured_output_missing",
+    }
+
+
+async def test_judge_flag_on_missing_verdict_fails_closed(
+    monkeypatch, _agentic_core_on
+):
+    dispatcher_stub = _StubAgentic(value={})
+    registry_stub = _StubLlmRouter()
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+    monkeypatch.setattr("app.core.compute_registry.compute_registry", registry_stub)
+
+    from app.core.validation_executor import ValidationExecutor
+
+    output, input_data = _executor_io()
+    result = await ValidationExecutor()._adversarial_review(output, input_data)
+
+    assert registry_stub.calls == []
+    assert not result.passed and result.confidence == 0.0
+    assert result.details == {
+        "status": "unavailable",
+        "reason": "judge_verdict_missing",
+    }
+
+
+# ── behavior: research_validity_service dual-coder ──────────────────────
+
+
+class _StubPiModelManager:
+    """Catalog stand-in: N identity-distinct resolved endpoints."""
+
+    instances: list["_StubPiModelManager"] = []
+
+    def __init__(
+        self,
+        endpoints: list[SimpleNamespace] | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self._endpoints = endpoints or []
+        self._error = error
+        self.projected = False
+        self.resolve_calls: list[dict] = []
+        self.resolve_exact_calls: list[dict] = []
+        _StubPiModelManager.instances.append(self)
+
+    async def ensure_db_projection(self):
+        self.projected = True
+
+    def resolve_distinct(self, n, **kwargs):
+        self.resolve_calls.append({"n": n, **kwargs})
+        if self._error is not None:
+            raise self._error
+        excluded = set(kwargs.get("exclude", ()))
+        excluded_models = {
+            str(model).casefold() for model in kwargs.get("exclude_models", ())
+        }
+        eligible = [
+            endpoint
+            for endpoint in self._endpoints
+            if endpoint.endpoint_id not in excluded
+            and endpoint.model.casefold() not in excluded_models
+        ]
+        return eligible[:n]
+
+    def resolve(self, *, endpoint_id, model=None, project_id=None):
+        self.resolve_exact_calls.append(
+            {"endpoint_id": endpoint_id, "model": model, "project_id": project_id}
+        )
+        from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+        endpoint = next(
+            (item for item in self._endpoints if item.endpoint_id == endpoint_id), None
+        )
+        if endpoint is None:
+            raise PiEndpointResolutionError("unknown_pi_endpoint")
+        if model is not None and endpoint.model != model:
+            raise ValueError("model mismatch")
+        return endpoint
+
+
+def _fake_endpoint(endpoint_id: str, model: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        endpoint_id=endpoint_id,
+        model=model,
+        provider_kind="openai_compat",
+        base_url="http://endpoint.invalid",
+        api_key="",
+        timeout_ms=1000,
+        max_retries=0,
+    )
+
+
+async def test_select_pi_coders_maps_distinct_endpoint_identities(monkeypatch):
+    manager = _StubPiModelManager(
+        endpoints=[
+            _fake_endpoint("ep-a", "model-a"),
+            _fake_endpoint("ep-b", "model-b"),
+            _fake_endpoint("ep-c", "model-c"),
+        ]
+    )
+    monkeypatch.setattr(
+        "app.core.pi_runtime.model_manager.PiModelManager", lambda: manager
+    )
+
+    from app.services.research_validity_service import _select_pi_coders
+
+    coders = await _select_pi_coders(max_coders=3, project_id="project-a")
+
+    assert manager.projected, "the read-only DB projection must run before selection"
+    assert [c.coder_id for c in coders] == [
+        "model-coder:ep-a",
+        "model-coder:ep-b",
+        "model-coder:ep-c",
+    ]
+    assert [c.model_name for c in coders] == ["model-a", "model-b", "model-c"]
+    assert [c.node.endpoint_id for c in coders] == ["ep-a", "ep-b", "ep-c"]
+    assert [c.node.node_id for c in coders] == ["ep-a", "ep-b", "ep-c"], (
+        "telemetry/route getattr('node_id') must resolve to the endpoint identity"
+    )
+    assert manager.resolve_calls == [
+        {
+            "n": 3,
+            "project_id": "project-a",
+            "exclude_models": ("qwen3.7-plus-2026-05-26", "qwen3.7-flash-2026-07-15"),
+        }
+    ]
+
+
+async def test_select_pi_coders_prefers_configured_order_then_fills_from_catalog(
+    monkeypatch,
+):
+    manager = _StubPiModelManager(
+        endpoints=[
+            _fake_endpoint("ep-a", "model-a"),
+            _fake_endpoint("ep-b", "model-b"),
+            _fake_endpoint("ep-c", "model-c"),
+        ]
+    )
+    monkeypatch.setitem(settings.__dict__, "pi_research_endpoint_ids", ["ep-c", "ep-a"])
+
+    from app.services.research_validity_service import _select_pi_coders
+
+    coders = await _select_pi_coders(
+        max_coders=3,
+        project_id="project-a",
+        manager=manager,
+    )
+
+    assert [coder.node.endpoint_id for coder in coders] == ["ep-c", "ep-a", "ep-b"]
+    assert manager.resolve_exact_calls == [
+        {"endpoint_id": "ep-c", "model": None, "project_id": "project-a"},
+        {"endpoint_id": "ep-a", "model": None, "project_id": "project-a"},
+    ]
+    assert manager.resolve_calls[-1]["exclude"] == ("ep-c", "ep-a")
+
+
+async def test_select_pi_coders_keeps_healthy_fallback_when_preference_is_unavailable(
+    monkeypatch,
+):
+    manager = _StubPiModelManager(
+        endpoints=[
+            _fake_endpoint("ep-a", "model-a"),
+            _fake_endpoint("ep-b", "model-b"),
+            _fake_endpoint("ep-c", "model-c"),
+        ]
+    )
+    monkeypatch.setitem(
+        settings.__dict__, "pi_research_endpoint_ids", ["missing", "ep-b"]
+    )
+
+    from app.services.research_validity_service import _select_pi_coders
+
+    coders = await _select_pi_coders(max_coders=3, manager=manager)
+
+    assert [coder.node.endpoint_id for coder in coders] == ["ep-b", "ep-a", "ep-c"]
+    assert manager.resolve_calls[-1]["exclude"] == ("missing", "ep-b")
+
+
+async def test_select_pi_coders_fails_closed_on_insufficient_distinct(monkeypatch):
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    manager = _StubPiModelManager(
+        error=PiEndpointResolutionError("insufficient_distinct_pi_endpoints")
+    )
+    monkeypatch.setattr(
+        "app.core.pi_runtime.model_manager.PiModelManager", lambda: manager
+    )
+
+    from app.services.research_validity_service import _select_pi_coders
+
+    with pytest.raises(PiEndpointResolutionError):
+        await _select_pi_coders(max_coders=3)
+
+
+async def test_select_pi_coders_rejects_unpaired_pi_service():
+    """A service from another manager cannot silently alter the selected catalog."""
+    from app.services.research_validity_service import _select_pi_coders
+
+    selected_manager = _StubPiModelManager(
+        endpoints=[_fake_endpoint("ep-a", "model-a")]
+    )
+
+    class _OtherService:
+        def model_manager(self):
+            return _StubPiModelManager()
+
+    with pytest.raises(ValueError, match="paired"):
+        await _select_pi_coders(
+            max_coders=1,
+            manager=selected_manager,
+            pi_service=_OtherService(),
+        )
+
+
+async def test_pi_coder_runner_dispatches_structured_pinned_to_endpoint(monkeypatch):
+    value = {
+        "applications": [
+            {
+                "evidence_unit_id": "eu-1",
+                "codes": ["ux"],
+                "primary_code": "ux",
+                "quote": "q",
+                "confidence": 0.9,
+            }
+        ]
+    }
+    dispatcher_stub = _StubAgentic(value=value, structured_endpoint_id="ep-a")
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+
+    from app.services.research_validity_service import (
+        CODING_RESPONSE_SCHEMA,
+        CoderSpec,
+        _pi_coder_runner,
+    )
+
+    coder = CoderSpec(
+        node=SimpleNamespace(
+            node_id="ep-a",
+            name="ep-a",
+            source="pi",
+            provider_type="openai_compat",
+            endpoint_id="ep-a",
+        ),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+    response = await _pi_coder_runner(
+        coder, [{"role": "user", "content": "code this"}], "model-a", "p1"
+    )
+
+    method, kwargs = dispatcher_stub.calls[0]
+    assert method == "structured"
+    assert kwargs["purpose"] == "validity.coder"
+    assert kwargs["project_id"] == "p1"
+    assert kwargs["schema"] is CODING_RESPONSE_SCHEMA
+    assert kwargs["params"].temperature == 0.2
+    assert kwargs["params"].thinking_mode == "high"
+    assert kwargs["params"].model == "model-a"
+    assert kwargs["params"].endpoint_id == "ep-a", (
+        "dispatch must pin the coder's exact endpoint"
+    )
+    assert kwargs["engine"] == "pi", (
+        "Pi-managed coder routing must not depend on the project's loop choice"
+    )
+    assert kwargs["spine_phase"] in SPINE_PHASES
+    assert json.loads(response["message"]["content"]) == value
+    route = response["_istara_route"]
+    assert route["node_id"] == "ep-a" and route["node_source"] == "pi"
+    assert route["model"] == "model-a" and route["outcome"] == "served"
+
+
+async def test_pi_coder_runner_repairs_missing_structured_output_with_core_schema(
+    monkeypatch,
+):
+    """One final forced-tool call may simplify shape, never accept free text."""
+    from app.core.pi_runtime.endpoints import PiRuntimeTurnError
+    from app.services.research_validity_service import (
+        CODING_CORE_RESPONSE_SCHEMA,
+        CODING_RESPONSE_SCHEMA,
+        CoderSpec,
+        _pi_coder_runner,
+    )
+
+    value = {
+        "applications": [
+            {
+                "evidence_unit_id": "eu-1",
+                "codes": ["traceability"],
+                "primary_code": "traceability",
+                "quote": "source quote",
+                "confidence": 0.9,
+            }
+        ]
+    }
+    calls = []
+
+    async def _structured(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            raise PiRuntimeTurnError("error", "structured_output_missing")
+        return SimpleNamespace(
+            value=value,
+            endpoint_id="ep-a",
+            served_model="model-a",
+            route_evidence={"outcome": "served"},
+        )
+
+    monkeypatch.setattr("app.core.agentic.agentic.structured", _structured)
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a", node_id="ep-a", source="pi"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    response = await _pi_coder_runner(coder, [], "model-a", "p1")
+
+    assert [call["schema"] for call in calls] == [
+        CODING_RESPONSE_SCHEMA,
+        CODING_CORE_RESPONSE_SCHEMA,
+    ]
+    assert calls[1]["repair"] is False
+    assert response["_istara_route"]["structured_schema_repair"] == "core_schema"
+    assert json.loads(response["message"]["content"]) == value
+
+
+async def test_pi_coder_runner_bounded_thinking_off_fallback_after_core_schema_failure(
+    monkeypatch,
+):
+    """When even the core-schema forced call reports structured_output_missing,
+    exactly one final forced call with reasoning disabled may rescue the rater;
+    the route evidence must disclose the bounded thinking fallback."""
+    from app.core.pi_runtime.endpoints import PiRuntimeTurnError
+    from app.services.research_validity_service import (
+        CODING_CORE_RESPONSE_SCHEMA,
+        CODING_RESPONSE_SCHEMA,
+        CoderSpec,
+        _pi_coder_runner,
+    )
+
+    value = {
+        "applications": [
+            {
+                "evidence_unit_id": "eu-1",
+                "codes": ["traceability"],
+                "primary_code": "traceability",
+                "quote": "source quote",
+                "confidence": 0.9,
+            }
+        ]
+    }
+    calls = []
+
+    async def _structured(**kwargs):
+        calls.append(kwargs)
+        if len(calls) < 3:
+            raise PiRuntimeTurnError("error", "structured_output_missing")
+        return SimpleNamespace(
+            value=value,
+            endpoint_id="ep-a",
+            served_model="model-a",
+            route_evidence={"outcome": "served"},
+        )
+
+    monkeypatch.setattr("app.core.agentic.agentic.structured", _structured)
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a", node_id="ep-a", source="pi"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    response = await _pi_coder_runner(coder, [], "model-a", "p1")
+
+    assert [call["schema"] for call in calls] == [
+        CODING_RESPONSE_SCHEMA,
+        CODING_CORE_RESPONSE_SCHEMA,
+        CODING_CORE_RESPONSE_SCHEMA,
+    ]
+    assert calls[1]["repair"] is False
+    assert calls[2]["repair"] is False
+    assert calls[2]["params"].thinking_mode != "high", (
+        "the final bounded attempt must disable reasoning, not repeat the failing mode"
+    )
+    assert calls[2]["params"].endpoint_id == "ep-a"
+    route = response["_istara_route"]
+    assert route["structured_schema_repair"] == "core_schema_thinking_off"
+    assert route["structured_thinking_fallback"] == "off"
+    assert json.loads(response["message"]["content"]) == value
+
+
+async def test_pi_coder_runner_thinking_off_fallback_stays_fail_closed_for_other_errors(
+    monkeypatch,
+):
+    """Only structured_output_missing after the core-schema call may fall back;
+    every other typed failure must propagate unchanged."""
+    from app.core.pi_runtime.endpoints import PiRuntimeTurnError
+    from app.services.research_validity_service import (
+        CoderSpec,
+        _pi_coder_runner,
+    )
+
+    calls = []
+
+    async def _structured(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            raise PiRuntimeTurnError("error", "structured_output_missing")
+        raise PiRuntimeTurnError("error", "provider_auth_failed")
+
+    monkeypatch.setattr("app.core.agentic.agentic.structured", _structured)
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a", node_id="ep-a", source="pi"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    with pytest.raises(PiRuntimeTurnError) as excinfo:
+        await _pi_coder_runner(coder, [], "model-a", "p1")
+    assert excinfo.value.error == "provider_auth_failed"
+    assert len(calls) == 2
+
+
+async def test_qwen_rate_limit_fallback_switches_identity_and_records_attempts():
+    """A DashScope 429 may advance the same-key coder slot, with receipts."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    models = (
+        "qwen3.7-plus",
+        "qwen3.7-plus-2026-05-26",
+        "qwen3.7-flash-2026-07-15",
+    )
+    endpoints = {
+        model: SimpleNamespace(
+            endpoint_id=f"ep-{index}",
+            provider_kind="openai_compat",
+            pi_provider="dashscope",
+            base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+            model=model,
+            api_key="same-key",
+            provider_account_handle="account",
+            kind="remote",
+        )
+        for index, model in enumerate(models, 1)
+    }
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, project_id=None, **_kwargs):
+            del project_id
+            return endpoints[model]
+
+    manager = _Manager()
+    coder = CoderSpec(
+        node=SimpleNamespace(
+            node_id="ep-1",
+            name="ep-1",
+            source="pi",
+            provider_type="openai_compat",
+            endpoint_id="ep-1",
+        ),
+        coder_id="model-coder:ep-1",
+        model_name=models[0],
+        pi_manager=manager,
+        pi_endpoint_identity=(
+            "ep-1",
+            "openai_compat",
+            endpoints[models[0]].base_url,
+            models[0],
+            "account",
+            "remote",
+        ),
+    )
+    calls: list[str] = []
+
+    async def runner(active, _messages, model_name, _project_id):
+        calls.append(model_name)
+        if model_name == models[0]:
+            raise RuntimeError("pi_bridge_http_429")
+        return {
+            "message": {"content": "{}"},
+            "_istara_route": {
+                "endpoint_id": active.node.endpoint_id,
+                "model": model_name,
+                "served_model": model_name,
+                "outcome": "served",
+            },
+        }
+
+    response, active = await _run_pi_coder_with_qwen_fallback(
+        coder,
+        [],
+        models[0],
+        "project-a",
+        runner=runner,
+    )
+
+    assert calls == [models[0], models[1]]
+    assert active.model_name == models[1]
+    route = response["_istara_route"]
+    assert route["requested_model"] == models[0]
+    assert route["model"] == models[1]
+    assert route["served_model"] == models[1]
+    assert route["fallback_reason"] == "rate_limit"
+    assert route["fallback_attempts"] == [
+        {"model": models[0], "endpoint_id": "ep-1", "outcome": "rate_limited"},
+        {"model": models[1], "endpoint_id": "ep-2", "outcome": "served"},
+    ]
+
+
+async def test_qwen_flash_rate_limit_falls_back_only_to_dated_flash():
+    """The Flash coder slot keeps its own dated, same-family fallback."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    models = ("qwen3.7-flash", "qwen3.7-flash-2026-07-15")
+    endpoints = {
+        model: SimpleNamespace(
+            endpoint_id=f"ep-flash-{index}",
+            provider_kind="openai_compat",
+            pi_provider="dashscope",
+            base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+            model=model,
+            api_key="same-key",
+            provider_account_handle="account",
+            kind="remote",
+        )
+        for index, model in enumerate(models, 1)
+    }
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, **_kwargs):
+            return endpoints[model]
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-flash-1"),
+        coder_id="model-coder:ep-flash-1",
+        model_name=models[0],
+        pi_manager=_Manager(),
+    )
+    calls: list[str] = []
+
+    async def runner(active, _messages, model_name, _project_id):
+        calls.append(model_name)
+        if model_name == models[0]:
+            raise RuntimeError("pi_bridge_http_429")
+        return {
+            "message": {"content": "{}"},
+            "_istara_route": {
+                "endpoint_id": active.node.endpoint_id,
+                "model": model_name,
+                "served_model": model_name,
+                "outcome": "served",
+            },
+        }
+
+    response, active = await _run_pi_coder_with_qwen_fallback(
+        coder, [], models[0], "project-a", runner=runner
+    )
+
+    assert calls == list(models)
+    assert active.model_name == models[1]
+    assert response["_istara_route"]["fallback_attempts"] == [
+        {"model": models[0], "endpoint_id": "ep-flash-1", "outcome": "rate_limited"},
+        {"model": models[1], "endpoint_id": "ep-flash-2", "outcome": "served"},
+    ]
+
+
+async def test_qwen_plus_fallback_exhaustion_does_not_cross_into_flash():
+    """A throttled dated Plus blocks its slot instead of changing families."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        QwenRateLimitFallbackError,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    models = (
+        "qwen3.7-plus",
+        "qwen3.7-plus-2026-05-26",
+    )
+    endpoints = {
+        model: SimpleNamespace(
+            endpoint_id=f"ep-{index}",
+            provider_kind="openai_compat",
+            pi_provider="dashscope",
+            base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+            model=model,
+            api_key="same-key",
+            provider_account_handle="account",
+            kind="remote",
+        )
+        for index, model in enumerate(models, 1)
+    }
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, **_kwargs):
+            return endpoints[model]
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-1"),
+        coder_id="model-coder:ep-1",
+        model_name=models[0],
+        pi_manager=_Manager(),
+    )
+    calls: list[str] = []
+
+    async def runner(_active, _messages, model_name, _project_id):
+        calls.append(model_name)
+        raise RuntimeError("pi_bridge_http_429")
+
+    with pytest.raises(QwenRateLimitFallbackError) as exc_info:
+        await _run_pi_coder_with_qwen_fallback(
+            coder, [], models[0], "project-a", runner=runner
+        )
+
+    assert calls == list(models)
+    assert exc_info.value.attempts == [
+        {"model": models[0], "endpoint_id": "ep-1", "outcome": "rate_limited"},
+        {"model": models[1], "endpoint_id": "ep-2", "outcome": "rate_limited"},
+    ]
+
+
+async def test_qwen_fallback_does_not_reclassify_auth_failure():
+    """An auth failure must stop the slot without trying another model."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    endpoint = SimpleNamespace(
+        endpoint_id="ep-auth",
+        provider_kind="openai_compat",
+        pi_provider="dashscope",
+        base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        model="qwen3.7-plus",
+        api_key="same-key",
+        provider_account_handle="account",
+        kind="remote",
+    )
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, **_kwargs):
+            if model == endpoint.model:
+                return endpoint
+            raise AssertionError("auth failure must not resolve a fallback")
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id=endpoint.endpoint_id),
+        coder_id="model-coder:ep-auth",
+        model_name=endpoint.model,
+        pi_manager=_Manager(),
+    )
+    calls: list[str] = []
+
+    async def runner(_active, _messages, model_name, _project_id):
+        calls.append(model_name)
+        raise RuntimeError("pi_runtime_turn_error:provider_auth_invalid")
+
+    with pytest.raises(RuntimeError, match="provider_auth_invalid"):
+        await _run_pi_coder_with_qwen_fallback(
+            coder, [], endpoint.model, "project-a", runner=runner
+        )
+    assert calls == [endpoint.model]
+
+
+async def test_qwen_fallback_exhaustion_blocks_with_all_attempt_receipts():
+    """The final throttled identity leaves the Research Spine gate blocked."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        QwenRateLimitFallbackError,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    models = (
+        "qwen3.7-plus",
+        "qwen3.7-plus-2026-05-26",
+    )
+    endpoints = {
+        model: SimpleNamespace(
+            endpoint_id=f"ep-{index}",
+            provider_kind="openai_compat",
+            pi_provider="dashscope",
+            base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+            model=model,
+            api_key="same-key",
+            provider_account_handle="account",
+            kind="remote",
+        )
+        for index, model in enumerate(models, 1)
+    }
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, **_kwargs):
+            return endpoints[model]
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-1"),
+        coder_id="model-coder:ep-1",
+        model_name=models[0],
+        pi_manager=_Manager(),
+    )
+    calls: list[str] = []
+
+    async def runner(_active, _messages, model_name, _project_id):
+        calls.append(model_name)
+        raise RuntimeError("pi_bridge_http_429")
+
+    with pytest.raises(QwenRateLimitFallbackError) as exc_info:
+        await _run_pi_coder_with_qwen_fallback(
+            coder, [], models[0], "project-a", runner=runner
+        )
+
+    assert calls == list(models)
+    assert str(exc_info.value) == "qwen_rate_limit_fallback_exhausted"
+    assert exc_info.value.attempts == [
+        {"model": model, "endpoint_id": f"ep-{index}", "outcome": "rate_limited"}
+        for index, model in enumerate(models, 1)
+    ]
+
+
+async def test_qwen_fallback_rejects_a_different_api_key():
+    """A configured fallback with another credential is not an allowed switch."""
+    from app.services.research_validity_service import (
+        CoderSpec,
+        QwenRateLimitFallbackError,
+        _run_pi_coder_with_qwen_fallback,
+    )
+
+    primary = SimpleNamespace(
+        endpoint_id="ep-primary",
+        provider_kind="openai_compat",
+        pi_provider="dashscope",
+        base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        model="qwen3.7-plus",
+        api_key="primary-key",
+        provider_account_handle="account",
+        kind="remote",
+    )
+    fallback = SimpleNamespace(
+        **{
+            **vars(primary),
+            "endpoint_id": "ep-fallback",
+            "model": "qwen3.7-plus-2026-05-26",
+            "api_key": "different-key",
+        }
+    )
+
+    class _Manager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, *, model, **_kwargs):
+            return primary if model == primary.model else fallback
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id=primary.endpoint_id),
+        coder_id="model-coder:ep-primary",
+        model_name=primary.model,
+        pi_manager=_Manager(),
+    )
+
+    async def runner(_active, _messages, _model_name, _project_id):
+        raise RuntimeError("pi_bridge_http_429")
+
+    with pytest.raises(QwenRateLimitFallbackError, match="same_key_mismatch"):
+        await _run_pi_coder_with_qwen_fallback(
+            coder, [], primary.model, "project-a", runner=runner
+        )
+
+
+def test_qwen_fallback_receipt_survives_bounded_repair_replacement():
+    """Repair must not erase the initial fallback chain from provenance."""
+    from app.services.research_validity_service import _merge_coding_route_evidence
+
+    initial_attempts = [
+        {
+            "model": "qwen3.7-plus",
+            "endpoint_id": "ep-plus",
+            "outcome": "rate_limited",
+        },
+        {
+            "model": "qwen3.7-plus-2026-05-26",
+            "endpoint_id": "ep-plus-dated",
+            "outcome": "served",
+        },
+    ]
+    initial = {
+        "message": {"content": "{}"},
+        "_istara_route": {
+            "requested_model": "qwen3.7-plus",
+            "requested_coder_id": "model-coder:ep-plus",
+            "model": "qwen3.7-plus-2026-05-26",
+            "served_model": "qwen3.7-plus-2026-05-26",
+            "fallback_reason": "rate_limit",
+            "fallback_attempts": initial_attempts,
+        },
+    }
+    repair = {
+        "message": {"content": '{"applications": []}'},
+        "_istara_route": {
+            "model": "qwen3.7-plus-2026-05-26",
+            "served_model": "qwen3.7-plus-2026-05-26",
+            "outcome": "served",
+        },
+    }
+
+    merged = _merge_coding_route_evidence(initial, repair)
+    route = merged["_istara_route"]
+    assert route["fallback_attempts"] == initial_attempts
+    assert route["initial_requested_model"] == "qwen3.7-plus"
+    assert route["fallback_history"] == [
+        {
+            "requested_model": "qwen3.7-plus",
+            "served_model": "qwen3.7-plus-2026-05-26",
+            "fallback_attempts": initial_attempts,
+        }
+    ]
+
+
+async def test_pi_coder_runner_rejects_provider_served_model_mismatch(monkeypatch):
+    """A requested model cannot stand in for a different model actually served."""
+    dispatcher_stub = _StubAgentic(
+        structured_endpoint_id="ep-a",
+        structured_model="served-other-model",
+    )
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+
+    from app.services.research_validity_service import CoderSpec, _pi_coder_runner
+
+    coder = CoderSpec(
+        node=SimpleNamespace(
+            node_id="ep-a",
+            name="ep-a",
+            source="pi",
+            provider_type="openai_compat",
+            endpoint_id="ep-a",
+        ),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    with pytest.raises(ValueError, match="model mismatch"):
+        await _pi_coder_runner(coder, [], "model-a", "p1")
+
+
+async def test_pi_coder_runner_rejects_missing_served_model_identity(monkeypatch):
+    """A model request without provider identity is not ensemble evidence."""
+    dispatcher_stub = _StubAgentic(
+        structured_endpoint_id="ep-a",
+        structured_model="",
+    )
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+
+    from app.services.research_validity_service import CoderSpec, _pi_coder_runner
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    with pytest.raises(ValueError, match="model mismatch: missing"):
+        await _pi_coder_runner(coder, [], "model-a", "p1")
+
+
+async def test_pi_coder_runner_rejects_contradictory_route_model_receipt(monkeypatch):
+    """A route must not overwrite the provider receipt with a configured alias."""
+    dispatcher_stub = _StubAgentic(
+        structured_endpoint_id="ep-a", structured_model="model-a"
+    )
+
+    async def _structured(**kwargs):
+        dispatcher_stub.calls.append(("structured", kwargs))
+        return SimpleNamespace(
+            text="",
+            value={"applications": []},
+            status="success",
+            usage={},
+            stop_reason="stop",
+            endpoint_id="ep-a",
+            model="configured-alias",
+            served_model="model-a",
+            route_evidence={
+                "model": "configured-alias",
+                "served_model": "model-a",
+                "outcome": "served",
+            },
+            tool_calls=[],
+        )
+
+    dispatcher_stub.structured = _structured
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+
+    from app.services.research_validity_service import CoderSpec, _pi_coder_runner
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+    )
+
+    with pytest.raises(ValueError, match="route model mismatch"):
+        await _pi_coder_runner(coder, [], "model-a", "p1")
+
+
+async def test_pi_coder_runner_fails_closed_on_catalog_identity_drift(monkeypatch):
+    """A selected endpoint mutation cannot reach the structured provider call."""
+    dispatcher = _StubAgentic(value={})
+    monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
+
+    from app.core.pi_runtime.endpoints import ResolvedPiEndpoint
+    from app.services.research_validity_service import CoderSpec, _pi_coder_runner
+
+    changed = ResolvedPiEndpoint(
+        endpoint_id="ep-a",
+        provider_kind="openai_compat",
+        base_url="http://changed.invalid",
+        model="changed-model",
+        api_key="",
+        timeout_ms=1000,
+        max_retries=0,
+    )
+
+    class _MutatingManager:
+        async def ensure_db_projection(self):
+            return None
+
+        def resolve(self, **kwargs):
+            return changed
+
+    coder = CoderSpec(
+        node=SimpleNamespace(endpoint_id="ep-a"),
+        coder_id="model-coder:ep-a",
+        model_name="model-a",
+        pi_manager=_MutatingManager(),
+        pi_endpoint_identity=(
+            "ep-a",
+            "openai_compat",
+            "http://selected.invalid",
+            "model-a",
+            "account-a",
+            "remote",
+        ),
+    )
+
+    with pytest.raises(ValueError, match="catalog drift"):
+        await _pi_coder_runner(coder, [], "model-a", "project-a")
+    assert dispatcher.calls == []
+
+
+class _RaisingDb:
+    async def scalar(self, *args, **kwargs):
+        raise RuntimeError("no project row")
+
+
+async def test_research_coding_uses_pi_model_management_for_both_loop_choices(
+    monkeypatch,
+):
+    from app.services.research_validity_service import _use_pi_coding_plane
+
+    monkeypatch.setattr("app.config.settings.agentic_engine_default", "legacy")
+    assert await _use_pi_coding_plane(_RaisingDb(), "p1") is True
+    monkeypatch.setattr("app.config.settings.agentic_engine_default", "pi")
+    assert await _use_pi_coding_plane(_RaisingDb(), "p1") is True
+
+
+def test_research_coding_api_requires_at_least_three_models():
+    """The governed public path must not opt down to single- or dual-coder assurance."""
+    import pytest
+    from pydantic import ValidationError
+
+    from app.api.routes.research_validity import StartCodingRunRequest
+
+    with pytest.raises(ValidationError):
+        StartCodingRunRequest(max_coders=2)
+    assert StartCodingRunRequest().max_coders == 3
+
+
+async def _run_pi_coding_run(
+    monkeypatch,
+    tmp_path,
+    *,
+    selection_error=None,
+    shared_model=None,
+    failing_model=None,
+    partial_model=None,
+    split_coverage_model=None,
+    staged_coverage_model=None,
+    expose_manager=False,
+):
+    """Shared driver: full coding run on the Pi plane with stubbed selection/dispatch.
+
+    ``shared_model`` makes all three endpoints advertise the *same* model name
+    while keeping distinct endpoint identities, exercising the reliability
+    gate's defense-in-depth against fabricated model independence.
+    """
+    import uuid
+
+    from app.models.database import async_session, init_db
+    from app.models.research_validity import EvidenceUnit
+    from app.services import research_validity_service
+
+    suffix = uuid.uuid4().hex[:8]
+    project_id = f"proj-w7-pi-{suffix}"
+    task_id = f"task-w7-pi-{suffix}"
+    unit_ids = [f"eu-w7-1-{suffix}", f"eu-w7-2-{suffix}"]
+    source_quotes = {
+        unit_id: f"Participant struggled with invitation setup {index}."
+        for index, unit_id in enumerate(unit_ids, 1)
+    }
+
+    async def _plane(db, pid):
+        return True
+
+    monkeypatch.setattr(research_validity_service, "_use_pi_coding_plane", _plane)
+    selection_managers = []
+
+    if selection_error is not None:
+
+        async def _select(
+            max_coders, *, project_id=None, manager=None, pi_service=None
+        ):
+            selection_managers.append(manager)
+            raise selection_error
+
+        monkeypatch.setattr(research_validity_service, "_select_pi_coders", _select)
+        dispatcher_stub = None
+    else:
+        coders = [
+            research_validity_service.CoderSpec(
+                node=SimpleNamespace(
+                    node_id=f"ep-{name}",
+                    name=f"ep-{name}",
+                    source="pi",
+                    provider_type="openai_compat",
+                    endpoint_id=f"ep-{name}",
+                    provider_account_handle=f"account-{name}",
+                ),
+                coder_id=f"model-coder:ep-{name}",
+                model_name=shared_model or f"model-{name}",
+            )
+            for name in ("a", "b", "c")
+        ]
+
+        async def _select(
+            max_coders, *, project_id=None, manager=None, pi_service=None
+        ):
+            selection_managers.append(manager)
+            return coders
+
+        monkeypatch.setattr(research_validity_service, "_select_pi_coders", _select)
+
+        async def _structured(**kwargs):
+            dispatcher_stub.calls.append(("structured", kwargs))
+            if kwargs["params"].model == failing_model:
+                raise RuntimeError("simulated coder failure")
+            if kwargs["params"].model == split_coverage_model:
+                prior_calls = sum(
+                    1
+                    for method, call in dispatcher_stub.calls[:-1]
+                    if method == "structured"
+                    and call["params"].model == kwargs["params"].model
+                )
+                covered = unit_ids[:1] if prior_calls == 0 else unit_ids[1:]
+            elif kwargs["params"].model == staged_coverage_model:
+                prior_calls = sum(
+                    1
+                    for method, call in dispatcher_stub.calls[:-1]
+                    if method == "structured"
+                    and call["params"].model == kwargs["params"].model
+                )
+                covered = (
+                    unit_ids[:1]
+                    if prior_calls == 0
+                    else []
+                    if prior_calls == 1
+                    else unit_ids[1:]
+                )
+            else:
+                covered = (
+                    unit_ids[:1]
+                    if kwargs["params"].model == partial_model
+                    else unit_ids
+                )
+            applications = [
+                {
+                    "evidence_unit_id": unit_id,
+                    "codes": [
+                        "collaboration-disorientation"
+                        if unit_id == unit_ids[0]
+                        else "invitation-friction"
+                    ],
+                    "primary_code": (
+                        "collaboration-disorientation"
+                        if unit_id == unit_ids[0]
+                        else "invitation-friction"
+                    ),
+                    "quote": source_quotes[unit_id],
+                    "confidence": 0.92,
+                    "rationale": "The participant is blocked by team invitation setup.",
+                }
+                for unit_id in covered
+            ]
+            return SimpleNamespace(
+                text="",
+                value={"applications": applications},
+                status="success",
+                usage={},
+                stop_reason="stop",
+                endpoint_id=kwargs["params"].endpoint_id,
+                model=kwargs["params"].model,
+                served_model=kwargs["params"].model,
+                tool_calls=[],
+            )
+
+        dispatcher_stub = _StubAgentic()
+        dispatcher_stub.structured = _structured
+        if expose_manager:
+            shared_manager = object()
+            dispatcher_stub.model_manager = lambda: shared_manager
+            dispatcher_stub.shared_manager = shared_manager
+        dispatcher_stub.selection_managers = selection_managers
+        monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
+
+    class _SentinelRouter:
+        def _sorted_servers(self, **kwargs):
+            raise AssertionError("legacy coder selection must not run on the Pi plane")
+
+    monkeypatch.setattr(research_validity_service, "llm_router", _SentinelRouter())
+
+    await init_db()
+    async with async_session() as db:
+        for index, unit_id in enumerate(unit_ids, 1):
+            db.add(
+                EvidenceUnit(
+                    id=unit_id,
+                    project_id=project_id,
+                    task_id=task_id,
+                    source_id="interview-01",
+                    stable_id=f"interview-01#EU-{index:04d}",
+                    unit_index=index,
+                    source_text=f"Participant struggled with invitation setup {index}.",
+                    source_location=f"interview-01:{index}",
+                )
+            )
+        await db.commit()
+
+        result = await research_validity_service.run_independent_coding_run(
+            db,
+            project_id=project_id,
+            task_id=task_id,
+            evidence_unit_ids=unit_ids,
+            created_by="test-researcher",
+        )
+    return result, dispatcher_stub
+
+
+async def test_coding_run_pi_plane_distinct_endpoint_coders_accept(
+    monkeypatch, tmp_path, _agentic_core_on
+):
+    result, dispatcher_stub = await _run_pi_coding_run(monkeypatch, tmp_path)
+
+    assert result["promotion_status"] == "accepted"
+    assert result["kappa"] == 1.0
+    assert result["rater_count"] == 3
+    assert result["distinct_model_count"] == 3, (
+        "three distinct Pi endpoint identities satisfy the multi-model gate"
+    )
+    assert result["code_application_count"] == 6
+    purposes = [kwargs["purpose"] for method, kwargs in dispatcher_stub.calls]
+    assert purposes == ["validity.coder"] * 3
+    pinned = [kwargs["params"].endpoint_id for _, kwargs in dispatcher_stub.calls]
+    assert pinned == ["ep-a", "ep-b", "ep-c"], (
+        "each coder dispatches on its own endpoint"
+    )
+    assert {route["model"] for route in result["route_evidence"]} == {
+        "model-a",
+        "model-b",
+        "model-c",
+    }
+    provenance = result["matrix"]["rater_provenance"]
+    assert set(provenance) == {
+        "model-coder:ep-a",
+        "model-coder:ep-b",
+        "model-coder:ep-c",
+    }
+    for coder_id, identity in provenance.items():
+        suffix = coder_id[-1]
+        assert identity["model_checkpoint"] == f"model-{suffix}"
+        assert identity["provider_account_handle"] == f"account-{suffix}"
+        assert identity["endpoint_id"] == f"ep-{suffix}"
+        assert len(identity["prompt_hash"]) == 64
+        assert identity["protocol_version"]
+        assert identity["decoding_profile"] == {"temperature": 0.2}
+        assert identity["conversation_scope"] == "fresh_session_per_coder_call"
+        assert identity["cache_scope"] == "provider_prefix_cache_no_response_reuse"
+    assert result["matrix"]["provenance_conflicts"] == []
+
+
+async def test_coding_run_reuses_dispatcher_model_management_authority(
+    monkeypatch, tmp_path, _agentic_core_on
+):
+    """Pi coder selection and structured dispatch must share one manager."""
+    result, dispatcher_stub = await _run_pi_coding_run(
+        monkeypatch, tmp_path, expose_manager=True
+    )
+
+    assert result["promotion_status"] == "accepted"
+    assert dispatcher_stub.selection_managers == [dispatcher_stub.shared_manager]
+
+
+async def test_coding_run_pi_plane_same_model_endpoint_replicas_need_reconciliation(
+    monkeypatch, tmp_path, _agentic_core_on
+):
+    """Three endpoints serving one model cannot satisfy multi-model reliability."""
+    result, dispatcher_stub = await _run_pi_coding_run(
+        monkeypatch, tmp_path, shared_model="same-model"
+    )
+
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["reliability_method"] == "invalid_independence"
+    assert result["rater_count"] == 3
+    assert result["distinct_model_count"] == 1
+    assert "reused a model identity" in result["fallback_reason"]
+    assert {route["endpoint_id"] for route in result["route_evidence"]} == {
+        "ep-a",
+        "ep-b",
+        "ep-c",
+    }
+    assert {route["model"] for route in result["route_evidence"]} == {"same-model"}
+    assert [kwargs["params"].endpoint_id for _, kwargs in dispatcher_stub.calls] == [
+        "ep-a",
+        "ep-b",
+        "ep-c",
+    ]
+
+
+async def test_coding_run_pi_plane_does_not_accept_when_one_of_three_coders_fails(
+    monkeypatch, tmp_path, _agentic_core_on
+):
+    """Two agreeing survivors cannot impersonate the requested three-model ensemble."""
+    result, dispatcher_stub = await _run_pi_coding_run(
+        monkeypatch, tmp_path, failing_model="model-c"
+    )
+
+    assert len(dispatcher_stub.calls) == 3
+    assert result["rater_count"] == 2
+    assert result["distinct_model_count"] == 2
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["reliability_method"] == "insufficient_independent_models"
+    assert "required 3" in result["fallback_reason"]
+
+
+async def test_coding_run_pi_plane_requires_each_model_to_code_every_evidence_unit(
+    monkeypatch, tmp_path, _agentic_core_on
+):
+    """A partial response is not an independent analysis of the complete batch."""
+    result, dispatcher_stub = await _run_pi_coding_run(
+        monkeypatch, tmp_path, partial_model="model-c"
+    )
+
+    assert len(dispatcher_stub.calls) == 5, (
+        "the partial coder receives exactly two bounded repair attempts"
+    )
+    assert result["rater_count"] == 2
+    assert result["distinct_model_count"] == 2
+    assert result["promotion_status"] == "needs_reconciliation"
+    assert result["reliability_method"] == "insufficient_independent_models"
+    failures = [r for r in result["route_evidence"] if r.get("outcome") == "failed"]
+    assert failures and "complete evidence-unit coverage" in failures[0]["error"]
+
+
+async def test_coding_run_pi_plane_staged_partial_coder_recovers_within_two_repairs(
+    monkeypatch, tmp_path, _agentic_core_on
+):
+    """A coder may need both bounded repair attempts; the union then yields one
+    complete rater with the attempt count disclosed in route evidence."""
+    result, dispatcher_stub = await _run_pi_coding_run(
+        monkeypatch, tmp_path, staged_coverage_model="model-c"
+    )
+
+    assert result["rater_count"] == 3
+    assert result["distinct_model_count"] == 3
+    assert result["promotion_status"] == "accepted"
+    coverage_routes = [r for r in result["route_evidence"] if r.get("coverage_repair")]
+    assert coverage_routes
+    assert coverage_routes[0]["coverage_repair"] == "per_unit_union"
+    assert coverage_routes[0]["coverage_repair_attempts"] == 2
+
+
+async def test_coding_run_pi_plane_partial_coder_recovers_full_coverage_via_union(
+    monkeypatch, tmp_path, _agentic_core_on
+):
+    """A coder whose repair call covers the units its first call missed is one
+    complete rater after a per-unit union; route evidence keeps both attempts."""
+    result, dispatcher_stub = await _run_pi_coding_run(
+        monkeypatch, tmp_path, split_coverage_model="model-c"
+    )
+
+    assert result["rater_count"] == 3
+    assert result["distinct_model_count"] == 3
+    assert result["promotion_status"] == "accepted"
+    coverage_routes = [r for r in result["route_evidence"] if r.get("coverage_repair")]
+    assert coverage_routes and coverage_routes[0]["coverage_repair"] == "per_unit_union"
+
+
+async def test_coding_run_pi_plane_insufficient_distinct_blocks_fail_closed(
+    monkeypatch, tmp_path, _agentic_core_on
+):
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    result, dispatcher_stub = await _run_pi_coding_run(
+        monkeypatch,
+        tmp_path,
+        selection_error=PiEndpointResolutionError("insufficient_distinct_pi_endpoints"),
+    )
+
+    assert dispatcher_stub is None, (
+        "no coder dispatch may happen after fail-closed selection"
+    )
+    assert result["status"] == "blocked", (
+        "fewer distinct Pi endpoints than coders must hit the existing "
+        "validation-unavailable handling, never fabricated diversity"
+    )
+    assert result["promotion_status"] == "blocked"
+    assert result["code_application_count"] == 0
+    failure_rows = [r for r in result["route_evidence"] if r.get("outcome") == "failed"]
+    assert (
+        failure_rows
+        and "insufficient_distinct_pi_endpoints" in failure_rows[0]["error"]
+    )

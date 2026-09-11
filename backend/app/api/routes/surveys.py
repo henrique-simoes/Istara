@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import ProjectRole, get_visible_project_or_404
 from app.core.field_encryption import decrypt_field, encrypt_field
+from app.core.permissions import ProjectRole, get_visible_project_or_404
 from app.models.database import get_db
 from app.models.survey_integration import SurveyIntegration, SurveyLink
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 SUPPORTED_PLATFORMS = {"surveymonkey", "google_forms", "typeform"}
@@ -45,6 +47,12 @@ class SurveyCreateRequest(BaseModel):
     questions: list[dict] = []
 
 
+class DirectSurveyIngestRequest(BaseModel):
+    project_id: str
+    survey_name: str = "Research Survey Questionnaire"
+    responses: list[dict] = []
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -57,12 +65,15 @@ def _get_adapter(integration: SurveyIntegration):
 
     if integration.platform == "surveymonkey":
         from app.services.survey_platforms.surveymonkey import SurveyMonkeyAdapter
+
         return SurveyMonkeyAdapter(config)
     elif integration.platform == "google_forms":
         from app.services.survey_platforms.google_forms import GoogleFormsAdapter
+
         return GoogleFormsAdapter(config)
     elif integration.platform == "typeform":
         from app.services.survey_platforms.typeform import TypeformAdapter
+
         return TypeformAdapter(config)
     else:
         raise HTTPException(
@@ -80,10 +91,7 @@ def _is_demo_integration(integration: SurveyIntegration) -> bool:
         config = json.loads(raw)
     except json.JSONDecodeError:
         return False
-    return any(
-        isinstance(value, str) and value.startswith("sim-")
-        for value in config.values()
-    )
+    return any(isinstance(value, str) and value.startswith("sim-") for value in config.values())
 
 
 async def _get_integration(db: AsyncSession, integration_id: str) -> SurveyIntegration:
@@ -97,9 +105,7 @@ async def _get_integration(db: AsyncSession, integration_id: str) -> SurveyInteg
 
 
 async def _get_link(db: AsyncSession, link_id: str) -> SurveyLink:
-    result = await db.execute(
-        select(SurveyLink).where(SurveyLink.id == link_id)
-    )
+    result = await db.execute(select(SurveyLink).where(SurveyLink.id == link_id))
     link = result.scalar_one_or_none()
     if not link:
         raise HTTPException(status_code=404, detail="Survey link not found")
@@ -141,9 +147,7 @@ async def _get_project_integration_or_404(
     *,
     min_role: ProjectRole,
 ) -> tuple[str, SurveyIntegration]:
-    scoped_project_id = await _require_project_scope(
-        db, request, project_id, min_role=min_role
-    )
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role=min_role)
     integration = await _get_integration(db, integration_id)
     if integration.project_id != scoped_project_id:
         raise HTTPException(status_code=404, detail="Integration not found")
@@ -158,9 +162,7 @@ async def _get_project_link_or_404(
     *,
     min_role: ProjectRole,
 ) -> tuple[str, SurveyLink]:
-    scoped_project_id = await _require_project_scope(
-        db, request, project_id, min_role=min_role
-    )
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role=min_role)
     link = await _get_link(db, link_id)
     if link.project_id != scoped_project_id:
         raise HTTPException(status_code=404, detail="Survey link not found")
@@ -180,9 +182,7 @@ async def list_integrations(
     db: AsyncSession = Depends(get_db),
 ):
     """List all configured survey platform integrations."""
-    scoped_project_id = await _require_project_scope(
-        db, request, project_id, min_role="viewer"
-    )
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
     query = select(SurveyIntegration).order_by(SurveyIntegration.created_at.desc())
     if platform:
         query = query.where(SurveyIntegration.platform == platform)
@@ -209,7 +209,7 @@ async def create_integration(
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported platform: {data.platform}. "
-                   f"Supported: {', '.join(sorted(SUPPORTED_PLATFORMS))}",
+            f"Supported: {', '.join(sorted(SUPPORTED_PLATFORMS))}",
         )
 
     integration = SurveyIntegration(
@@ -240,6 +240,46 @@ async def delete_integration(
     await db.commit()
 
 
+@router.get("/surveys/integrations/{integration_id}/health")
+async def health_check_survey_integration(
+    integration_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Run a live connectivity and credential health check on a survey platform integration."""
+    scoped_project_id, integration = await _get_project_integration_or_404(
+        db, request, integration_id, project_id, min_role="viewer"
+    )
+    if _is_demo_integration(integration):
+        return {
+            "healthy": True,
+            "platform": integration.platform,
+            "status": "healthy",
+            "demo": True,
+        }
+
+    adapter = _get_adapter(integration)
+    try:
+        result = await adapter.health_check()
+        result.setdefault("platform", integration.platform)
+        result.setdefault("status", "healthy" if result.get("healthy") else "unhealthy")
+        return result
+    except Exception as exc:
+        logger.warning(
+            "Survey integration health check failed for %s (%s): %s",
+            integration_id,
+            integration.platform,
+            exc,
+        )
+        return {
+            "healthy": False,
+            "platform": integration.platform,
+            "status": "unhealthy",
+            "error": str(exc),
+        }
+
+
 # ---------------------------------------------------------------------------
 # Platform survey listing / creation
 # ---------------------------------------------------------------------------
@@ -267,7 +307,7 @@ async def list_platform_surveys(
         )
 
     # Update last_sync_at
-    integration.last_sync_at = datetime.now(timezone.utc)
+    integration.last_sync_at = datetime.now(UTC)
     await db.commit()
 
     return {
@@ -344,9 +384,7 @@ async def list_links(
     db: AsyncSession = Depends(get_db),
 ):
     """List survey links, optionally filtered by project or integration."""
-    scoped_project_id = await _require_project_scope(
-        db, request, project_id, min_role="viewer"
-    )
+    scoped_project_id = await _require_project_scope(db, request, project_id, min_role="viewer")
 
     query = select(SurveyLink).order_by(SurveyLink.created_at.desc())
     query = query.where(SurveyLink.project_id == scoped_project_id)
@@ -354,7 +392,7 @@ async def list_links(
         query = query.where(SurveyLink.integration_id == integration_id)
     result = await db.execute(query)
     links = result.scalars().all()
-    return {"links": [l.to_dict() for l in links], "count": len(links)}
+    return {"links": [link.to_dict() for link in links], "count": len(links)}
 
 
 # ---------------------------------------------------------------------------
@@ -378,7 +416,7 @@ async def sync_responses(
     integration = await _get_integration(db, link.integration_id)
     _require_matching_project(integration, link.project_id)
     if _is_demo_integration(integration):
-        integration.last_sync_at = datetime.now(timezone.utc)
+        integration.last_sync_at = datetime.now(UTC)
         await db.commit()
         return {
             "status": "no_new_responses",
@@ -412,13 +450,14 @@ async def sync_responses(
     result = await ingest_responses(db, link, responses, link.project_id)
 
     # Update integration sync timestamp
-    integration.last_sync_at = datetime.now(timezone.utc)
+    integration.last_sync_at = datetime.now(UTC)
     await db.commit()
 
     return {
         "status": "synced",
         "link_id": link_id,
         "project_id": scoped_project_id,
+        "responses_fetched": len(responses),
         **result,
     }
 
@@ -464,4 +503,46 @@ async def get_link_responses(
         "survey_name": link.external_survey_name,
         "responses": responses,
         "count": len(responses),
+    }
+
+
+@router.post("/surveys/responses/ingest")
+async def ingest_direct_survey_responses(
+    body: DirectSurveyIngestRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Directly ingest questionnaire responses into the Research Spine
+    (Nuggets & Evidence Units)."""
+    await get_visible_project_or_404(db, request, body.project_id, min_role="researcher")
+    from app.services.survey_ingestion import ingest_responses
+
+    # Find or create a local SurveyLink for tracking
+    stmt = select(SurveyLink).where(
+        SurveyLink.project_id == body.project_id,
+        SurveyLink.external_survey_name == body.survey_name,
+    )
+    result = await db.execute(stmt)
+    link = result.scalar_one_or_none()
+    if not link:
+        link = SurveyLink(
+            id=str(uuid.uuid4()),
+            integration_id="local_studio",
+            project_id=body.project_id,
+            external_survey_id=f"local-{uuid.uuid4().hex[:8]}",
+            external_survey_name=body.survey_name,
+            response_count=0,
+            last_response_at=datetime.now(UTC),
+        )
+        db.add(link)
+        await db.flush()
+
+    res = await ingest_responses(db, link, body.responses, body.project_id)
+    await db.commit()
+    return {
+        "status": "ingested",
+        "project_id": body.project_id,
+        "survey_name": body.survey_name,
+        "link_id": link.id,
+        **res,
     }

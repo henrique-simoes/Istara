@@ -23,9 +23,10 @@ continues to work unchanged.
 
 """
 
-DEPRECATION_WARNING = "WARNING: compute_pool is deprecated. Use compute_registry instead."
+from app.core.compute_registry import ComputeNode as RelayNode
+from app.core.compute_registry import compute_registry
 
-from app.core.compute_registry import ComputeNode as RelayNode, compute_registry
+DEPRECATION_WARNING = "WARNING: compute_pool is deprecated. Use compute_registry instead."
 
 # The pool IS the registry.
 compute_pool = compute_registry

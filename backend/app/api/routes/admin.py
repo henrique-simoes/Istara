@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.compute_registry import compute_registry
+from app.core.field_encryption import safe_decrypt_field
 from app.core.permissions import require_global_admin
 from app.models.agent import Agent
 from app.models.connection_string import ConnectionString
@@ -49,8 +50,12 @@ async def admin_overview(request: Request, db: AsyncSession = Depends(get_db)):
         tasks_by_status[status.value] = await _count(db, Task, Task.status == status)
 
     connection_strings = {
-        "user_invites": await _count(db, ConnectionString, ConnectionString.token_type == "user_invite"),
-        "compute_donations": await _count(db, ConnectionString, ConnectionString.token_type == "compute_donation"),
+        "user_invites": await _count(
+            db, ConnectionString, ConnectionString.token_type == "user_invite"
+        ),
+        "compute_donations": await _count(
+            db, ConnectionString, ConnectionString.token_type == "compute_donation"
+        ),
         "active": await _count(db, ConnectionString, ConnectionString.is_active.is_(True)),
         "redeemed": await _count(db, ConnectionString, ConnectionString.is_redeemed.is_(True)),
     }
@@ -125,7 +130,9 @@ async def admin_projects(request: Request, db: AsyncSession = Depends(get_db)):
     """List all projects with member and activity counts."""
     require_global_admin(request)
 
-    projects = (await db.execute(select(Project).order_by(Project.updated_at.desc()))).scalars().all()
+    projects = (
+        (await db.execute(select(Project).order_by(Project.updated_at.desc()))).scalars().all()
+    )
     rows = []
     for project in projects:
         rows.append(
@@ -133,13 +140,17 @@ async def admin_projects(request: Request, db: AsyncSession = Depends(get_db)):
                 "id": project.id,
                 "name": project.name,
                 "description": project.description,
-                "phase": project.phase.value if hasattr(project.phase, "value") else str(project.phase),
+                "phase": project.phase.value
+                if hasattr(project.phase, "value")
+                else str(project.phase),
                 "is_paused": project.is_paused,
                 "owner_id": project.owner_id,
                 "watch_folder_path": project.watch_folder_path,
                 "created_at": project.created_at.isoformat() if project.created_at else None,
                 "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                "member_count": await _count(db, ProjectMember, ProjectMember.project_id == project.id),
+                "member_count": await _count(
+                    db, ProjectMember, ProjectMember.project_id == project.id
+                ),
                 "task_count": await _count(db, Task, Task.project_id == project.id),
                 "document_count": await _count(db, Document, Document.project_id == project.id),
                 "finding_count": (
@@ -165,7 +176,7 @@ async def admin_users(request: Request, db: AsyncSession = Depends(get_db)):
             {
                 "id": user.id,
                 "username": user.username,
-                "email": user.email,
+                "email": safe_decrypt_field(user.email),
                 "display_name": user.display_name,
                 "role": user.role.value if hasattr(user.role, "value") else str(user.role),
                 "project_count": await _count(db, ProjectMember, ProjectMember.user_id == user.id),
@@ -181,14 +192,16 @@ async def admin_access(request: Request, db: AsyncSession = Depends(get_db)):
     """List project memberships for admin access review."""
     require_global_admin(request)
 
-    result = await db.execute(select(ProjectMember).order_by(ProjectMember.created_at.desc()))
+    result = await db.execute(select(ProjectMember).order_by(ProjectMember.added_at.desc()))
     memberships = result.scalars().all()
     project_ids = {member.project_id for member in memberships}
     user_ids = {member.user_id for member in memberships}
     projects = {}
     users = {}
     if project_ids:
-        project_rows = (await db.execute(select(Project).where(Project.id.in_(project_ids)))).scalars().all()
+        project_rows = (
+            (await db.execute(select(Project).where(Project.id.in_(project_ids)))).scalars().all()
+        )
         projects = {project.id: project for project in project_rows}
     if user_ids:
         user_rows = (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
@@ -198,9 +211,13 @@ async def admin_access(request: Request, db: AsyncSession = Depends(get_db)):
         "memberships": [
             {
                 **member.to_dict(),
-                "project_name": projects.get(member.project_id).name if member.project_id in projects else "",
+                "project_name": projects.get(member.project_id).name
+                if member.project_id in projects
+                else "",
                 "username": users.get(member.user_id).username if member.user_id in users else "",
-                "user_email": users.get(member.user_id).email if member.user_id in users else "",
+                "user_email": safe_decrypt_field(users.get(member.user_id).email)
+                if member.user_id in users
+                else "",
             }
             for member in memberships
         ]
@@ -216,5 +233,7 @@ async def admin_connection_strings(request: Request, db: AsyncSession = Depends(
     strings = [conn.to_dict() for conn in result.scalars().all()]
     return {
         "user_invites": [conn for conn in strings if conn.get("token_type") == "user_invite"],
-        "compute_donations": [conn for conn in strings if conn.get("token_type") == "compute_donation"],
+        "compute_donations": [
+            conn for conn in strings if conn.get("token_type") == "compute_donation"
+        ],
     }

@@ -1,5 +1,7 @@
 """Tests for WebAuthn API routes — register start/finish, authenticate start/finish, credentials."""
 
+import uuid
+
 import pytest
 from app.config import settings
 from app.core.auth import create_token, hash_password
@@ -85,7 +87,22 @@ async def test_webauthn_authenticate_start_is_public_but_validated():
         )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "No passkeys registered for this user"
+    assert response.json()["detail"] == "No passkeys available for this user"
+
+
+@pytest.mark.asyncio
+async def test_webauthn_authenticate_start_hides_unknown_users():
+    """Unknown usernames get the same response as users without passkeys."""
+    await init_db()
+    settings.team_mode = True
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/webauthn/authenticate/start",
+            json={"username": f"nobody-{uuid.uuid4().hex[:8]}"},
+        )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "No passkeys available for this user"
 
 
 @pytest.mark.asyncio
@@ -171,8 +188,14 @@ async def test_webauthn_challenges_are_scoped_by_ceremony():
         await _store_challenge(db, "registration", suffix, b"registration")
         await _store_challenge(db, "authentication", suffix, b"authentication")
 
-        assert await _get_and_clear_challenge(db, "registration", suffix) == b"registration"
-        assert await _get_and_clear_challenge(db, "authentication", suffix) == b"authentication"
+        assert (
+            await _get_and_clear_challenge(db, "registration", suffix)
+            == b"registration"
+        )
+        assert (
+            await _get_and_clear_challenge(db, "authentication", suffix)
+            == b"authentication"
+        )
         assert await _get_and_clear_challenge(db, "registration", suffix) is None
 
 
@@ -181,7 +204,9 @@ def test_webauthn_expected_origins_are_configurable():
     from app.api.routes.webauthn import _expected_origins, _rp_id
 
     settings.webauthn_rp_id = "istara.example.com"
-    settings.webauthn_origins = "https://istara.example.com, https://app.istara.example.com/"
+    settings.webauthn_origins = (
+        "https://istara.example.com, https://app.istara.example.com/"
+    )
 
     assert _rp_id() == "istara.example.com"
     assert _expected_origins() == [
@@ -204,3 +229,51 @@ def test_webauthn_expected_origins_require_secure_rp_compatible_origins():
         "https://istara.example.com",
         "https://research.istara.example.com",
     ]
+
+
+@pytest.mark.asyncio
+async def test_revoke_last_credential_clears_passkey_flag():
+    """Revoking the final passkey must clear passkey_enabled (no dead login path)."""
+    import uuid
+
+    from app.models.webauthn_credential import WebAuthnCredential
+
+    await init_db()
+    if not settings.jwt_secret:
+        settings.jwt_secret = "test-secret"
+    uid = f"pk-user-{uuid.uuid4().hex[:8]}"
+    async with async_session() as session:
+        session.add(
+            User(
+                id=uid,
+                username=f"pkuser-{uuid.uuid4().hex[:8]}",
+                email="pk@example.com",
+                email_hash=hash_field("pk@example.com"),
+                password_hash=hash_password("password123"),
+                passkey_enabled=True,
+            )
+        )
+        for i in range(2):
+            session.add(
+                WebAuthnCredential(
+                    id=f"cred-{uid}-{i}",
+                    user_id=uid,
+                    credential_id=f"cred-id-{uid}-{i}",
+                    credential_public_key=b"fake-key",
+                )
+            )
+        await session.commit()
+    token = create_token(uid, "pkuser", "researcher")
+    headers = {"Authorization": f"Bearer {token}"}
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        first = await ac.delete(f"/api/webauthn/credentials/cred-{uid}-0", headers=headers)
+        assert first.status_code == 200
+        async with async_session() as session:
+            user = await session.get(User, uid)
+            assert user.passkey_enabled is True
+        second = await ac.delete(f"/api/webauthn/credentials/cred-{uid}-1", headers=headers)
+        assert second.status_code == 200
+        async with async_session() as session:
+            user = await session.get(User, uid)
+            assert user.passkey_enabled is False

@@ -8,8 +8,8 @@ related_features: ["shell.navigation", "chat.overview", "tasks.kanban"]
 related_glossary: ["compass-forge"]
 code_references: ["frontend/src/components/layout/Sidebar.tsx", "frontend/src/stores/projectStore.ts", "backend/app/api/routes/projects.py"]
 api_references: ["backend/app/api/routes/projects.py"]
-test_references: []
-last_verified: 2026-05-15
+test_references: ["tests/test_projects.py::test_delete_project_cleans_managed_runtime_artifacts_but_keeps_external_watch_folder", "tests/test_projects.py::test_delete_project_removes_project_memberships"]
+last_verified: 2026-09-02
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -40,6 +40,8 @@ Project Switcher exists so the work represented by Shell > Projects has a stable
 - Start from Shell > Projects when the current research task needs project switcher.
 - Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
 - Move to related surfaces when needed: shell.navigation, chat.overview, tasks.kanban.
+- Delete a project when it is no longer needed; Istara cleans its managed runtime data after the deletion succeeds and leaves any linked external folder untouched.
+- Deleting also removes project membership records so the Admin access review does not retain a row for the deleted project.
 
 ## Inputs, Outputs, And Expected Outcomes
 

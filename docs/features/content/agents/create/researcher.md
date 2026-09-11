@@ -47,6 +47,7 @@ Create Agent exists so the work represented by Agents > Create has a stable, dis
 - Imported agent configs are recreated as project-scoped agents for the active project.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 - Missing active project context prevents creation or import rather than creating a global agent.
+- The role selector only submits supported agent roles. If a stale client submits another value, the API returns a validation error (422) and does not create an agent.
 
 ## Caveats
 

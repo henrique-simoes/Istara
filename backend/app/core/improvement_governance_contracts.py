@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 STATUS = {
@@ -191,7 +191,7 @@ _SECRET_PATTERNS = [
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def clean_string(value: Any, *, max_chars: int = 4000) -> str:
