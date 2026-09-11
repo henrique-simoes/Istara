@@ -5,12 +5,12 @@
 item: testing-to-main-convergence
 branch: testing
 phase: "Phase 6 — Certify promotion readiness"
-stage: S4-remediate
+stage: S3-review
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL, testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW, testing-to-main-20260909-WAVE-promotion-certification-IMPL, testing-to-main-20260909-WAVE-promotion-certification-REVIEW, testing-to-main-remediation-20260909-IMPL, testing-to-main-remediation-20260909-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-11T04:56:08Z, ledger: L-61 }
-next_action: "S3 blind review of W5 certification (L-61 READY-owner-gated on 3b4b881d); then manager-owned G1 push + G3 PUT + CI observation."
+last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-11T05:01:18Z, ledger: L-62 }
+next_action: "S4-remediate FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 (Range/G1 + TESTING clarity), then delta re-review; owner G1/G3/G4 stay gated."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1611,6 +1611,15 @@ Why: Independent architectural plans are required before selecting the implement
 | **F-R5-W4-R1-2** | Minor | docs audit G3 + w4 summary telemetry_audit | `opentelemetry-api in backend/requirements.txt` clause stale (50-line file, no otel entry); no-exporter gap itself holds. | testing-to-main-20260910-WAVE-long-horizon-telemetry-REVIEW | open |
 
 
+
+### Readiness5 Wave W5 — certification review findings (L-62)
+
+| ID | Sev | Where | One-line finding | CF task | Status |
+|---|---|---|---|---|---|
+| **F-R5-W5-R1-1** | Major | docs/promotion/2026-09-09-promotion-certification.md:8-9,48 Range+G1 | Range lists 7 commits / G1 claims 8 + rev-parse==candidate, but measured 13 / 14 incl 996d8223 + 3 fallback ledgers + 2 FAIL reviews; G1 as written fails on dossier tip. | FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 | open |
+| **F-R5-W5-R1-2** | Minor | TESTING.md:116 topology counts | 2335 collected (1 deselected) ambiguous vs 2330/5/1; clarify as 2336 collected, 1 deselected, 2335 run. | testing-to-main-20260910-WAVE-certification-REVIEW | open |
+
+
 ## Ledger
 
 ### L-1 | 2026-09-09T00:00:00-03:00 | S1-plan | codex | planner | Phase 0
@@ -2020,3 +2029,9 @@ Did: Executed Wave W5 per readiness5-20260910-plan-a.md on frozen SHA 3b4b881de2
 Result: READY — OWNER-GATED PROMOTION on 3b4b881d. No Blocker/Major; B1/B4/B5 closed by lane execution, M-18 decided, B2/B3 owner-gated by mechanism. Minors F-R5-W2-R1-2, F-R5-W3-R1-2/R1-3/R1-4, F-R5-W4-R1-1/R1-2 + registerPasskey residual ride as follow-ups. ROOT-scope ruff notes (42 md fences + 6 F811 pre-readiness5, outside all CI scopes) disclosed in dossier §1, not fixed here.
 Verified: governance 8 PASS; obligations exit 0; rehearsal passed:true (ROOT venv); security 28/28 plain + changed-paths; backend 2330 passed 5 skipped 1 deselected 255s; frontend tsc 0 + eslint 0/41 + vitest 121 + build green + stryker 90.77 node-24; backend mutmut exit 0; backend-dir ruff clean; diff-check clean; audit passed; compose 4x0; verifiers OK; static 41/41; gate 0 new (full 420 pre-existing); CF 9 command rows on the IMPL task.
 Next: S3 blind review of this certification (certification REVIEW); then manager-owned G1 push + G3 PUT + CI observation. No push by this pipeline.
+
+### L-62 | 2026-09-11T05:01:18Z | S3-review | meta/muse-spark-1.3-contributor | reviewer | readiness5 Wave W5 — certification blind review FAIL <!-- bsc-ledger:testing-to-main-20260910-WAVE-certification-REVIEW -->
+Did: Blind two-phase S3 review of W5 IMPL (dossier tip 23554f74 on candidate 3b4b881d). Froze 9-measurement sheet before opening work order, L-61, or IMPL evidence. Independent runs in shared worktree: git diff 3b4b881d..HEAD 4 docs-only files 97+/5-, diff-check clean, status 0M/2U; ls scenarios 82 + helpers 11 + frontend test files 23; node --check 82/83/84 OK; required-checks 17 == gh-api-body 17 + fresh check_required_checks PASS + feature_obligations PASS; no-push proven (branch -r --contains HEAD empty, origin/testing 9961fa3d, origin/main fa6a1a39 ancestor); dossier 0 secret patterns; rev-list abc9da92..3b4b881d=13 and abc9da92..HEAD=14 vs dossier Range 7 / G1 8. No product code edited.
+Result: **fail** — Major F-R5-W5-R1-1 (dossier Range+G1 history/procedure inaccurate, owner verification as written fails) with fix task FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 for testing-to-main-20260910-fixer (wave_id certification preserved); Minor F-R5-W5-R1-2 (TESTING.md 2335 phrasing ambiguous, non-blocking clarity). Confirmations: scope holds docs-only; cheap matrix rows reproduce; required/protection 17 match; risks correctly owner-gated with no bypass; heavy suites stay unverified (asserted-only IMPL evidence). testing-to-main-20260910-WAVE-certification-REVIEW
+Verified: `git diff --stat 3b4b881d..HEAD` 4 docs-only + `git diff --check` clean + `git status --short` 0M/2U; `ls scenarios/*.mjs | wc -l` 82 + `node --check` 82/83/84 OK + `python3 scripts/check_required_checks.py` PASS + `python3 scripts/check_feature_obligations.py --base origin/main --head HEAD` pass:true; `git branch -r --contains HEAD` empty + `rev-parse origin/testing/main` match dossier + `merge-base --is-ancestor` true + `grep -c secret patterns` 0; `rev-list --count abc9da92..HEAD` 14 vs 8 and `abc9da92..3b4b881d` 13 vs 7. CF command (4 rows) + self_report (satisfied:false) + review_verdict fail with measurements[]/environment/could_not_verify recorded on the REVIEW task.
+Next: S4-remediate FIX-testing-to-main-20260910-WAVE-certification-REVIEW-r1 (correct Range to full 13 + G1 verify steps + TESTING clarity), then conductor-created delta re-review for this role. No push/PR/merge by this pipeline.
