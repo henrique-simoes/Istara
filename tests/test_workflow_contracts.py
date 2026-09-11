@@ -118,6 +118,46 @@ def test_ci_rejects_missing_required_checks_contract(tmp_path):
     assert any("required-checks manifest contract" in issue for issue in issues)
 
 
+def test_ci_backend_test_installs_both_pi_surfaces(tmp_path):
+    # F-CI-R1-2: the full suite includes the pi lockstep diff-proof acceptance
+    # (`scripts/pi_bump_diff_proof.py verify`), which fails closed unless BOTH
+    # bundled surfaces have installed @earendil-works packages. backend-test
+    # must therefore `npm ci` pi-runtime AND labs/pi-replacement.
+    issues = _ci_issues(REAL_CI, tmp_path)
+    assert issues == []
+
+
+def test_ci_rejects_missing_labs_replacement_install(tmp_path):
+    bad = REAL_CI.replace(
+        "      - name: Install labs/pi-replacement dependencies (pi diff-proof surface)\n"
+        "        working-directory: labs/pi-replacement\n"
+        "        run: npm ci\n",
+        "",
+    )
+    assert bad != REAL_CI, "the labs/pi-replacement install step moved or was renamed"
+    issues = _ci_issues(bad, tmp_path)
+    assert any("labs/pi-replacement" in issue for issue in issues)
+
+
+def test_ci_pi_surface_install_must_be_in_backend_test(tmp_path):
+    # A step elsewhere in the workflow does not build node_modules for the
+    # job that runs the suite: the install must live in backend-test itself.
+    bad = REAL_CI.replace(
+        "      - name: Install labs/pi-replacement dependencies (pi diff-proof surface)\n"
+        "        working-directory: labs/pi-replacement\n"
+        "        run: npm ci\n",
+        "",
+    ).replace(
+        "      - name: Run backend mutation gate",
+        "      - name: misplaced labs install\n"
+        "        working-directory: labs/pi-replacement\n"
+        "        run: npm ci\n"
+        "      - name: Run backend mutation gate",
+    )
+    issues = _ci_issues(bad, tmp_path)
+    assert any("labs/pi-replacement" in issue for issue in issues)
+
+
 def test_badge_sync_rejects_testing_trigger(tmp_path):
     # F-6 regression: badge sync triggering on `testing` would push generated
     # commits to the promotion source.

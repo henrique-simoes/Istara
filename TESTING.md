@@ -147,7 +147,7 @@ owner-gated `main` branch-protection change consumes verbatim
 | `governance` | `scripts/check_integrity.py`, `scripts/check_ci_governance.py`, `scripts/check_test_harness.py`, `scripts/check_required_checks.py`, `scripts/security_release_readiness.py`, `scripts/security_benchmark.py --fail-on-threshold`, PR change obligations, and PR security benchmark trigger checks. Read-only (`contents: read`). |
 | `backend-format` | `ruff format --check .` at the exact project pin — its own job so formatting can never hide the test suite. |
 | `backend-lint` | Governed-surface `compileall`, repo-wide correctness classes `ruff check . --select F821,F811,F822` (blocking), the changed-file strict gate (blocking), and the 378-error style backlog (advisory, documented burn-down). |
-| `backend-test` | Production rehearsal, harness contract smoke tests, QA contract tests, property-based contract tests, governed evolution regressions, and the full backend suite. |
+| `backend-test` | Installs both bundled pi surfaces (`npm ci` in `pi-runtime` and `labs/pi-replacement`), then production rehearsal, harness contract smoke tests, QA contract tests, property-based contract tests, governed evolution regressions, and the full backend suite. |
 | `backend-mutation` | `scripts/run_backend_mutation.py`. |
 | `frontend-lint` | `npm run lint` (independent). |
 | `frontend-typecheck` | `npx tsc --noEmit` (independent). |

@@ -269,6 +269,16 @@ jobs:
         working-directory: pi-runtime
         run: npm ci
 
+      # F-CI-R1-2: the full suite runs
+      # tests/pi_compat/test_bump_diff_proof.py, whose `verify` acceptance
+      # fails closed when EITHER bundled pi surface has no installed
+      # @earendil-works packages. Installing only pi-runtime made the
+      # full-suite step red on a surface-not-built gate failure; the gate is
+      # never weakened or skipped, so BOTH lockstep surfaces install here.
+      - name: Install labs/pi-replacement dependencies (pi diff-proof surface)
+        working-directory: labs/pi-replacement
+        run: npm ci
+
       - name: Run production rehearsal
         run: python ../scripts/production_rehearsal.py --json
 

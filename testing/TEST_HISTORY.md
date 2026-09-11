@@ -6,6 +6,24 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-11 — CI backend-test pi diff-proof environment (ci-green F-CI-R1-2)
+
+Scope: `.github/workflows/ci.yml` `backend-test` now installs both bundled pi
+surfaces (`npm ci` in `pi-runtime` + `labs/pi-replacement`) before the full
+suite. `tests/pi_compat/test_bump_diff_proof.py::test_verify_accepts_current_repository_state`
+runs `scripts/pi_bump_diff_proof.py verify`, which fails closed when either
+surface has no installed `@earendil-works` packages; the previous
+pi-runtime-only install left the full-suite step red in CI-shaped checkouts
+(CI run 34564927746 stopped before that step). The no-skip contract is pinned
+by `scripts/check_workflow_contracts.py` + `tests/test_workflow_contracts.py`.
+
+| Area | Result |
+| --- | --- |
+| CI-shape reproduce | Clean worktree at `f4a873f5`, `npm ci` pi-runtime only → `1 failed, 19 passed` (`gate-failed: labs/pi-replacement has no installed @earendil-works/pi-ai (surface not built)`) |
+| CI-shape fixed | + `npm ci` labs/pi-replacement → `20 passed`; full CI command `pytest ../tests/ -v --tb=short -m "not live_llm"` → `2369 passed / 5 skipped / 1 deselected, 0 failed` (270.81 s) |
+| Governance | `check_ci_governance`, `check_workflow_contracts`, `check_required_checks` (17 contexts), `check_integrity`, `check_test_harness`, `security_benchmark --fail-on-threshold` (triggered ci.yml), `git diff --check` — all PASS |
+
+
 ## 2026-09-11 — readiness5 certification (W5) on 3b4b881d: full matrix + browser lane + live ensemble + long-horizon
 
 Scope: Wave W5 certification per `docs/build-stream/plans/readiness5-20260910-plan-a.md` on frozen SHA `3b4b881de23f60e8b58d8a84a907b33c0e105f21` (`conductor/readiness5-20260910`, baseline `abc9da92`). Dossier rewritten at `docs/promotion/2026-09-09-promotion-certification.md` (W5 header + historical appendix); topology counts refreshed in `TESTING.md` (this checkpoint). No push/PR/merge/settings — manager pushes after verifying SHA.

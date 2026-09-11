@@ -48,6 +48,36 @@ def read(name: str, root: Path = ROOT) -> str:
     return path.read_text(encoding="utf-8")
 
 
+_JOB_ID_RE = re.compile(r"^  ([a-zA-Z0-9_-]+):\s*$", re.MULTILINE)
+
+
+def job_section(text: str, job: str) -> str:
+    """Return the text of one top-level workflow job ("" when absent)."""
+    match = re.search(rf"^  {re.escape(job)}:\s*$", text, re.MULTILINE)
+    if not match:
+        return ""
+    rest = text[match.end():]
+    next_job = _JOB_ID_RE.search(rest)
+    return rest[: next_job.start()] if next_job else rest
+
+
+def installs_npm_ci(section: str, surface: str) -> bool:
+    """True when one step in a job section runs ``npm ci`` in ``surface``.
+
+    Steps are split on the workflow's six-space ``- `` step marker; the
+    ``working-directory`` and ``run`` legs must live in the same step, because
+    a directory set in one step does not carry into another (F-CI-R1-2: the
+    install must be in the job that runs the suite, not merely somewhere in
+    the workflow).
+    """
+    for step in re.split(r"^      - ", section, flags=re.MULTILINE)[1:]:
+        if re.search(
+            rf"working-directory:\s*{re.escape(surface)}\s*$", step, re.MULTILINE
+        ) and "npm ci" in step:
+            return True
+    return False
+
+
 def check_ci(issues: list[str], root: Path = ROOT) -> None:
     ci = read("ci.yml", root=root)
     if not re.search(r"branches:\s*\[[^\]]*\btesting\b", ci):
@@ -81,6 +111,23 @@ def check_ci(issues: list[str], root: Path = ROOT) -> None:
             "ci.yml: no CI step may push a generated commit to `testing` "
             "(no-direct-push / reproducible-source contract)"
         )
+    # F-CI-R1-2 regression contract: `backend-test` runs the full backend
+    # suite, which includes the pi lockstep diff-proof acceptance
+    # (tests/pi_compat/test_bump_diff_proof.py
+    # ::test_verify_accepts_current_repository_state).
+    # `scripts/pi_bump_diff_proof.py verify` fails closed when either bundled
+    # surface — pi-runtime or labs/pi-replacement — has no installed
+    # @earendil-works packages, so the job must `npm ci` BOTH surfaces before
+    # the suite. Installing only pi-runtime left the full-suite step red on a
+    # surface-not-built gate failure; the gate is never weakened or skipped.
+    backend_test = job_section(ci, "backend-test")
+    for surface in ("pi-runtime", "labs/pi-replacement"):
+        if not installs_npm_ci(backend_test, surface):
+            issues.append(
+                f"ci.yml: backend-test must `npm ci` {surface} before the "
+                "full-suite step — the pi lockstep diff-proof gate fails "
+                "closed when either bundled surface is unbuilt (F-CI-R1-2)"
+            )
 
 
 def check_badge_sync(issues: list[str], root: Path = ROOT) -> None:
