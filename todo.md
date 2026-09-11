@@ -122,9 +122,6 @@ a positional, `--actor` is the only flag); `task release <ref> --actor <claimant
 
 ## 5. Queued owner asks (do after the hygiene/closure work)
 
-- **R-1 — compare web UIs for the pi harness** (owner is tired of the TUI). Deliverable: a
-  comparison of web UI options with capability parity, auth model, local-vs-hosted trade-offs,
-  and effort, ending in a recommendation. Reminder entry: `artifacts/reminders.md`.
 - **Long-horizon agentic engine** — `docs/build-stream/2026-09-08-agentic-long-horizon-improvement.md`
   (CF-SPEC-19 → CF-193…CF-202), using `docs/scientific_audit/agentic-engine-evaluation-log.md`
   as the pre-change baseline (2026-09-04 row; W3/W4 rows).
