@@ -342,6 +342,20 @@ async def stage_d(project_id: str, coding_run_id: str, unit_ids: list[str],
     # per-pass route evidence with model identity (never silent fallback).
     # Adversarial/debate are response-level quality signals, not formal
     # reliability — the labels below must stay operational, never Fleiss.
+    # Artifact honesty (W3 review F-R5-W3-R1-2/R1-3): record the consensus
+    # basis (embeddings are stubbed empty on this live cost-bounded slice) and
+    # the routing basis (passes follow the dispatcher default, no rotation),
+    # and bind the receipts to the coding run they reviewed.
+    out["coding_run_id"] = coding_run_id
+    out["embeddings_basis"] = (
+        "stubbed empty ([]) for this live cost-bounded slice; consensus is "
+        "computed on keyword category presence over responses, not embedding "
+        "similarity — labels stay operational, not formal reliability"
+    )
+    out["routing_basis"] = (
+        "dispatcher default endpoint per pass; no rotation requested, so all "
+        "passes may share one served model (per-pass receipts above)"
+    )
     out["reliability_label"] = "operational_response_level_quality_signal_not_fleiss"
     out["ok"] = all(
         (out.get(k) or {}).get("route_evidence") for k in ("adversarial", "debate"))
