@@ -5,11 +5,11 @@ item: pi-agentic-core-replacement
 branch: comparison/pi-replacement-core
 cf: { specs: [CF-SPEC-1, CF-SPEC-2], tasks: [CF-1, CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8, CF-9, CF-10, CF-11, CF-12, CF-13, CF-14, CF-15, CF-16, CF-17, CF-23, CF-24, CF-25, CF-26, CF-27, CF-28, CF-29, CF-30, CF-31, CF-32, CF-33, CF-34, CF-35, CF-36] }
 phase: "pi-complete-20260719 - delta re-review round 2"
-stage: S3-review
-status: review_passed
+stage: closed
+status: closed-superseded
 blocked_on: null
-last: { agent: fable.5-medium, at: "2026-07-20T00:57:00Z", ledger: L-18 }
-next_action: "Conductor advances the pi-complete-20260719 pipeline past S3-review; all review findings (F1-F6, RF1) are resolved with verified command evidence."
+last: { agent: releasing-manager, at: "2026-09-12T00:00:00Z", ledger: L-80 }
+next_action: "Closed 2026-09-12 (post-promotion closeout): superseded: the Pi agentic core shipped through the pi-full-replacement train and is on main (2f106b57)."
 ```
 
 ## Plan Overview

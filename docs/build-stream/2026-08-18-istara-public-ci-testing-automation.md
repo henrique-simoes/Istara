@@ -6,11 +6,11 @@ item: istara-public-ci-testing-automation
 branch: conductor/istara-public-ci-testing-20260818
 cf: { spec: CF-SPEC-56, tasks: [CF-717, CF-718, CF-719, CF-720, CF-721, CF-722, CF-723, CF-724, CF-725, CF-726, CF-727, CF-728, CF-729, CF-730] }
 phase: "Phase 3 — Public CI/testing implementation"
-stage: S3-review
-status: in-progress
+stage: closed
+status: closed-superseded
 blocked_on: null
-last: { agent: openai/gpt-5.6-luna, at: 2026-08-18T02:44:20Z, ledger: L-22 }
-next_action: "Owner approved MECE master plan (slot c); conductor may dispatch implementation."
+last: { agent: releasing-manager, at: "2026-09-12T00:00:00Z", ledger: L-80 }
+next_action: "Closed 2026-09-12 (post-promotion closeout): superseded: public CI implementation shipped: 17 required contexts + required-checks manifest contract (CI run 34637179724)."
 ```
 <!-- /STATUS BLOCK -->
 

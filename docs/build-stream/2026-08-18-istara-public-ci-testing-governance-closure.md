@@ -6,11 +6,11 @@ item: istara-public-ci-testing-governance-closure
 branch: conductor/istara-public-ci-testing-20260818
 cf: { spec: CF-SPEC-57, tasks: [CF-761, CF-762, CF-763, CF-764, CF-765] }
 phase: "S2–S4 — close final feature-obligation and change-governance gaps"
-stage: S2-execute
-status: in-progress
-blocked_on: "Conductor implementation/review convergence; no ship actions authorized"
-last: { agent: gpt-5.3-codex-spark, at: 2026-08-18T11:48:00Z, ledger: L-1 }
-next_action: "Forward CF-761 impact findings to the remediation owner and continue with implementation tasks."
+stage: closed
+status: closed-superseded
+blocked_on: null
+last: { agent: releasing-manager, at: "2026-09-12T00:00:00Z", ledger: L-80 }
+next_action: "Closed 2026-09-12 (post-promotion closeout): superseded: governance gaps closed across promotion runs 1-3 (obligations 486->0; ledger L-1..L-80)."
 ```
 <!-- /STATUS BLOCK -->
 

@@ -6,11 +6,11 @@ item: istara-qa-governance-minimal-20260818
 branch: conductor/istara-public-ci-testing-20260818
 cf: { spec: CF-SPEC-57, tasks: [ISTARA-QA-GOV-MIN-IMPL, ISTARA-QA-GOV-MIN-REVIEW] }
 phase: "S2–S4 — minimal deterministic governance correction"
-stage: S2-execute
-status: in-progress
-blocked_on: "Bounded Conductor implementation and independent review"
-last: { agent: pi, at: 2026-08-18T12:00:00Z, ledger: L-0 }
-next_action: "Run the implementer once, then report before review."
+stage: closed
+status: closed-superseded
+blocked_on: null
+last: { agent: releasing-manager, at: "2026-09-12T00:00:00Z", ledger: L-80 }
+next_action: "Closed 2026-09-12 (post-promotion closeout): superseded: minimal governance correction merged into the public CI/testing train (CI run 34637179724)."
 ```
 <!-- /STATUS BLOCK -->
 
