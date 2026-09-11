@@ -544,11 +544,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   listPasskeys: async () => {
-    const { token } = get();
-    if (!token) throw new Error("Not authenticated");
+    // Cookie-tolerant like listAuthSessions(): after a cookie-restored reload
+    // the memory bearer is null by design — the HttpOnly session cookie (sent
+    // via credentials:include) is the primary transport, not the absence of
+    // auth. The backend falls back to the cookie when no bearer is present.
+    const bearer = get().token || getToken();
     const res = await fetch(`${API_BASE}/api/webauthn/credentials`, {
       credentials: "include",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: "Failed to list passkeys" }));
@@ -558,12 +561,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   deletePasskey: async (credentialId) => {
-    const { token } = get();
-    if (!token) throw new Error("Not authenticated");
+    // Cookie-tolerant like listAuthSessions(): see listPasskeys.
+    const bearer = get().token || getToken();
     const res = await fetch(`${API_BASE}/api/webauthn/credentials/${credentialId}`, {
       credentials: "include",
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: "Failed to delete passkey" }));

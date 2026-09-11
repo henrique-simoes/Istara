@@ -94,4 +94,42 @@ describe("auth-store bootstrap", () => {
     expect(seen[0].init?.credentials).toBe("include");
     expect((seen[0].init?.headers as Record<string, string> | undefined)?.Authorization).toBeUndefined();
   });
+
+  it("lists and deletes passkeys over the cookie transport when no bearer exists (post-reload custody)", async () => {
+    // Same custody rule as the session calls: no reload-surviving bearer means
+    // the HttpOnly session cookie must authenticate passkey management instead
+    // of the store throwing "Not authenticated" client-side.
+    const localStorage = memoryStorage();
+    vi.stubGlobal("localStorage", localStorage);
+    vi.stubGlobal("window", {
+      location: { protocol: "http:", hostname: "localhost", port: "3000" },
+      dispatchEvent: vi.fn(),
+    });
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8000");
+
+    const seen: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      seen.push({ url: String(input), init });
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { useAuthStore } = await import("./authStore");
+    expect(useAuthStore.getState().token).toBeNull();
+
+    await expect(useAuthStore.getState().listPasskeys()).resolves.toEqual([]);
+    await expect(useAuthStore.getState().deletePasskey("cred-1")).resolves.toBeUndefined();
+
+    expect(seen).toHaveLength(2);
+    for (const call of seen) {
+      expect(call.init?.credentials).toBe("include");
+      expect((call.init?.headers as Record<string, string> | undefined)?.Authorization).toBeUndefined();
+    }
+    expect(seen[0].url).toContain("/api/webauthn/credentials");
+    expect(seen[1].url).toContain("/api/webauthn/credentials/cred-1");
+    expect(seen[1].init?.method).toBe("DELETE");
+  });
 });
