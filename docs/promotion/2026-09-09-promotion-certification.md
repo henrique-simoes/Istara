@@ -1,3 +1,75 @@
+# FINAL certification — main-readiness-final-20260911 on 25e2063d (2026-09-11)
+
+Wave: `certification-final` · Spec: `CF-SPEC-30` · Task: `main-readiness-final-20260911-WAVE-certification-final-IMPL`
+Pipeline run: `main-readiness-final-20260911` · Lifecycle: `docs/build-stream/2026-09-09-testing-to-main-convergence.md` (L-78)
+
+## 0. VERDICT: READY — OWNER-GATED PROMOTION (full local matrix green on the exact final SHA; push + CI observation + protection + promotion dispatch remain owner-owned)
+
+Final SHA: `25e2063d33bc948cb6e80c93015a09e82e207b50` (short `25e2063d`), tree `e609049f32c1256d88d5905389827c4627fc2463`, branch `conductor/readiness5-20260910`, baseline `origin/main` `fa6a1a39` (strict ancestor; fast-forward mechanically possible).
+Delta since the last pushed CI SHA `15ef4835` (7 commits): `95c1fa57` pi-preflight test-harness fix (L-72) → `01def0c8` blind review PASS (L-73) → `becfca4d` retry-evidence note → `d55ba289` promotion-range lint clear 274→0 (L-74) → `fe55d464` blind review FAIL prompt-fidelity (L-75, F-LPR-1 Major + F-LPR-2/F-LPR-3 minors) → `b3011c01` prompt-byte restoration + dispatch regressions (L-76) → `25e2063d` delta re-review PASS (L-77). Diff `15ef4835..25e2063d`: 79 files, +795/−340.
+Freeze provenance: worktree at certification is byte-identical to `25e2063d` — 0 modified, 0 untracked, 0 stash; `git diff --check` clean; `git branch -r --contains HEAD` empty (never pushed — no agent push). This dossier + lifecycle + TESTING/TEST_HISTORY edits are committed AFTER the matrix run, so the certified product SHA is `25e2063d` and the push ref (G1) will be the post-certification branch tip; re-verify `git diff --stat 25e2063d..<pushed-tip>` is docs-only at push time (procedure in §5).
+This header supersedes the W5 header below (which certified `3b4b881d`); the W5 header and the 2026-09-09 dossier are preserved verbatim underneath as the historical appendix.
+
+## 1. Release matrix on 25e2063d (every row re-ran for this certification, keyless lane)
+
+| # | Criterion | Command | Result |
+|---|---|---|---|
+| 1 | Governance battery (8) | `check_integrity.py`, `check_ci_governance.py`, `check_test_harness.py`, `check_required_checks.py`, `check_workflow_contracts.py`, `check_qa_capabilities.py`, `security_release_readiness.py`, `public_repo_quality_audit.py --check` | 8/8 PASS (required-checks: 17 contexts incl `desktop-check`, release-gate lockstep) |
+| 2 | Feature obligations (base `origin/main`) | `check_feature_obligations.py --base origin/main --head HEAD` | PASS (`pass: true`, 0 unknown) |
+| 3 | Change obligations (base `origin/main`) | `check_change_obligations.py --base origin/main --head HEAD` | PASS |
+| 4 | Production rehearsal | `production_rehearsal.py --json` (py3.12 venv) | `passed: true` |
+| 5 | Security benchmark plain | `security_benchmark.py --fail-on-threshold` | PASS — 28/28 controls, score 100.0, 0 triggered |
+| 6 | Security benchmark changed-paths | same, `--changed-paths-file` with all 1577 `origin/main..HEAD` paths | PASS — 28/28, 100.0, 372 paths triggered |
+| 7 | Full backend suite (exact CI command) | `cd backend && pytest ../tests/ -q --tb=short -m "not live_llm"`, keyless (`env -u DATA_ENCRYPTION_KEY`), py3.12.13, both pi surfaces `npm ci`'d | **2377 passed / 6 skipped / 1 deselected / 0 failed** (262.53s; collect 2384, 1 deselected → 2383 run = 2377+6) |
+| 8 | Backend mutation gate | `scripts/run_backend_mutation.py` | exit 0 — 252 killed / 97 survived / 0 no-cov over 349 mutants (`compute_capacity.py`; gate is exit-0, posture unchanged; `mutants/` cleaned by the gate itself) |
+| 9 | Frontend types | `cd frontend && npx tsc --noEmit` (node 24.20.0) | clean (exit 0) |
+| 10 | Frontend lint | `npm run lint` (node 24.20.0) | 0 errors / 41 advisory warnings (M-24 posture) |
+| 11 | Frontend unit | `npm run test:unit` (node 24.20.0) | 23 files / 121 tests passed |
+| 12 | Frontend build | `npm run build` (node 24.20.0) | green — compiled successfully, static pages generated, 0 errors (build side-effect `frontend/next-env.d.ts` reverted; tree clean) |
+| 13 | Frontend mutation | `npm run test:mutation` (node 24.20.0) | **90.77** (118 killed / 12 survived / 0 no-cov / 0 errors) ≥ break 75 |
+| 14 | Backend-dir ruff (pin 0.16.6) | `ruff check . --select F821,F811,F822` + `ruff format --check .` (working-directory backend) | All checks passed; 371 files formatted |
+| 15 | Promotion-range lint gate (base `origin/main`) | `scripts/check_ruff_changed.py --base origin/main --head HEAD` (ruff 0.16.6) | exit 0 — All checks passed (274-error debt cleared by `d55ba289`; F-CI-R1-3 advisory closed by this result) |
+| 16 | QA compose renders | `docker compose -f docker-compose.qa.yml --profile <p> config --quiet` for contract/synthetic/audit/ui | 4× exit 0 (parse-only, M-05 honest) |
+| 17 | Lifecycle verifiers | `verify_build_stream_status.py` + `verify_wave_manifest.py` + `check_integrity.py` | OK (status/roadmap agree; wave manifest canonical; local conductor-mirror warning is worktree-expected — manifest lives under ROOT) |
+| 18 | Scenario/registry checks | `tests/simulation` `npm run test:static`; `node --check` 82/83/84 | 41/41 pass (registry bijection + fail-closed selection incl.); 82/83/84 syntax OK |
+| 19 | Real-user static + relay | `tests/real_user_benchmark` `npm run check`; `cd relay && npm test` | 107 pass / 0 fail; relay 18 pass / 0 fail |
+| 20 | Pi diff-proof gate | `scripts/pi_bump_diff_proof.py verify` | PASSED (pins 0.85.1 both surfaces) |
+| 21 | Branch-protection package | `testing/required-checks.json` vs `docs/promotion/branch-protection/gh-api-body.json` | 17 == 17 verbatim incl `desktop-check`; `check_required_checks.py` lockstep PASS |
+| 22 | CF gate after --new-only | pinned binary from ROOT (registered project; worktree is not) | status `pass`, `failures: []`, `issues: []` (scope residual R-2 below) |
+| 23 | Last pushed CI run (RECORDED, not claimed) | GH run `34618262996` on `15ef4835` (2026-09-11T15:48Z, push) | CONCLUSION: **failure** — 16/17 green (incl `ui-journeys`, `desktop-check`, all frontend, mutation, governance); `backend-test` 3 failed / 2371 passed — exactly the pi-worker trio whose fix (`95c1fa57`, L-72) postdates the pushed SHA and is verified fixed at L-73 on py3.12. **No CI run exists for `25e2063d`; exact-SHA CI is owner-push-owned (G1).** |
+
+Ruff scope note (unchanged posture): rows 14–15 are the CI-authoritative scopes. No ROOT-scope lint debt is claimed or fixed here.
+
+## 2. Browser lane W2 (carried from the 3b4b881d certification below — NOT re-executed on 25e2063d)
+
+W2 evidence (16 scenarios + 3 evaluators: 15 PASS + 1 SKIP, 248 checks; 82 15/15, 83 17/17, 84 13/13) was executed against the `3b4b881d`-era tree. Since then the product changed only by: `95c1fa57` (test-harness only), `d55ba289` (lint-only; two prompt-byte regressions caught at L-75 and restored byte-identical at L-76 with AST proof + dispatch regressions), `cb533538`/`bf5178a8`/`d3dae350` (Slack name restore, CI dual-install, mcp bound — all pre-`15ef4835`, covered by pushed CI's green `ui-journeys`). No behavioral product change is unaccounted: prompt bytes are AST-verified identical to pre-lint, the Slack name is SDK-parity, and the full suite + frontend unit/build are green on `25e2063d`. Re-running the live lane on the final SHA is owner-optional; the lane is recorded as carried, not fresh. No Petals/push.
+
+## 3. Live ensemble W3 + long-horizon W4 (carried, same basis as §2)
+
+W3 (3-model admission/reconciliation/adversarial/debate + 5 probes) and W4 (151 turns/engine, telemetry, DAGs, docs + UI slice) ran against the `3b4b881d`-era tree with blind PASS verdicts (L-58, L-60) and minors as follow-ups. Same carry basis as §2: no unaccounted behavioral change since; live re-runs owner-optional. No Petals/push.
+
+## 4. Closure map at 25e2063d
+
+M-01 through M-17 closed (carried); M-18 decided (desktop-check required, green in pushed CI and in the 17-package); M-19 through M-22 closed (carried); M-23 owner (G5 below); M-24 posture kept (41 eslint warnings advisory). F-CI-R1-1/R1-2/R2-1 closed with delta-PASS verdicts (L-67/68/69/71); F-CI-R1-3 advisory closed by row 15. F-LPR-1/F-LPR-2 closed with delta-PASS (L-77); F-LPR-3 advisory (suite-count environment note) rides. F-PTG-1/F-PTG-2 advisory ride. Riding minors from earlier waves (F-R5-W2-R1-2, F-R5-W3-R1-2/R1-3/R1-4, F-R5-W4-R1-1/R1-2, registerPasskey residual) remain follow-ups, non-blocking. B1 (browser lane carried, §2), B2 owner (row 23), B3 owner (G3 below), B4/B5 closed (carried), B6 this dossier.
+
+## 5. Owner checklist (owner-only; no agent — ordered, with exact commands)
+
+- [ ] G1 push + CI: from a clean checkout of branch `conductor/readiness5-20260910`, verify `git rev-parse 25e2063d` resolves, `git status --short` is empty, and `git diff --stat 25e2063d..<tip>` is docs-only (this dossier, lifecycle, TESTING.md, TEST_HISTORY.md). Push the branch to `origin/testing`. Record `gh run list --commit <pushed-tip SHA>` id + per-job result — expect 17/17 green (row 23's 3 backend-test failures must NOT recur: the fix `95c1fa57` ships in the pushed ref).
+- [ ] G2 info: W2–W4 QA evidence (§2–§3 + appendix) suffices; QA-host state disposable.
+- [ ] G3 protection: `testing-promotion` environment does NOT exist yet (API 2026-09-11 lists only `github-pages`) — create it first with required reviewers. Then PUT `docs/promotion/branch-protection/gh-api-body.json` (verified 17/17 == manifest, row 21) per `docs/promotion/branch-protection/README.md`, attach the API read-back + a negative mergeability test.
+- [ ] G4 dispatch: `gh workflow run promote-testing.yml --ref testing -f source_sha=<pushed-tip SHA after G1 green> -f base_branch=main` (anti-replay requires the SHA to equal current `testing` HEAD; the workflow itself requires a green CI run on that exact SHA, so G1-green precedes dispatch). Verify the created promotion PR, then human review + merge per M-23 (`--no-ff` recommended so the certification record ships with the code).
+- [ ] G5 merge + post-merge main CI observation; record results in `testing/TEST_HISTORY.md`.
+
+## 6. Residuals (non-blocking, honest)
+
+R-1 exact-SHA GitHub CI unobserved (row 23; push owner-gated). R-2 CF `gate after --new-only` ran on the registered ROOT tree (`fd1c3934`), not the worktree SHA — pass/0-new is ROOT-scoped; worktree architecture risk is bounded by rows 1–3 + 21 (no manifest/recipe/contract change in the certified delta). R-3 live lanes carried, not fresh (§2–§3). R-4 full-tree python import-cycle baseline is pre-existing (gate new-only 0 new). R-5 backend mutation 97 survived / frontend 12 survived (both within gate posture: exit-0 / break-75). R-6 local lane ran keyless on py3.12.13 macOS; CI (Ubuntu py3.12) is authoritative. R-7 `verify_wave_manifest.py` local-mirror warning is worktree-expected (manifest canonical under ROOT).
+
+Certified by main-readiness-final-20260911-implementer (meta/muse-spark-1.3-contributor, xhigh). Do NOT push — the manager pushes after verifying SHA (G1).
+
+---
+Historical appendix: W5 header on 3b4b881d + 2026-09-09 dossier preserved verbatim below (superseded verdicts remain as audit trail).
+
+---
 # W5 certification header — readiness5-20260910 on 3b4b881d (2026-09-11)
 
 Wave: `certification` · Spec: `CF-SPEC-30` · Task: `testing-to-main-20260910-WAVE-certification-IMPL`

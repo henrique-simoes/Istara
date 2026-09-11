@@ -6,6 +6,22 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-11 — FINAL certification on 25e2063d (main-readiness-final certification-final)
+
+Scope: full release-matrix re-run on the frozen final SHA `25e2063d33bc948cb6e80c93015a09e82e207b50` (branch `conductor/readiness5-20260910`, baseline `origin/main` `fa6a1a39` strict ancestor; 7 commits past the last pushed CI SHA `15ef4835`: pi-preflight harness fix, promotion-range lint clear 274→0, prompt-byte restoration + dispatch regressions, all blind/delta reviewed). Dossier rewritten at `docs/promotion/2026-09-09-promotion-certification.md` (FINAL header bound to `25e2063d`; W5 header + 2026-09-09 dossier kept as appendix); topology counts refreshed in `TESTING.md` (this checkpoint). Exact CI command from `backend/`, keyless lane, py3.12.13, both pi surfaces installed. No push/PR/merge/settings — owner checklist (push → CI observation → `testing-promotion` env creation → protection PUT → `promote-testing.yml` dispatch with exact SHA → PR verification) is in dossier §5.
+
+| Area | Result |
+| --- | --- |
+| Governance | `check_integrity`, `check_ci_governance`, `check_test_harness`, `check_required_checks` (17 contexts incl `desktop-check`), `check_workflow_contracts`, `check_qa_capabilities`, `security_release_readiness`, `public_repo_quality_audit --check`, `check_feature_obligations --base origin/main` (`pass: true`, 0 unknown), `check_change_obligations --base origin/main` PASS, `production_rehearsal --json` `passed: true`; `git diff --check` clean |
+| Security | `security_benchmark --fail-on-threshold` PASS 28/28 100.0 triggered []; changed-paths (all 1577 `origin/main..HEAD` paths) PASS 28/28 100.0, 372 triggered |
+| Backend | Full suite **2377 passed / 6 skipped / 1 deselected / 0 failed** (262.53 s; collect 2384, 1 deselected → 2383 run); mutmut exit 0 (252 killed / 97 survived / 0 no-cov, 349 mutants); backend-dir `ruff==0.16.6` F821/F811/F822 clean + `format --check` 371 clean; promotion-range `check_ruff_changed --base origin/main` exit 0 (F-CI-R1-3 advisory closed) |
+| Frontend (node 24.20.0) | `tsc` clean; `eslint` 0 errors / 41 warnings; unit 23 files / 121 tests; `next build` green (generated `next-env.d.ts` diff reverted); Stryker **90.77** (118 killed / 12 survived / 0 no-cov) ≥ break 75 |
+| Contracts | Compose renders contract/synthetic/audit/ui 4× exit 0; lifecycle verifiers OK (worktree-expected conductor-mirror warning only); simulation `test:static` 41/41 + 82/83/84 `node --check`; real-user `check` 107/0; relay 18/0; `pi_bump_diff_proof verify` PASSED; protection package 17 == manifest 17; CF `gate after --new-only` (ROOT scope) status pass, 0 failures/issues |
+| Last pushed CI (RECORDED) | GH run `34618262996` on `15ef4835`: conclusion **failure** — 16/17 green incl `ui-journeys` + `desktop-check`; `backend-test` 3 failed / 2371 passed (pi-worker trio fixed post-push by `95c1fa57`, verified L-73). No CI run for `25e2063d` — owner-push-owned |
+| Live lanes | W2/W3/W4 carried from the `3b4b881d` certification (NOT re-executed): delta since is test-harness + lint-only (prompt bytes AST-identical) + pre-`15ef4835` fixes covered by pushed green `ui-journeys`; re-runs owner-optional |
+
+Residuals: R-1 exact-SHA CI unobserved; R-2 CF gate ROOT-scoped (`fd1c3934`); R-3 live lanes carried; R-4 pre-existing import-cycle baseline (0 new); R-5 mutation survived within posture (97 be / 12 fe); R-6 keyless macOS lane, CI authoritative; R-7 wave-manifest mirror warning worktree-expected.
+
 ## 2026-09-11 — CI backend-test pi diff-proof environment (ci-green F-CI-R1-2)
 
 Scope: `.github/workflows/ci.yml` `backend-test` now installs both bundled pi
