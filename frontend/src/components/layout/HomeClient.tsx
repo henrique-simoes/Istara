@@ -106,8 +106,13 @@ export default function HomeClient() {
       return true;
     }
     if (!token) {
-      setAuthenticated(false);
-      return false;
+      // No bearer in memory or legacy storage — but the HttpOnly session
+      // cookie may still authenticate (memory-only custody deliberately
+      // leaves no reload-surviving token). Probe it before dropping to the
+      // login screen, or reload persistence via cookie transport is dead.
+      const restored = await authStore.fetchMe();
+      setAuthenticated(restored);
+      return restored;
     }
 
     const valid = await authStore.fetchMe();
@@ -144,9 +149,15 @@ export default function HomeClient() {
             }
             return;
           }
+          // Team-mode lane without a bearer: the HttpOnly session cookie
+          // may still authenticate after a reload (memory-only custody).
+          // Probe it before surrendering to the login screen.
+          const restored = await authStore.fetchMe();
           if (!cancelled) {
-            setAuthenticated(false);
-            setTourReady(false);
+            setAuthenticated(restored);
+            if (!restored) {
+              setTourReady(false);
+            }
           }
           return;
         }

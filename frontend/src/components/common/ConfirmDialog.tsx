@@ -36,7 +36,12 @@ export default function ConfirmDialog({
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <FocusTrap>
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-sm w-full p-6">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-sm w-full p-6"
+        >
           <div className="flex items-start gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
               <AlertTriangle size={20} className="text-red-600" />

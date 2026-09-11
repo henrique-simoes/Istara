@@ -1,5 +1,22 @@
 {
-  "purpose": "Additional PROVEN journeys added to the `full` scope (pushes, PRs to main, weekly schedule, dispatch) on top of testing/ui-journeys.smoke.json. Empty at W4 by design: a journey is listed here only after it has run green on the container QA lane with dated evidence (remediation plan B1: an unproven scenario may never be listed as proven).",
+  "purpose": "Additional PROVEN journeys added to the `full` scope (pushes, PRs to main, weekly schedule, dispatch) on top of testing/ui-journeys.smoke.json. A journey is listed here only after it has run green on the container QA lane with dated evidence (remediation plan B1: an unproven scenario may never be listed as proven).",
   "honesty_contract": "The CI resolve step (tests/simulation/lib/journey-selection.mjs) enforces a registry bijection: every registered scenario is exactly one of selected (proven) or an explicit not_runnable ledger entry with a specific reason. Unknown ids, duplicates, an empty selection, and non-importable scenarios fail the lane before execution. Scenarios in the registry's releaseObligationIds (82/83/84) are named individually as pending credential-free release obligations — never hidden behind a generic 'not yet proven' reason. Registered scenarios absent from smoke+extra are recorded in the uploaded ui-journeys artifact on every full run — never silently skipped, never counted as passes (D.8).",
-  "scenarios": []
+  "proven_runs": [
+    {
+      "date": "2026-09-11",
+      "lane": "container qa-ui-loopback on Mac Studio (readiness5-20260910 deployment, ISTARA_FIXED_LLM_TEST_MODEL=istara-qa-contract-chat:latest, QA_TEAM_MODE=true)",
+      "invocation": "node run.mjs --scenarios <16 ids> (single shared session) + evaluators (axe WCAG 2.1 A: 0 violations; Nielsen avg 4.3/5; perf 12/12)",
+      "result": "248 checks passed, 0 failed; 05-chat-interaction honest skip (no chat-ready model on the contract stub lane)"
+    }
+  ],
+  "scenarios": [
+    "10-settings-models",
+    "12-chat-sessions",
+    "26-model-session-persistence",
+    "70-research-integrity",
+    "79-engine-selector",
+    "82-quality-dashboard",
+    "83-chat-model-controls",
+    "84-token-session-lifecycle"
+  ]
 }

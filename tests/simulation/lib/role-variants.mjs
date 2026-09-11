@@ -23,6 +23,8 @@
  *     accounts records an honest FAIL naming the missing capability.
  */
 
+import { join } from "path";
+
 const ROLE_VIEWPORT = { width: 1280, height: 800 };
 const SHELL_WAIT_TIMEOUT = 20000;
 
@@ -155,26 +157,44 @@ export async function driveRoleCell(ctx, { ledger, role, provisioning, drive, sh
   });
   context.setDefaultTimeout(15000);
   const page = await context.newPage();
+  // Evidence integrity: capture the ROLE page itself. ctx.screenshot() closes
+  // over the runner's admin page, so using it here would misattribute admin
+  // screenshots as role evidence (W2 finding F-W2-2). Write to the same run
+  // screenshots dir via ctx.runDir instead.
   const shot = async (suffix) => {
-    if (typeof shotName === "string" && typeof ctx.screenshot === "function") {
-      try {
-        await ctx.screenshot(`${shotName}-${suffix}`);
-      } catch {}
-    }
+    if (typeof shotName !== "string") return;
+    try {
+      await page.screenshot({ path: join(ctx.runDir, "screenshots", `${shotName}-${suffix}.png`) });
+    } catch {}
   };
 
   try {
-    // Lane setup (same class as the runner's admin init): dismiss the tour and
-    // preselect the shared simulation project before the visitor arrives.
+    // Lane setup (same class as the runner's admin init): dismiss the tour
+    // with the keys the tour store actually reads (istara_tour_state +
+    // per-user istara_tour_completed_<id> — the bare legacy flags alone do
+    // not suppress it, W2 round-2 evidence) and preselect the shared
+    // simulation project before the visitor arrives.
+    const setupUserId =
+      provisioning.ok && role !== "stranger" && provisioning.accounts[role]
+        ? provisioning.accounts[role].id
+        : "";
     await context.addInitScript(
-      ({ projectId }) => {
+      ({ projectId, userId }) => {
         try {
           localStorage.setItem("istara_tour_completed", "true");
           localStorage.setItem("istara_tour_completed_admin", "true");
+          localStorage.setItem(
+            "istara_tour_state",
+            JSON.stringify({ active: false, isOnboarding: false, step: 16, hasExistingProjects: true }),
+          );
           if (projectId) localStorage.setItem("istara-active-project", projectId);
+          if (userId) {
+            localStorage.setItem("istara_auth_user_id", userId);
+            localStorage.setItem(`istara_tour_completed_${userId}`, "true");
+          }
         } catch {}
       },
-      { projectId: ctx.projectId || "" },
+      { projectId: ctx.projectId || "", userId: setupUserId },
     );
 
     await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });

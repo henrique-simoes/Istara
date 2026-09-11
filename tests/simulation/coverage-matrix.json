@@ -19,9 +19,9 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-10",
-   "live_verdict": "pass (batch3 live 2026-09-08); 83 pending first container execution",
-   "live_verified_at": "2026-09-08",
-   "notes": "42 10/10 + 70mid 11/11 + 71 7/7; 83 rewritten for B4 (deterministic filter/empty/error oracles + role cells) and not yet executed — first run owned by the container ui-journeys lane"
+   "live_verdict": "pass (container qa-ui-loopback lane 2026-09-11): 83 17/17 + 12 8/8 + 79 10/10; 05 honest skip (no chat-ready model on the contract stub lane)",
+   "live_verified_at": "2026-09-11",
+   "notes": "42 10/10 + 70mid 11/11 + 71 7/7; 83 rewritten for B4 (deterministic filter/empty/error oracles + role cells); first container execution 2026-09-11 green after W2 trigger-disambiguation, catalog-error-precedence, chat-nav and shared-session-order fixes"
   },
   "findings": {
    "scenarios": [
@@ -237,9 +237,9 @@
    ],
    "drive": "mixed",
    "newest_scenario_change": "2026-09-10",
-   "live_verdict": "pass (batch3 live 2026-09-08); 84 pending first container execution",
-   "live_verified_at": "2026-09-08",
-   "notes": "25 14/14 + 26 17/17 + 36 8/8 + 43 13/13 + 64 19/19 + 68 12/12 + 74 8/8; 84 extended for B5/W1.4 (admin/researcher/viewer/stranger custody cells) and not yet executed — first run owned by the container ui-journeys lane"
+   "live_verdict": "pass (container qa-ui-loopback lane 2026-09-11): 10 27/27 + 84 13/13 + 26 17/17",
+   "live_verified_at": "2026-09-11",
+   "notes": "25 14/14 + 26 17/17 + 36 8/8 + 43 13/13 + 64 19/19 + 68 12/12 + 74 8/8; 84 extended for B5/W1.4 (admin/researcher/viewer/stranger custody cells); first container execution 2026-09-11 green after W2 cookie-restore + session-list + confirm-dialog fixes; 10 green after W2 disabled-option guard"
   },
   "admin": {
    "scenarios": [
@@ -347,9 +347,9 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-10",
-   "live_verdict": "pass (batch3 live 2026-09-08); 82 pending first container execution",
-   "live_verified_at": "2026-09-08",
-   "notes": "70res 18/18; 82 extended for B5/W1.3 (loading→data, empty-safe, real error strings, role cells) and not yet executed — first run owned by the container ui-journeys lane"
+   "live_verdict": "pass (container qa-ui-loopback lane 2026-09-11): 82 15/15 + 70 18/18",
+   "live_verified_at": "2026-09-11",
+   "notes": "70res 18/18; 82 extended for B5/W1.3 (loading→data, empty-safe, real error strings, role cells); first container execution 2026-09-11 green after W2 role-timing fix"
   },
   "project-settings": {
    "scenarios": [

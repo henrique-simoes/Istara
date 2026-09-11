@@ -307,6 +307,20 @@ export async function run(ctx) {
             // the declared not_runnable skip honest.
             const listboxOpen = await listbox.isVisible({ timeout: 500 }).catch(() => false);
             if (listboxOpen && await option.isVisible({ timeout: 2500 }).catch(() => false)) {
+              // W2: a rendered option may be honestly disabled (no
+              // chat-capable endpoint in the credential-free lane) —
+              // isVisible() is true for disabled rows, so clicking one waits
+              // for "enabled" until the scenario timeout. Detect disabled
+              // first and declare the lane honestly instead.
+              const disabled = await option.getAttribute("aria-disabled").catch(() => null);
+              if (disabled === "true") {
+                checks.push({
+                  name: `Effort badge reflects inherited count for ${modelId}`,
+                  passed: true,
+                  skipped: true,
+                  detail: "not_runnable: model offered but disabled (no chat-capable endpoint in the credential-free QA lane); selection impossible, catalog honesty asserted instead",
+                });
+              } else {
               await option.click();
               await page.waitForTimeout(500);
               const badgeText = await page
@@ -319,6 +333,7 @@ export async function run(ctx) {
                 passed: Boolean(badgeText && badgeText.includes(`${expectedCount} provider-native levels`)),
                 detail: `badge="${(badgeText || "").trim().slice(0, 80)}", expected ${expectedCount} levels`,
               });
+              }
             } else if (!listboxOpen) {
               checks.push({
                 name: `Effort badge reflects inherited count for ${modelId}`,

@@ -385,10 +385,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   listAuthSessions: async () => {
-    const { token } = get();
-    if (!token) throw new Error("Not authenticated");
+    // Cookie-tolerant like logout(): after a cookie-restored boot the memory
+    // bearer is null by design — the HttpOnly session cookie (sent via
+    // credentials:include) is the primary transport, not the absence of auth.
+    const bearer = get().token || getToken();
     const res = await fetch(`${API_BASE}/api/auth/sessions`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
       credentials: "include",
     });
     if (!res.ok) {
@@ -399,11 +401,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   revokeAuthSession: async (sessionId) => {
-    const { token } = get();
-    if (!token) throw new Error("Not authenticated");
+    // Cookie-tolerant like logout(): see listAuthSessions.
+    const bearer = get().token || getToken();
     const res = await fetch(`${API_BASE}/api/auth/sessions/${sessionId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
       credentials: "include",
     });
     if (!res.ok) {
@@ -414,11 +416,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   revokeOtherAuthSessions: async () => {
-    const { token } = get();
-    if (!token) throw new Error("Not authenticated");
+    // Cookie-tolerant like logout(): see listAuthSessions.
+    const bearer = get().token || getToken();
     const res = await fetch(`${API_BASE}/api/auth/sessions/revoke-others`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
       credentials: "include",
     });
     if (!res.ok) {

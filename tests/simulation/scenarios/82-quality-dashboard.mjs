@@ -206,16 +206,23 @@ async function driveAuthenticatedDashboardCell(rolePage) {
       .evaluate(() => window.dispatchEvent(new CustomEvent("istara:navigate", { detail: "quality" })))
       .catch(() => {});
   }
-  await rolePage.waitForTimeout(1500);
-
-  const heading = await rolePage
-    .locator("text=Quality Dashboard")
-    .first()
-    .isVisible({ timeout: 10000 })
-    .catch(() => false);
-  const sections =
-    (await rolePage.locator("text=Methodology Rigor").first().isVisible().catch(() => false)) ||
-    (await rolePage.locator("text=Loading quality metrics...").first().isVisible().catch(() => false));
+  // Fresh role contexts resolve dashboard data slower than the runner's warm
+  // admin session — poll for the heading + sections (up to ~20s) instead of
+  // asserting on a fixed sleep, or slow lanes fail spuriously (W2).
+  const deadline = Date.now() + 20000;
+  let heading = false;
+  let sections = false;
+  while (Date.now() < deadline && !(heading && sections)) {
+    heading = await rolePage
+      .locator("text=Quality Dashboard")
+      .first()
+      .isVisible()
+      .catch(() => false);
+    sections =
+      (await rolePage.locator("text=Methodology Rigor").first().isVisible().catch(() => false)) ||
+      (await rolePage.locator("text=Loading quality metrics...").first().isVisible().catch(() => false));
+    if (!(heading && sections)) await rolePage.waitForTimeout(750);
+  }
   return {
     ok: heading && sections,
     detail:

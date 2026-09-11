@@ -77,6 +77,21 @@ async function driveAdminCustodyJourney(ctx, checks, ledger) {
     colorScheme: "dark",
   });
   freshContext.setDefaultTimeout(15000);
+  // Lane setup (same class as the runner's admin init and role-variants):
+  // dismiss the first-run tour with the keys the tour store actually reads
+  // (istara_tour_state inactive — bare legacy flags alone do not suppress
+  // it, W2 round-2 evidence) so its modal cannot overlay the Settings
+  // surface the sign-out step drives. Custody assertions are unaffected.
+  await freshContext.addInitScript(() => {
+    try {
+      localStorage.setItem("istara_tour_completed", "true");
+      localStorage.setItem("istara_tour_completed_admin", "true");
+      localStorage.setItem(
+        "istara_tour_state",
+        JSON.stringify({ active: false, isOnboarding: false, step: 16, hasExistingProjects: true }),
+      );
+    } catch {}
+  });
   const page = await freshContext.newPage();
 
   const shot = async (name) => {
@@ -105,17 +120,36 @@ async function driveAdminCustodyJourney(ctx, checks, ledger) {
 
     if (logo && password) {
       // 2. Real form login with the synthetic QA admin credentials.
+      // Login rate limiting windows at 60s (role-variants precedent): on a
+      // rate-limited submit, wait once and retry before recording a failure.
       await page.locator("#login-username").fill(username);
       await page.locator("#login-password").fill(password);
       await shot("84-credentials-filled");
       await page.locator('form button[type="submit"]').first().click();
       await page.waitForTimeout(2500);
-
-      const shell = await page
+      let shell = await page
         .locator('nav[aria-label="Views"]')
         .first()
         .isVisible({ timeout: 15000 })
         .catch(() => false);
+      if (!shell) {
+        const rateLimited = await page
+          .locator("text=Too many login attempts")
+          .first()
+          .isVisible()
+          .catch(() => false);
+        if (rateLimited) {
+          await page.waitForTimeout(61000);
+          await page.locator("#login-password").fill(password);
+          await page.locator('form button[type="submit"]').first().click();
+          await page.waitForTimeout(2500);
+          shell = await page
+            .locator('nav[aria-label="Views"]')
+            .first()
+            .isVisible({ timeout: 15000 })
+            .catch(() => false);
+        }
+      }
       checks.push({
         name: "Browser: form login reaches the authenticated shell",
         passed: shell,
@@ -172,6 +206,26 @@ async function driveAdminCustodyJourney(ctx, checks, ledger) {
       if (signOutVisible) {
         await shot("84-session-manager");
         await signOut.click();
+        await page.waitForTimeout(800);
+        // Destructive-action confirm: "Sign out this device" opens a
+        // ConfirmDialog ("Sign Out This Device") whose confirm button ends
+        // the session — a single click only arms the dialog (W2 round-4).
+        // Scoped to the dialog overlay so the row button cannot satisfy it.
+        const dialogTitle = page.locator('h3:has-text("Sign Out This Device")').first();
+        const dialogVisible = await dialogTitle.isVisible({ timeout: 5000 }).catch(() => false);
+        let confirmVisible = false;
+        if (dialogVisible) {
+          const confirm = page.locator('div.fixed.inset-0 button:text-is("Sign Out")').first();
+          confirmVisible = await confirm.isVisible({ timeout: 5000 }).catch(() => false);
+          if (confirmVisible) {
+            await confirm.click();
+          }
+        }
+        checks.push({
+          name: "Browser: sign-out confirm dialog completes the action",
+          passed: confirmVisible,
+          detail: confirmVisible ? "ConfirmDialog confirmed" : "no confirm dialog appeared after sign-out click",
+        });
         await page.waitForTimeout(2500);
         const backToLogin = await page
           .locator('[aria-label="Istara logo"]')

@@ -506,6 +506,14 @@ jobs:
       # the deterministic first admin from QA_ADMIN_USERNAME/PASSWORD. The
       # lane stays credential-free and loopback-only (remediation B5).
       QA_TEAM_MODE: "true"
+      # Fixed-model pinning (run.mjs applyFixedTestModel) admits only models
+      # in the Pi catalog served by THIS stack. The contract lane serves the
+      # deterministic provider stub, whose chat model is QA_OLLAMA_MODEL
+      # (default istara-qa-contract-chat:latest in docker-compose.qa.yml) —
+      # the harness default (google/gemma-4-e4b) is not admitted there and
+      # fails the lane before the first scenario (W2 finding F-W2-1). Keep
+      # these two values in lockstep; the live profile sets its own target.
+      ISTARA_FIXED_LLM_TEST_MODEL: istara-qa-contract-chat:latest
     steps:
       - uses: actions/checkout@v4
 

@@ -63,4 +63,35 @@ describe("auth-store bootstrap", () => {
     await expect(useAuthStore.getState().listAuthSessions()).resolves.toEqual([]);
     await expect(useAuthStore.getState().listPasskeys()).resolves.toEqual([]);
   });
+
+  it("lists sessions over the cookie transport when no bearer exists (post-reload custody)", async () => {
+    // Memory-only custody leaves no reload-surviving bearer by design; the
+    // HttpOnly session cookie (credentials:include) must still authenticate
+    // the session-management calls instead of throwing client-side.
+    const localStorage = memoryStorage();
+    vi.stubGlobal("localStorage", localStorage);
+    vi.stubGlobal("window", {
+      location: { protocol: "http:", hostname: "localhost", port: "3000" },
+      dispatchEvent: vi.fn(),
+    });
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8000");
+
+    const seen: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+      seen.push({ url: String(input), init });
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { useAuthStore } = await import("./authStore");
+    expect(useAuthStore.getState().token).toBeNull();
+
+    await expect(useAuthStore.getState().listAuthSessions()).resolves.toEqual([]);
+    expect(seen).toHaveLength(1);
+    expect(seen[0].init?.credentials).toBe("include");
+    expect((seen[0].init?.headers as Record<string, string> | undefined)?.Authorization).toBeUndefined();
+  });
 });

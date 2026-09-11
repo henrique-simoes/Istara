@@ -36,8 +36,13 @@ export async function reflow375Check(page, checks, { name, onNarrow = null } = {
  * Tab through the page until the active element matches `targetSelector`
  * (scoped to the current view markup), then assert a visible focus indicator
  * (outline, box-shadow, or a Tailwind focus ring class).
+ *
+ * `targetText` optionally pins the match to a control bearing that text —
+ * for rows with several controls matching one selector (e.g. the chat
+ * composer's agent picker + model picker, scenario 83), so Tab stops on a
+ * sibling do not satisfy the check.
  */
-export async function keyboardFocusCheck(page, checks, { name, targetSelector, maxTabs = 80 } = {}) {
+export async function keyboardFocusCheck(page, checks, { name, targetSelector, targetText = null, maxTabs = 80 } = {}) {
   try {
     await page.keyboard.press("Escape").catch(() => {});
     let reached = false;
@@ -45,10 +50,17 @@ export async function keyboardFocusCheck(page, checks, { name, targetSelector, m
     for (let i = 0; i < maxTabs && !reached; i += 1) {
       await page.keyboard.press("Tab");
       await page.waitForTimeout(60);
-      reached = await page.evaluate((sel) => {
-        const el = document.activeElement;
-        return !!el && (el.matches(sel) || !!el.closest(sel));
-      }, targetSelector);
+      reached = await page.evaluate(
+        ({ sel, text }) => {
+          const el = document.activeElement;
+          if (!el || !el.matches(sel)) return false;
+          if (typeof text === "string" && text.length > 0) {
+            return (el.innerText || el.textContent || "").includes(text);
+          }
+          return !!el.closest(sel);
+        },
+        { sel: targetSelector, text: targetText },
+      );
     }
     if (reached) {
       focusVisible = await page.evaluate(() => {
