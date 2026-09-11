@@ -52,7 +52,7 @@ class _HttpxSlackClient:
 
     Avoids runtime failures when aiohttp or slack-bolt are not installed
     in the execution environment while retaining full compatibility with
-    auth_test, chat posting, and file uploads.
+    auth_test, chat_postMessage, and file uploads.
     """
 
     def __init__(self, token: str, base_url: str | None = None) -> None:
@@ -78,7 +78,11 @@ class _HttpxSlackClient:
                 raise RuntimeError(data.get("error", "Slack auth.test failed"))
             return data
 
-    async def chat_post_message(self, **kwargs) -> dict:
+    # Method name intentionally mirrors slack_sdk's AsyncWebClient
+    # (chat_postMessage, not chat_post_message): _create_client() can return
+    # AsyncWebClient and SlackAdapter.send calls whichever client it gets by
+    # duck typing, so the two client classes must expose the same API names.
+    async def chat_postMessage(self, **kwargs) -> dict:  # noqa: N802 - mirrors slack_sdk API
         url = f"{self.base_url}/chat.postMessage"
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(url, headers=self._headers(), json=kwargs)
@@ -231,7 +235,7 @@ class SlackAdapter(ChannelAdapter):
             kwargs["blocks"] = blocks
 
         async def _send_text() -> None:
-            await self._client.chat_post_message(**kwargs)
+            await self._client.chat_postMessage(**kwargs)
 
         await self._breaker.call(
             lambda: retry_with_backoff(_send_text, max_retries=3, base_delay=1.0)
