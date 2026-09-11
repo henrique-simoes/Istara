@@ -9,8 +9,8 @@ stage: S4-remediate
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL, testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW, testing-to-main-20260909-WAVE-promotion-certification-IMPL, testing-to-main-20260909-WAVE-promotion-certification-REVIEW, testing-to-main-remediation-20260909-IMPL, testing-to-main-remediation-20260909-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-11T04:32:32Z, ledger: L-59 }
-next_action: "S3 blind review of the W4 long-horizon implementation (L-59); minors F-R5-W3-R1-2/R1-3/R1-4 remain conductor-routed follow-ups."
+last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-11T04:39:22Z, ledger: L-60 }
+next_action: "Conductor close-out of W4 long-horizon wave on L-60 pass; minors F-R5-W4-R1-1/R1-2 + F-R5-W3-R1-2/R1-3/R1-4 ride as follow-ups."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1603,6 +1603,14 @@ Why: Independent architectural plans are required before selecting the implement
 | **F-R5-W3-R1-4** | Minor | qa/scripts/w3_live_ensemble.py stage_c rationale | Self-accepted reconciliations claim human-readable review with no human; scratch probe only. | testing-to-main-20260910-WAVE-live-ensemble-REVIEW | open |
 
 
+### Readiness5 Wave W4 — long-horizon review findings (L-60)
+
+| ID | Sev | Where | One-line finding | CF task | Status |
+|---|---|---|---|---|---|
+| **F-R5-W4-R1-1** | Minor | qa/scripts/w4_aggregate_telemetry.py DB handling | Default invocation without --db crashes (`Path("")` → sqlite OperationalError) instead of graceful gap; content-free mechanism itself holds. | testing-to-main-20260910-WAVE-long-horizon-telemetry-REVIEW | open |
+| **F-R5-W4-R1-2** | Minor | docs audit G3 + w4 summary telemetry_audit | `opentelemetry-api in backend/requirements.txt` clause stale (50-line file, no otel entry); no-exporter gap itself holds. | testing-to-main-20260910-WAVE-long-horizon-telemetry-REVIEW | open |
+
+
 ## Ledger
 
 ### L-1 | 2026-09-09T00:00:00-03:00 | S1-plan | codex | planner | Phase 0
@@ -2000,3 +2008,9 @@ Did: Executed Wave W4 per docs/build-stream/plans/readiness5-20260910-plan-a.md 
 Result: Wave W4 acceptance met — reliability parity (pi median 18.7 s, $0.31 metered, 30 calls/9 tools; legacy median 21.3 s, unmetered, 43 calls/13 tools incl. codebook/survey/report-once; stops 150+1 length vs 151 stop; only non-success spans are typed `retrieval_fallback` degradations). DAGs hold only the 500 survey-seeded provisional nuggets per engine — the free-run chats coherently but does not self-elevate evidence (disclosed, not claimed). No winner declared; bundle verdict untouched.
 Verified: run-both.json sha256 `618e4c8e…5d4e`; `vitest modelCatalog` 27/27 + `tsc` clean + `eslint` clean; scenario static-check 122 files; `git diff --check` clean; `security_benchmark` 28/28 100.0; pinned-binary `gate after --new-only` → pass, 0 new issues (full-tree 420 pre-existing). Screenshots inspected (light/dark/375px reflow, focus ring, provisional badges, dated rows, provenance links). CF command (4 rows) + self_report recorded on the IMPL task.
 Next: S3 blind review of this W4 implementation (reviewer role); reviewer owns delta scope per findings above. W4 scratch containers/data remain on the QA host outside the repo for inspection. No push/PR/merge by this pipeline.
+
+### L-60 | 2026-09-11T04:39:22Z | S3-review | meta/muse-spark-1.3-contributor | reviewer | readiness5 Wave W4 — blind review PASS with 2 minors <!-- bsc-ledger:testing-to-main-20260910-WAVE-long-horizon-telemetry-REVIEW -->
+Did: Blind two-phase review of W4 IMPL (L-59). Phase 1 froze 9 measurements before opening the work order body, ledger L-59, or IMPL evidence; Phase 2 reconciled claim-by-claim. Verified run artifacts (`qa/runs/w4-long-horizon-20260911-zai-glm/run-both.json` 151 turns/engine, `w4-telemetry-aggregate-1c4a46416286.json`, MANIFEST, 3 screenshots), telemetry content-free + attributed + CareNav-only + no-Petals, docs/UI numbers vs artifacts, and gates. No product code touched by this review.
+Result: **pass** — no Blocker/Major. Two minors open with no fix tasks (conductor-routed follow-ups): F-R5-W4-R1-1 (aggregator crashes without --db, `Path("")` -> sqlite OperationalError instead of graceful gap) and F-R5-W4-R1-2 (G3 `opentelemetry-api in backend/requirements.txt` clause stale — 50-line file has no otel entry; no-exporter gap itself holds). Live re-execution + DB-original hash proof stay declared-unverified (QA host outside repo). testing-to-main-20260910-WAVE-long-horizon-telemetry-REVIEW
+Verified: `npm --prefix frontend run test:unit -- src/lib/modelCatalog.test.ts` → 27/27 pass; `eslint modelCatalog` clean; `py_compile aggregator` OK + poisoned-secret run leaks nothing (sha12+counts only); `sha256 run-both` 618e4c8e..5d4e matches manifest, 151/engine 302/302 success 32/32 steering, tool counts 30/43 reproduce, medians 18.724→18.7s / 21.28→21.3s match catalog; `node --check scenario79` OK; screenshots light-1280/dark-1280/light-375 show dated neutral rows + provisional badges + provenance; `gate --new-only` → 0 new issues (full 420 pre-existing python_import_cycles); repo-wide `grep opentelemetry` confirms F-R5-W4-R1-2. CF command (5 rows) + self_report + review_verdict pass with measurements[]/environment/could_not_verify recorded on the REVIEW task.
+Next: conductor close-out of the long-horizon-telemetry wave on this pass verdict; minors F-R5-W4-R1-1/R1-2 and W3 minors F-R5-W3-R1-2/R1-3/R1-4 ride as follow-ups. No push/PR/merge by this pipeline.
