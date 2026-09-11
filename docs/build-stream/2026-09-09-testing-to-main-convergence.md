@@ -5,12 +5,12 @@
 item: testing-to-main-convergence
 branch: testing
 phase: "Phase 6 — Certify promotion readiness"
-stage: S2-execute
+stage: S3-review
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL, testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW, testing-to-main-20260909-WAVE-promotion-certification-IMPL, testing-to-main-20260909-WAVE-promotion-certification-REVIEW, testing-to-main-remediation-20260909-IMPL, testing-to-main-remediation-20260909-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-10T23:53:25Z, ledger: L-46 }
-next_action: "Readiness5 Wave W1 implemented (L-46) — dispatch S3 blind review of testing-to-main-20260910-WAVE-readiness-core-IMPL; W2 Mac Studio lane and owner gates G0-G3 remain external."
+last: { agent: deepseek/deepseek-flash, at: 2026-09-11T00:15:26Z, ledger: L-50 }
+next_action: "W1 replacement review PASS (L-50); resume the conductor for wave convergence and W2 import (owner-authorized)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1923,3 +1923,9 @@ Did: testing-to-main-20260910-code-reviewer stage on task REREV-NV2-REREV-NV1-te
 Result: task REREV-NV2-REREV-NV1-testing-to-main-20260910-WAVE-readiness-core-REVIEW finished; worktree head 28327268.
 Verified: see Compass Forge evidence rows on REREV-NV2-REREV-NV1-testing-to-main-20260910-WAVE-readiness-core-REVIEW (command + self_report + stage_attribution).
 Next: conductor advances the pipeline on evidence.
+
+### L-50 | 2026-09-11T00:15:26Z | S3-review | deepseek/deepseek-flash | reviewer | readiness5 Wave W1 — owner-authorized replacement review <!-- bsc-ledger:testing-to-main-20260910-WAVE-readiness-core-REVIEW -->
+Did: Owner-authorized replacement review of W1 (commit c5e2dfca) after the conductor's reviewer stages crashed on a monitor-extension defect and VERDICT-REPAIR-EXHAUSTED halted the run. Independently re-ran on the worktree: check_feature_obligations --base origin/main --head HEAD -> exit 0 (486 unknown -> 0); governance battery 6/6 exit 0 (integrity, required-checks, workflow-contracts, ci-governance, test-harness, qa-capabilities); frontend tsc --noEmit exit 0 and vitest 23 files / 118 tests passed; scenario-selection unit tests exit 0; verified the fail-closed guards are WIRED (run.mjs:581 calls assertNoDuplicateScenarioIds with the registry findDuplicateScenarioIds; run.mjs:605 assertRequestedScenariosMatch); verified the OAuth hot-loop fix keys the effect on primitive flow id + provider, adopts only on observable status change, and drops late resolutions after stop. Scope: 18 files, no backend changes, no new product surface.
+Result: **pass** — all five W1 outcomes verified; no Blocker/Major findings. Notes: (1) backend-suite pi_production residuals are pre-existing load-flake as disclosed (54 pristine / subset in worktree, pass in isolation); (2) desktop-check is now a required context — first CI observation lands after the owner-authorized push; (3) OAuth device-flow live interaction remains W3/W4 scope.
+Verified: commands and exits listed above; CF evidence rows on testing-to-main-20260910-WAVE-readiness-core-REVIEW.
+Next: resume the conductor (owner-authorized), converge Wave W1, import W2 (container browser lane).
