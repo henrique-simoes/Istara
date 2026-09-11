@@ -5,12 +5,12 @@
 item: testing-to-main-convergence
 branch: testing
 phase: "Phase 6 — Certify promotion readiness"
-stage: S3-review
+stage: S4-remediate
 status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL, testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW, testing-to-main-20260909-WAVE-promotion-certification-IMPL, testing-to-main-20260909-WAVE-promotion-certification-REVIEW, testing-to-main-remediation-20260909-IMPL, testing-to-main-remediation-20260909-REVIEW] }
-last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-11T17:57:36Z, ledger: L-74 }
-next_action: "S3 review of main-readiness-final-20260911-WAVE-lint-promotion-range-IMPL (274-error promotion-range ruff debt cleared, gate exit 0, backend suite 2376 passed); then conductor close-out. No push/PR/merge."
+last: { agent: gpt-5.6-sol, at: 2026-09-11T18:25:42Z, ledger: L-75 }
+next_action: "Run FIX-main-readiness-final-20260911-WAVE-lint-promotion-range-REVIEW-r1-prompts to restore exact report.mece and diary-plan prompt bytes with regressions, then delta re-review. No push/PR/merge."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1637,6 +1637,14 @@ Why: Independent architectural plans are required before selecting the implement
 | **F-PTG-2** | Nit | tests/pi_production/harness.py `_resolved_pi_preflight(**kwargs)` | The stub ignores the kwargs, so the ASGI tests no longer pin the project_id/endpoint_id/model the route passes to the preflight. The default case is still asserted in test_pi_replacement_candidate. Optional hardening. Advisory, no fix task. | main-readiness-final-20260911-WAVE-pi-tests-green-REVIEW | advisory |
 | **F-PTG-3** | Minor | IMPL evidence 2626; review evidence 2640; top-level Pi test imports | The prior `ruff clean` claims omit the invocation/config. The project-configured check reports three I001 import-order findings, while configured format is clean; the exact blocking changed-backend CI gate excludes top-level tests and passes. Evidence-command ambiguity only, not a backend-test blocker. | main-readiness-final-20260911-WAVE-pi-tests-green-REVIEW | advisory |
 
+### main-readiness-final lint-promotion-range — review findings (L-75)
+
+| ID | Sev | Where | One-line finding | CF task | Status |
+|---|---|---|---|---|---|
+| **F-LPR-1** | Major | backend/app/core/report_manager.py:559-574 | E501 reflow corrupts the live `report.mece` JSON example (`Action Title ""Sentence`, `""finding_ids`), contradicting prompt-byte equivalence and crossing the Research Spine prompt boundary. | FIX-main-readiness-final-20260911-WAVE-lint-promotion-range-REVIEW-r1-prompts | open |
+| **F-LPR-2** | Minor | backend/app/skills/discover/diary_studies.py:114-119 | W291 cleanup removes one live `skill.discover_plan` prompt byte despite the no-prompt-byte-change claim; preserve it with lint-safe source and assert dispatch content. | FIX-main-readiness-final-20260911-WAVE-lint-promotion-range-REVIEW-r1-prompts | open |
+| **F-LPR-3** | Minor | IMPL suite evidence vs reviewer Python 3.13 environment | Reviewer measured 2375 passed/6 skipped vs implementer 2376/5; the extra skip is optional Slack async-client coverage without `aiohttp`, while the total run remains green. | main-readiness-final-20260911-WAVE-lint-promotion-range-REVIEW | advisory |
+
 
 ## Ledger
 
@@ -2126,3 +2134,9 @@ Did: Cleared the full promotion-range lint debt (`check_ruff_changed.py --base o
 Result: gate exit 0 (Ruff lint "All checks passed", 298 files formatted); `ruff check . --select F821,F811,F822` clean; `ruff format --check .` 371 files clean; `git diff --check` clean; full backend suite `pytest ../tests/ -q -m "not live_llm" --ignore=../tests/simulation` → 2376 passed, 5 skipped, 1 deselected (py3.11, 275s). Behavior proof: AST string-constant multiset of working tree vs HEAD identical for all 72 touched files except 4 documented benign deltas (2x dead-code F841 removals dropping unused dict-key constants; `_item_label` docstring addition; docstring reflow; W291 trailing-space strip); f-string JoinedStr splits all outside braces. No product behavior, prompt bytes, enum serialization, query semantics, or exception contract changed. main-readiness-final-20260911-WAVE-lint-promotion-range-IMPL
 Verified: `python scripts/check_ruff_changed.py --base origin/main --head HEAD` → exit 0 (log /tmp/gate.log); `ruff check . --select F821,F811,F822` → clean; `ruff format --check .` → 371 clean; `git diff --check` → clean; backend suite → 2376 passed/5 skipped/1 deselected; AST const scan over 72 touched files → only the 4 benign deltas above. CF command evidence rows recorded on the IMPL task. Residual: `build-stream-conductor/scripts/repo_lock.py` absent in this env, so the ledger-append/commit critical section was done single-threaded without the lock; suite ran on py3.11 (CI uses 3.12); exact-SHA GitHub CI still owner-gated/unobserved. No push/PR/merge.
 Next: S3 review of main-readiness-final-20260911-WAVE-lint-promotion-range-IMPL (reviewer role); then conductor close-out. No push/PR/merge.
+
+### L-75 | 2026-09-11T18:25:42Z | S3-review | gpt-5.6-sol | reviewer | main-readiness-final lint-promotion-range — blind review FAIL <!-- bsc-ledger:main-readiness-final-20260911-WAVE-lint-promotion-range-REVIEW -->
+Did: Blind two-phase review of `d55ba289`; independently measured the promotion-range gate, a pre-change baseline, a deliberately invalid lint mutant, the full credential-free backend suite, focused semantic/research/security tests, native impact/test-impact, architecture gate status, and runtime prompt expressions. Reviewed all 72 Python-file changes plus the lifecycle-only file; changed no product code. The phase-1 sheet was frozen at `/tmp/main-readiness-final-20260911-WAVE-lint-promotion-range-REVIEW-blind-measurements.md`; a metadata query leaked one task-event result summary before freeze, and that contamination is disclosed in the verdict.
+Result: **fail**. F-LPR-1 Major: `report_manager.py` now sends a malformed JSON example in the governed `report.mece` prompt (`Action Title ""Sentence` and `""finding_ids`), while the ledger claims prompt bytes did not change. F-LPR-2 Minor: the diary-plan prompt lost a trailing-space byte under W291 cleanup. F-LPR-3 Minor: the full-suite count differs by one pass/skip because the reused Python 3.13 environment lacks optional Slack `aiohttp`; no failing test. Created `FIX-main-readiness-final-20260911-WAVE-lint-promotion-range-REVIEW-r1-prompts` with exact `pipeline_run` and `wave_id`; no push/PR/merge.
+Verified: `python scripts/check_ruff_changed.py --base origin/main --head HEAD` -> pass, 298 files formatted; detached `HEAD^` baseline -> 274 errors; deliberate F821/F841 scratch mutant -> exit 1; backend suite -> 2375 passed, 6 skipped, 1 deselected; `security_benchmark.py --fail-on-threshold` -> 28/28 pass; focused security/research tests -> 79 passed; semantic-risk suite -> 84 passed; AST runtime-prompt evaluator -> malformed MECE example plus diary byte delta; native gate after -> comparable baseline, 0 new failures/warnings (25 existing failures); CF command evidence 2679-2684, review verdict 2685, self-report 2686.
+Next: S4 remediation on `FIX-main-readiness-final-20260911-WAVE-lint-promotion-range-REVIEW-r1-prompts`, then conductor-created delta re-review; stage exit: fail verdict, Major routed with evidence.
