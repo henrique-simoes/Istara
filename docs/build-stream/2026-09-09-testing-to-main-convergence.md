@@ -10,7 +10,7 @@ status: in-progress
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL, testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW, testing-to-main-20260909-WAVE-promotion-certification-IMPL, testing-to-main-20260909-WAVE-promotion-certification-REVIEW, testing-to-main-remediation-20260909-IMPL, testing-to-main-remediation-20260909-REVIEW] }
 last: { agent: claude-opus-5, at: 2026-09-11T16:48:36Z, ledger: L-73 }
-next_action: "pi-tests-green blind S3 review L-73 PASS: 3 credential-dependent pi-worker tests independently reproduced red (pre-fix, credential-free) and green (post-fix); full CI suite green on py3.12 credential-free; fail-closed preflight still mutation-pinned. Advisory F-PTG-1 (Minor) / F-PTG-2 (Nit), no fix tasks. Next: conductor pi-tests-green wave close-out / supervisor audit; exact-SHA GitHub CI still unobserved (owner-gated push). No push/PR/merge."
+next_action: "pi-tests-green blind S3 review retry PASS: independent red/green, 475-test Pi suite, and 2375-test backend suite are green credential-free; comparable after-gate has zero new drift. Advisory F-PTG-1/F-PTG-3 (Minor) and F-PTG-2 (Nit), no fix tasks. Next: conductor pi-tests-green wave close-out / supervisor audit; exact-SHA GitHub CI still unobserved (owner-gated push). No push/PR/merge."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -1635,6 +1635,7 @@ Why: Independent architectural plans are required before selecting the implement
 |---|---|---|---|---|---|
 | **F-PTG-1** | Minor | docs/build-stream/2026-09-09-testing-to-main-convergence.md L-72 Result | L-72's residual says the suite ran on py3.11 because the host has no 3.12 toolchain. That is inaccurate: uv has cpython-3.12.13 installed. The reviewer ran the full CI suite on py3.12 credential-free and it is green, so the residual is closed. Advisory, no fix task. | main-readiness-final-20260911-WAVE-pi-tests-green-REVIEW | advisory (closed by review run) |
 | **F-PTG-2** | Nit | tests/pi_production/harness.py `_resolved_pi_preflight(**kwargs)` | The stub ignores the kwargs, so the ASGI tests no longer pin the project_id/endpoint_id/model the route passes to the preflight. The default case is still asserted in test_pi_replacement_candidate. Optional hardening. Advisory, no fix task. | main-readiness-final-20260911-WAVE-pi-tests-green-REVIEW | advisory |
+| **F-PTG-3** | Minor | IMPL evidence 2626; review evidence 2640; top-level Pi test imports | The prior `ruff clean` claims omit the invocation/config. The project-configured check reports three I001 import-order findings, while configured format is clean; the exact blocking changed-backend CI gate excludes top-level tests and passes. Evidence-command ambiguity only, not a backend-test blocker. | main-readiness-final-20260911-WAVE-pi-tests-green-REVIEW | advisory |
 
 
 ## Ledger
