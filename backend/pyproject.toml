@@ -42,7 +42,10 @@ dependencies = [
     "python-telegram-bot>=22.0",
     "slack-bolt[async]>=1.20.0",
     # MCP (Model Context Protocol)
-    "fastmcp>=2.0.0",
+    # Bounded: mcp 2.x removed mcp.client.streamable_http.streamablehttp_client,
+    # which mcp_client_manager.py and stitch_service.py import (F-CI-R2-1).
+    "fastmcp>=2.0.0,<4",
+    "mcp>=1.24,<2",
     # Voice transcription
     "openai-whisper>=20240930",
     "pydub>=0.25.1",

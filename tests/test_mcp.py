@@ -100,6 +100,25 @@ async def _seed_mcp_audit(
         await db.commit()
 
 
+def test_mcp_client_transport_import_is_not_silently_degraded():
+    """F-CI-R2-1: a fresh resolve must not silently disable the MCP client.
+
+    mcp 2.x removed ``mcp.client.streamable_http.streamablehttp_client``, so
+    an unbounded ``fastmcp>=2.0.0`` made the guarded import in
+    ``mcp_client_manager`` degrade to ``MCP_CLIENT_AVAILABLE = False`` instead
+    of failing loudly (the registry reported "client library not installed"
+    in product). The supported range is pinned in ``pyproject.toml`` and
+    ``requirements.txt``; this test stays red if that range drifts again.
+    """
+    from app.services import mcp_client_manager
+
+    assert mcp_client_manager.MCP_CLIENT_AVAILABLE is True, (
+        "MCP client import silently degraded; check the resolved fastmcp/mcp "
+        "versions against the pinned range (fastmcp>=2.0.0,<4 and mcp>=1.24,<2)"
+    )
+    assert callable(mcp_client_manager.streamablehttp_client)
+
+
 @pytest.mark.asyncio
 async def test_mcp_server_status_returns_response(auth_headers):
     """GET /api/mcp/server/status returns MCP server status."""
