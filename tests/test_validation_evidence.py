@@ -117,3 +117,45 @@ async def test_dual_run_forwards_effort_to_dispatch():
         finally:
             monkeypatch_emb.stop()
     assert captured["params"].thinking_mode == "low"
+
+
+@pytest.mark.asyncio
+async def test_debate_initial_pass_route_evidence_names_model(monkeypatch):
+    """W3 live finding: the debate opening pass recorded only the endpoint.
+
+    Every pass (initial + rounds) must carry provider-served model identity
+    so each debate position is attributable (same F-M4 rule as adversarial).
+    Uses a scripted dispatcher — no live models.
+    """
+    from app.core import agentic as agentic_module
+
+    async def fake_completion(**kwargs):
+        return TurnResult(
+            text="Opening position.",
+            status="success",
+            endpoint_id="pi-codex-luna",
+            model="gpt-5.6-luna",
+            served_model="gpt-5.6-luna",
+        )
+
+    async def fake_embeddings(texts, project_id=None):
+        return [[1.0, 0.0] for _ in texts]
+
+    monkeypatch.setattr(agentic_module.agentic, "completion", fake_completion)
+    monkeypatch.setattr(validation_module, "_get_embeddings", fake_embeddings)
+
+    result = await validation_module.debate_rounds(
+        "Should the synthesis stay qualified?",
+        rounds=1,
+        project_id="proj-test",
+    )
+    routes = result.metadata["route_evidence"]
+    assert len(routes) == 2, "initial pass + one round expected"
+    for route in routes:
+        assert route.get("endpoint_id") == "pi-codex-luna"
+        assert route.get("model") == "gpt-5.6-luna"
+        assert route.get("served_model") == "gpt-5.6-luna"
+    assert validation_module._models_used(routes) == [
+        "gpt-5.6-luna",
+        "gpt-5.6-luna",
+    ]

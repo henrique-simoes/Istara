@@ -520,6 +520,11 @@ async def debate_rounds(
             {
                 "endpoint_id": outcome.endpoint_id or "",
                 "route_kind": "agentic_completion",
+                # W3 live finding: the initial pass omitted model identity
+                # while every debate round recorded it, so the opening
+                # position was unattributable. Same F-M4 rule as adversarial.
+                "model": getattr(outcome, "model", None) or "",
+                "served_model": getattr(outcome, "served_model", None) or "",
             }
         )
     except Exception as e:
