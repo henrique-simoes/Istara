@@ -284,7 +284,7 @@ def main() -> int:
         for issue in issues:
             print(f"- {issue}\n")
         print(
-            "See AGENTS.md, SYSTEM_CHANGE_MATRIX.md, CHANGE_CHECKLIST.md, and Tech.md."
+            "See AGENTS.md (blast-radius protocol), TESTING.md, and Tech.md."
         )
         return 1
 

@@ -1,4 +1,24 @@
-## Istara Research Spine Contract
+# Istara — Agent Contract
+
+Canonical instructions for every coding agent (Claude, Codex, pi, others). Claude-specific
+operating rules live in `CLAUDE.md`. Keep this file short: facts here must be verifiable in
+the repo; move narrative to `Tech.md` or `docs/architecture/`.
+
+Reference map (read on demand, not up front):
+
+| Need | Source of truth |
+|---|---|
+| Architecture narrative | `Tech.md` (CI enforces updates via `scripts/check_change_obligations.py`) |
+| Research spine | `docs/architecture/research-validity-contract.md` |
+| Self-improvement governance | `docs/architecture/self-improvement-governance-contract.md` |
+| Test commands, CI coverage, live-LLM rules | `TESTING.md`, `testing/TESTING_STRATEGY.md` |
+| UI tokens and interface contract | `DESIGN.md` |
+| pi upgrade runbook | `docs/architecture/pi-compatibility-authority.md` §3 |
+| Promotion dossier / branch protection | `docs/promotion/` |
+| Delivery ledgers | `docs/build-stream/*.md` (validate with `python scripts/verify_build_stream_status.py`) |
+| Open post-promotion work | `todo.md` |
+
+## 1. Istara Research Spine Contract
 
 Istara is a research system. Every product feature that ingests, creates,
 processes, retrieves, summarizes, validates, visualizes, routes, promotes, or
@@ -34,7 +54,13 @@ either fix it in scope or report it explicitly. Never describe the system as
 fully aligned while any research-data path bypasses evidence units, coding,
 reliability, reconciliation, human review, route evidence, or Done/report gates.
 
-## Self-Improvement Governance Contract
+Code markers to preserve: `research_spine_eligible: False` (transcription, file processor,
+validation) and `can_bypass_research_spine: False` (`autoresearch_engine.py`,
+`self_improvement_policy.py`). Guard tests: `tests/test_research_validity_contract.py`,
+`tests/pi_production/test_w3_research_spine.py`, `test_scenario_research_spine.py`,
+`test_research_spine_donor_routing.py`.
+
+### Self-Improvement Governance Contract
 
 Self-improvement exists only to improve the Research Spine. Telemetry observes,
 ReasoningBank stores process lessons, Memento Skills stores validated skill
@@ -52,21 +78,82 @@ policy, it must preserve project scope, route/evidence handles, verification
 state, governance status, and Research Spine gate status. The durable contract
 is `docs/architecture/self-improvement-governance-contract.md`.
 
-## Security Benchmark Gate
+## 2. Blast-radius protocol (Compass Forge CLI)
 
-Auth, authorization, session, WebAuthn, connection string, pooled compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, and agentic-memory changes must run the tracked security benchmark:
+Use the CLI (`compass-forge`); the MCP server is optional and often unavailable. Graph
+queries are `intelligence code-graph|graph-query|impact` — there is no `graph` command.
+Spec ids in old docs are unreliable; confirm with `compass-forge spec`.
 
 ```bash
-python scripts/security_benchmark.py --fail-on-threshold
+# before editing
+compass-forge status
+compass-forge index status            # stale -> compass-forge index refresh
+compass-forge agent-brief "<request>"
+compass-forge intelligence impact --path <file> [--symbol <name>]
+compass-forge intelligence test-impact --path <file>
+compass-forge gate before
+# after editing
+compass-forge index refresh && compass-forge gate after
 ```
 
-Update `security/control_matrix.json`, `security/SECURITY_BENCHMARK.md`, and `tests/test_security_benchmark.py` when a security control, evidence path, standard version, or trigger pattern changes. Attach the scorecard output as Compass Forge command evidence before finishing security-sensitive tasks.
+Impact output is the starting map, not the answer. Follow dependencies until you know
+whether the change touches the spine, auth, or a cross-surface contract. Attach command,
+gate, and test evidence to the CF task before finishing. Security-sensitive paths are
+listed in `recipes/istara-main/recipe.toml`.
 
-## Protected Local Artifact Folders
+Cross-surface coupling to check on every change:
 
-`LLMs/` and `Model_Finetuning/` are local, gitignored model/training artifact folders. Never delete, prune, move, or clean them during agent work.
+| If you change | Also check |
+|---|---|
+| Model fields / route payloads | `frontend/src/lib/types.ts`, `api.ts`, stores, views, alembic, simulation scenarios |
+| Auth, RBAC, sessions, WebAuthn, connection strings | `security_middleware.py`, `permissions.py`, login/join UI, `python scripts/security_benchmark.py --fail-on-threshold`, `security/control_matrix.json` |
+| Sidebar / view IDs / menus | `HomeClient.tsx`, `MobileNav.tsx`, search + shortcuts, `docs/features/inventory.json`, scenario 09 |
+| WebSocket events | `frontend/src/hooks/useWebSocket.ts`, notification store, StatusBar |
+| Agent loop, personas, skills | `backend/app/agents/personas/` (CI requires persona updates), chat engines (pi + legacy) |
+| Compute / LLM routing / relay | compute pool, `relay/`, pi catalog, donor routing tests, `tests/petals_bridge/` |
+| Architecture, process, release files | `Tech.md` (CI gate) |
+| UI/menu/route/skill/model behavior | `python scripts/feature_docs.py --seed-missing --generate-site --check` |
 
-## Protected QA Containers and Databases (Never Delete)
+## 3. Branches, CI, promotion
+
+- **Default: work lands on `testing`** (feature branches → PR into `testing`). `ci.yml` runs
+  on push/PR to `main`, `staging`, `testing`; `release-gate` aggregates all jobs;
+  `qa-artifact.yml` builds the QA image on `testing` pushes.
+- **`main` changes through `promote-testing.yml`** (manual, `testing-promotion` environment,
+  `source_sha` must equal `origin/testing` HEAD, green checks + QA artifact evidence, never
+  auto-merges), **or through a PR into `main` that the owner explicitly authorizes** (as for
+  #44–#46 and #36 on 2026-09-26). Such a PR still needs every required check green, and in the
+  same session `testing` is brought up to `main` with a sync PR so the two trees agree.
+  Promotions are squash merges, so commit counts between `main` and `testing` are not
+  meaningful — compare trees (`git diff --stat main origin/testing`).
+- `main` protection: 17 required contexts (`testing/required-checks.json`, checked by
+  `scripts/check_required_checks.py`), linear history, no force-push.
+- Pushes to `main` trigger `sync-staging.yml` (force-syncs `staging`), `pages.yml`
+  (docs site), `build-installers.yml` (releases), `badge-sync.yml`, `scorecard.yml`.
+- Never push to `main`, force-push, delete remote branches, or run `git gc --prune=now`
+  without the owner (unreferenced certification SHAs must survive).
+
+## 4. Releases, packages, website
+
+- Release: `scripts/prepare-release.sh [--bump|<ver>]` (integrity, CI governance, harness,
+  security readiness, security benchmark, production rehearsal, then `set-version.sh`).
+  `build-installers.yml` builds macOS/Linux/Windows Tauri installers, `latest.json` for the
+  updater, and a `v<CalVer>` GitHub Release.
+- Known drift (fix when touching releases): `VERSION` lags the latest tag; `homebrew/istara.rb`
+  has no automated update; no GHCR images are published; `wiki/` is not deployed.
+- Website: `docs/features/` → `python scripts/feature_docs.py --seed-missing --generate-site --check`
+  and `pytest tests/test_feature_docs.py -q` → GitHub Pages via `pages.yml`.
+
+## 5. Containers
+
+| Compose file | Use |
+|---|---|
+| `docker-compose.yml` (+ `docker-compose.gpu.yml`) | dev/prod stack; profile `observability` adds otel-collector + Jaeger |
+| `docker-compose.qa.yml` | disposable QA stack, standalone (never merge with base); drive via `scripts/istara-qa.sh <render\|up\|wait\|seed\|qa\|collect\|reset\|down> --run-id <id> --profile contract\|ui\|live` |
+| `docker-compose.vps.yml` | VPS test deploy (provider stub, optional donor) |
+| `tests/real_user_benchmark/docker-compose.benchmark.yml` | long-form benchmark |
+
+### Protected QA Containers and Databases (Never Delete)
 
 The Mac Studio QA host keeps containers that hold research results from testing and multi-model runs used for consultation. They carry the `never-delete-official-` name prefix and must never be deleted:
 
@@ -81,13 +168,11 @@ Rules:
 3. Code updates happen by renewing the codebase with new commits only: rebuild images from repo HEAD into a new QA run (`QA_RUN_ID=<branch>-<date>`, unique project per `docker-compose.qa.yml` contract). All existing databases and data snapshots for all features must be kept across redeploys — a redeploy never erases prior run data.
 4. The W4 multi-model telemetry dataset at `~/w4-scratch-20260910/data` (`istara-w4-pi.db`, `istara-w4-legacy.db`, run JSONs/logs) is protected research data: never delete, move, or prune it.
 
-## Live LLM and Model Loading Safety
+### Protected Local Artifact Folders
 
-Do not start live backend/frontend servers, send chat-completion probes, or trigger model loading without explicit user permission. Passive LLM status/discovery checks must stay passive. Active model loading belongs only on deliberate request paths and must be bounded to one configured target so agent work never loads multiple heavy models at once.
+`LLMs/` and `Model_Finetuning/` are local, gitignored model/training artifact folders. Never delete, prune, move, or clean them during agent work.
 
-Use gitignored environment files, process environment, or macOS Keychain for live LLM endpoints and tokens. Never commit or paste private LLM server URLs, tokens, connection strings, or endpoint fingerprints that could identify a private server.
-
-## Full UI Testing Suite Contract
+## 6. Full UI Testing Suite Contract
 
 Every novel feature, sub-feature, addition, or behavior change must ship with coverage in the container-first user-journey suite (`tests/simulation/` scenarios + `tests/real_user_benchmark/` where long-form/team/donation flows apply). A feature is not done until the suite drives it the way a real user would, through a container, with dated verdicts.
 
@@ -101,6 +186,71 @@ When adding or changing product behavior, the author must:
 6. **Attach suite evidence** as Compass Forge command evidence (scenario command + verdict summary) before finishing the feature's tasks, and update `TESTING.md`/`testing/TEST_HISTORY.md` when the suite topology or release-relevant behavior changes.
 
 Stale scenarios are architecture debt: if a feature change breaks a scenario's selectors, copy, or flow, updating that scenario is part of the feature — not a follow-up.
+
+Suites and lanes (commands in `TESTING.md`):
+
+- **Broad suites** (run the ones your change touches; `--engine pi|legacy` where chat is involved):
+   all menus/views (09 plus `test_phase9_broad_24view_sweep.mjs`), agentic chat and real work
+   (05, 12, 17, 21, 48, 70–71, 76, 79), model ensemble (35, 37), research spine (07, 16, 47, 58),
+   security/auth/2FA (32, 42, 56, 64, 67, 68, 74), compute donation (34 + `tests/petals_bridge/`),
+   voice (77, 78), long-form (`npm --prefix tests/real_user_benchmark run probe:deep`).
+- **CI lane is credential-free**: `ui-journeys` runs only `testing/ui-journeys.smoke.json` +
+   `proven-extra.json` against the QA `ui` profile with the provider stub. Scenarios needing
+   live models/donors declare it and fail closed with `not_runnable` — never skip or fabricate.
+- **Desktop**: CI only runs `cargo check` in `desktop/src-tauri`; there are no desktop UI tests.
+   State that gap rather than claiming desktop coverage.
+
+## 7. Telemetry and benchmarks
+
+- Current state: custom spans (`backend/app/core/telemetry.py`, `telemetry_export.py` →
+  `telemetry_spans`, `agentic_usage_rows`, `<base>_spans.jsonl`); run aggregation via
+  `qa/scripts/w4_aggregate_telemetry.py` (per-turn/tool/model latency, tokens, cost, errors;
+  prompts stored as sha12 + length only). No OTLP export and no `gen_ai.*` attributes yet.
+- New or changed LLM/agent instrumentation must follow the **OpenTelemetry GenAI semantic
+  conventions**: spans `chat`/`invoke_agent`/`execute_tool`; attributes
+  `gen_ai.operation.name`, `gen_ai.provider.name`, `gen_ai.request.model`,
+  `gen_ai.response.model`, `gen_ai.usage.input_tokens`/`output_tokens`,
+  `gen_ai.response.finish_reasons`, `gen_ai.conversation.id`; eval results as
+  `gen_ai.evaluation.*`. Map onto the existing span tables rather than forking a second store,
+  propagate trace context across pi-runtime ↔ backend ↔ relay, and pin collector images.
+- Benchmark results are the engine scorecard: refresh and commit them after agentic engine
+  changes (`comparison-Istara-pi/`, `qa/runs/<run-id>`, `artifacts/`, `testing/TEST_HISTORY.md`),
+  always keyed by commit SHA, engine, and model.
+
+## 8. pi (earendil) runtime
+
+- `pi-runtime/` (Node worker; wire contract `pi-runtime/PROTOCOL.md`) wraps
+  `@earendil-works/pi-ai` + `@earendil-works/pi-agent-core`, **exact-pinned** and kept in
+  lockstep with `labs/pi-replacement`. Backend adapter: `backend/app/core/pi_runtime/`.
+- Upgrade routinely with the runbook: `python scripts/pi_bump_diff_proof.py proof <X> --report ...`
+  → install both surfaces with exact pins → `python scripts/generate_pi_catalog.py` → classify
+  every changed surface `intended-upstream` or `istara-fix` → `pi_bump_diff_proof.py verify`
+  → update `EXPECTED_PINS` in `tests/pi_migration/test_version_provenance.py`.
+- Verify: `cd pi-runtime && npm ci && npm test`, `pytest tests/pi_compat tests/pi_migration -q`,
+  then a pi-engine UI chat scenario. New pi capabilities go through the adapter seams
+  (`seams.py`, `tools.py`), never around the spine or tool-authority checks.
+
+## 9. Safety rules
+
+### Live LLM and Model Loading Safety
+
+Do not start live backend/frontend servers, send chat-completion probes, or trigger model loading without explicit user permission. Passive LLM status/discovery checks must stay passive. Active model loading belongs only on deliberate request paths and must be bounded to one configured target so agent work never loads multiple heavy models at once.
+
+Use gitignored environment files, process environment, or macOS Keychain for live LLM endpoints and tokens. Never commit or paste private LLM server URLs, tokens, connection strings, or endpoint fingerprints that could identify a private server.
+
+### Security Benchmark Gate
+
+Auth, authorization, session, WebAuthn, connection string, pooled compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, and agentic-memory changes must run the tracked security benchmark:
+
+```bash
+python scripts/security_benchmark.py --fail-on-threshold
+```
+
+Update `security/control_matrix.json`, `security/SECURITY_BENCHMARK.md`, and `tests/test_security_benchmark.py` when a security control, evidence path, standard version, or trigger pattern changes. Attach the scorecard output as Compass Forge command evidence before finishing security-sensitive tasks.
+
+### Repository hygiene
+
+- Never commit the literal checkout path (`scripts/public_repo_quality_audit.py`).
 
 <!-- BEGIN SKILLS-LIBRARY (managed by skills-librarian) -->
 ## Skills library

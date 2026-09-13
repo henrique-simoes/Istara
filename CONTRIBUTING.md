@@ -27,7 +27,7 @@ npm install && npm run dev
 - `testing/` — test strategy, eval strategy, and curated baseline history
 - `security/` — release security benchmark, readiness checklist, and assessments
 - `scripts/` — Utility scripts
-- `DOCUMENTATION.md` — canonical documentation map
+- `AGENTS.md` / `CLAUDE.md` — agent contract and documentation map
 
 ## Branching & Pull Requests
 
