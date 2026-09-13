@@ -1,4 +1,24 @@
-## Istara Research Spine Contract
+# Istara — Agent Contract
+
+Canonical instructions for every coding agent (Claude, Codex, pi, others). Claude-specific
+operating rules live in `CLAUDE.md`. Keep this file short: facts here must be verifiable in
+the repo; move narrative to `Tech.md` or `docs/architecture/`.
+
+Reference map (read on demand, not up front):
+
+| Need | Source of truth |
+|---|---|
+| Architecture narrative | `Tech.md` (CI enforces updates via `scripts/check_change_obligations.py`) |
+| Research spine | `docs/architecture/research-validity-contract.md` |
+| Self-improvement governance | `docs/architecture/self-improvement-governance-contract.md` |
+| Test commands, CI coverage, live-LLM rules | `TESTING.md`, `testing/TESTING_STRATEGY.md` |
+| UI tokens and interface contract | `DESIGN.md` |
+| pi upgrade runbook | `docs/architecture/pi-compatibility-authority.md` §3 |
+| Promotion dossier / branch protection | `docs/promotion/` |
+| Delivery ledgers | `docs/build-stream/*.md` (validate with `python scripts/verify_build_stream_status.py`) |
+| Open post-promotion work | `todo.md` |
+
+## 1. Istara Research Spine Contract
 
 Istara is a research system. Every product feature that ingests, creates,
 processes, retrieves, summarizes, validates, visualizes, routes, promotes, or
@@ -6,163 +26,174 @@ reports user research data is an extension of the same research-validity spine:
 
 `Sources -> Evidence Units -> Independent Multi-Model Atomic Extraction + Open Coding -> Reliability + Grounding -> Reconciliation -> Accepted Atoms/Nuggets -> Facts -> Insights -> Recommendations -> In Review -> Human-Approved Done -> Reports`.
 
-Atomic Research is not a pre-validation summary layer. Bias reduction happens
-before trust: model output can create candidate/provisional artifacts, but no
-feature may treat nuggets, facts, insights, recommendations, design decisions,
-tasks, or reports as reportable until the source-grounded coding, reliability,
-reconciliation, and Done-task gates have accepted them. Evidence units come
-from raw source spans, not synthesized nugget prose, unless exact source spans
-are preserved and the artifact remains provisional until validated.
+Atomic Research is not a pre-validation summary layer. Model output may create
+candidate/provisional artifacts only; nothing is reportable until source-grounded
+coding, reliability, reconciliation, and Done-task gates accept it. Evidence units come
+from raw source spans, never synthesized prose.
 
-This spine is not optional and not limited to Findings, Tasks, or Reports. It
-applies to skills, task creation and execution, ReAct/tool calls, chat,
-documents, interviews, surveys, AURA-style research, integrations, deployments,
-interfaces, autoresearch, self-evolution, RAG/GraphRAG, compute donation,
-benchmarks, simulations, and any future feature that touches research data.
+The spine applies to skills, task creation and execution, ReAct/tool calls, chat, documents, interviews, surveys, AURA-style research, integrations, deployments, interfaces,
+autoresearch, self-evolution, RAG/GraphRAG, compute donation, benchmarks, simulations, and
+any future feature that touches research data.
 
-Before changing any feature, use Compass Forge impact output as a starting map,
-then follow dependencies and feature relationships until you know whether the
-change touches the research spine. If it does, the feature must enter or respect
-the pipeline in `docs/architecture/research-validity-contract.md`. Do not treat
-parallel data paths, raw finding creation, synthetic benchmark shortcuts, or
-feature-specific objectives as acceptable substitutes for the spine unless the
-path is explicitly unit-scoped, non-research, or documented as a governed
-exception.
+Code markers to preserve: `research_spine_eligible: False` (transcription, file processor,
+validation) and `can_bypass_research_spine: False` (`autoresearch_engine.py`,
+`self_improvement_policy.py`). Guard tests: `tests/test_research_validity_contract.py`,
+`tests/pi_production/test_w3_research_spine.py`, `test_scenario_research_spine.py`,
+`test_research_spine_donor_routing.py`.
 
-If a feature currently bypasses the spine, classify it as architecture debt and
-either fix it in scope or report it explicitly. Never describe the system as
-fully aligned while any research-data path bypasses evidence units, coding,
-reliability, reconciliation, human review, route evidence, or Done/report gates.
+If a feature currently bypasses the spine, classify it as architecture debt and either fix
+it in scope or report it. Never describe the system as fully aligned while any
+research-data path bypasses evidence units, coding, reliability, reconciliation, human
+review, route evidence, or Done/report gates.
 
-## Self-Improvement Governance Contract
+Self-improvement (telemetry, ReasoningBank, Memento skills, Autoresearch, Meta-Hyperagent,
+Self-Evolution, RAG/GraphRAG, LLMLingua) exists only to improve the spine. It may never
+create report evidence, rewrite protected methodology, weaken authorization, or promote
+project-scoped evidence to global state.
 
-Self-improvement exists only to improve the Research Spine. Telemetry observes,
-ReasoningBank stores process lessons, Memento Skills stores validated skill
-memory, Autoresearch runs sandboxed experiments, Meta-Hyperagent proposes
-project-scoped variants, and Self-Evolution applies only governed promotions.
-RAG/BM25 retrieves exact evidence, GraphRAG synthesizes and traces
-dependencies, Prompt-RAG adds supporting context, and LLMLingua compresses only
-when protected protocol/codebook/gate/schema blocks remain intact.
+## 2. Blast-radius protocol (Compass Forge CLI)
 
-None of these systems may create report evidence, silently rewrite protected
-methodology, weaken authorization, mutate global process state from
-project-scoped evidence, or learn strong positive skill/model signals from raw
-tool success. If a self-improvement path touches research data or process
-policy, it must preserve project scope, route/evidence handles, verification
-state, governance status, and Research Spine gate status. The durable contract
-is `docs/architecture/self-improvement-governance-contract.md`.
-
-## Security Benchmark Gate
-
-Auth, authorization, session, WebAuthn, connection string, pooled compute, MCP, webhook, LLM-provider, autoresearch, self-evolution, and agentic-memory changes must run the tracked security benchmark:
+Use the CLI (`compass-forge`); the MCP server is optional and often unavailable. Graph
+queries are `intelligence code-graph|graph-query|impact` — there is no `graph` command.
+Spec ids in old docs are unreliable; confirm with `compass-forge spec`.
 
 ```bash
-python scripts/security_benchmark.py --fail-on-threshold
+# before editing
+compass-forge status
+compass-forge index status            # stale -> compass-forge index refresh
+compass-forge agent-brief "<request>"
+compass-forge intelligence impact --path <file> [--symbol <name>]
+compass-forge intelligence test-impact --path <file>
+compass-forge gate before
+# after editing
+compass-forge index refresh && compass-forge gate after
 ```
 
-Update `security/control_matrix.json`, `security/SECURITY_BENCHMARK.md`, and `tests/test_security_benchmark.py` when a security control, evidence path, standard version, or trigger pattern changes. Attach the scorecard output as Compass Forge command evidence before finishing security-sensitive tasks.
+Impact output is the starting map, not the answer. Follow dependencies until you know
+whether the change touches the spine, auth, or a cross-surface contract. Attach command,
+gate, and test evidence to the CF task before finishing. Security-sensitive paths are
+listed in `recipes/istara-main/recipe.toml`.
 
-## Protected Local Artifact Folders
+Cross-surface coupling to check on every change:
 
-`LLMs/` and `Model_Finetuning/` are local, gitignored model/training artifact folders. Never delete, prune, move, or clean them during agent work.
+| If you change | Also check |
+|---|---|
+| Model fields / route payloads | `frontend/src/lib/types.ts`, `api.ts`, stores, views, alembic, simulation scenarios |
+| Auth, RBAC, sessions, WebAuthn, connection strings | `security_middleware.py`, `permissions.py`, login/join UI, `python scripts/security_benchmark.py --fail-on-threshold`, `security/control_matrix.json` |
+| Sidebar / view IDs / menus | `HomeClient.tsx`, `MobileNav.tsx`, search + shortcuts, `docs/features/inventory.json`, scenario 09 |
+| WebSocket events | `frontend/src/hooks/useWebSocket.ts`, notification store, StatusBar |
+| Agent loop, personas, skills | `backend/app/agents/personas/` (CI requires persona updates), chat engines (pi + legacy) |
+| Compute / LLM routing / relay | compute pool, `relay/`, pi catalog, donor routing tests, `tests/petals_bridge/` |
+| Architecture, process, release files | `Tech.md` (CI gate) |
+| UI/menu/route/skill/model behavior | `python scripts/feature_docs.py --seed-missing --generate-site --check` |
 
-## Protected QA Containers and Databases (Never Delete)
+## 3. Branches, CI, promotion
 
-The Mac Studio QA host keeps containers that hold research results from testing and multi-model runs used for consultation. They carry the `never-delete-official-` name prefix and must never be deleted:
+- **Work lands on `testing`** (feature/conductor branches → PR into `testing`). `ci.yml` runs
+  on push/PR to `main`, `staging`, `testing`; `release-gate` aggregates all jobs;
+  `qa-artifact.yml` builds the QA image on `testing` pushes.
+- **`main` only via `promote-testing.yml`** (manual, `testing-promotion` environment,
+  `source_sha` must equal `origin/testing` HEAD, green checks + QA artifact evidence, never
+  auto-merges). Promotions are squash merges, so commit counts between `main` and `testing`
+  are not meaningful — compare trees (`git diff --stat main origin/testing`).
+- `main` protection: 17 required contexts (`testing/required-checks.json`, checked by
+  `scripts/check_required_checks.py`), linear history, no force-push.
+- Pushes to `main` trigger `sync-staging.yml` (force-syncs `staging`), `pages.yml`
+  (docs site), `build-installers.yml` (releases), `badge-sync.yml`, `scorecard.yml`.
+- Never push to `main`, force-push, delete remote branches, or run `git gc --prune=now`
+  without the owner (unreferenced certification SHAs must survive).
 
-- `never-delete-official-istara-qa-readiness5-20260910-qa-backend` — QA backend run data (DB in tmpfs `/tmp/istara-qa.db`, feature tree in `/app/data`).
-- `never-delete-official-w3-live-backend`, `never-delete-official-w3-live-backend-fix` — W3 candidate live runs (`istara-w3.db` + run artifacts in `/app/data`).
-- `never-delete-official-w4-live-pi`, `never-delete-official-w4-live-legacy` — W4 long-horizon multi-model telemetry (host dataset at `~/w4-scratch-20260910/data`).
+## 4. Releases, packages, website
 
-Rules:
+- Release: `scripts/prepare-release.sh [--bump|<ver>]` (integrity, CI governance, harness,
+  security readiness, security benchmark, production rehearsal, then `set-version.sh`).
+  `build-installers.yml` builds macOS/Linux/Windows Tauri installers, `latest.json` for the
+  updater, and a `v<CalVer>` GitHub Release.
+- Known drift (fix when touching releases): `VERSION` lags the latest tag; `homebrew/istara.rb`
+  has no automated update; no GHCR images are published; `wiki/` is not deployed.
+- Website: `docs/features/` → `python scripts/feature_docs.py --seed-missing --generate-site --check`
+  and `pytest tests/test_feature_docs.py -q` → GitHub Pages via `pages.yml`.
 
-1. Never run `docker rm`, `docker container prune`, or `docker system prune` against these containers, and never delete their databases or images.
-2. Their data surfaces are **tmpfs (in RAM)**: before stopping any protected container, snapshot `/app/data` and `/tmp/*.db*` to `~/never-delete-official-data/<container>/<UTC-timestamp>/` on the host. Snapshots are permanent records — never delete, move, or prune them.
-3. Code updates happen by renewing the codebase with new commits only: rebuild images from repo HEAD into a new QA run (`QA_RUN_ID=<branch>-<date>`, unique project per `docker-compose.qa.yml` contract). All existing databases and data snapshots for all features must be kept across redeploys — a redeploy never erases prior run data.
-4. The W4 multi-model telemetry dataset at `~/w4-scratch-20260910/data` (`istara-w4-pi.db`, `istara-w4-legacy.db`, run JSONs/logs) is protected research data: never delete, move, or prune it.
+## 5. Containers
 
-## Live LLM and Model Loading Safety
+| Compose file | Use |
+|---|---|
+| `docker-compose.yml` (+ `docker-compose.gpu.yml`) | dev/prod stack; profile `observability` adds otel-collector + Jaeger |
+| `docker-compose.qa.yml` | disposable QA stack, standalone (never merge with base); drive via `scripts/istara-qa.sh <render\|up\|wait\|seed\|qa\|collect\|reset\|down> --run-id <id> --profile contract\|ui\|live` |
+| `docker-compose.vps.yml` | VPS test deploy (provider stub, optional donor) |
+| `tests/real_user_benchmark/docker-compose.benchmark.yml` | long-form benchmark |
 
-Do not start live backend/frontend servers, send chat-completion probes, or trigger model loading without explicit user permission. Passive LLM status/discovery checks must stay passive. Active model loading belongs only on deliberate request paths and must be bounded to one configured target so agent work never loads multiple heavy models at once.
+### Protected QA containers and databases (never delete)
 
-Use gitignored environment files, process environment, or macOS Keychain for live LLM endpoints and tokens. Never commit or paste private LLM server URLs, tokens, connection strings, or endpoint fingerprints that could identify a private server.
+Mac Studio QA host containers prefixed `never-delete-official-`
+(`istara-qa-readiness5-20260910-qa-backend`, `w3-live-backend`, `w3-live-backend-fix`,
+`w4-live-pi`, `w4-live-legacy`) hold research results.
 
-## Full UI Testing Suite Contract
+1. Never `docker rm`, `docker container prune`, or `docker system prune` them; never delete their DBs or images.
+2. Their data is **tmpfs**: before stopping one, snapshot `/app/data` and `/tmp/*.db*` to
+   `~/never-delete-official-data/<container>/<UTC-timestamp>/`. Snapshots are permanent.
+3. Updates = new QA run from HEAD (`QA_RUN_ID=<branch>-<date>`, unique compose project); a
+   redeploy never erases prior run data.
+4. `~/w4-scratch-20260910/data` (W4 pi/legacy DBs, run logs), `LLMs/`, and
+   `Model_Finetuning/` are protected: never delete, move, or prune.
 
-Every novel feature, sub-feature, addition, or behavior change must ship with coverage in the container-first user-journey suite (`tests/simulation/` scenarios + `tests/real_user_benchmark/` where long-form/team/donation flows apply). A feature is not done until the suite drives it the way a real user would, through a container, with dated verdicts.
+## 6. Testing contract
 
-When adding or changing product behavior, the author must:
+Every feature change ships with user-journey coverage. Details and commands: `TESTING.md`.
 
-1. **Add or extend a Playwright scenario** in `tests/simulation/scenarios/` (registered in `lib/scenario-registry.mjs`) that performs the feature's real browser acts — navigate, click, fill, upload, send — not API calls with a screenshot attached. API-behind-browser steps must be labeled as such in the scenario.
-2. **Cover the matrix**: roles (admin/researcher/viewer/stranger where auth-adjacent), light/dark, 375px reflow, keyboard Tab + visible focus, and loading/error/empty states. Mutations use synthetic data only — never golden data, no destructive ops.
-3. **Record the verdict** in the scenario's summary plus the coverage map (`tests/simulation/lib/scenario-registry.mjs` and any `coverage-matrix.json`): pass/fail with date, screenshots/HAR paths, and the QA lane used (`docker-compose.qa.yml` `ui` profile, loopback publish only).
-4. **Extend the long-form layers when the feature touches them**: team/role flows → `tests/real_user_benchmark/lib/persona.mjs`; donated-compute/model paths → donor/model-management probes; Research Spine paths → spine probes (gates stay non-bypassable, evidence stays provisional until Done-task acceptance).
-5. **Keep it green without live dependencies**: new scenarios must pass in the credential-free lane or declare their live requirements (donors, models, third-party keys) and fail closed with `not_runnable` — never silently skip, never fabricate.
-6. **Attach suite evidence** as Compass Forge command evidence (scenario command + verdict summary) before finishing the feature's tasks, and update `TESTING.md`/`testing/TEST_HISTORY.md` when the suite topology or release-relevant behavior changes.
+1. **UI simulation as a real user**: extend `tests/simulation/scenarios/*.mjs` (registered in
+   `lib/scenario-registry.mjs`) with real browser acts — navigate, click, fill, upload, send.
+   API-behind-browser steps must be labeled. Cover roles (admin/researcher/viewer/stranger),
+   light/dark, 375px, keyboard focus, loading/error/empty states. Synthetic data only.
+2. **Broad suites** (run the ones your change touches; `--engine pi|legacy` where chat is involved):
+   all menus/views (09 plus `test_phase9_broad_24view_sweep.mjs`), agentic chat and real work
+   (05, 12, 17, 21, 48, 70–71, 76, 79), model ensemble (35, 37), research spine (07, 16, 47, 58),
+   security/auth/2FA (32, 42, 56, 64, 67, 68, 74), compute donation (34 + `tests/petals_bridge/`),
+   voice (77, 78), long-form (`npm --prefix tests/real_user_benchmark run probe:deep`).
+3. **CI lane is credential-free**: `ui-journeys` runs only `testing/ui-journeys.smoke.json` +
+   `proven-extra.json` against the QA `ui` profile with the provider stub. Scenarios needing
+   live models/donors declare it and fail closed with `not_runnable` — never skip or fabricate.
+4. **Desktop**: CI only runs `cargo check` in `desktop/src-tauri`; there are no desktop UI tests.
+   State that gap rather than claiming desktop coverage.
+5. Attach scenario command + verdict as CF evidence; update `testing/TEST_HISTORY.md` when
+   release-relevant results change. A scenario broken by your change is part of your change.
 
-Stale scenarios are architecture debt: if a feature change breaks a scenario's selectors, copy, or flow, updating that scenario is part of the feature — not a follow-up.
+## 7. Telemetry and benchmarks
 
-<!-- BEGIN SKILLS-LIBRARY (managed by skills-librarian) -->
-## Skills library
+- Current state: custom spans (`backend/app/core/telemetry.py`, `telemetry_export.py` →
+  `telemetry_spans`, `agentic_usage_rows`, `<base>_spans.jsonl`); run aggregation via
+  `qa/scripts/w4_aggregate_telemetry.py` (per-turn/tool/model latency, tokens, cost, errors;
+  prompts stored as sha12 + length only). No OTLP export and no `gen_ai.*` attributes yet.
+- New or changed LLM/agent instrumentation must follow the **OpenTelemetry GenAI semantic
+  conventions**: spans `chat`/`invoke_agent`/`execute_tool`; attributes
+  `gen_ai.operation.name`, `gen_ai.provider.name`, `gen_ai.request.model`,
+  `gen_ai.response.model`, `gen_ai.usage.input_tokens`/`output_tokens`,
+  `gen_ai.response.finish_reasons`, `gen_ai.conversation.id`; eval results as
+  `gen_ai.evaluation.*`. Map onto the existing span tables rather than forking a second store,
+  propagate trace context across pi-runtime ↔ backend ↔ relay, and pin collector images.
+- Benchmark results are the engine scorecard: refresh and commit them after agentic engine
+  changes (`comparison-Istara-pi/`, `qa/runs/<run-id>`, `artifacts/`, `testing/TEST_HISTORY.md`),
+  always keyed by commit SHA, engine, and model.
 
-This project has access to a shared, vendor- and model-neutral **Agent Skills** library
-(the open [Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
-format — a folder per skill, each with a `SKILL.md`). It lives at:
+## 8. pi (earendil) runtime
 
-    /Users/user/Documents/Skills
+- `pi-runtime/` (Node worker; wire contract `pi-runtime/PROTOCOL.md`) wraps
+  `@earendil-works/pi-ai` + `@earendil-works/pi-agent-core`, **exact-pinned** and kept in
+  lockstep with `labs/pi-replacement`. Backend adapter: `backend/app/core/pi_runtime/`.
+- Upgrade routinely with the runbook: `python scripts/pi_bump_diff_proof.py proof <X> --report ...`
+  → install both surfaces with exact pins → `python scripts/generate_pi_catalog.py` → classify
+  every changed surface `intended-upstream` or `istara-fix` → `pi_bump_diff_proof.py verify`
+  → update `EXPECTED_PINS` in `tests/pi_migration/test_version_provenance.py`.
+- Verify: `cd pi-runtime && npm ci && npm test`, `pytest tests/pi_compat tests/pi_migration -q`,
+  then a pi-engine UI chat scenario. New pi capabilities go through the adapter seams
+  (`seams.py`, `tools.py`), never around the spine or tool-authority checks.
 
-**Before starting a task, check whether a skill there applies**, then use it:
+## 9. Safety rules
 
-1. **Discover** — list the subfolders of the library and read the `description:` in each
-   `SKILL.md`. Match your task against those descriptions.
-2. **Load** — read the full `SKILL.md` whose description fits.
-3. **Execute** — follow its instructions, gates, and output style for the whole task.
-4. **Deepen on demand** — open a skill's `references/`, `scripts/`, or `assets/` files only
-   when its `SKILL.md` points you there.
-
-A skill is **instructions, not code** — reading its `SKILL.md` and acting on it *is*
-invoking it. No special runtime is needed. For the full contract, per-harness wiring, and
-the standards for adding or editing skills, read `/Users/user/Documents/Skills/AGENTS.md`. To add, edit, or
-re-install this library, load the `/Users/user/Documents/Skills/skills-librarian` skill.
-
-If you ever register a skill into a harness's own skills dir (e.g. `~/.codex/skills/`,
-`~/.claude/skills/`), **symlink the library folder — never copy it** — and repair any
-existing copies with `/Users/user/Documents/Skills/skills-librarian/scripts/sync-harness-skills.sh`.
-
-**Available skills** (auto-generated on install — re-run the `skills-librarian` install to
-refresh):
-
-| Skill | Use it for |
-|-------|-----------|
-| `build-stream-conductor-consulting` | Use this instead of build-stream-conductor whenever the conductor's multi-model pipeline runs on a CLIENT repo inside a consulting engagement (phase 04 execution mode) — it is the consulting-safe overlay that keeps the whole toolchain invisible to the client. Trigger for "/conductor-consulting", "run the conductor on the client project", "multi-model delivery for a client", or when consulting-execution needs the S2–S4 pipeline automated. Consulting is the OUTER policy (state in private/, no AI/tool traces in code, commits, branches, PRs, docs, or config; outward steps owner-gated); the original build-stream-conductor is the INNER engine, loaded live and unmodified. Requires authorized execution mode in private/engagement.md; without it, stop and stay read-only. |
-| `build-stream-conductor` | Use this to run a Build Stream delivery as a MULTI-MODEL pipeline with no human intervention between stages: one watcher (the conductor) polls Compass Forge and launches each stage on a specific model + settings (e.g. Claude opus-4.8 at xhigh effort, GPT-5.5 at xhigh reasoning) as detached CF actor sessions — plan by one model, reviewed and modified by another, implemented by a third, cross-reviewed until every reviewer passes, then PR-ready. Trigger when the user asks to orchestrate multiple models/agents/harnesses on one plan, to have agents hand off automatically when the previous one finishes, to run "X plans, Y reviews, Z codes" pipelines, or to collect per-model error/correction scorecards, or to run approved multi-wave/sequential-wave Build Stream implementation and convergence. Works from any harness (Claude Code, Codex CLI, Claude Desktop as cockpit); requires the compass-forge skill and the pinned native Rust Compass Forge binary (explicit `COMPASS_FORGE_BIN` + `COMPASS_FORGE_SHA256`; no Python or PATH fallback). |
-| `build-stream` | Use Build Stream to run ANY meaningful change — code, product, or docs — through one autonomous, resumable delivery lifecycle: frame → plan → execute → review → remediate → ship & learn, recorded in a single durable file so any agent (any model, any harness) can resume statelessly from where the last one stopped. Trigger when asked to build, ship, or deliver a feature/fix/change end-to-end; to plan and execute with minimal human intervention; to run a rigorous review-and-remediation loop; to coordinate multiple agents on one plan; or whenever a repo has a build-stream / agent-plan lifecycle file to continue. Drives Compass Forge as its control plane and codifies the planning, execution, review, and remediation practices of the largest, most complex tech product companies. |
-| `compass-forge` | Use Compass Forge — the local-first control plane for agentic engineering — to run ANY meaningful repository change through its spec → clarify → plan → tasks → work-order → gate → evidence → accept spine. Trigger whenever you start work in a repo that has a `.compass-forge/` directory or a Compass Forge recipe, when the user asks to plan, spec, gate, or record work through Compass Forge, or before any Standard/Full/security/ architecture/contract change that needs a durable execution contract, impact analysis, architecture gates, or multi-agent coordination. Also use when unsure WHICH of CF's ~140 tools fits a request (forge.suggest_tools), or when an MCP tools/list looks unexpectedly short (lean tool profile). Requires the explicitly pinned native Rust binary (`COMPASS_FORGE_BIN` + `COMPASS_FORGE_SHA256`, validated path/digest/runtime/capabilities); un-migrated commands refuse with typed `not_yet_native` — no Python or PATH fallback. Teaches the full command lifecycle, process levels, gates, evidence rules, large-repository intelligence and graph traversal protocol, recipes, the complete capability map with CLI + MCP paths, Build Stream / Conductor integration, the adaptive tool-intelligence layer, and the footguns. |
-| `interface-design` | Use this to design, audit, or redesign professional interfaces and design systems, especially when moving an existing UI codebase through DESIGN.md/DTCG tokens, Figma MCP variables and components, Code Connect, shadcn/ui or astryx, responsive screens, Motion, and back into production code without a rewrite; also trigger for UI/UX design, visual identity, design tokens, component libraries, Figma design-system creation, code-to-Figma or Figma-to-code work, motion design, and requests to avoid generic AI-generated UI; also trigger for visual debug — directed visual inspection of a running app when a screen does not show what the code says, visual QA, interaction-state coverage beyond the initial page load (dialogs, tabs, filters, pagination, forms), and per-role UI checks. In a client engagement use consulting-design, which adds authorization, private/, external-tool, and invisibility guardrails. |
-| `kairos-ai-director` | Use as Kairos's AI director for model routing, agentic workflows, LangGraph/LangChain decisions, RAG and memory design, context and graph retrieval, structured outputs, critique agents, UI generation boundaries, voice/audio-to-GenUI behavior, design-aware GenUI evaluation, model-provider neutrality, evals, safety, policy, AI observability, prompt/version management, and AI governance. Use before major Kairos AI implementation work even when not explicitly requested. Consider patterns from OpenAI, Anthropic, Google Gemini/DeepMind, Alibaba Qwen, Mistral, Microsoft Responsible AI, LangSmith, Langfuse, Arize, Bedrock Agents, Gemini Enterprise Agent Platform, Agentforce, Copilot Studio, Voiceflow, Vapi, Figma/Canva design-AI systems, and governed enterprise AI platforms. |
-| `kairos-design-director` | Use as Kairos's Design Director for GenUI design strategy, product design, UX design, UX research, design systems, trusted component catalogs, UI contract quality, visual identity, accessibility, motion, density, content clarity, design critique, design QA, stable UI change budgets, affordance recall, DESIGN.md, Stitch, A2UI catalog design, and any frontend or GenUI feature before implementation. Use before major Kairos design or UI decisions even when not explicitly requested. Consider practices from Figma, Canva, Apple HIG, Adobe Spectrum, Google Material/Google Design, Nielsen Norman Group, W3C WCAG, Microsoft Human-AI Interaction, OpenAI Apps/Realtimes/Structured Outputs, Anthropic, Gemini, Mistral, Qwen, and frontier AI interface platforms. |
-| `kairos-director-council` | Use for major Kairos decisions that need product, product marketing, design, engineering, and AI alignment. Trigger for requests to summon or convene the council; architecture plans; MVP scope; PRD, PRFAQ, roadmap, review, decision gate, implementation plan, GTM, research plan, risk/governance, or postmortem artifacts; feature-to-code gates; launch strategy; product packaging; enterprise readiness; GenUI design quality; model/agent/RAG/eval decisions; channel integrations; governance changes; or any decision where Kairos could drift from generic enterprise adaptive UI decision infrastructure into a vertical app or unfocused GenUI demo. Requires Compass Forge for repository work and coordinates the kairos-product-director, kairos-product-marketing-director, kairos-design-director, kairos-engineering-director, and kairos-ai-director lenses. |
-| `kairos-engineering-director` | Use as Kairos's engineering director for architecture, implementation planning, production readiness, platform boundaries, API/SDK design, renderer and design-system implementation quality, integration ergonomics, reliability, security, observability, migrations, testing strategy, technical debt, scalability, developer experience, and code-review decisions. Use before major Kairos implementation work even when not explicitly requested. Consider engineering patterns from AWS Well-Architected, Segment-style ingestion platforms, Statsig/LaunchDarkly decisioning systems, Langfuse/LangSmith observability, Arize, Bedrock Agents, Gemini Enterprise Agent Platform, Microsoft Copilot Studio, Voiceflow, Vapi, Palantir, Databricks, Snowflake, Figma, Canva, Adobe Spectrum, Writer, Typeface, and similar enterprise intelligence platforms. |
-| `kairos-product-director` | Use as Kairos's director-of-product operating system. Use whenever an agent is working on Kairos product strategy, productization, MVP scope, PRFAQ or Working Backwards artifacts, ICP, buyer/user pain, feature specs, roadmap, market fit, pricing or packaging, customer discovery, enterprise readiness, product metrics, launch readiness, or deciding whether a Kairos idea should become code. Also use before implementation planning or code changes for Kairos product features, even when the user does not explicitly ask, to test product rationale, customer value, evidence, governance, MVP fit, and enterprise buyer objections. Consider the product patterns of Segment, Amplitude, Statsig, LaunchDarkly, Optimizely, Braze, Adobe Experience Platform, Langfuse, LangSmith, Arize, Salesforce Agentforce, Amazon Bedrock Agents, Google Gemini Enterprise Agent Platform, Microsoft Copilot Studio, Voiceflow, Vapi, Palantir, Databricks, Snowflake, Figma, Canva, Adobe Spectrum, Writer, Typeface, and similar enterprise intelligence platforms. |
-| `kairos-product-marketing-director` | Use as Kairos's product marketing director for positioning, category design, messaging, ICP narrative, website copy, PRFAQ external story, launch plans, competitive framing, sales enablement, packaging narrative, enterprise trust narrative, pricing-page language, demo storyline, and market proof. Consider how enterprise AI, analytics, experimentation, personalization, LLMOps, voice-agent, operational-intelligence, design-system, AI-interface, and governed-generation companies market themselves, including Segment, Amplitude, Statsig, LaunchDarkly, Optimizely, Braze, Adobe Experience Platform, Langfuse, LangSmith, Arize, Agentforce, Voiceflow, Vapi, Palantir, Databricks, Snowflake, Figma, Canva, Adobe Spectrum, Writer, Typeface, and similar enterprise intelligence platforms. |
-| `server` | Use this to securely provision, harden, or operate a headless Linux Docker development and deployment host, especially for SSH-based agent access, Docker Engine and Compose workloads, private-LAN firewalling, Git repositories, systemd services, updates, logs, and reboot-safe verification. |
-| `skills-librarian` | Master skill for this Agent Skills library. Use to connect a project to the library: install or refresh a small managed pointer block in the project's AGENTS.md — creating AGENTS.md if none exists — so ANY agent working in that project learns how to discover, load, use, and correctly edit every skill in this folder. Also the reference of record for the standards used to author and edit skills here. Trigger when asked to "install / register / onboard / hook up the skills library", "set up AGENTS.md so agents can find these skills", "make this project aware of my skills", or when you need the rules for using or writing a skill in this folder. |
-| `transcribe-gpt` | Use this to transcribe any audio or video file (mp4, mov, mkv, mp3, wav, m4a, ogg, …) into a single speaker-diarized Markdown transcript with OpenAI's gpt-4o-transcribe-diarize model. The skill always asks the user for the API key, the file to transcribe, and the output destination (default ~/Desktop), then handles everything else itself: ffmpeg audio extraction, splitting under the 25 MB upload cap, model settings (diarized_json, chunking_strategy=auto), known-speaker references for consistent labels across chunks, retries, resumable per-chunk cache, reference-style Markdown output, and a total elapsed-time report. Trigger on requests to transcribe / diarize / speech-to-text a recording with OpenAI, "gpt-4o-transcribe-diarize", "speaker diarization transcript", or /transcribe-gpt. |
-| `vps` | Use this to safely inspect, deploy, update, or retire repositories on the managed VPS with Dokploy and Docker, especially when strict workload isolation, minimal public ports, firewall verification, keychain-backed SSH access, and tamper-evident action auditing are required. |
-<!-- END SKILLS-LIBRARY (managed by skills-librarian) -->
-
-<!-- compass-forge:start -->
-# Compass Forge Agent Workflow
-
-Project root: `<REPO_ROOT>` (repo-relative; the literal checkout path must never be committed — see `scripts/public_repo_quality_audit.py` rule `machine_checkout_path`)
-Recipe: `istara-main`
-Runtime: Rust-only (`compass-forge mcp`).
-
-1. Call `forge.status`, then `forge.agent_brief` for the user's request.
-2. For meaningful changes create, clarify, plan, and task a durable spec.
-3. Use impact, graph, model, zones, context packs, and a role-specific work order before editing.
-4. Run gates before and after; attach command, gate, and review evidence.
-5. Preserve independent blind review: freeze the reviewer sheet before revealing implementation evidence, then reconcile.
-6. Never invoke a legacy runtime or silently mutate global configuration.
-
-<!-- compass-forge:end -->
+- No live backend/frontend servers, chat-completion probes, or model loading without explicit
+  owner permission; at most one configured model target at a time.
+- Secrets and private LLM endpoints live in gitignored env files or macOS Keychain — never in
+  commits, logs, or prompts.
+- Auth/security/pooled-compute/MCP/webhook/LLM-provider/self-evolution changes run
+  `python scripts/security_benchmark.py --fail-on-threshold` and attach the scorecard.
+- Never commit the literal checkout path (`scripts/public_repo_quality_audit.py`).
