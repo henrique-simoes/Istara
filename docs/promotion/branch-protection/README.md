@@ -66,6 +66,25 @@ re-render the body from the manifest instead of trusting this file.
    enforcement tolerate it; confirm it still succeeds and only touches
    `README.md`/`README.pt-BR.md`.
 
+## Applied overrides (2026-09-12) — solo-owner repository
+
+The body in `gh-api-body.json` asks for `required_approving_review_count: 1` and
+`require_code_owner_reviews: true`. The protection **actually applied** to `main`
+has **approvals 0** and **code-owner reviews off**, because GitHub refuses
+`bypass_pull_request_allowances` on user-owned repositories (HTTP 422: "Only
+organization repositories can have users and team restrictions"). With a single
+collaborator, a 1-approval rule combined with `enforce_admins: true` makes every
+PR unmergeable — the author cannot approve their own PR and cannot admin-bypass
+it. Everything else is applied exactly as written: **17 required contexts**,
+`strict: true`, linear history, no force-pushes, no deletions,
+`enforce_admins: true`, and the PR requirement itself (no direct pushes).
+
+Read back the applied state with:
+
+```bash
+gh api repos/henrique-simoes/Istara/branches/main/protection
+```
+
 ## What this package deliberately does NOT do
 
 - It does not weaken or remove any existing check (the old `governance`

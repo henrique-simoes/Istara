@@ -60,9 +60,9 @@ The generated HTML site was upgraded from a basic static page into a more comple
 
 - `scripts/feature_docs.py`
 - `AGENTS.md`
-- `DOCUMENTATION.md`
-- `CHANGE_CHECKLIST.md`
-- `SYSTEM_CHANGE_MATRIX.md`
+- `AGENTS.md`
+- `AGENTS.md` (replaces CHANGE_CHECKLIST.md)
+- `CLAUDE.md`
 - `docs/features/inventory.json`
 - `docs/features/README.md`
 - `docs/features/glossary/*.md`
@@ -74,7 +74,7 @@ The generated HTML site was upgraded from a basic static page into a more comple
 
 Additional files changed in `CF-SPEC-54`:
 
-- `DOCUMENTATION.md`
+- `AGENTS.md`
 - `docs/features/README.md`
 - regenerated `docs/features/content/**`
 - regenerated `docs/features/site/**`
