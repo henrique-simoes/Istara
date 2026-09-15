@@ -4,13 +4,13 @@
 ```yaml
 item: testing-to-main-convergence
 branch: testing
-phase: "Phase 6 — Certify promotion readiness"
-stage: S3-review
-status: in-progress
+phase: "Phase 6 — Certify promotion readiness (complete)"
+stage: S5-ship
+status: done
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL, testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW, testing-to-main-20260909-WAVE-promotion-certification-IMPL, testing-to-main-20260909-WAVE-promotion-certification-REVIEW, testing-to-main-remediation-20260909-IMPL, testing-to-main-remediation-20260909-REVIEW] }
-last: { agent: claude-opus-5, at: 2026-09-11T19:06:30Z, ledger: L-79 }
-next_action: "Conductor close-out of main-readiness-final-20260911 certification-final wave: blind review PASS (F-CFR-1/F-CFR-2 advisory minors, no fix tasks). Then owner-only G1 push (conductor/readiness5-20260910:testing) -> exact-SHA CI observation -> G3 testing-promotion env + protection PUT -> G4 promote-testing dispatch. No push/PR/merge by this pipeline."
+last: { agent: pi (claude-opus), at: 2026-09-15T00:30:00Z, ledger: L-81 }
+next_action: "Closed 2026-09-15: promotion merged — PR #34 squash-merged to main as 2f106b57 (certified candidate 25e2063d; pushed tip 9620e5d8; post-promotion closeout commit 5e8fea49). CI evidence: 34637179724 (17/17 required contexts on a1b3f443), QA Artifact 34637179623, Docs Website 34643719560 green on 9620e5d8. Post-promotion open work is tracked exclusively in todo.md; this ledger is the durable record."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -29,7 +29,7 @@ security, mutation, and real-browser evidence converge. The strict wave manifest
 | 3 | Repair correctness and quality failures | credential-free release checks green | done |
 | 4 | Align CI and branch-protection enforcement | required checks match architecture | done |
 | 5 | Prove real container-first behavior | dated journey verdicts on candidate SHA | done (live execution CI ui-journeys-owned) |
-| 6 | Certify promotion readiness | binary owner-gated promotion dossier | in-progress |
+| 6 | Certify promotion readiness | binary owner-gated promotion dossier | done |
 
 
 <!-- consensus-winning-plan:testing-to-main-20260909-a38efd495d2d7124756699d0d630f44a66cf2ac1260bbd6d9ad74649d8228bb8 -->
@@ -2178,3 +2178,10 @@ Did: Promotion PR #34 (`testing` -> `main`, head `a1b3f443`) triggered the `Docs
 Result: The red job is a first-PR-only exposure, not a regression from the promotion train's own waves. Local repro: docs-only venv (pytest, pytest-asyncio, sqlalchemy[asyncio], aiosqlite, pydantic-settings) pre-fix -> INTERNALERROR at `app/core/audit_middleware.py: from fastapi import Request, Response`; post-fix -> 6 passed. Backend lane with the full backend venv: 22 passed (`test_feature_docs`, `test_auth_encrypted_pii`, `test_field_encryption`, `test_database_schema_bootstrap`), confirming the hooks still run when the backend dependency set is present. Pushed tip now carries this fix; PR #34 checks and the `Docs Website` run re-execute on the new SHA.
 Verified: `/tmp/docs-lane-venv/bin/python -m pytest tests/test_feature_docs.py -q` -> pre-fix INTERNALERROR, post-fix 6 passed; `backend/.venv/bin/python -m pytest tests/test_feature_docs.py tests/test_auth_encrypted_pii.py tests/test_field_encryption.py tests/test_database_schema_bootstrap.py -q` -> 22 passed; `git diff tests/conftest.py` -> 4 guarded hunks only.
 Next: await CI + `Docs Website` green on the new tip SHA, then squash-merge PR #34 (solo-owner protection: approvals 0, self-merge permitted; 17 required contexts + strict + linear + no-force-push + enforce-admins). No widening of scope.
+
+
+### L-81 | 2026-09-15T00:30:00Z | S5-ship | pi (claude-opus) | lifecycle close-out — promotion merged, record concluded <!-- bsc-ledger:closeout-20260915 -->
+Did: Concluded this lifecycle record after the owner-gated promotion completed. PR #34 (testing -> main) squash-merged as 2f106b57 ("Promote testing to main: certified candidate 9620e5d8 (CF-SPEC-30)"); post-promotion closeout commit 5e8fea49 (hand-off TODO, stale plan closures, protection note) landed on top. CI evidence: 34637179724 (17/17 required contexts on a1b3f443), QA Artifact 34637179623, Docs Website 34643719560 green on 9620e5d8 — closing L-80's "await CI + Docs Website green" await. Status block set to done/S5-ship; roadmap Phase 6 row flipped in-progress -> done; `last` pointer moved to this entry.
+Result: All six phases done; the document no longer claims an in-progress phase. Residual advisories (F-CFR-1/F-CFR-2, F-PTG-1/2/3, W2/W3/W4 minors) are carried into todo.md section 6 as riding advisories — they are tracked there, not in this ledger.
+Verified: `python scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` -> OK (terminal-state rule); `git log --oneline -2 origin/main` -> 5e8fea49, 2f106b57; todo.md section 0 records the promotion SHAs and CI runs.
+Next: none — this record is closed. Open post-promotion work is tracked exclusively in todo.md.

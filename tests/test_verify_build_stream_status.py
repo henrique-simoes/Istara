@@ -62,6 +62,36 @@ def test_rejects_ambiguous_last_ledger_pointer():
     assert any("last.ledger L-21 is ambiguous" in error for error in errors)
 
 
+def test_accepts_terminal_done_with_all_done_roadmap():
+    text = lifecycle(
+        'item: x\nphase: "Phase 2 — truth (complete)"\nstage: S5-ship\nstatus: done\n'
+        'next_action: "Closed; open work lives in todo.md."',
+        "| 0 | plan | vote | done |\n| 1 | freeze | sha | done |\n"
+        "| 2 | truth | check | done |",
+    )
+    assert verify(text) == []
+
+
+def test_rejects_terminal_with_open_roadmap_rows():
+    text = lifecycle(
+        'item: x\nphase: "Phase 2 — truth"\nstage: S5-ship\nstatus: done\n'
+        'next_action: "Closed."',
+        "| 0 | plan | vote | done |\n| 1 | freeze | sha | in-progress |\n"
+        "| 2 | truth | check | planned |",
+    )
+    assert "terminal lifecycle has non-done roadmap phases: 1, 2" in verify(text)
+
+
+def test_accepts_terminal_without_numbered_roadmap():
+    text = (
+        "<!-- STATUS BLOCK -->\n```yaml\n"
+        'item: x\nphase: "Complete — shipped"\nstage: S5-ship\nstatus: completed\n'
+        'next_action: "Closed."\n'
+        "```\n<!-- /STATUS BLOCK -->\n"
+    )
+    assert verify(text) == []
+
+
 def test_checked_in_convergence_lifecycle_passes_status_verifier():
     errors = verify(CONVERGENCE.read_text(encoding="utf-8"))
     assert errors == []

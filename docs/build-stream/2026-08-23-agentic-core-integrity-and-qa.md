@@ -5,11 +5,11 @@ item: agentic-core-integrity-and-qa
 branch: testing
 cf: { spec: CF-SPEC-2, predecessor: CF-SPEC-1, task: CF-15 }
 phase: "Phase 9 — completion blueprint, branch reconciliation, and terminal acceptance"
-stage: S2-execute/S3-review
-status: blocked
-blocked_on: "Owner decision required on two external inputs that agents must not fabricate: (1) the DashScope account is free-tier-only and its qwen3.7-flash quota is exhausted (live 403 AllocationQuota.FreeTierOnly receipt) — paid billing or an alternative credential is needed for the third independent rater; (2) no Petals donor inputs exist on the Mac Studio (no GGUF model file under ~/Istara-Projects/models, no donor connection strings), so the donation gate is not_runnable by registry rule 'blockers, not downloads'. Everything agent-executable has been completed and pushed."
-last: { agent: glm-5.3-flash, at: 2026-08-28T17:20:00Z, ledger: L-495, commit: "see git log" }
-next_action: "Once the owner enables DashScope paid billing (or supplies an equivalent third credential) and optionally Petals donor inputs: reset the Mac Studio checkout to origin/testing, rebuild the backend image, and rerun ISTARA_BENCHMARK_ACCEPTANCE_PROFILE=provider (three raters expected: Luna + Plus + Flash with the shipped repair chain), then combined for chat/tool/long-horizon/restart-resume evidence; then close CF-13/CF-20/CF-21, run S3 blind review, and accept CF-SPEC-2."
+stage: closed
+status: closed-superseded
+blocked_on: null
+last: { agent: pi (claude-opus), at: 2026-09-15T00:30:00Z, ledger: L-496 }
+next_action: "Closed 2026-09-15 (post-promotion closeout): superseded. The unified Pi provider plane shipped in Phase 6-7 of this ledger and was consolidated by 2026-08-29-provider-model-defaults-and-chat-routing (completed). The blocking gate — Workstream C live three-rater Research Spine proof — was executed and audited on 2026-09-04 without the DashScope credential: docs/scientific_audit/three-model-research-spine-audit.md (Luna + Qwen 3.7 Max + GLM 5.2; Fleiss kappa -0.125 / Krippendorff alpha 0.488 correctly failed closed to needs_reconciliation; TEST_HISTORY 2026-09-04 baseline). Long-horizon/tool-call workstreams covered by 2026-09-04-long-horizon-engine-comparison-and-main-promotion (completed); Petals deterministic coverage accepted under CF-SPEC-21/24, live donors remain owner-gated repo-wide. Promotion certified to main as 2f106b57; residual open work is tracked in todo.md."
 ```
 
 ## Continuation blueprint — remaining work and acceptance contract
