@@ -12,6 +12,11 @@ KEY_RE = re.compile(r"^(?P<key>[A-Za-z_][\w-]*):", re.M)
 LEDGER_RE = re.compile(r"^###\s+(?P<id>L-\d+)\b", re.M)
 LAST_LEDGER_RE = re.compile(r"ledger:\s*(?P<id>L-\d+)")
 
+# Statuses under which a lifecycle record is concluded. A terminal record must
+# not leave any numbered roadmap phase open; the active-phase in-progress
+# invariant only applies to live records.
+TERMINAL_STATUSES = {"done", "complete", "completed", "closed", "closed-superseded"}
+
 
 def verify(text: str) -> list[str]:
     errors: list[str] = []
@@ -25,10 +30,18 @@ def verify(text: str) -> list[str]:
         errors.append("duplicate status keys: " + ", ".join(duplicates))
 
     values = dict(re.findall(r'^([A-Za-z_][\w-]*):\s*["\']?([^\n"\']+)', body, re.M))
+    terminal = values.get("status", "").strip().lower() in TERMINAL_STATUSES
     phase_match = re.match(r"Phase\s+(\d+)\b", values.get("phase", ""))
     active = int(phase_match.group(1)) if phase_match else None
     roadmap = [(int(m.group("number")), m.group("status")) for m in ROADMAP_RE.finditer(text)]
-    if active is None:
+    if terminal:
+        open_rows = [number for number, status in roadmap if status != "done"]
+        if open_rows:
+            errors.append(
+                "terminal lifecycle has non-done roadmap phases: "
+                + ", ".join(map(str, open_rows))
+            )
+    elif active is None:
         errors.append("status phase does not name a numbered Phase")
     elif not roadmap:
         errors.append("roadmap has no phase status rows")
