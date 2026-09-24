@@ -3,12 +3,12 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: settings-collapse-chat-model-integration
-branch: testing
+branch: main   # testing was promoted to main by squash merge (PR #34, 2f106b57), so its commits are not ancestors of main
 phase: "Phase 3 — Gates, evidence, close"
 stage: S5-ship
 status: done
 blocked_on: null
-last: { agent: opencode, at: 2026-09-07T14:41:33Z, ledger: L-003 }
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:39:14Z, ledger: L-1 }
 next_action: "Owner review on QA; no merge without explicit outward-action approval."
 ```
 <!-- /STATUS BLOCK -->
@@ -90,3 +90,9 @@ next_action: "Owner review on QA; no merge without explicit outward-action appro
   (server_default/xhigh/max/minimal); selection restored and sessions API
   identical after (no residue). No Blockers; session-override display is
   per-session design (switch with one click), explained to owner.
+
+### L-1 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. Its work reached main through the squash merge of testing (PR #34, 2f106b57); the block named `testing`, whose commits a squash leaves off main's history.
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.

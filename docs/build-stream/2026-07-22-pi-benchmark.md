@@ -3,15 +3,15 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: pi-benchmark
-branch: conductor/pi-bench-retake-20260722
+branch: main   # testing was promoted to main by squash merge (PR #34, 2f106b57), so its commits are not ancestors of main
 cf: { spec: CF-SPEC-10, tasks: [CF-320, CF-321, CF-322, CF-323, CF-324, CF-325, CF-335, CF-336, CF-337, CF-338] }
 phase: "Phase RT-6b+RT-7 — SHIPPED (benchmark chain + petals P0-P3 + all 10 axes measured)"
 stage: S5-ship
-status: done
+status: superseded
 blocked_on: null
 authored_by: build-stream-conductor
 grounding: "Based on 2026-07-20-pi-full-replacement-master-plan.md Section 10 + CF-SPEC-10 + 2026-07-31-pi-petals-a2a-bridge-design.md"
-last: { agent: kimi-code/k3, at: 2026-07-31T20:55:00Z, ledger: L-69 }
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:40:32Z, ledger: L-85 }
 next_action: "RT-7 done: all 10 axes measured (L-81/82). Follow-ups: cross-model S3 reviews; GAIA (owner HF token); live full_ensemble on donor connect; F-12 legacy-transport reasoning-overflow typed-failure fix (production); P4 donor UI; CF-SPEC-12 multi-step tool-loop frontier."
 ```
 <!-- /STATUS BLOCK -->
@@ -1482,3 +1482,15 @@ Did: (1) F-12 root-caused against raw DeepSeek: reasoning model spent 978/1024 c
 Result: CF-SPEC-12 accepted; 372 backend + 11 frontend tests, tsc clean, security pass, feature docs 86, gate 0 new failures (both worktrees).
 Verified: pytest (372), vitest (11), tsc --noEmit, security_benchmark pass, gate after new_failures=0, spec accept -> accepted.
 Next: owner merges per the tree/branch advisory (testing release); follow-ups unchanged (cross-model S3 reviews, GAIA, live full_ensemble on donor, P4 UI).
+
+### L-84 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. Its work reached main through the squash merge of testing (PR #34, 2f106b57); the block named `testing`, whose commits a squash leaves off main's history.
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.
+
+### L-85 | 2026-09-24T03:40:32Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. It said done while its Blocker F-11 (the legacy arm measured by calling DeepSeekProvider.chat directly, not through AgenticDispatcher) was open. The benchmark continues in 2026-09-08-benchmark-modernization-full-ui-suite.md, which now carries F-11 as open work.
+Result: the Status Block says what is true today.
+Verified: read against the plans named.
+Next: as the block says.
