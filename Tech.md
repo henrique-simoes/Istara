@@ -3251,3 +3251,14 @@ embedding model/dimension is discarded and re-embedded rather than served, and
 an entry whose dimension cannot be verified yet is treated as a miss (fail
 closed). Chat temperature, thinking, and effort controls are generation
 controls only.
+
+### Telemetry export (contract v1, 2026-09-24)
+
+`scripts/export_telemetry_v1.py` reads `agentic_usage_rows` read-only and writes telemetry
+contract v1 rows (`schemas/telemetry.v1.schema.json` in adaptive-product-contracts 0.2.0) as
+JSON lines on stdout, with a summary of rows read, emitted, skipped by reason and unknown per
+measure on stderr. Rows are metadata only: no prompt, completion or tool payload. A measure the
+source does not record is `null` with provenance `unknown`, never 0; `host` is an alias, never a
+machine name. Standard library only; nothing in the backend imports it. Its tests are
+`tests/test_export_telemetry_v1.py`, and the feature is registered in
+`testing/feature_coverage.yml`.
