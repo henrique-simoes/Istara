@@ -9,7 +9,7 @@ phase: "Phase 1 — Implementation waves (update-and-release-proof)"
 stage: S3-review
 status: in-progress
 blocked_on: null
-last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-09T17:25:00Z, ledger: L-42 }
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:40:32Z, ledger: L-43 }
 next_action: "Wave supervisor / owner-gated live lane for the F-19/F-25 badge-execution acceptance (pending, not passing); see L-41/L-42."
 ```
 <!-- /STATUS BLOCK -->
@@ -137,6 +137,10 @@ migration, no state. Pin restore = one command.
 
 
 <!-- consensus-winning-plan:pi-compat-20260908-825cb8a8a6dd53ca201ba89199ca22f5895bbf7d51271ba18b9dfde415b45a70 -->
+## Phase 1 — Implementation waves (update-and-release-proof)
+
+The active phase; the phased task graph above and the consensus plan below hold its waves.
+
 ## Winning consensus plan — pi-compat-20260908
 
 # Master Plan (candidate B) — Pi Compatibility Authority and the Istara Integration Boundary
@@ -1775,3 +1779,9 @@ Did: Appended this correcting entry without altering any prior ledger content. C
 Result: This initiative resolves to exactly one status (in-progress, S3-review) with its CF task set declared; W2 triage cites CF-344..CF-356 as open-not-release-blocking with the carried live-lane debt flagged for W6/owner.
 Verified: `spec list` shows CF-SPEC-29 tasked; `task list --status open` shows CF-344..CF-356 open (13 rows); L-41 verdict re-read (pass, carried debt unchanged).
 Next: wave supervisor / authorized live lane for the F-19/F-25 badge-execution acceptance; no code change in this entry.
+
+### L-43 | 2026-09-24T03:40:32Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. Its active phase had no section of its own; one is added, pointing at the task graph and the consensus plan.
+Result: the Status Block says what is true today.
+Verified: read against the plans named.
+Next: as the block says.

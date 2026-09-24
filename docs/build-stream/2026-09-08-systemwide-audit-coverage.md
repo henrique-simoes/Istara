@@ -3,13 +3,13 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: systemwide-audit-coverage
-branch: testing
+branch: main   # testing was promoted to main by squash merge (PR #34, 2f106b57), so its commits are not ancestors of main
 cf: { spec: CF-SPEC-20, tasks: [CF-207, CF-208, CF-209, CF-210, CF-211, CF-212, CF-213, CF-214, CF-215, CF-216, CF-217, CF-218] }
 phase: "Whole plan — shipped"
 stage: S5-ship
 status: done
 blocked_on: null
-last: { agent: pi-audit, at: 2026-09-08T01:35:00Z, ledger: L-012 }
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:39:14Z, ledger: L-1 }
 next_action: "Done. CF-SPEC-20 accepted; residual: F-007 accepted-risk stands, Docker/QA + Playwright matrices deferred."
 ```
 <!-- /STATUS BLOCK -->
@@ -338,3 +338,9 @@ matrices still unproven here. Retro: recipe-step task titles misdescribe audit r
   Result: spec accepted; plan Status Block done with summary + retro.
   Verified: accept payload (14 tasks, 17 command evidence); sheet FROZEN.
   Next: none — residuals documented (F-007, live matrices).
+
+### L-1 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. Its work reached main through the squash merge of testing (PR #34, 2f106b57); the block named `testing`, whose commits a squash leaves off main's history.
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.

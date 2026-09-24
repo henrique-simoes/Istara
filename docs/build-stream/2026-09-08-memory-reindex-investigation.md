@@ -3,12 +3,12 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: memory-reindex-investigation
-branch: testing
+branch: main   # testing was promoted to main by squash merge (PR #34, 2f106b57), so its commits are not ancestors of main
 phase: "Phase 3 — Fix, migrate, prove (complete)"
 stage: S5-ship
 status: done
 blocked_on: null
-last: { agent: opencode, at: 2026-09-07T18:33:47Z, ledger: L-003 }
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:39:14Z, ledger: L-1 }
 next_action: "Owner verifies Memory on QA; no merge without explicit approval."
 ```
 <!-- /STATUS BLOCK -->
@@ -53,3 +53,9 @@ next_action: "Owner verifies Memory on QA; no merge without explicit approval."
   DATABASE_URL→simulation-shared db, LANCE_DB_PATH→shared/lance_db,
   KEYWORD_INDEX_DIR→shared/keyword_index. CF-SPEC-16 left unaccepted
   (auto-generated process tasks open).
+
+### L-1 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. Its work reached main through the squash merge of testing (PR #34, 2f106b57); the block named `testing`, whose commits a squash leaves off main's history.
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.
