@@ -268,6 +268,7 @@ COMMAND_CATALOG: dict[str, str] = {
         "--output security/security_scorecard.json"
     ),
     "pytest_feature_obligations": "pytest tests/test_feature_obligations.py -q",
+    "pytest_telemetry_export": "pytest tests/test_export_telemetry_v1.py -q",
     "pytest_qa_stack": "pytest tests/test_qa_stack_contract.py -q",
     "pytest_qa_reset_seed": "pytest tests/test_qa_reset_seed.py -q",
     "pytest_qa_artifacts": "pytest tests/test_qa_artifacts.py -q",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""export_telemetry_v1.py: agentic_usage_rows become contract v1 rows; a default 0 is not a measurement. Run: python3 scripts/test_export_telemetry_v1.py (also collected by pytest)."""
+"""export_telemetry_v1.py: agentic_usage_rows become contract v1 rows; a default 0 is not a measurement. Run: pytest tests/test_export_telemetry_v1.py (also collected by pytest)."""
 import json
 import sqlite3
 import subprocess
@@ -22,7 +22,7 @@ def shape_ok(row):
         assert sorted(value) == ["provenance", "value"], (name, value)
         assert (value["value"] is None) == (value["provenance"] == "unknown"), (name, value)
 
-SCRIPT = HERE / "export_telemetry_v1.py"
+SCRIPT = HERE.parent / "scripts" / "export_telemetry_v1.py"
 DDL = """CREATE TABLE agentic_usage_rows (id VARCHAR(36) PRIMARY KEY, created_at DATETIME, engine VARCHAR(16),
  purpose VARCHAR(120), project_id VARCHAR(36), session_id VARCHAR(36), agent_id VARCHAR(36), task_id VARCHAR(36),
  spine_phase VARCHAR(40), endpoint_id VARCHAR(120), node_id VARCHAR(120), model VARCHAR(200), input_tokens INTEGER,
