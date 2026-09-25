@@ -186,3 +186,54 @@ Phase 2 suites on this branch: the two new files plus `test_rag_resilience.py`,
 `pi_production/test_embedding_profile_authority.py`: 125 passed after one seam update. The
 provenance-dedupe test's `FakeStore` now provides `keyword_index()`, the paired-index accessor
 the store gained.
+
+## F12: score-scale mixing in several rankers
+
+**What it is for.** A score must mean what its reader thinks it means. Reciprocal Rank Fusion
+is ordinal (Cormack, Clarke & Büttcher, SIGIR 2009: it fuses ranks, never scores). The best
+possible fused value is about 0.016, which a model or a researcher reads as "irrelevant". A
+ranking that sorts two score scales together has no meaning.
+
+**Flow driven (pytest, container).** `tests/test_spine_ranking_semantics.py` builds the
+compressed chat/interfaces RAG block and a raw `format_context_part` label, and calls the chat
+tool `search_memory` with `top_k=100000`. It seeds a project with a model-written nugget and two
+source hits that share their text but belong to different evidence units, then runs
+`search_project_findings`. It compresses three ranked chunks where rank 3 is keyword-stuffed.
+It composes a Prompt-RAG identity where embedding fails after the first section.
+
+**Output inspected.** On `origin/main`:
+```
+test_spine_ranking_semantics.py:51: assert 'relevance:' not in '--- Documen...ted_content>'
+test_spine_ranking_semantics.py:98: KeyError: 'kind'          # finding mixed in at score 1.0
+test_spine_ranking_semantics.py:134: assert [2, 0, 1] == [0, 1, 2]   # word soup moved to the top
+test_spine_ranking_semantics.py:159: AssertionError: '# Istara Res...' == '# Istara Res...'  # mixed cosine/Jaccard selection
+```
+On this branch the model sees `rank 1`, `rank 2`, and the tool prints `#1 [source]`. Findings
+search returns both evidence units first (`eu-1`, `eu-2`, kind `source_evidence`, ranked), then
+the nugget as `kind: finding`, `review_status: provisional`, `score: None`. Compression keeps
+`[0, 1, 2]`. A partial embedding failure yields exactly the keyword-only selection.
+
+**Why that proves it.** Each assertion is the property itself. No fused value reaches a model
+label. A provisional finding cannot sort above source evidence, because the two are no longer
+on one sorted list. Retrieval order survives compression. A Prompt-RAG ranking is either all
+cosine or all keyword. Measurement 3 below quantifies what the order change does to budget
+recall.
+
+## F17: remaining smells
+
+On `origin/main`: `assert 100000 <= 20` (search_memory `top_k` passed through),
+`assert 200 == 422` (`/findings/search?top_k=100000` accepted), `{'error': 'whole-table load'}`
+(the Memory list loaded the whole LanceDB table, vectors included, into pandas to page it),
+`assert not True` (`MetaHyperagent._apply_parameter`, a module-global mutator with no callers,
+still present), `TypeError: can only concatenate str (not "NoneType") to str` (`_select_skill`
+on a NULL description), and `assert 'create_task' not in ['create_task']` for both the native
+and the text-fallback legacy turn: a tool outside the session catalog executed. All pass on
+this branch. The legacy loop now refuses uncatalogued tools on every surface and tells the model
+`tool_not_allowed`, which the Pi plane already did. The Memory list and stats select only the
+listed columns with offset/limit, read the vector dimension from the schema, and still count
+sources correctly (`{'/u/doc-0.md': 3, '/u/doc-1.md': 2}`).
+
+Phase 3 suites on this branch: the new file plus 23 test files that touch the changed surfaces
+(`_react_loop`, legacy executor, Prompt-RAG, meta-hyperagent, findings search, `search_memory`,
+RAG compression, the context formatter) and `test_findings.py`, `test_memory.py`:
+**488 passed**.

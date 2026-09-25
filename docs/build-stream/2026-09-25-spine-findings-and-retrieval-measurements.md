@@ -4,12 +4,12 @@
 item: spine-findings-and-retrieval-measurements
 branch: fix/spine-findings-measurements-20260925
 cf: { spec: CF-SPEC-2, tasks: [] }
-phase: "Phase 3 — ranking semantics (F12, F17)"
+phase: "Phase 4 — learning-loop governance (F10, F16, F9, M6)"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-25T18:51:00Z, ledger: L-5 }
-next_action: "Phase 3: tests for rank labels to the model/tools/MCP, findings search scales and provenance dedupe, compression keeping retrieval order, Prompt-RAG single scale, unbounded top_k, memory pagination without whole-table loads, dead code; run on origin/main first."
+last: { agent: claude-code, at: 2026-09-25T18:57:39Z, ledger: L-6 }
+next_action: "Phase 4: tests for learned skill boosts vs the relevance floor (F10), side-effect-free ReasoningBank reads and old-lesson reachability (F16), project-scoped promotions and cache invalidation (F9), and the planted successful-but-wrong run (M6); run on origin/main first."
 ```
 
 Evidence (four-part records per finding): `2026-09-25-spine-findings-evidence.md` beside this file.
@@ -154,3 +154,14 @@ Verified: `pytest ../tests/test_spine_evidence_provenance.py -q` on origin/main 
 ruff 0.16.6 backend format/correctness/strict clean.
 CF: IST-CF-4 refined by a clean-clone reproduction (see L-6 note in the CF report).
 Next: Phase 3.
+
+### L-6 | 2026-09-25T18:57:39Z | S2-execute | claude-code | executor | Phase 3
+Did: F12 rank labels (rag, persona protocols), retrieval-order compression, findings search on
+separate scales with provenance-keyed dedupe, Prompt-RAG single-scale fallback; F17 bounded
+top_k (tool + route), memory paging without whole-table loads, dead mutator removed, NULL
+description, legacy catalog admission on every surface. Commit 5b742c52.
+Result: tests/test_spine_ranking_semantics.py 11/11 fail on origin/main, 11/11 pass here; 25
+related files 488 passed. ruff clean.
+Verified: `pytest ../tests/test_spine_ranking_semantics.py -q` → origin/main 11 failed; branch
+11 passed; 25-file related run → 488 passed (istara-test:1, network none).
+Next: Phase 4.
