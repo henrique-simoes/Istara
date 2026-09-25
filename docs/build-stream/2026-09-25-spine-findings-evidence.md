@@ -78,3 +78,111 @@ Suites run on this branch: `test_spine_prompt_boundaries.py`, `test_data_transfo
 `test_rag_resilience.py`, `test_retrieval_correctness_fixes.py`, `test_reasoning_bank.py`,
 `test_content_guard.py`, `pi_production/test_w4_a2a_handlers.py`, `test_prompt_rag.py`,
 `test_chat.py`, `test_agent_personas.py`: **110 passed**.
+
+## F5: LLM-written artifacts and agent notes in the source evidence index
+
+**What it is for.** The spine says evidence units come from raw source spans, and that model
+output is at most provisional. Hybrid RAG is the exact-evidence retriever. If a skill's own
+report or an agent's note sits in the same index as the interviews, `self_check.verify_claim`
+can "verify" a claim against the text that asserted it: retrieval-corpus poisoning (PoisonedRAG,
+Zou et al. 2024) that the product commits against itself. W3C PROV keeps an entity's generation
+by an agent separate from what a source says.
+
+**Flow driven (pytest, container).** `tests/test_spine_evidence_provenance.py` writes a claim
+two ways: through `agent_memory.write_note`, and as a pre-fix build stored skill artifacts
+(`skill:` rows in the source table). It then runs `verify_claim` on the claim and captures the
+exact prompt the dispatcher receives. It writes notes for agents `a1` and `a10` beside 30
+similar source chunks and reads them back both ways. It drives `AgentOrchestrator._store_findings`
+twice with a 5,800-character artifact.
+
+**Output inspected.** On `origin/main`:
+```
+test_spine_evidence_provenance.py:113: AssertionError: model output confirmed its own claim
+test_spine_evidence_provenance.py:128: AssertionError: assert [] == ['Onboarding ...inder email.']
+test_spine_evidence_provenance.py:155: AttributeError: module 'app.core.rag' has no attribute 'DERIVED_TABLE'
+```
+The note reached the verifier's "Source Documents". The agent's own note was crowded out of
+its top-3. On this branch the verifier sees only `interview-02.md`, `read_notes("a1")` returns
+exactly a1's note, and `get_all_notes("a1")` no longer matches `a10`. The artifact lives whole
+in the derived index (the `END-MARKER` past 2,000 characters is present), and a rerun leaves
+the row count unchanged.
+
+**Why that proves it.** The claim's supporting text now exists only in the derived index, which
+source retrieval never reads. Legacy rows are pre-filtered out by their `agent:`/`skill:`
+source. With the fixed code the verifier cannot see its own model's output, whatever the
+embedder ranks.
+
+## Measurement 5: provenance coverage
+
+**What it is for.** The retrieval contract makes Hybrid RAG return exact evidence: source,
+span and evidence-unit id. The map found 0% of retrieved chunks carrying an
+`evidence_unit_id`. The brief asks for provenance to be wired through and made a health
+invariant.
+
+**Flow driven.** The test uploads a 40-turn interview through the real route
+(`POST /api/files/upload/{pid}`, ASGI), reads every row the upload wrote to the source vector
+table, joins each to the document's `EvidenceUnit` rows, then calls `GET /api/memory/{pid}/stats`
+and `retrieve_context`.
+
+**Output inspected.** On `origin/main`:
+`AssertionError: every source chunk names a real evidence unit of its document`. On this branch
+every row's `evidence_unit_id` is a unit of that document, and its span overlaps the unit's span.
+`stats["provenance"]["coverage"] == 1.0`. Every hybrid hit carries a unit, and
+`provenance_share == 1.0`. Retrieval telemetry now records that share on every
+`retrieval.hybrid` event (content-free).
+
+**Why that proves it.** The join is exact: each chunk is located in the text the units were
+segmented from, and it takes the unit with the largest overlap. A chunk that cannot be
+located is left unstamped and shows up as coverage below 1.0 (`status: degraded`); it is never
+guessed. The same helper serves upload, audio, reprocess, documents sync, knowledge sync and the
+watcher. Real-corpus coverage on the live lane is recorded in Phase 8.
+
+## F7: the file watcher drops BM25 rows
+
+**What it is for.** A watched project folder is an ingestion surface. An edit must leave the
+file searchable by keyword as well as by vector.
+
+**Flow driven.** `FileWatcher._process_file` on a Markdown file in a watched folder. The file
+is then edited and processed again, and BM25 is searched for a phrase that only the edit contains.
+
+**Output inspected.** On `origin/main`: `assert ([])`, no keyword hit at all after the
+re-index. On this branch the edited sentence is the top BM25 hit, and the keyword row count
+equals the vector row count.
+
+**Why that proves it.** The old path deleted by source (clearing both indices) and then called
+`embed_chunks` and `store.add_chunks` only. The watcher now registers the document first and
+indexes through the same two-index, provenance-stamping helper as uploads.
+Runtime drive in the container lane: Phase 9.
+
+## F15: ciphertext indexing and ciphertext search under file encryption
+
+**What it is for.** With `FILE_ENCRYPTION_ENABLED=true`, document text is stored through
+`protect_document_text`. Anything that reads it must reveal it first.
+
+**Flow driven.** Encryption on with a fresh Fernet key. A document whose file is missing, so
+knowledge sync falls back to the stored text. `KnowledgeSyncService.sync_project`, then BM25
+search, then the chat tool `_exec_search_documents`.
+
+**Output inspected.** On `origin/main`: `assert ([])` (the sync indexed ciphertext, so no
+plaintext hit), and `"No documents found matching 'variance column' in this project."`. On this
+branch the plaintext sentence is the BM25 hit, no indexed row starts with the ciphertext prefix,
+and the tool answers "Found 1 document(s)".
+
+**Why that proves it.** Both paths now read `reveal_document_text`, the same function the
+Documents full-text route already used.
+
+## F17 (part): backslash paths and zero-as-unset
+
+Delete by a Windows-style source (`C:\Users\research\interview.md`): on `origin/main`
+`assert 1 == 0` (the row survived). LanceDB 0.38 was probed directly: the backslash-doubled
+literal deleted nothing, and the plain literal deleted the row. An explicit
+`score_threshold=0.0` on `origin/main` returned only the chunk above 0.3
+(`{'/u/b.md'} == {'/u/a.md', '/u/b.md'}`). Both pass on this branch.
+
+Phase 2 suites on this branch: the two new files plus `test_rag_resilience.py`,
+`test_retrieval_correctness_fixes.py`, `test_files.py`, `test_memory.py`, `test_documents.py`,
+`test_research_spine_end_to_end.py`, `test_agents.py`,
+`test_research_integrity_code_applications.py` and
+`pi_production/test_embedding_profile_authority.py`: 125 passed after one seam update. The
+provenance-dedupe test's `FakeStore` now provides `keyword_index()`, the paired-index accessor
+the store gained.

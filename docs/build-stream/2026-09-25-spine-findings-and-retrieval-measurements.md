@@ -4,12 +4,12 @@
 item: spine-findings-and-retrieval-measurements
 branch: fix/spine-findings-measurements-20260925
 cf: { spec: CF-SPEC-2, tasks: [] }
-phase: "Phase 2 — evidence-index provenance (F5, M5, F7, F15)"
+phase: "Phase 3 — ranking semantics (F12, F17)"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-25T18:34:00Z, ledger: L-4 }
-next_action: "Phase 2: write tests for derived-index separation (F5), exact note scoping, evidence_unit_id on source chunks (M5), watcher BM25 rows (F7) and ciphertext (F15); run them on origin/main first."
+last: { agent: claude-code, at: 2026-09-25T18:58:00Z, ledger: L-5 }
+next_action: "Phase 3: tests for rank labels to the model/tools/MCP, findings search scales and provenance dedupe, compression keeping retrieval order, Prompt-RAG single scale, unbounded top_k, memory pagination without whole-table loads, dead code; run on origin/main first."
 ```
 
 Evidence (four-part records per finding): `2026-09-25-spine-findings-evidence.md` beside this file.
@@ -138,3 +138,19 @@ strict lint clean. CF refresh picked up the new edges (content_guard → context
 new importers).
 Verified: `pytest ../tests/test_spine_prompt_boundaries.py ../tests/test_data_transformations.py ../tests/test_rag_resilience.py ../tests/test_retrieval_correctness_fixes.py ../tests/test_reasoning_bank.py ../tests/test_content_guard.py ../tests/pi_production/test_w4_a2a_handlers.py ../tests/test_prompt_rag.py ../tests/test_chat.py ../tests/test_agent_personas.py -q` → 110 passed (istara-test:1, network none); the same new file on origin/main → 14 failed, 2 passed.
 Next: Phase 2.
+
+### L-5 | 2026-09-25T18:58:00Z | S2-execute | claude-code | executor | Phase 2
+Did: F5 derived index (rag DERIVED_TABLE/namespace, ingest_derived_chunks, retrieve_derived_context;
+legacy agent:/skill: rows pre-filtered from source retrieval), exact agent-note scoping, skill
+artifacts chunked whole and replaced on rerun; M5 services/retrieval_provenance.py (annotate,
+index_document_source_chunks, provenance_coverage) wired into upload, audio, reprocess,
+documents sync, knowledge sync and the watcher; F7 watcher indexes both indices; F15 reveal
+before indexing/matching; F17 part (backslash delete, zero threshold, honest telemetry mode).
+Commit 2b762a63.
+Result: tests/test_spine_evidence_provenance.py 9/9 fail on origin/main for their stated
+reasons and pass here; related suites 125 passed (one seam update in test_rag_resilience).
+Verified: `pytest ../tests/test_spine_evidence_provenance.py -q` on origin/main → 9 failed; on
+2b762a63 → pass; `pytest` of the 12 related files → 125 passed (istara-test:1, network none).
+ruff 0.16.6 backend format/correctness/strict clean.
+CF: IST-CF-4 refined by a clean-clone reproduction (see L-6 note in the CF report).
+Next: Phase 3.
