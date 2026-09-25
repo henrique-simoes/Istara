@@ -12,7 +12,7 @@ from watchfiles import Change, awatch
 
 from app.api.websocket import broadcast_file_processed, broadcast_suggestion
 from app.config import settings
-from app.core.file_encryption import encrypt_file_in_place, protect_document_text, read_file_text
+from app.core.file_encryption import protect_document_text, read_file_text
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.rag import VectorStore
 
@@ -71,7 +71,8 @@ class FileWatcher:
         """Get all watched directories."""
         return dict(self._watched_dirs)
 
-    async def _is_project_paused(self, project_id: str) -> bool:
+    @staticmethod
+    async def _is_project_paused(project_id: str) -> bool:
         from app.models.database import async_session
         from app.models.project import Project
 
@@ -81,7 +82,8 @@ class FileWatcher:
 
     # ── File classification for auto-task creation ──────────────────────
 
-    def _classify_file(self, file_path: Path) -> list[tuple[str, str, str]]:
+    @staticmethod
+    def _classify_file(file_path: Path) -> list[tuple[str, str, str]]:
         """Classify a file and return applicable (skill_name, task_title, priority) tuples."""
         filename = file_path.name.lower()
         ext = file_path.suffix.lower()
@@ -152,17 +154,18 @@ class FileWatcher:
         except (OSError, ValueError):
             return False
 
-    async def _create_research_tasks(self, file_path: Path, project_id: str) -> int:
+    @staticmethod
+    async def create_research_tasks(file_path: Path, project_id: str) -> int:
         """Create research tasks for a processed file based on its classification.
 
         Returns:
             Number of tasks created.
         """
-        if await self._is_project_paused(project_id):
+        if await FileWatcher._is_project_paused(project_id):
             logger.info("Skipping auto-task creation for paused project %s", project_id)
             return 0
 
-        skill_tasks = self._classify_file(file_path)
+        skill_tasks = FileWatcher._classify_file(file_path)
         if not skill_tasks:
             return 0
 
@@ -371,6 +374,14 @@ class FileWatcher:
         if not file_path.exists():
             return None
 
+        # A file uploaded through the product is ingested by the upload route, which owns its
+        # Document, evidence units, both indices and research tasks. Every project's upload
+        # directory is also watched, so indexing it here too raced the route and left two copies
+        # of every chunk in the vector store (the keyword index replaces rows; the vector store
+        # appended them).
+        if self._is_managed_upload_path(file_path):
+            return None
+
         suffix = file_path.suffix.lower()
         if suffix not in get_supported_extensions():
             return None
@@ -389,14 +400,10 @@ class FileWatcher:
         # Process the file
         result = process_file(file_path)
         if result.error:
-            if self._is_managed_upload_path(file_path):
-                encrypt_file_in_place(file_path)
             logger.error(f"Error processing {file_path}: {result.error}")
             return {"file": file_key, "error": result.error}
 
         if not result.chunks:
-            if self._is_managed_upload_path(file_path):
-                encrypt_file_in_place(file_path)
             logger.warning(f"No text extracted from {file_path}")
             return None
 
@@ -412,9 +419,6 @@ class FileWatcher:
         store = VectorStore(project_id)
         await store.delete_file_source(file_path)
         count = await self._index_with_provenance(project_id, file_path, result.chunks)
-
-        if self._is_managed_upload_path(file_path):
-            encrypt_file_in_place(file_path)
 
         # Mark as processed
         self._processed_files[file_key] = file_path.stat().st_mtime
@@ -436,7 +440,7 @@ class FileWatcher:
 
         # Auto-create research tasks based on file classification
         try:
-            await self._create_research_tasks(file_path, project_id)
+            await self.create_research_tasks(file_path, project_id)
         except Exception as e:
             logger.warning(f"Failed to create research tasks for {file_path}: {e}")
 

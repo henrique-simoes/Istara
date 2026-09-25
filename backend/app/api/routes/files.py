@@ -1,5 +1,6 @@
 """File upload and processing API routes."""
 
+import logging
 import mimetypes
 import os
 import uuid
@@ -53,6 +54,8 @@ MEDIA_EXTENSIONS = {
 
 # Audio extensions that we can transcribe
 AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg"}
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -440,6 +443,14 @@ async def upload_file(
         units=evidence_units,
         document_text=content_text,
     )
+    # The upload route owns this file's ingestion; the watcher leaves managed uploads alone, so
+    # the research tasks it used to create for them are created here, from the plaintext.
+    try:
+        from app.core.file_watcher import FileWatcher
+
+        await FileWatcher.create_research_tasks(file_path, project_id)
+    except Exception as exc:
+        logger.warning("Research tasks for upload %s not created: %s", safe_filename, exc)
     encrypt_file_in_place(file_path)
 
     response = {
