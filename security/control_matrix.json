@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "benchmark_version": "2026.08.24",
-  "last_reviewed": "2026-08-24",
+  "last_reviewed": "2026-09-25",
   "owner": "Istara release governance",
   "thresholds": {
     "production_release": {
@@ -973,10 +973,17 @@
         "tests/test_files.py",
         "tests/test_research_integrity_reports.py",
         "tests/test_rag_resilience.py",
-        "tests/test_compute.py"
+        "tests/test_compute.py",
+        "backend/app/core/pi_runtime/liveness.py",
+        "tests/test_spine_prompt_boundaries.py",
+        "tests/test_spine_evidence_provenance.py",
+        "tests/test_pi_turn_failures_and_thinking.py",
+        "tests/test_pi_local_liveness.py",
+        "pi-runtime/test/liveness.test.mjs",
+        "pi-runtime/test/structured.test.mjs"
       ],
       "future_change_trigger": true,
-      "notes": "Pi Model Management is the provider/model authority for both loop modes. Petals donors enter only through the consented, healthy, project-pinned bridge. Governed Research Spine coding requires three distinct model identities with complete evidence-unit coverage and fail-closed reliability metrics; same-model endpoint replicas do not create independent raters. BM25/RAG/prompt-RAG/LLMLingua/report-summary changes must not compress away governance, tool, credential, or project compute boundaries."
+      "notes": "Pi Model Management is the provider/model authority for both loop modes. Petals donors enter only through the consented, healthy, project-pinned bridge. Governed Research Spine coding requires three distinct model identities with complete evidence-unit coverage and fail-closed reliability metrics; same-model endpoint replicas do not create independent raters. BM25/RAG/prompt-RAG/LLMLingua/report-summary changes must not compress away governance, tool, credential, or project compute boundaries. The untrusted-content wrapper survives truncation and document markup cannot pin protected tags (2026-09-25). Pi endpoints have bounded, locality-aware run liveness (idle and total budgets within config limits), forward the provider's failure reason to internal callers, honour a configured thinking level, and keep structured output fail-closed when a provider accepts only tool_choice auto."
     },
     {
       "id": "AI-002",
