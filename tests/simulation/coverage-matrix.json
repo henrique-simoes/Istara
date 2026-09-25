@@ -161,7 +161,8 @@
   "memory": {
    "scenarios": [
     "23-memory-view",
-    "85-retrieval-correctness"
+    "85-retrieval-correctness",
+    "86-evidence-provenance-health"
    ],
    "sub_features": [
     "knowledge list",
@@ -169,13 +170,15 @@
     "reindex states",
     "hybrid search relevance (phrase + all-terms BM25, two-character tokens)",
     "reprocess idempotence",
-    "result rank display"
+    "result rank display",
+    "evidence provenance health card (empty, traceable, degraded; loading, error and retry)",
+    "Health tab reachable at 375px"
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-25",
-   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-25, Mac Studio): 85 10/10 + 23 13/13, axe 0 serious/critical on the results",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-25, Mac Studio, QA_RUN_ID cs76-sept25): 86 22/22 + 85 10/10 + 23 13/13; 86 axe 0 serious/critical on the Health tab in light and dark; run .results/runs/2026-09-25T19-43-40-637Z (screenshots 86-health-empty/-traceable/-375px/-dark, 86-role-*)",
    "live_verified_at": "2026-09-25",
-   "notes": "23 prior browser. 85: under the provider stub vectors are SHA-256 noise, so the two relevance checks can also be satisfied by the vector lane; the keyword behaviour they cover is pinned by tests/test_retrieval_correctness_fixes.py, which fails on origin/main. The rank badge and reprocess-idempotence checks discriminate in this lane."
+   "notes": "86: fresh [SIM-86] project, uploads through the Documents file chooser, card 100% (18 of 18 source chunks carry an evidence unit), loading/error/Retry, degraded branch from a labelled fixture payload, roles admin/researcher/viewer/stranger, keyboard Tab+Enter to the Health tab, 375px tab reachability (tab row now wraps), dark contrast (tab labels and Health labels gained dark:text-slate-400; first run found 16 nodes at 4.23:1). 23 prior browser. 85: under the provider stub vectors are SHA-256 noise, so the two relevance checks can also be satisfied by the vector lane; the keyword behaviour they cover is pinned by tests/test_retrieval_correctness_fixes.py, which fails on origin/main. The rank badge and reprocess-idempotence checks discriminate in this lane."
   },
   "interfaces": {
    "scenarios": [
