@@ -32,6 +32,7 @@ from sqlalchemy import or_, select
 
 from app.core.agent_identity import (
     runtime_personas_dir,
+    source_persona_path,
     writeable_persona_path,
 )
 from app.models.database import async_session
@@ -722,12 +723,18 @@ def _append_to_persona_file(
         logger.error(str(e))
         return False
     if not filepath.exists():
-        # Create the file with the section
+        # The runtime overlay SHADOWS the source persona as soon as it exists
+        # (`persona_file_path` prefers it), so it must start as a copy of the source. Creating it
+        # with only the promoted section erased the agent's title, Identity, Personality and
+        # Values from every project's Prompt-RAG on the first promotion into that file.
         try:
             filepath.parent.mkdir(parents=True, exist_ok=True)
-            content = f"{section_header}\n- {text}\n"
-            filepath.write_text(content, encoding="utf-8")
-            return True
+            source = source_persona_path(agent_id, filename)
+            if source.exists() and source.resolve() != filepath.resolve():
+                filepath.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            else:
+                filepath.write_text(f"{section_header}\n- {text}\n", encoding="utf-8")
+                return True
         except Exception as e:
             logger.error(f"Failed to create {filepath}: {e}")
             return False

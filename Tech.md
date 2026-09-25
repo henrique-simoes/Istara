@@ -680,7 +680,13 @@ Istara's retrieval combines **vector similarity** and **keyword search** using c
 | **Vector** | 0.7 | LanceDB cosine similarity on embeddings | Semantic understanding, handles paraphrasing |
 | **Keyword** | 0.3 | SQLite FTS5 BM25 scoring | Exact matches, acronyms, proper nouns |
 
-Results are merged using **Reciprocal Rank Fusion** and filtered by a score threshold (default: 0.3).
+Results are merged using **weighted Reciprocal Rank Fusion** (`w / (60 + rank)` per list); the vector lane first drops rows under 0.3 cosine similarity. The fused value orders results and is not a probability: the best possible chunk scores about 0.016, so the Memory view shows a result's **rank** (`#1`, `#2`, …) and keeps the raw value in its title.
+
+**Keyword query semantics** (`core/keyword_index.py`). The query runs as an exact FTS5 phrase first, and the all-terms (`OR`) query fills the remaining top-k, so an adjacent match ranks first without suppressing chunks that use the same words apart. Two-character tokens (`UX`, `AI`, `P1`, `Q4`) are kept; a short English stopword list is dropped from the `OR` query.
+
+**One evidence formatter.** `rag.format_context_part` labels every retrieved chunk (`[Source: …, page …, relevance: …]`) and wraps it in the ContentGuard untrusted-content delimiters. `retrieve_context` and `build_compressed_rag_context` (Chat and Interfaces, after compression to the RAG token budget) both use it, and the compressed path returns exactly the chunks that reached the prompt, so the SSE `done` event cites only those.
+
+**Re-ingestion is idempotent.** Chunks are keyed by the file's full stored path; `VectorStore.delete_file_source` deletes both the full-path and the basename spelling from the vector and keyword indices before upload, reprocess and documents sync re-ingest, and `delete_by_source` clears keyword rows even when a project has no vector table.
 
 ### Ingestion Pipeline
 
@@ -1727,6 +1733,8 @@ The tracked security benchmark lives under `security/` and is active release gov
 The current PR architecture makes the Research Spine the governing boundary for every feature that ingests, transforms, retrieves, validates, displays, learns from, or reports research data. Documents, interviews, surveys, AURA-style research, deployments, chat, skills, ReAct tools, interfaces, design evidence, integrations, simulations, and benchmarks must enter or respect the same evidence lifecycle: raw source, stable evidence unit, candidate atom/code application, reliability/grounding, reconciliation or human review, accepted artifact, task review, Done, then report.
 
 Atomic Research artifacts are trusted only after the source-grounded multi-model extraction/coding and reliability/reconciliation gates accept them. This means tests, fixtures, simulations, and real-user benchmark probes must not pass by constructing reportable nuggets, facts, insights, recommendations, design decisions, tasks, or reports directly from unvalidated model output. Legacy or unlinked artifacts are provisional or `legacy_unverified` until migrated or reconciled.
+
+A runtime persona overlay shadows its source file, so the first self-evolution promotion now seeds the overlay from the source persona before appending; an overlay holding only the promoted section would erase the agent's identity in every project.
 
 Self-improvement follows the same governance rule. Telemetry observes process behavior; ReasoningBank and Memento Skills provide weak routing/process priors; Autoresearch evaluates sandboxed mutations; Meta-Hyperagent proposes governed variants; Self-Evolution applies only approved changes with rollback/evidence. RAG/BM25, Hybrid RAG, GraphRAG, Prompt-RAG, and LLMLingua assist grounding and context management but do not inject mandatory coding methodology opportunistically or bypass Research Spine gates.
 

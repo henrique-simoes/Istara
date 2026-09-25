@@ -103,7 +103,7 @@ export default function ViewOnboarding({
           )}
 
           {/* Chat hint */}
-          <p className="text-[11px] text-istara-500 dark:text-istara-500 flex items-center gap-1">
+          <p className="text-[11px] text-istara-700 dark:text-istara-400 flex items-center gap-1">
             <MessageSquare size={10} aria-hidden="true" />
             {chatPrompt
               ? <>Try asking: &ldquo;{chatPrompt}&rdquo;</>

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Istara Systems Map</title>
+<meta name="description" content="How Istara retrieves evidence, what its graph really is, how its agents learn — and what an evaluation of all three found and fixed in September 2026.">
+<style>
+:root {
+  --ui-surface: #ffffff; --ui-surface-raised: #f8fafc; --ui-surface-soft: #f1f5f9;
+  --ui-ink: #0f172a; --ui-ink-muted: #475569; --ui-ink-subtle: #64748b;
+  --ui-rule: #e2e8f0; --ui-rule-strong: #cbd5e1;
+  --ui-accent: #15803d; --ui-accent-soft: #f0fdf4; --ui-focus: #2563eb;
+  --ui-danger: #b91c1c; --ui-warning: #a16207; --ui-success: #166534;
+  --lane-lex: #2563eb; --lane-vec: #7c3aed; --lane-fuse: #15803d; --lane-agent: #c2410c;
+  --page: #f1f5f9; --code: #eef2f6;
+  --radius-panel: 16px; --radius-control: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ui-surface: #0f172a; --ui-surface-raised: #172033; --ui-surface-soft: #1e293b;
+    --ui-ink: #f8fafc; --ui-ink-muted: #cbd5e1; --ui-ink-subtle: #94a3b8;
+    --ui-rule: #334155; --ui-rule-strong: #475569;
+    --ui-accent: #4ade80; --ui-accent-soft: #052e16; --ui-focus: #93c5fd;
+    --ui-danger: #fca5a5; --ui-warning: #facc15; --ui-success: #86efac;
+    --lane-lex: #60a5fa; --lane-vec: #a78bfa; --lane-fuse: #4ade80; --lane-agent: #fb923c;
+    --page: #0b1220; --code: #111a2e;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ui-surface: #0f172a; --ui-surface-raised: #172033; --ui-surface-soft: #1e293b;
+  --ui-ink: #f8fafc; --ui-ink-muted: #cbd5e1; --ui-ink-subtle: #94a3b8;
+  --ui-rule: #334155; --ui-rule-strong: #475569;
+  --ui-accent: #4ade80; --ui-accent-soft: #052e16; --ui-focus: #93c5fd;
+  --ui-danger: #fca5a5; --ui-warning: #facc15; --ui-success: #86efac;
+  --lane-lex: #60a5fa; --lane-vec: #a78bfa; --lane-fuse: #4ade80; --lane-agent: #fb923c;
+  --page: #0b1220; --code: #111a2e;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--page); color: var(--ui-ink); font: 16px/1.62 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif; }
+a { color: var(--ui-accent); text-underline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 2px; border-radius: 4px; }
+code, pre, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+code { font-size: .86em; background: var(--code); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 0 96px; }
+@media (max-width: 640px) { .wrap { padding-inline: 16px; } }
+header.hero { padding-block: 56px 28px; }
+.kicker { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ui-accent); }
+h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.1; margin: 10px 0 12px; letter-spacing: -.015em; text-wrap: balance; }
+h2 { font-size: clamp(24px, 3vw, 30px); line-height: 1.2; margin: 0 0 8px; text-wrap: balance; }
+h3 { font-size: 19px; margin: 26px 0 8px; }
+p, li { max-width: 72ch; }
+.lede { font-size: 19px; color: var(--ui-ink-muted); max-width: 64ch; }
+nav.toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 8px; }
+nav.toc a { text-decoration: none; color: var(--ui-ink); background: var(--ui-surface); border: 1px solid var(--ui-rule); border-radius: 999px; padding: 8px 14px; font-size: 14px; min-height: 44px; display: inline-flex; align-items: center; }
+nav.toc a:hover { border-color: var(--ui-rule-strong); }
+section.panel { background: var(--ui-surface); border: 1px solid var(--ui-rule); border-radius: var(--radius-panel); padding: 26px 28px; margin-top: 22px; scroll-margin-top: 16px; }
+@media (max-width: 640px) { section.panel { padding: 20px 16px; } }
+.sub { color: var(--ui-ink-muted); margin-top: 0; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background: var(--ui-surface-raised); border: 1px solid var(--ui-rule); border-radius: 12px; padding: 14px 16px; }
+.card h4 { margin: 0 0 4px; font-size: 15px; }
+.card p { margin: 0; font-size: 14.5px; color: var(--ui-ink-muted); }
+.claim { font-size: 13px; color: var(--ui-ink-subtle); margin-top: 6px !important; }
+.tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 9px; border: 1px solid currentColor; white-space: nowrap; }
+.tag.fixed { color: var(--ui-success); } .tag.open { color: var(--ui-danger); } .tag.partial { color: var(--ui-warning); }
+.tag.verified { color: var(--ui-accent); } .tag.agent { color: var(--ui-ink-subtle); }
+.callout { border-left: 4px solid var(--ui-accent); background: var(--ui-accent-soft); border-radius: 10px; padding: 12px 16px; margin: 16px 0; }
+.callout.warn { border-left-color: var(--ui-warning); background: var(--ui-surface-soft); }
+.callout p { margin: 4px 0; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--ui-rule); border-radius: 12px; margin: 14px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--ui-rule); }
+th { background: var(--ui-surface-soft); color: var(--ui-ink-muted); font-size: 13px; font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+figure { margin: 18px 0; }
+figcaption { font-size: 14px; color: var(--ui-ink-muted); margin-top: 8px; }
+.diagram svg { min-width: 760px; display: block; }
+.diagram { width: 100%; overflow-x: auto; background: var(--ui-surface-raised); border: 1px solid var(--ui-rule); border-radius: 12px; padding: 10px; }
+svg text { font-family: inherit; fill: var(--ui-ink); }
+svg .muted { fill: var(--ui-ink-muted); }
+.node rect { fill: var(--ui-surface); stroke: var(--ui-rule-strong); stroke-width: 1.5; }
+.node { cursor: pointer; }
+.node:hover rect, .node:focus rect, .node.on rect { stroke: var(--ui-accent); stroke-width: 2.5; }
+.node:focus { outline: none; }
+.edge { stroke: var(--ui-ink-subtle); stroke-width: 1.6; fill: none; }
+.detail { min-height: 96px; margin-top: 12px; background: var(--ui-surface-soft); border-radius: 12px; padding: 12px 16px; font-size: 15px; }
+.detail h4 { margin: 0 0 4px; }
+.detail p { margin: 4px 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; margin: 10px 0; }
+.controls label { display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; color: var(--ui-ink-muted); min-width: 180px; flex: 1 1 180px; }
+input[type=range] { width: 100%; min-height: 44px; accent-color: var(--ui-accent); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--ui-rule-strong); border-radius: var(--radius-control); overflow: hidden; }
+.seg button { font: inherit; font-size: 14px; min-height: 44px; padding: 0 14px; border: 0; border-right: 1px solid var(--ui-rule); background: var(--ui-surface); color: var(--ui-ink); cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ui-accent); color: var(--ui-surface); }
+.bars { display: grid; gap: 6px; }
+.barrow { display: grid; grid-template-columns: 140px minmax(0, 1fr) 110px; gap: 10px; align-items: center; font-size: 14px; }
+@media (max-width: 560px) { .barrow { grid-template-columns: 96px minmax(0, 1fr) 84px; font-size: 13px; } }
+.bartrack { background: var(--ui-surface-soft); border-radius: 6px; height: 22px; overflow: hidden; }
+.barfill { height: 100%; border-radius: 6px; }
+@media (prefers-reduced-motion: no-preference) { .barfill { transition: width .35s ease; } }
+.barval { font-variant-numeric: tabular-nums; text-align: right; color: var(--ui-ink-muted); }
+.twocol { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.result { background: var(--ui-surface-raised); border: 1px solid var(--ui-rule); border-radius: 12px; padding: 12px 14px; }
+.result h4 { margin: 0 0 8px; font-size: 14px; }
+.result ol { margin: 0; padding-left: 20px; font-size: 14px; }
+.result li { margin: 4px 0; }
+.filterbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+pre { background: var(--code); border: 1px solid var(--ui-rule); border-radius: 10px; padding: 12px 14px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+footer { color: var(--ui-ink-subtle); font-size: 14px; margin-top: 30px; }
+.theme { display: flex; justify-content: flex-end; }
+.theme button { font: inherit; font-size: 13px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--ui-rule-strong); background: var(--ui-surface); color: var(--ui-ink); cursor: pointer; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--ui-ink-muted); margin: 8px 0; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div class="theme"><button type="button" id="theme-btn" aria-label="Switch between light and dark theme">Theme</button></div>
+  <div class="kicker">Istara · architecture and evaluation · September 2026</div>
+  <h1>Istara Systems Map</h1>
+  <p class="lede">Istara claims hybrid RAG, GraphRAG, Prompt-RAG, LLMLingua compression, a ReasoningBank, Memento skills and self-evolving agents. This page shows what each one is <em>in the code</em>, how they connect, how they are measured today, and what an evaluation found. Four defects are fixed on branch <code>istara-september-improvements</code>. Every claim cites a file, and every claim says whether it was re-verified.</p>
+  <nav class="toc" aria-label="Sections">
+    <a href="#glance">At a glance</a><a href="#retrieval">Retrieval</a><a href="#fusion">Fusion</a><a href="#budget">Context budget</a>
+    <a href="#graph">Evidence graph</a><a href="#agents">Agents &amp; learning</a><a href="#eval">How it is measured</a><a href="#findings">Findings</a><a href="#next">What to measure next</a>
+  </nav>
+</header>
+
+<section class="panel" id="glance">
+  <h2>At a glance: the name, and what the code is</h2>
+  <p class="sub">Names set expectations. A reader who hears "GraphRAG" expects entity extraction and community summaries. A reader who hears "LLMLingua" expects the Microsoft library. Neither is what Istara runs. That is not necessarily wrong, but it is what an evaluation has to measure.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Named system</th><th>What the code actually is</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>Vector search</td><td>LanceDB, one directory per project, table <code>chunks</code>, cosine; rows under 0.3 similarity dropped</td><td><code>app/core/rag.py</code> <code>VectorStore.search</code></td></tr>
+      <tr><td>BM25</td><td>SQLite FTS5 <code>porter unicode61</code>, one file per project, SQLite's default <code>bm25()</code> (k1 1.2, b 0.75, never configured)</td><td><code>app/core/keyword_index.py</code></td></tr>
+      <tr><td>Hybrid</td><td>Weighted Reciprocal Rank Fusion, k = 60, weights 0.7 vector / 0.3 keyword</td><td><code>rag.py</code> <code>hybrid_search</code>; <code>config.py:401-402</code></td></tr>
+      <tr><td>Reranker</td><td><strong>None.</strong> No cross-encoder, no MMR.</td><td>—</td></tr>
+      <tr><td>GraphRAG</td><td>A SQL table of provenance edges plus a fixed relational join for traceability. No entity extraction, no graph algorithm, no graph library.</td><td><code>app/models/research_validity.py</code>; <code>research_validity_reconciliation.py</code></td></tr>
+      <tr><td>LLMLingua</td><td>A heuristic, "LLMLingua-inspired" word and sentence importance compressor, not the library</td><td><code>app/core/prompt_compressor.py</code></td></tr>
+      <tr><td>Prompt-RAG</td><td>Retrieval over the agent's own persona markdown sections, not project data</td><td><code>app/core/prompt_rag.py</code></td></tr>
+      <tr><td>ReasoningBank</td><td>SQL table of process memories; retrieval is token overlap over the 200 most recently updated rows</td><td><code>app/core/reasoning_bank.py</code></td></tr>
+      <tr><td>Memento skills</td><td>Skill routing: keyword table + lexical overlap + usage-stat boosts + ReasoningBank boosts (+ optional embedding cosine)</td><td><code>agent_skill_tools.py</code>; <code>agent_execution.py</code></td></tr>
+    </tbody>
+  </table></div>
+  <p class="claim">Mapped by a research agent that read the code statically (every <code>path:line</code> opened). I re-verified the rows this page's arguments rest on by reading the code again: fusion weights and k, the 0.05 RAG budget, the tuning objective, the plan-DAG failure handling, and the QA stub's embeddings. Those claims carry the <span class="tag verified">re-verified</span> tag below.</p>
+</section>
+
+<section class="panel" id="retrieval">
+  <h2>Retrieval: from an uploaded file to a prompt</h2>
+  <p class="sub">Select any stage for its parameters, its code, and what the evaluation found there.</p>
+  <div class="legend"><span><i style="background:var(--lane-lex)"></i>lexical lane</span><span><i style="background:var(--lane-vec)"></i>vector lane</span><span><i style="background:var(--lane-fuse)"></i>fusion and budget</span><span><i style="background:var(--lane-agent)"></i>consumers</span></div>
+  <div class="diagram"><svg id="pipe" viewBox="0 0 1040 300" width="100%" role="group" aria-label="Retrieval pipeline stages"></svg></div>
+  <div class="detail" id="pipe-detail" aria-live="polite"><p>Select a stage.</p></div>
+</section>
+
+<section class="panel" id="fusion">
+  <h2>Fusion: why the best match scores "1.6%"</h2>
+  <p class="sub">Reciprocal Rank Fusion reads <em>ranks</em>, not scores. A chunk ranked <i>r</i> in a list contributes <code>weight / (60 + r)</code>. The fused value is the right tool for <em>ordering</em>, but it is not a relevance probability. Before this work, that value overwrote <code>r.score</code>. The UI then rendered it as a percentage, and the model saw it as <code>relevance: 0.01</code>. <span class="tag verified">re-verified</span></p>
+  <div class="controls">
+    <label>Rank in the vector list <input type="range" id="rv" min="1" max="20" value="1"><span id="rv-o" class="mono"></span></label>
+    <label>Rank in the keyword list <input type="range" id="rk" min="0" max="20" value="1"><span id="rk-o" class="mono"></span></label>
+    <label>Vector weight <input type="range" id="wv" min="0" max="100" value="70"><span id="wv-o" class="mono"></span></label>
+  </div>
+  <div class="bars" id="fuse-bars"></div>
+  <div class="callout"><p id="fuse-say"></p></div>
+  <p>The Memory view now shows a result's <strong>rank</strong> (<code>#1</code>, <code>#2</code>…) instead of the fused value as a percentage. Scenario 85 asserts that every badge matches <code>#n</code>. The model-facing label still prints the fused value, which is listed as open under F12.</p>
+</section>
+
+<section class="panel" id="budget">
+  <h2>The context budget: 409 tokens for evidence</h2>
+  <p class="sub"><code>BudgetCoordinator.allocate</code> gives retrieved evidence <code>min(5% of the window, 4,000)</code> tokens. At the default window of 8,192 tokens, that is 409 tokens, about 1,600 characters. Top-5 retrieval can return 6,000 characters. Compression therefore decides which evidence the model sees, and before this work the UI cited every retrieved source regardless. <span class="tag verified">re-verified</span></p>
+  <div class="controls">
+    <label>Model context window (tokens) <input type="range" id="ctx" min="2048" max="131072" step="1024" value="8192"><span id="ctx-o" class="mono"></span></label>
+  </div>
+  <div class="bars" id="budget-bars"></div>
+  <p class="claim">Identity <code>min(0.3·ctx, 3000)</code> · RAG <code>min(0.05·ctx, 4000)</code> · reply <code>max(512, 0.05·ctx)</code> · buffer 5% · history gets the rest. Compression ratios also depend on host RAM (<code>compute_surplus_level</code>), so the same question can compress differently on two machines.</p>
+</section>
+
+<section class="panel" id="graph">
+  <h2>The evidence graph: provenance, not knowledge</h2>
+  <p class="sub">Istara's "GraphRAG" is a table of typed edges recording <em>where every research claim came from</em>: <code>research_evidence_edges</code>. That is valuable for an auditable research spine, and it is a different thing from a knowledge graph. Traceability is a fixed sequence of SQL filters: reports → findings → tasks → code applications → coding runs → gate assessments → decisions → edges. There is no traversal algorithm, and nothing "backfills" graph results with hybrid hits, despite the edge metadata's <code>graph_policy</code> name.</p>
+  <div class="diagram"><svg id="eg" viewBox="0 0 940 270" width="100%" role="group" aria-label="Evidence graph node types and relations"></svg></div>
+  <div class="detail" id="eg-detail" aria-live="polite"><p>Select a node type.</p></div>
+  <div class="callout warn"><p><strong>Measured gap:</strong> no production producer of a retrieved chunk sets <code>evidence_unit_id</code>, and the helper that would supply it (<code>retrieval_metadata_for_unit</code>) has no callers. So every chunk the retriever returns carries empty evidence handles, and keyword hits are labelled <code>missing_provenance</code>. The graph and the retriever do not meet.</p></div>
+</section>
+
+<section class="panel" id="agents">
+  <h2>Agents, and the loops that let them learn</h2>
+  <p class="sub">Retrieval feeds the agents, and the agents write back. That write-back is where the governance contract applies: <code>AGENTS.md</code> forbids mutating global state from project-scoped evidence, and forbids learning strong positive signals from raw tool success. For the engine itself (dispatcher, ReAct loop, Pi runtime), see <a href="agentic-engine-deep-dive.html">the agentic engine deep dive</a>.</p>
+  <div class="diagram"><svg id="loops" viewBox="0 0 880 270" width="100%" role="group" aria-label="Agent flow and learning loops"></svg></div>
+  <div class="detail" id="loops-detail" aria-live="polite"><p>Select a component.</p></div>
+</section>
+
+<section class="panel" id="eval">
+  <h2>How it is measured today, and what that misses</h2>
+  <p class="sub">Istara has many harnesses. Almost all of them check <em>presence</em>: a view renders, an endpoint answers, a result list is non-empty. None measures whether the results are <em>relevant</em>.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Harness</th><th>What it checks</th><th>What it cannot see</th></tr></thead>
+    <tbody>
+      <tr><td><code>scripts/run_istara_evals.py</code></td><td>3 hand-written chunks, embeddings forced to fail, P@1 and recall@3 on one query</td><td>vector or hybrid retrieval, fusion weights, chunking, the chat path's compressed context, faithfulness</td></tr>
+      <tr><td><code>tests/test_rag_resilience.py</code></td><td>keyword fallback, dedupe, telemetry, the untrusted wrapper on <code>retrieve_context</code></td><td>the chat path, which did not use that wrapper (F2); phrase-versus-OR ranking (F4)</td></tr>
+      <tr><td><code>tests/simulation/</code> (80+ scenarios)</td><td>UI journeys: views render, a RAG query returns more than 0 results</td><td>whether results are relevant</td></tr>
+      <tr><td><code>tests/real_user_benchmark/</code></td><td>long persona journeys; research-spine gates (3 coders, Fleiss' κ); a ReasoningBank probe</td><td>retrieval relevance; the probe counts memories rather than checking them</td></tr>
+      <tr><td><code>tests/pi_benchmark/</code></td><td>engine contracts, a blind position-swapped judge layer</td><td>retrieval IR metrics; under the DeepSeek-only policy the judge is also the model under test</td></tr>
+      <tr><td>Autoresearch <code>rag_params</code></td><td>a "precision@k" that is <code>0.6·mean(fused score) + 0.4·coverage</code> <span class="tag verified">re-verified</span></td><td>any relevance judgment (F3)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn"><p><strong>The QA lane cannot measure vectors.</strong> The container provider stub returns 8-dimensional vectors derived from a SHA-256 of the text <span class="tag verified">re-verified</span>, so vector similarity is unrelated to meaning. Any retrieval check in that lane measures BM25 and the plumbing. That is exactly where this round's defects were, but it is not a vector evaluation.</p></div>
+
+  <h3>What this round measured</h3>
+  <p>Each fix is pinned by a test in <code>tests/test_retrieval_correctness_fixes.py</code> that <strong>fails on <code>origin/main</code> and passes on the branch</strong>. The tests ran in the QA backend image on the Mac Studio, in a container with <code>--network none</code>, and 47 tests passed alongside the existing resilience suite. The UI half, scenario <code>85-retrieval-correctness</code>, drives the Memory view the way a researcher does: search, read the results, reprocess a file. It also checks keyboard focus, 375 px reflow, dark mode and an axe-core WCAG 2.1 AA scan.</p>
+  <div class="twocol">
+    <div class="result"><h4>Before: search "billing previews"</h4><ol><li>ALPHA: "…the billing previews were confusing…" (exact phrase)</li></ol><p class="claim">The OR query ran only when the phrase matched nothing. One adjacent match suppressed every other candidate.</p></div>
+    <div class="result"><h4>After: same search</h4><ol><li>ALPHA: exact phrase, ranked first</li><li>BRAVO: "billing tab hid the order previews" (both words, apart)</li></ol><p class="claim">Phrase hits rank first; BM25 over any term fills the rest of top-k. "UX", "AI", "P1" and "Q4" are now searchable.</p></div>
+  </div>
+  <h3>The browser run, and what it caught</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Run</th><th>Scenario 85</th><th>Scenario 23</th><th>What it found</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="num">6 / 10</td><td class="num">13 / 13</td><td>The scenario's own wait was wrong. It mixed a CSS selector list with Playwright's <code>text=</code> engine, which is not a valid selector, so the wait threw, a <code>catch</code> swallowed it, and the page was read before any result rendered. A test that fails for its own reason is as misleading as one that passes for the wrong reason.</td></tr>
+      <tr><td>2</td><td class="num">9 / 10</td><td class="num">—</td><td>With the wait fixed, the retrieval checks passed and axe-core named two real contrast failures on the results: the shared onboarding hint (<code>istara-500</code> on white, 2.17:1, in 26 views) and the Clear button (4.34:1).</td></tr>
+      <tr><td>3</td><td class="num">10 / 10</td><td class="num">13 / 13</td><td>Both colours now pass WCAG AA in light and dark, and the served bundle was checked to contain the fix before the run counted. axe reports 0 serious or critical violations.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="claim">QA compose stack with the contract provider stub (run id <code>cs74-sept25</code>), Playwright 1.60 in a container, Mac Studio. Governance checks pass (<code>check_change_obligations.py</code>, <code>check_feature_obligations.py</code>), as does the security benchmark (28/28 controls, 100%), which is required because self-evolution changed.</p>
+</section>
+
+<section class="panel" id="findings">
+  <h2>Findings register</h2>
+  <p class="sub">Seventeen findings from the static map, each with its confidence and current status. Fixed means pinned by a test that fails before the change and passes after it.</p>
+  <div class="filterbar">
+    <div class="seg" role="group" aria-label="Filter findings" id="ffilter">
+      <button type="button" aria-pressed="true" data-f="all">All</button><button type="button" aria-pressed="false" data-f="fixed">Fixed</button><button type="button" aria-pressed="false" data-f="partial">Partly</button><button type="button" aria-pressed="false" data-f="open">Open</button>
+    </div>
+    <span id="fcount" class="claim" aria-live="polite"></span>
+  </div>
+  <div class="tablewrap"><table id="ftable"></table></div>
+</section>
+
+<section class="panel" id="next">
+  <h2>What to measure next</h2>
+  <p class="sub">Istara <em>generates answers</em>, so unlike a context-only tool, answer-level RAG evaluation applies here. The order below goes from cheapest and most decisive to most expensive.</p>
+  <div class="grid">
+    <div class="card"><h4>1 · A relevance set (qrels)</h4><p>Take a synthetic research corpus (the seeder's slice), write 50–100 researcher questions, and pool the top 10 from BM25, vector and hybrid for graded relevance labels, TREC-style. Report Recall@k, nDCG@10 and MRR with bootstrap confidence intervals. This one set replaces the autoresearch pseudo-score (F3) as the tuning objective.</p></div>
+    <div class="card"><h4>2 · Fusion and chunking ablations</h4><p>With qrels in hand, sweep the 0.7/0.3 weights, k = 60, the chunk size and overlap, <strong>re-indexing per setting</strong>. The current loop mutates the chunk size without re-chunking, so it measures nothing. Compare with a paired randomization test (Smucker et al., CIKM 2007).</p></div>
+    <div class="card"><h4>3 · Budget recall</h4><p>Of the relevant chunks retrieved, how many survive the 409-token compression? Measure recall as a function of the context window. This is the number that decides whether the model ever sees the evidence.</p></div>
+    <div class="card"><h4>4 · Answer faithfulness</h4><p>RAGAS-style faithfulness and context precision (Es et al., EACL 2024), or ARES with a small human-labelled calibration set (Saad-Falcon et al., NAACL 2024). This needs the owner-gated live lane. Validate the judge against human labels before trusting it, and never let the judge be the model under test.</p></div>
+    <div class="card"><h4>5 · Provenance coverage</h4><p>The share of retrieved chunks carrying an <code>evidence_unit_id</code>. It is 0% today. Once the retriever and the evidence graph meet, this becomes a health invariant the research spine can gate on.</p></div>
+    <div class="card"><h4>6 · Learning-loop safety</h4><p>For ReasoningBank, skills and self-evolution: does a learned signal come from a <em>verified</em> outcome? A synthetic benchmark can plant a successful-but-wrong tool run and check that nothing strong is learned from it (F10).</p></div>
+  </div>
+</section>
+
+<footer>
+  <p>Branch <code>istara-september-improvements</code>, from <code>origin/main@7f44a307</code>. The fix commit is <code>6e500ad8</code>. The static map was produced by a research agent and spot-checked by hand; tests and UI runs were driven in containers on the Mac Studio with the provider stub and synthetic data only. The methods are taught in the Compass Forge course <a href="https://claude.ai/artifact/RwN1gVWZH1zk7ToTyZRXAP">Measuring Code Intelligence</a>.</p>
+</footer>
+</div>
+<script>
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+  function diagram(svg, detailId, nodes, edges) {
+    const detail = document.getElementById(detailId);
+    const defs = el("defs", {}, svg);
+    const m = el("marker", { id: svg.id + "-arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse" }, defs);
+    el("path", { d: "M0,0 L10,5 L0,10 z", fill: "var(--ui-ink-subtle)" }, m);
+    const pos = {};
+    nodes.forEach((n) => { pos[n.id] = n; });
+    edges.forEach(([a, b, label]) => {
+      const A = pos[a], B = pos[b];
+      // Route by where B sits relative to A, so no edge crosses its own box.
+      let x1, y1, x2, y2, d;
+      if (B.x >= A.x + A.w) { x1 = A.x + A.w; y1 = A.y + A.h / 2; x2 = B.x - 2; y2 = B.y + B.h / 2; const mx = (x1 + x2) / 2; d = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`; }
+      else if (B.x + B.w <= A.x) { x1 = A.x; y1 = A.y + A.h / 2; x2 = B.x + B.w + 2; y2 = B.y + B.h / 2; const mx = (x1 + x2) / 2; d = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`; }
+      else if (B.y > A.y) { x1 = A.x + A.w / 2; y1 = A.y + A.h; x2 = B.x + B.w / 2; y2 = B.y - 2; d = `M${x1},${y1} L${x2},${y2}`; }
+      else { x1 = A.x + A.w / 2; y1 = A.y; x2 = B.x + B.w / 2; y2 = B.y + B.h + 2; d = `M${x1},${y1} L${x2},${y2}`; }
+      el("path", { d, class: "edge", "marker-end": `url(#${svg.id}-arrow)` }, svg);
+      if (label) { const t = el("text", { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 6, "text-anchor": "middle", "font-size": "12", class: "muted" }, svg); t.textContent = label; }
+    });
+    const groups = [];
+    nodes.forEach((n) => {
+      const g = el("g", { class: "node", tabindex: "0", role: "button", "aria-label": n.title }, svg);
+      el("rect", { x: n.x, y: n.y, width: n.w, height: n.h, rx: 10 }, g);
+      el("rect", { x: n.x, y: n.y, width: 6, height: n.h, rx: 3, style: `fill:${n.color};stroke:none` }, g);
+      const t = el("text", { x: n.x + 16, y: n.y + 24, "font-size": "14", "font-weight": "600" }, g); t.textContent = n.title;
+      if (n.sub) { const s = el("text", { x: n.x + 16, y: n.y + 43, "font-size": "12", class: "muted" }, g); s.textContent = n.sub; }
+      const show = () => { groups.forEach((x) => x.classList.remove("on")); g.classList.add("on"); detail.innerHTML = `<h4>${n.title}</h4>${n.body}`; };
+      g.addEventListener("click", show);
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(); } });
+      groups.push(g);
+    });
+  }
+  const L = "var(--lane-lex)", V = "var(--lane-vec)", F = "var(--lane-fuse)", A = "var(--lane-agent)";
+  diagram(document.getElementById("pipe"), "pipe-detail", [
+    { id: "up", x: 10, y: 130, w: 150, h: 58, color: F, title: "Ingest", sub: "upload · sync · watcher", body: "<p>Upload, reprocess, documents sync, knowledge sync, the file watcher, agent notes and skill artifacts all write to the index. Every path except the watcher writes both lanes.</p><p><span class='tag fixed'>fixed</span> <strong>F6.</strong> Chunks are stored under the full path, but deletes used the basename, so every reprocess appended another full copy. <code>VectorStore.delete_file_source</code> now deletes both spellings, and <code>delete_by_source</code> clears keyword rows even for a keyword-only project.</p><p><span class='tag open'>open</span> <strong>F5.</strong> LLM-generated skill artifacts and agent notes are indexed as evidence at full confidence.</p>" },
+    { id: "chunk", x: 200, y: 130, w: 160, h: 58, color: F, title: "Chunk", sub: "1,200 chars · 180 overlap", body: "<p>Sliding character window, snapping to a paragraph or sentence break. Interviews split by speaker turn and markdown by <code>## </code>. PDFs chunk per page. <code>ContentGuard</code> flags content but does not block it.</p><p>Offsets are lost to <code>.strip()</code>, and no producer sets <code>evidence_unit_id</code>, so chunks do not link to the evidence graph.</p>" },
+    { id: "fts", x: 410, y: 40, w: 180, h: 58, color: L, title: "BM25 (FTS5)", sub: "porter unicode61 · per project", body: "<p>SQLite FTS5 with default <code>bm25()</code>, one file per project, and a new connection per call.</p><p><span class='tag fixed'>fixed</span> <strong>F4.</strong> The query was one exact phrase, and OR ran only when the phrase matched nothing. Tokens of two characters or fewer (UX, AI, P1, Q4) were dropped, and there were no stopwords. Now phrase hits rank first, OR over the remaining terms fills top-k, two-character tokens are kept, and English function words are dropped.</p>" },
+    { id: "vec", x: 410, y: 220, w: 180, h: 58, color: V, title: "Vectors (LanceDB)", sub: "cosine · threshold 0.3", body: "<p>One LanceDB directory per project, table <code>chunks</code>, cosine metric. Similarity is <code>1 − distance</code>, and rows under 0.3 are dropped. The embedding profile is bound to the store by a manifest.</p><p><span class='tag open'>open</span> <strong>F11.</strong> With the LM Studio default identity <code>\"default\"</code>, a model swap of the same dimension passes the identity check, and cached vectors from the old model are served.</p>" },
+    { id: "rrf", x: 640, y: 130, w: 170, h: 58, color: F, title: "Hybrid fusion", sub: "weighted RRF · k=60", body: "<p>Each lane retrieves 2k. Keyword results are post-filtered by source and type, and with an <code>agent_id</code> filter <em>all</em> keyword results are discarded. Fusion is <code>0.7/(60+r_vec) + 0.3/(60+r_kw)</code>, keyed by provenance, and the fused value overwrote <code>r.score</code>. <span class='tag verified'>re-verified</span></p><p><span class='tag partial'>partly</span> <strong>F12.</strong> The UI now shows a rank; the model still sees the fused value as \"relevance\".</p>" },
+    { id: "budget", x: 850, y: 60, w: 180, h: 58, color: F, title: "Budget + compress", sub: "RAG = 5% of window", body: "<p><code>build_compressed_rag_context</code> compresses to the budget, then labels and wraps the kept chunks through <strong>one</strong> formatter, <code>format_context_part</code>. It returns exactly the chunks that reached the prompt.</p><p><span class='tag fixed'>fixed</span> <strong>F2.</strong> Chat and Interfaces had sent raw chunk text with no source labels and no untrusted wrapper, and cited every retrieved source even when compression dropped it.</p><p><span class='tag open'>open</span> <strong>F14.</strong> Compression still pins any chunk containing a protected tag, before wrapping.</p>" },
+    { id: "use", x: 850, y: 200, w: 180, h: 58, color: A, title: "Consumers", sub: "chat · tasks · MCP · tools", body: "<p>Chat and Interfaces (compressed, now labelled), task execution and the general ReAct loop (wrapped <code>context_text</code>), A2A collaboration (cut at 800 characters: <span class='tag open'>open</span> F13, the cut can drop the wrapper's closing tag), claim verification, the <code>search_memory</code> tool (LLM-chosen, unbounded top-k), MCP, and the Memory view.</p>" },
+  ], [["up", "chunk"], ["chunk", "fts"], ["chunk", "vec"], ["fts", "rrf"], ["vec", "rrf"], ["rrf", "budget"], ["rrf", "use"]]);
+
+  diagram(document.getElementById("eg"), "eg-detail", [
+    { id: "doc", x: 10, y: 40, w: 150, h: 58, color: F, title: "document", sub: "uploaded source", body: "<p>A raw source. <code>contains</code> → evidence_unit (<code>research_validity_evidence_units.py</code>).</p>" },
+    { id: "eu", x: 230, y: 40, w: 170, h: 58, color: F, title: "evidence_unit", sub: "a span of a source", body: "<p>The atomic unit of evidence, per the research spine. <code>coded_as</code> → code_application, written by model coders and by humans.</p><p>Retrieved chunks <em>never</em> carry this id today, so the retriever and the graph do not meet.</p>" },
+    { id: "ca", x: 470, y: 40, w: 180, h: 58, color: V, title: "code_application", sub: "model or human coder", body: "<p>A qualitative code applied to an evidence unit. <code>reconciled_by</code> → reconciliation_decision when coders disagree.</p>" },
+    { id: "rd", x: 720, y: 40, w: 200, h: 58, color: V, title: "reconciliation_decision", sub: "resolves coder disagreement", body: "<p>Produced by reconciliation, including the synthetic benchmark variant. It feeds the per-task research-validity gate.</p>" },
+    { id: "nug", x: 230, y: 190, w: 170, h: 58, color: L, title: "nugget", sub: "atomic research claim", body: "<p><code>grounded_in</code> → evidence_unit. The Atomic Research chain nugget → fact → insight → recommendation lives in JSON id arrays on the finding models, not in this edge table.</p>" },
+    { id: "fin", x: 470, y: 190, w: 180, h: 58, color: A, title: "finding", sub: "fact · insight · rec", body: "<p><code>derived_from</code> → finding, candidate links only, with same-project ids enforced. Reports cite finding ids, and traceability walks reports → findings → tasks → code applications by fixed SQL filters, not graph traversal.</p>" },
+  ], [["doc", "eu", "contains"], ["eu", "ca", "coded_as"], ["ca", "rd", "reconciled_by"], ["nug", "eu"], ["fin", "nug"]]);
+
+  diagram(document.getElementById("loops"), "loops-detail", [
+    { id: "task", x: 10, y: 40, w: 160, h: 58, color: A, title: "Task agent", sub: "orchestrator mixins", body: "<p>RAG → optional plan DAG → skill selection → with no skill, general ReAct → skill ACL → execute with RAG in context → verification → ReasoningBank write.</p>" },
+    { id: "plan", x: 230, y: 40, w: 170, h: 58, color: A, title: "Plan DAG", sub: "LLMCompiler-style", body: "<p>Steps with <code>depends_on</code> run as ready sets through <code>asyncio.gather</code>.</p><p><span class='tag open'>open</span> <strong>F8.</strong> Concurrent steps share one <code>AsyncSession</code>, which is not safe for concurrent use. A failed step is added to the executed set, so its dependents run on a failed prerequisite. <span class='tag verified'>re-verified</span></p>" },
+    { id: "skill", x: 460, y: 40, w: 170, h: 58, color: A, title: "Skill routing", sub: "Memento skills", body: "<p>Explicit skill, then a keyword table, then embedding cosine against cached skill descriptions (threshold 0.6). Candidates are boosted by usage statistics.</p><p><span class='tag open'>open</span> <strong>F10.</strong> Up to +0.18 from success rate and quality, against a floor of 0.12, so a popular skill clears the floor regardless of relevance. The contract forbids learning strong signals from raw tool success.</p>" },
+    { id: "rb", x: 690, y: 40, w: 170, h: 58, color: V, title: "ReasoningBank", sub: "process memory", body: "<p>Template memories (success 0.75, failure 0.7, neutral 0.55), raised to the judge score. Retrieval scores token overlap over the 200 most recently updated rows only, and every read commits a usage increment (F16).</p>" },
+    { id: "prag", x: 690, y: 190, w: 170, h: 58, color: V, title: "Prompt-RAG", sub: "persona sections", body: "<p>Retrieves sections of the agent's own CORE, SKILLS, PROTOCOLS and MEMORY files: top 8, within 30% of the context, re-sorted into file order.</p>" },
+    { id: "evo", x: 460, y: 190, w: 170, h: 58, color: F, title: "Self-evolution", sub: "persona promotion", body: "<p>Learnings that recur (≥3 times, ≤30 days, ≥70 confidence, ≥60% success) are appended to persona files. Auto-promotion is off by default.</p><p><span class='tag fixed'>fixed</span> <strong>F1.</strong> The first promotion created the runtime overlay containing only the promoted section. Because the overlay shadows the source, it erased the agent's identity for every project. The overlay is now seeded from the source persona first.</p>" },
+    { id: "auto", x: 230, y: 190, w: 170, h: 58, color: F, title: "Autoresearch", sub: "sandboxed experiments", body: "<p>Baseline → hypothesis → sandboxed apply → repeated measurement → keep or revert → proposal. It always reverts, and it is off in QA.</p><p><span class='tag open'>open</span> <strong>F3.</strong> The RAG-tuning objective is <code>0.6·mean(fused score) + 0.4·coverage</code>. Raising either fusion weight raises it mechanically, and chunk-size mutations are never re-indexed. Kept results become proposals <em>and</em> memories, turning noise into learned signal. <span class='tag verified'>re-verified</span></p>" },
+    { id: "meta", x: 10, y: 190, w: 160, h: 58, color: F, title: "Meta-hyperagent", sub: "project-scoped variants", body: "<p>Observes, then proposes, then applies a project-scoped variant record. It never mutates a module, and protected spine parameters are refused. Two consumers read its overrides: the skill similarity threshold and the self-evolution thresholds.</p>" },
+  ], [["task", "plan"], ["plan", "skill"], ["skill", "rb"], ["rb", "prag"], ["prag", "evo"], ["evo", "auto"], ["auto", "meta"]]);
+
+  // ---- fusion explorer ----
+  const rv = document.getElementById("rv"), rk = document.getElementById("rk"), wv = document.getElementById("wv");
+  function fuse() {
+    const w = wv.value / 100, kw = 1 - w, a = +rv.value, b = +rk.value;
+    const vs = w / (60 + a), ks = b ? kw / (60 + b) : 0, best = w / 61 + kw / 61;
+    document.getElementById("rv-o").textContent = "#" + a;
+    document.getElementById("rk-o").textContent = b ? "#" + b : "not found by BM25";
+    document.getElementById("wv-o").textContent = w.toFixed(2) + " vector / " + kw.toFixed(2) + " keyword";
+    const rows = [["vector share", vs, "var(--lane-vec)"], ["keyword share", ks, "var(--lane-lex)"], ["fused score", vs + ks, "var(--lane-fuse)"], ["best possible", best, "var(--ui-rule-strong)"]];
+    document.getElementById("fuse-bars").innerHTML = rows.map(([n, v, c]) => `<div class="barrow"><span>${n}</span><div class="bartrack"><div class="barfill" style="width:${(100 * v / (1 / 61)).toFixed(1)}%;background:${c}"></div></div><span class="barval">${v.toFixed(4)}</span></div>`).join("");
+    document.getElementById("fuse-say").innerHTML = `Fused value <strong>${(vs + ks).toFixed(4)}</strong>. Rendered as a percentage, this result would have read <strong>${(100 * (vs + ks)).toFixed(1)}%</strong>, although ${a === 1 && b === 1 ? "it is the top result of both lanes, the best any chunk can do" : "only its rank relative to the other chunks carries meaning"}. The maximum any chunk can reach is ${best.toFixed(4)}.`;
+  }
+  [rv, rk, wv].forEach((x) => x.addEventListener("input", fuse)); fuse();
+
+  // ---- budget ----
+  const ctx = document.getElementById("ctx");
+  function budget() {
+    const c = +ctx.value;
+    const identity = Math.min(Math.floor(c * 0.3), 3000), rag = Math.min(Math.floor(c * 0.05), 4000), reply = Math.max(512, Math.floor(c * 0.05)), buffer = Math.floor(c * 0.05), history = c - identity - rag - reply - buffer;
+    document.getElementById("ctx-o").textContent = c.toLocaleString("en-US") + " tokens";
+    const rows = [["identity", identity, "var(--lane-vec)"], ["retrieved evidence", rag, "var(--lane-fuse)"], ["reply", reply, "var(--lane-agent)"], ["buffer", buffer, "var(--ui-rule-strong)"], ["history", history, "var(--lane-lex)"]];
+    document.getElementById("budget-bars").innerHTML = rows.map(([n, v, col]) => `<div class="barrow"><span>${n}</span><div class="bartrack"><div class="barfill" style="width:${(100 * v / c).toFixed(1)}%;background:${col}"></div></div><span class="barval">${v.toLocaleString("en-US")}${n === "retrieved evidence" ? " ≈ " + (v * 4).toLocaleString("en-US") + " ch" : ""}</span></div>`).join("");
+  }
+  ctx.addEventListener("input", budget); budget();
+
+  // ---- findings ----
+  const FINDINGS = [
+    ["F1", "high", "fixed", "Self-evolution's first promotion replaced the whole persona with a one-section overlay, erasing identity in every project", "self_evolution.py"],
+    ["F2", "high", "fixed", "Chat and Interfaces injected raw chunks with no source label and no untrusted wrapper, and cited sources that never reached the prompt", "chat.py, interfaces.py, rag.py"],
+    ["F3", "high", "open", "The autoresearch RAG-tuning objective rewards the weights it tunes, re-indexes nothing, and teaches noise to the ReasoningBank", "autoresearch_runners/rag_params.py"],
+    ["F4", "high", "fixed", "BM25 ran the OR query only when an exact phrase matched nothing, and dropped two-character tokens", "keyword_index.py"],
+    ["F5", "high", "open", "LLM-generated artifacts and agent notes are indexed as evidence at full confidence and can confirm themselves", "agent_research.py, agent_memory.py"],
+    ["F6", "high", "fixed", "Re-ingestion deleted by basename while chunks are keyed by full path, so every reprocess duplicated the file", "files.py, documents.py, rag.py"],
+    ["F7", "medium", "open", "The file watcher deletes a file's keyword rows and re-adds only its vectors, so a watched upload can lose its BM25 entries (not runtime-verified)", "file_watcher.py"],
+    ["F8", "medium-high", "open", "Plan-DAG steps share one AsyncSession concurrently, and failed prerequisites count as satisfied", "agent_research.py"],
+    ["F9", "medium", "open", "Project-scoped evidence mutates cross-project state: persona overlays, the skill-embedding cache, global settings during tuning", "several"],
+    ["F10", "medium", "open", "Skill routing learns strong positive signals from raw tool success", "agent_skill_tools.py"],
+    ["F11", "medium", "open", "The default embedding identity cannot detect a same-dimension model swap", "embedding_profile.py, rag.py"],
+    ["F12", "medium", "partial", "Fused RRF values shown as relevance and mixed with other score scales (the UI now shows ranks)", "rag.py, finding_search.py, MemoryView.tsx"],
+    ["F13", "medium", "open", "Truncation at 800 characters can cut through the untrusted-content wrapper", "agent_lifecycle.py, reasoning_bank.py"],
+    ["F14", "medium", "open", "Protected-tag pinning can be triggered by document content", "prompt_compressor.py"],
+    ["F15", "medium", "open", "With file encryption on, knowledge sync can index ciphertext", "knowledge_sync.py"],
+    ["F16", "low-medium", "open", "Reads with side effects: ReasoningBank usage counts, double retrieval, health checks writing manifests", "reasoning_bank.py, vector_health.py"],
+    ["F17", "low", "open", "Smaller smells: 0 treated as unset, unbounded tool top-k, whole-table pandas loads for pagination, dead code", "several"],
+  ];
+  const ft = document.getElementById("ftable");
+  const label = { fixed: "fixed", partial: "partly", open: "open" };
+  function renderF(f) {
+    const rows = FINDINGS.filter((r) => f === "all" || r[2] === f);
+    ft.innerHTML = `<thead><tr><th>ID</th><th>Finding</th><th>Confidence</th><th>Status</th><th>Where</th></tr></thead><tbody>` +
+      rows.map((r) => `<tr><td><strong>${r[0]}</strong></td><td>${r[3]}</td><td>${r[1]}</td><td><span class="tag ${r[2]}">${label[r[2]]}</span></td><td><code>${r[4]}</code></td></tr>`).join("") + "</tbody>";
+    document.getElementById("fcount").textContent = `${rows.length} of ${FINDINGS.length} shown`;
+  }
+  document.querySelectorAll("#ffilter button").forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll("#ffilter button").forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+    renderF(b.dataset.f);
+  }));
+  renderF("all");
+
+  document.getElementById("theme-btn").addEventListener("click", () => {
+    const r = document.documentElement, cur = r.getAttribute("data-theme");
+    const dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    r.setAttribute("data-theme", dark ? "light" : "dark");
+  });
+})();
+</script>
+</body>
+</html>

@@ -14,7 +14,12 @@ The detailed scratch audit note has been retired. Durable stabilization context
 now lives in `Tech.md`, `TESTING.md`, `testing/TEST_HISTORY.md`, and Compass
 Forge evidence.
 
+### Fixed
+- **Retrieval correctness (September 2026 evaluation)**: reprocess and upload no longer duplicate a file's chunks (deletes matched the basename while chunks are keyed by full path); keyword search ranks exact phrases first and fills from every term instead of running the all-terms query only when the phrase matched nothing, and keeps two-character tokens such as `UX` and `P1`; Chat and Interfaces label and wrap retrieved evidence and cite only the chunks that reached the prompt; the first self-evolution promotion seeds the runtime persona overlay from the source instead of replacing it; the Memory view shows a result's rank instead of the fused score as a percentage. Pinned by `tests/test_retrieval_correctness_fixes.py` and scenario `85-retrieval-correctness`.
+- **Contrast**: the shared onboarding chat hint (`ViewOnboarding`, 26 views) and the Memory search Clear button met WCAG AA only on some surfaces (2.17:1 and 4.34:1); both now pass in light and dark.
+
 ### Added
+- **Retrieval, graph and agentic systems map**: `docs/architecture/retrieval-graph-agentic-map.html`, an interactive map of what each named system is in code, how it is measured, and a findings register (F1-F17) with fix status.
 - **Pi Compatibility Authority Runbook**: Added `docs/architecture/pi-compatibility-authority.md` — the authority law, the projection gates, and the routine pi-ai bump runbook (diff-proof, §8 classification, lockstep pins, rollback).
 - **Pi Bump Diff-Proof Gate**: Added `scripts/pi_bump_diff_proof.py` (proof / verify-report / verify) with offline unit tests; a version bump now fails the gate while any consumed-surface or registry-removal diff is unclassified or blocked, and `EXPECTED_PINS` keeps both bundled surfaces in exact lockstep. Added central permission behavior documenting global admin, project admin, researcher, viewer, `404` concealment, and `403` forbidden-operation semantics.
 - **Compass Forge Planning Evidence**: Future plans, deferred hardening, and feature candidates now live in Compass Forge specs/tasks/evidence or domain strategy docs instead of root scratch ledgers.
