@@ -733,3 +733,28 @@ same way without the change (no network, no .git in the copy, no hypothesis in t
 Open: independent blind review (`2026-09-25-spine-findings-phase7b-blind-pack.md`); no browser
 scenario (DEC-8); `check_feature_obligations.py` fails for
 `backend/app/evals/**` on the whole branch (inherited from Phase 7, noted on CF-11 for Phase 10).
+
+## Found on the live lane: structured output never worked on Meta Muse Spark
+
+**What it is for.** Istara's research spine asks models for structured output (skills such as
+`research-synthesis` propose nuggets and facts; M4's judges return verdicts). The worker forces a
+capture tool through `tool_choice`, and only the captured, schema-valid arguments count.
+
+**Flow driven.** The Harbor corpus uploaded through the product to the live backend, which queues
+`research-synthesis` for each document; a direct `agentic.structured` probe (schema `{city}`) on
+both endpoints; the worker's mapping tests.
+
+**Output inspected.** Every upload logged `Skill research-synthesis primary structured call raised
+... structured_output_missing` and `Output validation ... No candidate evidence (nuggets or facts)
+proposed.` The probe on `pi-muse-spark`: `PiRuntimeTurnError: tool_choice_unsupported:openai-responses`
+(refused inside the worker, before any request); `pi-local-qwen`: `{'city': 'Paris'}`. With a
+Responses mapping, Meta answered `400: only "auto" is supported for tool_choice. "none",
+"required", and named function choices are not currently supported`. The first auto-only rule
+still sent a forced choice, because `model.provider` is Istara's per-endpoint registry name
+(`pi-endpoint-pi-muse-spark`), not `meta`. After taking the provider from the capability receipt:
+`pi-muse-spark: status=success value={'city': 'Paris'}` three times in ~3 s. Worker suite 107/107;
+the new mapping tests fail on the previous code (missing export, then the wrong choice).
+
+**Why that proves it.** The provider's own 400 names the constraint. The fix keeps the contract:
+the model is offered only the capture tool with `auto` and asked to call it, a free-form answer
+still never counts, and a run without the tool call still fails closed.

@@ -6,10 +6,10 @@ branch: fix/spine-findings-measurements-20260925
 cf: { spec: CF-SPEC-2, tasks: [CF-1, CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8, CF-9, CF-10, CF-11, CF-12, CF-13, CF-14] }
 phase: "Phase 8 — live lane (Muse Spark 1.3 Contributor + local Qwen, DEC-11)"
 stage: S2-execute
-status: blocked
-blocked_on: "owner: the owner's local llama.cpp returns only '/' for Qwen3.8-27B (handoff ~/Documents/istara-local-qwen-handoff.md sent to the local server's agent; the owner asked this session to wait)"
-last: { agent: claude-code, at: 2026-09-25T21:29:37Z, ledger: L-17 }
-next_action: "When the owner reports the local server fixed: re-probe pi-local-qwen once through istara-cs76-live, restart it with the two-model env (live-run.sh), upload the Harbor corpus through the product and run M4 (answer_eval) with the roles swapped. Phase 7b (CF-SPEC-3, other session): S3 pending an independent blind review via 2026-09-25-spine-findings-phase7b-blind-pack.md; CF-20/25/26 wait on it."
+status: in-progress
+blocked_on: null
+last: { agent: claude-code, at: 2026-09-25T22:32:26Z, ledger: L-18 }
+next_action: "When the Harbor corpus upload into istara-cs76-live finishes, run `python -m app.evals.answer_eval` twice inside it (generator pi-muse-spark / judge pi-local-qwen, then swapped) with a spend cap; then the governed coding run and the hostile-document chat. Before any push, the owner decides how unpushed commits that name the local server are handled. Phase 7b (CF-SPEC-3, other session): S3 pending an independent blind review via 2026-09-25-spine-findings-phase7b-blind-pack.md."
 ```
 
 Evidence (four-part records per finding): `2026-09-25-spine-findings-evidence.md` beside this file.
@@ -442,3 +442,18 @@ temperature 0 to a reasoning model contradict Qwen's card; endpoints cannot pass
 Verified: curl to /v1/chat/completions (17.0 s, 19.9 s; all `/`); GET /props and /v1/models.
 Next: when the owner returns with the local server fixed, re-probe pi-local-qwen once, restart
 istara-cs76-live with the two-model env (live-run.sh), then M4 with roles swapped.
+
+### L-18 | 2026-09-25T22:32:26Z | S2-execute | claude-code | executor | Phase 8
+Did: resumed after the owner fixed the local server. Sampling/thinking matrix through Istara's
+dispatcher on both models (temperature 0, 0.6, 1.0; thinking off, low, high). Renamed the local
+endpoint to pi-local-qwen and removed the host name from committed files (801677c3); earlier
+commits on this unpushed branch still carry it (owner decision pending before any push). Found
+and fixed structured output on Meta (82572cdd) and M4's grading of uploaded files (09ee4045).
+Live backend now keeps /app/data on a labelled volume; agents paused (maintenance) during
+ingestion; Harbor corpus re-uploading through the upload route.
+Result: both models answer "Paris" in all 6 configurations (local Qwen 0.6-1.6 s, Muse Spark
+2.0-3.9 s); structured output works on both; ingestion ~25 s per file (local embedder under
+Studio load).
+Verified: probe_matrix.py and structured_probe.py in istara-cs76-live; worker suite 107/107;
+pytest tests/test_spine_answer_eval.py tests/test_spine_retrieval_eval.py -> 12 passed.
+Next: when ingestion finishes, M4 twice (generator Muse Spark / judge local Qwen, then swapped).
