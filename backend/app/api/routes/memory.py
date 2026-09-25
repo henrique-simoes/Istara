@@ -163,6 +163,7 @@ async def memory_stats(project_id: str, request: Request, db: AsyncSession = Dep
     from app.core.pi_runtime.embedding_profile import public_embedding_profile
 
     embedding_profile = public_embedding_profile()
+    from app.services.retrieval_provenance import provenance_coverage
 
     return {
         "vector_chunks": vector_count,
@@ -177,6 +178,8 @@ async def memory_stats(project_id: str, request: Request, db: AsyncSession = Dep
             "vector": s.rag_hybrid_vector_weight,
             "keyword": s.rag_hybrid_keyword_weight,
         },
+        # Health invariant (measurement 5): every source chunk traces to an evidence unit.
+        "provenance": await provenance_coverage(project_id),
     }
 
 

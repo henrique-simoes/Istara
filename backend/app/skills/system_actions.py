@@ -1152,20 +1152,12 @@ async def _exec_create_task(params: dict, project_id: str, agent_id: str) -> str
 
 
 async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -> str:
+    from app.core.file_encryption import reveal_document_text
+
     async with async_session() as db:
         query = select(Document).where(Document.project_id == project_id)
 
         search = params.get("query", "")
-        if search:
-            like = f"%{search}%"
-            query = query.where(
-                (Document.title.ilike(like))
-                | (Document.description.ilike(like))
-                | (Document.content_text.ilike(like))
-                | (Document.tags.ilike(like))
-                | (Document.file_name.ilike(like))
-            )
-
         if params.get("phase"):
             query = query.where(Document.phase == params["phase"])
         if params.get("tag"):
@@ -1173,8 +1165,28 @@ async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -
         if params.get("source"):
             query = query.where(Document.source == params["source"])
 
-        result = await db.execute(query.order_by(Document.created_at.desc()).limit(10))
-        docs = result.scalars().all()
+        # Document text is stored through ``protect_document_text``: with FILE_ENCRYPTION_ENABLED a
+        # SQL ``content_text ILIKE`` matches ciphertext and finds nothing (F15). Match on the
+        # revealed text, as the Documents full-text search route does.
+        result = await db.execute(query.order_by(Document.created_at.desc()))
+        docs = []
+        needle = str(search).lower()
+        for doc in result.scalars():
+            if needle:
+                haystack = "\n".join(
+                    [
+                        doc.title or "",
+                        doc.description or "",
+                        doc.file_name or "",
+                        doc.tags or "",
+                        reveal_document_text(doc.content_text or ""),
+                    ]
+                ).lower()
+                if needle not in haystack:
+                    continue
+            docs.append(doc)
+            if len(docs) >= 10:
+                break
 
         if not docs:
             return f"No documents found matching '{search}' in this project."

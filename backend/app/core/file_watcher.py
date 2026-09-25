@@ -12,7 +12,6 @@ from watchfiles import Change, awatch
 
 from app.api.websocket import broadcast_file_processed, broadcast_suggestion
 from app.config import settings
-from app.core.embeddings import embed_chunks
 from app.core.file_encryption import encrypt_file_in_place, protect_document_text, read_file_text
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.rag import VectorStore
@@ -401,13 +400,18 @@ class FileWatcher:
             logger.warning(f"No text extracted from {file_path}")
             return None
 
-        # Delete old embeddings for this source
-        store = VectorStore(project_id)
-        await store.delete_by_source(file_key)
+        # Register the Document FIRST so its evidence units exist when the chunks are indexed.
+        try:
+            await self._register_document(file_path, project_id)
+        except Exception as e:
+            logger.warning(f"Failed to register document for {file_path}: {e}")
 
-        # Embed and store
-        embedded = await embed_chunks(result.chunks)
-        count = await store.add_chunks(embedded)
+        # Replace this file's rows in BOTH indices. The old path deleted by source (which also
+        # clears BM25 rows) and then re-added vectors only, so every watched edit erased the
+        # file's keyword searchability (F7).
+        store = VectorStore(project_id)
+        await store.delete_file_source(file_path)
+        count = await self._index_with_provenance(project_id, file_path, result.chunks)
 
         if self._is_managed_upload_path(file_path):
             encrypt_file_in_place(file_path)
@@ -436,13 +440,34 @@ class FileWatcher:
         except Exception as e:
             logger.warning(f"Failed to create research tasks for {file_path}: {e}")
 
-        # Register as a Document in the Documents system
-        try:
-            await self._register_document(file_path, project_id)
-        except Exception as e:
-            logger.warning(f"Failed to register document for {file_path}: {e}")
-
         return summary
+
+    async def _index_with_provenance(self, project_id: str, file_path: Path, chunks: list) -> int:
+        """Index a watched file's chunks with the evidence units of its Document."""
+        from sqlalchemy import select
+
+        from app.models.database import async_session
+        from app.models.document import Document
+        from app.services.retrieval_provenance import (
+            document_source_text,
+            index_document_source_chunks,
+        )
+
+        async with async_session() as db:
+            rows = await db.execute(
+                select(Document).where(
+                    Document.project_id == project_id,
+                    (Document.file_path == str(file_path)) | (Document.file_name == file_path.name),
+                )
+            )
+            document = rows.scalars().first()
+            return await index_document_source_chunks(
+                project_id,
+                chunks,
+                document_id=document.id if document else None,
+                document_text=document_source_text(document) if document else "",
+                db=db,
+            )
 
     async def scan_directory(self, directory: str, project_id: str) -> list[dict]:
         """Scan a directory and process all supported files.

@@ -24,8 +24,7 @@ from app.core.agent_models import (
     _resolve_project_folder,
 )
 from app.core.context_hierarchy import context_hierarchy
-from app.core.embeddings import TextChunk
-from app.core.rag import ingest_chunks, retrieve_context
+from app.core.rag import retrieve_context
 from app.core.self_check import Confidence, verify_claim
 from app.core.self_improvement_policy import learning_signal_for_research_output
 from app.core.telemetry import telemetry_recorder
@@ -984,16 +983,26 @@ class AgentResearchMixin:
                     skill_name=task.skill_name,
                 )
                 readable_content = readable_artifact["content"]
+                # Skill artifacts are model output: they go to the DERIVED index, never to the
+                # source evidence index where they could confirm their own claims (F5). They are
+                # chunked in full (the old 2,000-character slice silently dropped the rest), and
+                # re-running the skill replaces its earlier rows instead of duplicating them.
+                from app.core.file_processor import chunk_text
+                from app.core.rag import ingest_derived_chunks
+
                 chunks = [
-                    TextChunk(
-                        text=readable_content[:2000],
+                    *chunk_text(
+                        readable_content,
                         source=f"skill:{task.skill_name}:{readable_artifact['file_name']}",
                     ),
-                    TextChunk(
-                        text=content[:2000], source=f"skill:{task.skill_name}:{filename}:raw"
-                    ),
+                    *chunk_text(content, source=f"skill:{task.skill_name}:{filename}:raw"),
                 ]
-                await ingest_chunks(project_id, chunks)
+                await ingest_derived_chunks(
+                    project_id,
+                    chunks,
+                    agent_id=task.agent_id or self.agent_id,
+                    kind="skill_artifact",
+                )
                 # Create a Document record so artifacts appear in Documents view
                 try:
                     from app.models.document import Document

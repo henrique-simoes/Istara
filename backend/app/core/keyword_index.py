@@ -102,11 +102,16 @@ class KeywordResult:
 class KeywordIndex:
     """SQLite FTS5 keyword index for a project."""
 
-    def __init__(self, project_id: str) -> None:
+    def __init__(self, project_id: str, *, namespace: str = "", root: Path | None = None) -> None:
+        """``namespace`` separates indices that must never mix (``derived`` holds LLM-written
+        artifacts and agent notes, which are not source evidence); ``root`` points a sandbox
+        index (retrieval evaluation) away from the project's real one."""
         self.project_id = project_id
-        db_dir = keyword_index_dir()
+        self.namespace = namespace
+        db_dir = Path(root) if root is not None else keyword_index_dir()
         db_dir.mkdir(parents=True, exist_ok=True)
-        self.db_path = str(db_dir / f"{project_id}.db")
+        suffix = f".{namespace}" if namespace else ""
+        self.db_path = str(db_dir / f"{project_id}{suffix}.db")
 
     async def _get_db(self) -> aiosqlite.Connection:
         db = await aiosqlite.connect(self.db_path)

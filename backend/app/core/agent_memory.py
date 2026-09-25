@@ -1,4 +1,11 @@
-"""Agent memory manager — private scratchpads and active memory tools."""
+"""Agent memory manager — private scratchpads and active memory tools.
+
+Agent notes are model output. They live in the project's DERIVED index (``rag.DERIVED_TABLE``),
+never in the source evidence index, so a note can never be retrieved as evidence or confirm a
+claim through ``self_check`` (F5). Each note row carries the writing agent in ``agent_id`` and is
+read back with an exact, pre-filtered match: agent ``a1`` never sees agent ``a10``'s notes, and
+other agents' notes cannot crowd an agent's own out of the top-k.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +18,10 @@ from app.core.content_guard import ContentGuard
 logger = logging.getLogger(__name__)
 _guard = ContentGuard()
 
+# Notes written before derived text had its own index sit in the source table under this source.
+_LEGACY_NOTE_SOURCE = "agent:{agent_id}:note"
+_NOTE_LIST_LIMIT = 500
+
 
 @dataclass
 class MemoryNote:
@@ -22,15 +33,23 @@ class MemoryNote:
     source: str = "agent_note"
 
 
+def _note_source(agent_id: str) -> str:
+    return _LEGACY_NOTE_SOURCE.format(agent_id=agent_id)
+
+
+def _where_equals(column: str, value: str) -> str:
+    return f"{column} = '{str(value).replace(chr(39), chr(39) * 2)}'"
+
+
 class AgentMemoryManager:
     """Manages per-agent private memory and active memory tools."""
 
     async def write_note(
         self, agent_id: str, project_id: str, note: str, tags: list[str] | None = None
     ) -> None:
-        """Agent writes a private note to its memory."""
+        """Agent writes a private note to its memory (derived index, exact agent ownership)."""
         from app.core.embeddings import TextChunk
-        from app.core.rag import ingest_chunks
+        from app.core.rag import ingest_derived_chunks
 
         # Content Guard: scan note before storage
         scan = _guard.scan_text(note)
@@ -41,46 +60,35 @@ class AgentMemoryManager:
 
         chunk = TextChunk(
             text=note,
-            source=f"agent:{agent_id}:note",
+            source=_note_source(agent_id),
             page=None,
             position=0,
             metadata={"agent_id": agent_id, "tags": tags or [], "timestamp": time.time()},
         )
-        await ingest_chunks(project_id, [chunk])
+        # Notes accumulate: never replace the agent's earlier notes.
+        await ingest_derived_chunks(
+            project_id, [chunk], agent_id=agent_id, kind="agent_note", replace_source=False
+        )
         logger.info(f"Agent {agent_id} stored note in project {project_id}")
 
     async def read_notes(
         self, agent_id: str, project_id: str, query: str | None = None, limit: int = 10
     ) -> list[dict]:
-        """Read agent's private notes, optionally filtered by semantic query."""
-        from app.core.embeddings import embed_text
-        from app.core.rag import VectorStore
-
-        store = VectorStore(project_id)
-
+        """Read this agent's notes, optionally ranked by a semantic query."""
         if query:
-            query_vector = await embed_text(query)
-            results = await store.search(query_vector, top_k=limit)
-            # Filter to only this agent's notes
-            return [
-                {"text": r.text, "source": r.source, "score": r.score}
-                for r in results
-                if f"agent:{agent_id}" in r.source
-            ]
-        else:
-            # Return most recent agent notes from the store
-            query_vector = await embed_text(f"notes from agent {agent_id}")
-            results = await store.search(query_vector, top_k=limit)
-            return [
-                {"text": r.text, "source": r.source, "score": r.score}
-                for r in results
-                if f"agent:{agent_id}" in r.source
-            ]
+            from app.core.rag import retrieve_derived_context
+
+            results = await retrieve_derived_context(
+                project_id, query, top_k=limit, agent_id=agent_id
+            )
+            return [{"text": r.text, "source": r.source, "score": r.score} for r in results]
+        notes = await self.get_all_notes(project_id, agent_id)
+        return notes[:limit]
 
     async def memory_search(
         self, agent_id: str, project_id: str, query: str, top_k: int = 5
     ) -> list[dict]:
-        """Agent actively searches the shared project knowledge base."""
+        """Agent actively searches the shared project knowledge base (source evidence only)."""
         from app.core.rag import retrieve_context
 
         context = await retrieve_context(project_id, query, top_k=top_k)
@@ -89,39 +97,49 @@ class AgentMemoryManager:
     async def memory_store(
         self, agent_id: str, project_id: str, note: str, tags: list[str] | None = None
     ) -> None:
-        """Agent deliberately stores a note in shared project memory with provenance."""
+        """Agent deliberately stores a note in its derived memory with provenance."""
         await self.write_note(agent_id, project_id, note, tags)
 
     async def get_all_notes(self, project_id: str, agent_id: str | None = None) -> list[dict]:
-        """Get all notes, optionally filtered by agent. For the Memory UI."""
-        from app.core.rag import VectorStore
+        """Notes for the Memory UI, newest first, filtered in the query (never a whole-table load).
 
-        store = VectorStore(project_id)
-        try:
-            if not store._ensure_table():
-                return []
-            table = store.db.open_table(store.table_name)
-            df = table.to_pandas()
+        Reads the derived index plus notes a build before the split wrote into the source table.
+        """
+        from app.core.rag import DERIVED_TABLE, VectorStore
 
-            # Filter for agent notes
-            if "source" in df.columns:
-                mask = df["source"].str.startswith("agent:")
-                if agent_id:
-                    mask = mask & df["source"].str.contains(agent_id)
-                notes_df = df[mask]
-
-                results = []
-                for _, row in notes_df.iterrows():
-                    results.append(
-                        {
-                            "text": str(row.get("text", "")),
-                            "source": str(row.get("source", "")),
-                        }
-                    )
-                return results
-        except Exception as e:
-            logger.warning(f"Failed to get agent notes: {e}")
-        return []
+        notes: list[dict] = []
+        for table_name, where in (
+            (
+                DERIVED_TABLE,
+                _where_equals("agent_id", agent_id) if agent_id else "source LIKE 'agent:%'",
+            ),
+            (
+                "chunks",
+                _where_equals("source", _note_source(agent_id))
+                if agent_id
+                else "source LIKE 'agent:%'",
+            ),
+        ):
+            store = VectorStore(project_id, table_name=table_name)
+            try:
+                if not store._ensure_table():
+                    continue
+                table = store.db.open_table(store.table_name)
+                columns = [c for c in ("text", "source", "created_at") if c in table.schema.names]
+                rows = table.search().where(where).select(columns).limit(_NOTE_LIST_LIMIT).to_list()
+            except Exception as e:
+                logger.warning(f"Failed to get agent notes from {table_name}: {e}")
+                continue
+            notes.extend(
+                {
+                    "text": str(row.get("text", "")),
+                    "source": str(row.get("source", "")),
+                    "created_at": float(row.get("created_at") or 0.0),
+                }
+                for row in rows
+            )
+        notes.sort(key=lambda note: note["created_at"], reverse=True)
+        return notes
 
 
 agent_memory = AgentMemoryManager()

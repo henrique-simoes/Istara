@@ -921,7 +921,8 @@ async def sync_project_documents(
         return {"synced": 0, "total": 0}
 
     from app.core.file_processor import get_supported_extensions, process_file
-    from app.core.rag import VectorStore, ingest_chunks
+    from app.core.rag import VectorStore
+    from app.services.retrieval_provenance import index_document_source_chunks
 
     supported = set(get_supported_extensions()) | MEDIA_EXTENSIONS
 
@@ -965,6 +966,7 @@ async def sync_project_documents(
         status = DocumentStatus.PROCESSING if suffix in AUDIO_EXTENSIONS else DocumentStatus.READY
         description = f"File added to project folder: {file_path.name}"
         chunks_indexed = 0
+        pending_chunks = []
 
         if suffix not in MEDIA_EXTENSIONS:
             result = process_file(file_path)
@@ -974,11 +976,7 @@ async def sync_project_documents(
             elif suffix not in AUDIO_EXTENSIONS:
                 content_text = "\n\n".join(chunk.text for chunk in result.chunks)
                 content_preview = content_text[:2000]
-                if result.chunks:
-                    store = VectorStore(project_id)
-                    await store.delete_file_source(file_path)
-                    chunks_indexed = await ingest_chunks(project_id, result.chunks)
-                    total_chunks_indexed += chunks_indexed
+                pending_chunks = list(result.chunks)
 
         # Generate a human-readable title from filename
         title = file_path.stem.replace("-", " ").replace("_", " ").title()
@@ -1000,8 +998,22 @@ async def sync_project_documents(
         doc.set_tags([])
 
         db.add(doc)
+        doc_units: list[Any] = []
         if content_text and status == DocumentStatus.READY:
-            synced_units.extend(await _persist_document_source_units(db, doc))
+            doc_units = await _persist_document_source_units(db, doc)
+            synced_units.extend(doc_units)
+        if pending_chunks:
+            # Index after the evidence units exist, so each chunk carries its unit (measurement 5).
+            store = VectorStore(project_id)
+            await store.delete_file_source(file_path)
+            chunks_indexed = await index_document_source_chunks(
+                project_id,
+                pending_chunks,
+                document_id=doc.id,
+                units=doc_units,
+                document_text=content_text,
+            )
+            total_chunks_indexed += chunks_indexed
         if _is_managed_upload_path(file_path):
             encrypt_file_in_place(file_path)
         if suffix in AUDIO_EXTENSIONS:
