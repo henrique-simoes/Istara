@@ -2,11 +2,11 @@
 
 Every Pi run had one fixed 120 s wall clock, and the supervisor waited at most 120 s between
 frames. ``timeout_ms`` was capped at 120 s too. A local model that streams steadily (the owner's
-local Qwen3.8-27B thinks at about 15 tokens/s) was killed at 120 s however healthy it was, while Istara
-is local-first. The industry pattern separates the two questions: is the model still producing
-(an idle timeout between streamed events), and is the run within a generous total budget (the
-OpenAI and Anthropic SDKs default to 10 minutes, llama.cpp's server to an hour). Defaults now
-depend on whether the endpoint is local.
+local Qwen3.8-27B thinks at about 15 tokens/s) was killed at 120 s however healthy it was, while
+Istara is local-first. The industry pattern separates the two questions: is the model still
+producing (an idle timeout between streamed events), and is the run within a generous total
+budget (the OpenAI and Anthropic SDKs default to 10 minutes, llama.cpp's server to an hour).
+Defaults now depend on whether the endpoint is local.
 """
 
 from __future__ import annotations
