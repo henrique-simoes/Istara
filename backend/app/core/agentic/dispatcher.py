@@ -267,6 +267,8 @@ class AgenticDispatcher:
             model=outcome.get("model"),
             served_model=outcome.get("served_model"),
             route_evidence=outcome.get("route_evidence") or {},
+            # A failed turn carries its reason (the engine reports it; it used to stop here).
+            error=outcome.get("error"),
         )
 
     async def completion(
@@ -340,6 +342,8 @@ class AgenticDispatcher:
             model=outcome.get("model"),
             served_model=outcome.get("served_model"),
             route_evidence=outcome.get("route_evidence") or {},
+            # A failed turn carries its reason (the engine reports it; it used to stop here).
+            error=outcome.get("error"),
         )
 
     async def structured(
@@ -420,6 +424,8 @@ class AgenticDispatcher:
             model=outcome.get("model"),
             served_model=outcome.get("served_model"),
             route_evidence=outcome.get("route_evidence") or {},
+            # A failed turn carries its reason (the engine reports it; it used to stop here).
+            error=outcome.get("error"),
         )
 
     async def react(
@@ -510,6 +516,8 @@ class AgenticDispatcher:
             model=outcome.get("model"),
             served_model=outcome.get("served_model"),
             route_evidence=outcome.get("route_evidence") or {},
+            # A failed turn carries its reason (the engine reports it; it used to stop here).
+            error=outcome.get("error"),
         )
 
     async def ensemble(

@@ -157,6 +157,8 @@ class ResolvedPiEndpoint:
     supports_vision: bool = False
     supports_reasoning: bool | None = None
     kind: str = "remote"
+    # The endpoint's default reasoning effort; a turn's ``thinking_mode`` overrides it.
+    thinking_level: str | None = None
 
     def telemetry_identity(self) -> dict[str, str]:
         """Safe fields permitted in telemetry; never return URL/key material."""
@@ -271,6 +273,7 @@ class PiEndpointResolver:
             supports_tools=endpoint.supports_tools,
             supports_vision=endpoint.supports_vision,
             supports_reasoning=endpoint.supports_reasoning,
+            thinking_level=endpoint.thinking_level,
         )
 
     def configured(self) -> list[PiApiEndpoint]:

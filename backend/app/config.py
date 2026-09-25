@@ -150,6 +150,10 @@ class PiApiEndpoint(BaseModel):
     # advertised; catalog-managed models set this explicitly so the runtime
     # does not force provider defaults onto a non-reasoning model.
     supports_reasoning: bool | None = None
+    # Default reasoning effort for turns that do not set ``TurnParams.thinking_mode``. Some models
+    # always reason (Z.ai GLM-5.3-flash refuses a request with thinking off), so an endpoint must
+    # be able to say how much. ``None`` keeps the worker's default.
+    thinking_level: Literal["off", "minimal", "low", "medium", "high", "xhigh", "max"] | None = None
     # Provider-auth metadata is non-secret and lets the runtime choose the
     # correct Pi transport (for example Codex Responses adds account headers).
     pi_provider: str = ""
