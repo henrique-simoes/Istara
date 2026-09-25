@@ -221,7 +221,16 @@ footer { color: var(--ui-ink-subtle); font-size: 14px; margin-top: 30px; }
     <div class="result"><h4>Before: search "billing previews"</h4><ol><li>ALPHA: "…the billing previews were confusing…" (exact phrase)</li></ol><p class="claim">The OR query ran only when the phrase matched nothing. One adjacent match suppressed every other candidate.</p></div>
     <div class="result"><h4>After: same search</h4><ol><li>ALPHA: exact phrase, ranked first</li><li>BRAVO: "billing tab hid the order previews" (both words, apart)</li></ol><p class="claim">Phrase hits rank first; BM25 over any term fills the rest of top-k. "UX", "AI", "P1" and "Q4" are now searchable.</p></div>
   </div>
-  <div id="qa-run"></div>
+  <h3>The browser run, and what it caught</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Run</th><th>Scenario 85</th><th>Scenario 23</th><th>What it found</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="num">6 / 10</td><td class="num">13 / 13</td><td>The scenario's own wait was wrong. It mixed a CSS selector list with Playwright's <code>text=</code> engine, which is not a valid selector, so the wait threw, a <code>catch</code> swallowed it, and the page was read before any result rendered. A test that fails for its own reason is as misleading as one that passes for the wrong reason.</td></tr>
+      <tr><td>2</td><td class="num">9 / 10</td><td class="num">—</td><td>With the wait fixed, the retrieval checks passed and axe-core named two real contrast failures on the results: the shared onboarding hint (<code>istara-500</code> on white, 2.17:1, in 26 views) and the Clear button (4.34:1).</td></tr>
+      <tr><td>3</td><td class="num">10 / 10</td><td class="num">13 / 13</td><td>Both colours now pass WCAG AA in light and dark, and the served bundle was checked to contain the fix before the run counted. axe reports 0 serious or critical violations.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="claim">QA compose stack with the contract provider stub (run id <code>cs74-sept25</code>), Playwright 1.60 in a container, Mac Studio. Governance checks pass (<code>check_change_obligations.py</code>, <code>check_feature_obligations.py</code>), as does the security benchmark (28/28 controls, 100%), which is required because self-evolution changed.</p>
 </section>
 
 <section class="panel" id="findings">
