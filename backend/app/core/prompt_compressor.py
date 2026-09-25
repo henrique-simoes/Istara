@@ -937,13 +937,9 @@ def compress_rag_chunks_indexed(
     chunks_to_process: list[tuple[float, int, str, bool]] = [
         (1.0, index, chunk, True) for index, chunk in protected_chunks
     ]
-    chunks_to_process.extend(
-        (score, index, chunk, False) for score, index, chunk in scored_chunks
-    )
+    chunks_to_process.extend((score, index, chunk, False) for score, index, chunk in scored_chunks)
 
-    for rank, (_score, original_index, chunk, is_protected_chunk) in enumerate(
-        chunks_to_process
-    ):
+    for rank, (_score, original_index, chunk, is_protected_chunk) in enumerate(chunks_to_process):
         if used_chars >= max_chars and not is_protected_chunk:
             break
 

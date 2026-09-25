@@ -17,12 +17,12 @@ logger = logging.getLogger(__name__)
 # that "what do participants say about the onboarding" ranks on "participants"/"onboarding"
 # rather than matching every chunk on "the"; BM25's IDF discounts them but an OR over them still
 # admits every row as a candidate.
-_STOPWORDS = frozenset(
+_STOPWORD_TEXT = (
     "a an and are as at be but by can could did do does for from had has have how i if in into is "
     "it its me my no not of on or our so than that the their them then there these they this to "
     "us was we were what when where which who why will with would you your about any all also"
-    .split()
 )
+_STOPWORDS = frozenset(_STOPWORD_TEXT.split())
 
 
 def _fts_terms(query: str) -> list[str]:
