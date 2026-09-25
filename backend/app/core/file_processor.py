@@ -50,8 +50,13 @@ def chunk_text(
     Returns:
         List of text chunks.
     """
-    size = chunk_size or settings.rag_chunk_size
-    overlap = chunk_overlap or settings.rag_chunk_overlap
+    # ``None`` means "use the setting". Zero is a real overlap: ``x or default`` turned an explicit
+    # 0 into the default 180, so an overlap ablation measured the same index twice.
+    size = settings.rag_chunk_size if chunk_size is None else chunk_size
+    overlap = settings.rag_chunk_overlap if chunk_overlap is None else chunk_overlap
+    if size <= 0:
+        raise ValueError(f"chunk_size must be positive, got {size}")
+    overlap = max(0, overlap)
 
     if not text or not text.strip():
         return []
@@ -96,7 +101,10 @@ def chunk_text(
             )
             position += 1
 
-        start = end - overlap
+        # A break can land half a chunk in, so an overlap that large would move ``start`` back and
+        # never finish. Step back only while that still moves forward.
+        next_start = end - overlap
+        start = next_start if next_start > start else end
         if start >= len(text):
             break
 
@@ -210,7 +218,7 @@ def chunk_by_speaker_turn(
     if buf:
         merged.append(buf)
 
-    max_size = max_size or settings.rag_chunk_size
+    max_size = settings.rag_chunk_size if max_size is None else max_size
     chunks: list[TextChunk] = []
     position = 0
     for segment in merged:
@@ -253,7 +261,7 @@ def chunk_by_heading(
     sections = re.split(r"(?=^##\s)", text, flags=re.MULTILINE)
     sections = [s.strip() for s in sections if s.strip()]
 
-    max_size = max_size or settings.rag_chunk_size
+    max_size = settings.rag_chunk_size if max_size is None else max_size
     chunks: list[TextChunk] = []
     position = 0
     for section in sections:
