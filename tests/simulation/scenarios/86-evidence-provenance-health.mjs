@@ -260,6 +260,20 @@ async function checkTraceable(ctx, checks, projectId) {
     passed: traced.text.includes(`${prov.with_evidence_unit} of ${prov.source_chunks} source chunks`),
     detail: traced.text.slice(0, 200),
   });
+  // One ingestion writer per upload: the Health tab's Vector Chunks and Keyword Chunks cards agree.
+  // The watcher used to index uploads too, racing the route and duplicating every vector.
+  const counts = await page.evaluate(() => {
+    const read = (label) => {
+      const el = [...document.querySelectorAll("p")].find((n) => n.textContent.trim() === label);
+      return el ? Number(el.previousElementSibling?.textContent.trim()) : NaN;
+    };
+    return { vector: read("Vector Chunks"), keyword: read("Keyword Chunks") };
+  });
+  checks.push({
+    name: "After upload the Vector Chunks and Keyword Chunks cards agree (indexed once)",
+    passed: counts.vector > 0 && counts.vector === counts.keyword,
+    detail: `vector=${counts.vector} keyword=${counts.keyword}`,
+  });
 }
 
 async function remountHealth(page) {
