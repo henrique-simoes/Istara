@@ -4,12 +4,12 @@
 item: spine-findings-and-retrieval-measurements
 branch: fix/spine-findings-measurements-20260925
 cf: { spec: CF-SPEC-2, tasks: [] }
-phase: "Phase 4 — learning-loop governance (F10, F16, F9, M6)"
+phase: "Phase 5 — plan DAG (F8)"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-25T18:57:39Z, ledger: L-6 }
-next_action: "Phase 4: tests for learned skill boosts vs the relevance floor (F10), side-effect-free ReasoningBank reads and old-lesson reachability (F16), project-scoped promotions and cache invalidation (F9), and the planted successful-but-wrong run (M6); run on origin/main first."
+last: { agent: claude-code, at: 2026-09-25T19:05:50Z, ledger: L-7 }
+next_action: "Phase 5: tests for the plan DAG (dependents of a failed step never run; no concurrent use of one AsyncSession; steps see only their dependencies' results); run on origin/main first."
 ```
 
 Evidence (four-part records per finding): `2026-09-25-spine-findings-evidence.md` beside this file.
@@ -165,3 +165,14 @@ related files 488 passed. ruff clean.
 Verified: `pytest ../tests/test_spine_ranking_semantics.py -q` → origin/main 11 failed; branch
 11 passed; 25-file related run → 488 passed (istara-test:1, network none).
 Next: Phase 4.
+
+### L-7 | 2026-09-25T19:05:50Z | S2-execute | claude-code | executor | Phase 4
+Did: F10 relevance-gated routing with bounded priors; M6 self-verification is provisional
+(policy, usage stats, ReasoningBank, neutral confidence cap); F16 pure retrieve with SQL
+relevance prefilter, usage counted on prompt use, single-retrieve API, read-only vector health;
+F9 per-project persona learnings, cache keyed by space+description. Commit 15d21121.
+Result: tests/test_spine_learning_loops.py 8/9 fail on origin/main (the 9th is the weak-prior
+guard), 9/9 pass here; 22 related files plus task/skill/chat suites pass (one seam update).
+Verified: branch `pytest ../tests/test_spine_learning_loops.py -q` → 9 passed; origin/main → 8
+failed, 1 passed; related runs all green (istara-test:1, network none). ruff clean.
+Next: Phase 5.

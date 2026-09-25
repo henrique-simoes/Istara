@@ -237,3 +237,90 @@ Phase 3 suites on this branch: the new file plus 23 test files that touch the ch
 (`_react_loop`, legacy executor, Prompt-RAG, meta-hyperagent, findings search, `search_memory`,
 RAG compression, the context formatter) and `test_findings.py`, `test_memory.py`:
 **488 passed**.
+
+## F10: learned boosts clear the routing floor for any query
+
+**What it is for.** Skill routing must pick skills relevant to the task. Usage history,
+telemetry quality and ReasoningBank lessons are priors. The governance contract allows
+ReasoningBank "weak routing priors" and forbids "strong positive skill/model signals from raw
+tool success". A boost that can lift an unrelated item over the relevance floor is the
+feedback loop recommender research warns about: popularity begets exposure (Chaney, Stewart
+& Engelhardt, RecSys 2018).
+
+**Flow driven.** `rank_skill_candidates` for "Summarize participant quotes about invoice
+reminders", with `tree-testing` given 500 successes at quality 1.0 and utility 1.0.
+
+**Output inspected.** On `origin/main`:
+`assert 'tree-testing' not in ['tree-testing', 'field-studies', 'participant-simulation', 'persona-creation']`.
+Tree-testing has nothing to do with quotes, yet it ranked first. On this branch it is absent.
+For a relevant task ("heuristic evaluation"), a perfect history still lifts
+`heuristic-evaluation`, by at most half of its relevance score.
+
+**Why that proves it.** Candidates now carry `relevance` and `learned` separately.
+Eligibility is `relevance >= floor`, and `score = relevance + clamp(learned, -relevance,
+0.5·relevance)`. No history can create relevance.
+
+## Measurement 6: learning-loop safety (a planted successful-but-wrong run)
+
+**What it is for.** The brief requires that a successful-but-wrong tool run teach ReasoningBank,
+skill routing and self-evolution nothing strong.
+
+**Flow driven.** `test_planted_successful_but_wrong_run_teaches_nothing_strong` registers a
+planted skill that succeeds and returns a well-formed synthesis contradicting the evidence
+("Invoice chasing is not a problem for owners"). The model's own reflection is stubbed to be
+fooled (`verified: true, confidence 0.95`). The harness then runs the real
+`AgentOrchestrator._execute_task` (checkpoints, findings storage, self-check, self-verify,
+ReasoningBank, Memento usage, hooks) and inspects every learning surface afterwards.
+
+**Output inspected.** On `origin/main` ReasoningBank stored the wrong run as a success:
+`assert not [{... 'confidence': 0.85, 'content': 'Reuse this strategy when the new task resembles the origi...` 
+On this branch the harness prints:
+```
+LEARNING-LOOP-SAFETY {"reasoning_bank": [["provisional", 0.55]], "skill_stats": {"executions": 0,
+"successes": 0, "failures": 0, ..., "provisional": 1}, "self_evolution_candidates": 0, "failure_memories": 0}
+```
+The planted skill is not a routing candidate for an unrelated query, and
+`scan_for_promotions` finds nothing.
+
+**Why that proves it.** The root cause was a vocabulary slip. "Verified" meant the agent's own
+check, and every learning surface treated it as independent verification. The policy now has
+a `self_verified_provisional` state that moves no success count, stays at neutral confidence
+(capped at 0.6), and adds no routing lift. Only human review (`task_review` APPROVED, already
+recorded there) or Research Spine reportability is strong. A self-check that rejects its output
+remains a weak failure. This is a pytest harness in the default suite, and it runs on every
+change.
+
+## F16: reads with side effects; the 200-newest cap
+
+On `origin/main`:
+```
+test_spine_learning_loops.py:112: assert 2 == 0      # two retrieve() calls incremented usage_count twice
+test_spine_learning_loops.py:144: assert 2 == 0      # the admin API retrieved twice and counted both
+test_spine_learning_loops.py:159: assert ([])        # the relevant lesson, older than 210 others, was unreachable
+test_spine_learning_loops.py:179: AssertionError: a health read created a manifest
+```
+On this branch `retrieve` is a pure query with an SQL relevance prefilter before the recency
+cap (2,000 candidates that share a query term). `context_for_query`, the path that puts
+memories into prompts, counts exactly one use per memory that made it into the text. The API
+retrieves once and counts nothing. `check_embedding_dimensions` checks the binding read-only
+and reads the stored dimension from the schema (command-query separation, Meyer, *Object-Oriented
+Software Construction*).
+
+## F9: project-scoped evidence mutates cross-project state
+
+On `origin/main`: `assert 'Zorblax' not in '# Istara Re...'`. A learning promoted from project
+A appeared in project B's Prompt-RAG identity, because promotions wrote the agent-wide
+overlay. `AssertionError: stale description served`: the skill-description vector cache was
+keyed by skill name only. On this branch promotions go to
+`runtime_personas/<agent>/projects/<project>/<FILE>.md`, which is merged only when that
+project composes the prompt (Prompt-RAG, `load_agent_identity(project_id=…)`, and the chat
+fallbacks), and the agent-wide persona is unchanged. The cache key is
+`(embedding space, skill, description digest)`, and a dimension mismatch skips the comparison
+instead of `zip`-truncating it. F9's third part, process-global `settings` mutation during RAG
+tuning, is fixed with F3 in Phase 7.
+
+Phase 4 suites on this branch: the new file plus the 22 test files that touch ReasoningBank,
+routing, learning signals, usage recording, self-evolution, persona loading, vector health and
+semantic matching, then `test_task_review_history.py`, `test_tasks.py`, `test_skills.py`,
+`test_chat.py`: all passed after one seam update (a persona-append fake now takes the new
+`project_id` keyword).
