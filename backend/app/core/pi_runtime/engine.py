@@ -196,6 +196,15 @@ def _enforce_test_provider_network_policy(endpoint: ResolvedPiEndpoint) -> None:
     enforce_test_provider_network_policy(endpoint)
 
 
+def _session_limits(endpoint: ResolvedPiEndpoint) -> dict[str, int]:
+    """The endpoint's run budgets for the worker session (DEC-10): progress-based idle plus a
+    total backstop, larger for local endpoints."""
+    return {
+        "max_wall_clock_ms": int(endpoint.max_run_ms),
+        "max_idle_ms": int(endpoint.idle_timeout_ms),
+    }
+
+
 def _turn_bind_params(params: Any, endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
     """Map TurnParams onto the worker's provider params (master plan §5.3).
 
@@ -357,6 +366,7 @@ class PiExecutionService:
                 history=history,
                 revision=revision,
                 catalog=catalog,
+                limits=_session_limits(endpoint),
             )
             session_opened = True
             await sup.bind_provider(
@@ -609,6 +619,7 @@ class PiExecutionService:
                 history=[],
                 revision=_session_revision(messages, endpoint),
                 catalog=[],
+                limits=_session_limits(endpoint),
             )
             opened = True
             await sup.bind_provider(

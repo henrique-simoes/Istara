@@ -159,6 +159,22 @@ class ResolvedPiEndpoint:
     kind: str = "remote"
     # The endpoint's default reasoning effort; a turn's ``thinking_mode`` overrides it.
     thinking_level: str | None = None
+    # Run liveness (DEC-10). ``None`` is filled from the locality defaults after construction, so
+    # every path that builds an endpoint (resolver, catalog projections, tests) agrees.
+    is_local: bool | None = None
+    idle_timeout_ms: int | None = None
+    max_run_ms: int | None = None
+
+    def __post_init__(self) -> None:
+        from app.core.pi_runtime.liveness import is_local_url, run_budgets
+
+        local = self.is_local
+        if local is None:
+            local = self.kind == "local" or is_local_url(self.base_url)
+        idle, total = run_budgets(local=local, idle_ms=self.idle_timeout_ms, run_ms=self.max_run_ms)
+        object.__setattr__(self, "is_local", local)
+        object.__setattr__(self, "idle_timeout_ms", idle)
+        object.__setattr__(self, "max_run_ms", total)
 
     def telemetry_identity(self) -> dict[str, str]:
         """Safe fields permitted in telemetry; never return URL/key material."""
@@ -252,13 +268,21 @@ class PiEndpointResolver:
             endpoint.model,
             endpoint.auth_provider,
         )
+        from app.core.pi_runtime.liveness import LOCAL_RESPONSE_START_MS, is_local_url
+
+        local = endpoint.locality == "local" or (
+            endpoint.locality == "auto" and is_local_url(endpoint.base_url)
+        )
+        timeout_ms = endpoint.timeout_ms
+        if local and "timeout_ms" not in endpoint.model_fields_set:
+            timeout_ms = LOCAL_RESPONSE_START_MS
         return ResolvedPiEndpoint(
             endpoint_id=endpoint.endpoint_id,
             provider_kind=provider_kind,
             base_url=endpoint.base_url.rstrip("/"),
             model=endpoint.model,
             api_key=api_key,
-            timeout_ms=endpoint.timeout_ms,
+            timeout_ms=timeout_ms,
             max_retries=endpoint.max_retries,
             pi_provider=endpoint.pi_provider or endpoint.auth_provider,
             provider_account_handle=sha256(
@@ -274,6 +298,9 @@ class PiEndpointResolver:
             supports_vision=endpoint.supports_vision,
             supports_reasoning=endpoint.supports_reasoning,
             thinking_level=endpoint.thinking_level,
+            is_local=local,
+            idle_timeout_ms=endpoint.idle_timeout_ms,
+            max_run_ms=endpoint.max_run_ms,
         )
 
     def configured(self) -> list[PiApiEndpoint]:

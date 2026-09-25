@@ -127,8 +127,16 @@ class PiApiEndpoint(BaseModel):
     model: str
     keychain_service: str
     keychain_account: str = ""
-    timeout_ms: int = Field(default=30_000, ge=1, le=120_000)
+    # How long to wait for the response to START (the provider SDK's request timeout). A local
+    # server may load weights first, so local endpoints default to 300 s when this is not set.
+    timeout_ms: int = Field(default=30_000, ge=1, le=600_000)
     max_retries: int = Field(default=0, ge=0, le=3)
+    # Run liveness (app.core.pi_runtime.liveness, DEC-10): ``auto`` infers local from the base
+    # URL host. ``idle_timeout_ms`` bounds the silence between streamed events; ``max_run_ms`` is
+    # the total backstop. ``None`` takes the local or remote default.
+    locality: Literal["auto", "local", "remote"] = "auto"
+    idle_timeout_ms: int | None = Field(default=None, ge=1_000, le=3_600_000)
+    max_run_ms: int | None = Field(default=None, ge=1_000, le=86_400_000)
     # Trustworthy per-endpoint pricing (USD per 1M tokens) resolved from the
     # deployment's contract. The worker feeds these into the pi-ai model rates so
     # a real turn's usage is priced and the per-run ``max_cost_usd`` ceiling can

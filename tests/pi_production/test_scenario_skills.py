@@ -57,7 +57,7 @@ async def test_scenario6_three_skills_run_in_order_with_protected_blocks_intact(
     sent_prompts: list[str] = []
     original_open = sup.open_session
 
-    async def spy_open(session_key, *, system_prompt, history, revision, catalog):
+    async def spy_open(session_key, *, system_prompt, history, revision, catalog, limits=None):
         sent_prompts.append(system_prompt)
         return await original_open(
             session_key,
@@ -65,6 +65,7 @@ async def test_scenario6_three_skills_run_in_order_with_protected_blocks_intact(
             history=history,
             revision=revision,
             catalog=catalog,
+            limits=limits,
         )
 
     sup.open_session = spy_open  # type: ignore[assignment]

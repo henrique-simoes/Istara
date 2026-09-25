@@ -66,6 +66,9 @@ class PiWorkerError(RuntimeError):
     """The worker failed to start, handshake, or stay alive."""
 
 
+_FRAME_WAIT_MARGIN_S = 30.0
+
+
 class PiRuntimeSupervisor:
     def __init__(
         self,
@@ -89,6 +92,8 @@ class PiRuntimeSupervisor:
         self._proc: asyncio.subprocess.Process | None = None
         self._sessions: dict[str, asyncio.Queue[dict[str, Any]]] = {}
         self._session_runs: dict[str, str] = {}
+        # Per-session wait between frames (seconds), from the endpoint's idle budget (DEC-10).
+        self._frame_waits: dict[str, float] = {}
         self._session_locks: dict[str, asyncio.Lock] = {}
         self._reader_task: asyncio.Task | None = None
         self._stderr_task: asyncio.Task | None = None
@@ -328,6 +333,11 @@ class PiRuntimeSupervisor:
             pass
 
     # ── session + run driver ─────────────────────────────────────────────
+    def _frame_wait(self, session_key: str) -> float:
+        """Seconds to wait for the next frame: the session's idle budget plus a margin, so the
+        worker (which owns the provider stream) reports the precise error first."""
+        return self._frame_waits.get(session_key, self._run_timeout)
+
     async def open_session(
         self,
         session_key: str,
@@ -336,7 +346,18 @@ class PiRuntimeSupervisor:
         history: list[dict[str, Any]],
         revision: str | None,
         catalog: list[dict[str, Any]],
+        limits: dict[str, int] | None = None,
     ) -> None:
+        """Open a worker session. ``limits`` carries the endpoint's run budgets
+        (``max_wall_clock_ms``, ``max_idle_ms``) over the supervisor defaults."""
+        session_limits: dict[str, Any] = {
+            "max_turns": self._max_turns,
+            "max_wall_clock_ms": int(self._run_timeout * 1000),
+            "max_cost_usd": self._max_cost_usd,
+        }
+        for key in ("max_wall_clock_ms", "max_idle_ms"):
+            if limits and limits.get(key):
+                session_limits[key] = int(limits[key])
         lock = self._session_locks.setdefault(session_key, asyncio.Lock())
         async with lock:
             # A caller must close a successful session before reusing its key.
@@ -355,13 +376,13 @@ class PiRuntimeSupervisor:
                         "history": (history or [])[-MAX_HISTORY_MESSAGES:],
                         "revision": revision,
                         "catalog": catalog,
-                        "limits": {
-                            "max_turns": self._max_turns,
-                            "max_wall_clock_ms": int(self._run_timeout * 1000),
-                            "max_cost_usd": self._max_cost_usd,
-                        },
+                        "limits": session_limits,
                     }
                 )
+                if session_limits.get("max_idle_ms"):
+                    self._frame_waits[session_key] = (
+                        session_limits["max_idle_ms"] / 1000 + _FRAME_WAIT_MARGIN_S
+                    )
                 frame = await asyncio.wait_for(queue.get(), timeout=self._handshake_timeout)
                 if frame.get("type") != "session.opened":
                     raise PiWorkerError(
@@ -369,6 +390,7 @@ class PiRuntimeSupervisor:
                     )
             except Exception:
                 self._sessions.pop(session_key, None)
+                self._frame_waits.pop(session_key, None)
                 raise
 
     async def bind_provider(self, session_key: str, endpoint: dict[str, Any]) -> None:
@@ -426,7 +448,9 @@ class PiRuntimeSupervisor:
             await self._send(prompt_frame)
             try:
                 while True:
-                    frame = await asyncio.wait_for(queue.get(), timeout=self._run_timeout)
+                    frame = await asyncio.wait_for(
+                        queue.get(), timeout=self._frame_wait(session_key)
+                    )
                     # Session queues can contain delayed frames from a prior run.
                     # They must never terminate or yield into this run.
                     frame_run_id = frame.get("run_id")
@@ -509,7 +533,9 @@ class PiRuntimeSupervisor:
             )
             try:
                 while True:
-                    frame = await asyncio.wait_for(queue.get(), timeout=self._run_timeout)
+                    frame = await asyncio.wait_for(
+                        queue.get(), timeout=self._frame_wait(session_key)
+                    )
                     frame_run_id = frame.get("run_id")
                     if frame_run_id is not None and frame_run_id != run_id:
                         continue
@@ -596,6 +622,7 @@ class PiRuntimeSupervisor:
                 pass
         finally:
             self._sessions.pop(session_key, None)
+            self._frame_waits.pop(session_key, None)
             self._session_locks.pop(session_key, None)
 
     async def shutdown(self) -> None:
