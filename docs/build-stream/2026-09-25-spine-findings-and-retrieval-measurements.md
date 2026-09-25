@@ -6,10 +6,10 @@ branch: fix/spine-findings-measurements-20260925
 cf: { spec: CF-SPEC-2, tasks: [CF-1, CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8, CF-9, CF-10, CF-11, CF-12, CF-13, CF-14] }
 phase: "Phase 8 — live lane (Muse Spark 1.3 Contributor + local Qwen, DEC-11)"
 stage: S2-execute
-status: in-progress
-blocked_on: null
-last: { agent: claude-code, at: 2026-09-25T21:05:00Z, ledger: L-16 }
-next_action: "Settle local Qwen sampling (temperature 0 loops in reasoning), restart istara-cs76-live with the two-model env, upload the Harbor corpus through the product and run M4 (answer_eval) with the roles swapped between the two models. Phase 7b (CF-SPEC-3, other session): S3 pending an independent blind review via 2026-09-25-spine-findings-phase7b-blind-pack.md; CF-20/25/26 wait on it."
+status: blocked
+blocked_on: "owner: the owner's local llama.cpp returns only '/' for Qwen3.8-27B (handoff ~/Documents/istara-local-qwen-handoff.md sent to the local server's agent; the owner asked this session to wait)"
+last: { agent: claude-code, at: 2026-09-25T21:29:37Z, ledger: L-17 }
+next_action: "When the owner reports the local server fixed: re-probe pi-local-qwen once through istara-cs76-live, restart it with the two-model env (live-run.sh), upload the Harbor corpus through the product and run M4 (answer_eval) with the roles swapped. Phase 7b (CF-SPEC-3, other session): S3 pending an independent blind review via 2026-09-25-spine-findings-phase7b-blind-pack.md; CF-20/25/26 wait on it."
 ```
 
 Evidence (four-part records per finding): `2026-09-25-spine-findings-evidence.md` beside this file.
@@ -426,3 +426,19 @@ suites 833 passed (liveness) and 827 passed, 6 skipped (bump); worker 103/103; s
 100% (28/28, 28 triggered paths).
 Next: settle the local server's sampling, restart the live backend with the two-model env, then M4 and the
 governed coding run.
+
+### L-17 | 2026-09-25T21:29:37Z | S2-execute | claude-code | executor | Phase 8
+Did: diagnosed the local server. At temperature 0 Istara's probe ran 16,384 tokens (1,124 s) with no
+answer; at temperature 0.6 the same. Direct requests without Istara, at the Qwen model card's
+sampling (0.6 / 0.95 / 20) and with thinking off, return only `/` characters. Server props
+(read-only): llama.cpp b10975-4c9233c03, Qwen3.8-27B-UD-Q4_K_XL.gguf, proper Qwen chat template.
+Captured the exact request body Istara's worker sends (OpenAI Chat Completions streaming,
+max_completion_tokens, temperature; no top_p/top_k/chat_template_kwargs). Wrote a self-contained
+handoff for the local server's agent (owner's ~/Documents/istara-local-qwen-handoff.md; address
+omitted); the owner is sending it and asked this session to wait.
+Result: the fault is in the owner's local model server, not Istara (Istara's own defects on this path
+are fixed: ecdf7d3e, 3d1a052d). Istara-side follow-up once it is sane: callers that send
+temperature 0 to a reasoning model contradict Qwen's card; endpoints cannot pass top_p/top_k.
+Verified: curl to /v1/chat/completions (17.0 s, 19.9 s; all `/`); GET /props and /v1/models.
+Next: when the owner returns with the local server fixed, re-probe pi-local-qwen once, restart
+istara-cs76-live with the two-model env (live-run.sh), then M4 with roles swapped.
