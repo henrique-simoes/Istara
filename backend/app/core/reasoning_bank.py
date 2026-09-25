@@ -575,13 +575,17 @@ class ReasoningMemoryService:
         )
         context = format_memory_context(memories, max_chars=max_chars)
         if record_usage and context:
-            await self.record_usage(
-                [
-                    str(m.get("id"))
-                    for m in memories
-                    if f'source="reasoning_memory:{m.get("id")}"' in context
-                ]
-            )
+            try:
+                await self.record_usage(
+                    [
+                        str(m.get("id"))
+                        for m in memories
+                        if f'source="reasoning_memory:{m.get("id")}"' in context
+                    ]
+                )
+            except Exception as exc:
+                # Usage accounting is bookkeeping: it must never cost the prompt its context.
+                logger.debug("ReasoningBank usage count skipped: %s", exc)
         return context
 
     async def consolidate_duplicates(self, *, project_id: str | None = None) -> dict:

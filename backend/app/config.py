@@ -400,6 +400,11 @@ class Settings(BaseSettings):
     rag_score_threshold: float = 0.3
     rag_hybrid_vector_weight: float = 0.7
     rag_hybrid_keyword_weight: float = 0.3
+    rag_rrf_k: int = 60  # Reciprocal Rank Fusion constant (Cormack et al. 2009)
+    # Retrieval benchmark (qrels + corpus) that autoresearch RAG tuning optimises against. Empty:
+    # the repository copy under tests/ when present. Without it, RAG tuning fails closed.
+    retrieval_benchmark_qrels: str = ""
+    retrieval_benchmark_corpus: str = ""
 
     # DAG Context Summarization
     dag_enabled: bool = True

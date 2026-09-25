@@ -127,7 +127,7 @@ class VectorStore:
             "normalization": profile.normalization,
         }
 
-    def _ensure_profile_binding(self) -> dict[str, str | int]:
+    def _ensure_profile_binding(self, *, bind_fingerprint: bool = False) -> dict[str, str | int]:
         """Bind this project index once and reject silent vector-space drift.
 
         Existing indexes are safely adopted only into bootstrap version 1,
@@ -160,7 +160,30 @@ class VectorStore:
         )
         if any(bound.get(field) != active[field] for field in identity_fields):
             raise VectorProfileMismatchError("vector_profile_mismatch")
+        self._check_fingerprint(bound, bind_if_missing=bind_fingerprint)
         return active
+
+    def _check_fingerprint(self, bound: dict, *, bind_if_missing: bool) -> None:
+        """Compare the serving model's probe fingerprint with the one this store was built with.
+
+        The profile fields cannot tell two models apart when the name ("default") and dimension
+        are equal (F11). A store records the fingerprint of the model that wrote its first
+        vectors; any later write or read under another fingerprint fails closed. Stores bound
+        before fingerprints existed adopt the current one on their next write.
+        """
+        from app.core.embeddings import known_embed_fingerprint
+
+        current = known_embed_fingerprint(str(bound.get("cache_namespace") or "") or None)
+        recorded = bound.get("fingerprint")
+        if recorded:
+            if current and current != recorded:
+                raise VectorProfileMismatchError("embedding_fingerprint_mismatch")
+            return
+        if bind_if_missing and current:
+            updated = {**bound, "fingerprint": current}
+            tmp = self._profile_manifest.with_suffix(".tmp")
+            tmp.write_text(json.dumps(updated, sort_keys=True) + "\n", encoding="utf-8")
+            tmp.replace(self._profile_manifest)
 
     def check_profile_binding(self) -> None:
         """Read-only binding check for health reads: never creates a manifest.
@@ -186,6 +209,7 @@ class VectorStore:
         )
         if any(bound.get(field) != active[field] for field in identity_fields):
             raise VectorProfileMismatchError("vector_profile_mismatch")
+        self._check_fingerprint(bound, bind_if_missing=False)
 
     def _ensure_table(self) -> bool:
         """Check if the chunks table exists."""
@@ -246,7 +270,7 @@ class VectorStore:
         if not embedded_chunks:
             return 0
 
-        profile = self._ensure_profile_binding()
+        profile = self._ensure_profile_binding(bind_fingerprint=True)
         now = time.time()
         records = []
         for ec in embedded_chunks:
@@ -637,7 +661,7 @@ async def hybrid_search(
     never changes the process-wide configuration other projects read.
     """
     k = top_k if top_k is not None else settings.rag_top_k
-    fusion_k = rrf_k if rrf_k is not None else 60
+    fusion_k = rrf_k if rrf_k is not None else settings.rag_rrf_k
 
     store = store or VectorStore(project_id)
     kw_index = store.keyword_index()

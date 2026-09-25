@@ -177,10 +177,16 @@ def detect_content_type(text: str, suffix: str) -> str:
     return "generic"
 
 
-def chunk_by_speaker_turn(text: str, source: str) -> list[TextChunk]:
+def chunk_by_speaker_turn(
+    text: str,
+    source: str,
+    max_size: int | None = None,
+    overlap: int | None = None,
+) -> list[TextChunk]:
     """Split interview-style text on speaker turn boundaries.
 
-    Very short consecutive turns (< 100 chars) are merged into one chunk.
+    Very short consecutive turns (< 100 chars) are merged into one chunk. ``max_size`` and
+    ``overlap`` default to the settings; retrieval evaluation passes candidates explicitly.
     """
     # Split on lines that start with a speaker label
     parts = re.split(
@@ -204,13 +210,15 @@ def chunk_by_speaker_turn(text: str, source: str) -> list[TextChunk]:
     if buf:
         merged.append(buf)
 
-    max_size = settings.rag_chunk_size
+    max_size = max_size or settings.rag_chunk_size
     chunks: list[TextChunk] = []
     position = 0
     for segment in merged:
         # If a single turn exceeds max chunk size, fall back to character chunking
         if len(segment) > max_size:
-            sub_chunks = chunk_text(segment, source=source, chunk_size=max_size)
+            sub_chunks = chunk_text(
+                segment, source=source, chunk_size=max_size, chunk_overlap=overlap
+            )
             for sc in sub_chunks:
                 sc.chunk_type = "speaker_turn"
                 sc.position = position
@@ -230,22 +238,29 @@ def chunk_by_speaker_turn(text: str, source: str) -> list[TextChunk]:
     return chunks
 
 
-def chunk_by_heading(text: str, source: str) -> list[TextChunk]:
+def chunk_by_heading(
+    text: str,
+    source: str,
+    max_size: int | None = None,
+    overlap: int | None = None,
+) -> list[TextChunk]:
     """Split markdown text by ``##`` headings.
 
     Sections that exceed the max chunk size are sub-chunked using character
-    chunking.
+    chunking. ``max_size`` and ``overlap`` default to the settings.
     """
     # Split keeping the heading with its section
     sections = re.split(r"(?=^##\s)", text, flags=re.MULTILINE)
     sections = [s.strip() for s in sections if s.strip()]
 
-    max_size = settings.rag_chunk_size
+    max_size = max_size or settings.rag_chunk_size
     chunks: list[TextChunk] = []
     position = 0
     for section in sections:
         if len(section) > max_size:
-            sub_chunks = chunk_text(section, source=source, chunk_size=max_size)
+            sub_chunks = chunk_text(
+                section, source=source, chunk_size=max_size, chunk_overlap=overlap
+            )
             for sc in sub_chunks:
                 sc.chunk_type = "heading_section"
                 sc.position = position
@@ -265,7 +280,9 @@ def chunk_by_heading(text: str, source: str) -> list[TextChunk]:
     return chunks
 
 
-def process_txt(file_path: Path) -> ProcessedFile:
+def process_txt(
+    file_path: Path, *, chunk_size: int | None = None, chunk_overlap: int | None = None
+) -> ProcessedFile:
     """Process a plain text or markdown file with content-aware chunking."""
     try:
         text = file_path.read_text(encoding="utf-8", errors="replace")
@@ -273,11 +290,13 @@ def process_txt(file_path: Path) -> ProcessedFile:
         content_type = detect_content_type(text, suffix)
 
         if content_type == "interview_transcript":
-            chunks = chunk_by_speaker_turn(text, source=str(file_path))
+            chunks = chunk_by_speaker_turn(text, str(file_path), chunk_size, chunk_overlap)
         elif content_type == "markdown_sections":
-            chunks = chunk_by_heading(text, source=str(file_path))
+            chunks = chunk_by_heading(text, str(file_path), chunk_size, chunk_overlap)
         else:
-            chunks = chunk_text(text, source=str(file_path))
+            chunks = chunk_text(
+                text, source=str(file_path), chunk_size=chunk_size, chunk_overlap=chunk_overlap
+            )
 
         return ProcessedFile(
             source=str(file_path),
@@ -405,7 +424,9 @@ def process_audio(file_path: Path) -> ProcessedFile:
         return ProcessedFile(source=str(file_path), error=f"Audio error: {e}")
 
 
-def process_csv(file_path: Path) -> ProcessedFile:
+def process_csv(
+    file_path: Path, *, chunk_size: int | None = None, chunk_overlap: int | None = None
+) -> ProcessedFile:
     """Process a CSV file — convert rows to readable text."""
     try:
         text_parts: list[str] = []
@@ -416,7 +437,9 @@ def process_csv(file_path: Path) -> ProcessedFile:
                 text_parts.append(f"Row {row_num}: {row_text}")
 
         text = "\n".join(text_parts)
-        chunks = chunk_text(text, source=str(file_path))
+        chunks = chunk_text(
+            text, source=str(file_path), chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        )
         return ProcessedFile(
             source=str(file_path),
             chunks=chunks,
@@ -442,11 +465,16 @@ PROCESSORS = {
 }
 
 
-def process_file(file_path: Path) -> ProcessedFile:
+def process_file(
+    file_path: Path, *, chunk_size: int | None = None, chunk_overlap: int | None = None
+) -> ProcessedFile:
     """Process a file based on its extension.
 
     Args:
         file_path: Path to the file to process.
+        chunk_size / chunk_overlap: explicit chunking (default: the settings). Retrieval
+            evaluation re-indexes a sandbox per candidate with these, never by mutating the
+            process-wide settings other requests read (F3/F9).
 
     Returns:
         ProcessedFile with extracted and chunked text.
@@ -462,7 +490,10 @@ def process_file(file_path: Path) -> ProcessedFile:
         )
 
     with decrypted_file_path(original_path) as readable_path:
-        result = processor(readable_path)
+        if processor in (process_txt, process_csv):
+            result = processor(readable_path, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        else:
+            result = processor(readable_path)
     if result.source != str(original_path):
         result.source = str(original_path)
         for chunk in result.chunks:

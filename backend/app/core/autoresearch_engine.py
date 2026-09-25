@@ -289,6 +289,13 @@ class AutoresearchEngine:
             self._active_project_id = None
             if callable(bind_project):
                 bind_project("")
+            # Runners that measure on sandboxes (rag_params) remove them here.
+            close_runner = getattr(runner, "close", None)
+            if callable(close_runner):
+                try:
+                    close_runner()
+                except Exception as exc:
+                    logger.debug("Runner close skipped: %s", exc)
             # Release persona lock
             if runner.needs_persona_lock:
                 from app.core.agent_identity import release_persona_lock

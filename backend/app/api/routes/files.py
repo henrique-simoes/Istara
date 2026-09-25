@@ -423,6 +423,14 @@ async def upload_file(
             "ingestion_surface": "files_upload",
         },
     )
+    # Commit the document and its evidence units FIRST. Indexing embeds, and every embedding
+    # dispatch writes a usage-ledger row in its own session: under SQLite's single writer, an
+    # open write transaction here would make each of those writes wait out the busy timeout.
+    await db.commit()
+    await record_source_evidence_unit_telemetry(
+        project_id=project_id,
+        units=evidence_units,
+    )
     # Index AFTER the evidence units exist, so every chunk carries the unit it was cut from
     # (measurement 5: retrieved chunks were 0% traceable to an evidence unit).
     chunks_indexed = await index_document_source_chunks(
@@ -433,11 +441,6 @@ async def upload_file(
         document_text=content_text,
     )
     encrypt_file_in_place(file_path)
-    await db.commit()
-    await record_source_evidence_unit_telemetry(
-        project_id=project_id,
-        units=evidence_units,
-    )
 
     response = {
         "status": "processed",
@@ -552,7 +555,9 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
                     "ingestion_surface": "audio_transcription",
                 },
             )
-            # 3. Index the transcript chunks with their evidence-unit provenance.
+            # 3. Index the transcript chunks with their evidence-unit provenance, after the
+            # document and units are committed (no write transaction open while embedding).
+            await db.commit()
             await index_document_source_chunks(
                 project_id,
                 result.chunks,

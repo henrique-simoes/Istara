@@ -41,6 +41,16 @@ async def check_embedding_dimensions(
     try:
         test_vectors = validate_embedding_vectors(await embed_probe(), expected_count=1)
         model_dim = len(test_vectors[0])
+        if engine is None:
+            # Re-measure the serving model's identity: a same-dimension swap changes the
+            # fingerprint, not the dimension (F11). Best effort: without a fresh fingerprint the
+            # stores are still checked by profile and dimension.
+            from app.core.embeddings import ensure_embed_fingerprint
+
+            try:
+                await ensure_embed_fingerprint(force=True)
+            except Exception as exc:
+                logger.warning("Embedding fingerprint probe failed: %s", exc)
     except Exception as e:
         return {
             "status": "error",
@@ -85,6 +95,7 @@ async def check_embedding_dimensions(
 
     mismatches = []
     profile_mismatches = []
+    fingerprint_mismatches = []
     for pid in projects:
         try:
             import lancedb
@@ -107,9 +118,25 @@ async def check_embedding_dimensions(
                     {"project_id": pid, "stored_dim": stored_dim, "model_dim": model_dim}
                 )
         except VectorProfileMismatchError as e:
-            profile_mismatches.append({"project_id": pid, "error": str(e)})
+            if str(e) == "embedding_fingerprint_mismatch":
+                fingerprint_mismatches.append({"project_id": pid, "error": str(e)})
+            else:
+                profile_mismatches.append({"project_id": pid, "error": str(e)})
         except Exception as e:
             logger.warning(f"Dimension check failed for project {pid}: {e}")
+
+    if fingerprint_mismatches:
+        return {
+            "status": "fingerprint_mismatch",
+            "message": (
+                f"The embedding model serving now is not the one that built "
+                f"{len(fingerprint_mismatches)} project index(es), although the dimension "
+                "matches. A governed re-index is required."
+            ),
+            "fingerprint_mismatches": fingerprint_mismatches,
+            "model_dim": model_dim,
+            "stored_dim": 0,
+        }
 
     if profile_mismatches:
         return {

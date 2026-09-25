@@ -1,0 +1,1062 @@
+{
+ "version": 1,
+ "name": "harbor-ledger-retrieval-qrels",
+ "corpus": "tests/document_corpus/rich",
+ "corpus_glob": "sources/**/*",
+ "generator": "tests/document_corpus/generate-rich-corpus.mjs (seed 20260908)",
+ "grading": {
+  "2": "the chunk carries at least half of an occurrence of one of the question's target spans",
+  "1": "otherwise, the chunk carries at least half of an occurrence of a related span: another quote from the question's theme bank, or a listed related span",
+  "0": "otherwise"
+ },
+ "provenance": "Targets and theme banks are the generator's planted quote banks (exact strings); fact spans were read from the committed corpus. Every span is checked to occur in the corpus when the harness loads this file.",
+ "theme_banks": {
+  "T1": [
+   "I spend the first ninety minutes every day figuring out who owes me money. The invoices are in one place, the payments land in another, and my brain is the integration layer.",
+   "Tuesday example: three catering invoices overdue, one client swears they paid, the deposit shows up under a different name. I lost the whole morning reconciling a story, not numbers.",
+   "Bottom line: if the app can't tell me who is late and nudge them for me, it's a viewer, not a tool.",
+   "I measured this, actually. Four point two hours a week on receivables. That's a part-time employee I can't hire.",
+   "Winter is our quarter-end. Everything due in October arrives in my head in September and nowhere else.",
+   "The aging report lists amounts but not owners. Someone owes me $3,800 and the row doesn't say who chased it last.",
+   "I sent the same reminder three times with three tones. Friendly, firm, then begging. The app watched.",
+   "A client paid half and wrote 'thanks!' in the memo. Half of what? Thanks for what? I spent an hour decoding gratitude.",
+   "My accountant sees the overdue list monthly. I live it daily. That lag is where cash goes to hide.",
+   "Friday afternoons I call instead of email. Calls work. Nothing in the software knows that.",
+   "The biggest invoice is never the problem. It's the twelve small ones that nobody owns.",
+   "I want one screen: who, how much, how late, last touch, next nudge — and a button that does the nudge.",
+   "En cada cierre, lo mismo: facturas vencidas que nadie persiguió porque nadie sabía que estaban vencidas.",
+   "Los viernes llamo en vez de escribir. Las llamadas funcionan, pero el sistema no registra ni una.",
+   "Un cliente pagó la mitad y puso 'gracias' en el concepto. ¿La mitad de qué? Perdí una hora descifrando.",
+   "La lista de vencidos muestra montos pero no responsables. Alguien me debe y nadie sabe quién lo llamó.",
+   "Mi gente depende de cobrar a tiempo. Cada factura tardía es nómina en riesgo."
+  ],
+  "T2": [
+   "The receipt is in my apron pocket, then the van, then the laundry. By Friday it's a rumor.",
+   "My shortcut is snapping it at the register, but half the time the photo is blurry and the app rejects it without saying why.",
+   "I check it twice because once I lost a four-hundred-dollar receipt and Mara trusts me and that terrifies me.",
+   "If it takes more than three clicks I hate it. At the counter there are no three clicks to spare.",
+   "Technically that's a substantiation failure. No receipt, no deduction. I tell every client this.",
+   "Thermal paper fades. By March the January receipts are blank ghosts and I'm reconstructing from card statements.",
+   "The app wants the total, the tax, the category, and my patience — in that order, at the busiest minute of the day.",
+   "I batch on Fridays and half the pile is mystery paper. Whose lunch was this? Business or sorry?",
+   "Mileage, parking, tolls — the small stuff leaks around the edges of every system I've tried.",
+   "A photo of a photo of a receipt. That's what my February looks like. Try auditing that.",
+   "Cash purchases at the supply house never make it in. The owner pays cash, tells me Monday, I believe him on faith.",
+   "Give me a shoebox mode: dump everything in, sort it Sunday, nag me only about the orphans.",
+   "Le doy un ejemplo del viernes: gasolina, hielo, propano — tres recibos, cero registrados el lunes.",
+   "El papel térmico se borra. En marzo los recibos de enero son fantasmas y reconstruyo con el banco.",
+   "Si toma más de tres clics lo odio. En la caja no hay tres clics de sobra.",
+   "Las compras en efectivo nunca entran. El dueño paga, me avisa el lunes, y yo le creo por fe.",
+   "Foto de foto de recibo. Así es mi febrero. Que lo audite quien pueda."
+  ],
+  "T3": [
+   "Everything over five hundred needs my sign-off, and I'm on a ladder half the day. The whole company queues behind my phone battery.",
+   "For licensing I need two signatures on file. When one is on vacation, payroll-adjacent spending just waits.",
+   "I do it in batches on Fridays, but approvals don't batch. They rot, one by one, in an inbox nobody owns.",
+   "In our old system, delegation worked: deputy approves under a cap, full audit trail. I measured the delay drop.",
+   "Per our incident review, single-approver chains are a control gap. That is a finding, not feedback.",
+   "The approver sees an amount with no context. Approve what? For whom? Against which job? It's a blind signature.",
+   "Emergency purchases route around the chain entirely, then get scolded retroactively. The system trains circumvention.",
+   "I approved something at a red light once. Never again — but the app let me, no questions asked.",
+   "Weekend approvals pile to Monday and Monday is already full. The chain has no concept of urgency, only order.",
+   "Two partners must both approve, but the app notifies them sequentially. Parallel would halve the wait and nobody can explain why it doesn't.",
+   "The audit trail shows who clicked, not what they knew. That's a signature without informed consent.",
+   "Deputy coverage exists on paper. In practice the deputy can't see the attachments, so they approve blind or not at all.",
+   "Mi meta es pagar a proveedores en 48 horas. Con la cadena actual, son seis días si alguien se enferma.",
+   "Todo lo que pasa de quinientos necesita mi firma, y yo estoy en una escalera medio día.",
+   "Las compras urgentes rodean la cadena y luego las regañan. El sistema entrena la evasión.",
+   "La suplencia existe en papel. En la práctica no ve los adjuntos: aprueba a ciegas o no aprueba.",
+   "Dos socios deben aprobar pero el aviso es secuencial. En paralelo tardaría la mitad."
+  ],
+  "T4": [
+   "The auto-match is magic. Ninety percent right, and I fix the rest with coffee. Don't take it away.",
+   "Boats don't wait for reconciliation. If the feed guesses right, I sail. If not, I fix it in winter.",
+   "The correct treatment is review-then-post, never post-then-review. Auto-posting buries errors where auditors find them.",
+   "I always worry that a wrong match sits there looking correct. Correct-looking wrongness is the most expensive kind.",
+   "Show me confidence per match and I'll review the shaky ten percent gladly. Certainty theater I will not accept.",
+   "Last April it matched a supplier payment to the wrong job. We underbilled by nine hundred and found out in July.",
+   "The override log is where trust lives. If I can see who confirmed what and undo it, I'll let it guess.",
+   "Speed matters more than purity in season. I'll take 90% auto with a clean review queue over 100% manual and drowning.",
+   "My old ERP never guessed. It also never finished. There is a middle I would pay for.",
+   "Duplicate detection is the real hero, not matching. Catch the double-charge and I'll forgive ten bad guesses.",
+   "Quarter-end turns every guess into a fact nobody re-examines. The calendar launders uncertainty.",
+   "Train it on my corrections, visibly. If it learns my vendors, it's a colleague. If not, it's a slot machine.",
+   "Eso no es conciliación, eso es adivinanza. Adivinar con dinero ajeno es mala práctica, aunque acierte.",
+   "Mis clientes me llaman cuando el banco y los libros no cuadran. El 'casi' automático es el culpable la mitad de las veces.",
+   "Que me muestre la confianza de cada coincidencia y reviso el diez por ciento dudoso con gusto.",
+   "El registro de cambios es donde vive la confianza. Si veo quién confirmó qué, lo dejo adivinar.",
+   "En abril emparejó un pago al trabajo equivocado. Facturamos novecientos de menos y lo vimos en julio."
+  ],
+  "T5": [
+   "Payroll hits Thursday, client payments land Friday. Every week I float the gap on a credit card and pretend it's strategy.",
+   "I measured this, actually: eleven weeks last year where payroll preceded receivables by more than two days.",
+   "For licensing I need payroll records clean to the day. The float makes clean impossible.",
+   "Three times last quarter I moved money between accounts at midnight to make morning payroll. That's not banking, that's parkour.",
+   "Honestly? A calendar that shows cash against payroll dates would change my life more than any report.",
+   "New hires don't know the float exists until their first short Friday. Then they know, loudly.",
+   "Overtime posts late, so Thursday's payroll is always a guess dressed as a number.",
+   "The payroll provider debits a day early 'for processing'. That day costs me sleep and overdraft math.",
+   "I keep a secret spreadsheet called 'Thursday'. My bank has no idea Thursday exists.",
+   "Contractors versus employees, two rhythms, one account. The app shows a balance; I need a choreography.",
+   "Holiday weeks compress everything and nobody warns you. Last Thanksgiving I learned by overdraft.",
+   "If the app said 'this Thursday needs $4,100 you don't have yet', I'd kiss it. Professionally.",
+   "Mi gente depende de eso. La nómina no espera a que el cliente pague.",
+   "Tres veces el trimestre pasado moví dinero a medianoche para la nómina. Eso no es banca, es parkour.",
+   "La proveedora descuenta un día antes 'por proceso'. Ese día me cuesta sueño y matemáticas.",
+   "Contratistas y empleados, dos ritmos, una cuenta. El saldo no me sirve; necesito coreografía.",
+   "Si la app dijera 'este jueves faltan cuatro mil cien', la abrazaría. Profesionalmente."
+  ],
+  "T6": [
+   "The Spanish version says 'cargo por sobregiro' where the English says 'overdraft protection transfer'. Those are not the same thing and my customers notice.",
+   "Language consistency matters because one unclear word can trigger a phone call. We get forty such calls a week.",
+   "My screen reader says the language attribute flips mid-sentence. It reads Spanish with English pronunciation. Try understanding that at speed.",
+   "The fee schedule has eleven footnotes in English and four in Spanish. Guess which seven fees surprise people.",
+   "Disclosure timing differs: English shows it pre-confirm, Spanish post-confirm. Same bank, different truth.",
+   "Nobody tested this with a keyboard, did they. Tab order follows the English layout even on the Spanish page.",
+   "My mother trusts the Spanish page more and understands it less. That combination should frighten a bank.",
+   "Error messages are translated by someone who never saw the error. 'Inténtelo más tarde' for a locked account is not advice, it's abandonment.",
+   "The glossary contradicts the statements on three terms I counted. I stopped counting after three.",
+   "Bilingual staff improvise translations at the counter. Improvisation is not a localization strategy.",
+   "Statements should carry both languages side by side for key terms. Redundancy here is clarity, not clutter.",
+   "When the app updates, English ships first and Spanish 'follows'. It follows by months. Customers notice the lag before the words.",
+   "En hora pico, nadie lee la letra pequeña. Si la traducción confunde, la fila se detiene y todos pagan.",
+   "At the window you see it all. They don't say 'pain point', they say — '¿por qué me cobraron dos veces?' — and I have no good answer.",
+   "Le doy un ejemplo del viernes: un cliente firmó algo que no entendía porque la traducción sonaba oficial.",
+   "La tabla de comisiones tiene once notas en inglés y cuatro en español. Adivine qué siete cargos sorprenden.",
+   "Los mensajes de error los tradujo alguien que nunca vio el error. 'Inténtelo más tarde' no es ayuda, es abandono.",
+   "El personal improvisa traducciones en ventanilla. Improvisar no es una estrategia de localización."
+  ],
+  "T7": [
+   "A customer starts online, finishes at my window, and I know nothing. They repeat everything, slower, angrier.",
+   "For older customers, starting over isn't an inconvenience, it's a reason to leave the bank.",
+   "I walk them through it, step by step, but I'm walking blind. Their online steps are invisible to me.",
+   "The screen reader reads the whole table, every time. Imagine that, then imagine repeating it to a human who also can't see it.",
+   "At the window you see it all: the apology, the repetition, the sigh when I ask for the account number they already typed.",
+   "The queue display says six minutes. The repeat-story tax makes it eleven. Nobody measures the tax.",
+   "Customers bring screenshots of their own accounts as proof of their own money. Let that sink in.",
+   "Handoff notes exist but nobody writes them because the field is buried three tabs deep during a rush.",
+   "The online flow collects the reason for visit, then drops it. I ask 'what brings you in' to someone who already answered.",
+   "Privacy theater: I can't see their online steps 'for security', but I can see their balance. Explain that logic.",
+   "After a bad handoff they don't blame the channel, they blame me, by name, in surveys.",
+   "A simple 'customer already tried X' banner would save my mornings. It has never existed.",
+   "La fila no perdona. Cada historia repetida son tres minutos que no tenemos.",
+   "El flujo en línea pregunta el motivo y luego lo pierde. Pregunto '¿en qué le ayudo?' a quien ya respondió.",
+   "Los clientes traen capturas de sus propias cuentas como prueba de su propio dinero. Que eso cale.",
+   "Las notas de traspaso existen pero nadie las escribe porque el campo está a tres clics en hora pico.",
+   "Un aviso de 'el cliente ya intentó X' me salvaría las mañanas. Nunca ha existido."
+  ],
+  "T8": [
+   "Ninety percent of these are noise. I cleared forty-three before lunch. Every false alarm teaches customers to ignore the real one.",
+   "Per our incident review, alert coverage is a control gap. That is a finding, not feedback. We need more signals, not fewer.",
+   "My phone buzzes at 2am for a twelve-dollar charge I made myself. I have started sleeping through the real ones too.",
+   "Ha. Ask me in April. The winter fraud wave is real and the alerts saved us twice. Annoying and necessary.",
+   "If an auditor asks, I want the alert log complete. If you ask me as a human, I want half of them gone.",
+   "For licensing I need the fraud review documented. Nobody said it has to buzz.",
+   "Severity levels are decoration: everything arrives as URGENT. When everything is urgent, triage is astrology.",
+   "Let me snooze a merchant, not the channel. My grocery store is not a threat model.",
+   "The alert never says what TO do, only what happened. Actionable would be a button, not a paragraph.",
+   "Weekend alerts route to whoever is awake, which is whoever is newest. Experience sleeps through nothing, but gets no alerts.",
+   "Digest mode exists, they told me, buried in settings I need a map to find. Discovery is part of the product.",
+   "Two genuine frauds last year, both caught by customers calling us, not by alerts. Sit with that before adding more.",
+   "El noventa por ciento es ruido. Borré cuarenta y tres antes del almuerzo. Cada falsa alarma enseña a ignorar la real.",
+   "Mi teléfono vibra a las 2am por un cargo de doce dólares que hice yo. Ya duermo hasta las reales.",
+   "Los niveles son decoración: todo llega URGENTE. Cuando todo urge, priorizar es astrología.",
+   "Déjeme pausar un comercio, no el canal. Mi supermercado no es un modelo de amenaza.",
+   "Dos fraudes reales el año pasado, ambos los detectaron clientes llamando. Piénselo antes de agregar más."
+  ],
+  "T9": [
+   "Every month I export PDFs, screenshot the weird ones, and email my accountant a puzzle. She bills me to solve it.",
+   "Technically that's a broken workflow. Shared access with scoped permissions would end the screenshot era.",
+   "I tell every client this: give me view access and we both save three hours. Nobody does. They fear I'll see everything.",
+   "Caregiver access has to say exactly what is shared — same for accountants. Granular scopes or nothing.",
+   "I check it twice because once I sent the wrong month and paid for the hour it took to unsee it.",
+   "The month-end email thread has fourteen messages and zero decisions. Decisions live in calls the software never sees.",
+   "Comment threads on transactions would end this. Annotate the weird one where it lives, not in email exile.",
+   "My accountant's portal login expired silently. I found out at 11pm on the 31st. Notifications are a feature.",
+   "Permissions are all-or-nothing, so I choose nothing and pay in screenshots. The pricing page should say that.",
+   "Version control for books: who changed what, when, with what note. Git for money. I'd pay double.",
+   "She asked for 'the backup'. I sent a zip of inscrutable exports. We both pretended that was fine.",
+   "Scoped access needs an expiry date or owners will never grant it. Trust with a timer.",
+   "Mis clientes me llaman cuando algo no cuadra, y la llamada siempre empieza con 'te mandé una captura'.",
+   "El acceso compartido con permisos por alcance acabaría la era de las capturas. O granular o nada.",
+   "El hilo de fin de mes tiene catorce mensajes y cero decisiones. Las decisiones viven en llamadas.",
+   "El acceso con fecha de caducidad: los dueños lo darían si supieran que expira. Confianza con temporizador.",
+   "Me pidió 'el respaldo'. Mandé un zip indescifrable. Ambos fingimos que estaba bien."
+  ],
+  "T10": [
+   "We outgrew the deposit limit on a good month and found out via a rejected check. Success, punished.",
+   "Bottom line: tell me the limit before I need it, raise it when my history earns it, and never surprise me.",
+   "In our old system, limits adapted quarterly. Here it's a wall I discover at speed.",
+   "I measured this, actually: four rejected deposits last year, each costing a client conversation.",
+   "My shortcut is depositing daily to stay under the cap. That's the tail wagging the business.",
+   "The limit counts per check, per day, per month — three dials, one cryptic error. Show me the dials.",
+   "A big catering weekend means Monday deposits spike. Predictable to everyone except the software.",
+   "New accounts get training-wheels limits with no graduation date posted. When do I graduate? Silence.",
+   "The rejection notice arrives after the client already paid. Now I explain the bank to my customer. Reversed roles.",
+   "Branch deposits don't count against the same cap but nothing says so. I learned it from another owner, not the app.",
+   "Raise requests go into a queue with no SLA. My money waits in a lobby with no chairs.",
+   "Seasonal businesses should get seasonal limits. Winter me and summer me are different companies.",
+   "La fila no perdona, y el límite tampoco: un cheque rechazado son dos visitas.",
+   "El límite cuenta por cheque, por día, por mes — tres relojes, un error críptico. Muéstreme los relojes.",
+   "Un fin de semana bueno significa depósitos altos el lunes. Predecible para todos menos el software.",
+   "La solicitud de aumento entra a una cola sin plazo. Mi dinero espera en un vestíbulo sin sillas.",
+   "Los depósitos en sucursal no cuentan igual pero nada lo dice. Lo supe por otro dueño, no por la app."
+  ]
+ },
+ "questions": [
+  {
+   "id": "T1-L1",
+   "style": "lexical",
+   "theme": "T1",
+   "text": "How many hours a week does a participant spend on receivables?",
+   "targets": [
+    "I measured this, actually. Four point two hours a week on receivables. That's a part-time employee I can't hire."
+   ],
+   "related_theme": "T1",
+   "related": []
+  },
+  {
+   "id": "T1-L2",
+   "style": "lexical",
+   "theme": "T1",
+   "text": "Which participant said the aging report lists amounts but not owners?",
+   "targets": [
+    "The aging report lists amounts but not owners. Someone owes me $3,800 and the row doesn't say who chased it last."
+   ],
+   "related_theme": "T1",
+   "related": []
+  },
+  {
+   "id": "T1-L3",
+   "style": "lexical",
+   "theme": "T1",
+   "text": "What happened when a client paid half and wrote thanks in the memo?",
+   "targets": [
+    "A client paid half and wrote 'thanks!' in the memo. Half of what? Thanks for what? I spent an hour decoding gratitude."
+   ],
+   "related_theme": "T1",
+   "related": []
+  },
+  {
+   "id": "T1-P1",
+   "style": "paraphrase",
+   "theme": "T1",
+   "text": "Who says their own head acts as the glue between where bills go out and where money comes in?",
+   "targets": [
+    "I spend the first ninety minutes every day figuring out who owes me money. The invoices are in one place, the payments land in another, and my brain is the integration layer."
+   ],
+   "related_theme": "T1",
+   "related": []
+  },
+  {
+   "id": "T1-P2",
+   "style": "paraphrase",
+   "theme": "T1",
+   "text": "What single view of late payers with automatic follow-ups do owners want?",
+   "targets": [
+    "I want one screen: who, how much, how late, last touch, next nudge — and a button that does the nudge.",
+    "Bottom line: if the app can't tell me who is late and nudge them for me, it's a viewer, not a tool."
+   ],
+   "related_theme": "T1",
+   "related": []
+  },
+  {
+   "id": "T1-P3",
+   "style": "paraphrase",
+   "theme": "T1",
+   "text": "Which way of contacting slow payers at the end of the week works better than written reminders?",
+   "targets": [
+    "Friday afternoons I call instead of email. Calls work. Nothing in the software knows that."
+   ],
+   "related_theme": "T1",
+   "related": []
+  },
+  {
+   "id": "T2-L1",
+   "style": "lexical",
+   "theme": "T2",
+   "text": "What happens to thermal paper receipts by March?",
+   "targets": [
+    "Thermal paper fades. By March the January receipts are blank ghosts and I'm reconstructing from card statements."
+   ],
+   "related_theme": "T2",
+   "related": []
+  },
+  {
+   "id": "T2-L2",
+   "style": "lexical",
+   "theme": "T2",
+   "text": "What is the shoebox mode participants ask for?",
+   "targets": [
+    "Give me a shoebox mode: dump everything in, sort it Sunday, nag me only about the orphans."
+   ],
+   "related_theme": "T2",
+   "related": []
+  },
+  {
+   "id": "T2-L3",
+   "style": "lexical",
+   "theme": "T2",
+   "text": "Why does the app reject blurry receipt photos snapped at the register?",
+   "targets": [
+    "My shortcut is snapping it at the register, but half the time the photo is blurry and the app rejects it without saying why."
+   ],
+   "related_theme": "T2",
+   "related": []
+  },
+  {
+   "id": "T2-P1",
+   "style": "paraphrase",
+   "theme": "T2",
+   "text": "Where do paper slips end up before anyone records them, according to a food business owner?",
+   "targets": [
+    "The receipt is in my apron pocket, then the van, then the laundry. By Friday it's a rumor."
+   ],
+   "related_theme": "T2",
+   "related": []
+  },
+  {
+   "id": "T2-P2",
+   "style": "paraphrase",
+   "theme": "T2",
+   "text": "Which small travel costs slip through expense tools?",
+   "targets": [
+    "Mileage, parking, tolls — the small stuff leaks around the edges of every system I've tried."
+   ],
+   "related_theme": "T2",
+   "related": []
+  },
+  {
+   "id": "T2-P3",
+   "style": "paraphrase",
+   "theme": "T2",
+   "text": "How are things bought with notes and coins at a trade supplier recorded?",
+   "targets": [
+    "Cash purchases at the supply house never make it in. The owner pays cash, tells me Monday, I believe him on faith."
+   ],
+   "related_theme": "T2",
+   "related": []
+  },
+  {
+   "id": "T3-L1",
+   "style": "lexical",
+   "theme": "T3",
+   "text": "What happens to spending when one of the two required signatures is on vacation?",
+   "targets": [
+    "For licensing I need two signatures on file. When one is on vacation, payroll-adjacent spending just waits."
+   ],
+   "related_theme": "T3",
+   "related": []
+  },
+  {
+   "id": "T3-L2",
+   "style": "lexical",
+   "theme": "T3",
+   "text": "How did delegation to a deputy approver under a cap work in the old system?",
+   "targets": [
+    "In our old system, delegation worked: deputy approves under a cap, full audit trail. I measured the delay drop."
+   ],
+   "related_theme": "T3",
+   "related": []
+  },
+  {
+   "id": "T3-L3",
+   "style": "lexical",
+   "theme": "T3",
+   "text": "Why does notifying two partners sequentially slow approvals?",
+   "targets": [
+    "Two partners must both approve, but the app notifies them sequentially. Parallel would halve the wait and nobody can explain why it doesn't."
+   ],
+   "related_theme": "T3",
+   "related": []
+  },
+  {
+   "id": "T3-P1",
+   "style": "paraphrase",
+   "theme": "T3",
+   "text": "Who says the whole firm waits on how much charge is left in their handset?",
+   "targets": [
+    "Everything over five hundred needs my sign-off, and I'm on a ladder half the day. The whole company queues behind my phone battery."
+   ],
+   "related_theme": "T3",
+   "related": []
+  },
+  {
+   "id": "T3-P2",
+   "style": "paraphrase",
+   "theme": "T3",
+   "text": "Why can a stand-in signer not make an informed decision?",
+   "targets": [
+    "Deputy coverage exists on paper. In practice the deputy can't see the attachments, so they approve blind or not at all."
+   ],
+   "related_theme": "T3",
+   "related": []
+  },
+  {
+   "id": "T3-P3",
+   "style": "paraphrase",
+   "theme": "T3",
+   "text": "What does the sign-off history fail to capture about what the signer understood?",
+   "targets": [
+    "The audit trail shows who clicked, not what they knew. That's a signature without informed consent."
+   ],
+   "related_theme": "T3",
+   "related": []
+  },
+  {
+   "id": "T4-L1",
+   "style": "lexical",
+   "theme": "T4",
+   "text": "How accurate is the auto-match according to owners who love it?",
+   "targets": [
+    "The auto-match is magic. Ninety percent right, and I fix the rest with coffee. Don't take it away."
+   ],
+   "related_theme": "T4",
+   "related": []
+  },
+  {
+   "id": "T4-L2",
+   "style": "lexical",
+   "theme": "T4",
+   "text": "What do accountants say about review-then-post versus post-then-review?",
+   "targets": [
+    "The correct treatment is review-then-post, never post-then-review. Auto-posting buries errors where auditors find them."
+   ],
+   "related_theme": "T4",
+   "related": []
+  },
+  {
+   "id": "T4-L3",
+   "style": "lexical",
+   "theme": "T4",
+   "text": "What happened last April when a supplier payment matched the wrong job?",
+   "targets": [
+    "Last April it matched a supplier payment to the wrong job. We underbilled by nine hundred and found out in July."
+   ],
+   "related_theme": "T4",
+   "related": []
+  },
+  {
+   "id": "T4-P1",
+   "style": "paraphrase",
+   "theme": "T4",
+   "text": "Why do bookkeepers fear mistakes that look right?",
+   "targets": [
+    "I always worry that a wrong match sits there looking correct. Correct-looking wrongness is the most expensive kind."
+   ],
+   "related_theme": "T4",
+   "related": []
+  },
+  {
+   "id": "T4-P2",
+   "style": "paraphrase",
+   "theme": "T4",
+   "text": "What would make an accountant trust automated transaction pairing?",
+   "targets": [
+    "The override log is where trust lives. If I can see who confirmed what and undo it, I'll let it guess.",
+    "Show me confidence per match and I'll review the shaky ten percent gladly. Certainty theater I will not accept."
+   ],
+   "related_theme": "T4",
+   "related": []
+  },
+  {
+   "id": "T4-P3",
+   "style": "paraphrase",
+   "theme": "T4",
+   "text": "Why is catching charges that show up twice worth more than getting every pairing right?",
+   "targets": [
+    "Duplicate detection is the real hero, not matching. Catch the double-charge and I'll forgive ten bad guesses."
+   ],
+   "related_theme": "T4",
+   "related": []
+  },
+  {
+   "id": "T5-L1",
+   "style": "lexical",
+   "theme": "T5",
+   "text": "What does the secret spreadsheet called Thursday track?",
+   "targets": [
+    "I keep a secret spreadsheet called 'Thursday'. My bank has no idea Thursday exists."
+   ],
+   "related_theme": "T5",
+   "related": []
+  },
+  {
+   "id": "T5-L2",
+   "style": "lexical",
+   "theme": "T5",
+   "text": "How many weeks last year did payroll precede receivables by more than two days?",
+   "targets": [
+    "I measured this, actually: eleven weeks last year where payroll preceded receivables by more than two days."
+   ],
+   "related_theme": "T5",
+   "related": []
+  },
+  {
+   "id": "T5-L3",
+   "style": "lexical",
+   "theme": "T5",
+   "text": "Why does the payroll provider debit a day early?",
+   "targets": [
+    "The payroll provider debits a day early 'for processing'. That day costs me sleep and overdraft math."
+   ],
+   "related_theme": "T5",
+   "related": []
+  },
+  {
+   "id": "T5-P1",
+   "style": "paraphrase",
+   "theme": "T5",
+   "text": "Who shifts funds between accounts late at night to cover wages?",
+   "targets": [
+    "Three times last quarter I moved money between accounts at midnight to make morning payroll. That's not banking, that's parkour.",
+    "Tres veces el trimestre pasado moví dinero a medianoche para la nómina. Eso no es banca, es parkour."
+   ],
+   "related_theme": "T5",
+   "related": []
+  },
+  {
+   "id": "T5-P2",
+   "style": "paraphrase",
+   "theme": "T5",
+   "text": "What view of salary dates against incoming money would help most?",
+   "targets": [
+    "Honestly? A calendar that shows cash against payroll dates would change my life more than any report."
+   ],
+   "related_theme": "T5",
+   "related": []
+  },
+  {
+   "id": "T5-P3",
+   "style": "paraphrase",
+   "theme": "T5",
+   "text": "How do public holidays squeeze the timing of wages and incoming money?",
+   "targets": [
+    "Holiday weeks compress everything and nobody warns you. Last Thanksgiving I learned by overdraft."
+   ],
+   "related_theme": "T5",
+   "related": []
+  },
+  {
+   "id": "T6-L1",
+   "style": "lexical",
+   "theme": "T6",
+   "text": "What does the Spanish statement say where the English says overdraft protection transfer?",
+   "targets": [
+    "The Spanish version says 'cargo por sobregiro' where the English says 'overdraft protection transfer'. Those are not the same thing and my customers notice."
+   ],
+   "related_theme": "T6",
+   "related": []
+  },
+  {
+   "id": "T6-L2",
+   "style": "lexical",
+   "theme": "T6",
+   "text": "How many footnotes does the fee schedule have in English and in Spanish?",
+   "targets": [
+    "The fee schedule has eleven footnotes in English and four in Spanish. Guess which seven fees surprise people.",
+    "La tabla de comisiones tiene once notas en inglés y cuatro en español. Adivine qué siete cargos sorprenden."
+   ],
+   "related_theme": "T6",
+   "related": []
+  },
+  {
+   "id": "T6-L3",
+   "style": "lexical",
+   "theme": "T6",
+   "text": "What does the screen reader do when the language attribute flips mid-sentence?",
+   "targets": [
+    "My screen reader says the language attribute flips mid-sentence. It reads Spanish with English pronunciation. Try understanding that at speed."
+   ],
+   "related_theme": "T6",
+   "related": []
+  },
+  {
+   "id": "T6-P1",
+   "style": "paraphrase",
+   "theme": "T6",
+   "text": "Why does an elderly relative trust the translated page without understanding it?",
+   "targets": [
+    "My mother trusts the Spanish page more and understands it less. That combination should frighten a bank."
+   ],
+   "related_theme": "T6",
+   "related": []
+  },
+  {
+   "id": "T6-P2",
+   "style": "paraphrase",
+   "theme": "T6",
+   "text": "How far does the translated app trail behind each English release?",
+   "targets": [
+    "When the app updates, English ships first and Spanish 'follows'. It follows by months. Customers notice the lag before the words."
+   ],
+   "related_theme": "T6",
+   "related": []
+  },
+  {
+   "id": "T6-P3",
+   "style": "paraphrase",
+   "theme": "T6",
+   "text": "How often do unclear translated terms make customers pick up the phone?",
+   "targets": [
+    "Language consistency matters because one unclear word can trigger a phone call. We get forty such calls a week."
+   ],
+   "related_theme": "T6",
+   "related": []
+  },
+  {
+   "id": "T7-L1",
+   "style": "lexical",
+   "theme": "T7",
+   "text": "Why do customers bring screenshots of their own accounts to the branch?",
+   "targets": [
+    "Customers bring screenshots of their own accounts as proof of their own money. Let that sink in."
+   ],
+   "related_theme": "T7",
+   "related": []
+  },
+  {
+   "id": "T7-L2",
+   "style": "lexical",
+   "theme": "T7",
+   "text": "Where are handoff notes buried during a rush?",
+   "targets": [
+    "Handoff notes exist but nobody writes them because the field is buried three tabs deep during a rush."
+   ],
+   "related_theme": "T7",
+   "related": []
+  },
+  {
+   "id": "T7-L3",
+   "style": "lexical",
+   "theme": "T7",
+   "text": "What banner would tell a teller the customer already tried something?",
+   "targets": [
+    "A simple 'customer already tried X' banner would save my mornings. It has never existed."
+   ],
+   "related_theme": "T7",
+   "related": []
+  },
+  {
+   "id": "T7-P1",
+   "style": "paraphrase",
+   "theme": "T7",
+   "text": "How much longer does the wait get because customers must retell their story?",
+   "targets": [
+    "The queue display says six minutes. The repeat-story tax makes it eleven. Nobody measures the tax."
+   ],
+   "related_theme": "T7",
+   "related": []
+  },
+  {
+   "id": "T7-P2",
+   "style": "paraphrase",
+   "theme": "T7",
+   "text": "Why might older clients leave after a failed switch from the website to the counter?",
+   "targets": [
+    "For older customers, starting over isn't an inconvenience, it's a reason to leave the bank."
+   ],
+   "related_theme": "T7",
+   "related": []
+  },
+  {
+   "id": "T7-P3",
+   "style": "paraphrase",
+   "theme": "T7",
+   "text": "Why can staff see a balance but not what the customer already did online?",
+   "targets": [
+    "Privacy theater: I can't see their online steps 'for security', but I can see their balance. Explain that logic."
+   ],
+   "related_theme": "T7",
+   "related": []
+  },
+  {
+   "id": "T8-L1",
+   "style": "lexical",
+   "theme": "T8",
+   "text": "How many fraud alerts did someone clear before lunch?",
+   "targets": [
+    "Ninety percent of these are noise. I cleared forty-three before lunch. Every false alarm teaches customers to ignore the real one."
+   ],
+   "related_theme": "T8",
+   "related": []
+  },
+  {
+   "id": "T8-L2",
+   "style": "lexical",
+   "theme": "T8",
+   "text": "Why does a phone buzz at 2am for a twelve-dollar charge?",
+   "targets": [
+    "My phone buzzes at 2am for a twelve-dollar charge I made myself. I have started sleeping through the real ones too."
+   ],
+   "related_theme": "T8",
+   "related": []
+  },
+  {
+   "id": "T8-L3",
+   "style": "lexical",
+   "theme": "T8",
+   "text": "Where is digest mode for alerts hidden?",
+   "targets": [
+    "Digest mode exists, they told me, buried in settings I need a map to find. Discovery is part of the product."
+   ],
+   "related_theme": "T8",
+   "related": []
+  },
+  {
+   "id": "T8-P1",
+   "style": "paraphrase",
+   "theme": "T8",
+   "text": "How were last year's genuine fraud cases actually discovered?",
+   "targets": [
+    "Two genuine frauds last year, both caught by customers calling us, not by alerts. Sit with that before adding more."
+   ],
+   "related_theme": "T8",
+   "related": []
+  },
+  {
+   "id": "T8-P2",
+   "style": "paraphrase",
+   "theme": "T8",
+   "text": "Why does marking every warning as top priority make sorting them meaningless?",
+   "targets": [
+    "Severity levels are decoration: everything arrives as URGENT. When everything is urgent, triage is astrology."
+   ],
+   "related_theme": "T8",
+   "related": []
+  },
+  {
+   "id": "T8-P3",
+   "style": "paraphrase",
+   "theme": "T8",
+   "text": "What would let an owner silence warnings about one trusted shop only?",
+   "targets": [
+    "Let me snooze a merchant, not the channel. My grocery store is not a threat model."
+   ],
+   "related_theme": "T8",
+   "related": []
+  },
+  {
+   "id": "T9-L1",
+   "style": "lexical",
+   "theme": "T9",
+   "text": "Why do owners email screenshots and PDFs to their accountant every month?",
+   "targets": [
+    "Every month I export PDFs, screenshot the weird ones, and email my accountant a puzzle. She bills me to solve it."
+   ],
+   "related_theme": "T9",
+   "related": []
+  },
+  {
+   "id": "T9-L2",
+   "style": "lexical",
+   "theme": "T9",
+   "text": "How many messages does the month-end email thread have?",
+   "targets": [
+    "The month-end email thread has fourteen messages and zero decisions. Decisions live in calls the software never sees."
+   ],
+   "related_theme": "T9",
+   "related": []
+  },
+  {
+   "id": "T9-L3",
+   "style": "lexical",
+   "theme": "T9",
+   "text": "What happened when the accountant's portal login expired silently?",
+   "targets": [
+    "My accountant's portal login expired silently. I found out at 11pm on the 31st. Notifications are a feature."
+   ],
+   "related_theme": "T9",
+   "related": []
+  },
+  {
+   "id": "T9-P1",
+   "style": "paraphrase",
+   "theme": "T9",
+   "text": "What would a bookkeeping history that records who changed what look like?",
+   "targets": [
+    "Version control for books: who changed what, when, with what note. Git for money. I'd pay double."
+   ],
+   "related_theme": "T9",
+   "related": []
+  },
+  {
+   "id": "T9-P2",
+   "style": "paraphrase",
+   "theme": "T9",
+   "text": "Why should access shared with a tax preparer come with an end date?",
+   "targets": [
+    "Scoped access needs an expiry date or owners will never grant it. Trust with a timer."
+   ],
+   "related_theme": "T9",
+   "related": []
+  },
+  {
+   "id": "T9-P3",
+   "style": "paraphrase",
+   "theme": "T9",
+   "text": "How would notes attached directly to individual transactions help collaboration?",
+   "targets": [
+    "Comment threads on transactions would end this. Annotate the weird one where it lives, not in email exile."
+   ],
+   "related_theme": "T9",
+   "related": []
+  },
+  {
+   "id": "T10-L1",
+   "style": "lexical",
+   "theme": "T10",
+   "text": "What happened when a business outgrew the mobile deposit limit on a good month?",
+   "targets": [
+    "We outgrew the deposit limit on a good month and found out via a rejected check. Success, punished."
+   ],
+   "related_theme": "T10",
+   "related": []
+  },
+  {
+   "id": "T10-L2",
+   "style": "lexical",
+   "theme": "T10",
+   "text": "Do branch deposits count against the same cap?",
+   "targets": [
+    "Branch deposits don't count against the same cap but nothing says so. I learned it from another owner, not the app.",
+    "Los depósitos en sucursal no cuentan igual pero nada lo dice. Lo supe por otro dueño, no por la app."
+   ],
+   "related_theme": "T10",
+   "related": []
+  },
+  {
+   "id": "T10-L3",
+   "style": "lexical",
+   "theme": "T10",
+   "text": "Why should seasonal businesses get seasonal limits?",
+   "targets": [
+    "Seasonal businesses should get seasonal limits. Winter me and summer me are different companies."
+   ],
+   "related_theme": "T10",
+   "related": []
+  },
+  {
+   "id": "T10-P1",
+   "style": "paraphrase",
+   "theme": "T10",
+   "text": "How does a big event weekend affect Monday check submissions?",
+   "targets": [
+    "A big catering weekend means Monday deposits spike. Predictable to everyone except the software.",
+    "Un fin de semana bueno significa depósitos altos el lunes. Predecible para todos menos el software."
+   ],
+   "related_theme": "T10",
+   "related": []
+  },
+  {
+   "id": "T10-P2",
+   "style": "paraphrase",
+   "theme": "T10",
+   "text": "When do new customers get their starter caps lifted?",
+   "targets": [
+    "New accounts get training-wheels limits with no graduation date posted. When do I graduate? Silence."
+   ],
+   "related_theme": "T10",
+   "related": []
+  },
+  {
+   "id": "T10-P3",
+   "style": "paraphrase",
+   "theme": "T10",
+   "text": "What happens when the bank refuses a check after the client has already paid?",
+   "targets": [
+    "The rejection notice arrives after the client already paid. Now I explain the bank to my customer. Reversed roles."
+   ],
+   "related_theme": "T10",
+   "related": []
+  },
+  {
+   "id": "ES-1",
+   "style": "spanish",
+   "theme": "T1",
+   "text": "¿Qué hacen los viernes en vez de escribir para cobrar?",
+   "targets": [
+    "Los viernes llamo en vez de escribir. Las llamadas funcionan, pero el sistema no registra ni una.",
+    "Friday afternoons I call instead of email. Calls work. Nothing in the software knows that."
+   ],
+   "related_theme": "T1",
+   "related": []
+  },
+  {
+   "id": "ES-2",
+   "style": "spanish",
+   "theme": "T5",
+   "text": "¿Por qué mueven dinero a medianoche para la nómina?",
+   "targets": [
+    "Tres veces el trimestre pasado moví dinero a medianoche para la nómina. Eso no es banca, es parkour.",
+    "Three times last quarter I moved money between accounts at midnight to make morning payroll. That's not banking, that's parkour."
+   ],
+   "related_theme": "T5",
+   "related": []
+  },
+  {
+   "id": "ES-3",
+   "style": "spanish",
+   "theme": "T6",
+   "text": "¿Cuántas notas tiene la tabla de comisiones en inglés y en español?",
+   "targets": [
+    "La tabla de comisiones tiene once notas en inglés y cuatro en español. Adivine qué siete cargos sorprenden.",
+    "The fee schedule has eleven footnotes in English and four in Spanish. Guess which seven fees surprise people."
+   ],
+   "related_theme": "T6",
+   "related": []
+  },
+  {
+   "id": "ES-4",
+   "style": "spanish",
+   "theme": "T10",
+   "text": "¿Cuentan igual los depósitos en sucursal?",
+   "targets": [
+    "Los depósitos en sucursal no cuentan igual pero nada lo dice. Lo supe por otro dueño, no por la app.",
+    "Branch deposits don't count against the same cap but nothing says so. I learned it from another owner, not the app."
+   ],
+   "related_theme": "T10",
+   "related": []
+  },
+  {
+   "id": "F-01",
+   "style": "fact",
+   "theme": null,
+   "text": "What is the mean survey score for alert usefulness?",
+   "targets": [
+    "- I8_alert_usefulness: mean **2.66**"
+   ],
+   "related_theme": null,
+   "related": [
+    "I8 alert usefulness splits by role (owners/ops lower) — see planted T8 divergence."
+   ]
+  },
+  {
+   "id": "F-02",
+   "style": "fact",
+   "theme": null,
+   "text": "What is the mean survey score for Spanish clarity?",
+   "targets": [
+    "- I6_spanish_clarity: mean **3.13**"
+   ],
+   "related_theme": null,
+   "related": [
+    "Lowest item: I6 Spanish clarity — consistent with T6 wording-risk evidence in interviews."
+   ]
+  },
+  {
+   "id": "F-03",
+   "style": "fact",
+   "theme": null,
+   "text": "Why did completed deposits dip in week 19?",
+   "targets": [
+    "deposits_completed dips in 2026-W19: mobile deposit limit incidents (see T10), NOT a tracking bug."
+   ],
+   "related_theme": null,
+   "related": []
+  },
+  {
+   "id": "F-04",
+   "style": "fact",
+   "theme": null,
+   "text": "How many small businesses are in the pilot cohort?",
+   "targets": [
+    "Population: Harbor Ledger pilot cohort (412 small businesses)."
+   ],
+   "related_theme": null,
+   "related": []
+  },
+  {
+   "id": "F-05",
+   "style": "fact",
+   "theme": null,
+   "text": "What SUS score did Mara Ellison's usability session produce?",
+   "targets": [
+    "## SUS responses (raw, 1-5): 5, 5, 4, 4, 3, 3, 3, 5, 4, 5 → SUS **42.5**"
+   ],
+   "related_theme": null,
+   "related": []
+  },
+  {
+   "id": "F-06",
+   "style": "fact",
+   "theme": null,
+   "text": "Which competitor positions itself on auto-categorization with accountant override queues?",
+   "targets": [
+    "# HB-COMP-01 — Competitor benchmark: BlueAcorn Business",
+    "## Positioning angle: auto-categorization with accountant override queues."
+   ],
+   "related_theme": null,
+   "related": []
+  },
+  {
+   "id": "F-07",
+   "style": "fact",
+   "theme": null,
+   "text": "Which competitor offers branch-first onboarding with video verification?",
+   "targets": [
+    "# HB-COMP-02 — Competitor benchmark: Foundry & Co",
+    "## Positioning angle: branch-first onboarding with video verification."
+   ],
+   "related_theme": null,
+   "related": []
+  },
+  {
+   "id": "F-08",
+   "style": "fact",
+   "theme": null,
+   "text": "In the late-invoice journey, what opportunity addresses tone anxiety when nudging?",
+   "targets": [
+    "- Opportunity: templated nudges with tone control"
+   ],
+   "related_theme": null,
+   "related": [
+    "- Thinking: \"will this sound desperate?\""
+   ]
+  },
+  {
+   "id": "F-09",
+   "style": "fact",
+   "theme": null,
+   "text": "How should payments_matched_auto be parsed before averaging?",
+   "targets": [
+    "payments_matched_auto is a percent string in this export (source quirk) — parse before averaging."
+   ],
+   "related_theme": null,
+   "related": []
+  },
+  {
+   "id": "F-10",
+   "style": "fact",
+   "theme": null,
+   "text": "Why did support tickets decline after week 16?",
+   "targets": [
+    "support_tickets declines as in-app guidance shipped (W16); do not read as satisfaction without the survey."
+   ],
+   "related_theme": null,
+   "related": []
+  },
+  {
+   "id": "F-11",
+   "style": "fact",
+   "theme": null,
+   "text": "What happened when Mara Ellison tried to deposit a $4,200 check on mobile?",
+   "targets": [
+    "## T-A: deposit a $4,200 check on mobile\n- Outcome: **fail** in 401s, 2 assists."
+   ],
+   "related_theme": null,
+   "related": []
+  },
+  {
+   "id": "F-12",
+   "style": "fact",
+   "theme": null,
+   "text": "How many interviews, survey responses and usability sessions are in the research method?",
+   "targets": [
+    "- 16 semi-structured interviews (this corpus), 120-response survey, 8 moderated usability sessions with SUS/UMUX, 30 support tickets, 8-week analytics, 3 competitor benchmarks, 2 journey maps."
+   ],
+   "related_theme": null,
+   "related": []
+  }
+ ]
+}

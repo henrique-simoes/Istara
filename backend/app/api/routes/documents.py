@@ -1003,7 +1003,10 @@ async def sync_project_documents(
             doc_units = await _persist_document_source_units(db, doc)
             synced_units.extend(doc_units)
         if pending_chunks:
-            # Index after the evidence units exist, so each chunk carries its unit (measurement 5).
+            # Index after the evidence units exist, so each chunk carries its unit (measurement 5),
+            # and after committing them: embedding dispatches write their usage rows in other
+            # sessions, which an open write transaction here would block (SQLite single writer).
+            await db.commit()
             store = VectorStore(project_id)
             await store.delete_file_source(file_path)
             chunks_indexed = await index_document_source_chunks(

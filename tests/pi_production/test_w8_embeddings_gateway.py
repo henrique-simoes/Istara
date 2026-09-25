@@ -179,12 +179,19 @@ async def test_cache_hit_dimension_is_checked_against_engine_known_dimension(
 
 @pytest.mark.asyncio
 async def test_cache_hit_matching_known_dimension_is_served(monkeypatch):
-    """A cache entry whose dimension matches the engine's known dimension is
-    served without touching the provider."""
+    """A cache entry is served without touching the provider once the serving model's
+    identity is known in this process: its probe fingerprint (F11, 2026-09-25) and the
+    dimension recorded for that fingerprinted space. A known dimension alone is not enough,
+    because a same-dimension model swap kept it."""
+    import time
+
     from app.core import embeddings
 
-    model = embeddings._embed_model_name()
-    monkeypatch.setattr(embeddings, "_known_embed_dimensions", {model: 2})
+    namespace = embeddings._embed_cache_namespace()
+    monkeypatch.setattr(
+        embeddings, "_known_fingerprints", {namespace: ("fp-known", time.monotonic())}
+    )
+    monkeypatch.setattr(embeddings, "_known_embed_dimensions", {f"{namespace}#fp-known": 2})
     monkeypatch.setattr(
         embeddings.embedding_cache, "get", lambda *_: _async_value([0.5, 0.6])
     )
