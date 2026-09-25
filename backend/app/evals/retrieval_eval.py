@@ -742,6 +742,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--out", default=None)
     args = parser.parse_args(argv)
+    from app.models.database import register_models
+
+    # A standalone process must map every model before the first ORM row (usage ledger).
+    register_models()
     report = asyncio.run(_main(args))
     text = json.dumps(report, indent=1, default=str)
     if args.out:
