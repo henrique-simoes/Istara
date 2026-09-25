@@ -157,10 +157,11 @@ def _chunk_md_by_sections(
     content: str,
     min_depth: int = 2,
 ) -> list[PromptSection]:
-    """Split a markdown file into sections by ## headers.
+    """Split a markdown file into sections at every header of depth 1-4.
 
-    Each section includes the header and all content up to the next
-    header of equal or lesser depth.
+    Each section is a header and the lines up to the NEXT header of any depth. A subsection is
+    therefore its own section and is not nested in its parent (the old docstring said "equal or
+    lesser depth", which the code never did).
     """
     lines = content.split("\n")
     sections: list[PromptSection] = []
@@ -313,30 +314,29 @@ async def _embedding_similarity(
 ) -> float:
     """Score a section's relevance using embedding similarity.
 
-    Falls back to keyword similarity if embeddings are unavailable.
+    Raises when an embedding is unavailable. The caller then re-scores EVERY section by keyword,
+    because a per-section fallback sorted cosine and Jaccard values together on one list (F12):
+    two scales, one ranking.
     """
-    try:
-        from app.core.embeddings import embed_text
+    from app.core.embeddings import embed_text
 
-        if query_vector is None:
-            query_vector = await embed_text(query)
+    if query_vector is None:
+        query_vector = await embed_text(query)
 
-        section_text = section.header + " " + section.content[:500]
-        section_vector = await embed_text(section_text)
+    section_text = section.header + " " + section.content[:500]
+    section_vector = await embed_text(section_text)
+    if len(section_vector) != len(query_vector):
+        raise ValueError("embedding dimension mismatch between query and section")
 
-        # Cosine similarity
-        dot = sum(a * b for a, b in zip(query_vector, section_vector))
-        mag_q = sum(a * a for a in query_vector) ** 0.5
-        mag_s = sum(a * a for a in section_vector) ** 0.5
+    # Cosine similarity
+    dot = sum(a * b for a, b in zip(query_vector, section_vector, strict=True))
+    mag_q = sum(a * a for a in query_vector) ** 0.5
+    mag_s = sum(a * a for a in section_vector) ** 0.5
 
-        if mag_q == 0 or mag_s == 0:
-            return 0.0
+    if mag_q == 0 or mag_s == 0:
+        return 0.0
 
-        return dot / (mag_q * mag_s)
-
-    except Exception:
-        # Fall back to keyword similarity
-        return _keyword_similarity(_tokenize(query), section)
+    return dot / (mag_q * mag_s)
 
 
 # ---------------------------------------------------------------------------
@@ -530,7 +530,9 @@ async def compose_dynamic_prompt(
                 score = await _embedding_similarity(query, section, query_vector)
                 scored_sections.append((score, section))
         except Exception:
-            # Fall back to keyword similarity
+            # Fall back to keyword similarity for ALL sections: discard the partial cosine scores
+            # so one ranking never mixes two scales.
+            scored_sections = []
             use_embeddings = False
 
     if not use_embeddings:

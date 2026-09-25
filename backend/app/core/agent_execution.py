@@ -779,7 +779,7 @@ class AgentExecutionMixin:
                 return skill
 
         # Try to infer skill from task title/description
-        title_lower = (task.title + " " + task.description).lower()
+        title_lower = f"{task.title or ''} {task.description or ''}".lower()
 
         from app.core.agent_skill_tools import SKILL_KEYWORDS
 

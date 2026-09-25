@@ -915,11 +915,10 @@ def compress_rag_chunks_indexed(
 ) -> tuple[list[tuple[int, str]], int]:
     """Compress RAG context chunks with question-aware scoring.
 
-    Implements the LongLLMLingua pattern:
-    1. Score each chunk by relevance to the query
-    2. Reorder: most relevant chunk goes first (combats "lost in the middle")
-    3. Apply differentiated compression: most relevant chunk gets least compression
-    4. Trim chunks that don't fit the budget
+    Adapted from the LongLLMLingua pattern:
+    1. Keep the retrieval ranking (most relevant first, which combats "lost in the middle")
+    2. Apply differentiated compression: the top-ranked chunk gets the least compression
+    3. Trim chunks that don't fit the budget (a hard limit for ordinary text)
 
     Args:
         chunks: Retrieved RAG context chunks.
@@ -955,8 +954,11 @@ def compress_rag_chunks_indexed(
         score = len(overlap) / max(len(query_tokens), 1)
         scored_chunks.append((score, original_index, chunk))
 
-    # Sort by relevance descending
-    scored_chunks.sort(key=lambda x: (-x[0], x[1]))
+    # Keep the retrieval order. The chunks arrive ranked by hybrid retrieval (vector + BM25 fused
+    # by RRF); re-sorting by raw query-token overlap threw that ranking away for a weaker signal
+    # (F12), so a keyword-stuffed chunk displaced the best semantic match. Rank still drives the
+    # differentiated compression below: the top-ranked chunk is compressed least.
+    scored_chunks.sort(key=lambda x: x[1])
 
     # Apply differentiated compression based on surplus level
     result_chunks: list[tuple[int, str]] = []

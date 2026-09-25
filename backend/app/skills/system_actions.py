@@ -371,7 +371,12 @@ OPENAI_TOOLS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "The search query"},
-                    "top_k": {"type": "integer", "description": "Number of results (default 5)"},
+                    "top_k": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20,
+                        "description": "Number of results (default 5, at most 20)",
+                    },
                 },
                 "required": ["query"],
             },
@@ -745,7 +750,7 @@ SYSTEM_TOOLS = [
             "top_k": {
                 "type": "integer",
                 "required": False,
-                "description": "Number of results (default 5)",
+                "description": "Number of results (default 5, at most 20)",
             },
         },
     },
@@ -1457,18 +1462,33 @@ async def _exec_get_document_content(params: dict, project_id: str, agent_id: st
         )
 
 
-async def _exec_search_memory(params: dict, project_id: str, agent_id: str) -> str:
-    from app.core.rag import retrieve_context
+_SEARCH_MEMORY_MAX_TOP_K = 20
 
-    rag = await retrieve_context(project_id, params["query"], top_k=params.get("top_k", 5))
+
+def _bounded_top_k(value: Any, *, default: int = 5, maximum: int = _SEARCH_MEMORY_MAX_TOP_K) -> int:
+    """The model chooses ``top_k``; the product bounds it (F17: it was passed through unbounded)."""
+    try:
+        requested = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(1, min(maximum, requested))
+
+
+async def _exec_search_memory(params: dict, project_id: str, agent_id: str) -> str:
+    from app.core import rag as rag_module
+
+    rag = await rag_module.retrieve_context(
+        project_id, params["query"], top_k=_bounded_top_k(params.get("top_k", 5))
+    )
 
     if not rag.has_context:
         return f"No relevant information found in the knowledge base for: '{params['query']}'"
 
-    lines = [f"Found {len(rag.retrieved)} relevant passage(s):"]
-    for r in rag.retrieved:
+    lines = [f"Found {len(rag.retrieved)} relevant passage(s), best match first:"]
+    for rank, r in enumerate(rag.retrieved, 1):
         preview = r.text[:200] + "..." if len(r.text) > 200 else r.text
-        lines.append(f"- [{r.source}] (score: {r.score:.2f}) {preview}")
+        # Rank, not the fused RRF value: 0.02 is the best possible fusion and reads as "irrelevant".
+        lines.append(f"- #{rank} [{r.source}] {preview}")
     return "\n".join(lines)
 
 

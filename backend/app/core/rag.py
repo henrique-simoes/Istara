@@ -919,6 +919,8 @@ async def retrieve_context(
 def format_context_part(index: int, result: RetrievalResult, text: str | None = None) -> str:
     """One retrieved chunk as the model sees it: a source label, then the untrusted wrapper.
 
+    ``index`` is the chunk's rank in the prompt, which follows retrieval order.
+
     The ONE formatter for retrieved evidence in a prompt. `retrieve_context` and the compressed
     chat/interface path both use it, so a chunk cannot reach the model unlabelled or unwrapped on
     one path while the other path labels and wraps it.
@@ -926,7 +928,9 @@ def format_context_part(index: int, result: RetrievalResult, text: str | None = 
     source_info = f"[Source: {result.source}"
     if result.page:
         source_info += f", page {result.page}"
-    source_info += f", relevance: {result.score:.2f}]"
+    # The rank, never the fused RRF value: RRF is ordinal (Cormack et al. 2009) and the best
+    # possible chunk fuses to about 0.016, which a model reads as "irrelevant" (F12).
+    source_info += f", rank {index}]"
     body = result.text if text is None else text
     wrapped = _guard.wrap_untrusted(body, source=result.source)
     return f"--- Document {index} {source_info} ---\n{wrapped}"
