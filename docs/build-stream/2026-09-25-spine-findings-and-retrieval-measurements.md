@@ -8,7 +8,7 @@ phase: "Phase 2 — evidence-index provenance (F5, M5, F7, F15)"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-25T19:40:00Z, ledger: L-4 }
+last: { agent: claude-code, at: 2026-09-25T18:34:00Z, ledger: L-4 }
 next_action: "Phase 2: write tests for derived-index separation (F5), exact note scoping, evidence_unit_id on source chunks (M5), watcher BM25 rows (F7) and ciphertext (F15); run them on origin/main first."
 ```
 
@@ -92,7 +92,7 @@ Why: the owner's instruction in the brief.
 
 ## Ledger
 
-### L-1 | 2026-09-25T18:00:00Z | S0-frame | claude-code | framer | —
+### L-1 | 2026-09-25T18:05:00Z | S0-frame | claude-code | framer | —
 Did: read AGENTS.md, both architecture contracts, Tech.md (prompt management, context and
 memory, RAG pipeline, self-evolution), TESTING.md, CHANGE_CHECKLIST.md,
 SYSTEM_CHANGE_MATRIX.md, both architecture HTML pages and the static map. Read the code behind
@@ -102,7 +102,7 @@ file cites the current ones.
 Verified: none — reading only.
 Next: owner decisions on the embedder and DeepSeek.
 
-### L-2 | 2026-09-25T18:15:00Z | S0-frame | claude-code | framer | —
+### L-2 | 2026-09-25T18:21:00Z | S0-frame | claude-code | framer | —
 Did: asked the owner two questions (embedder, DeepSeek). Created branch
 `fix/spine-findings-measurements-20260925` from `origin/main` @ `9272d41e`. Switched this
 worktree's CF recipe to `istara-main`, refreshed the index, and created CF-SPEC-2 (classified
@@ -112,7 +112,7 @@ Verified: `compass-forge index status` graph_usable true after the second refres
 `compass-forge classify` basis scored, kind security_or_architecture.
 Next: plan Phase 1.
 
-### L-3 | 2026-09-25T18:30:00Z | S1-plan | claude-code | planner | —
+### L-3 | 2026-09-25T18:27:00Z | S1-plan | claude-code | planner | —
 Did: wrote this roadmap. Set up the Studio test lane: rsync to
 `~/cf-remote/eval/istara-work`, pytest in `istara-test:1` with `--network none`.
 Result: baseline `tests/test_retrieval_correctness_fixes.py tests/test_rag_resilience.py`: 17
@@ -121,7 +121,7 @@ Verified: `pytest ../tests/test_retrieval_correctness_fixes.py ../tests/test_rag
 -> 17 passed (istara-test:1, network none).
 Next: Phase 1 tests first.
 
-### L-4 | 2026-09-25T19:40:00Z | S2-execute | claude-code | executor | Phase 1
+### L-4 | 2026-09-25T18:34:00Z | S2-execute | claude-code | executor | Phase 1
 Did: F13: `content_guard.truncate_preserving_wrappers` and `neutralize_boundary_markup`, applied in
 `wrap_untrusted` (plus a sanitised source attribute); A2A collaboration puts wrapper-safe
 documents before the question; ReasoningBank `format_memory_context` builds line by line
