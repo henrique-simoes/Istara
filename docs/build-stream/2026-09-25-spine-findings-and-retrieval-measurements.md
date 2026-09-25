@@ -4,12 +4,12 @@
 item: spine-findings-and-retrieval-measurements
 branch: fix/spine-findings-measurements-20260925
 cf: { spec: CF-SPEC-2, tasks: [] }
-phase: "Phase 5 — plan DAG (F8)"
+phase: "Phase 6 — embedding identity (F11)"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-25T19:05:50Z, ledger: L-7 }
-next_action: "Phase 5: tests for the plan DAG (dependents of a failed step never run; no concurrent use of one AsyncSession; steps see only their dependencies' results); run on origin/main first."
+last: { agent: claude-code, at: 2026-09-25T19:07:50Z, ledger: L-8 }
+next_action: "Phase 6: tests for a same-dimension embedder swap (probe fingerprint in the store manifest and cache namespace; stale cache never served; health reports the mismatch); run on origin/main first."
 ```
 
 Evidence (four-part records per finding): `2026-09-25-spine-findings-evidence.md` beside this file.
@@ -176,3 +176,9 @@ guard), 9/9 pass here; 22 related files plus task/skill/chat suites pass (one se
 Verified: branch `pytest ../tests/test_spine_learning_loops.py -q` → 9 passed; origin/main → 8
 failed, 1 passed; related runs all green (istara-test:1, network none). ruff clean.
 Next: Phase 5.
+
+### L-8 | 2026-09-25T19:07:50Z | S2-execute | claude-code | executor | Phase 5
+Did: F8 DAG blocking, per-plan session lock, dependency-scoped context. Commit in git log (fix(plan-dag)).
+Result: tests/test_spine_plan_dag.py 3/3 fail on origin/main, pass here; plan suites 47 passed.
+Verified: `pytest ../tests/test_spine_plan_dag.py ../tests/test_agents.py ../tests/pi_production/test_w3_research_spine.py -q` → 47 passed (istara-test:1, network none); origin/main → 3 failed.
+Next: Phase 6.

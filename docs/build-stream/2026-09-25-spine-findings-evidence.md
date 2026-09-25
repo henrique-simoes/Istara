@@ -324,3 +324,30 @@ routing, learning signals, usage recording, self-evolution, persona loading, vec
 semantic matching, then `test_task_review_history.py`, `test_tasks.py`, `test_skills.py`,
 `test_chat.py`: all passed after one seam update (a persona-append fake now takes the new
 `project_id` keyword).
+
+## F8: plan steps share one AsyncSession; a failed step's dependents run anyway
+
+**What it is for.** The plan-and-execute path decomposes a task into a DAG (LLMCompiler, Kim
+et al., ICML 2024). A step whose prerequisite failed has no valid input. SQLAlchemy's asyncio
+documentation says an `AsyncSession` must not be shared across concurrent tasks.
+
+**Flow driven.** `tests/test_spine_plan_dag.py` drives `_execute_planned_task` with fake skills
+and a session stand-in that records concurrent use. It runs three plans: A→B→C with A failing;
+four independent steps that all store findings; and C depending on A beside an unrelated B.
+
+**Output inspected.** On `origin/main`:
+```
+test_spine_plan_dag.py:103: AssertionError: assert ['A', 'B', 'C'] == ['A']
+test_spine_plan_dag.py:113: assert 3 == 0
+test_spine_plan_dag.py:120: AssertionError: assert 'result of B' not in 'step C\n\nP... result of B'
+```
+B and C ran after A failed, the shared session saw three overlapping uses, and C was given B's
+result. On this branch only A runs. B and C are `blocked` with "prerequisite step(s) A did not
+succeed". Overlaps are 0 while the four skills still run concurrently. C sees A's result
+only. The existing plan suites (`test_agents.py`, `pi_production/test_w3_research_spine.py`)
+pass: 47 passed.
+
+**Why that proves it.** The overlap counter measures the property directly (two tasks inside
+the session at once). The lock covers every shared-session use in a step, and model work stays
+parallel. Blocking follows from the completed/unsuccessful split, so no dependent can run on a
+failed input.
