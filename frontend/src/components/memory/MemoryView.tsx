@@ -156,7 +156,7 @@ function MemorySearchControls({
         <button
           onClick={onClear}
           aria-label="Clear search"
-          className="px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+          className="px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
         >
           Clear
         </button>
@@ -191,8 +191,17 @@ function MemorySearchResults({
                     {memorySourceLabel(result.source, sourceDocuments)}
                   </span>
                 </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400">
-                  {(result.score * 100).toFixed(1)}%
+                {/* The fused hybrid score is a reciprocal-rank sum (~0.005-0.02), not a
+                    probability: rendered as a percentage it told a researcher their best match was
+                    "1.6%". The rank is what the ordering means; the raw score stays in the title
+                    for anyone comparing fusion runs. */}
+                <span
+                  data-testid="memory-result-rank"
+                  title={`Hybrid rank ${index + 1} of ${results.length} (fused score ${result.score.toFixed(4)})`}
+                  aria-label={`Rank ${index + 1} of ${results.length}`}
+                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 tabular-nums"
+                >
+                  #{index + 1}
                 </span>
               </div>
               <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-3">{result.text}</p>

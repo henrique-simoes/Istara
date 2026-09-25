@@ -160,18 +160,22 @@
   },
   "memory": {
    "scenarios": [
-    "23-memory-view"
+    "23-memory-view",
+    "85-retrieval-correctness"
    ],
    "sub_features": [
     "knowledge list",
     "inspect",
-    "reindex states"
+    "reindex states",
+    "hybrid search relevance (phrase + all-terms BM25, two-character tokens)",
+    "reprocess idempotence",
+    "result rank display"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-06",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
-   "notes": "23 prior browser"
+   "newest_scenario_change": "2026-09-25",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-25, Mac Studio): 85 10/10 + 23 13/13, axe 0 serious/critical on the results",
+   "live_verified_at": "2026-09-25",
+   "notes": "23 prior browser. 85: under the provider stub vectors are SHA-256 noise, so the two relevance checks can also be satisfied by the vector lane; the keyword behaviour they cover is pinned by tests/test_retrieval_correctness_fixes.py, which fails on origin/main. The rank badge and reprocess-idempotence checks discriminate in this lane."
   },
   "interfaces": {
    "scenarios": [
