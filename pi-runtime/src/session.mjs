@@ -7,7 +7,7 @@ import { Agent } from "@earendil-works/pi-agent-core";
 import { buildProviderBinding } from "./provider.mjs";
 import { buildAgentTools } from "./tools.mjs";
 import { LIMITS, PROTOCOL_VERSION } from "./protocol.mjs";
-import { STRUCTURED_TOOL_NAME, captureParameters, mapToolChoiceForApi, normalizeToolChoice, translateOutputSchema } from "./structured.mjs";
+import { STRUCTURED_TOOL_NAME, bindingProviderId, captureParameters, mapToolChoiceForApi, normalizeToolChoice, structuredPromptText, translateOutputSchema } from "./structured.mjs";
 
 // Bound on close(): waitForIdle settles only when the agent loop finishes,
 // and an in-flight authority tool call settles only on tool.result — so an
@@ -321,7 +321,8 @@ export class PiSession {
     let mapped = null;
     if (choice) {
       const api = (this._binding && this._binding.model && this._binding.model.api) || "";
-      mapped = mapToolChoiceForApi(api, choice);
+      const provider = bindingProviderId(this._binding);
+      mapped = mapToolChoiceForApi(api, choice, { provider });
       if (mapped === null) {
         if (this._binding && this._binding.isReal) {
           // A real provider family we cannot force must fail closed — an
@@ -333,7 +334,9 @@ export class PiSession {
         mapped = null;
       }
     }
-    return { structuredTool, toolChoice: mapped, outputSchema: wantsStructured ? outputSchema : null };
+    // A structured run is forced unless the provider accepts only "auto" (see structured.mjs).
+    const structuredForced = !(wantsStructured && mapped === "auto");
+    return { structuredTool, toolChoice: mapped, outputSchema: wantsStructured ? outputSchema : null, structuredForced };
   }
 
   async prompt(runId, text, options = {}) {
@@ -395,7 +398,7 @@ export class PiSession {
       for (const call of this._binding.forcedToolCalls || []) {
         await this._requestToolCall(`forced-${runId}-${call.name}`, call.name, call.arguments || {});
       }
-      await this._agent.prompt(text);
+      await this._agent.prompt(shape.structuredTool ? structuredPromptText(text, { forced: shape.structuredForced }) : text);
       this._settleRun(runId);
     } catch (err) {
       this._settleRun(runId, err);
