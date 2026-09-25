@@ -15,7 +15,7 @@ LAST_LEDGER_RE = re.compile(r"ledger:\s*(?P<id>L-\d+)")
 # Statuses under which a lifecycle record is concluded. A terminal record must
 # not leave any numbered roadmap phase open; the active-phase in-progress
 # invariant only applies to live records.
-TERMINAL_STATUSES = {"done", "complete", "completed", "closed", "closed-superseded"}
+TERMINAL_STATUSES = {"done", "complete", "completed", "closed", "closed-superseded", "superseded"}
 
 
 def verify(text: str) -> list[str]:

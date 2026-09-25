@@ -3,13 +3,13 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: testing-to-main-convergence
-branch: testing
+branch: main   # testing was promoted to main by squash merge (PR #34, 2f106b57), so its commits are not ancestors of main
 phase: "Phase 6 — Certify promotion readiness (complete)"
 stage: S5-ship
 status: done
 blocked_on: null
 cf: { spec: CF-SPEC-30, tasks: [testing-to-main-20260909-WAVE-browser-spine-acceptance-IMPL, testing-to-main-20260909-WAVE-browser-spine-acceptance-REVIEW, testing-to-main-20260909-WAVE-promotion-certification-IMPL, testing-to-main-20260909-WAVE-promotion-certification-REVIEW, testing-to-main-remediation-20260909-IMPL, testing-to-main-remediation-20260909-REVIEW] }
-last: { agent: pi (claude-opus), at: 2026-09-15T00:30:00Z, ledger: L-81 }
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:39:14Z, ledger: L-82 }
 next_action: "Closed 2026-09-15: promotion merged — PR #34 squash-merged to main as 2f106b57 (certified candidate 25e2063d; pushed tip 9620e5d8; post-promotion closeout commit 5e8fea49). CI evidence: 34637179724 (17/17 required contexts on a1b3f443), QA Artifact 34637179623, Docs Website 34643719560 green on 9620e5d8. Post-promotion open work is tracked exclusively in todo.md; this ledger is the durable record."
 ```
 <!-- /STATUS BLOCK -->
@@ -2185,3 +2185,9 @@ Did: Concluded this lifecycle record after the owner-gated promotion completed. 
 Result: All six phases done; the document no longer claims an in-progress phase. Residual advisories (F-CFR-1/F-CFR-2, F-PTG-1/2/3, W2/W3/W4 minors) are carried into todo.md section 6 as riding advisories — they are tracked there, not in this ledger.
 Verified: `python scripts/verify_build_stream_status.py docs/build-stream/2026-09-09-testing-to-main-convergence.md` -> OK (terminal-state rule); `git log --oneline -2 origin/main` -> 5e8fea49, 2f106b57; todo.md section 0 records the promotion SHAs and CI runs.
 Next: none — this record is closed. Open post-promotion work is tracked exclusively in todo.md.
+
+### L-82 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. Its work reached main through the squash merge of testing (PR #34, 2f106b57); the block named `testing`, whose commits a squash leaves off main's history.
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.

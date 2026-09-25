@@ -879,12 +879,12 @@ def compress_with_question(
     return result
 
 
-def compress_rag_chunks(
+def compress_rag_chunks_indexed(
     chunks: list[str],
     query: str,
     max_tokens: int,
     surplus_level: str = "moderate",
-) -> tuple[list[str], int]:
+) -> tuple[list[tuple[int, str]], int]:
     """Compress RAG context chunks with question-aware scoring.
 
     Implements the LongLLMLingua pattern:
@@ -900,7 +900,9 @@ def compress_rag_chunks(
         surplus_level: Compute surplus level ("high", "moderate", "low", "constrained").
 
     Returns:
-        Tuple of (compressed_chunks_in_order, total_tokens_used).
+        Tuple of ([(original_index, compressed_chunk), ...] in prompt order, total_tokens_used).
+        The index is what lets a caller label each kept chunk with ITS source and cite only the
+        sources that actually reached the model.
     """
     if not chunks or not query:
         return [], 0
@@ -911,11 +913,11 @@ def compress_rag_chunks(
     # Score chunks by question relevance. Protected chunks stay pinned in their
     # original order so compression never reorders methodology/codebook/gate
     # blocks relative to one another.
-    protected_chunks: list[str] = []
+    protected_chunks: list[tuple[int, str]] = []
     scored_chunks: list[tuple[float, int, str]] = []
     for original_index, chunk in enumerate(chunks):
         if get_protected_blocks(chunk):
-            protected_chunks.append(chunk)
+            protected_chunks.append((original_index, chunk))
             continue
         chunk_tokens = set(re.findall(r"\b\w{3,}\b", chunk.lower()))
         if not chunk_tokens or not query_tokens:
@@ -929,15 +931,15 @@ def compress_rag_chunks(
     scored_chunks.sort(key=lambda x: (-x[0], x[1]))
 
     # Apply differentiated compression based on surplus level
-    result_chunks: list[str] = []
+    result_chunks: list[tuple[int, str]] = []
     used_chars = 0
 
-    chunks_to_process: list[tuple[float, str, bool]] = [
-        (1.0, chunk, True) for chunk in protected_chunks
+    chunks_to_process: list[tuple[float, int, str, bool]] = [
+        (1.0, index, chunk, True) for index, chunk in protected_chunks
     ]
-    chunks_to_process.extend((score, chunk, False) for score, _, chunk in scored_chunks)
+    chunks_to_process.extend((score, index, chunk, False) for score, index, chunk in scored_chunks)
 
-    for rank, (_score, chunk, is_protected_chunk) in enumerate(chunks_to_process):
+    for rank, (_score, original_index, chunk, is_protected_chunk) in enumerate(chunks_to_process):
         if used_chars >= max_chars and not is_protected_chunk:
             break
 
@@ -946,7 +948,7 @@ def compress_rag_chunks(
             compressed = chunk
             if len(compressed) > remaining:
                 compressed = _trim_preserving_protected_blocks(compressed, remaining)
-            result_chunks.append(compressed)
+            result_chunks.append((original_index, compressed))
             used_chars += len(compressed)
             continue
 
@@ -981,10 +983,21 @@ def compress_rag_chunks(
             compressed = _trim_preserving_protected_blocks(compressed, remaining)
 
         if compressed.strip():
-            result_chunks.append(compressed)
+            result_chunks.append((original_index, compressed))
             used_chars += len(compressed)
 
     return result_chunks, used_chars // 4
+
+
+def compress_rag_chunks(
+    chunks: list[str],
+    query: str,
+    max_tokens: int,
+    surplus_level: str = "moderate",
+) -> tuple[list[str], int]:
+    """:func:`compress_rag_chunks_indexed` without the provenance indices."""
+    indexed, used = compress_rag_chunks_indexed(chunks, query, max_tokens, surplus_level)
+    return [text for _, text in indexed], used
 
 
 async def record_protected_compression_telemetry(

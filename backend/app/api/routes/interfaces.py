@@ -405,10 +405,7 @@ async def design_chat(
 
     # Budget-aware pipeline
     from app.core.budget_coordinator import budget_coordinator, compute_surplus_level
-    from app.core.prompt_compressor import (
-        compress_rag_chunks,
-        record_protected_compression_telemetry,
-    )
+    from app.core.rag import build_compressed_rag_context
 
     budget = budget_coordinator.allocate(settings.max_context_tokens)
     surplus = compute_surplus_level()
@@ -427,18 +424,9 @@ async def design_chat(
             pass
 
     # Compress RAG chunks with question-aware scoring within budget
-    rag_context = ""
-    if rag_result and rag_result.retrieved:
-        chunk_texts = [r.text for r in rag_result.retrieved if r.text]
-        compressed_chunks, _ = compress_rag_chunks(
-            chunk_texts, request.message, budget.rag_tokens, surplus
-        )
-        await record_protected_compression_telemetry(
-            project_id=request.project_id,
-            original_chunks=chunk_texts,
-            compressed_chunks=compressed_chunks,
-        )
-        rag_context = "\n---\n".join(compressed_chunks) if compressed_chunks else ""
+    rag_context, rag_sources_in_prompt = await build_compressed_rag_context(
+        request.project_id, rag_result, request.message, budget.rag_tokens, surplus
+    )
 
     # Build system prompt
     system_prompt = build_augmented_prompt(
@@ -652,14 +640,12 @@ async def design_chat(
                 save_db.add(assistant_msg)
                 await save_db.commit()
 
-                sources = (
-                    [
-                        {"source": r.source, "score": r.score, "page": r.page}
-                        for r in rag_result.retrieved
-                    ]
-                    if rag_result and hasattr(rag_result, "retrieved")
-                    else []
-                )
+                # Cite only the evidence that actually reached the model: the budget cut can
+                # drop retrieved chunks, and citing those named documents the answer never saw.
+                sources = [
+                    {"source": r.source, "score": r.score, "page": r.page}
+                    for r in rag_sources_in_prompt
+                ]
                 done_data = json.dumps(
                     {
                         "type": "done",

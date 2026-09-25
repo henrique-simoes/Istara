@@ -373,14 +373,34 @@ class VectorStore:
 
         return retrieval_results
 
+    async def delete_file_source(self, file_path: Path | str) -> None:
+        """Delete every chunk ingested from ``file_path``, whichever spelling it was stored under.
+
+        ``process_file`` stores ``chunk.source = str(original_path)`` -- the full path -- while the
+        upload, reprocess and documents-sync routes deleted by ``file_path.name`` before
+        re-ingesting. The exact-match delete never matched, so every reprocess or folder sync
+        appended another complete copy of the file to BOTH indices, and the copies (distinct
+        provenance keys that differ only by path) also crowded genuinely different evidence out of
+        the fused top-k. Deleting both spellings stops the growth and cleans rows written under the
+        legacy basename key.
+        """
+        path = Path(file_path)
+        for key in dict.fromkeys((str(path), path.name)):
+            await self.delete_by_source(key)
+
     async def delete_by_source(self, source: str) -> None:
-        """Delete all chunks from a specific source file."""
-        if not self._ensure_table():
-            return
-        # Sanitize input to prevent injection
-        safe_source = source.replace("'", "''").replace("\\", "\\\\")
-        table = self.db.open_table(self.table_name)
-        table.delete(f"source = '{safe_source}'")
+        """Delete all chunks from a specific source file, from BOTH indices.
+
+        The keyword index is independent of the vector table: a project ingested while
+        embeddings were offline is keyword-only and has no vector table at all. Returning early
+        when the vector table was missing skipped the keyword delete too, so re-ingesting in that
+        degraded mode duplicated every chunk however the source key was spelled.
+        """
+        if self._ensure_table():
+            # Sanitize input to prevent injection
+            safe_source = source.replace("'", "''").replace("\\", "\\\\")
+            table = self.db.open_table(self.table_name)
+            table.delete(f"source = '{safe_source}'")
 
         # Also remove from the keyword index
         try:
@@ -727,14 +747,7 @@ async def retrieve_context(
     )
 
     # Format context for the LLM — wrap each chunk in untrusted delimiters
-    context_parts = []
-    for i, r in enumerate(results, 1):
-        source_info = f"[Source: {r.source}"
-        if r.page:
-            source_info += f", page {r.page}"
-        source_info += f", relevance: {r.score:.2f}]"
-        wrapped = _guard.wrap_untrusted(r.text, source=r.source)
-        context_parts.append(f"--- Document {i} {source_info} ---\n{wrapped}")
+    context_parts = [format_context_part(i, r) for i, r in enumerate(results, 1)]
 
     context_text = "\n\n".join(context_parts) if context_parts else ""
 
@@ -743,6 +756,66 @@ async def retrieve_context(
         retrieved=results,
         context_text=context_text,
     )
+
+
+def format_context_part(index: int, result: RetrievalResult, text: str | None = None) -> str:
+    """One retrieved chunk as the model sees it: a source label, then the untrusted wrapper.
+
+    The ONE formatter for retrieved evidence in a prompt. `retrieve_context` and the compressed
+    chat/interface path both use it, so a chunk cannot reach the model unlabelled or unwrapped on
+    one path while the other path labels and wraps it.
+    """
+    source_info = f"[Source: {result.source}"
+    if result.page:
+        source_info += f", page {result.page}"
+    source_info += f", relevance: {result.score:.2f}]"
+    body = result.text if text is None else text
+    wrapped = _guard.wrap_untrusted(body, source=result.source)
+    return f"--- Document {index} {source_info} ---\n{wrapped}"
+
+
+# Characters reserved per kept chunk for its label and wrapper, so the compressed evidence plus its
+# provenance stays inside the RAG token budget rather than overrunning it by the wrapper's size.
+_CONTEXT_PART_OVERHEAD_CHARS = 160
+
+
+async def build_compressed_rag_context(
+    project_id: str,
+    rag_result: RAGContext | None,
+    query: str,
+    max_tokens: int,
+    surplus_level: str,
+) -> tuple[str, list[RetrievalResult]]:
+    """Compress retrieved chunks to the budget, then label and wrap the ones that were kept.
+
+    Returns the prompt text and the results it actually contains, in prompt order. Chat and
+    Interfaces used to join raw ``r.text`` with ``---``: no source labels (so the "cite your
+    sources" instruction could not be followed), no untrusted-content wrapper, and the UI's
+    source list named every retrieved chunk even when the budget cut had dropped it from the prompt.
+    """
+    from app.core.prompt_compressor import (
+        compress_rag_chunks_indexed,
+        record_protected_compression_telemetry,
+    )
+
+    if not rag_result or not rag_result.retrieved:
+        return "", []
+    retrieved = [r for r in rag_result.retrieved if r.text]
+    chunk_texts = [r.text for r in retrieved]
+    reserve_tokens = (_CONTEXT_PART_OVERHEAD_CHARS * min(len(retrieved), 5)) // 4
+    budget_tokens = max(max_tokens - reserve_tokens, max_tokens // 2)
+    indexed, _ = compress_rag_chunks_indexed(chunk_texts, query, budget_tokens, surplus_level)
+    await record_protected_compression_telemetry(
+        project_id=project_id,
+        original_chunks=chunk_texts,
+        compressed_chunks=[text for _, text in indexed],
+    )
+    included = [retrieved[index] for index, _ in indexed]
+    parts = [
+        format_context_part(position, retrieved[index], text)
+        for position, (index, text) in enumerate(indexed, 1)
+    ]
+    return "\n\n".join(parts), included
 
 
 def build_augmented_prompt(
