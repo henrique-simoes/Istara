@@ -1123,7 +1123,9 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                 )
             except Exception:
                 # Fall back to full identity load
-                agent_identity_prompt = load_agent_identity(session_agent_id)
+                agent_identity_prompt = load_agent_identity(
+                    session_agent_id, project_id=request.project_id
+                )
 
             if agent_identity_prompt:
                 _chat_log.info(
@@ -1150,7 +1152,9 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
                 project_id=request.project_id,
             )
         except Exception:
-            agent_identity_prompt = load_agent_identity("istara-main")
+            agent_identity_prompt = load_agent_identity(
+                "istara-main", project_id=request.project_id
+            )
 
     # Retrieve context via RAG
     rag_result = await retrieve_context(request.project_id, request.message)

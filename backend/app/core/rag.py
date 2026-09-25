@@ -162,6 +162,31 @@ class VectorStore:
             raise VectorProfileMismatchError("vector_profile_mismatch")
         return active
 
+    def check_profile_binding(self) -> None:
+        """Read-only binding check for health reads: never creates a manifest.
+
+        An unbound store (no manifest yet) passes; ``_ensure_profile_binding`` binds it on the
+        first real read or write. A bound store with a different identity raises.
+        """
+        if not self._profile_manifest.exists():
+            return
+        try:
+            bound = json.loads(self._profile_manifest.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError) as exc:
+            raise VectorProfileMismatchError("invalid_vector_profile_manifest") from exc
+        active = self._active_profile_binding()
+        identity_fields = (
+            "profile_id",
+            "version",
+            "model_id",
+            "cache_namespace",
+            "dimension",
+            "dtype",
+            "normalization",
+        )
+        if any(bound.get(field) != active[field] for field in identity_fields):
+            raise VectorProfileMismatchError("vector_profile_mismatch")
+
     def _ensure_table(self) -> bool:
         """Check if the chunks table exists."""
         return self.table_name in self.db.list_tables().tables

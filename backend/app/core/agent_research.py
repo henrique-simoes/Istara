@@ -314,12 +314,7 @@ class AgentResearchMixin:
             execution_success=bool(output.success),
         )
 
-        skill_manager.record_execution(
-            skill_name,
-            learning_signal.learning_success,
-            learning_signal.research_quality_score,
-            project_id=project.id,
-        )
+        skill_manager.record_learning_signal(skill_name, learning_signal, project_id=project.id)
         task.skill_name = skill_name
         if output.success:
             try:
@@ -1255,13 +1250,10 @@ class AgentResearchMixin:
 
                 learning_signal = learning_signal_for_research_output(
                     execution_success=bool(output.success),
-                    verification_success=bool(verified),
+                    self_verified=bool(verified),
                 )
-                skill_manager.record_execution(
-                    skill_name,
-                    learning_signal.learning_success,
-                    learning_signal.research_quality_score,
-                    project_id=project_id,
+                skill_manager.record_learning_signal(
+                    skill_name, learning_signal, project_id=project_id
                 )
 
                 if verified:

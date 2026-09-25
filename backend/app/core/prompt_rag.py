@@ -28,7 +28,7 @@ import logging
 import re
 
 from app.config import settings
-from app.core.agent_identity import IDENTITY_FILES, persona_file_path
+from app.core.agent_identity import IDENTITY_FILES, load_project_learnings, persona_file_path
 
 logger = logging.getLogger(__name__)
 
@@ -212,17 +212,24 @@ def _chunk_md_by_sections(
     return sections
 
 
-def index_agent_sections(agent_id: str) -> list[PromptSection]:
-    """Load and chunk all persona MD files for an agent into sections."""
+def index_agent_sections(agent_id: str, project_id: str | None = None) -> list[PromptSection]:
+    """Load and chunk all persona MD files for an agent into sections.
+
+    With ``project_id``, the learnings self-evolution promoted from that project are appended to
+    each file; other projects never see them (F9).
+    """
     all_sections: list[PromptSection] = []
 
     for filename in IDENTITY_FILES:
         filepath = persona_file_path(agent_id, filename)
-        if not filepath.exists():
+        learned = load_project_learnings(agent_id, project_id, filename)
+        if not filepath.exists() and not learned:
             continue
 
         try:
-            content = filepath.read_text(encoding="utf-8").strip()
+            content = filepath.read_text(encoding="utf-8").strip() if filepath.exists() else ""
+            if learned:
+                content = f"{content}\n\n{learned}".strip()
             if not content:
                 continue
             sections = _chunk_md_by_sections(agent_id, filename, content)
@@ -498,8 +505,8 @@ async def compose_dynamic_prompt(
     separator_tokens = len(PROMPT_COMPOSITION_SEPARATOR) // 4
     remaining_budget = max(0, budget - anchor_with_notice_tokens - separator_tokens)
 
-    # 2. Index all sections
-    all_sections = index_agent_sections(agent_id)
+    # 2. Index all sections (with this project's promoted learnings, and no other project's)
+    all_sections = index_agent_sections(agent_id, project_id)
     if not all_sections:
         await _record_prompt_rag_telemetry(
             project_id=project_id,

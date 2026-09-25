@@ -92,15 +92,16 @@ async def check_embedding_dimensions(
             from app.core.rag import VectorProfileMismatchError, VectorStore
 
             db_path = str(data_dir / pid)
-            VectorStore(pid)._ensure_profile_binding()
+            # A health READ: check the binding without writing a manifest for an unbound store
+            # (F16), and read the stored dimension from the schema instead of loading the table.
+            VectorStore(pid).check_profile_binding()
             db = lancedb.connect(db_path)
             if "chunks" not in db.table_names():
                 continue
             table = db.open_table("chunks")
-            df = table.to_pandas()
-            if len(df) == 0:
+            if table.count_rows() == 0:
                 continue
-            stored_dim = len(df.iloc[0]["vector"])
+            stored_dim = int(getattr(table.schema.field("vector").type, "list_size", 0) or 0)
             if stored_dim != model_dim:
                 mismatches.append(
                     {"project_id": pid, "stored_dim": stored_dim, "model_dim": model_dim}
