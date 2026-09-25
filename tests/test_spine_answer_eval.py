@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 
 def _qrels(tmp_path):
     from app.evals.retrieval_eval import Qrels
@@ -61,3 +63,35 @@ def test_an_uploaded_answer_chunk_gets_its_grade(tmp_path):
     rel = corpus_path_for(qrels, "/app/data/uploads/proj-1/p01.md")
     start = qrels.files[rel].find(chunk)
     assert span_grade(qrels, qrels.questions[0], rel, start, start + len(chunk)) == 2
+
+
+def test_an_upload_stored_under_a_generated_name_maps_by_its_text(tmp_path):
+    """Uploads are stored as ``<uuid>.md``: neither the path nor the name identifies the file."""
+    from app.evals.answer_eval import corpus_path_for
+
+    qrels = _qrels(tmp_path)
+    chunk = "P1: I phone every client on Friday afternoon."
+    source = "/app/data/uploads/proj-1/3f2a9c1e-6b1d-4a5e-9a51-2d1e0c7b9f10.md"
+    assert corpus_path_for(qrels, source) is None
+    assert corpus_path_for(qrels, source, chunk) == "sources/interviews/p01.md"
+    assert corpus_path_for(qrels, source, "text that is in no corpus file") is None
+
+
+def test_token_only_usage_is_priced_from_the_endpoint_rates(monkeypatch):
+    """A chat turn reports tokens but no cost; the spend cap must still see it."""
+    from app.config import PiApiEndpoint, settings
+    from app.evals.answer_eval import usage_cost
+
+    endpoint = PiApiEndpoint(
+        endpoint_id="pi-priced",
+        base_url="https://example.invalid/v1",
+        model="m",
+        keychain_service="svc",
+        cost_input_per_mtok=0.1,
+        cost_output_per_mtok=0.2,
+    )
+    monkeypatch.setattr(settings, "pi_api_endpoints", [endpoint])
+    usage = {"input_tokens": 1_000_000, "output_tokens": 500_000}
+    assert usage_cost("pi-priced", usage) == pytest.approx(0.2)
+    assert usage_cost("pi-priced", {"cost_usd": 0.05}) == pytest.approx(0.05)
+    assert usage_cost("pi-unknown", usage) == 0.0

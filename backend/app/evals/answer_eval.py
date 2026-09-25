@@ -83,6 +83,31 @@ def cohen_kappa(a: Sequence[Any], b: Sequence[Any]) -> float | None:
     return (observed - expected) / (1.0 - expected)
 
 
+def _endpoint_rates(endpoint: str) -> tuple[float, float]:
+    """(input, output) USD per million tokens configured for a Pi endpoint, or zeros."""
+    from app.config import settings
+
+    for configured in getattr(settings, "pi_api_endpoints", None) or []:
+        if configured.endpoint_id == endpoint:
+            return (float(configured.cost_input_per_mtok), float(configured.cost_output_per_mtok))
+    return (0.0, 0.0)
+
+
+def usage_cost(endpoint: str, usage: dict | None) -> float:
+    """The call's cost in USD. A chat turn reports token counts but no cost, which left the spend
+    cap blind to the generator; token-only usage is priced from the endpoint's configured rates."""
+    usage = usage or {}
+    reported = usage.get("cost_usd", usage.get("cost"))
+    if isinstance(reported, (int, float)) and reported > 0:
+        return float(reported)
+    if isinstance(reported, dict) and isinstance(reported.get("total"), (int, float)):
+        return float(reported["total"])
+    rate_in, rate_out = _endpoint_rates(endpoint)
+    tokens_in = float(usage.get("input_tokens") or usage.get("input") or 0)
+    tokens_out = float(usage.get("output_tokens") or usage.get("output") or 0)
+    return (tokens_in * rate_in + tokens_out * rate_out) / 1_000_000
+
+
 @dataclass
 class Spend:
     limit_usd: float
@@ -91,7 +116,7 @@ class Spend:
     by_endpoint: dict[str, float] = field(default_factory=dict)
 
     def record(self, endpoint: str, usage: dict | None) -> None:
-        cost = float((usage or {}).get("cost_usd") or (usage or {}).get("cost") or 0.0)
+        cost = usage_cost(endpoint, usage)
         self.spent_usd += cost
         self.calls += 1
         self.by_endpoint[endpoint] = self.by_endpoint.get(endpoint, 0.0) + cost
@@ -317,13 +342,14 @@ async def validate_judges(
     return report
 
 
-def corpus_path_for(qrels: Qrels, source: str) -> str | None:
+def corpus_path_for(qrels: Qrels, source: str, text: str = "") -> str | None:
     """The benchmark file a retrieved chunk came from, or ``None``.
 
     A chunk ingested from the corpus keeps its relative path as a suffix. A file uploaded through
-    the product is stored under the upload directory by its file name only, so the suffix match
-    fails. The file name is then used when exactly one corpus file carries it; without this every
-    uploaded chunk graded 0 and context precision read as zero.
+    the product is stored under the upload directory as ``<uuid>.<ext>``, so neither the path nor
+    the file name identifies it. A chunk is a verbatim slice of its file, so the one corpus file
+    containing the chunk's text identifies it; ambiguous text maps to nothing (grade 0) rather
+    than to a guess. Without this every uploaded chunk graded 0 and context precision read 0.
     """
     source = str(source or "")
     for rel in qrels.files:
@@ -331,7 +357,13 @@ def corpus_path_for(qrels: Qrels, source: str) -> str | None:
             return rel
     name = Path(source).name
     matches = [rel for rel in qrels.files if Path(rel).name == name]
-    return matches[0] if len(matches) == 1 else None
+    if len(matches) == 1:
+        return matches[0]
+    if text:
+        holders = [rel for rel, body in qrels.files.items() if text in body]
+        if len(holders) == 1:
+            return holders[0]
+    return None
 
 
 def context_precision(grades_in_prompt_order: Sequence[int]) -> float | None:
@@ -373,7 +405,7 @@ async def run(
     sample = rng.sample(qrels.questions, min(questions, len(qrels.questions)))
 
     def grade_text(question: Question, source: str, text: str) -> int:
-        rel = corpus_path_for(qrels, source)
+        rel = corpus_path_for(qrels, source, text)
         if rel is None:
             return 0
         start = qrels.files[rel].find(text)
