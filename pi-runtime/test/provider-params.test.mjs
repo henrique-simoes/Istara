@@ -141,6 +141,8 @@ test("Codex identity inherits the pi-ai registry record (authority flip)", async
     supportsOpenAIGrammarTools: true,
     supportsAdditionalTools: true,
     supportsToolSearch: true,
+    // pi-ai 0.87.1 added the flag to the Codex record (intended-upstream, 2026-09-25 bump).
+    supportsMidConvoSystemMessages: true,
   });
   // pi-ai's own derivation of the supported menu (DEC-M2): all 7 levels.
   assert.deepEqual(capabilities.supportedPiLevels, ["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
