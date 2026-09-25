@@ -13,8 +13,30 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+# English function words that carry no lexical evidence. They are dropped from the OR query so
+# that "what do participants say about the onboarding" ranks on "participants"/"onboarding"
+# rather than matching every chunk on "the"; BM25's IDF discounts them but an OR over them still
+# admits every row as a candidate.
+_STOPWORDS = frozenset(
+    "a an and are as at be but by can could did do does for from had has have how i if in into is "
+    "it its me my no not of on or our so than that the their them then there these they this to "
+    "us was we were what when where which who why will with would you your about any all also"
+    .split()
+)
+
+
 def _fts_terms(query: str) -> list[str]:
-    return [term for term in re.findall(r"\w+", query.lower()) if len(term) > 2]
+    """Query terms for FTS5.
+
+    Two-character tokens are KEPT: this is a research product and "UX", "AI", participant ids
+    ("P1", "P2") and quarters ("Q4") are among the most discriminating tokens a researcher types.
+    The previous rule dropped every token of two characters or fewer.
+    """
+    seen: dict[str, None] = {}
+    for term in re.findall(r"\w+", query.lower()):
+        if len(term) >= 2 and term not in _STOPWORDS:
+            seen.setdefault(term, None)
+    return list(seen)
 
 
 def _fts_phrase_query(query: str) -> str:
@@ -199,17 +221,30 @@ class KeywordIndex:
                     provenance_key=row[11] or "",
                 )
 
-            async with db.execute(sql, (phrase_query, top_k)) as cur:
-                results = []
-                async for row in cur:
-                    results.append(_result_from_row(row))
-            # If exact phrase match returns nothing, try individual terms
-            if not results:
-                terms = _fts_or_query(query)
-                if terms:
-                    async with db.execute(sql, (terms, top_k)) as cur:
-                        async for row in cur:
-                            results.append(_result_from_row(row))
+            # Exact-phrase hits first (the strongest lexical evidence), then the BM25 ranking over
+            # ANY of the terms fills the rest of top_k. The previous version ran the OR query only
+            # when the phrase matched nothing, so one chunk that happened to contain the words
+            # adjacently suppressed every other lexical candidate -- recall collapsed exactly when
+            # the query was most specific.
+            results: list[KeywordResult] = []
+            seen: set[tuple] = set()
+
+            def _add(row) -> None:
+                result = _result_from_row(row)
+                key = (result.provenance_key or "", result.source, result.page, result.text)
+                if key not in seen and len(results) < top_k:
+                    seen.add(key)
+                    results.append(result)
+
+            if len(_fts_terms(query)) > 1:
+                async with db.execute(sql, (phrase_query, top_k)) as cur:
+                    async for row in cur:
+                        _add(row)
+            terms = _fts_or_query(query)
+            if terms and len(results) < top_k:
+                async with db.execute(sql, (terms, top_k * 2)) as cur:
+                    async for row in cur:
+                        _add(row)
             return results
         except Exception as e:
             logger.warning(f"Keyword search failed: {e}")
