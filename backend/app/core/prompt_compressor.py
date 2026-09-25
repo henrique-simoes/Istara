@@ -124,6 +124,34 @@ def _trim_preserving_protected_blocks(text: str, max_chars: int) -> str:
     return trimmed + marker
 
 
+_PLAIN_TRIM_MARKER = "\n[...compressed for context budget]"
+_MIN_USEFUL_CHUNK_CHARS = 120
+
+
+def _fit_to_budget(text: str, max_chars: int) -> str:
+    """Hard budget: never return more than ``max_chars``, protected blocks permitting.
+
+    ``_trim_preserving_protected_blocks`` returns text with no protected block UNCHANGED, so every
+    caller that used it as a budget cut let ordinary text overrun: five default 1,200-character
+    chunks against the default 409-token RAG budget came out about a third over. Protected
+    research blocks still win over the budget (the documented overflow); plain text is cut at a
+    word boundary with a marker.
+    """
+    if len(text) <= max_chars:
+        return text
+    if get_protected_blocks(text):
+        return _trim_preserving_protected_blocks(text, max_chars)
+    if max_chars <= 0:
+        return ""
+    if max_chars <= len(_PLAIN_TRIM_MARKER) + 20:
+        return text[:max_chars]
+    cut = text[: max_chars - len(_PLAIN_TRIM_MARKER)]
+    space = cut.rfind(" ")
+    if space >= len(cut) - 40:
+        cut = cut[:space]
+    return cut.rstrip() + _PLAIN_TRIM_MARKER
+
+
 # ---------------------------------------------------------------------------
 # Filler words and patterns that can be safely removed
 # ---------------------------------------------------------------------------
@@ -586,7 +614,7 @@ def compress_prompt(
     # Final trim if still over budget. Never cut through protected research
     # blocks after restoration; those blocks define the coding contract.
     if len(result) > max_chars:
-        result = _trim_preserving_protected_blocks(result, max_chars)
+        result = _fit_to_budget(result, max_chars)
 
     return result
 
@@ -944,10 +972,13 @@ def compress_rag_chunks_indexed(
             break
 
         remaining = max_chars - used_chars
+        if not is_protected_chunk and remaining < _MIN_USEFUL_CHUNK_CHARS:
+            # A few dozen characters of a passage is noise to the model, not evidence.
+            break
         if is_protected_chunk:
             compressed = chunk
             if len(compressed) > remaining:
-                compressed = _trim_preserving_protected_blocks(compressed, remaining)
+                compressed = _fit_to_budget(compressed, remaining)
             result_chunks.append((original_index, compressed))
             used_chars += len(compressed)
             continue
@@ -978,9 +1009,9 @@ def compress_rag_chunks_indexed(
         else:
             compressed = compress_text(chunk, chunk_ratio)
 
-        # Ensure it fits
+        # Ensure it fits. The remaining budget is a hard limit for ordinary text.
         if len(compressed) > remaining:
-            compressed = _trim_preserving_protected_blocks(compressed, remaining)
+            compressed = _fit_to_budget(compressed, remaining)
 
         if compressed.strip():
             result_chunks.append((original_index, compressed))

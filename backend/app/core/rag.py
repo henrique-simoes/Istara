@@ -12,7 +12,7 @@ from pathlib import Path
 import lancedb
 
 from app.config import settings
-from app.core.content_guard import ContentGuard
+from app.core.content_guard import ContentGuard, neutralize_boundary_markup
 from app.core.embeddings import EmbeddedChunk, TextChunk, embed_chunks, embed_text
 from app.core.keyword_index import KeywordIndex
 from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
@@ -774,11 +774,6 @@ def format_context_part(index: int, result: RetrievalResult, text: str | None = 
     return f"--- Document {index} {source_info} ---\n{wrapped}"
 
 
-# Characters reserved per kept chunk for its label and wrapper, so the compressed evidence plus its
-# provenance stays inside the RAG token budget rather than overrunning it by the wrapper's size.
-_CONTEXT_PART_OVERHEAD_CHARS = 160
-
-
 async def build_compressed_rag_context(
     project_id: str,
     rag_result: RAGContext | None,
@@ -792,6 +787,9 @@ async def build_compressed_rag_context(
     Interfaces used to join raw ``r.text`` with ``---``: no source labels (so the "cite your
     sources" instruction could not be followed), no untrusted-content wrapper, and the UI's
     source list named every retrieved chunk even when the budget cut had dropped it from the prompt.
+
+    The whole returned block, labels and wrappers included, fits ``max_tokens`` (4 characters per
+    token). The label and wrapper cost is measured per result rather than assumed.
     """
     from app.core.prompt_compressor import (
         compress_rag_chunks_indexed,
@@ -801,20 +799,32 @@ async def build_compressed_rag_context(
     if not rag_result or not rag_result.retrieved:
         return "", []
     retrieved = [r for r in rag_result.retrieved if r.text]
-    chunk_texts = [r.text for r in retrieved]
-    reserve_tokens = (_CONTEXT_PART_OVERHEAD_CHARS * min(len(retrieved), 5)) // 4
-    budget_tokens = max(max_tokens - reserve_tokens, max_tokens // 2)
-    indexed, _ = compress_rag_chunks_indexed(chunk_texts, query, budget_tokens, surplus_level)
+    # Retrieved text is document content, never a protected methodology block. Neutralising its
+    # wrapper/protected-block markup BEFORE compression stops an uploaded file that contains
+    # ``<instructions>…</instructions>`` from being pinned ahead of real evidence and exempted from
+    # the RAG budget (F14). Blocks the services inject keep their protection.
+    chunk_texts = [neutralize_boundary_markup(r.text) for r in retrieved]
+    max_chars = max(max_tokens, 0) * 4
+    overheads = [len(format_context_part(i, r, "")) + 2 for i, r in enumerate(retrieved, 1)]
+    reserve_chars = sum(overheads[: min(len(retrieved), 5)])
+    budget_chars = max(max_chars - reserve_chars, max_chars // 2)
+    indexed, _ = compress_rag_chunks_indexed(chunk_texts, query, budget_chars // 4, surplus_level)
     await record_protected_compression_telemetry(
         project_id=project_id,
         original_chunks=chunk_texts,
         compressed_chunks=[text for _, text in indexed],
     )
-    included = [retrieved[index] for index, _ in indexed]
-    parts = [
-        format_context_part(position, retrieved[index], text)
-        for position, (index, text) in enumerate(indexed, 1)
-    ]
+    included: list[RetrievalResult] = []
+    parts: list[str] = []
+    used = 0
+    for index, text in indexed:
+        part = format_context_part(len(parts) + 1, retrieved[index], text)
+        cost = len(part) + (2 if parts else 0)
+        if used + cost > max_chars:
+            break
+        parts.append(part)
+        included.append(retrieved[index])
+        used += cost
     return "\n\n".join(parts), included
 
 

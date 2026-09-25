@@ -515,13 +515,15 @@ def _fallback_plan(
     context: str,
 ) -> str:
     """Build a deterministic plan when the LLM cannot provide one."""
+    from app.core.content_guard import truncate_preserving_wrappers
+
     scoped_context = (context or "General UX research").strip()
     return (
         f"# {display} Plan\n\n"
         f"Skill: `{skill_name}`\n"
         f"Phase: `{phase.value}`\n\n"
         f"Objective: {desc}\n\n"
-        f"Context: {scoped_context[:500]}\n\n"
+        f"Context: {truncate_preserving_wrappers(scoped_context, 500)}\n\n"
         "1. Confirm the research question, available evidence, and decision to support.\n"
         "2. Review the supplied artifacts and separate direct observations from interpretation.\n"
         "3. Extract evidence-backed findings with source labels and confidence notes.\n"
