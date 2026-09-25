@@ -8,7 +8,7 @@ phase: "Phase 3 — ranking semantics (F12, F17)"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-25T18:58:00Z, ledger: L-5 }
+last: { agent: claude-code, at: 2026-09-25T18:51:00Z, ledger: L-5 }
 next_action: "Phase 3: tests for rank labels to the model/tools/MCP, findings search scales and provenance dedupe, compression keeping retrieval order, Prompt-RAG single scale, unbounded top_k, memory pagination without whole-table loads, dead code; run on origin/main first."
 ```
 
@@ -139,7 +139,7 @@ new importers).
 Verified: `pytest ../tests/test_spine_prompt_boundaries.py ../tests/test_data_transformations.py ../tests/test_rag_resilience.py ../tests/test_retrieval_correctness_fixes.py ../tests/test_reasoning_bank.py ../tests/test_content_guard.py ../tests/pi_production/test_w4_a2a_handlers.py ../tests/test_prompt_rag.py ../tests/test_chat.py ../tests/test_agent_personas.py -q` → 110 passed (istara-test:1, network none); the same new file on origin/main → 14 failed, 2 passed.
 Next: Phase 2.
 
-### L-5 | 2026-09-25T18:58:00Z | S2-execute | claude-code | executor | Phase 2
+### L-5 | 2026-09-25T18:51:00Z | S2-execute | claude-code | executor | Phase 2
 Did: F5 derived index (rag DERIVED_TABLE/namespace, ingest_derived_chunks, retrieve_derived_context;
 legacy agent:/skill: rows pre-filtered from source retrieval), exact agent-note scoping, skill
 artifacts chunked whole and replaced on rerun; M5 services/retrieval_provenance.py (annotate,
