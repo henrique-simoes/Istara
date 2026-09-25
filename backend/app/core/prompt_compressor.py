@@ -913,7 +913,7 @@ def compress_rag_chunks_indexed(
     max_tokens: int,
     surplus_level: str = "moderate",
 ) -> tuple[list[tuple[int, str]], int]:
-    """Compress RAG context chunks with question-aware scoring.
+    """Compress ranked RAG context chunks to a token budget.
 
     Adapted from the LongLLMLingua pattern:
     1. Keep the retrieval ranking (most relevant first, which combats "lost in the middle")
@@ -937,39 +937,23 @@ def compress_rag_chunks_indexed(
     max_chars = max_tokens * 4
     query_tokens = set(re.findall(r"\b\w{3,}\b", query.lower()))
 
-    # Score chunks by question relevance. Protected chunks stay pinned in their
-    # original order so compression never reorders methodology/codebook/gate
-    # blocks relative to one another.
-    protected_chunks: list[tuple[int, str]] = []
-    scored_chunks: list[tuple[float, int, str]] = []
-    for original_index, chunk in enumerate(chunks):
-        if get_protected_blocks(chunk):
-            protected_chunks.append((original_index, chunk))
-            continue
-        chunk_tokens = set(re.findall(r"\b\w{3,}\b", chunk.lower()))
-        if not chunk_tokens or not query_tokens:
-            scored_chunks.append((0.0, original_index, chunk))
-            continue
-        overlap = query_tokens & chunk_tokens
-        score = len(overlap) / max(len(query_tokens), 1)
-        scored_chunks.append((score, original_index, chunk))
-
-    # Keep the retrieval order. The chunks arrive ranked by hybrid retrieval (vector + BM25 fused
-    # by RRF); re-sorting by raw query-token overlap threw that ranking away for a weaker signal
-    # (F12), so a keyword-stuffed chunk displaced the best semantic match. Rank still drives the
-    # differentiated compression below: the top-ranked chunk is compressed least.
-    scored_chunks.sort(key=lambda x: x[1])
+    # Protected chunks come first, pinned in their original order so compression never reorders
+    # methodology/codebook/gate blocks relative to one another. Ordinary chunks keep the retrieval
+    # order: they arrive ranked by hybrid retrieval (vector + BM25 fused by RRF), and re-sorting
+    # them by raw query-token overlap threw that ranking away for a weaker signal (F12). Rank
+    # drives the differentiated compression below: the top-ranked chunk is compressed least.
+    flagged = [
+        (index, chunk, bool(get_protected_blocks(chunk))) for index, chunk in enumerate(chunks)
+    ]
+    chunks_to_process = [item for item in flagged if item[2]] + [
+        item for item in flagged if not item[2]
+    ]
 
     # Apply differentiated compression based on surplus level
     result_chunks: list[tuple[int, str]] = []
     used_chars = 0
 
-    chunks_to_process: list[tuple[float, int, str, bool]] = [
-        (1.0, index, chunk, True) for index, chunk in protected_chunks
-    ]
-    chunks_to_process.extend((score, index, chunk, False) for score, index, chunk in scored_chunks)
-
-    for rank, (_score, original_index, chunk, is_protected_chunk) in enumerate(chunks_to_process):
+    for rank, (original_index, chunk, is_protected_chunk) in enumerate(chunks_to_process):
         if used_chars >= max_chars and not is_protected_chunk:
             break
 

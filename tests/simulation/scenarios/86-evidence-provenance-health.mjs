@@ -163,207 +163,234 @@ export async function run(ctx) {
 }
 
 async function driveAdminCell(ctx, checks) {
-  const { page } = ctx;
   const start = checks.length;
-  let projectId = null;
+  const projectId = await createProject(ctx, checks);
+  if (!projectId) return { ok: false, detail: "no project" };
+  try {
+    await ctx.page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
+    await selectProject(ctx.page, PROJECT_NAME);
+    const steps = [checkEmptyState, uploadThroughFileChooser, checkTraceable, checkLoadingAndError, checkDegraded, checkKeyboard, checkNarrow, checkThemes];
+    for (const step of steps) await step(ctx, checks, projectId);
+  } catch (e) {
+    checks.push({ name: "Admin journey completed without an exception", passed: false, detail: e.message });
+  } finally {
+    await cleanup(ctx, checks, projectId);
+  }
+  const failed = checks.slice(start).filter((c) => !c.passed).length;
+  return { ok: failed === 0, detail: failed === 0 ? "admin provenance journey clean" : `${failed} admin-cell check(s) failed` };
+}
 
-  // ── SETUP (API-behind-browser): the scenario's own fresh project ──
+/** SETUP (API-behind-browser): the scenario's own fresh project. */
+async function createProject(ctx, checks) {
+  const name = "[API-behind-browser] SETUP: create a fresh synthetic project";
   try {
     const created = await ctx.api.post("/api/projects", {
       name: PROJECT_NAME,
       description: "Scenario 86 evidence-provenance health (synthetic data)",
     });
-    projectId = created.id;
-    checks.push({ name: "[API-behind-browser] SETUP: create a fresh synthetic project", passed: !!projectId, detail: `id=${projectId}` });
+    checks.push({ name, passed: !!created.id, detail: `id=${created.id}` });
+    return created.id || null;
   } catch (e) {
-    checks.push({ name: "[API-behind-browser] SETUP: create a fresh synthetic project", passed: false, detail: e.message });
-    return { ok: false, detail: "no project" };
+    checks.push({ name, passed: false, detail: e.message });
+    return null;
   }
+}
 
+/** 1. A fresh project states the empty case, with no percentage. */
+async function checkEmptyState(ctx, checks) {
+  await openHealth(ctx.page);
+  const empty = await readCard(ctx.page);
+  await ctx.screenshot("86-health-empty");
+  checks.push({
+    name: "Fresh project: the card states the empty case, with no percentage",
+    passed: empty.visible && empty.text.includes("No source chunks yet") && empty.coverage === "—",
+    detail: `coverage=${JSON.stringify(empty.coverage)} text=${empty.text.slice(0, 140)}`,
+  });
+}
+
+/** 2. Upload through the Documents view's real file chooser. */
+async function uploadThroughFileChooser(ctx, checks, projectId) {
+  const { page } = ctx;
+  await navigateTo(page, "Documents", "documents");
+  const uploadButton = page.locator('button[aria-label="Upload research files"]').first();
+  await uploadButton.waitFor({ state: "visible", timeout: 15000 });
+  const uploads = [];
+  const onResponse = (r) => {
+    if (r.url().includes(`/api/files/upload/${projectId}`) && r.request().method() === "POST") uploads.push(r.status());
+  };
+  page.on("response", onResponse);
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser", { timeout: 10000 }), uploadButton.click()]);
+  await chooser.setFiles(FILES.map((f) => ({ name: f.name, mimeType: "text/markdown", buffer: Buffer.from(f.text, "utf-8") })));
+  const toast = await page.getByText("Files Uploaded", { exact: true }).first()
+    .waitFor({ state: "visible", timeout: 90000 }).then(() => true).catch(() => false);
+  page.off("response", onResponse);
+  checks.push({
+    name: "Upload two synthetic transcripts through the file chooser",
+    passed: toast && uploads.length === FILES.length && uploads.every((s) => s >= 200 && s < 300),
+    detail: `toast=${toast} statuses=${JSON.stringify(uploads)}`,
+  });
+}
+
+/** 3. The card reports full provenance, and agrees with the API it renders. */
+async function checkTraceable(ctx, checks, projectId) {
+  const { page } = ctx;
+  let traced = { visible: false, text: "", coverage: "" };
+  const deadline = Date.now() + 60000;
+  while (Date.now() < deadline) {
+    await openHealth(page);
+    traced = await readCard(page);
+    if (traced.coverage !== "—" && traced.coverage !== "") break;
+    await page.waitForTimeout(2000);
+  }
+  await ctx.screenshot("86-health-traceable");
+  checks.push({
+    name: "After upload the card reads 100% and 'All traceable'",
+    passed: traced.coverage === "100%" && traced.text.includes("All traceable"),
+    detail: `coverage=${JSON.stringify(traced.coverage)} text=${traced.text.slice(0, 160)}`,
+  });
+  const stats = await ctx.api.get(`/api/memory/${projectId}/stats`).catch((e) => ({ error: e.message }));
+  const prov = stats.provenance || {};
+  checks.push({
+    name: "[API-behind-browser] the stats the card renders agree: every source chunk has an evidence unit",
+    passed: prov.source_chunks > 0 && prov.with_evidence_unit === prov.source_chunks && prov.status === "ok",
+    detail: JSON.stringify(prov).slice(0, 200),
+  });
+  checks.push({
+    name: "The card's count line matches the API",
+    passed: traced.text.includes(`${prov.with_evidence_unit} of ${prov.source_chunks} source chunks`),
+    detail: traced.text.slice(0, 200),
+  });
+}
+
+async function remountHealth(page) {
+  await page.locator(KNOWLEDGE_TAB).first().click();
+  await page.locator(HEALTH_TAB).first().click();
+}
+
+/** 4-5. Loading → content, then error → Retry recovers. */
+async function checkLoadingAndError(ctx, checks, projectId) {
+  const { page } = ctx;
+  const statsGlob = `**/api/memory/${projectId}/stats`;
+  await page.route(statsGlob, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    await route.continue();
+  });
+  await remountHealth(page);
+  const loadingShown = await page.getByText("Loading health data...").first()
+    .waitFor({ state: "visible", timeout: 2000 }).then(() => true).catch(() => false);
+  const afterLoading = await readCard(page);
+  await page.unroute(statsGlob);
+  checks.push({
+    name: "Loading state renders, then the card replaces it",
+    passed: loadingShown && afterLoading.visible,
+    detail: `loading=${loadingShown} card=${afterLoading.visible}`,
+  });
+
+  await page.route(statsGlob, (route) => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ detail: "Scenario86 injected failure" }) }), { times: 1 });
+  await remountHealth(page);
+  const retry = page.locator('button[aria-label="Retry loading health data"]').first();
+  const errorShown = await retry.waitFor({ state: "visible", timeout: 10000 }).then(() => true).catch(() => false);
+  if (errorShown) await retry.click();
+  const recovered = await readCard(page);
+  await page.unroute(statsGlob).catch(() => {});
+  checks.push({
+    name: "Error state offers Retry, and Retry recovers the card",
+    passed: errorShown && recovered.visible && recovered.coverage === "100%",
+    detail: `error=${errorShown} recovered=${recovered.visible} coverage=${recovered.coverage}`,
+  });
+}
+
+/** 6. Degraded branch (FIXTURE: the real response with provenance rewritten). */
+async function checkDegraded(ctx, checks, projectId) {
+  const { page } = ctx;
+  const statsGlob = `**/api/memory/${projectId}/stats`;
+  await page.route(statsGlob, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    const total = body.provenance?.source_chunks || 2;
+    body.provenance = { ...body.provenance, with_evidence_unit: total - 1, coverage: 0.5, status: "degraded", legacy_derived_rows: 3 };
+    await route.fulfill({ response, json: body });
+  }, { times: 1 });
+  await remountHealth(page);
+  const degraded = await readCard(page);
+  await page.unroute(statsGlob).catch(() => {});
+  const text = degraded.text;
+  checks.push({
+    name: "[fixture] a degraded payload renders 'Needs re-index', the remedy and the legacy-row note",
+    passed: ["Needs re-index", "Reprocess the files listed under Sources", "3 older rows"].every((t) => text.includes(t)) && degraded.coverage === "50%",
+    detail: text.slice(0, 220),
+  });
+}
+
+/** 7. Keyboard: Tab reaches the Health tab with visible focus; Enter opens it. */
+async function checkKeyboard(ctx, checks) {
+  const { page } = ctx;
+  await page.locator(KNOWLEDGE_TAB).first().click();
+  await page.locator("body").click({ position: { x: 5, y: 5 } }).catch(() => {});
+  await keyboardFocusCheck(page, checks, { name: "Memory Health tab", targetSelector: HEALTH_TAB, maxTabs: 120 });
+  await page.keyboard.press("Enter");
+  const byKeyboard = await readCard(page, 10000);
+  checks.push({ name: "Enter on the focused Health tab opens it", passed: byKeyboard.visible, detail: `card=${byKeyboard.visible}` });
+}
+
+/** 8. 375px: the Health tab is on screen and usable, and the page does not scroll sideways. */
+async function checkNarrow(ctx, checks) {
+  const { page } = ctx;
+  await reflow375Check(page, checks, {
+    name: "Memory Health",
+    onNarrow: async () => {
+      await navigateTo(page, "Memory", "memory");
+      const tab = page.locator(HEALTH_TAB).first();
+      await tab.waitFor({ state: "attached", timeout: 10000 }).catch(() => {});
+      const box = await tab.boundingBox().catch(() => null);
+      const width = page.viewportSize()?.width || 375;
+      const inView = !!box && box.x >= 0 && box.x + box.width <= width + 1;
+      if (inView) await tab.click();
+      const opened = inView && (await readCard(page, 10000)).visible;
+      checks.push({
+        name: "375px: the Health tab is fully on screen and opens the card",
+        passed: opened,
+        detail: box ? `tab x=${Math.round(box.x)}..${Math.round(box.x + box.width)} viewport=${width} opened=${opened}` : "tab not rendered",
+      });
+      await ctx.screenshot("86-health-375px");
+    },
+  });
+}
+
+/** 9. Light and dark themes, axe in both. */
+async function checkThemes(ctx, checks) {
+  const { page } = ctx;
+  await openHealth(page);
+  await readCard(page);
+  checks.push({ name: "axe-core WCAG 2.1 AA (light): no serious or critical violation on the Health tab", ...(await axeScan(page)) });
+  const toDark = page.locator('button[aria-label="Switch to dark mode"]').first();
+  const wasLight = await toDark.isVisible({ timeout: 3000 }).catch(() => false);
+  if (wasLight) await toDark.click();
+  await page.waitForTimeout(600); // let the colour transition settle before evidence is captured
+  const isDark = await page.evaluate(() => document.documentElement.classList.contains("dark"));
+  const darkCard = await readCard(page);
+  const cardBg = await page.locator(CARD).first().evaluate((el) => getComputedStyle(el).backgroundColor).catch(() => "");
+  await ctx.screenshot("86-health-dark");
+  checks.push({
+    name: "Dark theme renders the card",
+    passed: isDark && darkCard.visible && !/rgb\(255, 255, 255\)/.test(cardBg),
+    detail: `html.dark=${isDark} cardBg=${cardBg}`,
+  });
+  checks.push({ name: "axe-core WCAG 2.1 AA (dark): no serious or critical violation on the Health tab", ...(await axeScan(page)) });
+  if (wasLight) await page.locator('button[aria-label="Switch to light mode"]').first().click().catch(() => {});
+}
+
+/** CLEANUP: return to the shared simulation project, then delete this scenario's own. */
+async function cleanup(ctx, checks, projectId) {
+  const { page } = ctx;
+  await page.setViewportSize({ width: 1280, height: 800 }).catch(() => {});
   try {
+    const shared = await ctx.api.get(`/api/projects/${ctx.projectId}`);
     await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
-    await selectProject(page, PROJECT_NAME);
-
-    // ── 1. empty state ──
-    await openHealth(page);
-    const empty = await readCard(page);
-    await ctx.screenshot("86-health-empty");
-    checks.push({
-      name: "Fresh project: the card states the empty case, with no percentage",
-      passed: empty.visible && empty.text.includes("No source chunks yet") && empty.coverage === "—",
-      detail: `coverage=${JSON.stringify(empty.coverage)} text=${empty.text.slice(0, 140)}`,
-    });
-
-    // ── 2. upload through the Documents view's file chooser ──
-    await navigateTo(page, "Documents", "documents");
-    const uploadButton = page.locator('button[aria-label="Upload research files"]').first();
-    await uploadButton.waitFor({ state: "visible", timeout: 15000 });
-    const uploads = [];
-    const onResponse = (r) => {
-      if (r.url().includes(`/api/files/upload/${projectId}`) && r.request().method() === "POST") uploads.push(r.status());
-    };
-    page.on("response", onResponse);
-    const [chooser] = await Promise.all([page.waitForEvent("filechooser", { timeout: 10000 }), uploadButton.click()]);
-    await chooser.setFiles(FILES.map((f) => ({ name: f.name, mimeType: "text/markdown", buffer: Buffer.from(f.text, "utf-8") })));
-    const toast = await page.getByText("Files Uploaded", { exact: true }).first()
-      .waitFor({ state: "visible", timeout: 90000 }).then(() => true).catch(() => false);
-    page.off("response", onResponse);
-    checks.push({
-      name: "Upload two synthetic transcripts through the file chooser",
-      passed: toast && uploads.length === FILES.length && uploads.every((s) => s >= 200 && s < 300),
-      detail: `toast=${toast} statuses=${JSON.stringify(uploads)}`,
-    });
-
-    // ── 3. the card reports full provenance, and agrees with the API it renders ──
-    let traced = { visible: false, text: "", coverage: "" };
-    const deadline = Date.now() + 60000;
-    while (Date.now() < deadline) {
-      await openHealth(page);
-      traced = await readCard(page);
-      if (traced.coverage !== "—" && traced.coverage !== "") break;
-      await page.waitForTimeout(2000);
-    }
-    await ctx.screenshot("86-health-traceable");
-    checks.push({
-      name: "After upload the card reads 100% and 'All traceable'",
-      passed: traced.coverage === "100%" && traced.text.includes("All traceable"),
-      detail: `coverage=${JSON.stringify(traced.coverage)} text=${traced.text.slice(0, 160)}`,
-    });
-    const stats = await ctx.api.get(`/api/memory/${projectId}/stats`).catch((e) => ({ error: e.message }));
-    const prov = stats.provenance || {};
-    checks.push({
-      name: "[API-behind-browser] the stats the card renders agree: every source chunk has an evidence unit",
-      passed: prov.source_chunks > 0 && prov.with_evidence_unit === prov.source_chunks && prov.status === "ok",
-      detail: JSON.stringify(prov).slice(0, 200),
-    });
-    checks.push({
-      name: "The card's count line matches the API",
-      passed: traced.text.includes(`${prov.with_evidence_unit} of ${prov.source_chunks} source chunks`),
-      detail: traced.text.slice(0, 200),
-    });
-
-    // ── 4. loading → content ──
-    const statsGlob = `**/api/memory/${projectId}/stats`;
-    await page.route(statsGlob, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 2500));
-      await route.continue();
-    });
-    await page.locator(KNOWLEDGE_TAB).first().click();
-    await page.locator(HEALTH_TAB).first().click();
-    const loadingShown = await page.getByText("Loading health data...").first()
-      .waitFor({ state: "visible", timeout: 2000 }).then(() => true).catch(() => false);
-    const afterLoading = await readCard(page);
-    await page.unroute(statsGlob);
-    checks.push({
-      name: "Loading state renders, then the card replaces it",
-      passed: loadingShown && afterLoading.visible,
-      detail: `loading=${loadingShown} card=${afterLoading.visible}`,
-    });
-
-    // ── 5. error → Retry recovers ──
-    await page.route(statsGlob, (route) => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ detail: "Scenario86 injected failure" }) }), { times: 1 });
-    await page.locator(KNOWLEDGE_TAB).first().click();
-    await page.locator(HEALTH_TAB).first().click();
-    const retry = page.locator('button[aria-label="Retry loading health data"]').first();
-    const errorShown = await retry.waitFor({ state: "visible", timeout: 10000 }).then(() => true).catch(() => false);
-    if (errorShown) await retry.click();
-    const recovered = await readCard(page);
-    await page.unroute(statsGlob).catch(() => {});
-    checks.push({
-      name: "Error state offers Retry, and Retry recovers the card",
-      passed: errorShown && recovered.visible && recovered.coverage === "100%",
-      detail: `error=${errorShown} recovered=${recovered.visible} coverage=${recovered.coverage}`,
-    });
-
-    // ── 6. degraded branch (FIXTURE: the real response with provenance rewritten) ──
-    await page.route(statsGlob, async (route) => {
-      const response = await route.fetch();
-      const body = await response.json();
-      body.provenance = { ...body.provenance, with_evidence_unit: Math.max(0, (body.provenance?.source_chunks || 2) - 1), coverage: 0.5, status: "degraded", legacy_derived_rows: 3 };
-      await route.fulfill({ response, json: body });
-    }, { times: 1 });
-    await page.locator(KNOWLEDGE_TAB).first().click();
-    await page.locator(HEALTH_TAB).first().click();
-    const degraded = await readCard(page);
-    await page.unroute(statsGlob).catch(() => {});
-    checks.push({
-      name: "[fixture] a degraded payload renders 'Needs re-index', the remedy and the legacy-row note",
-      passed: degraded.text.includes("Needs re-index") && degraded.text.includes("Reprocess the files listed under Sources")
-        && degraded.text.includes("3 older rows") && degraded.coverage === "50%",
-      detail: degraded.text.slice(0, 220),
-    });
-
-    // ── 7. keyboard: Tab reaches the Health tab with visible focus; Enter opens it ──
-    await page.locator(KNOWLEDGE_TAB).first().click();
-    await page.locator("body").click({ position: { x: 5, y: 5 } }).catch(() => {});
-    await keyboardFocusCheck(page, checks, { name: "Memory Health tab", targetSelector: HEALTH_TAB, maxTabs: 120 });
-    await page.keyboard.press("Enter");
-    const byKeyboard = await readCard(page, 10000);
-    checks.push({ name: "Enter on the focused Health tab opens it", passed: byKeyboard.visible, detail: `card=${byKeyboard.visible}` });
-
-    // ── 8. 375px: the Health tab is on screen and usable, and the page does not scroll sideways ──
-    await reflow375Check(page, checks, {
-      name: "Memory Health",
-      onNarrow: async () => {
-        await navigateTo(page, "Memory", "memory");
-        const tab = page.locator(HEALTH_TAB).first();
-        await tab.waitFor({ state: "attached", timeout: 10000 }).catch(() => {});
-        const box = await tab.boundingBox().catch(() => null);
-        const width = page.viewportSize()?.width || 375;
-        const inView = !!box && box.x >= 0 && box.x + box.width <= width + 1;
-        let opened = false;
-        if (inView) {
-          await tab.click();
-          opened = (await readCard(page, 10000)).visible;
-        }
-        checks.push({
-          name: "375px: the Health tab is fully on screen and opens the card",
-          passed: inView && opened,
-          detail: box ? `tab x=${Math.round(box.x)}..${Math.round(box.x + box.width)} viewport=${width} opened=${opened}` : "tab not rendered",
-        });
-        await ctx.screenshot("86-health-375px");
-      },
-    });
-
-    // ── 9. light and dark themes, axe in both ──
-    await openHealth(page);
-    await readCard(page);
-    const lightAxe = await axeScan(page);
-    checks.push({ name: "axe-core WCAG 2.1 AA (light): no serious or critical violation on the Health tab", ...lightAxe });
-    const toDark = page.locator('button[aria-label="Switch to dark mode"]').first();
-    const wasLight = await toDark.isVisible({ timeout: 3000 }).catch(() => false);
-    if (wasLight) await toDark.click();
-    await page.waitForTimeout(600); // let the colour transition settle before evidence is captured
-    const isDark = await page.evaluate(() => document.documentElement.classList.contains("dark"));
-    const darkCard = await readCard(page);
-    const cardBg = await page.locator(CARD).first().evaluate((el) => getComputedStyle(el).backgroundColor).catch(() => "");
-    await ctx.screenshot("86-health-dark");
-    checks.push({
-      name: "Dark theme renders the card",
-      passed: isDark && darkCard.visible && !/rgb\(255, 255, 255\)/.test(cardBg),
-      detail: `html.dark=${isDark} cardBg=${cardBg}`,
-    });
-    const darkAxe = await axeScan(page);
-    checks.push({ name: "axe-core WCAG 2.1 AA (dark): no serious or critical violation on the Health tab", ...darkAxe });
-    if (wasLight) await page.locator('button[aria-label="Switch to light mode"]').first().click().catch(() => {});
-  } catch (e) {
-    checks.push({ name: "Admin journey completed without an exception", passed: false, detail: e.message });
-  } finally {
-    // ── CLEANUP: return to the shared simulation project, then delete this scenario's own ──
-    await page.setViewportSize({ width: 1280, height: 800 }).catch(() => {});
-    try {
-      const shared = await ctx.api.get(`/api/projects/${ctx.projectId}`);
-      await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
-      await selectProject(page, shared.name);
-    } catch {}
-    if (projectId) {
-      const res = await fetch(`${getApiBase()}/api/projects/${projectId}`, { method: "DELETE", headers: authHeaders() }).catch((e) => ({ ok: false, status: e.message }));
-      checks.push({ name: "[API-behind-browser] CLEANUP: delete the scenario's synthetic project", passed: !!res.ok, detail: `status=${res.status}` });
-    }
-  }
-
-  const failed = checks.slice(start).filter((c) => !c.passed).length;
-  return { ok: failed === 0, detail: failed === 0 ? "admin provenance journey clean" : `${failed} admin-cell check(s) failed` };
+    await selectProject(page, shared.name);
+  } catch {}
+  const res = await fetch(`${getApiBase()}/api/projects/${projectId}`, { method: "DELETE", headers: authHeaders() }).catch((e) => ({ ok: false, status: e.message }));
+  checks.push({ name: "[API-behind-browser] CLEANUP: delete the scenario's synthetic project", passed: !!res.ok, detail: `status=${res.status}` });
 }
 
 /** Researcher/viewer cells: the card renders on the shared simulation project for the role. */

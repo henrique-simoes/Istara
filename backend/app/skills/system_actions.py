@@ -1156,9 +1156,40 @@ async def _exec_create_task(params: dict, project_id: str, agent_id: str) -> str
         )
 
 
-async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -> str:
+def _document_matches(doc: Document, needle: str) -> bool:
+    """Case-insensitive match on the document's REVEALED text and its metadata.
+
+    Document text is stored through ``protect_document_text``: with FILE_ENCRYPTION_ENABLED a SQL
+    ``content_text ILIKE`` matches ciphertext and finds nothing (F15). This matches what the
+    Documents full-text search route matches.
+    """
     from app.core.file_encryption import reveal_document_text
 
+    if not needle:
+        return True
+    fields = [doc.title, doc.description, doc.file_name, doc.tags]
+    haystack = "\n".join([*(f or "" for f in fields), reveal_document_text(doc.content_text or "")])
+    return needle in haystack.lower()
+
+
+def _document_line(doc: Document) -> str:
+    tags_str = ""
+    try:
+        tags = json.loads(doc.tags or "[]")
+        if tags:
+            tags_str = f" [tags: {', '.join(tags[:3])}]"
+    except Exception:
+        pass
+    return (
+        f"- **{doc.title}** (ID: {doc.id}, "
+        f"type: {doc.file_type or 'unknown'}, "
+        f"phase: {doc.phase or 'none'}, "
+        f"source: {doc.source.value if doc.source else 'unknown'})"
+        f"{tags_str}"
+    )
+
+
+async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -> str:
     async with async_session() as db:
         query = select(Document).where(Document.project_id == project_id)
 
@@ -1170,49 +1201,19 @@ async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -
         if params.get("source"):
             query = query.where(Document.source == params["source"])
 
-        # Document text is stored through ``protect_document_text``: with FILE_ENCRYPTION_ENABLED a
-        # SQL ``content_text ILIKE`` matches ciphertext and finds nothing (F15). Match on the
-        # revealed text, as the Documents full-text search route does.
+        # Match on revealed text in Python (F15), newest first, at most 10.
         result = await db.execute(query.order_by(Document.created_at.desc()))
-        docs = []
         needle = str(search).lower()
+        docs = []
         for doc in result.scalars():
-            if needle:
-                haystack = "\n".join(
-                    [
-                        doc.title or "",
-                        doc.description or "",
-                        doc.file_name or "",
-                        doc.tags or "",
-                        reveal_document_text(doc.content_text or ""),
-                    ]
-                ).lower()
-                if needle not in haystack:
-                    continue
-            docs.append(doc)
-            if len(docs) >= 10:
-                break
+            if _document_matches(doc, needle):
+                docs.append(doc)
+                if len(docs) >= 10:
+                    break
 
         if not docs:
             return f"No documents found matching '{search}' in this project."
-
-        lines = [f"Found {len(docs)} document(s):"]
-        for doc in docs:
-            tags_str = ""
-            try:
-                tags = json.loads(doc.tags or "[]")
-                if tags:
-                    tags_str = f" [tags: {', '.join(tags[:3])}]"
-            except Exception:
-                pass
-            lines.append(
-                f"- **{doc.title}** (ID: {doc.id}, "
-                f"type: {doc.file_type or 'unknown'}, "
-                f"phase: {doc.phase or 'none'}, "
-                f"source: {doc.source.value if doc.source else 'unknown'})"
-                f"{tags_str}"
-            )
-        return "\n".join(lines)
+        return "\n".join([f"Found {len(docs)} document(s):", *(_document_line(d) for d in docs)])
 
 
 async def _exec_list_tasks(params: dict, project_id: str, agent_id: str) -> str:

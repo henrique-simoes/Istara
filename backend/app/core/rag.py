@@ -329,6 +329,28 @@ class VectorStore:
 
         return len(records)
 
+    def _filter_clauses(
+        self,
+        *,
+        source_filter: str | None,
+        file_type_filter: str | None,
+        agent_id: str | None,
+        exclude_source_prefixes: tuple[str, ...],
+    ) -> list[str]:
+        """LanceDB filter clauses for the given metadata, on columns this table has."""
+        clauses: list[str] = []
+        if source_filter and self._table_has_column("source"):
+            clauses.append(f"source = '{_sql_literal(source_filter)}'")
+        if file_type_filter and self._table_has_column("file_type"):
+            clauses.append(f"file_type = '{_sql_literal(file_type_filter)}'")
+        if agent_id is not None and self._table_has_column("agent_id"):
+            clauses.append(f"agent_id = '{_sql_literal(agent_id)}'")
+        if exclude_source_prefixes and self._table_has_column("source"):
+            clauses.extend(
+                f"source NOT LIKE '{_sql_literal(prefix)}%'" for prefix in exclude_source_prefixes
+            )
+        return clauses
+
     async def search(
         self,
         query_vector: list[float],
@@ -366,22 +388,12 @@ class VectorStore:
 
         query_builder = table.search(query_vector).metric("cosine").limit(k)
 
-        # Build optional LanceDB filter from provided params
-        filter_clauses: list[str] = []
-        if source_filter and self._table_has_column("source"):
-            safe = source_filter.replace("'", "''")
-            filter_clauses.append(f"source = '{safe}'")
-        if file_type_filter and self._table_has_column("file_type"):
-            safe = file_type_filter.replace("'", "''")
-            filter_clauses.append(f"file_type = '{safe}'")
-        if agent_id is not None and self._table_has_column("agent_id"):
-            safe = agent_id.replace("'", "''")
-            filter_clauses.append(f"agent_id = '{safe}'")
-        if exclude_source_prefixes and self._table_has_column("source"):
-            filter_clauses.extend(
-                f"source NOT LIKE '{_sql_literal(prefix)}%'" for prefix in exclude_source_prefixes
-            )
-
+        filter_clauses = self._filter_clauses(
+            source_filter=source_filter,
+            file_type_filter=file_type_filter,
+            agent_id=agent_id,
+            exclude_source_prefixes=exclude_source_prefixes,
+        )
         if filter_clauses:
             try:
                 # Pre-filter, so excluded rows cannot crowd the k nearest out of the result.

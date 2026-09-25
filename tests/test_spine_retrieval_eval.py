@@ -30,11 +30,17 @@ def _ev():
     return retrieval_eval
 
 
+def _stats():
+    from app.evals import stats
+
+    return stats
+
+
 # ── metric maths ─────────────────────────────────────────────────────────
 
 
 def test_ndcg_matches_hand_computation():
-    ev = _ev()
+    ev = _stats()
     grades = [2, 0, 1]
     ideal = [2, 2, 1, 0]
     dcg = 3 / math.log2(2) + 0 + 1 / math.log2(4)
@@ -44,7 +50,7 @@ def test_ndcg_matches_hand_computation():
 
 
 def test_bootstrap_interval_brackets_the_mean_and_randomization_test_behaves():
-    ev = _ev()
+    ev = _stats()
     values = [0.1, 0.4, 0.35, 0.8, 0.5, 0.6, 0.2, 0.9]
     low, high = ev.bootstrap_ci(values)
     assert low <= sum(values) / len(values) <= high

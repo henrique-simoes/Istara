@@ -34,7 +34,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from app.evals.retrieval_eval import DEFAULT_QRELS, Qrels, Question, bootstrap_ci
+from app.evals.retrieval_eval import DEFAULT_QRELS, Qrels, Question
+from app.evals.stats import bootstrap_ci
 
 _CLAIMS_SCHEMA = {
     "type": "object",
