@@ -317,6 +317,23 @@ async def validate_judges(
     return report
 
 
+def corpus_path_for(qrels: Qrels, source: str) -> str | None:
+    """The benchmark file a retrieved chunk came from, or ``None``.
+
+    A chunk ingested from the corpus keeps its relative path as a suffix. A file uploaded through
+    the product is stored under the upload directory by its file name only, so the suffix match
+    fails. The file name is then used when exactly one corpus file carries it; without this every
+    uploaded chunk graded 0 and context precision read as zero.
+    """
+    source = str(source or "")
+    for rel in qrels.files:
+        if source.endswith(rel):
+            return rel
+    name = Path(source).name
+    matches = [rel for rel in qrels.files if Path(rel).name == name]
+    return matches[0] if len(matches) == 1 else None
+
+
 def context_precision(grades_in_prompt_order: Sequence[int]) -> float | None:
     """RAGAS context precision with relevance = grade >= 1: mean precision@i at relevant ranks."""
     hits = 0
@@ -356,7 +373,7 @@ async def run(
     sample = rng.sample(qrels.questions, min(questions, len(qrels.questions)))
 
     def grade_text(question: Question, source: str, text: str) -> int:
-        rel = next((p for p in qrels.files if source.endswith(p)), None)
+        rel = corpus_path_for(qrels, source)
         if rel is None:
             return 0
         start = qrels.files[rel].find(text)
