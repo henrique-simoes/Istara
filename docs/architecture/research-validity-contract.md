@@ -286,6 +286,24 @@ blocked, unreconciled, or otherwise unaccepted rows remain non-reportable. The
 route is read-only, honors project access, records `graph+hybrid` retrieval
 telemetry, and does not promote or synthesize new findings by itself.
 
+Retrieval provenance and separation (2026-09-25):
+
+- Every source chunk carries the evidence unit it was cut from, its span offsets and its source
+  document (`services/retrieval_provenance.py`). All ingestion paths (upload, audio, document sync,
+  knowledge sync, the file watcher for linked folders) index through
+  `index_document_source_chunks`, and each upload has exactly one ingestion writer. Provenance
+  coverage (source chunks with an evidence unit / source chunks) is a health invariant reported by
+  Memory > Health; anything below 1.0 is a re-index obligation, not a warning to ignore.
+- Model-written text (agent notes, skill artifacts, synthesized findings) lives in a separate
+  derived index. Claim verification and evidence retrieval search the source index only, so
+  derived prose can never confirm itself.
+- Evidence is presented to models by rank, inside the untrusted-content wrapper, which survives
+  truncation; document text cannot open or close the wrapper or a protected block.
+- Retrieval quality is measured, not assumed: span-graded qrels (`app.evals.retrieval_eval`) grade
+  retrieval, and answer faithfulness is judged only by a validated judge that is never the model
+  under test (`app.evals.answer_eval`). Measurements are evidence about the system, never research
+  evidence about the project.
+
 ## Telemetry Contract
 
 Research-validity telemetry is content-free. Spans may store handles such as
