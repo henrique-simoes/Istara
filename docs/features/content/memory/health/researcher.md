@@ -6,11 +6,11 @@ audience: researcher
 status: needs-verification
 related_features: ["memory.knowledge", "quality.dashboard"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/memory/MemoryView.tsx", "backend/app/core/vector_health.py", "backend/app/core/embeddings.py", "backend/app/core/rag.py", "backend/app/core/pi_runtime/embedding_profile.py", "backend/app/core/pi_runtime/embeddings_gateway.py", "backend/app/core/pi_runtime/model_manager_provisioning.py", "backend/app/core/agentic/dispatcher.py"]
+code_references: ["frontend/src/components/memory/MemoryView.tsx", "backend/app/core/vector_health.py", "backend/app/core/embeddings.py", "backend/app/core/rag.py", "backend/app/core/pi_runtime/embedding_profile.py", "backend/app/core/pi_runtime/embeddings_gateway.py", "backend/app/core/pi_runtime/model_manager_provisioning.py", "backend/app/core/agentic/dispatcher.py", "backend/app/services/retrieval_provenance.py"]
 api_references: ["backend/app/api/routes/memory.py"]
-test_references: ["tests/test_memory.py", "tests/test_rag_resilience.py", "tests/pi_production/test_embedding_profile_authority.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/pi_migration/test_count_to_zero.py"]
-last_verified: 2026-08-25
-compass: CF-SPEC-60 / CF-757; CF-SPEC-8
+test_references: ["tests/test_memory.py", "tests/test_rag_resilience.py", "tests/pi_production/test_embedding_profile_authority.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/pi_migration/test_count_to_zero.py", "tests/test_spine_evidence_provenance.py", "tests/test_spine_embedding_identity.py", "tests/simulation/scenarios/86-evidence-provenance-health.mjs"]
+last_verified: 2026-09-25
+compass: CF-SPEC-60 / CF-757; CF-SPEC-8; CF-SPEC-2
 ---
 
 # Memory Health
@@ -46,6 +46,18 @@ Memory Health exists so the work represented by Memory > Health has a stable, di
 
 - Project-scoped state or artifact updates associated with memory health.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
+
+## Evidence Provenance
+
+- The **Evidence Provenance** card shows how many of the project's source chunks can be traced to
+  the exact passage (evidence unit) they came from. 100% ("All traceable") means every passage the
+  knowledge base retrieves can be followed back to its source text and coding state.
+- "No source chunks yet" means nothing has been indexed. "Needs re-index" means some chunks were
+  indexed before provenance existed: reprocess the files listed under Sources to fix it.
+- If the card mentions older rows holding agent notes or skill output, those rows are kept out of
+  evidence search; they are not source evidence.
+- If the embedding model is swapped for another one of the same size, Memory Health reports a
+  fingerprint mismatch instead of silently mixing the two models' vectors; re-index to recover.
 
 ## Embeddings And Engine Selection
 

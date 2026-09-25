@@ -297,6 +297,36 @@
 </ul>
 <p>share the active Pi-owned profile; changing the profile itself is not a rollback control and remains</p>
 <p>blocked until a governed re-embed/re-index/activation workflow is available.</p>
+<h2 id="evidence-provenance-and-embedder-identity-2026-09-25">Evidence Provenance And Embedder Identity (2026-09-25)</h2>
+<ul>
+<li>**Provenance invariant (measurement 5).** Every source chunk should carry the evidence unit it</li>
+</ul>
+<p>was cut from, so a retrieved passage can be followed to its source span and coding state.</p>
+<p><code>retrieval_provenance.provenance_coverage()</code> counts source-table rows with an <code>evidence_unit_id</code></p>
+<p>(filtered counts, no table load); derived rows (agent notes, skill output) are excluded and older</p>
+<p>derived rows in the source table are reported separately. <code>GET /api/memory/{project_id}/stats</code></p>
+<p>returns it as <code>provenance</code> (<code>source_chunks</code>, <code>with_evidence_unit</code>, <code>coverage</code>,</p>
+<p><code>legacy_derived_rows</code>, <code>status</code> = ok | degraded | empty | unavailable).</p>
+<ul>
+<li>**Evidence Provenance card.** The Health tab renders that object: the percentage, the count behind</li>
+</ul>
+<p>it, an honest empty state, &quot;Needs re-index&quot; with the reprocess remedy when degraded, and a note for</p>
+<p>legacy derived rows. Uploads, audio transcripts, document sync, knowledge sync and the file watcher</p>
+<p>all index through <code>index_document_source_chunks</code>, so a fresh upload reads 100%.</p>
+<ul>
+<li>**Embedder identity (F11).** Embeddings fingerprint the model that actually serves (a hash of the</li>
+</ul>
+<p>vectors a fixed probe produces). The cache is keyed by <code>namespace#fingerprint</code>, a store is bound to</p>
+<p>the fingerprint it was written with, and vector health reports <code>fingerprint_mismatch</code> when a</p>
+<p>same-dimension model swap would otherwise mix two vector spaces silently.</p>
+<ul>
+<li>**Layout.** The Memory tab row wraps at narrow widths (375 px) and marks the selected tab with</li>
+</ul>
+<p><code>aria-pressed</code>; dark-theme labels meet WCAG AA contrast.</p>
+<ul>
+<li>Verified by <code>tests/test_spine_evidence_provenance.py</code>, <code>tests/test_spine_embedding_identity.py</code></li>
+</ul>
+<p>and simulation scenario <code>86-evidence-provenance-health</code> (roles, keyboard, 375 px, light/dark, axe).</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/memory/MemoryView.tsx</code> and the UI navigation path recorded in the inventory.</li>
@@ -351,6 +381,7 @@
 <li class="toc-level-3"><a href="#stores">Stores</a></li>
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
 <li class="toc-level-3"><a href="#embeddings-gateway-migration-pi-replacement-w8">Embeddings Gateway Migration (Pi Replacement W8)</a></li>
+<li class="toc-level-2"><a href="#evidence-provenance-and-embedder-identity-2026-09-25">Evidence Provenance And Embedder Identity (2026-09-25)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>
