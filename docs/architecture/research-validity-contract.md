@@ -170,6 +170,9 @@ Sources
   Istara preserves protected research-validity blocks in original order and
   marks the response over budget instead of silently truncating methodology,
   codebook, evidence schema, reliability policy, or promotion gates.
+- Retrieved chunks are exact source evidence. RAG compression passes them
+  through verbatim whenever they fit the RAG budget, and compresses (by rank,
+  in retrieval order, protected blocks first) only under budget pressure.
 - ReasoningBank, Memento Skills, Meta-Hyperagent, self-evolution, autoresearch,
   ReAct, DAGs, and telemetry may learn from the corrected process, but they
   cannot silently rewrite methodology or promote unreviewed evidence.

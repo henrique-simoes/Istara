@@ -242,3 +242,92 @@ async def test_without_a_benchmark_the_loop_fails_closed(tiny_benchmark, monkeyp
     monkeypatch.setattr(settings, "retrieval_benchmark_qrels", str(tmp_path / "missing.json"))
     with pytest.raises(ev.BenchmarkUnavailableError):
         await runner.measure_baseline(project_id)
+
+
+# ── M3: budget recall names each lost span and the step that lost it ─────
+
+
+def test_loss_step_attributes_each_way_a_span_can_miss_the_prompt():
+    from app.core.rag import RetrievalResult, format_context_part
+
+    ev = _ev()
+    span = "Owners chase late invoices by phone every Friday afternoon."
+    chunk = "Intro sentence about bookkeeping. " + span
+    kept = RetrievalResult(text=chunk, source="a.txt", page=None, score=1.0)
+    whole_prompt = format_context_part(1, kept)
+    cut_prompt = format_context_part(1, kept, "Intro sentence about bookkeeping.")
+
+    assert ev._loss_step(span, RetrievalResult("unrelated", "a.txt", None, 1.0), [], "") == (
+        "retrieved_chunk"
+    )
+    assert ev._loss_step(span, kept, [], whole_prompt) == "budget_drop"
+    assert ev._loss_step(span, kept, [kept], cut_prompt) == "compression"
+    assert not ev._survives(span, cut_prompt) and ev._survives(span, whole_prompt)
+
+
+async def test_budget_recall_reports_every_lost_span_and_nothing_lost_when_the_budget_fits(
+    tmp_path, monkeypatch
+):
+    """CI-safe lane (BM25). Single-chunk documents with the answer last: a 2k window's RAG budget
+    cuts it off, and the 128k window's budget has room for every retrieved chunk verbatim."""
+    ev = _ev()
+    monkeypatch.setattr(settings, "data_dir", str(tmp_path / "data"))
+    corpus = tmp_path / "corpus"
+    (corpus / "sources").mkdir(parents=True)
+    answers = {
+        "a": "Owners chase late invoices by phone every Friday afternoon.",
+        "b": "Receipts fade on thermal paper before the quarter closes.",
+        "c": "Payroll lands Thursday while client payments arrive Friday.",
+    }
+    for name, answer in answers.items():
+        filler = " ".join(f"Note {name}{i} on bookkeeping routines and ledgers." for i in range(14))
+        (corpus / "sources" / f"{name}.txt").write_text(f"{filler} {answer}", encoding="utf-8")
+    qrels_path = tmp_path / "qrels.json"
+    qrels_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "name": "m3-tiny",
+                "corpus": str(corpus),
+                "corpus_glob": "sources/**/*",
+                "theme_banks": {},
+                "questions": [
+                    {
+                        "id": f"q{name}",
+                        "style": "lexical",
+                        "theme": None,
+                        "text": answer.lower().rstrip("."),
+                        "targets": [answer],
+                        "related": [],
+                    }
+                    for name, answer in answers.items()
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    qrels = ev.Qrels.load(qrels_path, corpus)
+
+    report = await ev.budget_recall(
+        qrels, ev.RetrievalConfig.from_settings(), windows=(2048, 131072), embed=False
+    )
+    small, ample = report["windows"]
+
+    assert small["answer_spans_retrieved"] == ample["answer_spans_retrieved"] == 3
+    for row in (small, ample):
+        lost = row["answer_spans_retrieved"] - row["answer_spans_in_prompt"]
+        assert len(row["lost"]) == sum(row["lost_by_step"].values()) == lost
+    assert small["lost"], "a 102-token RAG budget cannot carry three 800-character chunks"
+    for item in small["lost"]:
+        occurrence = qrels.answer_occurrences(
+            next(q for q in qrels.questions if q.id == item["question"])
+        )[0]
+        assert (item["path"], item["start"], item["end"]) == (
+            occurrence.path,
+            occurrence.start,
+            occurrence.end,
+        )
+        assert item["step"] in {"budget_drop", "compression"}
+        assert 1 <= item["hit_rank"] <= 5
+    assert ample["lost"] == []
+    assert ample["answer_spans_verbatim"] == 3

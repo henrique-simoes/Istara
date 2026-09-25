@@ -35,6 +35,7 @@ import json
 import shutil
 import tempfile
 import time
+from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
@@ -581,9 +582,12 @@ async def budget_recall(
     The RAG budget is ``BudgetCoordinator.allocate(window).rag_tokens`` (5% of the window, at most
     4,000 tokens), and the prompt text is ``rag.build_compressed_rag_context``, the chat path.
     A span survives when at least half of it is present verbatim in the prompt block.
+
+    Every span that does not survive is listed under ``lost`` with its question, its place in the
+    corpus, the rank of the chunk that carried it, and the step that lost it (``_loss_step``).
+    ``answer_spans_verbatim`` counts the spans present whole, the stricter reading.
     """
     from app.core.budget_coordinator import BudgetCoordinator
-    from app.core.rag import RAGContext, RetrievalResult, build_compressed_rag_context
 
     system = "hybrid" if embed else "bm25"
     objective = RetrievalObjective(qrels, system=system, embed=embed)
@@ -592,44 +596,25 @@ async def budget_recall(
         rows: list[dict[str, Any]] = []
         for window in windows:
             rag_tokens = BudgetCoordinator().allocate(window).rag_tokens
-            retrieved_spans = kept_spans = 0
+            spans: list[dict[str, Any]] = []
             for question in qrels.questions:
                 hits = await index.search(system, question.text, retrieve_k)
-                spans = [
-                    (h, o)
-                    for h in hits
-                    for o in qrels.answer_occurrences(question)
-                    if o.path == h.path
-                    and min(h.end, o.end) - max(h.start, o.start)
-                    >= _SPAN_MIN_SHARE * (o.end - o.start)
-                ]
-                if not spans:
-                    continue
-                results = [
-                    RetrievalResult(text=h.text, source=h.path, page=None, score=1.0 / (60 + i))
-                    for i, h in enumerate(hits, 1)
-                ]
-                text, _ = await build_compressed_rag_context(
-                    EVAL_PROJECT,
-                    RAGContext(question.text, results, ""),
-                    question.text,
-                    rag_tokens,
-                    surplus_level,
-                )
-                for _hit, occurrence in spans:
-                    retrieved_spans += 1
-                    span_text = qrels.files[occurrence.path][occurrence.start : occurrence.end]
-                    if _survives(span_text, text):
-                        kept_spans += 1
+                spans += await _prompt_spans(qrels, question, hits, rag_tokens, surplus_level)
+            retrieved_spans = len(spans)
+            kept_spans = sum(1 for s in spans if s["survives"])
+            lost = [s["lost"] for s in spans if not s["survives"]]
             rows.append(
                 {
                     "window_tokens": window,
                     "rag_budget_tokens": rag_tokens,
                     "answer_spans_retrieved": retrieved_spans,
                     "answer_spans_in_prompt": kept_spans,
+                    "answer_spans_verbatim": sum(1 for s in spans if s["verbatim"]),
                     "budget_recall": round(kept_spans / retrieved_spans, 4)
                     if retrieved_spans
                     else None,
+                    "lost_by_step": dict(Counter(item["step"] for item in lost)),
+                    "lost": lost,
                 }
             )
         return {
@@ -641,6 +626,88 @@ async def budget_recall(
         }
     finally:
         objective.close()
+
+
+async def _prompt_spans(
+    qrels: Qrels,
+    question: Question,
+    hits: Sequence[IndexedChunk],
+    rag_tokens: int,
+    surplus_level: str,
+) -> list[dict[str, Any]]:
+    """One question's answer spans in the retrieved top-k, each checked against the prompt block."""
+    from app.core.rag import (
+        RAGContext,
+        RetrievalResult,
+        build_compressed_rag_context,
+        format_context_part,
+    )
+
+    spans = [
+        (rank, h, o)
+        for rank, h in enumerate(hits, 1)
+        for o in qrels.answer_occurrences(question)
+        if o.path == h.path
+        and min(h.end, o.end) - max(h.start, o.start) >= _SPAN_MIN_SHARE * (o.end - o.start)
+    ]
+    if not spans:
+        return []
+    results = [
+        RetrievalResult(text=h.text, source=h.path, page=None, score=1.0 / (60 + i))
+        for i, h in enumerate(hits, 1)
+    ]
+    prompt, included = await build_compressed_rag_context(
+        EVAL_PROJECT,
+        RAGContext(question.text, results, ""),
+        question.text,
+        rag_tokens,
+        surplus_level,
+    )
+    # The labelled, wrapped block if no chunk were compressed or dropped.
+    uncompressed_chars = len(
+        "\n\n".join(format_context_part(i, r) for i, r in enumerate(results, 1))
+    )
+    checked = []
+    for rank, hit, occurrence in spans:
+        span_text = qrels.files[occurrence.path][occurrence.start : occurrence.end]
+        survives = _survives(span_text, prompt)
+        lost = None
+        if not survives:
+            lost = {
+                "question": question.id,
+                "style": question.style,
+                "path": occurrence.path,
+                "start": occurrence.start,
+                "end": occurrence.end,
+                "span": span_text[:80],
+                "hit_rank": rank,
+                "step": _loss_step(span_text, results[rank - 1], included, prompt),
+                "uncompressed_block_chars": uncompressed_chars,
+                "rag_budget_chars": rag_tokens * 4,
+            }
+        checked.append({"survives": survives, "verbatim": span_text in prompt, "lost": lost})
+    return checked
+
+
+def _loss_step(span: str, result: Any, included: Sequence[Any], prompt: str) -> str:
+    """The first step of the chat path at which ``span`` stopped reaching the prompt.
+
+    ``retrieved_chunk``: the hit carries too little of the span (a chunk boundary cut it).
+    ``prompt_formatting``: sanitising, neutralising or wrapping the whole chunk loses it.
+    ``budget_drop``: the chunk never reached the prompt. ``compression``: the chunk reached the
+    prompt shortened, and the span went with the removed text (a chunk that reached the prompt
+    whole carries every span the whole chunk carries).
+    """
+    from app.core.rag import format_context_part
+
+    if not _survives(span, result.text):
+        return "retrieved_chunk"
+    # The whole chunk as the prompt wraps it (neutralised and sanitised), minus the label line.
+    if not _survives(span, format_context_part(1, result).split("\n", 1)[1]):
+        return "prompt_formatting"
+    if not any(kept is result for kept in included):
+        return "budget_drop"
+    return "compression"
 
 
 def _survives(span: str, prompt: str) -> bool:

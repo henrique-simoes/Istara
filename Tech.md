@@ -474,9 +474,10 @@ User sends message
   ├─ Prompt RAG selects relevant persona sections (within identity budget)
   │
   ├─ RAG retrieves relevant document chunks
-  │   └─ compress_rag_chunks() applies question-aware compression
-  │      (LongLLMLingua pattern: reorder most relevant first,
-  │       differentiated compression by rank)
+  │   └─ compress_rag_chunks() passes the chunks through verbatim when they
+  │      fit the RAG budget; only under budget pressure does it apply
+  │      question-aware compression (LongLLMLingua pattern: retrieval order
+  │      kept, differentiated compression by rank)
   │
   ├─ Context Summarizer applies cost-escalating pipeline:
   │   1. DAG-based lossless compression (if enabled)

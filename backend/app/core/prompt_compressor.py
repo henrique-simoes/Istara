@@ -907,6 +907,41 @@ def compress_with_question(
     return result
 
 
+def _verbatim_within_budget(
+    ordered: list[tuple[int, str, bool]], max_chars: int
+) -> tuple[list[tuple[int, str]], int] | None:
+    """Every chunk unchanged, in ``ordered`` order, when together they fit ``max_chars``.
+
+    Returns ``None`` under budget pressure. Compressing by rank regardless of the budget removed
+    exact evidence the budget had room for: in measurement 3 a paraphrase question's answer line
+    shared no word with the question, so question-aware scoring dropped it from the rank-2 chunk
+    at every window of 16k tokens and above, the 4,000-token budget included. Blank ordinary
+    chunks are dropped, as the compressing path drops them.
+    """
+    if sum(len(chunk) for _, chunk, _ in ordered) > max_chars:
+        return None
+    kept = [(index, chunk) for index, chunk, protected in ordered if protected or chunk.strip()]
+    return kept, sum(len(chunk) for _, chunk in kept) // 4
+
+
+def _rank_keep_ratio(rank: int, surplus_level: str) -> float:
+    """Fraction of a chunk to keep under budget pressure: the most relevant is compressed least."""
+    if rank == 0:
+        ratio = 1.0  # Keep entirely
+    elif rank == 1:
+        ratio = 0.85
+    elif rank <= 3:
+        ratio = 0.7
+    else:
+        ratio = 0.5
+
+    if surplus_level == "constrained":
+        return ratio * 0.6
+    if surplus_level == "low":
+        return ratio * 0.8
+    return ratio
+
+
 def compress_rag_chunks_indexed(
     chunks: list[str],
     query: str,
@@ -917,8 +952,11 @@ def compress_rag_chunks_indexed(
 
     Adapted from the LongLLMLingua pattern:
     1. Keep the retrieval ranking (most relevant first, which combats "lost in the middle")
-    2. Apply differentiated compression: the top-ranked chunk gets the least compression
-    3. Trim chunks that don't fit the budget (a hard limit for ordinary text)
+    2. When every chunk fits the budget, pass them all through verbatim: compression only exists to
+       make room, and retrieved chunks are exact source evidence
+    3. Under budget pressure, apply differentiated compression: the top-ranked chunk gets the
+       least compression
+    4. Trim chunks that don't fit the budget (a hard limit for ordinary text)
 
     Args:
         chunks: Retrieved RAG context chunks.
@@ -948,8 +986,11 @@ def compress_rag_chunks_indexed(
     chunks_to_process = [item for item in flagged if item[2]] + [
         item for item in flagged if not item[2]
     ]
+    verbatim = _verbatim_within_budget(chunks_to_process, max_chars)
+    if verbatim is not None:
+        return verbatim
 
-    # Apply differentiated compression based on surplus level
+    # Budget pressure: apply differentiated compression based on surplus level
     result_chunks: list[tuple[int, str]] = []
     used_chars = 0
 
@@ -969,20 +1010,7 @@ def compress_rag_chunks_indexed(
             used_chars += len(compressed)
             continue
 
-        # Most relevant chunk gets least compression
-        if rank == 0:
-            chunk_ratio = 1.0  # Keep entirely
-        elif rank == 1:
-            chunk_ratio = 0.85
-        elif rank <= 3:
-            chunk_ratio = 0.7
-        else:
-            chunk_ratio = 0.5
-
-        if surplus_level == "constrained":
-            chunk_ratio *= 0.6
-        elif surplus_level == "low":
-            chunk_ratio *= 0.8
+        chunk_ratio = _rank_keep_ratio(rank, surplus_level)
 
         # Truncate chunk to fit remaining budget
         chunk_char_limit = min(len(chunk), remaining)
