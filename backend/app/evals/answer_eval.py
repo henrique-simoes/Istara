@@ -491,6 +491,16 @@ async def run(
     }
 
 
+async def _run_and_stop_worker(**kwargs: Any) -> dict:
+    """Run, then stop the Pi worker the dispatcher started while this event loop still runs."""
+    try:
+        return await run(**kwargs)
+    finally:
+        from app.core import pi_runtime
+
+        await pi_runtime.shutdown_supervisor()
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--project-id", required=True)
@@ -506,7 +516,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     # A standalone process must map every model before the first ORM row (usage ledger).
     register_models()
     report = asyncio.run(
-        run(
+        _run_and_stop_worker(
             project_id=args.project_id,
             generator_endpoint=args.generator,
             judge_endpoints=[j for j in args.judges.split(",") if j],

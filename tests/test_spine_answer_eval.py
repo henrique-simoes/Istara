@@ -95,3 +95,28 @@ def test_token_only_usage_is_priced_from_the_endpoint_rates(monkeypatch):
     assert usage_cost("pi-priced", usage) == pytest.approx(0.2)
     assert usage_cost("pi-priced", {"cost_usd": 0.05}) == pytest.approx(0.05)
     assert usage_cost("pi-unknown", usage) == 0.0
+
+
+def test_the_cli_stops_the_pi_worker_while_its_event_loop_still_runs(monkeypatch, tmp_path):
+    # The dispatcher starts a Pi worker child. Left running, its pipes were torn down after
+    # asyncio.run had closed the loop: "RuntimeError: Event loop is closed" on every live run.
+    import asyncio
+
+    from app.core import pi_runtime
+    from app.evals import answer_eval
+
+    loop_closed_at_shutdown: list[bool] = []
+
+    async def _run(**kwargs):
+        return {"questions": 0}
+
+    async def _shutdown():
+        loop_closed_at_shutdown.append(asyncio.get_running_loop().is_closed())
+
+    monkeypatch.setattr(answer_eval, "run", _run)
+    monkeypatch.setattr(pi_runtime, "shutdown_supervisor", _shutdown)
+    out = tmp_path / "report.json"
+    argv = ["--project-id", "p", "--generator", "a", "--judges", "b", "--out", str(out)]
+    assert answer_eval.main(argv) == 0
+    assert loop_closed_at_shutdown == [False]
+    assert json.loads(out.read_text(encoding="utf-8")) == {"questions": 0}
