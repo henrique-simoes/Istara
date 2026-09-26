@@ -66,6 +66,21 @@ Update `security/control_matrix.json`, `security/SECURITY_BENCHMARK.md`, and `te
 
 `LLMs/` and `Model_Finetuning/` are local, gitignored model/training artifact folders. Never delete, prune, move, or clean them during agent work.
 
+## Protected QA Containers and Databases (Never Delete)
+
+The Mac Studio QA host keeps containers that hold research results from testing and multi-model runs used for consultation. They carry the `never-delete-official-` name prefix and must never be deleted:
+
+- `never-delete-official-istara-qa-readiness5-20260910-qa-backend` — QA backend run data (DB in tmpfs `/tmp/istara-qa.db`, feature tree in `/app/data`).
+- `never-delete-official-w3-live-backend`, `never-delete-official-w3-live-backend-fix` — W3 candidate live runs (`istara-w3.db` + run artifacts in `/app/data`).
+- `never-delete-official-w4-live-pi`, `never-delete-official-w4-live-legacy` — W4 long-horizon multi-model telemetry (host dataset at `~/w4-scratch-20260910/data`).
+
+Rules:
+
+1. Never run `docker rm`, `docker container prune`, or `docker system prune` against these containers, and never delete their databases or images.
+2. Their data surfaces are **tmpfs (in RAM)**: before stopping any protected container, snapshot `/app/data` and `/tmp/*.db*` to `~/never-delete-official-data/<container>/<UTC-timestamp>/` on the host. Snapshots are permanent records — never delete, move, or prune them.
+3. Code updates happen by renewing the codebase with new commits only: rebuild images from repo HEAD into a new QA run (`QA_RUN_ID=<branch>-<date>`, unique project per `docker-compose.qa.yml` contract). All existing databases and data snapshots for all features must be kept across redeploys — a redeploy never erases prior run data.
+4. The W4 multi-model telemetry dataset at `~/w4-scratch-20260910/data` (`istara-w4-pi.db`, `istara-w4-legacy.db`, run JSONs/logs) is protected research data: never delete, move, or prune it.
+
 ## Live LLM and Model Loading Safety
 
 Do not start live backend/frontend servers, send chat-completion probes, or trigger model loading without explicit user permission. Passive LLM status/discovery checks must stay passive. Active model loading belongs only on deliberate request paths and must be bounded to one configured target so agent work never loads multiple heavy models at once.
