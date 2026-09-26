@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Server, Users, Gauge, Download } from "lucide-react";
 import { settings as settingsApi, telemetry as telemetryApi } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
+import EmbeddingModelSection from "@/components/settings/EmbeddingModelSection";
 import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
 import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
@@ -192,6 +193,9 @@ export default function SettingsView() {
           }}
         />
       )}
+
+      {/* Embedding model: governed switch with a full re-index (admins) */}
+      {canManageInfrastructure && <EmbeddingModelSection />}
 
       {/* Hardware */}
       {canManageInfrastructure && hardware && (

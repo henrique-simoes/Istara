@@ -163,6 +163,52 @@ async def bootstrap_embedding_profile(db: AsyncSession) -> ActiveEmbeddingProfil
     return _active_profile
 
 
+async def activate_embedding_profile(
+    db: AsyncSession,
+    *,
+    model_id: str,
+    prompt_scheme: str,
+    dimension: int,
+    endpoint_id: str | None = None,
+    migration_source: str = "",
+) -> ActiveEmbeddingProfile:
+    """Make a new profile version the only active one (the embedding migration's first step).
+
+    The previous version stays on record, inactive. Stores bound to it fail closed until the
+    migration re-embeds them; nothing mixes the two vector spaces.
+    """
+    global _active_profile
+
+    current = get_active_embedding_profile()
+    rows = list((await db.execute(select(EmbeddingProfile))).scalars().all())
+    for row in rows:
+        if row.is_active:
+            row.is_active = False
+    await db.flush()
+    version = max((row.version for row in rows), default=current.version) + 1
+    row = EmbeddingProfile(
+        id=str(uuid.uuid4()),
+        profile_id=current.profile_id,
+        version=version,
+        is_active=True,
+        model_id=model_id,
+        endpoint_id=endpoint_id or current.endpoint_id,
+        transport=current.transport,
+        dimension=dimension,
+        dtype=current.dtype,
+        normalization=current.normalization,
+        cache_namespace=namespace_for(model_id, prompt_scheme),
+        health_status="unknown",
+        migration_source=migration_source or f"migration:v{current.version}",
+        prompt_scheme=prompt_scheme,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    _active_profile = _snapshot(row)
+    return _active_profile
+
+
 def get_active_embedding_profile() -> ActiveEmbeddingProfile:
     """Return the process-pinned profile.
 

@@ -202,6 +202,18 @@ class VectorStore:
             tmp.write_text(json.dumps(updated, sort_keys=True) + "\n", encoding="utf-8")
             tmp.replace(self._profile_manifest)
 
+    def rebind_to_active_profile(self) -> None:
+        """Point this store's manifest at the active profile (after the migration re-embeds it)."""
+        from app.core.embeddings import known_embed_fingerprint
+
+        binding: dict = dict(self._active_profile_binding())
+        fingerprint = known_embed_fingerprint(str(binding["cache_namespace"]))
+        if fingerprint:
+            binding["fingerprint"] = fingerprint
+        tmp = self._profile_manifest.with_suffix(".tmp")
+        tmp.write_text(json.dumps(binding, sort_keys=True) + "\n", encoding="utf-8")
+        tmp.replace(self._profile_manifest)
+
     def check_profile_binding(self) -> None:
         """Read-only binding check for health reads: never creates a manifest.
 

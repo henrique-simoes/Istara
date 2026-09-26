@@ -554,6 +554,32 @@ export { memory } from "./memoryApi";
 
 // --- Settings ---
 
+export interface EmbeddingProfile {
+  profile_id: string;
+  version: number;
+  model_id: string;
+  endpoint_id: string;
+  dimension: number;
+  prompt_scheme: string;
+  health_status: string;
+}
+
+export interface EmbeddingMigration {
+  state: "idle" | "running" | "done" | "failed";
+  model_id?: string;
+  prompt_scheme?: string;
+  stores_total?: number;
+  stores_done?: number;
+  stores_skipped?: number;
+  rows_reembedded?: number;
+  error?: string;
+}
+
+export interface EmbeddingProfileStatus {
+  active: EmbeddingProfile;
+  migration: EmbeddingMigration;
+}
+
 export const settings = {
   hardware: () => request<any>("/api/settings/hardware"),
   models: () => request<any>("/api/settings/models"),
@@ -563,6 +589,12 @@ export const settings = {
       "/api/settings/agentic-engine",
       { method: "POST", body: JSON.stringify({ engine }) }
     ),
+  embeddingProfile: () => request<EmbeddingProfileStatus>("/api/settings/embedding-profile"),
+  startEmbeddingMigration: (modelId: string, promptScheme = "auto") =>
+    request<EmbeddingProfileStatus>("/api/settings/embedding-profile", {
+      method: "POST",
+      body: JSON.stringify({ model_id: modelId, prompt_scheme: promptScheme }),
+    }),
   maintenance: () => request<any>("/api/settings/maintenance"),
   integrationsStatus: () =>
     request<{ stitch_configured: boolean; figma_configured: boolean }>(
