@@ -729,3 +729,21 @@ pass; `check_change_obligations.py` -> passed; `check_feature_obligations.py` ->
 29 33/33, 85 10/10, 86 23/23, 87 16/22 (the two defects above).
 Next: phone layout (DEC-17), QA re-run, M4 v2, governed coding run.
 
+
+### L-28 | 2026-09-26T05:47:00Z | S2-execute | claude-code | executor | Phase 16
+Did: DEC-17 phone layout (7de5c3bb, 00b10cc0): the content column of Settings, Quality, Skills,
+Backup, Ensemble health and Meta-Hyperagent sized to its widest card; Chat's list is a drawer below
+md; Interviews' list and interview take turns, tags open over it, the banner sits above the columns,
+and the coding gutter stacks under the text; Documents and Notifications headers wrap. The shared
+375 px check fails on anything cut off inside `main`; scenario 88 drives every shell view at
+375 px. Scenario 85 scans both themes through the app toggle, which found Memory's grey text below
+AA in dark mode (fixed). The gate budgets were restored (6290bd50): gate after 0 new failures,
+0 new warnings (403 inherited, from 416). Live agents were paused after the backend restart (they had
+run skills on the live models alongside M4); `live-run.sh` now pauses them on every start.
+Result: QA ui lane 22 scenarios 318/320 on the first pass (run 2026-09-26T04-51-06-707Z), both
+failures fixed and re-run green (85 11/11, 88 11/11, 29 33/33, 23, 86, 75, 19 green); full backend
+suite 2,525 passed (3 failures + 1 error container-only, same on main).
+Verified: `istara-qa-run-cs76.sh sim <22 scenarios>`; `fullrun.sh istara-work open-items-2`;
+`compass-forge gate after --task CF-29 --summary`; CF-27..CF-31, CF-33, CF-35..CF-42 finished with
+command evidence.
+Next: M4 v2 directions 2 and 3, then the governed coding run with three identities.
