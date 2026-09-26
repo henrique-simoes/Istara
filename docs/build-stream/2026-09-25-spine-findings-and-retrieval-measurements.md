@@ -806,4 +806,3 @@ attribution line or model id in the branch.
 Verified: `compass-forge spec accept CF-SPEC-4` -> accepted; `compass-forge evaluation record
 --outcome pass`; `verify_lifecycle.py` on this file (run after this entry).
 Next: stage complete; the merge and the Studio teardown follow outside the plan.
-
