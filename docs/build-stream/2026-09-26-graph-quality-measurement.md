@@ -4,12 +4,12 @@
 item: graph-quality-measurement
 branch: plan/graph-quality-measurement-20260926
 cf: { spec: pending }
-phase: "—"
-stage: S0-frame
-status: blocked
-blocked_on: "owner approval of this frame (S0 gate): the four decisions under Open decisions"
-last: { agent: claude-code, at: 2026-09-26T08:10:00Z, ledger: L-1 }
-next_action: "Owner approves or amends the frame and answers the four decisions; then create CF-SPEC, clarify, plan and task it, and start Phase 1."
+phase: "Phase 1 — traceability (G1)"
+stage: S2-execute
+status: in-progress
+blocked_on: null
+last: { agent: claude-code, at: 2026-09-26T12:40:00Z, ledger: L-2 }
+next_action: "Rebuild the Studio live lane, run the product's interview skills on the Harbor interviews, then G1 trace, G3 expansion and G2 DAG recall."
 ```
 
 ## Plan overview
@@ -101,10 +101,30 @@ answers depend on live models' variance; three generators and two judges each bo
 
 ## Decision log
 
-DEC-1 | pending | S0-frame | owner
-Context: this frame.
-Decision: pending owner approval.
-Why: —
+DEC-1 | 2026-09-26 | S0-frame | owner
+Context: this frame and its four open decisions.
+Decision: the owner said to follow Claude's recommendations and finish: (1) all three
+measurements; (2) the draft G3 rule, fixed below before any number; (3) G1 runs on the graph the
+product itself builds: Harbor interviews uploaded, the product's interview skill producing nuggets,
+facts, insights and recommendations on the live lane (DeepSeek V4 Flash as the skill model), plus
+seeded-fault fixtures in pytest; no separate coding of a large slice; (4) G2 with five synthetic
+conversations of 300 messages.
+Why: owner instruction ("follow your recommendations, complete these open things").
+
+DEC-2 | 2026-09-26 | S1-plan | claude-code (pre-registered before any G2/G3 number)
+Context: G3 needs thematic questions; the Harbor corpus reuses each theme's quotes across many
+files, so "multi-hop" is defined as thematic (global) questions whose relevant set is all of a
+theme's planted quotes (qrels `harbor-ledger-qrels-thematic.json`, 30 questions, 3 per theme).
+Decision: G3 compares hybrid retrieval with hybrid plus graph expansion (hits -> nuggets they
+contain -> facts -> sibling nuggets -> the chunks that contain them, fused by reciprocal rank).
+Primary metric: theme coverage@10 on the 30 thematic questions; guard metric: nDCG@10 on each qrels
+v2 style. Expansion ships (default on) only if coverage@10 is significantly higher (paired
+sign-flip randomization, two-sided p < 0.05) and no v2 style is significantly worse (Holm across the
+four styles). Otherwise it stays in the code behind `rag_graph_expansion = False` and the result is
+reported. G2: primary metric exact-value recall of planted facts in three arms (summaries only,
+summaries + `grep_history` recall, full history as the ceiling); also count summaries that fell back
+to the mechanical summary. No ship rule: G2 measures, it does not change compaction.
+Why: fixed before the numbers, like DEC-15 and DEC-14 in the spine plan.
 
 ## Ledger
 
@@ -116,3 +136,14 @@ Result: frame ready for the owner gate.
 Verified: `grep -rn "retrieval.graph" backend/app` (declared only, no emitter);
 `ls backend/app/evals/` (no graph harness).
 Next: owner approval (S0).
+
+### L-2 | 2026-09-26T12:40:00Z | S1-plan | claude-code | planner | Phase 1
+Did: owner decisions recorded (DEC-1); G3 rule and G2 metrics pre-registered (DEC-2); G1 harness
+`app/evals/graph_eval.py trace` with seeded-fault tests; thematic qrels for G3. Read the DAG
+compaction path: a failed summary falls back to a mechanical "topics" line silently; nugget evidence
+units are segmented from the nugget's own text, so a document chunk has no edge to the nuggets drawn
+from it (G3 links them by verbatim containment).
+Result: ready for the live runs.
+Verified: `pytest tests/test_graph_eval_trace.py` 8 passed.
+Next: live lane, skills on Harbor interviews, G1/G3/G2.
+
