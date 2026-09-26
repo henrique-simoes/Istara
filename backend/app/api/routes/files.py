@@ -91,6 +91,11 @@ def _path_within_roots(path: Path, roots: list[Path]) -> bool:
     return False
 
 
+def _original_name(filename: str | None) -> str | None:
+    """The researcher's file name without any directory part, or None when there is none."""
+    return Path(filename or "").name or None
+
+
 def _display_title(filename: str | None, fallback: str) -> str:
     return (filename or fallback).rsplit(".", 1)[0].replace("-", " ").replace("_", " ").title()
 
@@ -452,7 +457,7 @@ async def upload_file(
         await FileWatcher.create_research_tasks(
             file_path,
             project_id,
-            display_name=Path(file.filename or "").name or None,
+            display_name=_original_name(file.filename),
             notify=False,
         )
     except Exception as exc:

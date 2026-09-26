@@ -814,12 +814,9 @@ async def run_independent_coding_run(
     coding_run.kappa = reliability.get("kappa")
     coding_run.alpha = reliability.get("alpha")
     coding_run.promotion_status = promotion_status
-    coding_run.fallback_reason = reliability.get("fallback_reason", "")
-    if pi_selection_error and not persisted_count:
-        # Nothing was coded, so "coding completed with 0 distinct models" would misstate it.
-        coding_run.fallback_reason = (
-            f"No coder ran: coder selection failed closed ({pi_selection_error[:300]})."
-        )
+    coding_run.fallback_reason = _run_fallback_reason(
+        reliability, pi_selection_error, persisted_count
+    )
     coding_run.route_evidence_json = json.dumps(route_evidence)
     coding_run.matrix_json = json.dumps(reliability.get("matrix", {}))
     coding_run.disagreement_json = json.dumps(reliability.get("low_agreement_codes", []))
@@ -837,6 +834,16 @@ async def run_independent_coding_run(
     payload = coding_run.to_dict()
     payload["code_application_count"] = persisted_count
     return payload
+
+
+def _run_fallback_reason(
+    reliability: dict, pi_selection_error: str | None, persisted_count: int
+) -> str:
+    """The run's reason; a coder-selection refusal is named as such when nothing was coded."""
+    if pi_selection_error and not persisted_count:
+        # "Coding completed with 0 distinct models" would misstate a run in which no coder ran.
+        return f"No coder ran: coder selection failed closed ({pi_selection_error[:300]})."
+    return reliability.get("fallback_reason", "")
 
 
 async def run_task_coding_run_and_mark_review(

@@ -216,6 +216,7 @@ async def test_the_agent_sync_tool_ingests_a_folder_file_through_the_research_sp
     # parallel path around the research spine. It now runs the Documents sync itself.
     from sqlalchemy import select
 
+    import app.api.routes.documents  # noqa: F401  (loading the routes registers the folder sync)
     from app.core.keyword_index import KeywordIndex
     from app.models.database import async_session
     from app.models.project import Project
@@ -241,3 +242,23 @@ async def test_the_agent_sync_tool_ingests_a_folder_file_through_the_research_sp
     assert units, "the synced file has no evidence units"
     vectors = await rag.VectorStore(project_id).count()
     assert vectors > 0 and vectors == await KeywordIndex(project_id).count()
+
+
+async def test_the_agent_sync_tool_registers_nothing_when_the_folder_sync_is_not_loaded(
+    indices, monkeypatch
+):
+    # The tool reaches the Documents sync through app.core.project_folder_sync (a tool importing a
+    # route module closes an import cycle through the Pi runtime). Without it, it must say so
+    # rather than fall back to registering bare rows.
+    from app.core import project_folder_sync
+    from app.skills.system_actions import _exec_sync_project_documents
+
+    monkeypatch.setattr(project_folder_sync, "_sync", None)
+    project_id = await _project("agent-sync-unloaded")
+    upload_dir = indices / "uploads" / project_id
+    upload_dir.mkdir(parents=True)
+    (upload_dir / "notes.md").write_text(TURNS, encoding="utf-8")
+
+    reply = await _exec_sync_project_documents({}, project_id, "istara-main")
+    assert reply == "Folder sync is unavailable: the Documents service is not loaded."
+    assert await _documents(project_id) == []

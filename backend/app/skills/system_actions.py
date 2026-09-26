@@ -1529,13 +1529,16 @@ async def _exec_sync_project_documents(params: dict, project_id: str, agent_id: 
     It used to register bare rows matched by file name: uploads (stored as <uuid>.<ext>) were
     registered again, and new files got no text, evidence units or index rows.
     """
-    from app.api.routes.documents import register_untracked_project_files
+    from app.core import project_folder_sync
 
+    sync = project_folder_sync.registered()
+    if sync is None:
+        return "Folder sync is unavailable: the Documents service is not loaded."
     async with async_session() as db:
         project = await db.get(Project, project_id)
         if not _resolve_project_folder(project, project_id).exists():
             return "No project folder found."
-        result = await register_untracked_project_files(db, project, project_id)
+        result = await sync(db, project, project_id)
 
     return (
         f"Synced project folder: {result['synced']} new document(s) "

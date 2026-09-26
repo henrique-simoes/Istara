@@ -12,6 +12,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core import project_folder_sync
 from app.core.file_encryption import (
     encrypt_file_in_place,
     protect_document_text,
@@ -927,6 +928,23 @@ async def sync_project_documents(
 _audio_jobs: set[asyncio.Task] = set()
 
 
+def _schedule_transcription(
+    background_tasks: BackgroundTasks | None, project_id: str, doc_id: str, file_path: Path
+) -> None:
+    from app.api.routes.files import _process_audio_background
+
+    if background_tasks is not None:
+        background_tasks.add_task(
+            _process_audio_background, project_id=project_id, doc_id=doc_id, file_path=file_path
+        )
+        return
+    job = asyncio.create_task(
+        _process_audio_background(project_id=project_id, doc_id=doc_id, file_path=file_path)
+    )
+    _audio_jobs.add(job)
+    job.add_done_callback(_audio_jobs.discard)
+
+
 async def register_untracked_project_files(
     db: AsyncSession,
     project: Project | None,
@@ -1044,23 +1062,7 @@ async def register_untracked_project_files(
         if _is_managed_upload_path(file_path):
             encrypt_file_in_place(file_path)
         if suffix in AUDIO_EXTENSIONS:
-            from app.api.routes.files import _process_audio_background
-
-            if background_tasks is not None:
-                background_tasks.add_task(
-                    _process_audio_background,
-                    project_id=project_id,
-                    doc_id=doc.id,
-                    file_path=file_path,
-                )
-            else:
-                job = asyncio.create_task(
-                    _process_audio_background(
-                        project_id=project_id, doc_id=doc.id, file_path=file_path
-                    )
-                )
-                _audio_jobs.add(job)
-                job.add_done_callback(_audio_jobs.discard)
+            _schedule_transcription(background_tasks, project_id, doc.id, file_path)
         synced += 1
 
     if synced > 0:
@@ -1076,6 +1078,9 @@ async def register_untracked_project_files(
     total = total_result.scalar() or 0
 
     return {"synced": synced, "total": total, "chunks_indexed": total_chunks_indexed}
+
+
+project_folder_sync.register(register_untracked_project_files)
 
 
 @router.get("/documents/stats/{project_id}")

@@ -83,13 +83,13 @@ class FileWatcher:
     # ── File classification for auto-task creation ──────────────────────
 
     @staticmethod
-    def _classify_file(file_path: Path, name: str | None = None) -> list[tuple[str, str, str]]:
+    def _classify_file(file_path: Path, named: Path) -> list[tuple[str, str, str]]:
         """Classify a file and return applicable (skill_name, task_title, priority) tuples.
 
-        ``name`` is the name the researcher gave the file when it is stored under another one (an
-        upload is stored as ``<uuid>.<ext>``); the name rules and task titles use it.
+        ``named`` carries the name the researcher gave the file, which differs from ``file_path``
+        when it is stored under another one (an upload is stored as ``<uuid>.<ext>``); the name
+        rules and task titles use it, the content rules read ``file_path``.
         """
-        named = Path(name) if name else file_path
         filename = named.name.lower()
         ext = file_path.suffix.lower()
         stem = named.stem
@@ -176,7 +176,8 @@ class FileWatcher:
             logger.info("Skipping auto-task creation for paused project %s", project_id)
             return 0
 
-        skill_tasks = FileWatcher._classify_file(file_path, display_name)
+        named = Path(display_name) if display_name else file_path
+        skill_tasks = FileWatcher._classify_file(file_path, named)
         if not skill_tasks:
             return 0
 
