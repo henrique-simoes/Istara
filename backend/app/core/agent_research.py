@@ -779,6 +779,11 @@ class AgentResearchMixin:
 
         # Track created IDs for auto-linking
         created_nugget_ids: list[str] = []
+        # Links by meaning, planned before any write (finding_links.plan_links); index -> stored id.
+        from app.core.finding_links import plan_links
+
+        link_plan = await plan_links(output)
+        stored: dict[str, dict[int, str]] = {"nugget": {}, "fact": {}, "insight": {}}
         created_fact_ids: list[str] = []
         created_insight_ids: list[str] = []
         created_recommendation_ids: list[str] = []
@@ -789,7 +794,11 @@ class AgentResearchMixin:
             persist_scoped_derivation_links as persist_links,
         )  # noqa: E501,I001
 
-        for nugget_data in output.nuggets:
+        def _planned(kind: str, level: str, index: int) -> list[str]:
+            ids = stored[kind]
+            return [ids[i] for i in link_plan[level][index] if i in ids]
+
+        for nugget_index, nugget_data in enumerate(output.nuggets):
             nid = str(uuid.uuid4())
             # Laws of UX finding enrichment
             try:
@@ -829,6 +838,7 @@ class AgentResearchMixin:
             )
             db.add(nugget)
             created_nugget_ids.append(nid)
+            stored["nugget"][nugget_index] = nid
 
             evidence_unit_id = None
             source_document_id = nugget_data.get("source_document_id")
@@ -904,13 +914,13 @@ class AgentResearchMixin:
                 except Exception as e:
                     logger.debug("CodeApplication creation skipped: %s", e)
 
-        for fact_data in output.facts:
+        for fact_index, fact_data in enumerate(output.facts):
             fid = str(uuid.uuid4())
             linked_nuggets = await persist_links(
                 db,
                 Nugget,
                 fact_data.get("nugget_ids"),
-                created_nugget_ids[-5:],
+                _planned("nugget", "facts", fact_index),
                 project_id,
                 task,
                 "fact",
@@ -928,14 +938,15 @@ class AgentResearchMixin:
             )
             db.add(fact)
             created_fact_ids.append(fid)
+            stored["fact"][fact_index] = fid
 
-        for insight_data in output.insights:
+        for insight_index, insight_data in enumerate(output.insights):
             iid = str(uuid.uuid4())
             linked_facts = await persist_links(
                 db,
                 Fact,
                 insight_data.get("fact_ids"),
-                created_fact_ids[-3:],
+                _planned("fact", "insights", insight_index),
                 project_id,
                 task,
                 "insight",
@@ -954,14 +965,15 @@ class AgentResearchMixin:
             )
             db.add(insight)
             created_insight_ids.append(iid)
+            stored["insight"][insight_index] = iid
 
-        for rec_data in output.recommendations:
+        for rec_index, rec_data in enumerate(output.recommendations):
             rid = str(uuid.uuid4())
             linked_insights = await persist_links(
                 db,
                 Insight,
                 rec_data.get("insight_ids"),
-                created_insight_ids[-2:],
+                _planned("insight", "recommendations", rec_index),
                 project_id,
                 task,
                 "recommendation",

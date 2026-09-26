@@ -419,6 +419,8 @@ class Settings(BaseSettings):
     rag_hybrid_vector_weight: float = 0.7
     rag_hybrid_keyword_weight: float = 0.3
     rag_rrf_k: int = 60  # Reciprocal Rank Fusion constant (Cormack et al. 2009)
+    # Graph-assisted retrieval (G3, DEC-2): widen hybrid hits through facts to sibling evidence.
+    rag_graph_expansion: bool = False
     # Retrieval benchmark (qrels + corpus) that autoresearch RAG tuning optimises against. Empty:
     # the repository copy under tests/ when present. Without it, RAG tuning fails closed.
     retrieval_benchmark_qrels: str = ""
@@ -430,6 +432,8 @@ class Settings(BaseSettings):
     dag_batch_size: int = 32
     dag_rollup_threshold: int = 4
     dag_summary_max_tokens: int = 300
+    # Pi endpoint for DAG summaries ("" = the default endpoint); a light model keeps them fast.
+    dag_summary_endpoint_id: str = ""
 
     # Design integrations
     stitch_api_key: str = ""

@@ -6,6 +6,17 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-26 — Graph quality measured (branch plan/graph-quality-measurement-20260926)
+
+Lifecycle `docs/build-stream/2026-09-26-graph-quality-measurement.md`. Live lane (Studio), Harbor corpus, product skills; before = main, after = this branch.
+
+| Area | Result |
+| --- | --- |
+| G1 evidence graph | structure 1.00 on every check; judged link support fact->nugget 0.12 -> 0.65, insight->fact 0.31 -> 0.81 |
+| G2 context DAG | summary fallbacks 50/50 -> 0/50; facts recalled from summaries 0.00 -> 0.48; recall tool 1.00; full history 0.62 |
+| G3 graph retrieval | expansion lowers theme coverage (0.76 -> 0.66, p 0.009); does not ship (DEC-2) |
+| Tests | graph, DAG, link and expansion suites green; 170 related tests pass |
+
 ## 2026-09-26 — Open items closed: third live identity, faithfulness, multilingual embedder (branch fix/spine-open-items-20260926)
 
 Scope: DeepSeek V4 Flash as the third live identity; M4 v2 judge validation (DEC-14) and faithfulness with three models; role-aware embedding prompts, an admin embedding-model switch with a full re-index, and BGE-M3 as the default by the pre-registered rule (DEC-15/16); a local model that is still loading is waited for; interrupted coding runs settle; every view fits a phone (DEC-17). Lifecycle `docs/build-stream/2026-09-25-spine-findings-and-retrieval-measurements.md` (Phases 13-17); evidence `docs/build-stream/2026-09-25-spine-findings-evidence.md`.

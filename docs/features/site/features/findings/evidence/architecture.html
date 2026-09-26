@@ -274,6 +274,16 @@
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
+<li>Evidence links by meaning (2026-09-26, G1): facts link to the nuggets, insights to the facts and</li>
+</ul>
+<p>recommendations to the insights closest in meaning from the same skill run (<code>app/core/finding_links.py</code>,</p>
+<p>BGE-M3 with a lexical fallback, planned before the storage transaction); nothing close enough means</p>
+<p>no link. Storage used to link the most recent rows: 12% of fact -&gt; nugget links were supported by</p>
+<p>the nugget; now 65%, and insight -&gt; fact 31% -&gt; 81% (judged). Harness:</p>
+<p><code>python -m app.evals.graph_eval trace --judge &lt;endpoint&gt;</code>. Graph-assisted retrieval</p>
+<p>(<code>app/core/graph_expansion.py</code>) exists behind <code>rag_graph_expansion = False</code>: it lowered thematic</p>
+<p>coverage (0.76 -&gt; 0.66) and did not pass its pre-registered rule.</p>
+<ul>
 <li>The feature is mounted through <code>frontend/src/components/findings/FindingsView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>The backend retains an explicit admin-only global findings search route for admin/reporting aggregation; project-facing evidence views do not use unscoped list routes.</li>
 <li>Hybrid RAG provides exact evidence retrieval. Evidence Graph / GraphRAG can support synthesis and traceability questions, but graph output cannot bypass qualitative coding, reliability gates, human review, approved Done task state, or report gating.</li>

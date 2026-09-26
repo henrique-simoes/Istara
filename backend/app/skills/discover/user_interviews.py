@@ -523,8 +523,14 @@ class UserInterviewsSkill(BaseSkill):
 
         if synthesis:
             facts = [{"text": f["text"]} for f in synthesis.get("facts", [])]
+            # The support each insight and recommendation names travels with it, so storage links
+            # it to the findings it cites (finding_links), not to whichever came last.
             insights = [
-                {"text": i["text"], "confidence": i.get("confidence", "medium")}
+                {
+                    "text": i["text"],
+                    "confidence": i.get("confidence", "medium"),
+                    "supporting_facts": i.get("supporting_facts", []),
+                }
                 for i in synthesis.get("insights", [])
             ]
             recommendations = [
@@ -532,6 +538,7 @@ class UserInterviewsSkill(BaseSkill):
                     "text": r["text"],
                     "priority": r.get("priority", "medium"),
                     "effort": r.get("effort", "medium"),
+                    "supporting_insights": r.get("supporting_insights", []),
                 }
                 for r in synthesis.get("recommendations", [])
             ]
