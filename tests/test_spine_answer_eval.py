@@ -120,3 +120,28 @@ def test_the_cli_stops_the_pi_worker_while_its_event_loop_still_runs(monkeypatch
     assert answer_eval.main(argv) == 0
     assert loop_closed_at_shutdown == [False]
     assert json.loads(out.read_text(encoding="utf-8")) == {"questions": 0}
+
+
+def test_the_w3_harness_stops_the_pi_worker_while_its_event_loop_still_runs(monkeypatch, tmp_path):
+    # Same defect in the live coding-run harness (qa/scripts/w3_live_ensemble.py), seen on the
+    # live lane on 2026-09-26.
+    import asyncio
+    import sys
+
+    from qa.scripts import w3_live_ensemble
+
+    from app.core import pi_runtime
+
+    loop_closed_at_shutdown: list[bool] = []
+
+    async def _amain(args):
+        return {"stages": {}}
+
+    async def _shutdown():
+        loop_closed_at_shutdown.append(asyncio.get_running_loop().is_closed())
+
+    monkeypatch.setattr(w3_live_ensemble, "amain", _amain)
+    monkeypatch.setattr(pi_runtime, "shutdown_supervisor", _shutdown)
+    monkeypatch.setattr(sys, "argv", ["w3", "--stages", "E", "--out", str(tmp_path / "w3.json")])
+    w3_live_ensemble.main()
+    assert loop_closed_at_shutdown == [False]
