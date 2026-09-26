@@ -1172,3 +1172,69 @@ serve_it`; migration suite 10/10).
 
 **Why that proves it.** A server that already serves the model is never asked to pull it, a server
 that cannot pull keeps the embed's own reason, and no reason Istara shows carries a URL.
+
+## Measurement 4, protocol v2: faithfulness with three models, each judged by the other two (DEC-14)
+
+**What it is for.** Faithfulness (the share of an answer's claims its retrieved context supports) was
+withheld in round one: no judge met the relevance bar on the 0/1/2 qrels grades, which no reported
+score uses. DEC-14 fixed the protocol before this run: a judge is trusted when it agrees with
+construction labels on at least 50 planted claims (κ ≥ 0.60) and on binary "contains the answer"
+relevance over a balanced construction set; the v1 rule is reported beside it.
+
+**Flow driven.** `python -m app.evals.answer_eval --generator G --judges J1,J2 --questions 24
+--max-usd 1.0 --qrels qrels-live.json` inside `istara-cs76-live` on the Harbor project (BGE-M3 after
+the live migration), for G in DeepSeek V4 Flash, Muse Spark 1.3 Contributor and the owner's local
+Qwen3.8-27B, each judged by the other two. Answers go through the product's chat path; judges never
+grade their own model. Agents paused (they had run skills alongside the first direction's start).
+
+**Output inspected.**
+```
+generator          judges               claims κ (n=69)   relevance κ (n=60)   v1 trusted   faithfulness                        judge κ   spend
+deepseek-flash     muse / qwen          1.00 / 1.00       0.846 / 0.854        yes / yes    0.689 [0.64-0.74] / 0.760 [0.71-0.81]  0.72   $0.059
+muse-spark         deepseek / qwen      1.00 / 1.00       0.810 / 0.854        yes / yes    0.634 [0.57-0.70] / 0.621 [0.56-0.68]  0.94   $0.127
+qwen3.8-27b        muse / deepseek      1.00 / 1.00       0.850 / 0.850        yes / yes    0.756 [0.64-0.86] / 0.717 [0.61-0.82]  0.79   $0.088
+context precision (all directions, from the qrels): 0.729 [0.54-0.90]
+served models: deepseek-flash · muse-spark-1.3-contributor · qwen3.8-27b-ud-q4k-xl
+```
+
+**Why that proves it.** Every judge cleared the pre-registered bar before any score counted, and two
+independent judges per generator agree substantially (κ 0.72-0.94), so faithfulness is now a
+measured number instead of a withheld one: roughly two thirds to three quarters of each model's
+claims are supported by the context Istara gave it. The confidence intervals overlap across
+generators, so this run does not rank the models. The construction labels are synthetic by design;
+a human-labelled set would add external validity and remains a useful next step, not a gate.
+
+## Governed coding run with three model identities (DEC-13)
+
+**What it is for.** The spine promotes coded evidence only from at least three distinct model
+identities, with reliability measured and disagreements reconciled before any report. Round one
+had two identities, so every run was blocked (as required). DeepSeek V4 Flash is the third.
+
+**Flow driven.** `qa/scripts/w3_live_ensemble.py --project <harbor> --units 6 --stages A,B,C,D,E`
+inside `istara-cs76-live` (agents paused), research endpoints `pi-muse-spark`, `pi-deepseek-flash`,
+`pi-local-qwen`: A admits each endpoint with one pinned call; B runs the governed coding run on six
+evidence units; C binds a run to a task and drives the report gate both ways; D runs adversarial
+review, debate and the full ensemble on the coded evidence; E runs six fail-closed probes. Run 1 used
+the image's harness; run 2 the harness fixed in 48712df6.
+
+**Output inspected.**
+```
+A  muse-spark-1.3-contributor · deepseek-flash · qwen3.8-27b-ud-q4k-xl — each served its own identity
+B  run 1: completed, raters 3, distinct models 3, 37 applications, Fleiss κ -0.059, Krippendorff α 0.507,
+          threshold 0.60 -> promotion_status needs_reconciliation
+   run 2: completed, raters 3, distinct models 3, 31 applications, κ -0.059, α 0.508 -> needs_reconciliation
+C  run 1: report refused ("Task has 9 unreconciled code application(s)"), 9 decisions, then allowed
+   run 2: report refused (7 unreconciled), 7 decisions, then allowed ("no pending research-validity blocker")
+D  adversarial insufficient (κ -1.0) · debate insufficient · full ensemble insufficient (run 1) / high (run 2)
+E  run 2: P1 missing coder, P1b resolve-99, P2 paraphrased quote, P3 missing served identity,
+   P4 duplicate rating, P5 unreconciled report — all pass
+   run 1: P1-P4 pass; P5 unjudged (harness defect: E computed after C in one call; fixed, run 2 above)
+```
+The previous run the product had left "running" (cut off while the local coder was loading) settled
+on the next start: `blocked`, "Interrupted: the backend stopped before this coding run finished …".
+
+**Why that proves it.** With three identities the governed path runs end to end: every coder is a
+distinct served model, reliability is computed on the evidence-unit matrix, and low agreement (α
+0.51 < 0.60) routes to reconciliation instead of promotion; the report gate refuses until every
+disputed application has a decision and allows after. The models disagree substantially on this
+slice (κ near zero), which is exactly what the gate exists to catch.

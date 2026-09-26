@@ -6,6 +6,23 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-26 — Open items closed: third live identity, faithfulness, multilingual embedder (branch fix/spine-open-items-20260926)
+
+Scope: DeepSeek V4 Flash as the third live identity; M4 v2 judge validation (DEC-14) and faithfulness with three models; role-aware embedding prompts, an admin embedding-model switch with a full re-index, and BGE-M3 as the default by the pre-registered rule (DEC-15/16); a local model that is still loading is waited for; interrupted coding runs settle; every view fits a phone (DEC-17). Lifecycle `docs/build-stream/2026-09-25-spine-findings-and-retrieval-measurements.md` (Phases 13-17); evidence `docs/build-stream/2026-09-25-spine-findings-evidence.md`.
+
+| Area | Result |
+| --- | --- |
+| Backend | Full suite in `istara-test:1` (`--network none`, `-m "not live_llm"`): 2,525 passed, 3 failed, 14 skipped, 1 error; the 3 failures and the collection error are container-only and fail identically on `main` (git checkout for the audit, `hypothesis` missing, invite/update tests) |
+| Pi worker | `node --test` 115/115 (6 new load-wait tests, 2 thinking structured-output tests) |
+| Embedder (DEC-15) | qrels v2, 118 questions: hybrid nDCG@10 BGE-M3 0.788, Qwen3-Embedding-0.6B 0.781, EmbeddingGemma 0.741, prompted nomic 0.632, shipped nomic 0.523 (Spanish 0.723 vs 0.224); all four candidates qualify, BGE-M3 wins the tied top two |
+| Live migration | Harbor project nomic → BGE-M3 through `POST /api/settings/embedding-profile`: 1,099 rows in 211 s, profile v2, provenance 1.0; product search then found the answer span in the top 10 for 114/118 (Spanish 44/46) |
+| M4 v2 (live) | every judge trusted (claims κ 1.00 on 69, relevance κ 0.81–0.85 on 60); faithfulness DeepSeek 0.69/0.76, Muse 0.63/0.62, local Qwen 0.76/0.72; judge agreement κ 0.72–0.94; context precision 0.73; spend $0.27 |
+| Governed coding (live) | three served identities; α 0.51 → needs_reconciliation; report gate refused (9 and 7 unreconciled) then allowed; fail-closed probes 6/6 |
+| Browser lane (QA `ui`, cs76-sept25) | 22 scenarios, 318/320 on the first pass (run `2026-09-26T04-51-06-707Z`); both failures fixed and re-run green: 85 11/11 (axe in both themes), 88 11/11 (every view at 375 px), plus 29 33/33, 23 13/13, 86 24/24, 75 6/6, 19 6/6; 87 24/24 after the probe fix |
+| Governance | security benchmark pass (AI-001/AUTHZ-002 revalidated); change and feature obligations pass; public-repo audit pass; feature docs 86; simulation static 127 files + lib 41/41; CF `gate after` 0 new failures, 0 new warnings (403 inherited, from 416) |
+
+Residuals: construction labels are synthetic (a human-labelled set would add external validity); the multilingual candidates trail nomic on 12 fact questions (not significant); Spanish is the only non-English language in the qrels.
+
 ## 2026-09-26 — Research-spine findings and retrieval measurements (branch fix/spine-findings-measurements-20260925)
 
 Scope: F3, F5, F7–F17 fixed on top of PR #42, six measurement harnesses (`backend/app/evals/`), and the defects found driving the product on the live lane (the owner's two models: Meta Muse Spark 1.3 Contributor and a local Qwen3.8-27B). Every behaviour change has a pytest that fails on `origin/main` (run from a `git archive` of `9272d41e` in `istara-test:1`, `--network none`). Lifecycle `docs/build-stream/2026-09-25-spine-findings-and-retrieval-measurements.md`; evidence `docs/build-stream/2026-09-25-spine-findings-evidence.md`.

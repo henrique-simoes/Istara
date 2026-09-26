@@ -5,11 +5,11 @@ item: spine-findings-and-retrieval-measurements
 branch: fix/spine-open-items-20260926
 cf: { spec: CF-SPEC-4, tasks: [CF-27, CF-28, CF-29, CF-30, CF-31, CF-32, CF-33, CF-34, CF-35, CF-36, CF-37, CF-38, CF-39, CF-40, CF-41, CF-42, CF-43, CF-44] }
 phase: "Phases 13-17 — open items (CF-SPEC-4)"
-stage: S2-execute
+stage: S5-ship
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-26T02:38:48Z, ledger: L-23 }
-next_action: "Extend the qrels with Spanish questions, implement role-aware embedding prompts with the prompt scheme in the vector-space identity, then run the DEC-15 embedder comparison on the Studio."
+last: { agent: claude-code, at: 2026-09-26T07:05:00Z, ledger: L-29 }
+next_action: "Accept CF-SPEC-4, open the PR into main, wait for required CI, squash-merge (owner-authorized), then tear down the Studio lane keeping the secure key dir."
 ```
 
 Evidence (four-part records per finding): `2026-09-25-spine-findings-evidence.md` beside this file.
@@ -318,6 +318,39 @@ terminal (both only in 0600 files on the Studio, never printed).
 Acceptance: as in the phase table rows 13-17. Verification: pytest failing on origin/main first per
 behaviour change; extended M1 on the Studio; live-lane runs; security benchmark; obligations; CF
 gate after with no new failures or warnings; CI green on the PR.
+
+### Phases 13-17 summary
+
+**Outcome vs the goal (DEC-13).** Every open item is closed. DeepSeek V4 Flash is the third live
+identity, and the governed coding run with three identities runs end to end (A-E, twice): three served
+models, α 0.51 routes to reconciliation, the report gate refuses then allows, all six fail-closed
+probes pass. Faithfulness is measured (M4 v2, DEC-14): every judge trusted, three generators each
+judged by the other two, 0.62-0.76. The default embedder is BGE-M3 by the pre-registered rule (DEC-15,
+DEC-16), with role-aware prompts in the vector-space identity, an admin switch that re-indexes every
+store, and a live migration of the Harbor project (114 of 118 answers in the top 10 afterwards). The
+seven complexity warnings are cleared and this round added none (gate after: 0 new, 403 inherited).
+CF-SPEC-3 is accepted and CF-SPEC-1 withdrawn as superseded. Found on the way and fixed, each with a
+test: a local model still loading failed at once; no install could switch its embedder (and the new
+default would have broken existing ones); a coding run cut off by a restart never settled; a
+provider without a pull route could not switch, and the refusal showed the server's address; every
+content view clipped or crowded at 375 px (DEC-17, owner-adopted); Memory's grey text failed AA in
+dark mode; the W3 harness left one probe unjudged.
+
+**Residual risk.** The construction labels behind judge validation are synthetic; a human-labelled
+set would add external validity. Every multilingual candidate scored below nomic on the 12 fact
+questions (not significant). Spanish is the only non-English language in the qrels. The governed
+coding run's agreement on the Harbor slice is low (κ near zero), which is what reconciliation is for,
+but it says the models code this corpus differently. Independent reviews were waived by the owner
+(DEC-13); review coverage is self-only.
+
+**Retro (blameless).** What worked: pre-registering the embedder rule and the M4 protocol before any
+run, which made both decisions mechanical; driving the migration on the live lane, which found the
+two defects every stubbed test had missed; probing every view at 375 px instead of trusting the
+scroll-width check. What to do differently: run a real-gateway test for any code path that switches
+identities (stubs hid the probe and plane defects); pause live agents on every backend restart
+(`live-run.sh` now does); let a formatter touch only files already under it (ruff reflowed a whole QA
+script once, reverted).
+
 
 ## Ledger
 
@@ -747,3 +780,20 @@ Verified: `istara-qa-run-cs76.sh sim <22 scenarios>`; `fullrun.sh istara-work op
 `compass-forge gate after --task CF-29 --summary`; CF-27..CF-31, CF-33, CF-35..CF-42 finished with
 command evidence.
 Next: M4 v2 directions 2 and 3, then the governed coding run with three identities.
+
+### L-29 | 2026-09-26T07:05:00Z | S2-execute | claude-code | executor | Phase 15
+Did: M4 v2 (DEC-14) in three directions on the live lane (BGE-M3 after the migration): DeepSeek,
+Muse and local Qwen each generating while the other two judge; the live backend rebuilt at e66f663e
+(the stuck coding run settled as blocked on start; agents paused by `live-run.sh`); the governed
+coding run with three identities, stages A-E, twice; the W3 harness's P5 ordering defect fixed
+(48712df6) and run 2 driven with the fix; the map and its Documents copy updated.
+Result: M4 v2: every judge trusted (claims κ 1.00 on 69; relevance κ 0.81-0.85 on 60); faithfulness
+DeepSeek 0.69/0.76, Muse 0.63/0.62, Qwen 0.76/0.72; judge agreement κ 0.72/0.94/0.79; context
+precision 0.73; spend $0.27. Coding: 3 distinct served models, α 0.507/0.508, needs_reconciliation;
+report gate refused (9 and 7 unreconciled) then allowed; probes 6/6 (run 2). One agent skill call
+landed before the post-restart pause took effect.
+Verified: `answer_eval` x3 (reports /app/data/m4v2/); `w3_live_ensemble.py --stages A,B,C,D,E` x2
+(`{"stages_ok": {"A": true, "B": true, "C": true, "D": true, "E": true}}`); `pytest
+../tests/test_spine_answer_eval.py` 10 passed.
+Next: S5: CF-32, CF-34, CF-43, CF-44 and spec accept; PR, CI, merge; teardown.
+
