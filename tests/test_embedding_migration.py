@@ -300,7 +300,73 @@ async def test_the_real_gateway_path_moves_an_install_whose_setting_names_the_ol
     status = await embedding_migration.run_migration(model_id="new-embed", prompt_scheme="raw")
 
     assert status["state"] == "done", status
-    assert provisioned[0] == "new-embed"
+    assert provisioned == []  # served already: nothing to pull
     assert set(served) == {"new-embed"}
     assert embedding_profile.get_active_embedding_profile().model_id == "new-embed"
     assert len(_rows("proj-a")[0]["vector"]) == 12
+
+
+async def test_the_probe_pulls_a_model_only_when_the_server_does_not_serve_it(install, monkeypatch):
+    """Embed first; pull only on a miss (a server may serve a model it does not list, and a
+    provider without a pull route, like the QA stub, must still be able to switch)."""
+    from app.core.pi_runtime import model_manager_provisioning
+    from app.core.pi_runtime.embeddings_gateway import EmbeddingsGateway
+    from app.services import embedding_migration
+
+    pulled: list[str] = []
+    calls: list[str] = []
+
+    async def _native(self, endpoint, model, texts):
+        calls.append(model)
+        if model == "late-embed" and "late-embed" not in pulled:
+            raise RuntimeError("model 'late-embed' not found, try pulling it first")
+        return await install["models"]["new-embed"](texts), {}
+
+    async def _ensure(endpoint, model):
+        pulled.append(model)
+        return True
+
+    monkeypatch.setattr(EmbeddingsGateway, "_call_native_ollama", _native)
+    monkeypatch.setattr(model_manager_provisioning, "ensure_endpoint_model", _ensure)
+
+    await embedding_migration._probe_embed(["probe"], "new-embed")
+    assert pulled == [] and calls == ["new-embed"]
+
+    await embedding_migration._probe_embed(["probe"], "late-embed")
+    assert pulled == ["late-embed"] and calls[1:] == ["late-embed", "late-embed"]
+
+
+async def test_a_refusal_names_the_status_never_the_server_address(install, monkeypatch):
+    import httpx
+
+    from app.services import embedding_migration
+
+    async def _refuse(texts, model):
+        request = httpx.Request("POST", "http://192.168.7.21:11434/api/embed")
+        response = httpx.Response(404, request=request)
+        raise httpx.HTTPStatusError("Client error '404 Not Found' for url "
+                                    "'http://192.168.7.21:11434/api/embed'", request=request,
+                                    response=response)
+
+    monkeypatch.setattr(embedding_migration, "_probe_embed", _refuse)
+    with pytest.raises(embedding_migration.EmbeddingMigrationError) as refused:
+        await embedding_migration.prepare_migration("missing-embed", "auto")
+    message = str(refused.value)
+    assert message.startswith("embedding_model_unavailable")
+    assert "404" in message
+    assert "192.168" not in message and "http" not in message and "11434" not in message
+
+
+async def test_a_failed_migration_reports_its_reason_without_addresses(install, monkeypatch):
+    from app.services import embedding_migration
+
+    monkeypatch.setattr(embedding_migration, "_probe_embed", install["probe"])
+
+    async def _fail(store):
+        raise RuntimeError("connect failed to http://gpu-box.lan:8080/v1/embeddings")
+
+    monkeypatch.setattr(embedding_migration, "_reembed_store", _fail)
+    status = await embedding_migration.run_migration(model_id="new-embed", prompt_scheme="raw")
+    assert status["state"] == "failed"
+    assert "gpu-box" not in status["error"] and "http" not in status["error"]
+    assert "connect failed" in status["error"]

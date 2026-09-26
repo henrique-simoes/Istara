@@ -17,6 +17,7 @@ tables whose rows are not yet in the new profile version.
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -58,10 +59,34 @@ async def _probe_embed(texts: list[str], model: str) -> list[list[float]]:
         manager = gateway.manager()
         await manager.ensure_db_projection()
         endpoint = manager.resolve_embed(model, endpoint_id=candidate.endpoint_id)
-        await ensure_endpoint_model(endpoint, model)
-        return (await gateway.embed(texts))["embeddings"]
+        try:
+            return (await gateway.embed(texts))["embeddings"]
+        except Exception as miss:
+            # Not served yet: a local serving plane pulls it, then the probe tries once more. A
+            # server that cannot pull keeps the embed's own reason.
+            try:
+                pulled = await ensure_endpoint_model(endpoint, model)
+            except Exception:
+                pulled = False
+            if not pulled:
+                raise miss
+            return (await gateway.embed(texts))["embeddings"]
     finally:
         await gateway.aclose()
+
+
+_URL = re.compile(r"(?:https?|wss?)://\S+")
+
+
+def _reason(exc: BaseException) -> str:
+    """A failure's reason for Settings: the provider's status, never a server address."""
+    import httpx
+
+    if isinstance(exc, httpx.HTTPStatusError):
+        response = exc.response
+        return f"the embedding server answered {response.status_code} {response.reason_phrase}".strip()
+    text = str(exc).splitlines()[0] if str(exc) else type(exc).__name__
+    return _URL.sub("<embedding server>", text).strip()[:300]
 
 
 def _stores() -> list:
@@ -150,7 +175,7 @@ async def prepare_migration(model_id: str, prompt_scheme: str = "auto") -> tuple
         vectors = await _probe_embed([PROBE_TEXT], model_id)
         dimension = len(vectors[0]) if vectors and vectors[0] else 0
     except Exception as exc:
-        raise EmbeddingMigrationError(f"embedding_model_unavailable: {exc}") from exc
+        raise EmbeddingMigrationError(f"embedding_model_unavailable: {_reason(exc)}") from exc
     if dimension <= 0:
         raise EmbeddingMigrationError("embedding_model_unavailable: empty vector")
     return model_id, scheme, dimension
@@ -210,6 +235,6 @@ async def _move(model_id: str, scheme: str, dimension: int) -> dict[str, Any]:
             _status["stores_done"] += 1
         _status["state"] = "done"
     except Exception as exc:
-        _status.update({"state": "failed", "error": f"{type(exc).__name__}: {exc}"[:300]})
+        _status.update({"state": "failed", "error": f"{type(exc).__name__}: {_reason(exc)}"[:300]})
     _status["finished_at"] = time.time()
     return dict(_status)
