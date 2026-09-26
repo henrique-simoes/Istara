@@ -15,7 +15,7 @@
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
 [![GitHub](https://img.shields.io/badge/GitHub-henrique--simoes%2FIstara-181717?logo=github)](https://github.com/henrique-simoes/Istara)
 
-[**Install in 1 Minute**](#install) · [**Documentation Website**](https://henrique-simoes.github.io/Istara/) · [**Architecture**](#architecture) · [**Testing**](TESTING.md) · [**Security**](SECURITY.md) · [**Docs Map**](DOCUMENTATION.md) · [**References**](#academic-references-and-standards) · [**Contributing**](CONTRIBUTING.md)
+[**Install in 1 Minute**](#install) · [**Documentation Website**](https://henrique-simoes.github.io/Istara/) · [**Architecture**](#architecture) · [**Testing**](TESTING.md) · [**Security**](SECURITY.md) · [**References**](#academic-references-and-standards) · [**Contributing**](CONTRIBUTING.md)
 
 ---
 
@@ -190,7 +190,7 @@ curated release baselines instead of scattered temporary logs.
   and the fixed test model id `google/gemma-4-e4b`. Private endpoints and tokens
   are never committed, and tests must not probe or autoload multiple heavy
   models.
-- **Documentation organization:** see [DOCUMENTATION.md](DOCUMENTATION.md) for
+- **Documentation organization:** see [AGENTS.md](AGENTS.md) for
   the canonical map of current docs, generated docs, compatibility notes,
   testing history, security evidence, and ignored runtime markdown.
 
@@ -815,7 +815,7 @@ Echo is the quality assurance agent. She runs the 76-scenario simulation test su
 ## Screenshots
 
 Screenshots are intentionally omitted until the public deployment assets are stable.
-*Additional architecture and process references are listed in [DOCUMENTATION.md](DOCUMENTATION.md).*
+*Additional architecture and process references are listed in [AGENTS.md](AGENTS.md).*
 
 ---
 
@@ -882,7 +882,7 @@ python scripts/run_backend_mutation.py
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style guide, and the change checklist.
-See [TESTING.md](TESTING.md), [SECURITY.md](SECURITY.md), and [DOCUMENTATION.md](DOCUMENTATION.md) before release-sensitive changes.
+See [TESTING.md](TESTING.md), [SECURITY.md](SECURITY.md), and [AGENTS.md](AGENTS.md) before release-sensitive changes.
 
 ---
 ![](https://istara.goatcounter.com/count?p=/count-features-bottom)

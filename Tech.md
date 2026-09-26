@@ -1615,7 +1615,7 @@ files remain portable.
 
 **Files**: `.github/workflows/pages.yml`, `scripts/feature_docs.py`,
 `scripts/feature_docs_assets.py`, `docs/features/site/`, `tests/test_feature_docs.py`,
-`DOCUMENTATION.md`
+`AGENTS.md`
 
 ## Installation Methods
 
@@ -1861,7 +1861,7 @@ Agents now poll their A2A inbox every work cycle via `_process_a2a_inbox()`. Col
 - **L4 auto-generation**: When L3 synthesis reaches 10+ findings, L4 final report auto-created with template-driven document composition.
 - **Template-driven L4 composition** (Elicit-style Extract→Structure→Synthesize→Compose→Cite pipeline): 8-section report template — Executive Summary, Methodology, Key Findings (evidence table), Supporting Evidence (citation table), Recommendations (priority table), MECE Analysis, Confidence & Validation (ensemble metrics), Limitations & Gaps (LLM-generated). Creates a Document record (`final_research_report.md`) visible in Documents view.
 - **Circuit breaker on compute nodes**: Three-state (CLOSED/OPEN/HALF_OPEN). 5 consecutive failures → OPEN (60s cooldown). `_select_candidates()` filters out unavailable nodes. `cb_record_success/failure` called in chat routing. Agent pauses when `has_available_node()` returns false. Frontend StatusBar shows red/yellow/green banners via WebSocket events.
-- **Architecture evolution tracking**: durable process and architecture references now live in `DOCUMENTATION.md`, `Tech.md`, Compass Forge specs/tasks/evidence, and curated release history such as `testing/TEST_HISTORY.md`.
+- **Architecture evolution tracking**: durable process and architecture references now live in `AGENTS.md`, `Tech.md`, Compass Forge specs/tasks/evidence, and curated release history such as `testing/TEST_HISTORY.md`.
 
 **Complete data flow:**
 ```
@@ -2735,7 +2735,7 @@ Compass Forge is the active local-first control plane for repository onboarding,
 
 ### Planner.md — Legacy Compass Workflow Control
 
-`planner.md` is tracked as part of Compass. Agents use it for planned, multi-agent, branch-review, stale-branch, and correction workflows. It requires role declaration, repository intelligence checks, protected Compass file preservation, correction/re-review loops when real defects are found, and a final user teaching report when the completed work changes a feature, command, output, or process.
+`planner.md` was retired (2026-09-13); planning runs through Compass Forge specs and the build-stream lifecycle (single agent; see `CLAUDE.md`). Agents use it for planned, multi-agent, branch-review, stale-branch, and correction workflows. It requires role declaration, repository intelligence checks, protected Compass file preservation, correction/re-review loops when real defects are found, and a final user teaching report when the completed work changes a feature, command, output, or process.
 
 ### Public Source / Runtime Data Boundary
 
@@ -2749,11 +2749,11 @@ Canonical source skills remain in `backend/app/skills/definitions/`. User-create
 
 ### Legacy Compass Markdown
 
-Retired generated agent wrappers and retired local diagnostic registers are not part of active release governance now that Compass Forge owns repository mapping and process evidence. Current repository instructions live in `AGENTS.md`, `CHANGE_CHECKLIST.md`, `SYSTEM_CHANGE_MATRIX.md`, `DOCUMENTATION.md`, `Tech.md`, and the living feature documentation system.
+Retired generated agent wrappers and retired local diagnostic registers are not part of active release governance now that Compass Forge owns repository mapping and process evidence. Current repository instructions live in `AGENTS.md`, `CHANGE_CHECKLIST.md`, `SYSTEM_CHANGE_MATRIX.md`, `AGENTS.md`, `Tech.md`, and the living feature documentation system.
 
 ### Feature Documentation
 
-Feature and process documentation is indexed in `DOCUMENTATION.md`. Add new durable guides only when they have a clear owner and are linked from that map; do not recreate ignored `docs/` scratch folders for active release knowledge.
+Feature and process documentation is indexed in `AGENTS.md`. Add new durable guides only when they have a clear owner and are linked from that map; do not recreate ignored `docs/` scratch folders for active release knowledge.
 
 ---
 

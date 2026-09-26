@@ -1235,7 +1235,7 @@
         "security/RELEASE_SECURITY_READINESS.md",
         "scripts/security_release_readiness.py",
         "Tech.md",
-        "CHANGE_CHECKLIST.md"
+        "AGENTS.md"
       ],
       "future_change_trigger": false,
       "notes": "Disclosure handling, incident response, secret rotation, and log-sensitivity expectations are tracked. Tabletop exercises and external audit calendar remain recommended enterprise-maturity activities."

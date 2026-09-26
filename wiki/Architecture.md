@@ -1,7 +1,7 @@
 # Istara Architecture
 
 > Status: Public/reference architecture page.
-> Authority: Useful for external or wiki readers, but not the canonical internal development-control document. For live repo work, start with `AGENTS.md`, Compass Forge, and `DOCUMENTATION.md`.
+> Authority: Useful for external or wiki readers, but not the canonical internal development-control document. For live repo work, start with `AGENTS.md`, Compass Forge, and `AGENTS.md`.
 
 This page describes Istara's system architecture, data flow, and key design decisions.
 
