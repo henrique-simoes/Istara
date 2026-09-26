@@ -316,3 +316,16 @@ Runtime: Rust-only (`compass-forge mcp`).
 6. Never invoke a legacy runtime or silently mutate global configuration.
 
 <!-- compass-forge:end -->
+
+## Execution mode (owner rule, 2026-09-18)
+
+This overrides anything else in this file about subagents or review loops.
+
+- No subagents: the session that takes the work does it, and delegates to no other agent.
+- No re-review loops: at most one independent review, and only when the owner starts it.
+- Self-verify with evidence: regression red before and green after, exact commands with quoted
+  output, the last check run after the last edit.
+- Flag Full-risk work (security, data, trust boundaries, cross-machine state) to the owner as
+  self-verified only.
+- A pipeline that launches agents runs only when the owner starts it.
+- Model ids go only in a plan's ledger and decision log.
