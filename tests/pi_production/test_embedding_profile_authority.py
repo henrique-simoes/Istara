@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import delete, func, select
 
 from app.config import settings
+from app.core.embeddings import EmbeddedChunk, TextChunk
 from app.core.pi_runtime.embedding_profile import (
     ActiveEmbeddingProfile,
     EmbeddingProfileError,
@@ -23,7 +24,6 @@ from app.core.pi_runtime.embeddings_gateway import (
 )
 from app.core.pi_runtime.endpoints import PiEndpointResolutionError, ResolvedPiEndpoint
 from app.core.pi_runtime.model_manager import PiModelManager
-from app.core.embeddings import EmbeddedChunk, TextChunk
 from app.core.rag import VectorProfileMismatchError, VectorStore
 from app.models.database import async_session, init_db
 from app.models.embedding_profile import EmbeddingProfile
@@ -134,6 +134,36 @@ def test_embedding_resolution_pins_endpoint_identity_not_only_model_name():
     assert resolved.endpoint_id == "embed-shadow"
 
 
+@pytest.mark.parametrize(
+    ("endpoint_id", "setting"),
+    [("pi-local-ollama", "ollama_embed_model"), ("pi-local-lmstudio", "lmstudio_embed_model")],
+)
+def test_a_local_serving_plane_embeds_the_profile_model_whatever_the_setting(
+    monkeypatch, endpoint_id, setting
+):
+    # The profile owns the model. Ollama and LM Studio serve any model they hold (the model is a
+    # request field and provisioning pulls it), so an upgrade that changes OLLAMA_EMBED_MODEL's
+    # default, or a migration to another model, must not make a pinned local embed fail closed.
+    from app.core.pi_runtime.endpoints import PiEndpointResolver
+
+    monkeypatch.setattr(settings, setting, "the-new-default")
+    manager = PiModelManager(PiEndpointResolver([]))
+
+    resolved = manager.resolve_embed("the-profile-model", endpoint_id=endpoint_id)
+
+    assert resolved.endpoint_id == endpoint_id
+
+
+def test_a_fixed_model_endpoint_still_refuses_another_model():
+    manager = PiModelManager(
+        endpoints=[_endpoint("embed-primary", "shared-embed")],
+        include_local=False,
+    )
+
+    with pytest.raises(PiEndpointResolutionError, match="pi_embed_endpoint_model_mismatch"):
+        manager.resolve_embed("other-embed", endpoint_id="embed-primary")
+
+
 def test_missing_pinned_embedding_endpoint_fails_closed_even_when_model_matches():
     manager = PiModelManager(
         endpoints=[_endpoint("embed-primary", "shared-embed")],
@@ -170,9 +200,7 @@ async def test_gateway_uses_profile_model_and_exact_endpoint(monkeypatch):
         raising=False,
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        result = await EmbeddingsGateway(manager=manager, client=client).embed(
-            ["evidence"]
-        )
+        result = await EmbeddingsGateway(manager=manager, client=client).embed(["evidence"])
 
     assert result["model"] == "shared-embed"
     assert result["endpoint_id"] == "embed-shadow"
@@ -202,9 +230,9 @@ async def test_gateway_rejects_model_override_outside_active_profile(monkeypatch
     )
 
     with pytest.raises(EmbeddingProfileError, match="embedding_profile_model_mismatch"):
-        await EmbeddingsGateway(
-            manager=PiModelManager(endpoints=[], include_local=False)
-        ).embed(["evidence"], model="classical-model")
+        await EmbeddingsGateway(manager=PiModelManager(endpoints=[], include_local=False)).embed(
+            ["evidence"], model="classical-model"
+        )
 
 
 def test_startup_bootstraps_profile_before_vector_checks():
@@ -240,6 +268,7 @@ def test_public_metadata_surfaces_report_profile_not_classical_provider(monkeypa
         "dtype": "float",
         "normalization": "provider_native",
         "health_status": "unknown",
+        "prompt_scheme": "raw",
     }
 
 

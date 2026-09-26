@@ -1,5 +1,6 @@
 """File upload and processing API routes."""
 
+import logging
 import mimetypes
 import os
 import uuid
@@ -22,7 +23,7 @@ from app.core.file_encryption import (
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.keyword_index import KeywordIndex
 from app.core.permissions import get_visible_project_or_404
-from app.core.rag import VectorStore, ingest_chunks
+from app.core.rag import VectorStore
 from app.core.upload_security import UploadSecurityVerdict, scan_upload_file
 from app.models.database import async_session, get_db
 from app.models.document import Document, DocumentSource, DocumentStatus
@@ -30,6 +31,10 @@ from app.models.project import Project
 from app.services.research_validity_service import (
     persist_document_source_evidence_units,
     record_source_evidence_unit_telemetry,
+)
+from app.services.retrieval_provenance import (
+    document_source_text,
+    index_document_source_chunks,
 )
 
 # Media and image extensions that can be uploaded/served but not text-processed
@@ -49,6 +54,8 @@ MEDIA_EXTENSIONS = {
 
 # Audio extensions that we can transcribe
 AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg"}
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -82,6 +89,11 @@ def _path_within_roots(path: Path, roots: list[Path]) -> bool:
         except (OSError, ValueError):
             continue
     return False
+
+
+def _original_name(filename: str | None) -> str | None:
+    """The researcher's file name without any directory part, or None when there is none."""
+    return Path(filename or "").name or None
 
 
 def _display_title(filename: str | None, fallback: str) -> str:
@@ -345,7 +357,7 @@ async def upload_file(
 
     # Remove existing chunks for this source before re-ingesting
     store = VectorStore(project_id)
-    await store.delete_by_source(file_path.name)
+    await store.delete_file_source(file_path)
 
     # Ingest chunks into vector store
     content_text = "\n\n".join(c.text for c in result.chunks)
@@ -386,9 +398,6 @@ async def upload_file(
             "upload_security": content_verdict.to_metadata(),
         }
 
-    chunks_indexed = await ingest_chunks(project_id, result.chunks)
-    encrypt_file_in_place(file_path)
-
     # Create a Document record so the file appears in Documents view immediately
     doc = Document(
         id=str(uuid.uuid4()),
@@ -422,11 +431,38 @@ async def upload_file(
             "ingestion_surface": "files_upload",
         },
     )
+    # Commit the document and its evidence units FIRST. Indexing embeds, and every embedding
+    # dispatch writes a usage-ledger row in its own session: under SQLite's single writer, an
+    # open write transaction here would make each of those writes wait out the busy timeout.
     await db.commit()
     await record_source_evidence_unit_telemetry(
         project_id=project_id,
         units=evidence_units,
     )
+    # Index AFTER the evidence units exist, so every chunk carries the unit it was cut from
+    # (measurement 5: retrieved chunks were 0% traceable to an evidence unit).
+    chunks_indexed = await index_document_source_chunks(
+        project_id,
+        result.chunks,
+        document_id=doc.id,
+        units=evidence_units,
+        document_text=content_text,
+    )
+    # The upload route owns this file's ingestion; the watcher leaves managed uploads alone, so
+    # the research tasks it used to create for them are created here, from the plaintext. They are
+    # classified and titled by the researcher's file name, not the stored <uuid> name.
+    try:
+        from app.core.file_watcher import FileWatcher
+
+        await FileWatcher.create_research_tasks(
+            file_path,
+            project_id,
+            display_name=_original_name(file.filename),
+            notify=False,
+        )
+    except Exception as exc:
+        logger.warning("Research tasks for upload %s not created: %s", safe_filename, exc)
+    encrypt_file_in_place(file_path)
 
     response = {
         "status": "processed",
@@ -514,10 +550,7 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
                 await db.commit()
                 return
 
-            # 2. Ingest chunks into vector store
-            await ingest_chunks(project_id, result.chunks)
-
-            # 3. Update document record
+            # 2. Update document record
             doc.content_text = protect_document_text(content_text)
             doc.content_preview = _protected_preview(content_text)
             if isinstance(transcription, dict):
@@ -543,6 +576,16 @@ async def _process_audio_background(project_id: str, doc_id: str, file_path: Pat
                     "file_type": doc.file_type,
                     "ingestion_surface": "audio_transcription",
                 },
+            )
+            # 3. Index the transcript chunks with their evidence-unit provenance, after the
+            # document and units are committed (no write transaction open while embedding).
+            await db.commit()
+            await index_document_source_chunks(
+                project_id,
+                result.chunks,
+                document_id=doc.id,
+                units=audio_evidence_units,
+                document_text=content_text,
             )
             try:
                 from app.core.improvement_governance import improvement_governance
@@ -690,6 +733,16 @@ async def list_files(project_id: str, request: Request, db: AsyncSession = Depen
     return {"files": files, "count": len(files)}
 
 
+async def _document_for_path(db: AsyncSession, project_id: str, file_path: Path):
+    """The Document registered for ``file_path`` in this project, if any (for provenance)."""
+    rows = await db.execute(
+        select(Document).where(
+            Document.project_id == project_id, Document.file_path == str(file_path)
+        )
+    )
+    return rows.scalars().first()
+
+
 @router.post("/files/{project_id}/reprocess")
 async def reprocess_files(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Reprocess all files for a project (re-embed and re-index)."""
@@ -731,9 +784,16 @@ async def reprocess_files(project_id: str, request: Request, db: AsyncSession = 
             if result.chunks:
                 # Remove existing chunks for this source before re-ingesting
                 store = VectorStore(project_id)
-                await store.delete_by_source(file_path.name)
+                await store.delete_file_source(file_path)
 
-                chunks = await ingest_chunks(project_id, result.chunks)
+                document = await _document_for_path(db, project_id, file_path)
+                chunks = await index_document_source_chunks(
+                    project_id,
+                    result.chunks,
+                    document_id=document.id if document else None,
+                    document_text=document_source_text(document) if document else "",
+                    db=db,
+                )
                 total_chunks += chunks
                 processed_files += 1
 

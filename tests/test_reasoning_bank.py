@@ -311,3 +311,43 @@ async def test_reasoning_bank_api_requires_admin_role():
         )
 
     assert response.status_code == 403
+
+
+async def _usage_count(project_id: str, memory_id: str) -> int:
+    items = await reasoning_bank.list_memories(project_id=project_id, limit=200)
+    return int(next(i for i in items if i["id"] == memory_id).get("usage_count") or 0)
+
+
+@pytest.mark.asyncio
+async def test_reasoning_bank_counts_use_only_when_a_memory_reaches_a_prompt(monkeypatch):
+    """F16: reading memories is an inspection and counts nothing; a memory is used when it reaches
+    a prompt; and a failed usage write never costs the prompt its context."""
+    await init_db()
+    project_id = f"reasoning-usage-{uuid.uuid4().hex[:6]}"
+    stored = await reasoning_bank.record_trace(
+        project_id=project_id,
+        agent_id="istara-main",
+        query="chase late invoices by phone",
+        trajectory={"decision": "Chase late invoices by phone on Friday afternoons."},
+        outcome="success",
+        source_kind="skill",
+        source_id="task-usage",
+        tags=["invoices"],
+        domain="finance",
+        judge_score=0.9,
+    )
+    memory_id = stored[0]["id"]
+
+    await reasoning_bank.retrieve(project_id=project_id, query="late invoices phone", limit=3)
+    assert await _usage_count(project_id, memory_id) == 0
+
+    context = await reasoning_bank.context_for_query(project_id=project_id, query="late invoices")
+    assert memory_id in context
+    assert await _usage_count(project_id, memory_id) == 1
+
+    async def _broken(ids):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(reasoning_bank, "record_usage", _broken)
+    again = await reasoning_bank.context_for_query(project_id=project_id, query="late invoices")
+    assert memory_id in again

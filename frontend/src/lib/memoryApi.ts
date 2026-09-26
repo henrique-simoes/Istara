@@ -17,6 +17,15 @@ async function json<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+/** Health invariant: the share of source chunks traceable to an evidence unit. */
+export interface MemoryProvenance {
+  source_chunks: number;
+  with_evidence_unit: number;
+  coverage: number | null;
+  legacy_derived_rows: number;
+  status: "ok" | "degraded" | "empty" | "unavailable";
+}
+
 export const memory = {
   list: (projectId: string, page = 1, pageSize = 50) =>
     json<{
@@ -66,6 +75,7 @@ export const memory = {
       chunk_size: number;
       chunk_overlap: number;
       hybrid_weights: { vector: number; keyword: number };
+      provenance?: MemoryProvenance;
     }>(`/api/memory/${encodeURIComponent(projectId)}/stats`),
   agentNotes: (projectId: string, agentId: string) =>
     json<{

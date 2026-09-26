@@ -8,25 +8,28 @@
     "12-chat-sessions",
     "76-long-horizon-trajectory",
     "79-engine-selector",
-    "83-chat-model-controls"
+    "83-chat-model-controls",
+    "88-phone-layout"
    ],
    "sub_features": [
     "send/stream/stop/regenerate",
     "sessions persist",
     "model + engine switch",
     "citations",
-    "empty/loading/error"
+    "empty/loading/error",
+    "chat list drawer on a phone"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-09-10",
-   "live_verdict": "pass (container qa-ui-loopback lane 2026-09-11): 83 17/17 + 12 8/8 + 79 10/10; 05 honest skip (no chat-ready model on the contract stub lane)",
-   "live_verified_at": "2026-09-11",
+   "newest_scenario_change": "2026-09-26",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25): 12 8/8 + 79 11/11 + 83 18/18 (run 2026-09-26T04-51-06-707Z; 83 with the stricter 375 px check) + 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns). Previous: pass (container qa-ui-loopback lane 2026-09-11): 83 17/17 + 12 8/8 + 79 10/10; 05 honest skip (no chat-ready model on the contract stub lane)",
+   "live_verified_at": "2026-09-26",
    "notes": "42 10/10 + 70mid 11/11 + 71 7/7; 83 rewritten for B4 (deterministic filter/empty/error oracles + role cells); first container execution 2026-09-11 green after W2 trigger-disambiguation, catalog-error-precedence, chat-nav and shared-session-order fixes"
   },
   "findings": {
    "scenarios": [
     "07-findings-chain",
-    "16-findings-population"
+    "16-findings-population",
+    "88-phone-layout"
    ],
    "sub_features": [
     "nugget>fact>insight>recommendation chain",
@@ -34,31 +37,33 @@
     "evidence links"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-26",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "17 24/24 + 47 32/32 + 70res 18/18"
+   "notes": "17 24/24 + 47 32/32 + 70res 18/18; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "laws": {
    "scenarios": [
-    "65-laws-of-ux"
+    "65-laws-of-ux",
+    "88-phone-layout"
    ],
    "sub_features": [
     "compliance scoring",
     "guidance display"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-06",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "65 prior browser"
+   "notes": "65 prior browser; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "tasks": {
    "scenarios": [
     "08-kanban-workflow",
     "13-task-agent-assignment",
     "18-task-verification",
-    "33-task-locking"
+    "33-task-locking",
+    "88-phone-layout"
    ],
    "sub_features": [
     "board move/approve",
@@ -68,46 +73,51 @@
     "Done gates"
    ],
    "drive": "mixed",
-   "newest_scenario_change": "2026-05-20",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "18 10/10 + 33 9/9"
+   "notes": "18 10/10 + 33 9/9; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "interviews": {
    "scenarios": [
-    "75-participant-simulation"
+    "75-participant-simulation",
+    "88-phone-layout"
    ],
    "sub_features": [
     "transcripts",
     "process plan",
-    "evidence extraction"
+    "evidence extraction",
+    "list and interview take turns on a phone; tags open over the interview; banner above the columns"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-20",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "newest_scenario_change": "2026-09-26",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25): 75 6/6 (run 2026-09-26T05-04-01-639Z) + 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-26",
    "notes": "75 6/6"
   },
   "documents": {
    "scenarios": [
     "29-documents-system",
-    "19-file-preview"
+    "19-file-preview",
+    "88-phone-layout"
    ],
    "sub_features": [
     "upload/list",
     "preview per type",
     "sync",
-    "stats"
+    "stats",
+    "toolbar wraps at 375 px; coding gutter below the text on a phone"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-09-04",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "newest_scenario_change": "2026-09-26",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25): 29 33/33 (run 2026-09-26T05-17-32-903Z, shared folder bound) + 19 6/6 (run 2026-09-26T05-04-01-639Z) + 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns). Previous: pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25, backend at 762d55d3): 29 33/33 with ISTARA_SIM_SHARED_FOLDER bound into the backend and the runner by a disposable override (run .results/runs/2026-09-26T01-40-57-667Z; also at 1095ce1e, run 2026-09-26T01-16-25-274Z; linked-folder sync registered the external file, synced=1). Without the shared folder the link-folder check is 400 by design (run 2026-09-26T01-09-32-847Z, 31/32). Earlier: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-26",
    "notes": "15 8/8"
   },
   "context": {
    "scenarios": [
-    "24-context-dag"
+    "24-context-dag",
+    "88-phone-layout"
    ],
    "sub_features": [
     "DAG render",
@@ -115,27 +125,29 @@
     "project context"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-20",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "23/24 prior browser"
+   "notes": "23/24 prior browser; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "skills": {
    "scenarios": [
     "06-skill-execution",
     "20-all-skills-comprehensive",
-    "41-skill-creation"
+    "41-skill-creation",
+    "88-phone-layout"
    ],
    "sub_features": [
     "catalog",
     "execute each skill",
     "creation",
-    "error states"
+    "error states",
+    "column fits a phone (375 px)"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-09-03",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "newest_scenario_change": "2026-09-26",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25): 06 14/14 + 41 12/12 (run 2026-09-26T04-51-06-707Z) + 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-26",
    "notes": "28 38/38"
   },
   "agents": {
@@ -144,7 +156,8 @@
     "11-agents-system",
     "21-agent-work-simulation",
     "27-agent-identity-system",
-    "40-agent-identity-editing"
+    "40-agent-identity-editing",
+    "88-phone-layout"
    ],
    "sub_features": [
     "system agents",
@@ -153,30 +166,40 @@
     "work simulation"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-09-04",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "22 30/30 + 38 13/13 + 44 12/12 + 73 15/15"
+   "notes": "22 30/30 + 38 13/13 + 44 12/12 + 73 15/15; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "memory": {
    "scenarios": [
-    "23-memory-view"
+    "23-memory-view",
+    "85-retrieval-correctness",
+    "86-evidence-provenance-health",
+    "88-phone-layout"
    ],
    "sub_features": [
     "knowledge list",
     "inspect",
-    "reindex states"
+    "reindex states",
+    "hybrid search relevance (phrase + all-terms BM25, two-character tokens)",
+    "reprocess idempotence",
+    "result rank display",
+    "evidence provenance health card (empty, traceable, degraded; loading, error and retry)",
+    "Health tab reachable at 375px",
+    "grey text meets AA in dark mode"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-06",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
-   "notes": "23 prior browser"
+   "newest_scenario_change": "2026-09-26",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25): 23 13/13 + 85 11/11 (axe in light and dark through the app toggle) + 86 24/24 (run 2026-09-26T05-04-01-639Z) + 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns). Previous: pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25, backend at 762d55d3): 86 23/23 + 85 10/10 + 24 9/9 + 23 13/13 (run .results/runs/2026-09-26T01-39-07-546Z; also at 1095ce1e, run 2026-09-26T01-09-32-847Z). 86 now also checks that the Vector Chunks and Keyword Chunks cards agree after an upload (one ingestion writer). Run 2026-09-25T23-55-34-007Z failed 86 20/23: sticky upload suggestions covered the tab row at 375 px; fixed in c6921068, re-run 2026-09-26T00-48-10-050Z 23/23. Earlier: 86 22/22 run 2026-09-25T19-58-53-943Z; first passing run 2026-09-25T19-43-40-637Z (screenshots 86-health-empty/-traceable/-375px/-dark, 86-role-*)",
+   "live_verified_at": "2026-09-26",
+   "notes": "86: fresh [SIM-86] project, uploads through the Documents file chooser, card 100% (18 of 18 source chunks carry an evidence unit), loading/error/Retry, degraded branch from a labelled fixture payload, roles admin/researcher/viewer/stranger, keyboard Tab+Enter to the Health tab, 375px tab reachability (tab row now wraps), dark contrast (tab labels and Health labels gained dark:text-slate-400; first run found 16 nodes at 4.23:1). 23 prior browser. 85: under the provider stub vectors are SHA-256 noise, so the two relevance checks can also be satisfied by the vector lane; the keyword behaviour they cover is pinned by tests/test_retrieval_correctness_fixes.py, which fails on origin/main. The rank badge and reprocess-idempotence checks discriminate in this lane."
   },
   "interfaces": {
    "scenarios": [
     "45-interfaces-menu",
-    "46-stitch-figma-integration"
+    "46-stitch-figma-integration",
+    "88-phone-layout"
    ],
    "sub_features": [
     "design chat",
@@ -185,14 +208,15 @@
     "handoff briefs"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-20",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch2 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "Batch 2 live in nifty_dirac, all PASS first try."
+   "notes": "Batch 2 live in nifty_dirac, all PASS first try.; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "integrations": {
    "scenarios": [
-    "59-agent-integration-knowledge"
+    "59-agent-integration-knowledge",
+    "88-phone-layout"
    ],
    "sub_features": [
     "overview",
@@ -200,14 +224,15 @@
     "deployments tab"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-09-03",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "56 17/17 + 57 13/13 + 58 22/22 + 66 13/13 + 48 browser-only (live skips)"
+   "notes": "56 17/17 + 57 13/13 + 58 22/22 + 66 13/13 + 48 browser-only (live skips); 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "loops": {
    "scenarios": [
-    "49-loops-schedule"
+    "49-loops-schedule",
+    "88-phone-layout"
    ],
    "sub_features": [
     "schedule CRUD",
@@ -216,16 +241,18 @@
     "health"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-20",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "batch pilot"
+   "notes": "batch pilot; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "settings": {
    "scenarios": [
     "10-settings-models",
     "36-llm-servers",
-    "84-token-session-lifecycle"
+    "84-token-session-lifecycle",
+    "87-embedding-model-migration",
+    "88-phone-layout"
    ],
    "sub_features": [
     "model catalog",
@@ -233,17 +260,20 @@
     "strict routing",
     "telemetry",
     "security-integrity",
-    "token/session custody"
+    "token/session custody",
+    "embedding model switch (re-index)",
+    "column fits a phone (375 px)"
    ],
    "drive": "mixed",
-   "newest_scenario_change": "2026-09-10",
-   "live_verdict": "pass (container qa-ui-loopback lane 2026-09-11): 10 27/27 + 84 13/13 + 26 17/17",
-   "live_verified_at": "2026-09-11",
+   "newest_scenario_change": "2026-09-26",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25): 10 27/27 + 36 8/8 + 84 13/13 + 87 24/24 (run 2026-09-26T04-51-06-707Z) + 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns). Previous: pass (container qa-ui-loopback lane 2026-09-11): 10 27/27 + 84 13/13 + 26 17/17",
+   "live_verified_at": "2026-09-26",
    "notes": "25 14/14 + 26 17/17 + 36 8/8 + 43 13/13 + 64 19/19 + 68 12/12 + 74 8/8; 84 extended for B5/W1.4 (admin/researcher/viewer/stranger custody cells); first container execution 2026-09-11 green after W2 cookie-restore + session-list + confirm-dialog fixes; 10 green after W2 disabled-option guard"
   },
   "admin": {
    "scenarios": [
-    "69-user-management-ui"
+    "69-user-management-ui",
+    "88-phone-layout"
    ],
    "sub_features": [
     "users",
@@ -251,14 +281,15 @@
     "roles"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-08",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "67 18/18"
+   "notes": "67 18/18; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "autoresearch": {
    "scenarios": [
-    "61-autoresearch-isolation"
+    "61-autoresearch-isolation",
+    "88-phone-layout"
    ],
    "sub_features": [
     "start/stop",
@@ -267,45 +298,50 @@
     "config"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-20",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "batch pilot"
+   "notes": "batch pilot; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "backup": {
    "scenarios": [
-    "51-backup-system"
+    "51-backup-system",
+    "88-phone-layout"
    ],
    "sub_features": [
     "create/verify/restore round-trip",
     "download",
     "config",
-    "estimate"
+    "estimate",
+    "column fits a phone (375 px)"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-09-03",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "newest_scenario_change": "2026-09-26",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25): 51 18/18 (run 2026-09-26T04-51-06-707Z) + 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-26",
    "notes": "39 15/15"
   },
   "meta-hyperagent": {
    "scenarios": [
-    "52-meta-hyperagent"
+    "52-meta-hyperagent",
+    "88-phone-layout"
    ],
    "sub_features": [
     "proposals",
     "runs",
-    "governance"
+    "governance",
+    "column fits a phone (375 px)"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-19",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "newest_scenario_change": "2026-09-26",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25): 52 15/15 (run 2026-09-26T04-51-06-707Z) + 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-26",
    "notes": "52 15/15"
   },
   "compute": {
    "scenarios": [
-    "34-compute-pool"
+    "34-compute-pool",
+    "88-phone-layout"
    ],
    "sub_features": [
     "donate/register",
@@ -314,46 +350,51 @@
     "model warnings"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-19",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "batch pilot"
+   "notes": "batch pilot; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "ensemble": {
    "scenarios": [
     "35-ensemble-validation",
-    "37-ensemble-health-view"
+    "37-ensemble-health-view",
+    "88-phone-layout"
    ],
    "sub_features": [
     "validation",
     "health",
-    "model intelligence"
+    "model intelligence",
+    "column fits a phone (375 px)"
    ],
    "drive": "mixed",
-   "newest_scenario_change": "2026-08-23",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "newest_scenario_change": "2026-09-26",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25): 37 5/5 (run 2026-09-26T04-51-06-707Z) + 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-26",
    "notes": "35 8/8"
   },
   "quality": {
    "scenarios": [
     "70-research-integrity",
-    "82-quality-dashboard"
+    "82-quality-dashboard",
+    "88-phone-layout"
    ],
    "sub_features": [
     "methodology dashboard",
     "gates",
-    "traceability"
+    "traceability",
+    "column fits a phone (375 px)"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-09-10",
-   "live_verdict": "pass (container qa-ui-loopback lane 2026-09-11): 82 15/15 + 70 18/18",
-   "live_verified_at": "2026-09-11",
+   "newest_scenario_change": "2026-09-26",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25): 82 16/16 (run 2026-09-26T04-51-06-707Z) + 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns). Previous: pass (container qa-ui-loopback lane 2026-09-11): 82 15/15 + 70 18/18",
+   "live_verified_at": "2026-09-26",
    "notes": "70res 18/18; 82 extended for B5/W1.3 (loading→data, empty-safe, real error strings, role cells); first container execution 2026-09-11 green after W2 role-timing fix"
   },
   "project-settings": {
    "scenarios": [
-    "81-project-settings"
+    "81-project-settings",
+    "88-phone-layout"
    ],
    "sub_features": [
     "spine health",
@@ -361,14 +402,15 @@
     "danger zone"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-09-09",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "81 5/5 — mapping corrected 2026-09-10 (the row listed no scenarios while claiming the 81 verdict)"
+   "notes": "81 5/5 — mapping corrected 2026-09-10 (the row listed no scenarios while claiming the 81 verdict); 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "history": {
    "scenarios": [
-    "30-event-wiring-audit"
+    "30-event-wiring-audit",
+    "88-phone-layout"
    ],
    "sub_features": [
     "activity feed",
@@ -376,24 +418,26 @@
     "git commits"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-09-03",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-08",
-   "notes": "30 static-by-design"
+   "notes": "30 static-by-design; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "notifications": {
    "scenarios": [
-    "50-notifications"
+    "50-notifications",
+    "88-phone-layout"
    ],
    "sub_features": [
     "preferences",
     "delivery",
-    "history"
+    "history",
+    "header wraps at 375 px"
    ],
    "drive": "browser",
-   "newest_scenario_change": "2026-05-20",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "newest_scenario_change": "2026-09-26",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25): 50 18/18 (run 2026-09-26T04-51-06-707Z) + 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-26",
    "notes": "batch2"
   }
  }

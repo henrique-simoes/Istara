@@ -263,6 +263,13 @@
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/interviews/interviewPreviewParts.tsx</code> and the UI navigation path recorded in the inventory.</li>
+<li>On a phone (below the md breakpoint) the three columns take turns (2026-09-26,</li>
+</ul>
+<p><code>interviewLayout.ts</code>): the open interview fills the screen, &quot;All interviews&quot; returns to the list,</p>
+<p>picking an interview opens it again, and the tags panel starts collapsed and opens over the</p>
+<p>interview. The fixed list (320 px) and tags panel (288 px) had left the interview no room at</p>
+<p>375 px. Desktop is unchanged. Journey: scenario 88.</p>
+<ul>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

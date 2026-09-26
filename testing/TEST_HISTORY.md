@@ -6,6 +6,38 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-26 — Open items closed: third live identity, faithfulness, multilingual embedder (branch fix/spine-open-items-20260926)
+
+Scope: DeepSeek V4 Flash as the third live identity; M4 v2 judge validation (DEC-14) and faithfulness with three models; role-aware embedding prompts, an admin embedding-model switch with a full re-index, and BGE-M3 as the default by the pre-registered rule (DEC-15/16); a local model that is still loading is waited for; interrupted coding runs settle; every view fits a phone (DEC-17). Lifecycle `docs/build-stream/2026-09-25-spine-findings-and-retrieval-measurements.md` (Phases 13-17); evidence `docs/build-stream/2026-09-25-spine-findings-evidence.md`.
+
+| Area | Result |
+| --- | --- |
+| Backend | Full suite in `istara-test:1` (`--network none`, `-m "not live_llm"`): 2,525 passed, 3 failed, 14 skipped, 1 error; the 3 failures and the collection error are container-only and fail identically on `main` (git checkout for the audit, `hypothesis` missing, invite/update tests) |
+| Pi worker | `node --test` 115/115 (6 new load-wait tests, 2 thinking structured-output tests) |
+| Embedder (DEC-15) | qrels v2, 118 questions: hybrid nDCG@10 BGE-M3 0.788, Qwen3-Embedding-0.6B 0.781, EmbeddingGemma 0.741, prompted nomic 0.632, shipped nomic 0.523 (Spanish 0.723 vs 0.224); all four candidates qualify, BGE-M3 wins the tied top two |
+| Live migration | Harbor project nomic → BGE-M3 through `POST /api/settings/embedding-profile`: 1,099 rows in 211 s, profile v2, provenance 1.0; product search then found the answer span in the top 10 for 114/118 (Spanish 44/46) |
+| M4 v2 (live) | every judge trusted (claims κ 1.00 on 69, relevance κ 0.81–0.85 on 60); faithfulness DeepSeek 0.69/0.76, Muse 0.63/0.62, local Qwen 0.76/0.72; judge agreement κ 0.72–0.94; context precision 0.73; spend $0.27 |
+| Governed coding (live) | three served identities; α 0.51 → needs_reconciliation; report gate refused (9 and 7 unreconciled) then allowed; fail-closed probes 6/6 |
+| Browser lane (QA `ui`, cs76-sept25) | 22 scenarios, 318/320 on the first pass (run `2026-09-26T04-51-06-707Z`); both failures fixed and re-run green: 85 11/11 (axe in both themes), 88 11/11 (every view at 375 px), plus 29 33/33, 23 13/13, 86 24/24, 75 6/6, 19 6/6; 87 24/24 after the probe fix |
+| Governance | security benchmark pass (AI-001/AUTHZ-002 revalidated); change and feature obligations pass; public-repo audit pass; feature docs 86; simulation static 127 files + lib 41/41; CF `gate after` 0 new failures, 0 new warnings (403 inherited, from 416) |
+
+Residuals: construction labels are synthetic (a human-labelled set would add external validity); the multilingual candidates trail nomic on 12 fact questions (not significant); Spanish is the only non-English language in the qrels.
+
+## 2026-09-26 — Research-spine findings and retrieval measurements (branch fix/spine-findings-measurements-20260925)
+
+Scope: F3, F5, F7–F17 fixed on top of PR #42, six measurement harnesses (`backend/app/evals/`), and the defects found driving the product on the live lane (the owner's two models: Meta Muse Spark 1.3 Contributor and a local Qwen3.8-27B). Every behaviour change has a pytest that fails on `origin/main` (run from a `git archive` of `9272d41e` in `istara-test:1`, `--network none`). Lifecycle `docs/build-stream/2026-09-25-spine-findings-and-retrieval-measurements.md`; evidence `docs/build-stream/2026-09-25-spine-findings-evidence.md`.
+
+| Area | Result |
+| --- | --- |
+| Backend | Full suite at `762d55d3` in `istara-test:1` (`--network none`, `-m "not live_llm"`): 3 failed, 2,492 passed, 14 skipped, 1 error. The 3 failures and 1 collection error are container-only (the public-repo audit needs a git checkout; the invite and update-confirmation tests fail only in the container; the image lacks `hypothesis`); all three failing tests pass locally |
+| Measurements | M1 nDCG@10 BM25 0.717 / vector 0.571 / hybrid 0.700 (76 span-graded questions, bootstrap CIs); M2 12 re-indexed ablations, none better after Holm, 3 significantly worse; M3 budget recall 0.167 (2k) → 1.000 (≥16k); M4 context precision 0.75 [0.58, 0.92], faithfulness not measured (no judge met κ ≥ 0.60 on relevance: 0.568, 0.453); M5 provenance coverage 1.0 (1,097/1,097); M6 planted successful-but-wrong run teaches nothing strong |
+| Browser lane (QA `ui`, contract stub, cs76-sept25) | 86 23/23, 85 10/10, 24 9/9, 23 13/13 (run `2026-09-26T01-39-07-546Z`); 29 33/33 (run `2026-09-26T01-40-57-667Z`) with `ISTARA_SIM_SHARED_FOLDER` bound into backend and runner by a disposable override (without it, link-folder is 400 by design). Scenario 86 caught a regression mid-round (20/23: sticky upload suggestions covered the tabs at 375 px), fixed in c6921068 |
+| Live lane | M4 both directions ($0.0069 + $0.0080, cap $1.00); hostile-document chat on both models: prompt and tool-output blocks balanced, no raw protected tag, canary escaped and never in an answer; governed coding run blocked with two identities (as required), all five fail-closed probes pass |
+| Governance | `security_benchmark --fail-on-threshold` 100% (125 changed paths, 36 triggered); `check_change_obligations` and `check_feature_obligations --base origin/main --head HEAD` pass; `feature_docs.py --seed-missing --generate-site --check` 86 features; simulation static 124 files + lib 41/41; real-user benchmark `npm run check` 108/0; CF `gate after` 0 new failures (7 complexity warnings recorded) |
+| testing | PR #43 merged as a merge commit (611d7a21): `testing` differs from `main` only by AGENTS.md (+13, #39); promotion not run |
+
+Residuals: judge calibration needs a human-labelled relevance set; governed coding needs a third identity; the embedder is English-only (Spanish vector nDCG@10 0.028).
+
 ## 2026-09-11 — FINAL certification on 25e2063d (main-readiness-final certification-final)
 
 Scope: full release-matrix re-run on the frozen final SHA `25e2063d33bc948cb6e80c93015a09e82e207b50` (branch `conductor/readiness5-20260910`, baseline `origin/main` `fa6a1a39` strict ancestor; 7 commits past the last pushed CI SHA `15ef4835`: pi-preflight harness fix, promotion-range lint clear 274→0, prompt-byte restoration + dispatch regressions, all blind/delta reviewed). Dossier rewritten at `docs/promotion/2026-09-09-promotion-certification.md` (FINAL header bound to `25e2063d`; W5 header + 2026-09-09 dossier kept as appendix); topology counts refreshed in `TESTING.md` (this checkpoint). Exact CI command from `backend/`, keyless lane, py3.12.13, both pi surfaces installed. No push/PR/merge/settings — owner checklist (push → CI observation → `testing-promotion` env creation → protection PUT → `promote-testing.yml` dispatch with exact SHA → PR verification) is in dossier §5.

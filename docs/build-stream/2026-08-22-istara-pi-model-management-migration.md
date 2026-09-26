@@ -966,6 +966,18 @@ Verified: grep of master plan and three drafts for OAuth/API-key/effort/selector
 
 Next: owner approval gate — approve binds this lifecycle (with DEC-3) as the implementation contract.
 
+### DEC-4 | 2026-09-25 | S2-execute | owner
+
+Context: DEC-2 retired the owner's local LLM server for staging acceptance. The 2026-09-25 spine
+findings session needed local models on its live evaluation lane, and Istara is local-first.
+
+Decision: the owner's local LLM server (Qwen3.8-27B over an OpenAI-compatible llama.cpp API) is again
+an allowed Pi endpoint for live evaluation lanes (`docs/build-stream/2026-09-25-spine-findings-and-retrieval-measurements.md`
+DEC-9, DEC-11). DEC-2 still governs staging acceptance, which stays on the managed VPS. The server's
+host name, address and port stay in local environment configuration only, never in committed files.
+
+Why: owner instruction; local models are paramount to Istara's local-first design.
+
 ### L-14 | 2026-08-22T14:45:00Z | S2-execute | gpt-5.6-luna | executor | implement <!-- bsc-ledger:ISTARA-PI-MODEL-MIGRATION-20260822-WAVE-pi-catalog-secrets-IMPL -->
 Did: Updated the canonical Pi runtime and standalone compatibility lab to the verified upstream `@earendil-works/pi-agent-core` and `@earendil-works/pi-ai` 0.84.2 packages, refreshed both lockfiles, and documented the focused Pi contract-test commands in `TESTING.md`. Existing catalog, exact model identity, endpoint capability, authorization, and Keychain/env secret-custody code remained unchanged and was verified through its focused tests.
 Result: W1 dependency and verification foundation is ready for review; no LLM Server data was deleted or migrated.

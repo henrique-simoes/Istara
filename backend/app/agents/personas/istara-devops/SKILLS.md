@@ -61,6 +61,14 @@
   discarded and re-embedded (warn-level log `stale-dimension embedding cache
   entry`); repeated warnings signal an embedding model/dimension switch that
   may need a cache rebuild
+- The embedding model is a versioned profile, not a setting: a store built under another model or
+  prompt scheme fails closed instead of mixing vector spaces. The only way to change it is an
+  administrator's switch in Settings -> Embedding model (`POST /api/settings/embedding-profile`),
+  which re-embeds every project's stores; `GET` on the same route reports the active profile and
+  migration progress. A failed migration names its reason and resumes from the stores not yet
+  moved when started again; report it, never edit manifests or tables by hand
+- A local model server that answers "Loading model" is waited for up to 300 s before a turn fails
+  ("the model was still loading"); repeated occurrences mean the server is reloading or stuck
 
 ### Agent Ecosystem Monitoring
 - Track heartbeat status for all active agents (system and custom)

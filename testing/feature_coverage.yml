@@ -202,6 +202,28 @@ features:
     introduced_in: "pending"
     last_verified_sha: "pending"
 
+  - id: telemetry.export-v1
+    status: active
+    owner: platform
+    paths:
+      - "scripts/export_telemetry_v1.py"
+      - "tests/test_export_telemetry_v1.py"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - governance
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - check_integrity
+        - pytest_telemetry_export
+    acceptance: "agentic_usage_rows export as telemetry contract v1 rows, read-only, metadata only; a default 0 is unknown, never a measurement."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
   - id: qa.disposable-runtime
     status: active
     owner: platform
@@ -1049,4 +1071,26 @@ features:
         - check_integrity
     acceptance: "Engine-comparison reports and metric schemas stay schema-valid artifacts; they never masquerade as live certification evidence."
     introduced_in: "readiness5-20260910-W1"
+    last_verified_sha: "pending"
+
+  - id: research.retrieval-evaluation
+    status: active
+    owner: research-platform
+    paths:
+      - "backend/app/evals/*.py"
+    exceptions: []
+    requires_human_review: true
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - governance
+        - research_spine_contract
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - check_integrity
+        - pytest_research_validity
+    acceptance: "Retrieval and answer measurements grade relevance from span-graded judgments over a sandbox index or the product-ingested corpus, report intervals and paired tests, never mutate process-wide settings, fail closed without a benchmark, and never let a judge score its own model's answers."
+    introduced_in: "spine-findings-20260925"
     last_verified_sha: "pending"

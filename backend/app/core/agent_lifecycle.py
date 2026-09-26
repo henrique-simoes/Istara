@@ -16,6 +16,7 @@ from app.api.websocket import (
     broadcast_agent_status,
     broadcast_task_queue_update,
 )
+from app.core.content_guard import truncate_preserving_wrappers
 from app.core.datetime_utils import ensure_utc
 from app.core.rag import retrieve_context
 from app.core.resource_governor import governor
@@ -844,10 +845,18 @@ class AgentLifecycleMixin:
                     }
                 )
 
-            # Add RAG context
+            # Supporting documents go just BEFORE the turn being answered, cut so every untrusted
+            # wrapper stays closed. A plain ``context_text[:800]`` slice could drop the closing tag
+            # and leave retrieved text outside the delimiter, and appending the documents last made
+            # them the final user turn instead of the collaborator's question.
             if rag.has_context:
-                llm_messages.append(
-                    {"role": "user", "content": f"[Relevant documents]\n{rag.context_text[:800]}"}
+                llm_messages.insert(
+                    len(llm_messages) - 1,
+                    {
+                        "role": "user",
+                        "content": "[Relevant documents]\n"
+                        + truncate_preserving_wrappers(rag.context_text, 800),
+                    },
                 )
 
             # W4: the collaboration reply goes through the AgenticDispatcher

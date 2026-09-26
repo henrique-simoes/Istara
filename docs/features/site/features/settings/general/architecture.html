@@ -295,6 +295,37 @@
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes. The shared UI tokens and state contract live in root <code>DESIGN.md</code> and the semantic projection in <code>frontend/src/app/globals.css</code>.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>
+<h2 id="embedding-model-2026-09-26">Embedding Model (2026-09-26)</h2>
+<ul>
+<li>The persisted embedding profile, not settings, decides the model an install embeds with, and each</li>
+</ul>
+<p>vector store fails closed when the active identity (model, cache namespace, dimension, prompt</p>
+<p>scheme, profile version) differs from the one it was built with. <code>Settings &gt; Embedding model</code></p>
+<p>(<code>EmbeddingModelSection.tsx</code>, administrators only; the server checks too) shows the active model,</p>
+<p>its prompt scheme and profile version, and moves the install to another model:</p>
+<p><code>POST /api/settings/embedding-profile</code> probes the target first (400 and no change when it cannot</p>
+<p>embed), activates a new profile version (the old one stays on record), then re-embeds every</p>
+<p>project&#x27;s source and derived tables from the text they already hold in the background</p>
+<p>(<code>app/services/embedding_migration.py</code>), keeping provenance, offsets and evidence units, and rebinds</p>
+<p>each store&#x27;s manifest. BM25 is untouched. One migration runs at a time (409); <code>GET</code> reports</p>
+<p>progress; a failure stops with its reason and a re-run resumes with the tables not yet moved.</p>
+<ul>
+<li>Embedders receive their model card&#x27;s query and document prompts (<code>app/core/embedding_prompts.py</code>:</li>
+</ul>
+<p>EmbeddingGemma, Qwen3-Embedding, nomic-embed-text; BGE-M3 and unknown models take raw text). The</p>
+<p>scheme is part of the vector-space identity; profiles and stores from before schemes existed are</p>
+<p>raw, and a fresh install takes the model card&#x27;s scheme (<code>EMBED_PROMPT_SCHEME=auto</code>).</p>
+<ul>
+<li>The default embedder is BGE-M3 (<code>OLLAMA_EMBED_MODEL=bge-m3</code>, 1024 dimensions, pulled on first use),</li>
+</ul>
+<p>chosen by the rule fixed before the numbers (DEC-15): on 118 span-graded questions it had the</p>
+<p>highest hybrid nDCG@10 (0.788 vs 0.523 for the former nomic-embed-text default; Spanish 0.723 vs</p>
+<p>0.224) with no significant English regression. Qwen3-Embedding 0.6B (0.781) was statistically tied;</p>
+<p>EmbeddingGemma (0.741) and prompted nomic (0.632) also qualified. <code>python -m app.evals.embedder_compare</code></p>
+<p>reruns the decision on new reports.</p>
+<ul>
+<li>Journey: scenario 87 (<code>tests/simulation/scenarios/87-embedding-model-migration.mjs</code>).</li>
+</ul>
 <h2 id="agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</h2>
 <ul>
 <li>RAG-related behavior depends on project context, documents, memory, or retrieval material referenced by the cited stores and routes.</li>
@@ -336,6 +367,7 @@
 <li class="toc-level-3"><a href="#stores">Stores</a></li>
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
+<li class="toc-level-2"><a href="#embedding-model-2026-09-26">Embedding Model (2026-09-26)</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>

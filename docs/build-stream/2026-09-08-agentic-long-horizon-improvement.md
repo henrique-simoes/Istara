@@ -3,13 +3,13 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: agentic-long-horizon-improvement
-branch: testing
+branch: main
 cf: { spec: CF-SPEC-19, tasks: [CF-193, CF-194, CF-195, CF-196, CF-197, CF-198, CF-199, CF-200, CF-201, CF-202] }
-phase: "Phase 0 — Research & improvement plan (complete; implementation open)"
+phase: "Phase 1 — Budget-aware continuation (not started)"
 stage: S1-plan
-status: in_progress
+status: in-progress
 blocked_on: null
-last: { agent: opencode, at: 2026-09-08T01:20:00Z, ledger: L-003 }
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:40:32Z, ledger: L-2 }
 next_action: "Future agent: pick Phase 1 (budget-aware continuation), run work-order + gate before on its CF task, implement, verify, evidence."
 ```
 <!-- /STATUS BLOCK -->
@@ -149,6 +149,10 @@ External results inform — repo evidence decides. Each mapping names the seam r
 | 11 | Plan memory (new) | revision payload carries goal/steps/open-questions | compaction tests |
 | 12 | Depth eval harness (new) | automated turns/tools/completeness deltas pre/post | `node <suite>.mjs` green in CI lane |
 
+## Phase 1 — Budget-aware continuation
+
+Not started. Phase 0 (research and the improvement plan) is complete; the phased task graph above lists the work.
+
 ## Decision log
 - **DEC-1 | 2026-09-08 | S0 | owner** — Context: owner ordered long-horizon
   work with care, no engine changes yet. Decision: planning-only initiative;
@@ -188,3 +192,15 @@ External results inform — repo evidence decides. Each mapping names the seam r
   `git diff --check` clean.
   Next: stage exit — Plan A stays at S1-plan/in_progress as a living handoff;
   future agent starts at its `next_action`.
+
+### L-1 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. `in_progress` is not a Build Stream state (in-progress); testing was promoted to main, so work continues from main.
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.
+
+### L-2 | 2026-09-24T03:40:32Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. The block named Phase 0 (complete) as active; the active phase is Phase 1, not started, and has its own section now.
+Result: the Status Block says what is true today.
+Verified: read against the plans named.
+Next: as the block says.

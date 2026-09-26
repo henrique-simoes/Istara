@@ -647,7 +647,7 @@ async function validateCodingRun({
   if (!fullMultiModelOk || !donorRouteOk || !coverageOk) {
     const detail = !currentRunOk
       ? status === "blocked" || promotionStatus === "blocked"
-        ? `Research Spine validation observed a blocked current coding run (${status || "unknown"}/${promotionStatus || "unknown"}, ${applicationCount < 0 ? "unknown" : applicationCount} code applications).`
+        ? `Research Spine validation observed a blocked current coding run (${status || "unknown"}/${promotionStatus || "unknown"}, ${applicationCount < 0 ? "unknown" : applicationCount} code applications)${fallbackReason ? `: ${fallbackReason}` : "."}`
         : `Research Spine coding completed as ${promotionStatus || "unknown"}, not accepted; human reconciliation and accepted code applications remain required (${status || "unknown"}, ${applicationCount < 0 ? "unknown" : applicationCount} code applications).`
       : !projectIdentityOk
         ? `Research Spine validation received a coding run project identity of ${codingRunProjectId || "missing"}, expected ${projectId}.`

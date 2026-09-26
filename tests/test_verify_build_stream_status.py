@@ -62,6 +62,36 @@ def test_rejects_ambiguous_last_ledger_pointer():
     assert any("last.ledger L-21 is ambiguous" in error for error in errors)
 
 
+def test_accepts_terminal_done_with_all_done_roadmap():
+    text = lifecycle(
+        'item: x\nphase: "Phase 2 — truth (complete)"\nstage: S5-ship\nstatus: done\n'
+        'next_action: "Closed; open work lives in todo.md."',
+        "| 0 | plan | vote | done |\n| 1 | freeze | sha | done |\n"
+        "| 2 | truth | check | done |",
+    )
+    assert verify(text) == []
+
+
+def test_rejects_terminal_with_open_roadmap_rows():
+    text = lifecycle(
+        'item: x\nphase: "Phase 2 — truth"\nstage: S5-ship\nstatus: done\n'
+        'next_action: "Closed."',
+        "| 0 | plan | vote | done |\n| 1 | freeze | sha | in-progress |\n"
+        "| 2 | truth | check | planned |",
+    )
+    assert "terminal lifecycle has non-done roadmap phases: 1, 2" in verify(text)
+
+
+def test_accepts_terminal_without_numbered_roadmap():
+    text = (
+        "<!-- STATUS BLOCK -->\n```yaml\n"
+        'item: x\nphase: "Complete — shipped"\nstage: S5-ship\nstatus: completed\n'
+        'next_action: "Closed."\n'
+        "```\n<!-- /STATUS BLOCK -->\n"
+    )
+    assert verify(text) == []
+
+
 def test_checked_in_convergence_lifecycle_passes_status_verifier():
     errors = verify(CONVERGENCE.read_text(encoding="utf-8"))
     assert errors == []
@@ -74,3 +104,25 @@ def test_checked_in_convergence_last_ledger_resolves_uniquely():
     ref = re.search(r"ledger:\s*(L-\d+)", text).group(1)
     count = len(re.findall(rf"^###\s+{ref}\b", text, re.M))
     assert count == 1
+
+
+def test_superseded_is_terminal():
+    """Build Stream's `superseded` closes a lifecycle, like `done`: its open roadmap rows are then checked as terminal."""
+    text = """# x
+<!-- STATUS BLOCK -->
+```yaml
+item: x
+phase: "Phase 2 — y"
+stage: S5-ship
+status: superseded
+last: { agent: a, at: 2026-09-24T00:00:00Z, ledger: L-1 }
+next_action: "None."
+```
+<!-- /STATUS BLOCK -->
+
+| 1 | a | done |
+| 2 | b | done |
+
+### L-1 | 2026-09-24T00:00:00Z | S5 | a | b | c
+"""
+    assert verify(text) == []

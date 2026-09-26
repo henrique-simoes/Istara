@@ -4,12 +4,12 @@
 ```yaml
 item: istara-public-ci-testing-automation
 branch: conductor/istara-public-ci-testing-20260818
-cf: { spec: CF-SPEC-56, tasks: [CF-717, CF-718, CF-719, CF-720, CF-721, CF-722, CF-723, CF-724, CF-725, CF-726, CF-727, CF-728, CF-729, CF-730] }
+# not addressable here: the Compass Forge database that held these records was replaced; kept as history. was> cf: { spec: CF-SPEC-56, tasks: [CF-717, CF-718, CF-719, CF-720, CF-721, CF-722, CF-723, CF-724, CF-725, CF-726, CF-727, CF-728, CF-729, CF-730] }
 phase: "Phase 3 — Public CI/testing implementation"
 stage: closed
 status: closed-superseded
 blocked_on: null
-last: { agent: releasing-manager, at: "2026-09-12T00:00:00Z", ledger: L-80 }
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:39:14Z, ledger: L-23 }
 next_action: "Closed 2026-09-12 (post-promotion closeout): superseded: public CI implementation shipped: 17 required contexts + required-checks manifest contract (CI run 34637179724)."
 ```
 <!-- /STATUS BLOCK -->
@@ -1535,3 +1535,9 @@ Did: Performed the bounded r3 delta re-review of F-3-r2 and F-5-r2 against the c
 Result: **PASS**. F-3-r2 is fixed: the generated default run id is exported and explicitly passed to `qa-seeder`, with the unset-input regression proving the seeder receives the same 14-digit id and never `local`. F-5-r2 is fixed: the fail-closed required-checks API call is retained and the workflow explicitly grants `actions: read`; the regression contract rejects both missing permission and missing API-check anchors. No new Blocker/Major finding was identified.
 Verified: `uv run --project backend python -m pytest tests/test_qa_stack_contract.py tests/test_workflow_contracts.py -q` -> 29 passed; `bash -n scripts/istara-qa.sh` -> passed; `python3 scripts/check_workflow_contracts.py` -> passed; YAML/permission/API assertion on `.github/workflows/promote-testing.yml` -> passed; `docker compose -f docker-compose.qa.yml --profile <contract|synthetic|reset|audit|live|ui> config --quiet` -> all six profiles passed; `QA_RUN_ID=20990101010101 docker compose -f docker-compose.qa.yml --profile synthetic config --format json` -> project `istara-qa-20990101010101` and `qa-seeder.QA_RUN_ID=20990101010101` matched. Live GitHub Actions API authorization was not exercised because it is outward-facing; the workflow permission and API contract are covered statically and by regression tests. CF command evidence rows 2074-2077 record the focused proofs, pass verdict, and self-report.
 Next: stage exit — r3 review passed; conductor advances to S5 ship/learn and final acceptance. Do not promote, merge, push, open a PR, or create another re-review.
+
+### L-23 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. Its Compass Forge references are not addressable: that database was replaced (the current one starts at CF-SPEC-1, 2026-08-24).
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.

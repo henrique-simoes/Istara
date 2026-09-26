@@ -3,12 +3,12 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: research-spine-gates-interviews-ux-and-audit-hardening
-branch: testing
+branch: main   # testing was promoted to main by squash merge (PR #34, 2f106b57), so its commits are not ancestors of main
 phase: "Phase 9 — Broad sweep, review, ship (complete)"
 stage: S5-ship
 status: done
 blocked_on: null
-last: { agent: opencode, at: 2026-09-07T13:06:03Z, ledger: L-011 }
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:39:14Z, ledger: L-1 }
 next_action: "Owner promotion decision: merge testing → main only on explicit outward-action approval; no code changes pending."
 ```
 <!-- /STATUS BLOCK -->
@@ -196,3 +196,9 @@ not healthy, record `not_runnable`, stop live execution, and preserve the contai
   - Verified: broad 24/24 render true, 0 5xx, reflow true incl. 320/414/768, keyboard focusable everywhere, dark parity except one flaky laws-marker check re-proven benign (404 is /v1/models probe noise); depth re-run green after remediation; 154/154 backend, 74/74 frontend, build ok, security 28/28, feature docs 86/224 ok, diff-check clean; CF gates CF-114/115/116 all 0 new failures; evidence 936/939/940 asserted. QA rebuilt twice (backend+ui only), healthy throughout; golden project untouched.
   - Residual: F2 paraphrase false-negatives route to human reconciliation (by design); laws evaluate unbounded on huge projects; provisional counts confidence-proxy not promotion-status; reasoning-bank tool link unwired until a tool supplies lesson handles.
   - Promotion checklist (needs owner approval): testing branch green as above; DO NOT merge, reset volumes, touch LLMs/Model_Finetuning/Plex/istara-r9-final, or rewrite history. Retro: script navigation gaps (`settings` vs `project-settings`, `API Logs` vs `API Audit Logs`, unscoped alert) caused two false alarms — fixed by exact view/tab/alert scoping; rsync `--relative` doubled a path once, removed immediately — use explicit per-file targets.
+
+### L-1 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. Its work reached main through the squash merge of testing (PR #34, 2f106b57); the block named `testing`, whose commits a squash leaves off main's history.
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.

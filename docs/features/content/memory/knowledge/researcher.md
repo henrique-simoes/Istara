@@ -35,6 +35,9 @@ Knowledge Memory exists so the work represented by Memory > Knowledge has a stab
 - Use the visible controls in this surface to work with knowledge memory in the active project context.
 - Project switches clear the visible memory tab state before loading the next project's chunks, sources, and search results.
 - Source rows, health breakdowns, filters, search results, and chunks show uploaded document titles (and filenames when needed to distinguish duplicates) instead of opaque storage paths; the canonical path remains available as a hover detail for traceability.
+- Search results are numbered by rank (`#1`, `#2`, …). The fused hybrid score is not a probability, so it is no longer shown as a percentage; hover a rank for the raw fused value.
+- A search lists exact-phrase matches first and then chunks that use the same words apart, and short research tokens such as `UX`, `AI`, `P1` or `Q4` are searchable.
+- Reprocessing a file replaces its chunks instead of adding another copy.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
 
 ## Supported Workflows

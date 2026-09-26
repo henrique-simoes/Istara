@@ -124,6 +124,34 @@ def _trim_preserving_protected_blocks(text: str, max_chars: int) -> str:
     return trimmed + marker
 
 
+_PLAIN_TRIM_MARKER = "\n[...compressed for context budget]"
+_MIN_USEFUL_CHUNK_CHARS = 120
+
+
+def _fit_to_budget(text: str, max_chars: int) -> str:
+    """Hard budget: never return more than ``max_chars``, protected blocks permitting.
+
+    ``_trim_preserving_protected_blocks`` returns text with no protected block UNCHANGED, so every
+    caller that used it as a budget cut let ordinary text overrun: five default 1,200-character
+    chunks against the default 409-token RAG budget came out about a third over. Protected
+    research blocks still win over the budget (the documented overflow); plain text is cut at a
+    word boundary with a marker.
+    """
+    if len(text) <= max_chars:
+        return text
+    if get_protected_blocks(text):
+        return _trim_preserving_protected_blocks(text, max_chars)
+    if max_chars <= 0:
+        return ""
+    if max_chars <= len(_PLAIN_TRIM_MARKER) + 20:
+        return text[:max_chars]
+    cut = text[: max_chars - len(_PLAIN_TRIM_MARKER)]
+    space = cut.rfind(" ")
+    if space >= len(cut) - 40:
+        cut = cut[:space]
+    return cut.rstrip() + _PLAIN_TRIM_MARKER
+
+
 # ---------------------------------------------------------------------------
 # Filler words and patterns that can be safely removed
 # ---------------------------------------------------------------------------
@@ -586,7 +614,7 @@ def compress_prompt(
     # Final trim if still over budget. Never cut through protected research
     # blocks after restoration; those blocks define the coding contract.
     if len(result) > max_chars:
-        result = _trim_preserving_protected_blocks(result, max_chars)
+        result = _fit_to_budget(result, max_chars)
 
     return result
 
@@ -879,19 +907,56 @@ def compress_with_question(
     return result
 
 
-def compress_rag_chunks(
+def _verbatim_within_budget(
+    ordered: list[tuple[int, str, bool]], max_chars: int
+) -> tuple[list[tuple[int, str]], int] | None:
+    """Every chunk unchanged, in ``ordered`` order, when together they fit ``max_chars``.
+
+    Returns ``None`` under budget pressure. Compressing by rank regardless of the budget removed
+    exact evidence the budget had room for: in measurement 3 a paraphrase question's answer line
+    shared no word with the question, so question-aware scoring dropped it from the rank-2 chunk
+    at every window of 16k tokens and above, the 4,000-token budget included. Blank ordinary
+    chunks are dropped, as the compressing path drops them.
+    """
+    if sum(len(chunk) for _, chunk, _ in ordered) > max_chars:
+        return None
+    kept = [(index, chunk) for index, chunk, protected in ordered if protected or chunk.strip()]
+    return kept, sum(len(chunk) for _, chunk in kept) // 4
+
+
+def _rank_keep_ratio(rank: int, surplus_level: str) -> float:
+    """Fraction of a chunk to keep under budget pressure: the most relevant is compressed least."""
+    if rank == 0:
+        ratio = 1.0  # Keep entirely
+    elif rank == 1:
+        ratio = 0.85
+    elif rank <= 3:
+        ratio = 0.7
+    else:
+        ratio = 0.5
+
+    if surplus_level == "constrained":
+        return ratio * 0.6
+    if surplus_level == "low":
+        return ratio * 0.8
+    return ratio
+
+
+def compress_rag_chunks_indexed(
     chunks: list[str],
     query: str,
     max_tokens: int,
     surplus_level: str = "moderate",
-) -> tuple[list[str], int]:
-    """Compress RAG context chunks with question-aware scoring.
+) -> tuple[list[tuple[int, str]], int]:
+    """Compress ranked RAG context chunks to a token budget.
 
-    Implements the LongLLMLingua pattern:
-    1. Score each chunk by relevance to the query
-    2. Reorder: most relevant chunk goes first (combats "lost in the middle")
-    3. Apply differentiated compression: most relevant chunk gets least compression
-    4. Trim chunks that don't fit the budget
+    Adapted from the LongLLMLingua pattern:
+    1. Keep the retrieval ranking (most relevant first, which combats "lost in the middle")
+    2. When every chunk fits the budget, pass them all through verbatim: compression only exists to
+       make room, and retrieved chunks are exact source evidence
+    3. Under budget pressure, apply differentiated compression: the top-ranked chunk gets the
+       least compression
+    4. Trim chunks that don't fit the budget (a hard limit for ordinary text)
 
     Args:
         chunks: Retrieved RAG context chunks.
@@ -900,7 +965,9 @@ def compress_rag_chunks(
         surplus_level: Compute surplus level ("high", "moderate", "low", "constrained").
 
     Returns:
-        Tuple of (compressed_chunks_in_order, total_tokens_used).
+        Tuple of ([(original_index, compressed_chunk), ...] in prompt order, total_tokens_used).
+        The index is what lets a caller label each kept chunk with ITS source and cite only the
+        sources that actually reached the model.
     """
     if not chunks or not query:
         return [], 0
@@ -908,62 +975,42 @@ def compress_rag_chunks(
     max_chars = max_tokens * 4
     query_tokens = set(re.findall(r"\b\w{3,}\b", query.lower()))
 
-    # Score chunks by question relevance. Protected chunks stay pinned in their
-    # original order so compression never reorders methodology/codebook/gate
-    # blocks relative to one another.
-    protected_chunks: list[str] = []
-    scored_chunks: list[tuple[float, int, str]] = []
-    for original_index, chunk in enumerate(chunks):
-        if get_protected_blocks(chunk):
-            protected_chunks.append(chunk)
-            continue
-        chunk_tokens = set(re.findall(r"\b\w{3,}\b", chunk.lower()))
-        if not chunk_tokens or not query_tokens:
-            scored_chunks.append((0.0, original_index, chunk))
-            continue
-        overlap = query_tokens & chunk_tokens
-        score = len(overlap) / max(len(query_tokens), 1)
-        scored_chunks.append((score, original_index, chunk))
+    # Protected chunks come first, pinned in their original order so compression never reorders
+    # methodology/codebook/gate blocks relative to one another. Ordinary chunks keep the retrieval
+    # order: they arrive ranked by hybrid retrieval (vector + BM25 fused by RRF), and re-sorting
+    # them by raw query-token overlap threw that ranking away for a weaker signal (F12). Rank
+    # drives the differentiated compression below: the top-ranked chunk is compressed least.
+    flagged = [
+        (index, chunk, bool(get_protected_blocks(chunk))) for index, chunk in enumerate(chunks)
+    ]
+    chunks_to_process = [item for item in flagged if item[2]] + [
+        item for item in flagged if not item[2]
+    ]
+    verbatim = _verbatim_within_budget(chunks_to_process, max_chars)
+    if verbatim is not None:
+        return verbatim
 
-    # Sort by relevance descending
-    scored_chunks.sort(key=lambda x: (-x[0], x[1]))
-
-    # Apply differentiated compression based on surplus level
-    result_chunks: list[str] = []
+    # Budget pressure: apply differentiated compression based on surplus level
+    result_chunks: list[tuple[int, str]] = []
     used_chars = 0
 
-    chunks_to_process: list[tuple[float, str, bool]] = [
-        (1.0, chunk, True) for chunk in protected_chunks
-    ]
-    chunks_to_process.extend((score, chunk, False) for score, _, chunk in scored_chunks)
-
-    for rank, (_score, chunk, is_protected_chunk) in enumerate(chunks_to_process):
+    for rank, (original_index, chunk, is_protected_chunk) in enumerate(chunks_to_process):
         if used_chars >= max_chars and not is_protected_chunk:
             break
 
         remaining = max_chars - used_chars
+        if not is_protected_chunk and remaining < _MIN_USEFUL_CHUNK_CHARS:
+            # A few dozen characters of a passage is noise to the model, not evidence.
+            break
         if is_protected_chunk:
             compressed = chunk
             if len(compressed) > remaining:
-                compressed = _trim_preserving_protected_blocks(compressed, remaining)
-            result_chunks.append(compressed)
+                compressed = _fit_to_budget(compressed, remaining)
+            result_chunks.append((original_index, compressed))
             used_chars += len(compressed)
             continue
 
-        # Most relevant chunk gets least compression
-        if rank == 0:
-            chunk_ratio = 1.0  # Keep entirely
-        elif rank == 1:
-            chunk_ratio = 0.85
-        elif rank <= 3:
-            chunk_ratio = 0.7
-        else:
-            chunk_ratio = 0.5
-
-        if surplus_level == "constrained":
-            chunk_ratio *= 0.6
-        elif surplus_level == "low":
-            chunk_ratio *= 0.8
+        chunk_ratio = _rank_keep_ratio(rank, surplus_level)
 
         # Truncate chunk to fit remaining budget
         chunk_char_limit = min(len(chunk), remaining)
@@ -976,15 +1023,26 @@ def compress_rag_chunks(
         else:
             compressed = compress_text(chunk, chunk_ratio)
 
-        # Ensure it fits
+        # Ensure it fits. The remaining budget is a hard limit for ordinary text.
         if len(compressed) > remaining:
-            compressed = _trim_preserving_protected_blocks(compressed, remaining)
+            compressed = _fit_to_budget(compressed, remaining)
 
         if compressed.strip():
-            result_chunks.append(compressed)
+            result_chunks.append((original_index, compressed))
             used_chars += len(compressed)
 
     return result_chunks, used_chars // 4
+
+
+def compress_rag_chunks(
+    chunks: list[str],
+    query: str,
+    max_tokens: int,
+    surplus_level: str = "moderate",
+) -> tuple[list[str], int]:
+    """:func:`compress_rag_chunks_indexed` without the provenance indices."""
+    indexed, used = compress_rag_chunks_indexed(chunks, query, max_tokens, surplus_level)
+    return [text for _, text in indexed], used
 
 
 async def record_protected_compression_telemetry(

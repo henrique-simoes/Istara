@@ -6,11 +6,11 @@ audience: architecture
 status: needs-verification
 related_features: ["memory.knowledge", "quality.dashboard"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/memory/MemoryView.tsx", "backend/app/core/vector_health.py", "backend/app/core/embeddings.py", "backend/app/core/rag.py", "backend/app/core/validation.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/pi_runtime/embedding_profile.py", "backend/app/core/pi_runtime/embeddings_gateway.py", "backend/app/core/pi_runtime/model_manager.py", "backend/app/core/pi_runtime/model_manager_provisioning.py", "backend/app/main.py"]
+code_references: ["frontend/src/components/memory/MemoryView.tsx", "backend/app/core/vector_health.py", "backend/app/core/embeddings.py", "backend/app/core/rag.py", "backend/app/core/validation.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/pi_runtime/embedding_profile.py", "backend/app/core/pi_runtime/embeddings_gateway.py", "backend/app/core/pi_runtime/model_manager.py", "backend/app/core/pi_runtime/model_manager_provisioning.py", "backend/app/main.py", "backend/app/services/retrieval_provenance.py"]
 api_references: ["backend/app/api/routes/memory.py"]
-test_references: ["tests/test_memory.py", "tests/test_rag_resilience.py", "tests/pi_production/test_embedding_profile_authority.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/test_validation_project_scope.py", "tests/pi_migration/test_count_to_zero.py"]
-last_verified: 2026-08-25
-compass: CF-SPEC-60 / CF-757; CF-SPEC-8 (Pi replacement W8)
+test_references: ["tests/test_memory.py", "tests/test_rag_resilience.py", "tests/pi_production/test_embedding_profile_authority.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/test_validation_project_scope.py", "tests/pi_migration/test_count_to_zero.py", "tests/test_spine_evidence_provenance.py", "tests/test_spine_embedding_identity.py", "tests/simulation/scenarios/86-evidence-provenance-health.mjs"]
+last_verified: 2026-09-25
+compass: CF-SPEC-60 / CF-757; CF-SPEC-8; CF-SPEC-2
 ---
 
 # Memory Health Architecture
@@ -64,6 +64,28 @@ Memory health surfaces status and quality signals for memory or retrieval infras
 - Engine rollback changes orchestration behavior, not embedding authority. Istara and Pi loop choices
   share the active Pi-owned profile; changing the profile itself is not a rollback control and remains
   blocked until a governed re-embed/re-index/activation workflow is available.
+
+## Evidence Provenance And Embedder Identity (2026-09-25)
+
+- **Provenance invariant (measurement 5).** Every source chunk should carry the evidence unit it
+  was cut from, so a retrieved passage can be followed to its source span and coding state.
+  `retrieval_provenance.provenance_coverage()` counts source-table rows with an `evidence_unit_id`
+  (filtered counts, no table load); derived rows (agent notes, skill output) are excluded and older
+  derived rows in the source table are reported separately. `GET /api/memory/{project_id}/stats`
+  returns it as `provenance` (`source_chunks`, `with_evidence_unit`, `coverage`,
+  `legacy_derived_rows`, `status` = ok | degraded | empty | unavailable).
+- **Evidence Provenance card.** The Health tab renders that object: the percentage, the count behind
+  it, an honest empty state, "Needs re-index" with the reprocess remedy when degraded, and a note for
+  legacy derived rows. Uploads, audio transcripts, document sync, knowledge sync and the file watcher
+  all index through `index_document_source_chunks`, so a fresh upload reads 100%.
+- **Embedder identity (F11).** Embeddings fingerprint the model that actually serves (a hash of the
+  vectors a fixed probe produces). The cache is keyed by `namespace#fingerprint`, a store is bound to
+  the fingerprint it was written with, and vector health reports `fingerprint_mismatch` when a
+  same-dimension model swap would otherwise mix two vector spaces silently.
+- **Layout.** The Memory tab row wraps at narrow widths (375 px) and marks the selected tab with
+  `aria-pressed`; dark-theme labels meet WCAG AA contrast.
+- Verified by `tests/test_spine_evidence_provenance.py`, `tests/test_spine_embedding_identity.py`
+  and simulation scenario `86-evidence-provenance-health` (roles, keyboard, 375 px, light/dark, axe).
 
 ## Architecture Notes
 

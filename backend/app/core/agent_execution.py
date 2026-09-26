@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import math
@@ -368,9 +369,10 @@ class AgentExecutionMixin:
 
             # Self-verify output quality (LLM reflection with heuristic fallback)
             verified, verify_reason = await self._self_verify_output(task, output)
+            # ``verified`` is the agent's own check: provisional, never independent verification.
             learning_signal = learning_signal_for_research_output(
                 execution_success=bool(output.success),
-                verification_success=bool(verified),
+                self_verified=bool(verified),
             )
             quality_score = learning_signal.research_quality_score
 
@@ -380,7 +382,7 @@ class AgentExecutionMixin:
                     project=project,
                     skill=skill,
                     output=output,
-                    verified=verified,
+                    self_verified=verified,
                     verify_reason=verify_reason,
                     quality_score=quality_score,
                     trace_id=trace_id,
@@ -443,12 +445,10 @@ class AgentExecutionMixin:
                     project_id=task.project_id,
                 )
 
-            # Record skill usage and check health for self-evolution
-            skill_manager.record_execution(
-                skill.name,
-                learning_signal.learning_success,
-                quality_score,
-                project_id=task.project_id,
+            # Record skill usage and check health for self-evolution. Undecided (self-verified)
+            # runs count as provisional; human review records the decided outcome.
+            skill_manager.record_learning_signal(
+                skill.name, learning_signal, project_id=task.project_id
             )
             try:
                 health = skill_manager.get_skill_health(skill.name, project_id=task.project_id)
@@ -679,12 +679,16 @@ class AgentExecutionMixin:
         project: Project,
         skill,
         output: SkillOutput,
-        verified: bool,
+        self_verified: bool,
         verify_reason: str,
         quality_score: float,
         trace_id: str,
     ) -> None:
-        """Distill a completed skill execution into reusable reasoning memory."""
+        """Distill a completed skill execution into reusable reasoning memory.
+
+        ``self_verified`` is the agent's own check, recorded as provisional process memory. Only
+        independent review (task_review) may later record a success.
+        """
         from app.core.reasoning_bank import reasoning_bank
 
         await reasoning_bank.record_task_execution(
@@ -696,7 +700,8 @@ class AgentExecutionMixin:
             skill_name=skill.name,
             output_summary=output.summary or "",
             success=output.success,
-            verified=verified,
+            verified=False,
+            self_verified=self_verified,
             quality_score=quality_score,
             errors=list(output.errors or []),
             validation_reason=verify_reason,
@@ -779,7 +784,7 @@ class AgentExecutionMixin:
                 return skill
 
         # Try to infer skill from task title/description
-        title_lower = (task.title + " " + task.description).lower()
+        title_lower = f"{task.title or ''} {task.description or ''}".lower()
 
         from app.core.agent_skill_tools import SKILL_KEYWORDS
 
@@ -802,7 +807,10 @@ class AgentExecutionMixin:
 
     # --- Semantic Skill Matching ---
 
-    _skill_desc_cache: dict[str, list[float]] = {}
+    # Keyed by (embedding space, skill, description digest): an edited description or a new
+    # embedding profile gets a fresh vector. The old name-only key served stale vectors forever,
+    # and zip() then compared vectors from two spaces over their shorter length (F9).
+    _skill_desc_cache: dict[tuple[str, str, str], list[float]] = {}
 
     async def _semantic_skill_match(self, task: Task):
         """Try embedding-based semantic matching when keywords fail.
@@ -843,17 +851,28 @@ class AgentExecutionMixin:
         if not task_vec:
             return None
 
-        # Embed skill descriptions (cached in-memory)
-        for skill in all_skills:
-            if skill.name not in self._skill_desc_cache:
-                desc = f"{skill.display_name} {skill.description}"
-                vec = await embed_text(desc[:512])
-                if vec:
-                    self._skill_desc_cache[skill.name] = vec
+        # Embed skill descriptions (cached in-memory per embedding space and description)
+        from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
 
-        # Cosine similarity
-        def _cosine(a: list[float], b: list[float]) -> float:
-            dot = sum(x * y for x, y in zip(a, b))
+        profile = get_active_embedding_profile()
+        space = f"{profile.cache_namespace}@v{profile.version}"
+        skill_vectors: dict[str, list[float]] = {}
+        for skill in all_skills:
+            desc = f"{skill.display_name} {skill.description}"[:512]
+            key = (space, skill.name, hashlib.sha256(desc.encode("utf-8")).hexdigest()[:16])
+            vec = self._skill_desc_cache.get(key)
+            if vec is None:
+                vec = await embed_text(desc, role="document")
+                if vec:
+                    self._skill_desc_cache[key] = vec
+            if vec:
+                skill_vectors[skill.name] = vec
+
+        # Cosine similarity; vectors of different dimensions are not comparable.
+        def _cosine(a: list[float], b: list[float]) -> float | None:
+            if len(a) != len(b):
+                return None
+            dot = sum(x * y for x, y in zip(a, b, strict=True))
             na = math.sqrt(sum(x * x for x in a))
             nb = math.sqrt(sum(x * x for x in b))
             return dot / (na * nb) if na and nb else 0.0
@@ -861,10 +880,15 @@ class AgentExecutionMixin:
         best_score = 0.0
         best_skill = None
         for skill in all_skills:
-            skill_vec = self._skill_desc_cache.get(skill.name)
+            skill_vec = skill_vectors.get(skill.name)
             if not skill_vec:
                 continue
             score = _cosine(task_vec, skill_vec)
+            if score is None:
+                logger.warning(
+                    "Semantic skill match skipped for %s: embedding dimensions differ", skill.name
+                )
+                continue
             if score > best_score:
                 best_score = score
                 best_skill = skill

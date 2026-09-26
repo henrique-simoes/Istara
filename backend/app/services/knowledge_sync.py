@@ -11,8 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.file_processor import TextChunk, chunk_text, process_file
 from app.core.keyword_index import KeywordIndex
-from app.core.rag import VectorStore, ingest_chunks
+from app.core.rag import VectorStore
 from app.models.document import Document
+from app.services.retrieval_provenance import (
+    document_source_text,
+    index_document_source_chunks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +64,11 @@ class KnowledgeSyncService:
                         e,
                     )
 
-            # 2. Fall back to database-persisted text / preview
+            # 2. Fall back to database-persisted text / preview. It is stored through
+            # ``protect_document_text``, so with FILE_ENCRYPTION_ENABLED it is ciphertext until
+            # revealed; indexing it raw put ciphertext into both indices (F15).
             if not chunks:
-                content = (doc.content_text or doc.content_preview or "").strip()
+                content = document_source_text(doc)
                 if content:
                     chunks = chunk_text(
                         content,
@@ -85,7 +91,10 @@ class KnowledgeSyncService:
 
             # Delete old chunks for this source to ensure idempotency
             try:
-                await store.delete_by_source(source_key)
+                if doc.file_path:
+                    await store.delete_file_source(doc.file_path)
+                else:
+                    await store.delete_by_source(source_key)
             except Exception as e:
                 logger.debug("Failed deleting old vector chunks for %s: %s", source_key, e)
 
@@ -94,9 +103,15 @@ class KnowledgeSyncService:
             except Exception as e:
                 logger.debug("Failed deleting old keyword chunks for %s: %s", source_key, e)
 
-            # Ingest chunks into both indices
+            # Ingest chunks into both indices, each stamped with its evidence unit
             try:
-                await ingest_chunks(project_id, chunks)
+                await index_document_source_chunks(
+                    project_id,
+                    chunks,
+                    document_id=doc.id,
+                    document_text=document_source_text(doc),
+                    db=db,
+                )
                 indexed_docs += 1
                 total_chunks += len(chunks)
                 sources_indexed.append(source_key)

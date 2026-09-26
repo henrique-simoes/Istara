@@ -32,50 +32,67 @@ async def list_memory(
         if not store._ensure_table():
             return {"chunks": [], "total": 0, "page": page, "page_size": page_size}
 
+        # Page in the query: select the listed columns (never the vectors) with offset/limit.
+        # The old code loaded the whole table, vectors included, into pandas per page (F17).
         table = store.db.open_table(store.table_name)
-        df = table.to_pandas()
-        total = len(df)
-
-        start = (page - 1) * page_size
-        end = start + page_size
-        page_df = df.iloc[start:end]
+        total = table.count_rows()
+        names = set(table.schema.names)
+        columns = [
+            c
+            for c in (
+                "text",
+                "source",
+                "page",
+                "agent_id",
+                "chunk_type",
+                "created_at",
+                "confidence",
+            )
+            if c in names
+        ]
+        rows = (
+            table.search().select(columns).offset((page - 1) * page_size).limit(page_size).to_list()
+        )
 
         chunks = []
-        for _, row in page_df.iterrows():
+        for row in rows:
             chunks.append(
                 {
                     "text": str(row.get("text", ""))[:500],  # Truncate for listing
                     "source": str(row.get("source", "")),
-                    "page": int(row.get("page", 0)) if "page" in row.index else 0,
-                    "agent_id": str(row.get("agent_id", "")) if "agent_id" in row.index else "",
-                    "chunk_type": str(row.get("chunk_type", "character"))
-                    if "chunk_type" in row.index
-                    else "character",
-                    "created_at": float(row.get("created_at", 0))
-                    if "created_at" in row.index
-                    else 0,
-                    "confidence": float(row.get("confidence", 1.0))
-                    if "confidence" in row.index
-                    else 1.0,
+                    "page": int(row.get("page") or 0),
+                    "agent_id": str(row.get("agent_id") or ""),
+                    "chunk_type": str(row.get("chunk_type") or "character"),
+                    "created_at": float(row.get("created_at") or 0),
+                    "confidence": float(row.get("confidence", 1.0) or 1.0),
                 }
             )
-
-        # Source distribution
-        sources = {}
-        if "source" in df.columns:
-            for src in df["source"]:
-                sources[src] = sources.get(src, 0) + 1
 
         return {
             "chunks": chunks,
             "total": total,
             "page": page,
             "page_size": page_size,
-            "sources": [{"name": k, "count": v} for k, v in sorted(sources.items())],
+            "sources": [
+                {"name": name, "count": count}
+                for name, count in sorted(_source_counts(table, total).items())
+            ],
         }
     except Exception as e:
         logger.warning(f"Memory list failed: {e}")
         return {"chunks": [], "total": 0, "page": page, "page_size": page_size, "error": str(e)}
+
+
+def _source_counts(table, total: int) -> dict[str, int]:
+    """Chunk count per source from the ``source`` column alone (no vectors, no other columns)."""
+    if total <= 0 or "source" not in table.schema.names:
+        return {}
+    column = table.search().select(["source"]).limit(total).to_arrow().column("source")
+    counts: dict[str, int] = {}
+    for value in column.to_pylist():
+        key = str(value or "")
+        counts[key] = counts.get(key, 0) + 1
+    return counts
 
 
 @router.get("/memory/{project_id}/search")
@@ -139,23 +156,21 @@ async def memory_stats(project_id: str, request: Request, db: AsyncSession = Dep
     vector_count = await store.count()
     keyword_count = await keyword_idx.count()
 
-    # Get source distribution
+    # Get source distribution (source column only) and the vector dimension from the schema.
     sources = []
     vector_dim = 0
     try:
         if store._ensure_table():
             table = store.db.open_table(store.table_name)
-            df = table.to_pandas()
-            if "source" in df.columns:
-                src_counts = df["source"].value_counts().to_dict()
-                sources = [{"name": k, "chunk_count": v} for k, v in src_counts.items()]
-
-            # Get vector dimensions
-            if len(df) > 0 and "vector" in df.columns:
-                vec = df.iloc[0]["vector"]
-                vector_dim = len(vec) if vec is not None else 0
-    except Exception:
-        pass
+            src_counts = _source_counts(table, vector_count)
+            sources = [
+                {"name": k, "chunk_count": v}
+                for k, v in sorted(src_counts.items(), key=lambda item: -item[1])
+            ]
+            if vector_count and "vector" in table.schema.names:
+                vector_dim = int(getattr(table.schema.field("vector").type, "list_size", 0) or 0)
+    except Exception as e:
+        logger.debug("Memory stats source/dimension read failed: %s", e)
 
     # Embedding identity is Pi-owned; classical provider settings are not an
     # authority and must not change what this health response reports.
@@ -163,6 +178,7 @@ async def memory_stats(project_id: str, request: Request, db: AsyncSession = Dep
     from app.core.pi_runtime.embedding_profile import public_embedding_profile
 
     embedding_profile = public_embedding_profile()
+    from app.services.retrieval_provenance import provenance_coverage
 
     return {
         "vector_chunks": vector_count,
@@ -177,6 +193,8 @@ async def memory_stats(project_id: str, request: Request, db: AsyncSession = Dep
             "vector": s.rag_hybrid_vector_weight,
             "keyword": s.rag_hybrid_keyword_weight,
         },
+        # Health invariant (measurement 5): every source chunk traces to an evidence unit.
+        "provenance": await provenance_coverage(project_id),
     }
 
 

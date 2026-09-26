@@ -183,7 +183,30 @@ export function normalizeToolChoice(toolChoice) {
  * the run closed for real bindings (faux test bindings are scripted and need
  * no forcing).
  */
-export function mapToolChoiceForApi(api, choice) {
+// Providers whose API accepts only tool_choice "auto": a forced or named choice is refused with a
+// 400. Meta's Responses API (Muse Spark), 2026-09-25: 'only "auto" is supported for tool_choice'.
+// A structured run there offers the capture tool with "auto" and asks for it in the prompt; the
+// capture and validation rules are unchanged, so free-form text still never counts.
+const AUTO_ONLY_TOOL_CHOICE_PROVIDERS = new Set(["meta"]);
+// Providers whose thinking mode refuses a forced or named choice. DeepSeek, 2026-09-26: "Thinking
+// mode does not support this tool_choice" (HTTP 400). Anthropic documents the same for extended
+// thinking (only auto or none). Without thinking both accept a forced choice.
+const AUTO_ONLY_WHEN_THINKING_PROVIDERS = new Set(["deepseek", "anthropic"]);
+
+function autoChoice(api) {
+  return api === "anthropic-messages" ? { type: "auto" } : "auto";
+}
+
+/** Whether a mapped tool choice lets the model decide (string "auto" or Anthropic's object). */
+export function isAutoToolChoice(mapped) {
+  return mapped === "auto" || Boolean(mapped && typeof mapped === "object" && mapped.type === "auto");
+}
+
+export function mapToolChoiceForApi(api, choice, { provider, thinking = false } = {}) {
+  const id = String(provider || "").toLowerCase();
+  if (AUTO_ONLY_TOOL_CHOICE_PROVIDERS.has(id) || (thinking && AUTO_ONLY_WHEN_THINKING_PROVIDERS.has(id))) {
+    return autoChoice(api);
+  }
   if (api === "openai-completions") {
     if (choice.kind === "auto") return "auto";
     if (choice.kind === "required") return "required";
@@ -194,6 +217,14 @@ export function mapToolChoiceForApi(api, choice) {
     if (choice.kind === "required") return { type: "any" };
     return { type: "tool", name: choice.name };
   }
+  if (api === "openai-responses") {
+    // pi-ai passes tool_choice through unchanged; the Responses API takes the flat named-function
+    // form. Without this branch every structured run on a Responses endpoint (Meta Muse Spark)
+    // failed closed before any request.
+    if (choice.kind === "auto") return "auto";
+    if (choice.kind === "required") return "required";
+    return { type: "function", name: choice.name };
+  }
   if (api === "openai-codex-responses") {
     if (choice.kind === "auto") return "auto";
     // pi-ai's Codex Responses adapter accepts auto/none/required, not a named
@@ -202,4 +233,38 @@ export function mapToolChoiceForApi(api, choice) {
     return "required";
   }
   return null;
+}
+
+/**
+ * The prompt for a structured run. A forced run needs no instruction; an unforced one (the
+ * provider accepts only tool_choice "auto") asks for the capture tool explicitly.
+ */
+export function structuredPromptText(text, { forced }) {
+  if (forced) return text;
+  return `${text}\n\nReturn your final answer only by calling the ${STRUCTURED_TOOL_NAME} tool with an object that matches its schema.`;
+}
+
+/**
+ * The tool choice a run sends, from its binding: the model's API, the upstream provider and whether
+ * this binding thinks. `mapped` is null when a real binding's API cannot express the choice (the
+ * caller fails the run closed). `forced` is false only when the provider leaves the call to the
+ * model ("auto"), and then the prompt asks for the capture tool; capture rules are unchanged.
+ */
+export function resolveStructuredChoice(binding, choice) {
+  const api = (binding && binding.model && binding.model.api) || "";
+  const thinking = Boolean(binding && binding.params && binding.params.reasoning);
+  const mapped = mapToolChoiceForApi(api, choice, { provider: bindingProviderId(binding), thinking });
+  return { mapped, forced: !isAutoToolChoice(mapped) };
+}
+
+/**
+ * The provider identity of a binding. Istara registers every endpoint as its own pi-ai provider
+ * (`pi-endpoint-<id>`), so `model.provider` is not the upstream provider; the capability receipt
+ * carries the endpoint's `pi_provider`.
+ */
+export function bindingProviderId(binding) {
+  const receipt = binding && binding.capability_receipt;
+  return String((receipt && receipt.pi_provider) || (binding && binding.model && binding.model.provider) || "")
+    .trim()
+    .toLowerCase();
 }

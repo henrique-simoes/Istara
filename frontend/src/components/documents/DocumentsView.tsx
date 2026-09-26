@@ -352,7 +352,7 @@ export default function DocumentsView() {
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
       <ViewOnboarding viewId="documents" title="Your Research Files" description="All documents in your project — uploaded files, agent outputs, and task results. Drag files here, link an external folder, or use Organize for AI categorization." chatPrompt="How do I organize my documents?" />
       <div className="border-b border-slate-200 dark:border-slate-800 p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
             <FileText size={20} className="text-istara-600" />
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Documents</h2>
@@ -362,7 +362,7 @@ export default function DocumentsView() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               ref={fileInputRef}
               type="file"

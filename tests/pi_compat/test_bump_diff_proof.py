@@ -21,6 +21,9 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "pi_bump_diff_proof.py"
+# The approved lockstep pin (tests/pi_migration/test_version_provenance.py EXPECTED_PINS); the
+# synthetic surfaces below model a well-formed install of it.
+CURRENT_PIN = "0.87.1"
 
 
 def _load_module():
@@ -226,8 +229,8 @@ def test_proof_is_typed_not_runnable_when_npm_install_fails(mod, tmp_path, monke
 def test_expected_pins_parse_from_provenance_source(mod):
     pins = mod._expected_pins()
     # Tracks tests/pi_migration/test_version_provenance.py EXPECTED_PINS;
-    # 0.85.1 is the wave's classified lockstep bump (diff-proof gate passed).
-    assert pins == {"@earendil-works/pi-agent-core": "0.85.1", "@earendil-works/pi-ai": "0.85.1"}
+    # 0.87.1 is the classified lockstep bump of 2026-09-25 (diff-proof gate passed).
+    assert pins == {"@earendil-works/pi-agent-core": CURRENT_PIN, "@earendil-works/pi-ai": CURRENT_PIN}
 
 
 def test_verify_accepts_current_repository_state(mod, capsys):
@@ -272,7 +275,7 @@ def test_script_cli_wiring():
 def _fake_surface(
     base: Path,
     *,
-    pin: str = "0.85.1",
+    pin: str = CURRENT_PIN,
     resolved_ok: bool = True,
     integrity_ok: bool = True,
     installed: bool = True,
@@ -329,7 +332,7 @@ def _fake_surface(
     return base
 
 
-def _fake_catalog(base: Path, version: str = "0.85.1") -> Path:
+def _fake_catalog(base: Path, version: str = CURRENT_PIN) -> Path:
     path = base / "catalog.json"
     path.write_text(
         json.dumps({"__provenance": {"pi_ai_version": version}}), encoding="utf-8"
@@ -403,7 +406,7 @@ def test_verify_rejects_evil_host_with_correct_tarball_name(
         key = f"node_modules/@earendil-works/{short}"
         lock["packages"][key]["resolved"] = (
             f"https://evil.attacker.example/@earendil-works/{short}/"
-            f"-/{short}-0.85.1.tgz"
+            f"-/{short}-{CURRENT_PIN}.tgz"
         )
     lock_path.write_text(json.dumps(lock), encoding="utf-8")
     monkeypatch.setattr(mod, "SURFACES_ROOTS", (("fake", surface),))

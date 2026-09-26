@@ -1,6 +1,6 @@
 # Pi Compatibility Authority
 
-Status: authoritative reference · Last verified: 2026-09-08 · Pin: `@earendil-works/pi-ai` / `@earendil-works/pi-agent-core` **0.85.1**
+Status: authoritative reference · Last verified: 2026-09-25 · Pin: `@earendil-works/pi-ai` / `@earendil-works/pi-agent-core` **0.87.1**
 
 Pi/pi-ai is the single authority for provider and model capability semantics. Istara
 **inherits, restricts, or projects** it — it never restates it. This document is the
@@ -123,6 +123,22 @@ flush, prompt-cache/max-tokens compat gates, Anthropic beta-endpoint migration) 
 request-wire fixtures passed unchanged; `zai/glm-5.3` was repriced from $0 (the AC-6
 proof moved to `zai/glm-5.3-highspeed`); evidence:
 `docs/build-stream/pi-compat-20260908-0851-diff-proof.json`.
+
+Worked example — the 0.85.1 → 0.87.1 bump (2026-09-25, owner request: Meta as a provider): all
+50 changed surfaces and 68 registry removals classified `intended-upstream`. Two providers were
+added (`meta`, direct at `api.meta.ai` over OpenAI Responses, with Muse Spark 1.1-1.3 and the
+Contributor models; `radius`); 209 models added, 1,354 → 1,495. The transports now normalise the
+transcript (tools may be declared in messages; `supportsMidConvoSystemMessages` and related compat
+flags), which Istara's worker tolerates unchanged (worker suite 103/103). One request-wire fixture
+changed: Codex with thinking off now sends `reasoning: {effort: "none"}` instead of omitting it,
+and the Codex registry record gained `supportsMidConvoSystemMessages`. Removals include
+`deepseek/deepseek-v4-flash` (now `deepseek-flash`) and `openai-codex/gpt-5.4`: an endpoint
+already configured with a removed model keeps resolving through the registry-miss fallback, but
+Settings no longer offers it for new endpoints. One transitive npm package was added
+(`proxy-agent-negotiate` 1.1.0, MIT, no dependencies or install script, from the same
+`proxy-agents` monorepo as `http-proxy-agent`/`https-proxy-agent`), 8 AWS/Smithy helpers were
+removed and 60 versions moved, all from registry.npmjs.org with integrity hashes. Evidence:
+`docs/build-stream/pi-compat-20260925-0871-diff-proof.json`.
 
 ### Rollback
 

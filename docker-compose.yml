@@ -89,7 +89,7 @@ services:
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - OLLAMA_HOST=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:latest}
-      - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-bge-m3}
       - LMSTUDIO_HOST=${LMSTUDIO_HOST:-http://host.docker.internal:1234}
       - LMSTUDIO_MODEL=${LMSTUDIO_MODEL:-default}
       - LMSTUDIO_EMBED_MODEL=${LMSTUDIO_EMBED_MODEL:-default}

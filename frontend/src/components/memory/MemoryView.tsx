@@ -21,6 +21,7 @@ import {
 import ContextDAGView from "./ContextDAGView";
 import { memory as memoryApi, agents as agentsApi, documents as documentsApi, reasoningBank } from "@/lib/api";
 import { memorySourceLabel, type MemorySourceDocument } from "@/lib/memorySourceLabels";
+import type { MemoryProvenance } from "@/lib/memoryApi";
 import type { ReasoningMemoryItem } from "@/lib/reasoningBankTypes";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,7 @@ interface MemoryStats {
   chunk_size: number;
   chunk_overlap: number;
   hybrid_weights: { vector: number; keyword: number };
+  provenance?: MemoryProvenance;
 }
 
 interface AgentNote {
@@ -156,7 +158,7 @@ function MemorySearchControls({
         <button
           onClick={onClear}
           aria-label="Clear search"
-          className="px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+          className="px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
         >
           Clear
         </button>
@@ -174,7 +176,7 @@ function MemorySearchResults({
 }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-semibold uppercase text-slate-500">Search Results ({results.length})</h3>
+      <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Search Results ({results.length})</h3>
       {results.length === 0 ? (
         <p className="text-sm text-slate-400 py-4 text-center">No results found.</p>
       ) : (
@@ -185,14 +187,23 @@ function MemorySearchResults({
                 <div className="flex items-center gap-2">
                   <FileText size={12} className="text-slate-400" />
                   <span
-                    className="text-xs text-slate-500 truncate max-w-[300px]"
+                    className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[300px]"
                     title={result.source}
                   >
                     {memorySourceLabel(result.source, sourceDocuments)}
                   </span>
                 </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400">
-                  {(result.score * 100).toFixed(1)}%
+                {/* The fused hybrid score is a reciprocal-rank sum (~0.005-0.02), not a
+                    probability: rendered as a percentage it told a researcher their best match was
+                    "1.6%". The rank is what the ordering means; the raw score stays in the title
+                    for anyone comparing fusion runs. */}
+                <span
+                  data-testid="memory-result-rank"
+                  title={`Hybrid rank ${index + 1} of ${results.length} (fused score ${result.score.toFixed(4)})`}
+                  aria-label={`Rank ${index + 1} of ${results.length}`}
+                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-istara-100 dark:bg-istara-900/30 text-istara-700 dark:text-istara-400 tabular-nums"
+                >
+                  #{index + 1}
                 </span>
               </div>
               <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-3">{result.text}</p>
@@ -219,7 +230,7 @@ function MemorySourcesList({
   if (sources.length === 0) return null;
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Sources</h3>
+      <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Sources</h3>
       <div className="space-y-1" role="region" aria-label="Source files" tabIndex={0}>
         {sources.map((source) => {
           const label = memorySourceLabel(source.name, sourceDocuments);
@@ -267,13 +278,13 @@ function MemoryChunksList({
 }) {
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Chunks</h3>
+      <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Chunks</h3>
       {loading ? (
         <p className="text-sm text-slate-400 py-4 text-center">Loading...</p>
       ) : chunks.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
           <Database size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-          <p className="text-sm text-slate-500 mb-1">No chunks in knowledge base</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No chunks in knowledge base</p>
           <p className="text-xs text-slate-400">Upload files to populate the knowledge base</p>
         </div>
       ) : (
@@ -282,10 +293,10 @@ function MemoryChunksList({
             <div key={index} className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 truncate max-w-[300px]" title={chunk.source}>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[300px]" title={chunk.source}>
                     {memorySourceLabel(chunk.source, sourceDocuments)}
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                     {chunk.chunk_type}
                   </span>
                 </div>
@@ -312,7 +323,7 @@ function MemoryChunksList({
             onClick={() => setPage((current) => Math.max(1, current - 1))}
             disabled={page <= 1}
             aria-label="Previous page"
-            className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30"
           >
             <ChevronLeft size={14} /> Prev
           </button>
@@ -321,7 +332,7 @@ function MemoryChunksList({
             onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
             disabled={page >= totalPages}
             aria-label="Next page"
-            className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30"
           >
             Next <ChevronRight size={14} />
           </button>
@@ -433,7 +444,7 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
       />
 
       {/* Stats bar + Re-index button */}
-      <div className="flex items-center justify-between text-xs text-slate-500">
+      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-4">
           <span>{total} chunks total</span>
           <span>{sources.length} sources</span>
@@ -566,7 +577,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
             subTab === "notes"
               ? "bg-istara-50 text-istara-700 dark:bg-istara-950/50 dark:text-istara-300"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
           )}
         >
           <FileText size={13} />
@@ -578,7 +589,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
             subTab === "reasoning"
               ? "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
           )}
         >
           <Sparkles size={13} className="text-amber-500" />
@@ -593,7 +604,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
           ) : agentList.length === 0 ? (
             <div className="text-center py-12 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
               <Users size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-              <p className="text-sm text-slate-500 mb-1">No agents found</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No agents found</p>
               <p className="text-xs text-slate-400">Agent notes will appear here as agents work on tasks</p>
             </div>
           ) : (
@@ -613,7 +624,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="font-medium text-sm text-slate-900 dark:text-white truncate">{agent.name}</span>
-                        <p className="text-xs text-slate-500">{agent.id}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{agent.id}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {notes !== undefined && (
@@ -657,7 +668,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
             <button
               onClick={fetchReasoningMemories}
               disabled={reasoningLoading}
-              className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
             >
               <RefreshCw size={12} className={cn(reasoningLoading && "animate-spin")} />
               Refresh
@@ -678,7 +689,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
           {!reasoningLoading && !reasoningError && reasoningMemories.length === 0 && (
             <div className="text-center py-12 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
               <Brain size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-              <p className="text-sm text-slate-500 mb-1">No reasoning memories yet</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No reasoning memories yet</p>
               <p className="text-xs text-slate-400">
                 As agents execute tasks and reflect on outcomes, lessons and rules are synthesized into ReasoningBank.
               </p>
@@ -770,6 +781,62 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
 
 // ---- Health Tab ----
 
+/**
+ * Health invariant (measurement 5): every source chunk should trace to the evidence unit it was
+ * cut from, so a retrieved passage can be followed back to its source span and coding state.
+ */
+function ProvenanceCard({ provenance }: { provenance: MemoryProvenance }) {
+  const percent =
+    provenance.coverage === null ? null : Math.round(provenance.coverage * 1000) / 10;
+  const tone =
+    provenance.status === "ok"
+      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+      : provenance.status === "empty"
+        ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+  const label =
+    provenance.status === "ok"
+      ? "All traceable"
+      : provenance.status === "empty"
+        ? "No source chunks yet"
+        : provenance.status === "unavailable"
+          ? "Unavailable"
+          : "Needs re-index";
+  return (
+    <section aria-labelledby="provenance-heading">
+      <h3 id="provenance-heading" className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">
+        Evidence Provenance
+      </h3>
+      <div
+        className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 space-y-3"
+        data-testid="provenance-card"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-slate-600 dark:text-slate-300">
+            Source chunks traceable to an evidence unit
+          </span>
+          <span className={cn("text-xs px-2 py-0.5 rounded-full shrink-0", tone)}>{label}</span>
+        </div>
+        <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="provenance-coverage">
+          {percent === null ? "—" : `${percent}%`}
+        </p>
+        <p className="text-xs text-slate-600 dark:text-slate-300">
+          {provenance.with_evidence_unit} of {provenance.source_chunks} source chunks carry an
+          evidence unit id.
+          {provenance.status === "degraded" &&
+            " Reprocess the files listed under Sources to index them with provenance."}
+        </p>
+        {provenance.legacy_derived_rows > 0 && (
+          <p className="text-xs text-slate-600 dark:text-slate-300">
+            {provenance.legacy_derived_rows} older rows hold agent notes or skill output. They are
+            excluded from evidence search.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function HealthTab({ projectId }: { projectId: string }) {
   const [stats, setStats] = useState<MemoryStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -793,14 +860,14 @@ function HealthTab({ projectId }: { projectId: string }) {
   }, [fetchStats]);
 
   if (loading && !stats) {
-    return <p className="text-sm text-slate-400 py-8 text-center">Loading health data...</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-400 py-8 text-center">Loading health data...</p>;
   }
 
   if (error) {
     return (
       <div className="text-center py-12">
         <AlertTriangle size={32} className="mx-auto text-yellow-500 mb-3" />
-        <p className="text-sm text-slate-500">{error}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{error}</p>
         <button
           onClick={fetchStats}
           aria-label="Retry loading health data"
@@ -822,24 +889,26 @@ function HealthTab({ projectId }: { projectId: string }) {
       <div className="grid grid-cols-2 gap-3">
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.vector_chunks}</p>
-          <p className="text-xs text-slate-500">Vector Chunks</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Vector Chunks</p>
         </div>
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.keyword_chunks}</p>
-          <p className="text-xs text-slate-500">Keyword Chunks</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Keyword Chunks</p>
         </div>
       </div>
 
+      {stats.provenance && <ProvenanceCard provenance={stats.provenance} />}
+
       {/* Embedding Config */}
       <div>
-        <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Embedding Configuration</h3>
+        <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Embedding Configuration</h3>
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Embedding Model</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Embedding Model</span>
             <span className="text-xs font-mono text-slate-700 dark:text-slate-300">{stats.embedding_model}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Vector Dimensions</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Vector Dimensions</span>
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-slate-700 dark:text-slate-300">
                 {stats.vector_dimensions || "N/A"}
@@ -852,7 +921,7 @@ function HealthTab({ projectId }: { projectId: string }) {
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Dimension Status</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Dimension Status</span>
             <span className={cn(
               "text-xs px-2 py-0.5 rounded-full",
               dimOk
@@ -867,14 +936,14 @@ function HealthTab({ projectId }: { projectId: string }) {
 
       {/* Chunking Config */}
       <div>
-        <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Chunking Configuration</h3>
+        <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Chunking Configuration</h3>
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Chunk Size</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Chunk Size</span>
             <span className="text-xs font-mono text-slate-700 dark:text-slate-300">{stats.chunk_size} chars</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Chunk Overlap</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Chunk Overlap</span>
             <span className="text-xs font-mono text-slate-700 dark:text-slate-300">{stats.chunk_overlap} chars</span>
           </div>
         </div>
@@ -882,10 +951,10 @@ function HealthTab({ projectId }: { projectId: string }) {
 
       {/* Hybrid Search Weights */}
       <div>
-        <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Hybrid Search Weights</h3>
+        <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Hybrid Search Weights</h3>
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Vector Weight</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Vector Weight</span>
             <div className="flex items-center gap-2">
               <div className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                 <div
@@ -899,7 +968,7 @@ function HealthTab({ projectId }: { projectId: string }) {
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Keyword Weight</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Keyword Weight</span>
             <div className="flex items-center gap-2">
               <div className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                 <div
@@ -918,7 +987,7 @@ function HealthTab({ projectId }: { projectId: string }) {
       {/* Sources Breakdown */}
       {stats.sources.length > 0 && (
         <div>
-          <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Sources ({stats.sources.length})</h3>
+          <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Sources ({stats.sources.length})</h3>
           <div className="space-y-1" role="region" aria-label="Source breakdown" tabIndex={0}>
             {stats.sources.map((source) => {
               const label = memorySourceLabel(source.name, sourceDocuments);
@@ -939,7 +1008,7 @@ function HealthTab({ projectId }: { projectId: string }) {
           onClick={fetchStats}
           disabled={loading}
           aria-label="Refresh health data"
-          className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-50"
+          className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-50"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Refresh
         </button>
@@ -959,7 +1028,7 @@ export default function MemoryView() {
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <Brain size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-          <p className="text-sm text-slate-500">Select a project to view its memory</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Select a project to view its memory</p>
         </div>
       </div>
     );
@@ -983,18 +1052,19 @@ export default function MemoryView() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 px-4 pt-3">
+      {/* Tabs: wrap at narrow widths, where a single row was clipped by the view's overflow-hidden */}
+      <div className="flex flex-wrap items-center gap-1 px-4 pt-3">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             aria-label={`Switch to ${tab.label} tab`}
+            aria-pressed={activeTab === tab.id}
             className={cn(
               "flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors",
               activeTab === tab.id
                 ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400 font-medium"
-                : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
             )}
           >
             <tab.icon size={14} />

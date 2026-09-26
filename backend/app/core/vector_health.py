@@ -41,6 +41,8 @@ async def check_embedding_dimensions(
     try:
         test_vectors = validate_embedding_vectors(await embed_probe(), expected_count=1)
         model_dim = len(test_vectors[0])
+        if engine is None:
+            await _refresh_fingerprint()
     except Exception as e:
         return {
             "status": "error",
@@ -83,32 +85,27 @@ async def check_embedding_dimensions(
 
     projects = [project_id] if project_id else [d.name for d in data_dir.iterdir() if d.is_dir()]
 
-    mismatches = []
-    profile_mismatches = []
+    found: dict[str, list[dict]] = {"dimension": [], "profile": [], "fingerprint": []}
     for pid in projects:
-        try:
-            import lancedb
+        kind, row = _project_vector_state(data_dir, pid, model_dim)
+        if kind in found:
+            found[kind].append(row)
+    mismatches = found["dimension"]
+    profile_mismatches = found["profile"]
+    fingerprint_mismatches = found["fingerprint"]
 
-            from app.core.rag import VectorProfileMismatchError, VectorStore
-
-            db_path = str(data_dir / pid)
-            VectorStore(pid)._ensure_profile_binding()
-            db = lancedb.connect(db_path)
-            if "chunks" not in db.table_names():
-                continue
-            table = db.open_table("chunks")
-            df = table.to_pandas()
-            if len(df) == 0:
-                continue
-            stored_dim = len(df.iloc[0]["vector"])
-            if stored_dim != model_dim:
-                mismatches.append(
-                    {"project_id": pid, "stored_dim": stored_dim, "model_dim": model_dim}
-                )
-        except VectorProfileMismatchError as e:
-            profile_mismatches.append({"project_id": pid, "error": str(e)})
-        except Exception as e:
-            logger.warning(f"Dimension check failed for project {pid}: {e}")
+    if fingerprint_mismatches:
+        return {
+            "status": "fingerprint_mismatch",
+            "message": (
+                f"The embedding model serving now is not the one that built "
+                f"{len(fingerprint_mismatches)} project index(es), although the dimension "
+                "matches. A governed re-index is required."
+            ),
+            "fingerprint_mismatches": fingerprint_mismatches,
+            "model_dim": model_dim,
+            "stored_dim": 0,
+        }
 
     if profile_mismatches:
         return {
@@ -141,3 +138,47 @@ async def check_embedding_dimensions(
         "model": model,
         "engine": engine,
     }
+
+
+async def _refresh_fingerprint() -> None:
+    """Re-measure the serving model's identity (best effort).
+
+    A same-dimension swap changes the fingerprint, not the dimension (F11). Without a fresh
+    fingerprint the stores are still checked by profile and dimension.
+    """
+    from app.core.embeddings import ensure_embed_fingerprint
+
+    try:
+        await ensure_embed_fingerprint(force=True)
+    except Exception as exc:
+        logger.warning("Embedding fingerprint probe failed: %s", exc)
+
+
+def _project_vector_state(data_dir: Path, pid: str, model_dim: int) -> tuple[str, dict | None]:
+    """Classify one project's store: ``ok``, ``skip``, ``dimension``, ``profile``, ``fingerprint``.
+
+    A health READ: it checks the binding without writing a manifest for an unbound store (F16),
+    and reads the stored dimension from the schema instead of loading the table.
+    """
+    from app.core.rag import VectorProfileMismatchError, VectorStore
+
+    try:
+        import lancedb
+
+        VectorStore(pid).check_profile_binding()
+        db = lancedb.connect(str(data_dir / pid))
+        if "chunks" not in db.table_names():
+            return "skip", None
+        table = db.open_table("chunks")
+        if table.count_rows() == 0:
+            return "skip", None
+        stored_dim = int(getattr(table.schema.field("vector").type, "list_size", 0) or 0)
+    except VectorProfileMismatchError as e:
+        kind = "fingerprint" if str(e) == "embedding_fingerprint_mismatch" else "profile"
+        return kind, {"project_id": pid, "error": str(e)}
+    except Exception as e:
+        logger.warning(f"Dimension check failed for project {pid}: {e}")
+        return "skip", None
+    if stored_dim != model_dim:
+        return "dimension", {"project_id": pid, "stored_dim": stored_dim, "model_dim": model_dim}
+    return "ok", None

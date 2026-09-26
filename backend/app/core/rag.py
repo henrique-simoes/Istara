@@ -12,10 +12,11 @@ from pathlib import Path
 import lancedb
 
 from app.config import settings
-from app.core.content_guard import ContentGuard
+from app.core.content_guard import ContentGuard, neutralize_boundary_markup
 from app.core.embeddings import EmbeddedChunk, TextChunk, embed_chunks, embed_text
 from app.core.keyword_index import KeywordIndex
 from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+from app.core.vector_identity import identity_differs, write_manifest
 
 _guard = ContentGuard()
 
@@ -31,6 +32,24 @@ RAG_RESEARCH_SPINE_NOTICE = (
     "gating, and report gates."
     "</promotion_gate>"
 )
+
+
+# Source evidence and LLM-derived text live in separate indices. Skill artifacts and agent notes
+# are model output: useful to recall explicitly, never source evidence, and never able to confirm a
+# claim (F5). Rows written by builds before the split carry these source prefixes in the source
+# index and are excluded from evidence retrieval.
+SOURCE_TABLE = "chunks"
+DERIVED_TABLE = "derived_chunks"
+DERIVED_NAMESPACE = "derived"
+LEGACY_DERIVED_SOURCE_PREFIXES = ("agent:", "skill:")
+
+
+def is_derived_source(source: str) -> bool:
+    return str(source or "").startswith(LEGACY_DERIVED_SOURCE_PREFIXES)
+
+
+def _sql_literal(value: str) -> str:
+    return str(value).replace("'", "''")
 
 
 class VectorProfileMismatchError(RuntimeError):
@@ -76,13 +95,25 @@ class RAGContext:
 class VectorStore:
     """LanceDB-backed vector store for a project."""
 
-    def __init__(self, project_id: str) -> None:
+    def __init__(
+        self, project_id: str, *, table_name: str = SOURCE_TABLE, root: Path | None = None
+    ) -> None:
+        """``table_name`` selects the source (``chunks``) or derived (``derived_chunks``) index;
+        ``root`` points a sandbox store (retrieval evaluation) away from the project's real one."""
         self.project_id = project_id
-        db_path = Path(settings.lance_db_path) / project_id
+        db_path = Path(root if root is not None else settings.lance_db_path) / project_id
         db_path.mkdir(parents=True, exist_ok=True)
         self.db = lancedb.connect(str(db_path))
-        self.table_name = "chunks"
+        self.table_name = table_name
         self._profile_manifest = db_path / ".embedding-profile.json"
+        self.keyword_namespace = DERIVED_NAMESPACE if table_name == DERIVED_TABLE else ""
+        self.keyword_root = Path(root) / "keyword_index" if root is not None else None
+
+    def keyword_index(self) -> KeywordIndex:
+        """The BM25 index paired with this vector table (same namespace, same sandbox root)."""
+        return KeywordIndex(
+            self.project_id, namespace=self.keyword_namespace, root=self.keyword_root
+        )
 
     def _active_profile_binding(self) -> dict[str, str | int]:
         profile = get_active_embedding_profile()
@@ -95,9 +126,10 @@ class VectorStore:
             "dimension": profile.dimension,
             "dtype": profile.dtype,
             "normalization": profile.normalization,
+            "prompt_scheme": profile.prompt_scheme,
         }
 
-    def _ensure_profile_binding(self) -> dict[str, str | int]:
+    def _ensure_profile_binding(self, *, bind_fingerprint: bool = False) -> dict[str, str | int]:
         """Bind this project index once and reject silent vector-space drift.
 
         Existing indexes are safely adopted only into bootstrap version 1,
@@ -119,18 +151,57 @@ class VectorStore:
             bound = json.loads(self._profile_manifest.read_text(encoding="utf-8"))
         except (OSError, ValueError, TypeError) as exc:
             raise VectorProfileMismatchError("invalid_vector_profile_manifest") from exc
-        identity_fields = (
-            "profile_id",
-            "version",
-            "model_id",
-            "cache_namespace",
-            "dimension",
-            "dtype",
-            "normalization",
-        )
-        if any(bound.get(field) != active[field] for field in identity_fields):
+        if identity_differs(bound, active):
             raise VectorProfileMismatchError("vector_profile_mismatch")
+        self._check_fingerprint(bound, bind_if_missing=bind_fingerprint)
         return active
+
+    def _check_fingerprint(self, bound: dict, *, bind_if_missing: bool) -> None:
+        """Compare the serving model's probe fingerprint with the one this store was built with.
+
+        The profile fields cannot tell two models apart when the name ("default") and dimension
+        are equal (F11). A store records the fingerprint of the model that wrote its first
+        vectors; any later write or read under another fingerprint fails closed. Stores bound
+        before fingerprints existed adopt the current one on their next write.
+        """
+        from app.core.embeddings import known_embed_fingerprint
+
+        current = known_embed_fingerprint(str(bound.get("cache_namespace") or "") or None)
+        recorded = bound.get("fingerprint")
+        if recorded:
+            if current and current != recorded:
+                raise VectorProfileMismatchError("embedding_fingerprint_mismatch")
+            return
+        if bind_if_missing and current:
+            updated = {**bound, "fingerprint": current}
+            tmp = self._profile_manifest.with_suffix(".tmp")
+            tmp.write_text(json.dumps(updated, sort_keys=True) + "\n", encoding="utf-8")
+            tmp.replace(self._profile_manifest)
+
+    def rebind_to_active_profile(self) -> None:
+        """Point this store's manifest at the active profile (after the migration re-embeds it)."""
+        from app.core.embeddings import known_embed_fingerprint
+
+        binding = self._active_profile_binding()
+        fingerprint = known_embed_fingerprint(str(binding["cache_namespace"]))
+        write_manifest(self._profile_manifest, binding, fingerprint)
+
+    def check_profile_binding(self) -> None:
+        """Read-only binding check for health reads: never creates a manifest.
+
+        An unbound store (no manifest yet) passes; ``_ensure_profile_binding`` binds it on the
+        first real read or write. A bound store with a different identity raises.
+        """
+        if not self._profile_manifest.exists():
+            return
+        try:
+            bound = json.loads(self._profile_manifest.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError) as exc:
+            raise VectorProfileMismatchError("invalid_vector_profile_manifest") from exc
+        active = self._active_profile_binding()
+        if identity_differs(bound, active):
+            raise VectorProfileMismatchError("vector_profile_mismatch")
+        self._check_fingerprint(bound, bind_if_missing=False)
 
     def _ensure_table(self) -> bool:
         """Check if the chunks table exists."""
@@ -191,7 +262,7 @@ class VectorStore:
         if not embedded_chunks:
             return 0
 
-        profile = self._ensure_profile_binding()
+        profile = self._ensure_profile_binding(bind_fingerprint=True)
         now = time.time()
         records = []
         for ec in embedded_chunks:
@@ -250,6 +321,28 @@ class VectorStore:
 
         return len(records)
 
+    def _filter_clauses(
+        self,
+        *,
+        source_filter: str | None,
+        file_type_filter: str | None,
+        agent_id: str | None,
+        exclude_source_prefixes: tuple[str, ...],
+    ) -> list[str]:
+        """LanceDB filter clauses for the given metadata, on columns this table has."""
+        clauses: list[str] = []
+        if source_filter and self._table_has_column("source"):
+            clauses.append(f"source = '{_sql_literal(source_filter)}'")
+        if file_type_filter and self._table_has_column("file_type"):
+            clauses.append(f"file_type = '{_sql_literal(file_type_filter)}'")
+        if agent_id is not None and self._table_has_column("agent_id"):
+            clauses.append(f"agent_id = '{_sql_literal(agent_id)}'")
+        if exclude_source_prefixes and self._table_has_column("source"):
+            clauses.extend(
+                f"source NOT LIKE '{_sql_literal(prefix)}%'" for prefix in exclude_source_prefixes
+            )
+        return clauses
+
     async def search(
         self,
         query_vector: list[float],
@@ -259,6 +352,7 @@ class VectorStore:
         source_filter: str | None = None,
         file_type_filter: str | None = None,
         agent_id: str | None = None,
+        exclude_source_prefixes: tuple[str, ...] = (),
     ) -> list[RetrievalResult]:
         """Search for similar chunks.
 
@@ -273,10 +367,12 @@ class VectorStore:
         Returns:
             List of retrieval results sorted by relevance.
         """
-        k = top_k or settings.rag_top_k
-        threshold = score_threshold or settings.rag_score_threshold
+        # ``None`` means "use the setting"; an explicit 0 is a real value (F17: ``or`` treated
+        # a 0.0 threshold as unset and silently applied 0.3).
+        k = top_k if top_k is not None else settings.rag_top_k
+        threshold = score_threshold if score_threshold is not None else settings.rag_score_threshold
 
-        if not self._ensure_table():
+        if k <= 0 or not self._ensure_table():
             return []
 
         self._ensure_profile_binding()
@@ -284,21 +380,16 @@ class VectorStore:
 
         query_builder = table.search(query_vector).metric("cosine").limit(k)
 
-        # Build optional LanceDB filter from provided params
-        filter_clauses: list[str] = []
-        if source_filter and self._table_has_column("source"):
-            safe = source_filter.replace("'", "''")
-            filter_clauses.append(f"source = '{safe}'")
-        if file_type_filter and self._table_has_column("file_type"):
-            safe = file_type_filter.replace("'", "''")
-            filter_clauses.append(f"file_type = '{safe}'")
-        if agent_id is not None and self._table_has_column("agent_id"):
-            safe = agent_id.replace("'", "''")
-            filter_clauses.append(f"agent_id = '{safe}'")
-
+        filter_clauses = self._filter_clauses(
+            source_filter=source_filter,
+            file_type_filter=file_type_filter,
+            agent_id=agent_id,
+            exclude_source_prefixes=exclude_source_prefixes,
+        )
         if filter_clauses:
             try:
-                query_builder = query_builder.where(" AND ".join(filter_clauses))
+                # Pre-filter, so excluded rows cannot crowd the k nearest out of the result.
+                query_builder = query_builder.where(" AND ".join(filter_clauses), prefilter=True)
             except Exception:
                 # Old table schema may not support filter columns — fall back
                 logger.debug("Metadata filter failed; falling back to unfiltered search")
@@ -373,18 +464,39 @@ class VectorStore:
 
         return retrieval_results
 
+    async def delete_file_source(self, file_path: Path | str) -> None:
+        """Delete every chunk ingested from ``file_path``, whichever spelling it was stored under.
+
+        ``process_file`` stores ``chunk.source = str(original_path)`` -- the full path -- while the
+        upload, reprocess and documents-sync routes deleted by ``file_path.name`` before
+        re-ingesting. The exact-match delete never matched, so every reprocess or folder sync
+        appended another complete copy of the file to BOTH indices, and the copies (distinct
+        provenance keys that differ only by path) also crowded genuinely different evidence out of
+        the fused top-k. Deleting both spellings stops the growth and cleans rows written under the
+        legacy basename key.
+        """
+        path = Path(file_path)
+        for key in dict.fromkeys((str(path), path.name)):
+            await self.delete_by_source(key)
+
     async def delete_by_source(self, source: str) -> None:
-        """Delete all chunks from a specific source file."""
-        if not self._ensure_table():
-            return
-        # Sanitize input to prevent injection
-        safe_source = source.replace("'", "''").replace("\\", "\\\\")
-        table = self.db.open_table(self.table_name)
-        table.delete(f"source = '{safe_source}'")
+        """Delete all chunks from a specific source file, from BOTH indices.
+
+        The keyword index is independent of the vector table: a project ingested while
+        embeddings were offline is keyword-only and has no vector table at all. Returning early
+        when the vector table was missing skipped the keyword delete too, so re-ingesting in that
+        degraded mode duplicated every chunk however the source key was spelled.
+        """
+        if self._ensure_table():
+            # Quote-escape only: DataFusion string literals take backslashes literally, so doubling
+            # them (the old code) made a Windows-style path never match its own rows (F17).
+            safe_source = source.replace("'", "''")
+            table = self.db.open_table(self.table_name)
+            table.delete(f"source = '{safe_source}'")
 
         # Also remove from the keyword index
         try:
-            kw_index = KeywordIndex(self.project_id)
+            kw_index = self.keyword_index()
             await kw_index.delete_by_source(source)
         except Exception as e:
             logger.warning(f"Keyword index delete failed during source delete: {e}")
@@ -418,6 +530,11 @@ def _provenance_key(
     chunk text alone.
     """
     if evidence_unit_id:
+        # Two chunks can share a primary evidence unit (a long speaker turn split in two, or the
+        # chunk overlap). The span keeps them distinct; the same chunk in both indices still
+        # fuses because both rows carry the same span.
+        if start_offset is not None or end_offset is not None:
+            return f"evidence:{evidence_unit_id}:{start_offset or 0}:{end_offset or 0}"
         return f"evidence:{evidence_unit_id}"
     fingerprint = sha256(text.encode("utf-8")).hexdigest()[:16]
     return f"{source}:{page or 0}:{start_offset or ''}:{end_offset or ''}:{fingerprint}"
@@ -478,6 +595,13 @@ def _keyword_retrieval_result(kr, *, score: float = 0.0) -> RetrievalResult:
     )
 
 
+def provenance_share(results: list[RetrievalResult]) -> float | None:
+    """Share of retrieved chunks that carry an ``evidence_unit_id`` (measurement 5)."""
+    if not results:
+        return None
+    return sum(1 for result in results if result.evidence_unit_id) / len(results)
+
+
 async def _record_retrieval_telemetry(
     *,
     project_id: str,
@@ -485,7 +609,11 @@ async def _record_retrieval_telemetry(
     results: list[RetrievalResult],
     degraded_reason: str | None = None,
 ) -> None:
-    """Record a content-free retrieval event for research-validity audits."""
+    """Record a content-free retrieval event for research-validity audits.
+
+    ``quality_score`` carries the provenance share of the returned chunks: the fraction that can
+    be traced to a source evidence unit. It is a count over handles, never content.
+    """
     try:
         from app.core.telemetry import telemetry_recorder
 
@@ -506,6 +634,7 @@ async def _record_retrieval_telemetry(
             evidence_unit_id=representative.evidence_unit_id if representative else "",
             coding_run_id=representative.coding_run_id if representative else "",
             codebook_version_id=representative.codebook_version_id if representative else "",
+            quality_score=provenance_share(results),
             error_type="retrieval_fallback" if degraded_reason else None,
             error_message=degraded_reason[:160] if degraded_reason else None,
         )
@@ -522,16 +651,25 @@ async def hybrid_search(
     source_filter: str | None = None,
     file_type_filter: str | None = None,
     agent_id: str | None = None,
+    store: VectorStore | None = None,
+    vector_weight: float | None = None,
+    keyword_weight: float | None = None,
+    rrf_k: int | None = None,
 ) -> list[RetrievalResult]:
     """Run hybrid search combining vector similarity and BM25 keyword ranking.
 
-    Uses Reciprocal Rank Fusion (RRF) to merge the two result lists.
+    Uses weighted Reciprocal Rank Fusion (RRF, Cormack et al. 2009) to merge the two lists.
+    The source store excludes rows derived from model output (see ``is_derived_source``).
+    ``store``, the weights and ``rrf_k`` default to the project's source index and settings;
+    retrieval evaluation passes a sandbox store and explicit candidate values so a measurement
+    never changes the process-wide configuration other projects read.
     """
-    k = top_k or settings.rag_top_k
-    rrf_k = 60  # RRF constant
+    k = top_k if top_k is not None else settings.rag_top_k
+    fusion_k = rrf_k if rrf_k is not None else settings.rag_rrf_k
 
-    store = VectorStore(project_id)
-    kw_index = KeywordIndex(project_id)
+    store = store or VectorStore(project_id)
+    kw_index = store.keyword_index()
+    exclude = LEGACY_DERIVED_SOURCE_PREFIXES if store.table_name == SOURCE_TABLE else ()
 
     # Run both searches
     vector_results = await store.search(
@@ -540,24 +678,21 @@ async def hybrid_search(
         source_filter=source_filter,
         file_type_filter=file_type_filter,
         agent_id=agent_id,
+        exclude_source_prefixes=exclude,
     )
-    keyword_results = await kw_index.search(query, top_k=k * 2)
-    if source_filter:
-        keyword_results = [kr for kr in keyword_results if kr.source == source_filter]
-    if file_type_filter:
-        normalized_file_type = file_type_filter.lstrip(".").lower()
-        keyword_results = [
-            kr
-            for kr in keyword_results
-            if Path(kr.source).suffix.lstrip(".").lower() == normalized_file_type
-        ]
+    keyword_results = _filter_keyword_results(
+        await kw_index.search(query, top_k=k * 2),
+        source_filter=source_filter,
+        file_type_filter=file_type_filter,
+        exclude_source_prefixes=exclude,
+    )
     if agent_id is not None:
         # The keyword index does not currently store agent ownership; avoid
         # mixing unscoped keyword hits into an agent-scoped retrieval.
         keyword_results = []
 
-    vw = settings.rag_hybrid_vector_weight
-    kw = settings.rag_hybrid_keyword_weight
+    vw = settings.rag_hybrid_vector_weight if vector_weight is None else vector_weight
+    kw = settings.rag_hybrid_keyword_weight if keyword_weight is None else keyword_weight
 
     # Build RRF scores keyed by provenance, not text. Qualitative evidence can
     # repeat verbatim across documents/participants and still remain distinct.
@@ -567,7 +702,7 @@ async def hybrid_search(
         key = retrieval_result_key(r)
         if key not in scores:
             scores[key] = {"result": r, "score": 0.0}
-        scores[key]["score"] += vw * (1.0 / (rrf_k + rank))
+        scores[key]["score"] += vw * (1.0 / (fusion_k + rank))
 
     for rank, kr in enumerate(keyword_results, 1):
         keyword_result = _keyword_retrieval_result(kr)
@@ -577,7 +712,7 @@ async def hybrid_search(
                 "result": keyword_result,
                 "score": 0.0,
             }
-        scores[key]["score"] += kw * (1.0 / (rrf_k + rank))
+        scores[key]["score"] += kw * (1.0 / (fusion_k + rank))
 
     # Sort by fused score descending and take top_k
     ranked = sorted(scores.values(), key=lambda x: x["score"], reverse=True)[:k]
@@ -589,6 +724,29 @@ async def hybrid_search(
         results.append(r)
 
     return results
+
+
+def _filter_keyword_results(
+    keyword_results: list,
+    *,
+    source_filter: str | None = None,
+    file_type_filter: str | None = None,
+    exclude_source_prefixes: tuple[str, ...] = (),
+) -> list:
+    if source_filter:
+        keyword_results = [kr for kr in keyword_results if kr.source == source_filter]
+    if file_type_filter:
+        normalized_file_type = file_type_filter.lstrip(".").lower()
+        keyword_results = [
+            kr
+            for kr in keyword_results
+            if Path(kr.source).suffix.lstrip(".").lower() == normalized_file_type
+        ]
+    if exclude_source_prefixes:
+        keyword_results = [
+            kr for kr in keyword_results if not str(kr.source).startswith(exclude_source_prefixes)
+        ]
+    return keyword_results
 
 
 async def _keyword_only_search(
@@ -606,18 +764,13 @@ async def _keyword_only_search(
         # empty results keeps agent-scoped retrieval from leaking unscoped hits.
         return []
 
-    k = top_k or settings.rag_top_k
-    keyword_results = await KeywordIndex(project_id).search(query, top_k=k * 2)
-
-    if source_filter:
-        keyword_results = [kr for kr in keyword_results if kr.source == source_filter]
-    if file_type_filter:
-        normalized_file_type = file_type_filter.lstrip(".").lower()
-        keyword_results = [
-            kr
-            for kr in keyword_results
-            if Path(kr.source).suffix.lstrip(".").lower() == normalized_file_type
-        ]
+    k = top_k if top_k is not None else settings.rag_top_k
+    keyword_results = _filter_keyword_results(
+        await KeywordIndex(project_id).search(query, top_k=k * 2),
+        source_filter=source_filter,
+        file_type_filter=file_type_filter,
+        exclude_source_prefixes=LEGACY_DERIVED_SOURCE_PREFIXES,
+    )
 
     results: list[RetrievalResult] = []
     for rank, kr in enumerate(keyword_results[:k], 1):
@@ -671,6 +824,76 @@ async def ingest_chunks(
         return 0
 
 
+async def ingest_derived_chunks(
+    project_id: str,
+    chunks: list[TextChunk],
+    *,
+    agent_id: str,
+    kind: str,
+    replace_source: bool = True,
+) -> int:
+    """Index LLM-written text (skill artifacts, agent notes) in the DERIVED index only.
+
+    Derived text is model output. It is kept apart from source evidence so it can never confirm
+    a claim, never outranks a raw source span, and is only recalled through
+    ``retrieve_derived_context``. Rows carry the writing agent in ``agent_id`` so an agent's notes
+    are scoped exactly (``a1`` never matches ``a10``). ``replace_source`` deletes earlier rows from
+    the same source first, so reruns do not duplicate.
+    """
+    if not chunks:
+        return 0
+    for chunk in chunks:
+        chunk.metadata = {
+            **(chunk.metadata or {}),
+            "derived_kind": kind,
+            "review_status": "derived_provisional",
+            "reliability_status": "not_source_evidence",
+        }
+    store = VectorStore(project_id, table_name=DERIVED_TABLE)
+    if replace_source:
+        for source in dict.fromkeys(chunk.source for chunk in chunks):
+            await store.delete_by_source(source)
+    try:
+        await store.keyword_index().add_chunks(chunks)
+    except Exception as e:
+        logger.warning(f"Derived keyword indexing failed (non-fatal): {e}")
+    try:
+        embedded = await embed_chunks(chunks)
+        return await store.add_chunks(embedded, agent_id=agent_id, confidence=0.5)
+    except Exception as e:
+        logger.warning("Derived vector ingestion unavailable for project %s: %s", project_id, e)
+        return 0
+
+
+async def retrieve_derived_context(
+    project_id: str,
+    query: str,
+    top_k: int = 5,
+    *,
+    agent_id: str | None = None,
+) -> list[RetrievalResult]:
+    """Explicit recall over derived text; results are labelled as model output, not evidence."""
+    store = VectorStore(project_id, table_name=DERIVED_TABLE)
+    try:
+        query_vector = await embed_text(query)
+        results = await hybrid_search(
+            project_id, query, query_vector, top_k=top_k, agent_id=agent_id, store=store
+        )
+    except Exception as e:
+        logger.debug("Derived retrieval degraded to keyword: %s", e)
+        if agent_id is not None:
+            return []
+        keyword = await store.keyword_index().search(query, top_k=top_k)
+        results = [
+            _keyword_retrieval_result(kr, score=1.0 / rank)
+            for rank, kr in enumerate(keyword[:top_k], 1)
+        ]
+    for result in results:
+        result.review_status = "derived_provisional"
+        result.reliability_status = "not_source_evidence"
+    return results
+
+
 async def retrieve_context(
     project_id: str,
     query: str,
@@ -719,6 +942,14 @@ async def retrieve_context(
             file_type_filter=file_type_filter,
             agent_id=agent_id,
         )
+    if (
+        retrieval_mode == "hybrid"
+        and results
+        and all(r.retrieval_mode == "keyword" for r in results)
+    ):
+        # Report the property, not the step: embedding succeeded, but every hit came from BM25
+        # (for example a project with no vector table yet).
+        retrieval_mode = "keyword"
     await _record_retrieval_telemetry(
         project_id=project_id,
         retrieval_mode=retrieval_mode,
@@ -727,14 +958,7 @@ async def retrieve_context(
     )
 
     # Format context for the LLM — wrap each chunk in untrusted delimiters
-    context_parts = []
-    for i, r in enumerate(results, 1):
-        source_info = f"[Source: {r.source}"
-        if r.page:
-            source_info += f", page {r.page}"
-        source_info += f", relevance: {r.score:.2f}]"
-        wrapped = _guard.wrap_untrusted(r.text, source=r.source)
-        context_parts.append(f"--- Document {i} {source_info} ---\n{wrapped}")
+    context_parts = [format_context_part(i, r) for i, r in enumerate(results, 1)]
 
     context_text = "\n\n".join(context_parts) if context_parts else ""
 
@@ -743,6 +967,80 @@ async def retrieve_context(
         retrieved=results,
         context_text=context_text,
     )
+
+
+def format_context_part(index: int, result: RetrievalResult, text: str | None = None) -> str:
+    """One retrieved chunk as the model sees it: a source label, then the untrusted wrapper.
+
+    ``index`` is the chunk's rank in the prompt, which follows retrieval order.
+
+    The ONE formatter for retrieved evidence in a prompt. `retrieve_context` and the compressed
+    chat/interface path both use it, so a chunk cannot reach the model unlabelled or unwrapped on
+    one path while the other path labels and wraps it.
+    """
+    source_info = f"[Source: {result.source}"
+    if result.page:
+        source_info += f", page {result.page}"
+    # The rank, never the fused RRF value: RRF is ordinal (Cormack et al. 2009) and the best
+    # possible chunk fuses to about 0.016, which a model reads as "irrelevant" (F12).
+    source_info += f", rank {index}]"
+    body = result.text if text is None else text
+    wrapped = _guard.wrap_untrusted(body, source=result.source)
+    return f"--- Document {index} {source_info} ---\n{wrapped}"
+
+
+async def build_compressed_rag_context(
+    project_id: str,
+    rag_result: RAGContext | None,
+    query: str,
+    max_tokens: int,
+    surplus_level: str,
+) -> tuple[str, list[RetrievalResult]]:
+    """Compress retrieved chunks to the budget, then label and wrap the ones that were kept.
+
+    Returns the prompt text and the results it actually contains, in prompt order. Chat and
+    Interfaces used to join raw ``r.text`` with ``---``: no source labels (so the "cite your
+    sources" instruction could not be followed), no untrusted-content wrapper, and the UI's
+    source list named every retrieved chunk even when the budget cut had dropped it from the prompt.
+
+    The whole returned block, labels and wrappers included, fits ``max_tokens`` (4 characters per
+    token). The label and wrapper cost is measured per result rather than assumed.
+    """
+    from app.core.prompt_compressor import (
+        compress_rag_chunks_indexed,
+        record_protected_compression_telemetry,
+    )
+
+    if not rag_result or not rag_result.retrieved:
+        return "", []
+    retrieved = [r for r in rag_result.retrieved if r.text]
+    # Retrieved text is document content, never a protected methodology block. Neutralising its
+    # wrapper/protected-block markup BEFORE compression stops an uploaded file that contains
+    # ``<instructions>…</instructions>`` from being pinned ahead of real evidence and exempted from
+    # the RAG budget (F14). Blocks the services inject keep their protection.
+    chunk_texts = [neutralize_boundary_markup(r.text) for r in retrieved]
+    max_chars = max(max_tokens, 0) * 4
+    overheads = [len(format_context_part(i, r, "")) + 2 for i, r in enumerate(retrieved, 1)]
+    reserve_chars = sum(overheads[: min(len(retrieved), 5)])
+    budget_chars = max(max_chars - reserve_chars, max_chars // 2)
+    indexed, _ = compress_rag_chunks_indexed(chunk_texts, query, budget_chars // 4, surplus_level)
+    await record_protected_compression_telemetry(
+        project_id=project_id,
+        original_chunks=chunk_texts,
+        compressed_chunks=[text for _, text in indexed],
+    )
+    included: list[RetrievalResult] = []
+    parts: list[str] = []
+    used = 0
+    for index, text in indexed:
+        part = format_context_part(len(parts) + 1, retrieved[index], text)
+        cost = len(part) + (2 if parts else 0)
+        if used + cost > max_chars:
+            break
+        parts.append(part)
+        included.append(retrieved[index])
+        used += cost
+    return "\n\n".join(parts), included
 
 
 def build_augmented_prompt(

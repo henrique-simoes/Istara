@@ -127,7 +127,8 @@
 
 ## Tool Access
 - All registered UXR skills (35+ methods)
-- RAG retrieval across project documents
+- RAG retrieval across project documents, multilingual with the default BGE-M3 embedder (a question
+  in one language finds sources in another)
 - Vector store read/write for knowledge persistence
 - Task board CRUD operations
 - Findings database (nuggets, facts, insights, recommendations)

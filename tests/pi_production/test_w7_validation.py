@@ -83,10 +83,7 @@ def _function_source(path: Path, function_name: str) -> str:
     text = path.read_text(encoding="utf-8")
     tree = ast.parse(text)
     for node in ast.walk(tree):
-        if (
-            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and node.name == function_name
-        ):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
             return ast.get_source_segment(text, node) or ""
     raise AssertionError(f"{function_name} not found in {path}")
 
@@ -197,9 +194,7 @@ class _StubAgentic:
 class _StubLlmRouter:
     """Legacy stand-in for ``llm_router`` returning queued response texts."""
 
-    def __init__(
-        self, texts: list[str] | None = None, servers: list | None = None
-    ) -> None:
+    def __init__(self, texts: list[str] | None = None, servers: list | None = None) -> None:
         self.calls: list[dict] = []
         self._texts = list(texts) if texts is not None else ["legacy text"]
         self._servers = servers or []
@@ -248,13 +243,9 @@ def test_w7_validation_functions_dispatch_through_agentic_verbs():
         assert verb in source, f"{function_name}: missing {verb}"
         assert purpose in source, f"{function_name}: missing {purpose}"
         for legacy_call in ("server.chat", "llm_router.chat"):
-            assert legacy_call not in source, (
-                f"{function_name}: the legacy branch must be retired"
-            )
+            assert legacy_call not in source, f"{function_name}: the legacy branch must be retired"
     helper = _function_source(VALIDATION, "_dispatch_ensemble")
-    assert "agentic.ensemble" in helper, (
-        "the ensemble sites must dispatch via agentic.ensemble"
-    )
+    assert "agentic.ensemble" in helper, "the ensemble sites must dispatch via agentic.ensemble"
 
 
 def test_w7_executor_judge_dispatches_structured():
@@ -268,21 +259,15 @@ def test_w7_executor_judge_dispatches_structured():
 def test_w7_validity_dual_coder_dispatches_through_pi_runner():
     runner = _function_source(VALIDITY_ROUTE, "_pi_coder_runner")
     assert "agentic.structured" in runner and 'purpose="validity.coder"' in runner
-    assert "endpoint_id" in runner, (
-        "the coder's exact Pi endpoint identity must be pinned"
-    )
+    assert "endpoint_id" in runner, "the coder's exact Pi endpoint identity must be pinned"
     selection = _function_source(VALIDITY_SERVICE, "_select_pi_coders")
     assert "resolve_distinct" in selection
     orchestration = _function_source(VALIDITY_SERVICE, "run_independent_coding_run")
-    assert (
-        "_use_pi_coding_plane" in orchestration and "_select_pi_coders" in orchestration
-    )
+    assert "_use_pi_coding_plane" in orchestration and "_select_pi_coders" in orchestration
     assert "_select_project_coders" in orchestration, (
         "project-coder selection still serves injected runners and legacy-engine projects"
     )
-    assert "coder.node.chat" not in orchestration, (
-        "the direct per-node dispatch must be retired"
-    )
+    assert "coder.node.chat" not in orchestration, "the direct per-node dispatch must be retired"
 
 
 def test_w7_schemas_stay_inside_pi_forced_tool_subset():
@@ -349,9 +334,7 @@ async def test_dual_run_flag_on_insufficient_distinct_endpoints_falls_back_to_se
 
     result = await dual_run("prompt", project_id="p1")
 
-    first, second = [
-        kwargs for method, kwargs in dispatcher_stub.calls if method == "ensemble"
-    ]
+    first, second = [kwargs for method, kwargs in dispatcher_stub.calls if method == "ensemble"]
     assert first["distinct"] is True and first["n"] == 2
     assert second["purpose"] == "validation.self_moa"
     assert second["distinct"] is False and second["n"] == 2, (
@@ -408,14 +391,10 @@ async def test_full_ensemble_flag_on_insufficient_distinct_falls_back_to_dual_ru
     result = await full_ensemble("prompt", min_responses=3, project_id="p1")
 
     purposes = [
-        kwargs["purpose"]
-        for method, kwargs in dispatcher_stub.calls
-        if method == "ensemble"
+        kwargs["purpose"] for method, kwargs in dispatcher_stub.calls if method == "ensemble"
     ]
     assert purposes == ["validation.full_ensemble", "validation.dual_run"]
-    assert result.method == "dual_run", (
-        "fail-closed degradation down the existing chain"
-    )
+    assert result.method == "dual_run", "fail-closed degradation down the existing chain"
 
 
 async def test_full_ensemble_partial_success_does_not_claim_full_width(
@@ -525,9 +504,7 @@ async def test_debate_rounds_flag_on_dispatches_initial_plus_rounds(
 
     result = await debate_rounds("prompt", rounds=2, project_id="p1")
 
-    completions = [
-        kwargs for method, kwargs in dispatcher_stub.calls if method == "completion"
-    ]
+    completions = [kwargs for method, kwargs in dispatcher_stub.calls if method == "completion"]
     assert len(completions) == 3, "initial + 2 rounds"
     assert all(kwargs["purpose"] == "validation.debate" for kwargs in completions)
     assert completions[0]["params"].temperature == 0.7
@@ -606,15 +583,11 @@ async def test_judge_flag_on_dispatches_structured(monkeypatch, _agentic_core_on
     assert result.details == scores
 
 
-async def test_judge_flag_on_raise_fails_closed_as_unavailable(
-    monkeypatch, _agentic_core_on
-):
+async def test_judge_flag_on_raise_fails_closed_as_unavailable(monkeypatch, _agentic_core_on):
     from app.core.pi_runtime.endpoints import PiRuntimeTurnError
 
     dispatcher_stub = _StubAgentic(
-        raise_on={
-            "structured": PiRuntimeTurnError("error", "structured_output_missing")
-        }
+        raise_on={"structured": PiRuntimeTurnError("error", "structured_output_missing")}
     )
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
     monkeypatch.setattr("app.core.compute_registry.compute_registry", _StubLlmRouter())
@@ -632,9 +605,7 @@ async def test_judge_flag_on_raise_fails_closed_as_unavailable(
     }
 
 
-async def test_judge_flag_on_missing_verdict_fails_closed(
-    monkeypatch, _agentic_core_on
-):
+async def test_judge_flag_on_missing_verdict_fails_closed(monkeypatch, _agentic_core_on):
     dispatcher_stub = _StubAgentic(value={})
     registry_stub = _StubLlmRouter()
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
@@ -681,9 +652,7 @@ class _StubPiModelManager:
         if self._error is not None:
             raise self._error
         excluded = set(kwargs.get("exclude", ()))
-        excluded_models = {
-            str(model).casefold() for model in kwargs.get("exclude_models", ())
-        }
+        excluded_models = {str(model).casefold() for model in kwargs.get("exclude_models", ())}
         eligible = [
             endpoint
             for endpoint in self._endpoints
@@ -698,9 +667,7 @@ class _StubPiModelManager:
         )
         from app.core.pi_runtime.endpoints import PiEndpointResolutionError
 
-        endpoint = next(
-            (item for item in self._endpoints if item.endpoint_id == endpoint_id), None
-        )
+        endpoint = next((item for item in self._endpoints if item.endpoint_id == endpoint_id), None)
         if endpoint is None:
             raise PiEndpointResolutionError("unknown_pi_endpoint")
         if model is not None and endpoint.model != model:
@@ -728,9 +695,7 @@ async def test_select_pi_coders_maps_distinct_endpoint_identities(monkeypatch):
             _fake_endpoint("ep-c", "model-c"),
         ]
     )
-    monkeypatch.setattr(
-        "app.core.pi_runtime.model_manager.PiModelManager", lambda: manager
-    )
+    monkeypatch.setattr("app.core.pi_runtime.model_manager.PiModelManager", lambda: manager)
 
     from app.services.research_validity_service import _select_pi_coders
 
@@ -794,9 +759,7 @@ async def test_select_pi_coders_keeps_healthy_fallback_when_preference_is_unavai
             _fake_endpoint("ep-c", "model-c"),
         ]
     )
-    monkeypatch.setitem(
-        settings.__dict__, "pi_research_endpoint_ids", ["missing", "ep-b"]
-    )
+    monkeypatch.setitem(settings.__dict__, "pi_research_endpoint_ids", ["missing", "ep-b"])
 
     from app.services.research_validity_service import _select_pi_coders
 
@@ -812,9 +775,7 @@ async def test_select_pi_coders_fails_closed_on_insufficient_distinct(monkeypatc
     manager = _StubPiModelManager(
         error=PiEndpointResolutionError("insufficient_distinct_pi_endpoints")
     )
-    monkeypatch.setattr(
-        "app.core.pi_runtime.model_manager.PiModelManager", lambda: manager
-    )
+    monkeypatch.setattr("app.core.pi_runtime.model_manager.PiModelManager", lambda: manager)
 
     from app.services.research_validity_service import _select_pi_coders
 
@@ -822,13 +783,89 @@ async def test_select_pi_coders_fails_closed_on_insufficient_distinct(monkeypatc
         await _select_pi_coders(max_coders=3)
 
 
+async def test_select_pi_coders_names_the_usable_identities_when_the_catalog_runs_short(
+    monkeypatch,
+):
+    """Live lane, 2026-09-26: two configured research endpoints and a catalog whose next entry
+    has no secret. The refusal said only ``missing_keychain_secret``, about an endpoint nobody
+    configured; it must say what is usable and what is required, and still fail closed."""
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+
+    manager = _StubPiModelManager(
+        endpoints=[_fake_endpoint("ep-a", "model-a"), _fake_endpoint("ep-b", "model-b")],
+        error=PiEndpointResolutionError("missing_keychain_secret"),
+    )
+    monkeypatch.setitem(settings.__dict__, "pi_research_endpoint_ids", ["ep-a", "ep-b"])
+
+    from app.services.research_validity_service import _select_pi_coders
+
+    with pytest.raises(PiEndpointResolutionError) as refused:
+        await _select_pi_coders(max_coders=3, project_id="project-a", manager=manager)
+
+    message = str(refused.value)
+    assert "2 distinct model identities usable (model-a, model-b); 3 required" in message
+    assert "missing_keychain_secret" in message
+
+
+async def test_a_coding_run_without_coders_says_no_coder_ran(monkeypatch):
+    """The run reported "Independent coding completed with 0 distinct models" when coder
+    selection had refused and nothing was coded."""
+    import uuid
+
+    from app.core.pi_runtime.endpoints import PiEndpointResolutionError
+    from app.models.database import async_session, init_db
+    from app.models.research_validity import EvidenceUnit
+    from app.services import research_validity_service
+
+    async def _refuse(**kwargs):
+        raise PiEndpointResolutionError(
+            "insufficient_distinct_pi_models: 2 distinct model identities usable "
+            "(model-a, model-b); 3 required"
+        )
+
+    async def _pi_plane(db, project_id):
+        return True
+
+    monkeypatch.setattr(research_validity_service, "_use_pi_coding_plane", _pi_plane)
+    monkeypatch.setattr(research_validity_service, "_select_pi_coders", _refuse)
+    monkeypatch.setattr("app.core.agentic.agentic", SimpleNamespace())
+    project_id = f"no-coder-{uuid.uuid4().hex[:8]}"
+    await init_db()
+    async with async_session() as db:
+        db.add(
+            EvidenceUnit(
+                id=f"eu-{project_id}",
+                project_id=project_id,
+                source_id="interview-01",
+                stable_id="interview-01#EU-0001",
+                unit_index=1,
+                source_text="I phone every client on Friday afternoon.",
+                source_location="interview-01:1",
+            )
+        )
+        await db.commit()
+        result = await research_validity_service.run_independent_coding_run(
+            db,
+            project_id=project_id,
+            task_id=None,
+            evidence_unit_ids=[f"eu-{project_id}"],
+            max_coders=3,
+            created_by="test-researcher",
+        )
+
+    assert result["status"] == "blocked" and result["promotion_status"] == "blocked"
+    assert result["fallback_reason"].startswith("No coder ran: coder selection failed closed")
+    assert (
+        "2 distinct model identities usable (model-a, model-b); 3 required"
+        in (result["fallback_reason"])
+    )
+
+
 async def test_select_pi_coders_rejects_unpaired_pi_service():
     """A service from another manager cannot silently alter the selected catalog."""
     from app.services.research_validity_service import _select_pi_coders
 
-    selected_manager = _StubPiModelManager(
-        endpoints=[_fake_endpoint("ep-a", "model-a")]
-    )
+    selected_manager = _StubPiModelManager(endpoints=[_fake_endpoint("ep-a", "model-a")])
 
     class _OtherService:
         def model_manager(self):
@@ -886,9 +923,7 @@ async def test_pi_coder_runner_dispatches_structured_pinned_to_endpoint(monkeypa
     assert kwargs["params"].temperature == 0.2
     assert kwargs["params"].thinking_mode == "high"
     assert kwargs["params"].model == "model-a"
-    assert kwargs["params"].endpoint_id == "ep-a", (
-        "dispatch must pin the coder's exact endpoint"
-    )
+    assert kwargs["params"].endpoint_id == "ep-a", "dispatch must pin the coder's exact endpoint"
     assert kwargs["engine"] == "pi", (
         "Pi-managed coder routing must not depend on the project's loop choice"
     )
@@ -1250,9 +1285,7 @@ async def test_qwen_plus_fallback_exhaustion_does_not_cross_into_flash():
         raise RuntimeError("pi_bridge_http_429")
 
     with pytest.raises(QwenRateLimitFallbackError) as exc_info:
-        await _run_pi_coder_with_qwen_fallback(
-            coder, [], models[0], "project-a", runner=runner
-        )
+        await _run_pi_coder_with_qwen_fallback(coder, [], models[0], "project-a", runner=runner)
 
     assert calls == list(models)
     assert exc_info.value.attempts == [
@@ -1353,9 +1386,7 @@ async def test_qwen_fallback_exhaustion_blocks_with_all_attempt_receipts():
         raise RuntimeError("pi_bridge_http_429")
 
     with pytest.raises(QwenRateLimitFallbackError) as exc_info:
-        await _run_pi_coder_with_qwen_fallback(
-            coder, [], models[0], "project-a", runner=runner
-        )
+        await _run_pi_coder_with_qwen_fallback(coder, [], models[0], "project-a", runner=runner)
 
     assert calls == list(models)
     assert str(exc_info.value) == "qwen_rate_limit_fallback_exhausted"
@@ -1410,9 +1441,7 @@ async def test_qwen_fallback_rejects_a_different_api_key():
         raise RuntimeError("pi_bridge_http_429")
 
     with pytest.raises(QwenRateLimitFallbackError, match="same_key_mismatch"):
-        await _run_pi_coder_with_qwen_fallback(
-            coder, [], primary.model, "project-a", runner=runner
-        )
+        await _run_pi_coder_with_qwen_fallback(coder, [], primary.model, "project-a", runner=runner)
 
 
 def test_qwen_fallback_receipt_survives_bounded_repair_replacement():
@@ -1512,9 +1541,7 @@ async def test_pi_coder_runner_rejects_missing_served_model_identity(monkeypatch
 
 async def test_pi_coder_runner_rejects_contradictory_route_model_receipt(monkeypatch):
     """A route must not overwrite the provider receipt with a configured alias."""
-    dispatcher_stub = _StubAgentic(
-        structured_endpoint_id="ep-a", structured_model="model-a"
-    )
+    dispatcher_stub = _StubAgentic(structured_endpoint_id="ep-a", structured_model="model-a")
 
     async def _structured(**kwargs):
         dispatcher_stub.calls.append(("structured", kwargs))
@@ -1664,9 +1691,7 @@ async def _run_pi_coding_run(
 
     if selection_error is not None:
 
-        async def _select(
-            max_coders, *, project_id=None, manager=None, pi_service=None
-        ):
+        async def _select(max_coders, *, project_id=None, manager=None, pi_service=None):
             selection_managers.append(manager)
             raise selection_error
 
@@ -1689,9 +1714,7 @@ async def _run_pi_coding_run(
             for name in ("a", "b", "c")
         ]
 
-        async def _select(
-            max_coders, *, project_id=None, manager=None, pi_service=None
-        ):
+        async def _select(max_coders, *, project_id=None, manager=None, pi_service=None):
             selection_managers.append(manager)
             return coders
 
@@ -1705,30 +1728,20 @@ async def _run_pi_coding_run(
                 prior_calls = sum(
                     1
                     for method, call in dispatcher_stub.calls[:-1]
-                    if method == "structured"
-                    and call["params"].model == kwargs["params"].model
+                    if method == "structured" and call["params"].model == kwargs["params"].model
                 )
                 covered = unit_ids[:1] if prior_calls == 0 else unit_ids[1:]
             elif kwargs["params"].model == staged_coverage_model:
                 prior_calls = sum(
                     1
                     for method, call in dispatcher_stub.calls[:-1]
-                    if method == "structured"
-                    and call["params"].model == kwargs["params"].model
+                    if method == "structured" and call["params"].model == kwargs["params"].model
                 )
                 covered = (
-                    unit_ids[:1]
-                    if prior_calls == 0
-                    else []
-                    if prior_calls == 1
-                    else unit_ids[1:]
+                    unit_ids[:1] if prior_calls == 0 else [] if prior_calls == 1 else unit_ids[1:]
                 )
             else:
-                covered = (
-                    unit_ids[:1]
-                    if kwargs["params"].model == partial_model
-                    else unit_ids
-                )
+                covered = unit_ids[:1] if kwargs["params"].model == partial_model else unit_ids
             applications = [
                 {
                     "evidence_unit_id": unit_id,
@@ -1817,9 +1830,7 @@ async def test_coding_run_pi_plane_distinct_endpoint_coders_accept(
     purposes = [kwargs["purpose"] for method, kwargs in dispatcher_stub.calls]
     assert purposes == ["validity.coder"] * 3
     pinned = [kwargs["params"].endpoint_id for _, kwargs in dispatcher_stub.calls]
-    assert pinned == ["ep-a", "ep-b", "ep-c"], (
-        "each coder dispatches on its own endpoint"
-    )
+    assert pinned == ["ep-a", "ep-b", "ep-c"], "each coder dispatches on its own endpoint"
     assert {route["model"] for route in result["route_evidence"]} == {
         "model-a",
         "model-b",
@@ -1848,9 +1859,7 @@ async def test_coding_run_reuses_dispatcher_model_management_authority(
     monkeypatch, tmp_path, _agentic_core_on
 ):
     """Pi coder selection and structured dispatch must share one manager."""
-    result, dispatcher_stub = await _run_pi_coding_run(
-        monkeypatch, tmp_path, expose_manager=True
-    )
+    result, dispatcher_stub = await _run_pi_coding_run(monkeypatch, tmp_path, expose_manager=True)
 
     assert result["promotion_status"] == "accepted"
     assert dispatcher_stub.selection_managers == [dispatcher_stub.shared_manager]
@@ -1962,9 +1971,7 @@ async def test_coding_run_pi_plane_insufficient_distinct_blocks_fail_closed(
         selection_error=PiEndpointResolutionError("insufficient_distinct_pi_endpoints"),
     )
 
-    assert dispatcher_stub is None, (
-        "no coder dispatch may happen after fail-closed selection"
-    )
+    assert dispatcher_stub is None, "no coder dispatch may happen after fail-closed selection"
     assert result["status"] == "blocked", (
         "fewer distinct Pi endpoints than coders must hit the existing "
         "validation-unavailable handling, never fabricated diversity"
@@ -1972,7 +1979,4 @@ async def test_coding_run_pi_plane_insufficient_distinct_blocks_fail_closed(
     assert result["promotion_status"] == "blocked"
     assert result["code_application_count"] == 0
     failure_rows = [r for r in result["route_evidence"] if r.get("outcome") == "failed"]
-    assert (
-        failure_rows
-        and "insufficient_distinct_pi_endpoints" in failure_rows[0]["error"]
-    )
+    assert failure_rows and "insufficient_distinct_pi_endpoints" in failure_rows[0]["error"]

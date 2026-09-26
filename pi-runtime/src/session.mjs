@@ -7,7 +7,7 @@ import { Agent } from "@earendil-works/pi-agent-core";
 import { buildProviderBinding } from "./provider.mjs";
 import { buildAgentTools } from "./tools.mjs";
 import { LIMITS, PROTOCOL_VERSION } from "./protocol.mjs";
-import { STRUCTURED_TOOL_NAME, captureParameters, mapToolChoiceForApi, normalizeToolChoice, translateOutputSchema } from "./structured.mjs";
+import { STRUCTURED_TOOL_NAME, captureParameters, normalizeToolChoice, resolveStructuredChoice, structuredPromptText, translateOutputSchema } from "./structured.mjs";
 
 // Bound on close(): waitForIdle settles only when the agent loop finishes,
 // and an in-flight authority tool call settles only on tool.result — so an
@@ -78,6 +78,28 @@ function providerMessages(messages) {
   });
 }
 
+/** Summed usage of assistant messages (tokens per category and priced cost). */
+function usageTotals(messages) {
+  const totals = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0 };
+  for (const message of messages) {
+    const usage = (message && message.usage) || {};
+    totals.input += usage.input || 0;
+    totals.output += usage.output || 0;
+    totals.cacheRead += usage.cacheRead || 0;
+    totals.cacheWrite += usage.cacheWrite || 0;
+    totals.cost += (usage.cost && usage.cost.total) || 0;
+  }
+  return totals;
+}
+
+/** The provider-reported model of a message, when the binding observed one. */
+function servedModel(message) {
+  return message && message.responseModel ? { served_model: message.responseModel } : {};
+}
+
+// Frames that show the provider (or the run start) is making progress; they re-arm the idle watch.
+const PROGRESS_FRAMES = new Set(["run.started", "assistant.delta", "thinking.delta", "tool.call"]);
+
 export class PiSession {
   constructor({ sessionKey, systemPrompt, history, revision, catalog, limits, emit }) {
     this.sessionKey = sessionKey;
@@ -121,6 +143,37 @@ export class PiSession {
 
   _frame(type, extra) {
     this._emit({ v: PROTOCOL_VERSION, type, session_key: this.sessionKey, ...extra });
+    if (PROGRESS_FRAMES.has(type)) this._armIdle();
+  }
+
+  /**
+   * Run liveness (DEC-10): the idle watch fails a run whose provider stays silent longer than
+   * `limits.max_idle_ms`. Every text, thinking or tool-call frame re-arms it, and it is paused
+   * while tool calls are pending: time spent in Istara's own tools is not provider silence.
+   */
+  _armIdle() {
+    const run = this._run;
+    if (!run || run.terminated) return;
+    if (run.idleTimer) {
+      clearTimeout(run.idleTimer);
+      run.idleTimer = null;
+    }
+    const maxIdleMs = Number.isFinite(this._limits.max_idle_ms) && this._limits.max_idle_ms > 0
+      ? this._limits.max_idle_ms : null;
+    if (maxIdleMs === null || this._pendingTools.size > 0) return;
+    const runId = run.runId;
+    run.idleTimer = setTimeout(() => {
+      if (this._run && this._run.runId === runId && !this._run.terminated) {
+        this.failActiveRun("idle_timeout_exceeded");
+      }
+    }, maxIdleMs);
+  }
+
+  _clearRunTimers() {
+    if (!this._run) return;
+    if (this._run.timeout) clearTimeout(this._run.timeout);
+    if (this._run.idleTimer) clearTimeout(this._run.idleTimer);
+    this._run.idleTimer = null;
   }
 
   _requestToolCall(toolCallId, name, args) {
@@ -139,6 +192,7 @@ export class PiSession {
     if (!resolve) return false;
     this._pendingTools.delete(toolCallId);
     resolve(outcome);
+    this._armIdle(); // the provider is working again once the last pending tool returns
     return true;
   }
 
@@ -245,60 +299,60 @@ export class PiSession {
   _prepareRunShape(runId, outputSchema, toolChoice) {
     const wantsStructured = outputSchema !== undefined && outputSchema !== null;
     let choice = null;
-    if (wantsStructured) {
-      choice = { kind: "tool", name: STRUCTURED_TOOL_NAME };
-    } else if (toolChoice !== undefined && toolChoice !== null) {
-      try {
-        choice = normalizeToolChoice(toolChoice);
-      } catch (err) {
-        this._frame("run.failed", { run_id: runId, error: err.message });
-        return null;
-      }
-    }
     let structuredTool = null;
-    if (wantsStructured) {
-      let parameters;
-      try {
-        parameters = translateOutputSchema(outputSchema);
-      } catch (err) {
-        // Typed failure BEFORE any provider call: a schema the worker cannot
-        // force mechanically must never degrade into a prompt hint.
-        this._frame("run.failed", { run_id: runId, error: err.message });
-        return null;
-      }
-      structuredTool = {
-        name: STRUCTURED_TOOL_NAME,
-        label: "Emit structured output",
-        description: "Return the final answer as a single structured object matching the requested schema.",
-        // The provider sees a strict object-root schema. Agent-core validates
-        // before capture and Python revalidates against the original contract.
-        parameters: captureParameters(parameters),
-        execute: async (_toolCallId, params) => {
-          // Captured, not executed: the arguments ARE the structured artifact.
-          // Nothing round-trips to the authority as a tool.call and no side
-          // effect runs; Python revalidates this object against the original
-          // schema on run.completed.
-          if (this._run) this._run.structuredValue = params;
-          return { content: [{ type: "text", text: "ok" }], details: {}, terminate: true };
-        },
-      };
+    try {
+      // Typed failures BEFORE any provider call: an invalid tool choice, or a schema the worker
+      // cannot force mechanically, must never degrade into a prompt hint.
+      choice = this._runChoice(wantsStructured, toolChoice);
+      if (wantsStructured) structuredTool = this._captureTool(outputSchema);
+    } catch (err) {
+      this._frame("run.failed", { run_id: runId, error: err.message });
+      return null;
     }
-    let mapped = null;
-    if (choice) {
-      const api = (this._binding && this._binding.model && this._binding.model.api) || "";
-      mapped = mapToolChoiceForApi(api, choice);
-      if (mapped === null) {
-        if (this._binding && this._binding.isReal) {
-          // A real provider family we cannot force must fail closed — an
-          // unforced "structured" run would silently accept free-form text.
-          this._frame("run.failed", { run_id: runId, error: `tool_choice_unsupported:${api}` });
-          return null;
-        }
-        // Faux test bindings are scripted; forcing is a no-op.
-        mapped = null;
-      }
+    // A structured run is forced unless the provider leaves the call to the model (see
+    // resolveStructuredChoice in structured.mjs).
+    const { mapped, forced } = choice ? resolveStructuredChoice(this._binding, choice) : { mapped: null, forced: true };
+    if (choice && mapped === null && this._binding && this._binding.isReal) {
+      // A real provider family we cannot force must fail closed — an unforced "structured" run
+      // would silently accept free-form text. Faux test bindings are scripted; forcing is a no-op.
+      const api = (this._binding.model && this._binding.model.api) || "";
+      this._frame("run.failed", { run_id: runId, error: `tool_choice_unsupported:${api}` });
+      return null;
     }
-    return { structuredTool, toolChoice: mapped, outputSchema: wantsStructured ? outputSchema : null };
+    return {
+      structuredTool,
+      toolChoice: mapped,
+      outputSchema: wantsStructured ? outputSchema : null,
+      structuredForced: !wantsStructured || forced,
+    };
+  }
+
+  /** The run's normalized tool choice: the capture tool for a structured run, else the caller's. */
+  _runChoice(wantsStructured, toolChoice) {
+    if (wantsStructured) return { kind: "tool", name: STRUCTURED_TOOL_NAME };
+    if (toolChoice === undefined || toolChoice === null) return null;
+    return normalizeToolChoice(toolChoice);
+  }
+
+  /** The structured-output capture tool for ``outputSchema`` (throws when it cannot be forced). */
+  _captureTool(outputSchema) {
+    const parameters = translateOutputSchema(outputSchema);
+    return {
+      name: STRUCTURED_TOOL_NAME,
+      label: "Emit structured output",
+      description: "Return the final answer as a single structured object matching the requested schema.",
+      // The provider sees a strict object-root schema. Agent-core validates
+      // before capture and Python revalidates against the original contract.
+      parameters: captureParameters(parameters),
+      execute: async (_toolCallId, params) => {
+        // Captured, not executed: the arguments ARE the structured artifact.
+        // Nothing round-trips to the authority as a tool.call and no side
+        // effect runs; Python revalidates this object against the original
+        // schema on run.completed.
+        if (this._run) this._run.structuredValue = params;
+        return { content: [{ type: "text", text: "ok" }], details: {}, terminate: true };
+      },
+    };
   }
 
   async prompt(runId, text, options = {}) {
@@ -306,36 +360,65 @@ export class PiSession {
     // may still be resolving (cold registry import); never start the run on
     // a stale or missing binding.
     await this._awaitPendingBind();
-    if (!this._agent) {
-      this._frame("run.failed", { run_id: runId, error: "no_provider_bound" });
-      return;
-    }
-    if (this._run && !this._run.terminated) {
-      this._frame("run.failed", { run_id: runId, error: "session_busy" });
-      return;
-    }
+    if (this._refuseRun(runId, this._agent)) return;
     const { maxTurns, outputSchema, toolChoice } = options || {};
     const shape = this._prepareRunShape(runId, outputSchema, toolChoice);
     if (shape === null) return; // typed run.failed already emitted
-    const effectiveMaxTurns = Number.isInteger(maxTurns) && maxTurns > 0 ? maxTurns
-      : Number.isInteger(this._limits.max_turns) && this._limits.max_turns > 0 ? this._limits.max_turns
-      : null;
-    const maxWallClockMs = Number.isFinite(this._limits.max_wall_clock_ms) && this._limits.max_wall_clock_ms > 0
-      ? this._limits.max_wall_clock_ms : null;
+    this._startAgentRun(runId, shape, maxTurns);
+    this._frame("run.started", { run_id: runId });
+    try {
+      // Used only by the deterministic faux provider to regression-test the
+      // Python authority boundary against a compromised worker.  It is not a
+      // real-provider capability and executes through the ordinary protocol.
+      for (const call of this._binding.forcedToolCalls || []) {
+        await this._requestToolCall(`forced-${runId}-${call.name}`, call.name, call.arguments || {});
+      }
+      await this._agent.prompt(shape.structuredTool ? structuredPromptText(text, { forced: shape.structuredForced }) : text);
+      this._settleRun(runId);
+    } catch (err) {
+      this._settleRun(runId, err);
+    }
+  }
+
+  /** Refuse to start a run without a provider (``ready``) or while another run is active. */
+  _refuseRun(runId, ready) {
+    if (!ready) {
+      this._frame("run.failed", { run_id: runId, error: "no_provider_bound" });
+      return true;
+    }
+    if (this._run && !this._run.terminated) {
+      this._frame("run.failed", { run_id: runId, error: "session_busy" });
+      return true;
+    }
+    return false;
+  }
+
+  _wallClockMs() {
+    const limit = this._limits.max_wall_clock_ms;
+    return Number.isFinite(limit) && limit > 0 ? limit : null;
+  }
+
+  _turnBudget(maxTurns) {
+    if (Number.isInteger(maxTurns) && maxTurns > 0) return maxTurns;
+    const limit = this._limits.max_turns;
+    return Number.isInteger(limit) && limit > 0 ? limit : null;
+  }
+
+  /** Open an agent-loop run: its record, the structured capture tool and the wall-clock budget. */
+  _startAgentRun(runId, shape, maxTurns) {
     // Cost is enforced cumulatively over the whole run: record where this run's
     // assistant messages begin so settlement sums every turn's usage, not just
     // the final assistant message (a tool loop emits several).
-    const startMessageCount = (this._agent && this._agent.state.messages.length) || 0;
     this._run = {
       runId,
       terminated: false,
       aborted: false,
       turns: 0,
-      maxTurns: effectiveMaxTurns,
+      maxTurns: this._turnBudget(maxTurns),
       budgetExceeded: false,
       forcedError: null,
       timeout: null,
-      startMessageCount,
+      startMessageCount: this._agent.state.messages.length || 0,
       outputSchema: shape.outputSchema,
       structuredValue: undefined,
       toolChoice: shape.toolChoice,
@@ -349,21 +432,9 @@ export class PiSession {
       ];
       this._run.structuredToolInstalled = true;
     }
+    const maxWallClockMs = this._wallClockMs();
     if (maxWallClockMs !== null) {
       this._run.timeout = setTimeout(() => this.failActiveRun("wall_clock_budget_exceeded"), maxWallClockMs);
-    }
-    this._frame("run.started", { run_id: runId });
-    try {
-      // Used only by the deterministic faux provider to regression-test the
-      // Python authority boundary against a compromised worker.  It is not a
-      // real-provider capability and executes through the ordinary protocol.
-      for (const call of this._binding.forcedToolCalls || []) {
-        await this._requestToolCall(`forced-${runId}-${call.name}`, call.name, call.arguments || {});
-      }
-      await this._agent.prompt(text);
-      this._settleRun(runId);
-    } catch (err) {
-      this._settleRun(runId, err);
     }
   }
 
@@ -375,25 +446,42 @@ export class PiSession {
    */
   async providerTurn(runId, messages, tools = []) {
     await this._awaitPendingBind();
-    if (!this._binding) {
-      this._frame("run.failed", { run_id: runId, error: "no_provider_bound" });
+    if (this._refuseRun(runId, this._binding)) return;
+    const controller = this._startDirectRun(runId);
+    this._frame("run.started", { run_id: runId });
+    const terminalMessage = await this._streamDirect(runId, messages, tools, controller);
+    if (!this._run || this._run.runId !== runId || this._run.terminated) return;
+    this._run.terminated = true;
+    this._clearRunTimers();
+    const stop = this._directStop(terminalMessage);
+    if (stop) {
+      this._emitStop(runId, stop);
       return;
     }
-    if (this._run && !this._run.terminated) {
-      this._frame("run.failed", { run_id: runId, error: "session_busy" });
+    const runUsage = usageTotals([terminalMessage]);
+    const { costUsd, error } = this._priceRun(runUsage);
+    if (error) {
+      this._frame("run.failed", { run_id: runId, error });
       return;
     }
+    this._frame("run.completed", {
+      run_id: runId,
+      usage: this._completedUsage(runUsage, costUsd, 1),
+      stop_reason: terminalMessage.stopReason || "stop",
+      // `model` on pi-ai's assistant message is the configured request model;
+      // `responseModel` is the provider-reported identity captured by the
+      // binding's fetch observer. Keep the two meanings separate so Research
+      // Spine ensemble coding never treats a request label as proof of service.
+      ...servedModel(terminalMessage),
+      provider_message: terminalMessage,
+    });
+  }
+
+  /** Open a direct provider run; its wall clock aborts the stream with a precise error. */
+  _startDirectRun(runId) {
     const controller = new AbortController();
-    const maxWallClockMs = Number.isFinite(this._limits.max_wall_clock_ms) && this._limits.max_wall_clock_ms > 0
-      ? this._limits.max_wall_clock_ms : null;
-    this._run = {
-      runId,
-      terminated: false,
-      aborted: false,
-      directProvider: true,
-      controller,
-      timeout: null,
-    };
+    this._run = { runId, terminated: false, aborted: false, directProvider: true, controller, timeout: null };
+    const maxWallClockMs = this._wallClockMs();
     if (maxWallClockMs !== null) {
       this._run.timeout = setTimeout(() => {
         if (this._run && this._run.runId === runId && !this._run.terminated) {
@@ -402,7 +490,11 @@ export class PiSession {
         }
       }, maxWallClockMs);
     }
-    this._frame("run.started", { run_id: runId });
+    return controller;
+  }
+
+  /** Stream one provider turn, relaying text and thinking; returns its terminal message. */
+  async _streamDirect(runId, messages, tools, controller) {
     let terminalMessage = null;
     try {
       const stream = this._binding.stream(
@@ -415,77 +507,59 @@ export class PiSession {
         { signal: controller.signal },
       );
       for await (const event of stream) {
-        if (event.type === "text_delta" && event.delta) {
-          this._frame("assistant.delta", { run_id: runId, text: event.delta });
-        } else if (event.type === "thinking_delta" && event.delta) {
-          this._frame("thinking.delta", { run_id: runId, text: event.delta });
-        } else if (event.type === "done") {
-          terminalMessage = event.message;
-        } else if (event.type === "error") {
-          terminalMessage = event.error;
-        }
+        terminalMessage = this._relayDirectEvent(runId, event) ?? terminalMessage;
       }
     } catch (err) {
       if (this._run && !this._run.forcedError) this._run.forcedError = String(err?.message || "provider_turn_failed");
     }
-    if (!this._run || this._run.runId !== runId || this._run.terminated) return;
-    this._run.terminated = true;
-    if (this._run.timeout) clearTimeout(this._run.timeout);
-    if (this._run.forcedError) {
-      this._frame("run.failed", { run_id: runId, error: this._run.forcedError });
-      return;
+    return terminalMessage;
+  }
+
+  _relayDirectEvent(runId, event) {
+    if (event.type === "text_delta" && event.delta) {
+      this._frame("assistant.delta", { run_id: runId, text: event.delta });
+    } else if (event.type === "thinking_delta" && event.delta) {
+      this._frame("thinking.delta", { run_id: runId, text: event.delta });
+    } else if (event.type === "done") {
+      return event.message;
+    } else if (event.type === "error") {
+      return event.error;
     }
-    if (this._run.aborted) {
-      this._frame("run.aborted", { run_id: runId });
-      return;
-    }
+    return null;
+  }
+
+  /** How a direct run ends when it does not complete: a typed failure, or an abort. */
+  _directStop(terminalMessage) {
+    if (this._run.forcedError) return { type: "run.failed", error: this._run.forcedError };
+    if (this._run.aborted) return { type: "run.aborted" };
     if (!terminalMessage || terminalMessage.stopReason === "error" || terminalMessage.stopReason === "aborted") {
-      this._frame("run.failed", {
-        run_id: runId,
-        error: String(terminalMessage?.errorMessage || "provider_turn_failed"),
-      });
-      return;
+      return { type: "run.failed", error: String(terminalMessage?.errorMessage || "provider_turn_failed") };
     }
-    const usage = terminalMessage.usage || {};
-    const runUsage = {
-      input: usage.input || 0,
-      output: usage.output || 0,
-      cacheRead: usage.cacheRead || 0,
-      cacheWrite: usage.cacheWrite || 0,
-      cost: (usage.cost && usage.cost.total) || 0,
-    };
-    const scriptedCost = Number.isFinite(this._binding.forcedCostUsd)
-      ? this._binding.forcedCostUsd : null;
+    return null;
+  }
+
+  _emitStop(runId, stop) {
+    this._frame(stop.type, stop.error === undefined ? { run_id: runId } : { run_id: runId, error: stop.error });
+  }
+
+  /**
+   * The run's cost and, under a cost ceiling, why it may not complete. Real bindings price usage
+   * via the provider model rates; faux test bindings can script a deterministic per-run cost
+   * (forcedCostUsd) so the cost ceiling has a behavioral regression. Production bindings never
+   * set it. Fail closed: pi-ai prices each usage category (input/output/cacheRead/cacheWrite)
+   * independently, so a real binding must carry a trustworthy positive rate for every category
+   * it actually spent tokens in. A category spent at a $0 rate prices that usage at $0, which
+   * cannot prove the run stayed within budget; completing it would be fail-open.
+   */
+  _priceRun(runUsage) {
+    const scriptedCost = this._binding && Number.isFinite(this._binding.forcedCostUsd) ? this._binding.forcedCostUsd : null;
     const costUsd = scriptedCost !== null ? scriptedCost : runUsage.cost;
-    if (Number.isFinite(this._limits.max_cost_usd)) {
-      if (scriptedCost === null && this._binding.isReal && this._hasUnpricedSpend(runUsage)) {
-        this._frame("run.failed", { run_id: runId, error: "cost_budget_unpriced" });
-        return;
-      }
-      if (costUsd > this._limits.max_cost_usd) {
-        this._frame("run.failed", { run_id: runId, error: "cost_budget_exceeded" });
-        return;
-      }
+    if (!Number.isFinite(this._limits.max_cost_usd)) return { costUsd, error: null };
+    if (scriptedCost === null && this._binding && this._binding.isReal && this._hasUnpricedSpend(runUsage)) {
+      return { costUsd, error: "cost_budget_unpriced" };
     }
-    this._frame("run.completed", {
-      run_id: runId,
-      usage: {
-        input_tokens: runUsage.input,
-        output_tokens: runUsage.output,
-        cache_read: runUsage.cacheRead,
-        cache_write: runUsage.cacheWrite,
-        total_tokens: runUsage.input + runUsage.output + runUsage.cacheRead + runUsage.cacheWrite,
-        cost_usd: costUsd,
-        turns: 1,
-      },
-      stop_reason: terminalMessage.stopReason || "stop",
-      // `model` on pi-ai's assistant message is the configured request model;
-      // `responseModel` is the provider-reported identity captured by the
-      // binding's fetch observer. Keep the two meanings separate so Research
-      // Spine ensemble coding never treats a request label as proof of service.
-      ...(terminalMessage.responseModel ? { served_model: terminalMessage.responseModel } : {}),
-      provider_message: terminalMessage,
-    });
+    if (costUsd > this._limits.max_cost_usd) return { costUsd, error: "cost_budget_exceeded" };
+    return { costUsd, error: null };
   }
 
   async followUp(runId, text) {
@@ -519,7 +593,7 @@ export class PiSession {
     this._run.forcedError = error;
     if (this._run.directProvider && this._run.controller) {
       this._run.terminated = true;
-      if (this._run.timeout) clearTimeout(this._run.timeout);
+      this._clearRunTimers();
       this._run.controller.abort();
       this._frame("run.failed", { run_id: runId, error });
       return true;
@@ -532,85 +606,65 @@ export class PiSession {
   _settleRun(runId, err) {
     if (!this._run || this._run.runId !== runId || this._run.terminated) return;
     this._run.terminated = true;
-    if (this._run.timeout) clearTimeout(this._run.timeout);
-    if (this._run.structuredToolInstalled && this._agent) {
-      // The forced capture tool lives only for the structured run.
-      this._agent.state.tools = this._tools;
-    }
-    // Clear any pending tool calls — the run is over.
-    for (const [id, resolve] of this._pendingTools) {
-      resolve({ ok: false, error: "run_terminated" });
-      this._pendingTools.delete(id);
-    }
+    this._clearRunTimers();
+    this._releaseRun();
     const assistant = this._lastAssistant();
-    // The agent may already be gone (concurrent session.close); never deref it blindly.
-    const errorMessage = this._agent ? this._agent.state.errorMessage : null;
-    if (this._run.budgetExceeded) {
-      this._frame("run.failed", { run_id: runId, error: "turn_budget_exceeded" });
-      return;
-    }
-    if (this._run.forcedError) {
-      this._frame("run.failed", { run_id: runId, error: this._run.forcedError });
-      return;
-    }
-    if (this._run.aborted) {
-      this._frame("run.aborted", { run_id: runId });
-      return;
-    }
-    if (err || errorMessage || (assistant && (assistant.stopReason === "error" || assistant.stopReason === "aborted"))) {
-      this._frame("run.failed", { run_id: runId, error: String(errorMessage || (err && err.message) || "run_failed") });
+    const stop = this._agentStop(err, assistant);
+    if (stop) {
+      this._emitStop(runId, stop);
       return;
     }
     // Cumulative per-run usage: sum every assistant message this run produced
     // (input/output tokens and priced cost), not just the last turn.
     const runUsage = this._runUsage();
-    // Real bindings price usage via the provider model rates; faux test bindings
-    // can script a deterministic per-run cost (forcedCostUsd) so the cost
-    // ceiling has a behavioral regression. Production bindings never set it.
-    const scriptedCost = this._binding && Number.isFinite(this._binding.forcedCostUsd) ? this._binding.forcedCostUsd : null;
-    const costUsd = scriptedCost !== null ? scriptedCost : runUsage.cost;
-    if (Number.isFinite(this._limits.max_cost_usd)) {
-      // Fail closed: pi-ai prices each usage category (input/output/cacheRead/
-      // cacheWrite) independently, so a real binding must carry a trustworthy
-      // positive rate for every category it actually spent tokens in. A category
-      // spent at a $0 rate (e.g. cache reads on an endpoint priced only for
-      // input/output, or an entirely unpriced endpoint) prices that usage at $0,
-      // which cannot prove the run stayed within budget. Completing it would be
-      // fail-open, so surface the misconfiguration as a terminal.
-      if (scriptedCost === null && this._binding && this._binding.isReal && this._hasUnpricedSpend(runUsage)) {
-        this._frame("run.failed", { run_id: runId, error: "cost_budget_unpriced" });
-        return;
-      }
-      if (costUsd > this._limits.max_cost_usd) {
-        this._frame("run.failed", { run_id: runId, error: "cost_budget_exceeded" });
-        return;
-      }
+    const { costUsd, error } = this._priceRun(runUsage);
+    if (error) {
+      this._frame("run.failed", { run_id: runId, error });
+      return;
     }
-    if (this._run.outputSchema) {
-      // Forced structured contract: the run only succeeds when the model's
-      // emit_structured_output call was captured. Free-form JSON text (or a
-      // missing/incorrect tool call) is NEVER accepted as structured output —
-      // it settles as a typed failure and Python may schedule its one bounded
-      // repair.
-      if (this._run.structuredValue === undefined) {
-        this._frame("run.failed", { run_id: runId, error: "structured_output_missing" });
-        return;
-      }
-      this._frame("run.completed", {
-        run_id: runId,
-        usage: this._completedUsage(runUsage, costUsd),
-        stop_reason: (assistant && assistant.stopReason) || "stop",
-        ...(assistant?.responseModel ? { served_model: assistant.responseModel } : {}),
-        structured: this._run.structuredValue,
-      });
+    // Forced structured contract: the run only succeeds when the model's
+    // emit_structured_output call was captured. Free-form JSON text (or a
+    // missing/incorrect tool call) is NEVER accepted as structured output —
+    // it settles as a typed failure and Python may schedule its one bounded
+    // repair.
+    const structured = Boolean(this._run.outputSchema);
+    if (structured && this._run.structuredValue === undefined) {
+      this._frame("run.failed", { run_id: runId, error: "structured_output_missing" });
       return;
     }
     this._frame("run.completed", {
       run_id: runId,
       usage: this._completedUsage(runUsage, costUsd),
       stop_reason: (assistant && assistant.stopReason) || "stop",
-      ...(assistant?.responseModel ? { served_model: assistant.responseModel } : {}),
+      ...servedModel(assistant),
+      ...(structured ? { structured: this._run.structuredValue } : {}),
     });
+  }
+
+  /** The run is over: the forced capture tool goes, and pending tool calls are released. */
+  _releaseRun() {
+    if (this._run.structuredToolInstalled && this._agent) {
+      // The forced capture tool lives only for the structured run.
+      this._agent.state.tools = this._tools;
+    }
+    for (const [id, resolve] of this._pendingTools) {
+      resolve({ ok: false, error: "run_terminated" });
+      this._pendingTools.delete(id);
+    }
+  }
+
+  /** How an agent-loop run ends when it does not complete: a typed failure, or an abort. */
+  _agentStop(err, assistant) {
+    // The agent may already be gone (concurrent session.close); never deref it blindly.
+    const errorMessage = this._agent ? this._agent.state.errorMessage : null;
+    if (this._run.budgetExceeded) return { type: "run.failed", error: "turn_budget_exceeded" };
+    if (this._run.forcedError) return { type: "run.failed", error: this._run.forcedError };
+    if (this._run.aborted) return { type: "run.aborted" };
+    const failedTurn = assistant && (assistant.stopReason === "error" || assistant.stopReason === "aborted");
+    if (err || errorMessage || failedTurn) {
+      return { type: "run.failed", error: String(errorMessage || (err && err.message) || "run_failed") };
+    }
+    return null;
   }
 
   /**
@@ -622,8 +676,9 @@ export class PiSession {
    * input/output/cost would silently drop cache usage and record every
    * multi-turn tool loop as a single turn.
    */
-  _completedUsage(runUsage, costUsd) {
-    const turns = this._run && Number.isInteger(this._run.turns) ? this._run.turns : 0;
+  _completedUsage(runUsage, costUsd, turnCount = null) {
+    const runTurns = this._run && Number.isInteger(this._run.turns) ? this._run.turns : 0;
+    const turns = turnCount ?? runTurns;
     return {
       input_tokens: runUsage.input,
       output_tokens: runUsage.output,
@@ -644,22 +699,7 @@ export class PiSession {
   _runUsage() {
     const messages = (this._agent && this._agent.state.messages) || [];
     const start = this._run && Number.isInteger(this._run.startMessageCount) ? this._run.startMessageCount : 0;
-    let input = 0;
-    let output = 0;
-    let cacheRead = 0;
-    let cacheWrite = 0;
-    let cost = 0;
-    for (let i = start; i < messages.length; i++) {
-      const message = messages[i];
-      if (!message || message.role !== "assistant") continue;
-      const usage = message.usage || {};
-      input += usage.input || 0;
-      output += usage.output || 0;
-      cacheRead += usage.cacheRead || 0;
-      cacheWrite += usage.cacheWrite || 0;
-      cost += (usage.cost && usage.cost.total) || 0;
-    }
-    return { input, output, cacheRead, cacheWrite, cost };
+    return usageTotals(messages.slice(start).filter((message) => message && message.role === "assistant"));
   }
 
   /**

@@ -31,7 +31,9 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import or_, select
 
 from app.core.agent_identity import (
+    project_persona_path,
     runtime_personas_dir,
+    source_persona_path,
     writeable_persona_path,
 )
 from app.models.database import async_session
@@ -366,8 +368,11 @@ class SelfEvolutionEngine:
                 # Build the promotion text
                 promotion_text = _format_promotion(learning)
 
-                # Write to the target persona file
-                success = _append_to_persona_file(agent_id, tf, section, promotion_text)
+                # Write to THIS project's persona learnings, never the agent-wide overlay: the
+                # evidence behind the promotion is project-scoped (F9).
+                success = _append_to_persona_file(
+                    agent_id, tf, section, promotion_text, project_id=scoped_project_id
+                )
 
                 if success:
                     # Mark the learning as promoted in DB
@@ -714,20 +719,42 @@ def _append_to_persona_file(
     filename: str,
     section_header: str,
     text: str,
+    project_id: str | None = None,
 ) -> bool:
-    """Append a promotion entry to a specific section of a persona file."""
-    try:
-        filepath = writeable_persona_path(agent_id, filename)
-    except PermissionError as e:
-        logger.error(str(e))
-        return False
+    """Append a promotion entry to a specific section of a persona file.
+
+    With ``project_id`` the entry goes to that project's learnings file, which holds only the
+    promoted sections and is merged at read time for that project alone.
+    """
+    if project_id:
+        filepath = project_persona_path(agent_id, project_id, filename)
+        if not filepath.exists():
+            try:
+                filepath.parent.mkdir(parents=True, exist_ok=True)
+                filepath.write_text(f"{section_header}\n- {text}\n", encoding="utf-8")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to create {filepath}: {e}")
+                return False
+    else:
+        try:
+            filepath = writeable_persona_path(agent_id, filename)
+        except PermissionError as e:
+            logger.error(str(e))
+            return False
     if not filepath.exists():
-        # Create the file with the section
+        # The runtime overlay SHADOWS the source persona as soon as it exists
+        # (`persona_file_path` prefers it), so it must start as a copy of the source. Creating it
+        # with only the promoted section erased the agent's title, Identity, Personality and
+        # Values from every project's Prompt-RAG on the first promotion into that file.
         try:
             filepath.parent.mkdir(parents=True, exist_ok=True)
-            content = f"{section_header}\n- {text}\n"
-            filepath.write_text(content, encoding="utf-8")
-            return True
+            source = source_persona_path(agent_id, filename)
+            if source.exists() and source.resolve() != filepath.resolve():
+                filepath.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            else:
+                filepath.write_text(f"{section_header}\n- {text}\n", encoding="utf-8")
+                return True
         except Exception as e:
             logger.error(f"Failed to create {filepath}: {e}")
             return False

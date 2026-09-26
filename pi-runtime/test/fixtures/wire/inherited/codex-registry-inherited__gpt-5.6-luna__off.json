@@ -1,6 +1,6 @@
 {
   "fixture_class": "inherited",
-  "captured_at": "2026-09-08T09:32:25.988Z",
+  "captured_at": "2026-09-25T20:40:00.000Z",
   "endpoint": {
     "provider_kind": "openai_codex",
     "pi_provider": "openai-codex",
@@ -33,6 +33,9 @@
     "text": {
       "verbosity": "low"
     },
-    "tool_choice": "auto"
+    "tool_choice": "auto",
+    "reasoning": {
+      "effort": "none"
+    }
   }
 }

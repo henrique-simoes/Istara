@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Cpu, HardDrive, Monitor, Wifi, WifiOff, RefreshCw, Server, Users, Gauge, Download } from "lucide-react";
 import { settings as settingsApi, telemetry as telemetryApi } from "@/lib/api";
 import type { HardwareInfo, ModelRecommendation } from "@/lib/types";
+import EmbeddingModelSection from "@/components/settings/EmbeddingModelSection";
 import { useAuthStore } from "@/stores/authStore";
 import UserManagement from "./UserManagement";
 import ConnectionStringPanel from "@/components/settings/ConnectionStringPanel";
@@ -93,7 +94,7 @@ export default function SettingsView() {
   const defaultChatModel = settingsDefaultChatModel(models, systemStatus);
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-6">
+    <div className="flex-1 w-full overflow-y-auto p-6 max-w-5xl mx-auto space-y-6">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white">⚙️ Settings</h2>
       <ViewOnboarding viewId="settings" title="System Settings" description="Configure model providers, connection strings, authentication factors, sessions, account security, encrypted files, updates, and local compute donation." chatPrompt="What should I configure first in settings?" />
 
@@ -192,6 +193,9 @@ export default function SettingsView() {
           }}
         />
       )}
+
+      {/* Embedding model: governed switch with a full re-index (admins) */}
+      <EmbeddingModelSection canManage={canManageInfrastructure} />
 
       {/* Hardware */}
       {canManageInfrastructure && hardware && (

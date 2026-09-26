@@ -121,6 +121,12 @@ class EmbeddingsGateway:
             )
         return self._owned_client
 
+    async def aclose(self) -> None:
+        """Close the HTTP client this gateway opened; a client passed in stays the caller's."""
+        if self._owned_client is not None:
+            await self._owned_client.aclose()
+            self._owned_client = None
+
     @staticmethod
     def _is_native_ollama(endpoint: ResolvedPiEndpoint) -> bool:
         # The well-known local Ollama entry speaks the native /api/embed

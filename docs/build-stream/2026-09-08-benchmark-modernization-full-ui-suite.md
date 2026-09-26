@@ -3,14 +3,14 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: benchmark-modernization-full-ui-suite
-branch: testing
-cf: { spec: CF-SPEC-21, tasks: [CF-221, CF-222, CF-223, CF-224, CF-225, CF-226, CF-227, CF-228, CF-229, CF-230, CF-231, CF-232, CF-233, CF-234] }
+branch: main
+cf: { spec: "CF-SPEC-21 (accepted); CF-SPEC-25 (open: wire the rich corpus into scenarios and runners)", tasks: [CF-221, CF-222, CF-223, CF-224, CF-225, CF-226, CF-227, CF-228, CF-229, CF-230, CF-231, CF-232, CF-233, CF-234] }
 phase: "Phase 1 — Batch execution (frame complete; Batch 3 done under CF-SPEC-24)"
 stage: S2-execute
-status: in_progress
-blocked_on: owner-approval
-last: { agent: meta/muse-spark-1.3-contributor, at: 2026-09-09T17:25:00Z, ledger: L-012 }
-next_action: "Judge full-run verdicts; wire rich corpus into scenarios/runners (CF-SPEC-25); live lanes owner-gated. Corrected 2026-09-09 W2 L-012: prior next_action scoped Done to CF-SPEC-24 only."
+status: in-progress
+blocked_on: null
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:40:32Z, ledger: L-2 }
+next_action: "Judge full-run verdicts; wire rich corpus into scenarios/runners (CF-SPEC-25); live lanes owner-gated. Corrected 2026-09-09 W2 L-012: prior next_action scoped Done to CF-SPEC-24 only. Also open, carried from 2026-07-22-pi-benchmark.md: F-11 (measure the legacy arm through AgenticDispatcher, not DeepSeekProvider.chat directly)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -79,6 +79,10 @@ campaign is a separate authorized follow-up.
 
 ### Rollback
 Test-only files; revert = file-scoped revert. No product behavior touched.
+
+## Phase 1 — Batch execution
+
+Frame and Batch 3 complete (CF-SPEC-24, CF-SPEC-21 accepted). Open: the rich corpus wired into scenarios and runners (CF-SPEC-25), full-run verdicts, and F-11 from the July benchmark. Live lanes (full, donors, Colima, models) stay owner-gated.
 
 ## Decision log
 - **DEC-1 | 2026-09-08 | S0 | owner** — Context: owner confirmed benchmark
@@ -210,3 +214,15 @@ Test-only files; revert = file-scoped revert. No product behavior touched.
   Result: operative status is **S2-execute / in-progress** — frame and Batch 3 complete (CF-SPEC-24 accepted 18/18), rich-corpus wiring + full-run verdicts pending under tasked CF-SPEC-25; `blocked_on: owner-approval` retained for the live lanes. W2 triage cites this file's spec family as open-not-release-blocking, deferred to CF-SPEC-25.
   Verified: `spec list` CF-SPEC-21/CF-SPEC-24 accepted, CF-SPEC-25 tasked; triage TSV shows 0 open rows for CF-SPEC-21/24 and 13 for CF-SPEC-25; L-010/L-011 re-read.
   Next: judge full-run verdicts; wire rich corpus into scenarios/runners; live lanes stay owner-gated.
+
+### L-1 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. `in_progress` is not a Build Stream state (in-progress); testing was promoted to main, so work continues from main. The block now also names CF-SPEC-25, the work its next_action describes (in flight in the owner's checkout: tests/document_corpus/rich-corpus.test.mjs).
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.
+
+### L-2 | 2026-09-24T03:40:32Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. `blocked_on: owner-approval` named the gate on the live lanes only, while the plan's own next step (the corpus wiring) proceeds: blocked_on is null and the gate is said in next_action. F-11 is carried here. A Phase 1 section says what the phase holds.
+Result: the Status Block says what is true today.
+Verified: read against the plans named.
+Next: as the block says.

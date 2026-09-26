@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.embedding_prompts import RAW, namespace_for, resolve_scheme
 from app.models.embedding_profile import EmbeddingProfile
 
 
@@ -32,9 +34,24 @@ class ActiveEmbeddingProfile:
     cache_namespace: str
     health_status: str
     migration_source: str
+    # Query/document prompt scheme (app.core.embedding_prompts); part of the vector-space identity.
+    prompt_scheme: str = RAW
 
 
 _active_profile: ActiveEmbeddingProfile | None = None
+
+
+def _has_existing_vectors() -> bool:
+    """Whether this install already holds vector tables (built, before schemes, from raw text)."""
+    root = Path(settings.lance_db_path)
+    return root.is_dir() and any(root.glob("*/*.lance"))
+
+
+def _bootstrap_scheme(model_id: str) -> str:
+    """A fresh install takes the model card's prompts; an install with vectors keeps raw text."""
+    return (
+        RAW if _has_existing_vectors() else resolve_scheme(settings.embed_prompt_scheme, model_id)
+    )
 
 
 def _legacy_bootstrap_snapshot() -> ActiveEmbeddingProfile:
@@ -47,6 +64,7 @@ def _legacy_bootstrap_snapshot() -> ActiveEmbeddingProfile:
         provider = "ollama"
         model_id = settings.ollama_embed_model
         endpoint_id = "pi-local-ollama"
+    scheme = _bootstrap_scheme(model_id)
     return ActiveEmbeddingProfile(
         profile_id="default",
         version=1,
@@ -56,10 +74,11 @@ def _legacy_bootstrap_snapshot() -> ActiveEmbeddingProfile:
         dimension=0,
         dtype="float",
         normalization="provider_native",
-        # Preserve the existing cache keys during the additive bootstrap.
-        cache_namespace=model_id,
+        # Preserve the existing cache keys during the additive bootstrap (raw keeps the model name).
+        cache_namespace=namespace_for(model_id, scheme),
         health_status="unknown",
         migration_source=f"legacy:{provider}",
+        prompt_scheme=scheme,
     )
 
 
@@ -76,6 +95,7 @@ def _snapshot(row: EmbeddingProfile) -> ActiveEmbeddingProfile:
         cache_namespace=row.cache_namespace,
         health_status=row.health_status,
         migration_source=row.migration_source,
+        prompt_scheme=row.prompt_scheme or RAW,
     )
 
 
@@ -121,6 +141,7 @@ async def bootstrap_embedding_profile(db: AsyncSession) -> ActiveEmbeddingProfil
         cache_namespace=candidate.cache_namespace,
         health_status=candidate.health_status,
         migration_source=candidate.migration_source,
+        prompt_scheme=candidate.prompt_scheme,
     )
     db.add(row)
     try:
@@ -137,6 +158,52 @@ async def bootstrap_embedding_profile(db: AsyncSession) -> ActiveEmbeddingProfil
             raise
         _active_profile = _snapshot(winner)
         return _active_profile
+    await db.refresh(row)
+    _active_profile = _snapshot(row)
+    return _active_profile
+
+
+async def activate_embedding_profile(
+    db: AsyncSession,
+    *,
+    model_id: str,
+    prompt_scheme: str,
+    dimension: int,
+    endpoint_id: str | None = None,
+    migration_source: str = "",
+) -> ActiveEmbeddingProfile:
+    """Make a new profile version the only active one (the embedding migration's first step).
+
+    The previous version stays on record, inactive. Stores bound to it fail closed until the
+    migration re-embeds them; nothing mixes the two vector spaces.
+    """
+    global _active_profile
+
+    current = get_active_embedding_profile()
+    rows = list((await db.execute(select(EmbeddingProfile))).scalars().all())
+    for row in rows:
+        if row.is_active:
+            row.is_active = False
+    await db.flush()
+    version = max((row.version for row in rows), default=current.version) + 1
+    row = EmbeddingProfile(
+        id=str(uuid.uuid4()),
+        profile_id=current.profile_id,
+        version=version,
+        is_active=True,
+        model_id=model_id,
+        endpoint_id=endpoint_id or current.endpoint_id,
+        transport=current.transport,
+        dimension=dimension,
+        dtype=current.dtype,
+        normalization=current.normalization,
+        cache_namespace=namespace_for(model_id, prompt_scheme),
+        health_status="unknown",
+        migration_source=migration_source or f"migration:v{current.version}",
+        prompt_scheme=prompt_scheme,
+    )
+    db.add(row)
+    await db.commit()
     await db.refresh(row)
     _active_profile = _snapshot(row)
     return _active_profile
@@ -168,6 +235,7 @@ def public_embedding_profile() -> dict[str, str | int]:
         "dtype": profile.dtype,
         "normalization": profile.normalization,
         "health_status": profile.health_status,
+        "prompt_scheme": profile.prompt_scheme,
     }
 
 

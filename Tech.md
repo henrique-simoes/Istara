@@ -474,9 +474,10 @@ User sends message
   ├─ Prompt RAG selects relevant persona sections (within identity budget)
   │
   ├─ RAG retrieves relevant document chunks
-  │   └─ compress_rag_chunks() applies question-aware compression
-  │      (LongLLMLingua pattern: reorder most relevant first,
-  │       differentiated compression by rank)
+  │   └─ compress_rag_chunks() passes the chunks through verbatim when they
+  │      fit the RAG budget; only under budget pressure does it apply
+  │      question-aware compression (LongLLMLingua pattern: retrieval order
+  │      kept, differentiated compression by rank)
   │
   ├─ Context Summarizer applies cost-escalating pipeline:
   │   1. DAG-based lossless compression (if enabled)
@@ -680,7 +681,13 @@ Istara's retrieval combines **vector similarity** and **keyword search** using c
 | **Vector** | 0.7 | LanceDB cosine similarity on embeddings | Semantic understanding, handles paraphrasing |
 | **Keyword** | 0.3 | SQLite FTS5 BM25 scoring | Exact matches, acronyms, proper nouns |
 
-Results are merged using **Reciprocal Rank Fusion** and filtered by a score threshold (default: 0.3).
+Results are merged using **weighted Reciprocal Rank Fusion** (`w / (60 + rank)` per list); the vector lane first drops rows under 0.3 cosine similarity. The fused value orders results and is not a probability: the best possible chunk scores about 0.016, so the Memory view shows a result's **rank** (`#1`, `#2`, …) and keeps the raw value in its title.
+
+**Keyword query semantics** (`core/keyword_index.py`). The query runs as an exact FTS5 phrase first, and the all-terms (`OR`) query fills the remaining top-k, so an adjacent match ranks first without suppressing chunks that use the same words apart. Two-character tokens (`UX`, `AI`, `P1`, `Q4`) are kept; a short English stopword list is dropped from the `OR` query.
+
+**One evidence formatter.** `rag.format_context_part` labels every retrieved chunk (`[Source: …, page …, rank N]`: the rank, never the fused RRF value, which reads as "irrelevant" at ~0.016 for the best chunk) and wraps it in the ContentGuard untrusted-content delimiters. `retrieve_context` and `build_compressed_rag_context` (Chat and Interfaces, after compression to the RAG token budget) both use it, and the compressed path returns exactly the chunks that reached the prompt, so the SSE `done` event cites only those.
+
+**Re-ingestion is idempotent.** Chunks are keyed by the file's full stored path; `VectorStore.delete_file_source` deletes both the full-path and the basename spelling from the vector and keyword indices before upload, reprocess and documents sync re-ingest, and `delete_by_source` clears keyword rows even when a project has no vector table.
 
 ### Ingestion Pipeline
 
@@ -689,8 +696,16 @@ File uploaded → FileProcessor extracts text
   → Chunker splits into ~1,200 char chunks (180 overlap)
     → Embeddings generated (batch, cached)
       → Chunks stored in LanceDB (per-project database)
-        → FileWatcher detects new files → auto-creates research tasks
+        → Upload route creates the file's research tasks (from the plaintext, before encryption)
 ```
+
+The upload route owns an upload's whole ingestion (Document, evidence units with provenance on
+every chunk, both indices, research tasks). The FileWatcher indexes linked folders and skips
+managed uploads: indexing them too raced the route and duplicated every vector (2026-09-25).
+Research tasks are classified and titled by the researcher's file name, not the stored
+`<uuid>.<ext>`. Folder sync has one implementation (`register_untracked_project_files`), used by
+the Documents sync route and, through `app/core/project_folder_sync.py`, by the agent's
+`sync_project_documents` tool; files are matched by path, so an upload is never registered twice.
 
 **Embedding caching** prevents re-embedding unchanged content, critical for local hardware where embedding is expensive.
 
@@ -1094,7 +1109,7 @@ All settings are configurable via environment variables or `.env`:
 | `LMSTUDIO_API_KEY` | empty | Optional bearer token for OpenAI-compatible providers |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `qwen3:latest` | Default chat model |
-| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
+| `OLLAMA_EMBED_MODEL` | `bge-m3` | Embedding model (DEC-15; pulled on first use) |
 
 ### Context & RAG
 
@@ -1727,6 +1742,8 @@ The tracked security benchmark lives under `security/` and is active release gov
 The current PR architecture makes the Research Spine the governing boundary for every feature that ingests, transforms, retrieves, validates, displays, learns from, or reports research data. Documents, interviews, surveys, AURA-style research, deployments, chat, skills, ReAct tools, interfaces, design evidence, integrations, simulations, and benchmarks must enter or respect the same evidence lifecycle: raw source, stable evidence unit, candidate atom/code application, reliability/grounding, reconciliation or human review, accepted artifact, task review, Done, then report.
 
 Atomic Research artifacts are trusted only after the source-grounded multi-model extraction/coding and reliability/reconciliation gates accept them. This means tests, fixtures, simulations, and real-user benchmark probes must not pass by constructing reportable nuggets, facts, insights, recommendations, design decisions, tasks, or reports directly from unvalidated model output. Legacy or unlinked artifacts are provisional or `legacy_unverified` until migrated or reconciled.
+
+A runtime persona overlay shadows its source file, so the first self-evolution promotion now seeds the overlay from the source persona before appending; an overlay holding only the promoted section would erase the agent's identity in every project.
 
 Self-improvement follows the same governance rule. Telemetry observes process behavior; ReasoningBank and Memento Skills provide weak routing/process priors; Autoresearch evaluates sandboxed mutations; Meta-Hyperagent proposes governed variants; Self-Evolution applies only approved changes with rollback/evidence. RAG/BM25, Hybrid RAG, GraphRAG, Prompt-RAG, and LLMLingua assist grounding and context management but do not inject mandatory coding methodology opportunistically or bypass Research Spine gates.
 
@@ -3250,4 +3267,61 @@ validated provider response): a numeric entry written under a different
 embedding model/dimension is discarded and re-embedded rather than served, and
 an entry whose dimension cannot be verified yet is treated as a miss (fail
 closed). Chat temperature, thinking, and effort controls are generation
-controls only.
+controls only. A dimension says nothing about which model produced a vector, so embeddings also
+carry a behavioural fingerprint (a hash of the vectors a fixed probe produces): the cache is keyed
+by `namespace#fingerprint`, a store is bound to the fingerprint that wrote it, and vector health
+reports `fingerprint_mismatch` for a same-dimension model swap (2026-09-25).
+
+### Telemetry export (contract v1, 2026-09-24)
+
+`scripts/export_telemetry_v1.py` reads `agentic_usage_rows` read-only and writes telemetry
+contract v1 rows (`schemas/telemetry.v1.schema.json` in adaptive-product-contracts 0.2.0) as
+JSON lines on stdout, with a summary of rows read, emitted, skipped by reason and unknown per
+measure on stderr. Rows are metadata only: no prompt, completion or tool payload. A measure the
+source does not record is `null` with provenance `unknown`, never 0; `host` is an alias, never a
+machine name. Standard library only; nothing in the backend imports it. Its tests are
+`tests/test_export_telemetry_v1.py`, and the feature is registered in
+`testing/feature_coverage.yml`.
+
+### Research-spine findings and retrieval measurements (2026-09-25)
+
+Branch `fix/spine-findings-measurements-20260925`; evidence in
+`docs/build-stream/2026-09-25-spine-findings-evidence.md`, lifecycle in
+`docs/build-stream/2026-09-25-spine-findings-and-retrieval-measurements.md`.
+
+- **Prompt boundaries.** Truncation keeps the untrusted-content wrapper closed
+  (`content_guard.truncate_preserving_wrappers`); document text cannot open or close the wrapper or a
+  protected tag (entity-escaped), and the RAG budget is a hard limit for plain text too. The same
+  escaping applies to data-gathering tool results inside `<tool_output>` (documents, memories, web
+  pages), which models read with tools.
+- **Derived text is not evidence.** Agent notes and skill artifacts live in a separate derived
+  index, never in the source index claim verification searches; notes are scoped by exact agent id.
+  Every source chunk carries its evidence unit and span (`services/retrieval_provenance.py`), and
+  provenance coverage is a health invariant (Memory > Health).
+- **Ranking semantics.** Evidence is labelled by rank, compression keeps retrieval order, finding
+  search returns source evidence first and marks findings provisional, and every `top_k` is bounded.
+- **Learning loops.** Skill routing requires relevance before learned priors count; self-verified
+  outcomes stay provisional; ReasoningBank reads are side-effect free (use is counted when a memory
+  reaches a prompt); persona learnings are project-scoped.
+- **Plan DAG.** A failed prerequisite blocks its dependents, and plan steps never share one database
+  session concurrently.
+- **RAG tuning** optimises nDCG@10 on span-graded qrels over sandbox indices
+  (`app.evals.retrieval_eval`), never mutates settings and fails closed without a benchmark.
+  Measurement harnesses: `app.evals.retrieval_eval` (evaluate / ablate / budget) and
+  `app.evals.answer_eval` (faithfulness and context precision with validated judges that never grade
+  their own model). `app.evals.stats` holds the metrics and paired tests.
+- **Pi runtime.** Per-endpoint, progress-based liveness (idle and total budgets, larger for local
+  endpoints); an endpoint's thinking level is the default for turns that set none; failed turns carry
+  the provider's reason; structured output works on providers that accept only `tool_choice: auto`
+  (Meta) without accepting free-form text; pinned pi-ai 0.87.1 adds Meta as a provider. Thinking
+  runs on DeepSeek and Anthropic, which refuse a forced tool choice, get `auto` the same way. A local
+  server that answers 503 "Loading model" is waited for with backoff up to the 300 s response-start
+  budget (`load_wait_ms` on the binding), outside the retry budget; remote endpoints never wait.
+- **Embeddings (2026-09-26).** Queries and documents get their model card's prompts
+  (`app/core/embedding_prompts.py`: EmbeddingGemma, Qwen3-Embedding, nomic-embed-text; raw text for
+  BGE-M3 and unknown models). The prompt scheme is part of the embedding profile and of each store's
+  identity (`app/core/vector_identity.py`); older profiles and stores are raw. An administrator moves
+  the install to another model from Settings (`POST /api/settings/embedding-profile`,
+  `app/services/embedding_migration.py`): the model is probed, a new profile version becomes active,
+  every project's tables are re-embedded from their stored text and rebound; BM25 is untouched. The
+  default embedder is chosen by the pre-registered rule in `app/evals/embedder_compare.py` (DEC-15).

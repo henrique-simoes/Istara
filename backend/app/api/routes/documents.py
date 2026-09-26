@@ -1,5 +1,6 @@
 """Document management API routes — source of truth for all project outputs."""
 
+import asyncio
 import json
 import uuid
 from pathlib import Path
@@ -11,6 +12,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core import project_folder_sync
 from app.core.file_encryption import (
     encrypt_file_in_place,
     protect_document_text,
@@ -916,118 +918,178 @@ async def sync_project_documents(
     """
     project = await get_visible_project_or_404(db, request, project_id, min_role="researcher")
 
+    return await register_untracked_project_files(
+        db, project, project_id, background_tasks=background_tasks
+    )
+
+
+# Audio transcriptions started outside a request (the agent's sync tool) are kept referenced here
+# until they finish, so the event loop does not drop them.
+_audio_jobs: set[asyncio.Task] = set()
+
+
+def _schedule_transcription(
+    background_tasks: BackgroundTasks | None, project_id: str, doc_id: str, file_path: Path
+) -> None:
+    from app.api.routes.files import _process_audio_background
+
+    if background_tasks is not None:
+        background_tasks.add_task(
+            _process_audio_background, project_id=project_id, doc_id=doc_id, file_path=file_path
+        )
+        return
+    job = asyncio.create_task(
+        _process_audio_background(project_id=project_id, doc_id=doc_id, file_path=file_path)
+    )
+    _audio_jobs.add(job)
+    job.add_done_callback(_audio_jobs.discard)
+
+
+async def register_untracked_project_files(
+    db: AsyncSession,
+    project: Project | None,
+    project_id: str,
+    *,
+    background_tasks: BackgroundTasks | None = None,
+) -> dict[str, int]:
+    """Register the project folder's untracked files as documents, through the research spine.
+
+    Each new file gets its text, its evidence units and its index rows, exactly as the Documents
+    view's sync does; files already registered (by path, or by name for path-less legacy rows) are
+    skipped. The Documents route and the agent's ``sync_project_documents`` tool both call this.
+    """
     scan_dir = _resolve_project_folder(project, project_id)
     if not scan_dir.exists():
         return {"synced": 0, "total": 0}
 
-    from app.core.file_processor import get_supported_extensions, process_file
-    from app.core.rag import VectorStore, ingest_chunks
-
-    supported = set(get_supported_extensions()) | MEDIA_EXTENSIONS
-
-    # Get existing document file paths to avoid duplicates. Older documents may
-    # only have a filename, so keep that as a legacy fallback without letting
-    # same-named files in different linked folders block each other.
-    existing_result = await db.execute(
-        select(Document.file_name, Document.file_path).where(Document.project_id == project_id)
-    )
-    existing_paths: set[str] = set()
-    existing_names_without_path: set[str] = set()
-    for file_name, stored_path in existing_result.all():
-        if stored_path:
-            try:
-                existing_paths.add(str(Path(stored_path).expanduser().resolve()))
-            except OSError:
-                existing_paths.add(str(Path(stored_path).expanduser()))
-        elif file_name:
-            existing_names_without_path.add(file_name)
-
-    synced = 0
+    synced_units: list[Any] = []
     total_chunks_indexed = 0
-    synced_units = []
-    for file_path in sorted(scan_dir.iterdir()):
-        if not file_path.is_file():
-            continue
-        if file_path.suffix.lower() not in supported:
-            continue
-        try:
-            resolved_file_path = str(file_path.expanduser().resolve())
-        except OSError:
-            resolved_file_path = str(file_path.expanduser())
-        if resolved_file_path in existing_paths or file_path.name in existing_names_without_path:
-            continue
+    new_files = _untracked_files(scan_dir, *(await _registered_files(db, project_id)))
+    for file_path in new_files:
+        chunks, units = await _register_folder_file(db, project_id, file_path, background_tasks)
+        total_chunks_indexed += chunks
+        synced_units.extend(units)
 
-        stat = file_path.stat()
-        suffix = file_path.suffix.lower()
-
-        content_preview = ""
-        content_text = ""
-        status = DocumentStatus.PROCESSING if suffix in AUDIO_EXTENSIONS else DocumentStatus.READY
-        description = f"File added to project folder: {file_path.name}"
-        chunks_indexed = 0
-
-        if suffix not in MEDIA_EXTENSIONS:
-            result = process_file(file_path)
-            if result.error and suffix not in AUDIO_EXTENSIONS:
-                status = DocumentStatus.ERROR
-                description = f"Processing error: {result.error}"
-            elif suffix not in AUDIO_EXTENSIONS:
-                content_text = "\n\n".join(chunk.text for chunk in result.chunks)
-                content_preview = content_text[:2000]
-                if result.chunks:
-                    store = VectorStore(project_id)
-                    await store.delete_by_source(file_path.name)
-                    chunks_indexed = await ingest_chunks(project_id, result.chunks)
-                    total_chunks_indexed += chunks_indexed
-
-        # Generate a human-readable title from filename
-        title = file_path.stem.replace("-", " ").replace("_", " ").title()
-
-        doc = Document(
-            id=str(uuid.uuid4()),
-            project_id=project_id,
-            title=title,
-            description=description,
-            file_path=str(file_path),
-            file_name=file_path.name,
-            file_type=suffix,
-            file_size=stat.st_size,
-            status=status,
-            source=DocumentSource.PROJECT_FILE,
-            content_preview=protect_document_text(content_preview),
-            content_text=protect_document_text(content_text),
-        )
-        doc.set_tags([])
-
-        db.add(doc)
-        if content_text and status == DocumentStatus.READY:
-            synced_units.extend(await _persist_document_source_units(db, doc))
-        if _is_managed_upload_path(file_path):
-            encrypt_file_in_place(file_path)
-        if suffix in AUDIO_EXTENSIONS:
-            from app.api.routes.files import _process_audio_background
-
-            background_tasks.add_task(
-                _process_audio_background,
-                project_id=project_id,
-                doc_id=doc.id,
-                file_path=file_path,
-            )
-        synced += 1
-
-    if synced > 0:
+    if new_files:
         await db.commit()
-        await record_source_evidence_unit_telemetry(
-            project_id=project_id,
-            units=synced_units,
-        )
+        await record_source_evidence_unit_telemetry(project_id=project_id, units=synced_units)
 
     total_result = await db.execute(
         select(func.count(Document.id)).where(Document.project_id == project_id)
     )
     total = total_result.scalar() or 0
+    return {"synced": len(new_files), "total": total, "chunks_indexed": total_chunks_indexed}
 
-    return {"synced": synced, "total": total, "chunks_indexed": total_chunks_indexed}
+
+def _resolved(path: Path) -> str:
+    try:
+        return str(path.expanduser().resolve())
+    except OSError:
+        return str(path.expanduser())
+
+
+async def _registered_files(db: AsyncSession, project_id: str) -> tuple[set[str], set[str]]:
+    """Resolved paths of the project's documents, and names of path-less legacy rows.
+
+    Older documents may only have a filename; that fallback never lets same-named files in
+    different linked folders block each other.
+    """
+    rows = await db.execute(
+        select(Document.file_name, Document.file_path).where(Document.project_id == project_id)
+    )
+    paths: set[str] = set()
+    names: set[str] = set()
+    for file_name, stored_path in rows.all():
+        if stored_path:
+            paths.add(_resolved(Path(stored_path)))
+        elif file_name:
+            names.add(file_name)
+    return paths, names
+
+
+def _untracked_files(scan_dir: Path, paths: set[str], names: set[str]) -> list[Path]:
+    from app.core.file_processor import get_supported_extensions
+
+    supported = set(get_supported_extensions()) | MEDIA_EXTENSIONS
+    return [
+        file_path
+        for file_path in sorted(scan_dir.iterdir())
+        if file_path.is_file()
+        and file_path.suffix.lower() in supported
+        and _resolved(file_path) not in paths
+        and file_path.name not in names
+    ]
+
+
+def _read_folder_file(file_path: Path) -> tuple[DocumentStatus, str, str, list[Any]]:
+    """(status, description, text, chunks) for a folder file; media is registered without text."""
+    from app.core.file_processor import process_file
+
+    suffix = file_path.suffix.lower()
+    status = DocumentStatus.PROCESSING if suffix in AUDIO_EXTENSIONS else DocumentStatus.READY
+    description = f"File added to project folder: {file_path.name}"
+    if suffix in MEDIA_EXTENSIONS:
+        return status, description, "", []
+    result = process_file(file_path)
+    if result.error:
+        return DocumentStatus.ERROR, f"Processing error: {result.error}", "", []
+    content_text = "\n\n".join(chunk.text for chunk in result.chunks)
+    return status, description, content_text, list(result.chunks)
+
+
+async def _register_folder_file(
+    db: AsyncSession,
+    project_id: str,
+    file_path: Path,
+    background_tasks: BackgroundTasks | None,
+) -> tuple[int, list[Any]]:
+    """Register one folder file: its document, evidence units and index rows (chunks, units)."""
+    from app.core.rag import VectorStore
+    from app.services.retrieval_provenance import index_document_source_chunks
+
+    suffix = file_path.suffix.lower()
+    status, description, content_text, pending_chunks = _read_folder_file(file_path)
+    doc = Document(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        title=file_path.stem.replace("-", " ").replace("_", " ").title(),
+        description=description,
+        file_path=str(file_path),
+        file_name=file_path.name,
+        file_type=suffix,
+        file_size=file_path.stat().st_size,
+        status=status,
+        source=DocumentSource.PROJECT_FILE,
+        content_preview=protect_document_text(content_text[:2000]),
+        content_text=protect_document_text(content_text),
+    )
+    doc.set_tags([])
+    db.add(doc)
+    units: list[Any] = []
+    if content_text and status == DocumentStatus.READY:
+        units = await _persist_document_source_units(db, doc)
+    chunks_indexed = 0
+    if pending_chunks:
+        # Index after the evidence units exist, so each chunk carries its unit (measurement 5),
+        # and after committing them: embedding dispatches write their usage rows in other
+        # sessions, which an open write transaction here would block (SQLite single writer).
+        await db.commit()
+        await VectorStore(project_id).delete_file_source(file_path)
+        chunks_indexed = await index_document_source_chunks(
+            project_id,
+            pending_chunks,
+            document_id=doc.id,
+            units=units,
+            document_text=content_text,
+        )
+    if _is_managed_upload_path(file_path):
+        encrypt_file_in_place(file_path)
+    if suffix in AUDIO_EXTENSIONS:
+        _schedule_transcription(background_tasks, project_id, doc.id, file_path)
+    return chunks_indexed, units
+
+
+project_folder_sync.register(register_untracked_project_files)
 
 
 @router.get("/documents/stats/{project_id}")

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from qa.scripts.provider_contracts import (
     ApiShape,
     ChatIdentity,
@@ -19,6 +18,7 @@ from qa.scripts.provider_stub import (
     EMBEDDING_DIMENSION,
     embedding_for_text,
     embeddings_for_input,
+    is_missing_model,
     openai_chat_stream,
 )
 
@@ -123,3 +123,11 @@ def test_readiness_gate_requires_capability_decl_and_secret_handle():
     non_string = readiness_gate(identity, {"capability": "chat", "secret_handle": 42})
     assert non_string.healthy is False
     assert "secret_handle" in non_string.capability_decl["missing"]
+
+
+def test_the_stub_refuses_a_model_it_does_not_serve_like_ollama():
+    # The embedding-migration journey needs the failure a real provider gives for a model it has
+    # not pulled (Ollama answers 404 "model not found"). Names starting "qa-missing-" play it.
+    assert is_missing_model("qa-missing-embedder")
+    assert not is_missing_model("embeddinggemma")
+    assert not is_missing_model(None)

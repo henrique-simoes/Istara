@@ -28,7 +28,7 @@ import logging
 import re
 
 from app.config import settings
-from app.core.agent_identity import IDENTITY_FILES, persona_file_path
+from app.core.agent_identity import IDENTITY_FILES, load_project_learnings, persona_file_path
 
 logger = logging.getLogger(__name__)
 
@@ -157,10 +157,11 @@ def _chunk_md_by_sections(
     content: str,
     min_depth: int = 2,
 ) -> list[PromptSection]:
-    """Split a markdown file into sections by ## headers.
+    """Split a markdown file into sections at every header of depth 1-4.
 
-    Each section includes the header and all content up to the next
-    header of equal or lesser depth.
+    Each section is a header and the lines up to the NEXT header of any depth. A subsection is
+    therefore its own section and is not nested in its parent (the old docstring said "equal or
+    lesser depth", which the code never did).
     """
     lines = content.split("\n")
     sections: list[PromptSection] = []
@@ -211,17 +212,24 @@ def _chunk_md_by_sections(
     return sections
 
 
-def index_agent_sections(agent_id: str) -> list[PromptSection]:
-    """Load and chunk all persona MD files for an agent into sections."""
+def index_agent_sections(agent_id: str, project_id: str | None = None) -> list[PromptSection]:
+    """Load and chunk all persona MD files for an agent into sections.
+
+    With ``project_id``, the learnings self-evolution promoted from that project are appended to
+    each file; other projects never see them (F9).
+    """
     all_sections: list[PromptSection] = []
 
     for filename in IDENTITY_FILES:
         filepath = persona_file_path(agent_id, filename)
-        if not filepath.exists():
+        learned = load_project_learnings(agent_id, project_id, filename)
+        if not filepath.exists() and not learned:
             continue
 
         try:
-            content = filepath.read_text(encoding="utf-8").strip()
+            content = filepath.read_text(encoding="utf-8").strip() if filepath.exists() else ""
+            if learned:
+                content = f"{content}\n\n{learned}".strip()
             if not content:
                 continue
             sections = _chunk_md_by_sections(agent_id, filename, content)
@@ -313,30 +321,29 @@ async def _embedding_similarity(
 ) -> float:
     """Score a section's relevance using embedding similarity.
 
-    Falls back to keyword similarity if embeddings are unavailable.
+    Raises when an embedding is unavailable. The caller then re-scores EVERY section by keyword,
+    because a per-section fallback sorted cosine and Jaccard values together on one list (F12):
+    two scales, one ranking.
     """
-    try:
-        from app.core.embeddings import embed_text
+    from app.core.embeddings import embed_text
 
-        if query_vector is None:
-            query_vector = await embed_text(query)
+    if query_vector is None:
+        query_vector = await embed_text(query)
 
-        section_text = section.header + " " + section.content[:500]
-        section_vector = await embed_text(section_text)
+    section_text = section.header + " " + section.content[:500]
+    section_vector = await embed_text(section_text, role="document")
+    if len(section_vector) != len(query_vector):
+        raise ValueError("embedding dimension mismatch between query and section")
 
-        # Cosine similarity
-        dot = sum(a * b for a, b in zip(query_vector, section_vector))
-        mag_q = sum(a * a for a in query_vector) ** 0.5
-        mag_s = sum(a * a for a in section_vector) ** 0.5
+    # Cosine similarity
+    dot = sum(a * b for a, b in zip(query_vector, section_vector, strict=True))
+    mag_q = sum(a * a for a in query_vector) ** 0.5
+    mag_s = sum(a * a for a in section_vector) ** 0.5
 
-        if mag_q == 0 or mag_s == 0:
-            return 0.0
+    if mag_q == 0 or mag_s == 0:
+        return 0.0
 
-        return dot / (mag_q * mag_s)
-
-    except Exception:
-        # Fall back to keyword similarity
-        return _keyword_similarity(_tokenize(query), section)
+    return dot / (mag_q * mag_s)
 
 
 # ---------------------------------------------------------------------------
@@ -498,8 +505,8 @@ async def compose_dynamic_prompt(
     separator_tokens = len(PROMPT_COMPOSITION_SEPARATOR) // 4
     remaining_budget = max(0, budget - anchor_with_notice_tokens - separator_tokens)
 
-    # 2. Index all sections
-    all_sections = index_agent_sections(agent_id)
+    # 2. Index all sections (with this project's promoted learnings, and no other project's)
+    all_sections = index_agent_sections(agent_id, project_id)
     if not all_sections:
         await _record_prompt_rag_telemetry(
             project_id=project_id,
@@ -530,7 +537,9 @@ async def compose_dynamic_prompt(
                 score = await _embedding_similarity(query, section, query_vector)
                 scored_sections.append((score, section))
         except Exception:
-            # Fall back to keyword similarity
+            # Fall back to keyword similarity for ALL sections: discard the partial cosine scores
+            # so one ranking never mixes two scales.
+            scored_sections = []
             use_embeddings = False
 
     if not use_embeddings:
