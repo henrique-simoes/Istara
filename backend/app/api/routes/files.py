@@ -444,11 +444,17 @@ async def upload_file(
         document_text=content_text,
     )
     # The upload route owns this file's ingestion; the watcher leaves managed uploads alone, so
-    # the research tasks it used to create for them are created here, from the plaintext.
+    # the research tasks it used to create for them are created here, from the plaintext. They are
+    # classified and titled by the researcher's file name, not the stored <uuid> name.
     try:
         from app.core.file_watcher import FileWatcher
 
-        await FileWatcher.create_research_tasks(file_path, project_id)
+        await FileWatcher.create_research_tasks(
+            file_path,
+            project_id,
+            display_name=Path(file.filename or "").name or None,
+            notify=False,
+        )
     except Exception as exc:
         logger.warning("Research tasks for upload %s not created: %s", safe_filename, exc)
     encrypt_file_in_place(file_path)

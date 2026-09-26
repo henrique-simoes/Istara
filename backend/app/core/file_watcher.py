@@ -83,11 +83,16 @@ class FileWatcher:
     # ── File classification for auto-task creation ──────────────────────
 
     @staticmethod
-    def _classify_file(file_path: Path) -> list[tuple[str, str, str]]:
-        """Classify a file and return applicable (skill_name, task_title, priority) tuples."""
-        filename = file_path.name.lower()
+    def _classify_file(file_path: Path, name: str | None = None) -> list[tuple[str, str, str]]:
+        """Classify a file and return applicable (skill_name, task_title, priority) tuples.
+
+        ``name`` is the name the researcher gave the file when it is stored under another one (an
+        upload is stored as ``<uuid>.<ext>``); the name rules and task titles use it.
+        """
+        named = Path(name) if name else file_path
+        filename = named.name.lower()
         ext = file_path.suffix.lower()
-        stem = file_path.stem
+        stem = named.stem
 
         # Read first 500 chars for content-based heuristics
         try:
@@ -155,8 +160,14 @@ class FileWatcher:
             return False
 
     @staticmethod
-    async def create_research_tasks(file_path: Path, project_id: str) -> int:
+    async def create_research_tasks(
+        file_path: Path, project_id: str, *, display_name: str | None = None, notify: bool = True
+    ) -> int:
         """Create research tasks for a processed file based on its classification.
+
+        ``display_name`` is the researcher's name for a file stored under another one. ``notify``
+        raises the sticky "new research file" suggestion; the upload route turns it off because
+        the researcher who uploaded the file already has the upload's own confirmation.
 
         Returns:
             Number of tasks created.
@@ -165,7 +176,7 @@ class FileWatcher:
             logger.info("Skipping auto-task creation for paused project %s", project_id)
             return 0
 
-        skill_tasks = FileWatcher._classify_file(file_path)
+        skill_tasks = FileWatcher._classify_file(file_path, display_name)
         if not skill_tasks:
             return 0
 
@@ -213,13 +224,14 @@ class FileWatcher:
 
         # Notify user and wake agent
         if created > 0:
-            try:
-                await broadcast_suggestion(
-                    f"New research file: {file_path.name} — created {created} analysis task(s).",
-                    project_id,
+            if notify:
+                message = (
+                    f"New research file: {file_path.name} — created {created} analysis task(s)."
                 )
-            except Exception:
-                pass
+                try:
+                    await broadcast_suggestion(message, project_id)
+                except Exception:
+                    pass
 
             try:
                 from app.core.agent import agent as agent_orchestrator

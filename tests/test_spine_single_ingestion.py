@@ -71,7 +71,7 @@ async def _project(name: str) -> str:
     return project_id
 
 
-async def _upload(project_id: str) -> dict:
+async def _upload(project_id: str, name: str = "receipts-notes.md") -> dict:
     from httpx import ASGITransport, AsyncClient
 
     from app.core.auth import create_token
@@ -84,7 +84,7 @@ async def _upload(project_id: str) -> dict:
         response = await client.post(
             f"/api/files/upload/{project_id}",
             headers=headers,
-            files={"file": ("receipts-notes.md", TURNS.encode(), "text/markdown")},
+            files={"file": (name, TURNS.encode(), "text/markdown")},
         )
     assert response.status_code == 200, response.text
     return response.json()
@@ -131,3 +131,53 @@ async def test_an_upload_is_indexed_once_and_still_creates_its_research_tasks(in
         (t.skill_name, t.title) for t in tasks
     ]
     assert body["saved_as"] in tasks[0].description
+
+
+async def _tasks(project_id: str):
+    from sqlalchemy import select
+
+    from app.models.database import async_session
+    from app.models.task import Task
+
+    async with async_session() as db:
+        return (await db.execute(select(Task).where(Task.project_id == project_id))).scalars().all()
+
+
+async def test_an_upload_is_classified_by_the_name_the_researcher_gave_it(indices):
+    # Uploads are stored as <uuid>.<ext>, so rules keyed on the file name ("interview", "survey",
+    # "usability", ...) never matched, and every uploaded interview became a generic synthesis.
+    project_id = await _project("upload-classified")
+    body = await _upload(project_id, "interview-p7.md")
+
+    tasks = await _tasks(project_id)
+    assert sorted(t.skill_name for t in tasks) == ["thematic-analysis", "user-interviews"]
+    assert {t.title for t in tasks} == {
+        "Analyze interview: interview-p7",
+        "Thematic analysis: interview-p7",
+    }
+    assert all(body["saved_as"] in t.description for t in tasks)
+
+
+async def test_an_upload_does_not_raise_a_sticky_suggestion_but_a_watched_file_does(
+    indices, monkeypatch
+):
+    # The watcher's "new research file" suggestion is sticky (it never auto-dismisses). The
+    # researcher who uploaded a file already gets the upload's own confirmation, and on a phone
+    # the stacked suggestions covered the view's tab row (scenario 86 at 375 px).
+    from app.core import file_watcher
+
+    suggestions: list[str] = []
+
+    async def _suggest(message, project_id, action=""):
+        suggestions.append(message)
+
+    monkeypatch.setattr(file_watcher, "broadcast_suggestion", _suggest)
+    project_id = await _project("upload-quiet")
+    await _upload(project_id)
+    assert suggestions == []
+
+    watched = indices / "watched" / "field-notes-week2.md"
+    watched.parent.mkdir(parents=True)
+    watched.write_text(TURNS, encoding="utf-8")
+    assert await file_watcher.FileWatcher.create_research_tasks(watched, project_id) == 2
+    assert suggestions == ["New research file: field-notes-week2.md — created 2 analysis task(s)."]
