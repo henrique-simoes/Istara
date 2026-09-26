@@ -355,7 +355,9 @@ async def rank_skill_candidates(
             task_vec = await embed_text(query[:1200])
             if task_vec:
                 for skill in all_skills:
-                    desc_vec = await embed_text(f"{skill.display_name} {skill.description}"[:512])
+                    desc_vec = await embed_text(
+                        f"{skill.display_name} {skill.description}"[:512], role="document"
+                    )
                     if not desc_vec:
                         continue
                     dot = sum(x * y for x, y in zip(task_vec, desc_vec))

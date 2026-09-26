@@ -51,6 +51,19 @@ def _sql_literal(value: str) -> str:
     return str(value).replace("'", "''")
 
 
+# The fields that define a vector space; a store bound under one never serves another.
+_VECTOR_IDENTITY_FIELDS = (
+    "profile_id",
+    "version",
+    "model_id",
+    "cache_namespace",
+    "dimension",
+    "dtype",
+    "normalization",
+    "prompt_scheme",
+)
+
+
 class VectorProfileMismatchError(RuntimeError):
     """The project index belongs to a different embedding profile version."""
 
@@ -125,7 +138,20 @@ class VectorStore:
             "dimension": profile.dimension,
             "dtype": profile.dtype,
             "normalization": profile.normalization,
+            "prompt_scheme": profile.prompt_scheme,
         }
+
+    @staticmethod
+    def _identity_differs(bound: dict, active: dict) -> bool:
+        """Whether the manifest's vector space differs from the active profile's.
+
+        Manifests written before prompt schemes existed hold vectors of raw text.
+        """
+        defaults = {"prompt_scheme": "raw"}
+        return any(
+            bound.get(field, defaults.get(field)) != active[field]
+            for field in _VECTOR_IDENTITY_FIELDS
+        )
 
     def _ensure_profile_binding(self, *, bind_fingerprint: bool = False) -> dict[str, str | int]:
         """Bind this project index once and reject silent vector-space drift.
@@ -149,16 +175,7 @@ class VectorStore:
             bound = json.loads(self._profile_manifest.read_text(encoding="utf-8"))
         except (OSError, ValueError, TypeError) as exc:
             raise VectorProfileMismatchError("invalid_vector_profile_manifest") from exc
-        identity_fields = (
-            "profile_id",
-            "version",
-            "model_id",
-            "cache_namespace",
-            "dimension",
-            "dtype",
-            "normalization",
-        )
-        if any(bound.get(field) != active[field] for field in identity_fields):
+        if self._identity_differs(bound, active):
             raise VectorProfileMismatchError("vector_profile_mismatch")
         self._check_fingerprint(bound, bind_if_missing=bind_fingerprint)
         return active
@@ -198,16 +215,7 @@ class VectorStore:
         except (OSError, ValueError, TypeError) as exc:
             raise VectorProfileMismatchError("invalid_vector_profile_manifest") from exc
         active = self._active_profile_binding()
-        identity_fields = (
-            "profile_id",
-            "version",
-            "model_id",
-            "cache_namespace",
-            "dimension",
-            "dtype",
-            "normalization",
-        )
-        if any(bound.get(field) != active[field] for field in identity_fields):
+        if self._identity_differs(bound, active):
             raise VectorProfileMismatchError("vector_profile_mismatch")
         self._check_fingerprint(bound, bind_if_missing=False)
 

@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import delete, func, select
 
 from app.config import settings
+from app.core.embeddings import EmbeddedChunk, TextChunk
 from app.core.pi_runtime.embedding_profile import (
     ActiveEmbeddingProfile,
     EmbeddingProfileError,
@@ -23,7 +24,6 @@ from app.core.pi_runtime.embeddings_gateway import (
 )
 from app.core.pi_runtime.endpoints import PiEndpointResolutionError, ResolvedPiEndpoint
 from app.core.pi_runtime.model_manager import PiModelManager
-from app.core.embeddings import EmbeddedChunk, TextChunk
 from app.core.rag import VectorProfileMismatchError, VectorStore
 from app.models.database import async_session, init_db
 from app.models.embedding_profile import EmbeddingProfile
@@ -170,9 +170,7 @@ async def test_gateway_uses_profile_model_and_exact_endpoint(monkeypatch):
         raising=False,
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        result = await EmbeddingsGateway(manager=manager, client=client).embed(
-            ["evidence"]
-        )
+        result = await EmbeddingsGateway(manager=manager, client=client).embed(["evidence"])
 
     assert result["model"] == "shared-embed"
     assert result["endpoint_id"] == "embed-shadow"
@@ -202,9 +200,9 @@ async def test_gateway_rejects_model_override_outside_active_profile(monkeypatch
     )
 
     with pytest.raises(EmbeddingProfileError, match="embedding_profile_model_mismatch"):
-        await EmbeddingsGateway(
-            manager=PiModelManager(endpoints=[], include_local=False)
-        ).embed(["evidence"], model="classical-model")
+        await EmbeddingsGateway(manager=PiModelManager(endpoints=[], include_local=False)).embed(
+            ["evidence"], model="classical-model"
+        )
 
 
 def test_startup_bootstraps_profile_before_vector_checks():
@@ -240,6 +238,7 @@ def test_public_metadata_surfaces_report_profile_not_classical_provider(monkeypa
         "dtype": "float",
         "normalization": "provider_native",
         "health_status": "unknown",
+        "prompt_scheme": "raw",
     }
 
 

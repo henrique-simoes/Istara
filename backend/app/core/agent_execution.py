@@ -862,7 +862,7 @@ class AgentExecutionMixin:
             key = (space, skill.name, hashlib.sha256(desc.encode("utf-8")).hexdigest()[:16])
             vec = self._skill_desc_cache.get(key)
             if vec is None:
-                vec = await embed_text(desc)
+                vec = await embed_text(desc, role="document")
                 if vec:
                     self._skill_desc_cache[key] = vec
             if vec:

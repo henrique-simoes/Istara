@@ -279,6 +279,9 @@ class Settings(BaseSettings):
     lmstudio_host: str = "http://localhost:1234"
     lmstudio_model: str = "default"
     lmstudio_embed_model: str = "default"
+    # Query/document prompts for the embedder ("auto" = the model card's; see embedding_prompts).
+    # Only a new embedding profile takes it: existing profiles keep the scheme they were built with.
+    embed_prompt_scheme: str = "auto"
     lmstudio_api_key: str = ""
     lmstudio_auto_load_enabled: bool = True
     lmstudio_auto_context_reload: bool = False
