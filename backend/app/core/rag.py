@@ -942,6 +942,7 @@ async def retrieve_context(
             file_type_filter=file_type_filter,
             agent_id=agent_id,
         )
+    results = await _maybe_expand(project_id, results, top_k)
     if (
         retrieval_mode == "hybrid"
         and results
@@ -966,6 +967,21 @@ async def retrieve_context(
         query=query,
         retrieved=results,
         context_text=context_text,
+    )
+
+
+async def _maybe_expand(project_id: str, results: list, top_k: int | None) -> list:
+    """Graph-assisted retrieval when enabled (G3, DEC-2); otherwise the hits unchanged."""
+    if not settings.rag_graph_expansion or not results:
+        return results
+    from app.core.graph_expansion import expand_results
+
+    return await expand_results(
+        project_id,
+        results,
+        top_k=top_k or settings.rag_top_k,
+        rrf_k=settings.rag_rrf_k,
+        search=_keyword_only_search,
     )
 
 

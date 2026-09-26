@@ -244,17 +244,120 @@ async def run_trace(project_id: str) -> dict[str, Any]:
     }
 
 
+# ── G3 · graph-assisted retrieval (DEC-2) ─────────────────────────────────────────────────────
+
+
+def _span_in(target: str, texts: Sequence[str]) -> bool:
+    needle = normalise(target)[:50]
+    return bool(needle) and any(needle in normalise(t) for t in texts)
+
+
+def theme_coverage(texts: Sequence[str], quotes: Sequence[str], k: int = 10) -> float:
+    """Distinct theme quotes found in the top ``k`` passages / min(k, number of quotes)."""
+    top = list(texts)[:k]
+    found = sum(1 for q in dict.fromkeys(quotes) if _span_in(q, top))
+    return found / max(1, min(k, len(set(quotes))))
+
+
+def binary_ndcg(texts: Sequence[str], targets: Sequence[str], k: int = 10) -> float:
+    """nDCG@k with a passage graded 1 when it contains any target span."""
+    from app.evals.stats import ndcg
+
+    grades = [1 if any(_span_in(t, [text]) for t in targets) else 0 for text in list(texts)[:k]]
+    ideal = [1] * min(k, max(1, len(targets)))
+    return ndcg(grades, ideal, k)
+
+
+def expansion_decision(
+    off: dict[str, float], on: dict[str, float], styles: dict[str, str], guard: dict[str, dict]
+) -> dict[str, Any]:
+    """DEC-2: ship if thematic coverage@10 improves (p < 0.05) and no v2 style gets worse."""
+    from app.evals.stats import holm_adjust, paired_randomization_test
+
+    ids = sorted(off)
+    primary_p = paired_randomization_test([on[i] for i in ids], [off[i] for i in ids])
+    delta = sum(on[i] - off[i] for i in ids) / max(1, len(ids))
+    by_style: dict[str, list[str]] = defaultdict(list)
+    for qid, style in styles.items():
+        by_style[style].append(qid)
+    names = sorted(by_style)
+    raw = [
+        paired_randomization_test(
+            [guard["on"][q] for q in by_style[s]], [guard["off"][q] for q in by_style[s]]
+        )
+        for s in names
+    ]
+    adjusted = holm_adjust(dict(zip(names, raw, strict=True)))
+    worse = []
+    for name, p_adj in adjusted.items():
+        d = sum(guard["on"][q] - guard["off"][q] for q in by_style[name]) / len(by_style[name])
+        if p_adj < 0.05 and d < 0:
+            worse.append(name)
+    return {
+        "coverage_delta": round(delta, 4),
+        "coverage_p": primary_p,
+        "guard_holm_p": adjusted,
+        "guard_regressions": worse,
+        "ships": primary_p < 0.05 and delta > 0 and not worse,
+    }
+
+
+async def _retrieve_texts(project_id: str, question: str, *, expand: bool) -> list[str]:
+    from app.config import settings
+    from app.core.rag import retrieve_context
+
+    previous = settings.rag_graph_expansion
+    settings.rag_graph_expansion = expand
+    try:
+        context = await retrieve_context(project_id, question, top_k=10)
+    finally:
+        settings.rag_graph_expansion = previous
+    return [r.text for r in context.retrieved]
+
+
+async def run_expand(project_id: str, thematic_path: str, v2_path: str) -> dict[str, Any]:
+    thematic = json.loads(Path(thematic_path).read_text(encoding="utf-8"))["questions"]
+    v2 = json.loads(Path(v2_path).read_text(encoding="utf-8"))["questions"]
+    cov: dict[str, dict[str, float]] = {"off": {}, "on": {}}
+    guard: dict[str, dict[str, float]] = {"off": {}, "on": {}}
+    for arm, flag in (("off", False), ("on", True)):
+        for q in thematic:
+            texts = await _retrieve_texts(project_id, q["text"], expand=flag)
+            cov[arm][q["id"]] = theme_coverage(texts, q["targets"])
+        for q in v2:
+            texts = await _retrieve_texts(project_id, q["text"], expand=flag)
+            guard[arm][q["id"]] = binary_ndcg(texts, q["targets"])
+    styles = {q["id"]: q["style"] for q in v2}
+    mean = {arm: round(sum(v.values()) / len(v), 4) for arm, v in cov.items()}
+    return {
+        "measurement": "G3 graph-assisted retrieval",
+        "project_id": project_id,
+        "coverage_at_10": mean,
+        "guard_ndcg_at_10": {arm: round(sum(v.values()) / len(v), 4) for arm, v in guard.items()},
+        "decision": expansion_decision(cov["off"], cov["on"], styles, guard),
+        "per_question": {"coverage": cov, "guard": guard},
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     sub = parser.add_subparsers(dest="command", required=True)
     trace = sub.add_parser("trace", help="G1: evidence-graph traceability for one project")
     trace.add_argument("--project-id", required=True)
     trace.add_argument("--out", default=None)
+    expand = sub.add_parser("expand", help="G3: hybrid vs graph-assisted retrieval (DEC-2)")
+    expand.add_argument("--project-id", required=True)
+    expand.add_argument("--thematic", required=True)
+    expand.add_argument("--v2", required=True)
+    expand.add_argument("--out", default=None)
     args = parser.parse_args(argv)
     from app.models.database import register_models
 
     register_models()
-    report = asyncio.run(run_trace(args.project_id))
+    if args.command == "expand":
+        report = asyncio.run(run_expand(args.project_id, args.thematic, args.v2))
+    else:
+        report = asyncio.run(run_trace(args.project_id))
     text = json.dumps(report, indent=1, default=str)
     if args.out:
         Path(args.out).write_text(text, encoding="utf-8")
