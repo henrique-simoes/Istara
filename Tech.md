@@ -2735,7 +2735,7 @@ Compass Forge is the active local-first control plane for repository onboarding,
 
 ### Planner.md — Legacy Compass Workflow Control
 
-`planner.md` was retired (2026-09-13); planning runs through Compass Forge specs and the claude-conductor pipeline. Agents use it for planned, multi-agent, branch-review, stale-branch, and correction workflows. It requires role declaration, repository intelligence checks, protected Compass file preservation, correction/re-review loops when real defects are found, and a final user teaching report when the completed work changes a feature, command, output, or process.
+`planner.md` was retired (2026-09-13); planning runs through Compass Forge specs and the build-stream lifecycle (single agent; see `CLAUDE.md`). Agents use it for planned, multi-agent, branch-review, stale-branch, and correction workflows. It requires role declaration, repository intelligence checks, protected Compass file preservation, correction/re-review loops when real defects are found, and a final user teaching report when the completed work changes a feature, command, output, or process.
 
 ### Public Source / Runtime Data Boundary
 

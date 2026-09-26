@@ -5,17 +5,18 @@
 Everything in `AGENTS.md` applies. This file adds only what is specific to Claude agents.
 Codex and other harnesses: the browser and design rules below apply to you too.
 
-## Delivery: use the claude-conductor plugin
+## Delivery: build-stream + Compass Forge, one agent
 
 All non-trivial work in Istara (features, fixes touching more than one surface, spine, auth,
-pi, CI, releases) runs through the **`claude-conductor`** skill: frame with the owner →
-Compass Forge spec → `conductor-plan` (independent architect drafts, synthesis, vote, owner
-approval) → `conductor-waves` (implement → review → fix → supervisor audit per wave).
+pi, CI, releases) runs through the **`build-stream`** and **`compass-forge`** skills: frame
+with the owner → Compass Forge spec → plan → execute → verify → ship, recorded in one
+lifecycle file under `docs/build-stream/`.
 
-- Conductor routing decides models, efforts, and agent counts for its roles; do not override it.
-- Trivial edits (typos, single-file docs, lookups) may skip the pipeline but still follow the
-  Compass Forge pre/post-edit protocol in `AGENTS.md` §2.
-- Ledgers go in `docs/build-stream/`; branch per wave off `testing`; PR into `testing`, never `main`.
+- Do not use subagents or multi-agent pipelines (the owner's standing rule). Review coverage
+  is recorded honestly as self-only unless the owner arranges an independent review.
+- Trivial edits (typos, single-file docs, lookups) may skip the lifecycle file but still follow
+  the Compass Forge pre/post-edit protocol in `AGENTS.md` §2.
+- Branching follows `AGENTS.md` §3.
 
 ## Definition of done
 
