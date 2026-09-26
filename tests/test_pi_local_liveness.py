@@ -116,3 +116,16 @@ def test_the_session_carries_the_endpoint_budgets_and_the_supervisor_waits_longe
 def test_an_unknown_locality_is_refused():
     with pytest.raises(ValueError):
         _endpoint("http://127.0.0.1:8080/v1", locality="nearby")
+
+
+def test_a_local_binding_waits_for_a_model_that_is_still_loading():
+    # A local server answers 503 "Loading model" while it loads weights; the worker waits for it
+    # (with backoff, outside the retry budget) up to the local response-start budget. A remote
+    # endpoint's 503 is an outage, not a load, and is never waited for.
+    from app.core.pi_runtime.engine import _bind_payload
+    from app.core.pi_runtime.liveness import LOCAL_RESPONSE_START_MS
+
+    local = _bind_payload(_resolved(_endpoint("http://127.0.0.1:8080/v1")))
+    remote = _bind_payload(_resolved(_endpoint("https://api.meta.ai/v1")))
+    assert local["load_wait_ms"] == LOCAL_RESPONSE_START_MS == 300_000
+    assert "load_wait_ms" not in remote

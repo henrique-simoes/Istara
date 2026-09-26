@@ -3314,7 +3314,9 @@ Branch `fix/spine-findings-measurements-20260925`; evidence in
   endpoints); an endpoint's thinking level is the default for turns that set none; failed turns carry
   the provider's reason; structured output works on providers that accept only `tool_choice: auto`
   (Meta) without accepting free-form text; pinned pi-ai 0.87.1 adds Meta as a provider. Thinking
-  runs on DeepSeek and Anthropic, which refuse a forced tool choice, get `auto` the same way.
+  runs on DeepSeek and Anthropic, which refuse a forced tool choice, get `auto` the same way. A local
+  server that answers 503 "Loading model" is waited for with backoff up to the 300 s response-start
+  budget (`load_wait_ms` on the binding), outside the retry budget; remote endpoints never wait.
 - **Embeddings (2026-09-26).** Queries and documents get their model card's prompts
   (`app/core/embedding_prompts.py`: EmbeddingGemma, Qwen3-Embedding, nomic-embed-text; raw text for
   BGE-M3 and unknown models). The prompt scheme is part of the embedding profile and of each store's
