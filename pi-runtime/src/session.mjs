@@ -7,7 +7,7 @@ import { Agent } from "@earendil-works/pi-agent-core";
 import { buildProviderBinding } from "./provider.mjs";
 import { buildAgentTools } from "./tools.mjs";
 import { LIMITS, PROTOCOL_VERSION } from "./protocol.mjs";
-import { STRUCTURED_TOOL_NAME, bindingProviderId, captureParameters, mapToolChoiceForApi, normalizeToolChoice, structuredPromptText, translateOutputSchema } from "./structured.mjs";
+import { STRUCTURED_TOOL_NAME, captureParameters, normalizeToolChoice, resolveStructuredChoice, structuredPromptText, translateOutputSchema } from "./structured.mjs";
 
 // Bound on close(): waitForIdle settles only when the agent loop finishes,
 // and an in-flight authority tool call settles only on tool.result — so an
@@ -318,24 +318,17 @@ export class PiSession {
         },
       };
     }
-    let mapped = null;
-    if (choice) {
-      const api = (this._binding && this._binding.model && this._binding.model.api) || "";
-      const provider = bindingProviderId(this._binding);
-      mapped = mapToolChoiceForApi(api, choice, { provider });
-      if (mapped === null) {
-        if (this._binding && this._binding.isReal) {
-          // A real provider family we cannot force must fail closed — an
-          // unforced "structured" run would silently accept free-form text.
-          this._frame("run.failed", { run_id: runId, error: `tool_choice_unsupported:${api}` });
-          return null;
-        }
-        // Faux test bindings are scripted; forcing is a no-op.
-        mapped = null;
-      }
+    // A structured run is forced unless the provider leaves the call to the model (see
+    // resolveStructuredChoice in structured.mjs).
+    const { mapped, forced } = choice ? resolveStructuredChoice(this._binding, choice) : { mapped: null, forced: true };
+    if (choice && mapped === null && this._binding && this._binding.isReal) {
+      // A real provider family we cannot force must fail closed — an unforced "structured" run
+      // would silently accept free-form text. Faux test bindings are scripted; forcing is a no-op.
+      const api = (this._binding.model && this._binding.model.api) || "";
+      this._frame("run.failed", { run_id: runId, error: `tool_choice_unsupported:${api}` });
+      return null;
     }
-    // A structured run is forced unless the provider accepts only "auto" (see structured.mjs).
-    const structuredForced = !(wantsStructured && mapped === "auto");
+    const structuredForced = !wantsStructured || forced;
     return { structuredTool, toolChoice: mapped, outputSchema: wantsStructured ? outputSchema : null, structuredForced };
   }
 
