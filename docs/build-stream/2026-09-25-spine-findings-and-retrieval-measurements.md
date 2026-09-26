@@ -6,10 +6,10 @@ branch: fix/spine-open-items-20260926
 cf: { spec: CF-SPEC-4, tasks: [CF-27, CF-28, CF-29, CF-30, CF-31, CF-32, CF-33, CF-34, CF-35, CF-36, CF-37, CF-38, CF-39, CF-40, CF-41, CF-42, CF-43, CF-44] }
 phase: "Phases 13-17 — open items (CF-SPEC-4)"
 stage: S5-ship
-status: in-progress
+status: done
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-26T07:05:00Z, ledger: L-29 }
-next_action: "Accept CF-SPEC-4, open the PR into main, wait for required CI, squash-merge (owner-authorized), then tear down the Studio lane keeping the secure key dir."
+last: { agent: claude-code, at: 2026-09-26T07:20:00Z, ledger: L-30 }
+next_action: "Nothing left in this plan: PR #45 carries it into main (squash merge once required CI is green, owner-authorized); then tear down the Studio lane, keeping ~/cf-remote/eval/secure."
 ```
 
 Evidence (four-part records per finding): `2026-09-25-spine-findings-evidence.md` beside this file.
@@ -796,4 +796,14 @@ Verified: `answer_eval` x3 (reports /app/data/m4v2/); `w3_live_ensemble.py --sta
 (`{"stages_ok": {"A": true, "B": true, "C": true, "D": true, "E": true}}`); `pytest
 ../tests/test_spine_answer_eval.py` 10 passed.
 Next: S5: CF-32, CF-34, CF-43, CF-44 and spec accept; PR, CI, merge; teardown.
+
+### L-30 | 2026-09-26T07:20:00Z | S5-ship | claude-code | executor | Phases 13-17
+Did: CF-SPEC-4 tasks CF-32, CF-34, CF-43, CF-44 finished with command evidence and the spec
+accepted; evaluation recorded (pass); the Phases 13-17 summary written; branch pushed and PR #45
+opened into `main` (https://github.com/henrique-simoes/Istara/pull/45).
+Result: CF-SPEC-1 withdrawn, CF-SPEC-2, CF-SPEC-3 and CF-SPEC-4 accepted; no host name, address,
+attribution line or model id in the branch.
+Verified: `compass-forge spec accept CF-SPEC-4` -> accepted; `compass-forge evaluation record
+--outcome pass`; `verify_lifecycle.py` on this file (run after this entry).
+Next: stage complete; the merge and the Studio teardown follow outside the plan.
 
