@@ -181,3 +181,63 @@ async def test_an_upload_does_not_raise_a_sticky_suggestion_but_a_watched_file_d
     watched.write_text(TURNS, encoding="utf-8")
     assert await file_watcher.FileWatcher.create_research_tasks(watched, project_id) == 2
     assert suggestions == ["New research file: field-notes-week2.md — created 2 analysis task(s)."]
+
+
+async def _documents(project_id: str):
+    from sqlalchemy import select
+
+    from app.models.database import async_session
+    from app.models.document import Document
+
+    async with async_session() as db:
+        return (
+            (await db.execute(select(Document).where(Document.project_id == project_id)))
+            .scalars()
+            .all()
+        )
+
+
+async def test_the_agent_sync_tool_does_not_register_an_upload_again(indices):
+    # The agent's sync tool matched documents by file name, and an upload's document keeps the
+    # researcher's name while the file is stored as <uuid>.<ext>: every upload was registered a
+    # second time, with a uuid title (found on the live lane, 2026-09-25).
+    from app.skills.system_actions import _exec_sync_project_documents
+
+    project_id = await _project("agent-sync-upload")
+    await _upload(project_id, "interview-p7.md")
+
+    reply = await _exec_sync_project_documents({}, project_id, "istara-main")
+    assert "0 new document(s)" in reply, reply
+    assert [d.file_name for d in await _documents(project_id)] == ["interview-p7.md"]
+
+
+async def test_the_agent_sync_tool_ingests_a_folder_file_through_the_research_spine(indices):
+    # It registered folder files as bare rows: no text, no evidence units, nothing indexed, a
+    # parallel path around the research spine. It now runs the Documents sync itself.
+    from sqlalchemy import select
+
+    from app.core.keyword_index import KeywordIndex
+    from app.models.database import async_session
+    from app.models.project import Project
+    from app.models.research_validity import EvidenceUnit
+    from app.skills.system_actions import _exec_sync_project_documents
+
+    project_id = await _project("agent-sync-folder")
+    folder = indices / "linked-folder"
+    folder.mkdir()
+    (folder / "field-notes-week3.md").write_text(TURNS, encoding="utf-8")
+    async with async_session() as db:
+        project = await db.get(Project, project_id)
+        project.watch_folder_path = str(folder)
+        await db.commit()
+
+    reply = await _exec_sync_project_documents({}, project_id, "istara-main")
+    assert "1 new document(s)" in reply, reply
+
+    [doc] = await _documents(project_id)
+    of_doc = select(EvidenceUnit).where(EvidenceUnit.source_document_id == doc.id)
+    async with async_session() as db:
+        units = (await db.execute(of_doc)).scalars().all()
+    assert units, "the synced file has no evidence units"
+    vectors = await rag.VectorStore(project_id).count()
+    assert vectors > 0 and vectors == await KeywordIndex(project_id).count()

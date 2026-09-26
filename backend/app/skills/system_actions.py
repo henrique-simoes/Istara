@@ -1519,47 +1519,23 @@ async def _exec_update_task(params: dict, project_id: str, agent_id: str) -> str
 
 
 async def _exec_sync_project_documents(params: dict, project_id: str, agent_id: str) -> str:
-    """Trigger a document sync for the project folder."""
-    async with async_session() as db:
-        project_result = await db.execute(select(Project).where(Project.id == project_id))
-        project = project_result.scalar_one_or_none()
+    """Register the project folder's untracked files, as the Documents view's sync does.
 
-    folder = _resolve_project_folder(project, project_id)
-    if not folder.exists():
-        return "No project folder found."
+    It used to register bare rows matched by file name: uploads (stored as <uuid>.<ext>) were
+    registered again, and new files got no text, evidence units or index rows.
+    """
+    from app.api.routes.documents import register_untracked_project_files
 
     async with async_session() as db:
-        files = [f for f in folder.iterdir() if f.is_file() and not f.name.startswith(".")]
+        project = await db.get(Project, project_id)
+        if not _resolve_project_folder(project, project_id).exists():
+            return "No project folder found."
+        result = await register_untracked_project_files(db, project, project_id)
 
-        existing_result = await db.execute(
-            select(Document.file_name).where(Document.project_id == project_id)
-        )
-        existing_names = {r for r in existing_result.scalars().all()}
-
-        new_count = 0
-        for f in files:
-            if f.name not in existing_names:
-                doc = Document(
-                    id=str(uuid.uuid4()),
-                    project_id=project_id,
-                    title=f.stem.replace("-", " ").replace("_", " ").title(),
-                    file_name=f.name,
-                    file_path=str(f),
-                    file_type=f.suffix,
-                    file_size=f.stat().st_size,
-                    source="project_file",
-                    status="ready",
-                )
-                db.add(doc)
-                new_count += 1
-
-        if new_count:
-            await db.commit()
-
-        return (
-            f"Synced project folder: {new_count} new document(s) "
-            f"registered, {len(files)} total files."
-        )
+    return (
+        f"Synced project folder: {result['synced']} new document(s) "
+        f"registered, {result['total']} total document(s)."
+    )
 
 
 # ── Executor Registry ─────────────────────────────────────────────

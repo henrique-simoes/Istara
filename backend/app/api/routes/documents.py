@@ -1,5 +1,6 @@
 """Document management API routes — source of truth for all project outputs."""
 
+import asyncio
 import json
 import uuid
 from pathlib import Path
@@ -916,6 +917,29 @@ async def sync_project_documents(
     """
     project = await get_visible_project_or_404(db, request, project_id, min_role="researcher")
 
+    return await register_untracked_project_files(
+        db, project, project_id, background_tasks=background_tasks
+    )
+
+
+# Audio transcriptions started outside a request (the agent's sync tool) are kept referenced here
+# until they finish, so the event loop does not drop them.
+_audio_jobs: set[asyncio.Task] = set()
+
+
+async def register_untracked_project_files(
+    db: AsyncSession,
+    project: Project | None,
+    project_id: str,
+    *,
+    background_tasks: BackgroundTasks | None = None,
+) -> dict[str, int]:
+    """Register the project folder's untracked files as documents, through the research spine.
+
+    Each new file gets its text, its evidence units and its index rows, exactly as the Documents
+    view's sync does; files already registered (by path, or by name for path-less legacy rows) are
+    skipped. The Documents route and the agent's ``sync_project_documents`` tool both call this.
+    """
     scan_dir = _resolve_project_folder(project, project_id)
     if not scan_dir.exists():
         return {"synced": 0, "total": 0}
@@ -1022,12 +1046,21 @@ async def sync_project_documents(
         if suffix in AUDIO_EXTENSIONS:
             from app.api.routes.files import _process_audio_background
 
-            background_tasks.add_task(
-                _process_audio_background,
-                project_id=project_id,
-                doc_id=doc.id,
-                file_path=file_path,
-            )
+            if background_tasks is not None:
+                background_tasks.add_task(
+                    _process_audio_background,
+                    project_id=project_id,
+                    doc_id=doc.id,
+                    file_path=file_path,
+                )
+            else:
+                job = asyncio.create_task(
+                    _process_audio_background(
+                        project_id=project_id, doc_id=doc.id, file_path=file_path
+                    )
+                )
+                _audio_jobs.add(job)
+                job.add_done_callback(_audio_jobs.discard)
         synced += 1
 
     if synced > 0:
