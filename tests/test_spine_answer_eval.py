@@ -145,3 +145,72 @@ def test_the_w3_harness_stops_the_pi_worker_while_its_event_loop_still_runs(monk
     monkeypatch.setattr(sys, "argv", ["w3", "--stages", "E", "--out", str(tmp_path / "w3.json")])
     w3_live_ensemble.main()
     assert loop_closed_at_shutdown == [False]
+
+
+# ── M4 v2 judge validation (DEC-14, pre-registered 2026-09-26) ──
+
+
+def test_v2_planted_claims_hold_at_least_fifty_items_of_five_kinds():
+    from app.evals.answer_eval import planted_claim_items
+    from app.evals.retrieval_eval import DEFAULT_QRELS, Qrels
+
+    qrels = Qrels.load(DEFAULT_QRELS)
+    items = planted_claim_items(qrels, n=20, seed=20260926)
+    kinds = {item["kind"] for item in items}
+    assert len(items) >= 50
+    assert kinds == {"verbatim", "first_sentence", "other_theme", "number_altered", "negated"}
+    for item in items:
+        if item["kind"] in ("verbatim", "first_sentence"):
+            assert item["label"] is True and item["claim"] in item["context"]
+        else:
+            assert item["label"] is False and item["claim"] not in item["context"]
+
+
+def test_v2_relevance_items_are_balanced_and_true_by_construction():
+    from app.evals.answer_eval import construction_relevance_items
+    from app.evals.retrieval_eval import DEFAULT_QRELS, Qrels
+
+    qrels = Qrels.load(DEFAULT_QRELS)
+    items = construction_relevance_items(qrels, n=20, seed=20260926)
+    positives = [i for i in items if i["label"]]
+    negatives = [i for i in items if not i["label"]]
+    assert len(positives) == 20 and len(negatives) == 40
+    by_text = {q.text: q for q in qrels.questions}
+    for item in items:
+        targets = by_text[item["question"]].targets
+        assert any(t in item["passage"] for t in targets) is item["label"], item["kind"]
+    assert {i["kind"] for i in negatives} == {"other_theme", "same_theme_related"}
+
+
+class _FakeJudges:
+    """A judge that is exact on claims and on 'contains the answer', and always says '1' on the
+    three-level grade (so it fails the v1 relevance rule by construction)."""
+
+    def __init__(self, qrels):
+        self.judges = ["judge-a"]
+        self._targets = {q.text: q.targets for q in qrels.questions}
+
+    async def verify(self, judge, context, claims):
+        return [claim in context for claim in claims]
+
+    async def relevance(self, judge, question, chunk):
+        return 1
+
+    async def answer_bearing(self, judge, question, chunk):
+        return any(t in chunk for t in self._targets.get(question, ()))
+
+
+async def test_v2_trusts_a_judge_on_the_task_it_performs_and_reports_the_v1_rule():
+    from app.evals.answer_eval import validate_judges
+    from app.evals.retrieval_eval import DEFAULT_QRELS, Qrels
+
+    qrels = Qrels.load(DEFAULT_QRELS)
+    question = qrels.questions[0]
+    run_pairs = [(question, "unrelated text", 0), (question, question.targets[0], 2)] * 6
+    report = await validate_judges(_FakeJudges(qrels), qrels, run_pairs, seed=20260926)
+    judge = report["judges"]["judge-a"]
+    assert report["protocol"] == "v2"
+    assert judge["claims"]["n"] >= 50 and judge["claims"]["kappa"] == 1.0
+    assert judge["relevance_binary"]["kappa"] == 1.0 and judge["relevance_binary"]["n"] == 60
+    assert judge["trusted"] is True
+    assert judge["v1"]["trusted"] is False  # its 0/1/2 grades never match the qrels
