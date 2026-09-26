@@ -40,6 +40,12 @@ The Context DAG tab visualizes or inspects relationships across project context 
 
 ## Architecture Notes
 
+- Summaries survive reasoning models (2026-09-26, G2): a summary call runs with thinking off; if it
+  stops at the `dag_summary_max_tokens` cap with no text it is retried once with 8,192 tokens, and
+  an empty result is logged with its stop reason before the mechanical fallback. `dag_summary_endpoint_id`
+  routes summaries to a chosen Pi endpoint. Measured on 300-message conversations: fallbacks 50/50
+  -> 0/50, planted facts recalled from summaries 0% -> 48%; `grep_history` recall finds 100%.
+  Harness: `python -m app.evals.dag_eval`.
 - The feature is mounted through `frontend/src/components/memory/MemoryView.tsx` and the UI navigation path recorded in the inventory.
 - `ContextDAGView` derives `scopedSessions` from the active project before rendering the session selector and derives `scopedActiveSessionId` before calling context DAG structure, health, expand, grep, or compact APIs.
 - `backend/app/api/routes/context_dag.py` requires `project_id` on session-by-id routes and loads the session by both `session_id` and `project_id` before returning structure, health, expansion, search, node metadata, or compaction output.

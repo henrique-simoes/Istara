@@ -3,13 +3,12 @@
 ```yaml
 item: graph-quality-measurement
 branch: plan/graph-quality-measurement-20260926
-cf: { spec: pending }
-phase: "Phase 1 — traceability (G1)"
-stage: S2-execute
-status: in-progress
+phase: "—"
+stage: S5-ship
+status: done
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-26T12:40:00Z, ledger: L-2 }
-next_action: "Rebuild the Studio live lane, run the product's interview skills on the Harbor interviews, then G1 trace, G3 expansion and G2 DAG recall."
+last: { agent: claude-code, at: 2026-09-26T18:20:00Z, ledger: L-3 }
+next_action: "Nothing left in this plan: the PR carries it into main."
 ```
 
 ## Plan overview
@@ -106,7 +105,8 @@ Context: this frame and its four open decisions.
 Decision: the owner said to follow Claude's recommendations and finish: (1) all three
 measurements; (2) the draft G3 rule, fixed below before any number; (3) G1 runs on the graph the
 product itself builds: Harbor interviews uploaded, the product's interview skill producing nuggets,
-facts, insights and recommendations on the live lane (DeepSeek V4 Flash as the skill model), plus
+facts, insights and recommendations on the live lane (the lane's default model, Muse Spark 1.3
+Contributor, runs the skill; amended before any run), plus
 seeded-fault fixtures in pytest; no separate coding of a large slice; (4) G2 with five synthetic
 conversations of 300 messages.
 Why: owner instruction ("follow your recommendations, complete these open things").
@@ -146,4 +146,55 @@ from it (G3 links them by verbatim containment).
 Result: ready for the live runs.
 Verified: `pytest tests/test_graph_eval_trace.py` 8 passed.
 Next: live lane, skills on Harbor interviews, G1/G3/G2.
+
+## Results (live lane, 2026-09-26)
+
+Harbor Ledger corpus (67 files) uploaded into a fresh project; the product's `user-interviews`
+skill run on each of the 16 interviews, then on four groups of four (cross-interview synthesis
+produces facts, insights and recommendations). Skill model: Muse Spark 1.3 Contributor; embedder:
+BGE-M3; link judge: DeepSeek V4 Flash. "Before" is main's code; "after" is this branch, on a new
+project built the same way. Reports in `~/cf-remote/eval/measure/open-items-2026-09-26/` (Studio).
+
+| Measurement | Before | After |
+|---|---|---|
+| G1 structure: verbatim quotes, valid links and edges, complete chains, cycles | 1.00 / 1.00 / 1.00 / 1.00, 0 cycles | same |
+| G1 fact → nugget links the nugget supports (judged) | 0.12 [0.07–0.18], n 115 | **0.65 [0.54–0.75]**, n 85 |
+| G1 insight → fact links the fact supports (judged) | 0.31 [0.19–0.46], n 48 | **0.81 [0.65–0.94]**, n 31 |
+| G2 planted facts recalled from DAG summaries | 0.00, n 50 | **0.48 [0.34–0.62]** |
+| G2 summaries that fell back to the mechanical line | 50 of 50 | **0 of 50** |
+| G2 with `grep_history` recall / full history | 1.00 / 0.62 | 1.00 / 0.62 |
+| G3 theme coverage@10, hybrid vs + graph expansion | 0.76 vs 0.65 (p 0.0004) | 0.76 vs 0.66 (p 0.009) |
+
+What was wrong, and fixed:
+
+- **Recency links.** A skill's facts named no nuggets, so storage linked each fact to the last five
+  nuggets, each insight to the last three facts, each recommendation to the last two insights. The
+  graph looked complete and was 88% wrong at the first hop. Links now go to the findings closest in
+  meaning (BGE-M3, lexical fallback), planned from the skill output before the write transaction;
+  nothing close enough means no link. (The first version embedded inside the transaction and every
+  embed waited on SQLite's write lock: grouped runs took 560 s instead of 99 s; fixed.)
+- **Empty DAG summaries.** Every summary call on the reasoning default model stopped at the
+  300-token cap with no text, even with thinking off, and each batch silently became a "topics"
+  line. Summaries now retry once with 8,192 tokens, log an empty result, and can be routed to a
+  chosen endpoint (`dag_summary_endpoint_id`).
+- **G3 does not ship (DEC-2).** One-hop expansion through facts lowers theme coverage and every
+  single-hop style, before and after the link fix. Hybrid retrieval already finds 76% of a theme's
+  distinct quotes in the top 10; the facts are too few and too coarse to add better chunks.
+  Expansion stays in the code behind `rag_graph_expansion = False`.
+
+Residual: the full-history ceiling (0.62) is below the recall-tool arm (1.00): with 300 near-identical
+turns the answer model misses facts it can see, so `grep_history` is the better path for old facts.
+Summaries still lose half of the planted codes; a longer summary budget or a dedicated summary model
+would be the next lever.
+
+### L-3 | 2026-09-26T18:20:00Z | S2-execute | claude-code | executor | Phases 1-3
+Did: live lane rebuilt (BGE-M3, agents paused); baseline and after graphs built through the
+product's skills; G1, G2, G3 run on both; fixed recency links (finding_links), the lock contention
+the first link fix caused, empty DAG summaries (retry, endpoint setting), the G3 nDCG double-count;
+added seeded-fault, link, DAG and expansion tests.
+Result: see Results. G3 does not ship.
+Verified: `python -m app.evals.graph_eval trace --judge pi-deepseek-flash` / `expand`,
+`python -m app.evals.dag_eval --endpoint pi-deepseek-flash` (Studio); pytest graph/DAG/link suites
+and 170 related tests pass.
+Next: ship.
 

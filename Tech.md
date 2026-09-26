@@ -3317,6 +3317,11 @@ Branch `fix/spine-findings-measurements-20260925`; evidence in
   runs on DeepSeek and Anthropic, which refuse a forced tool choice, get `auto` the same way. A local
   server that answers 503 "Loading model" is waited for with backoff up to the 300 s response-start
   budget (`load_wait_ms` on the binding), outside the retry budget; remote endpoints never wait.
+- **Graph quality (2026-09-26).** `app/evals/graph_eval.py` (G1 evidence-graph traceability with judged
+  link support; G3 graph-assisted retrieval) and `app/evals/dag_eval.py` (G2 context-DAG recall).
+  Findings link to their support by meaning (`app/core/finding_links.py`), not recency; DAG
+  summaries retry when a reasoning model returns no text and can use `dag_summary_endpoint_id`;
+  `app/core/graph_expansion.py` stays off (`rag_graph_expansion`), having failed its rule.
 - **Embeddings (2026-09-26).** Queries and documents get their model card's prompts
   (`app/core/embedding_prompts.py`: EmbeddingGemma, Qwen3-Embedding, nomic-embed-text; raw text for
   BGE-M3 and unknown models). The prompt scheme is part of the embedding profile and of each store's

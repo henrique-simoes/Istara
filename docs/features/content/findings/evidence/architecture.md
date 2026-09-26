@@ -47,6 +47,14 @@ The Findings evidence tab lists research insights and recommendations for the ac
 
 ## Architecture Notes
 
+- Evidence links by meaning (2026-09-26, G1): facts link to the nuggets, insights to the facts and
+  recommendations to the insights closest in meaning from the same skill run (`app/core/finding_links.py`,
+  BGE-M3 with a lexical fallback, planned before the storage transaction); nothing close enough means
+  no link. Storage used to link the most recent rows: 12% of fact -> nugget links were supported by
+  the nugget; now 65%, and insight -> fact 31% -> 81% (judged). Harness:
+  `python -m app.evals.graph_eval trace --judge <endpoint>`. Graph-assisted retrieval
+  (`app/core/graph_expansion.py`) exists behind `rag_graph_expansion = False`: it lowered thematic
+  coverage (0.76 -> 0.66) and did not pass its pre-registered rule.
 - The feature is mounted through `frontend/src/components/findings/FindingsView.tsx` and the UI navigation path recorded in the inventory.
 - The backend retains an explicit admin-only global findings search route for admin/reporting aggregation; project-facing evidence views do not use unscoped list routes.
 - Hybrid RAG provides exact evidence retrieval. Evidence Graph / GraphRAG can support synthesis and traceability questions, but graph output cannot bypass qualitative coding, reliability gates, human review, approved Done task state, or report gating.
