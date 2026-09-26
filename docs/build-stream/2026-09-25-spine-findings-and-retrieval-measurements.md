@@ -180,6 +180,17 @@ the governed coding run uses two identities, not three, and every judge-generato
 with roles swapped, so a judge is never the model under test.
 Why: Owner instruction supersedes the brief's three-identity default.
 
+DEC-12 | 2026-09-26 | S2-execute | claude-code
+Context: M4 ran in both directions. Neither judge met the pre-registered trust rule (Cohen's kappa at
+least 0.60 on both the relevance items and the planted claims): local Qwen 0.568 / 1.000, Muse Spark
+0.453 / 0.926. Faithfulness only uses the claim task, which both judges pass.
+Decision: Keep the rule and report faithfulness as not measured. Record the claim-task results and
+the likely cause (exact 0/1/2 agreement against span grades) as findings, and name the calibration
+that would settle it (a small human-labelled relevance set; a third identity is ruled out by DEC-11).
+Why: Loosening a validation rule after seeing which way it fell is outcome-driven analysis; the
+spine's point is that unvalidated judgments never become evidence. Rejected: scoring faithfulness
+with the claim-validated judges as a secondary analysis (it would read as a result).
+
 ## Phase 8 — live lane (Muse Spark 1.3 Contributor + local Qwen)
 
 Goal: measure answers on the live lane with the owner's two models (DEC-11): M4 faithfulness and
@@ -457,3 +468,55 @@ Studio load).
 Verified: probe_matrix.py and structured_probe.py in istara-cs76-live; worker suite 107/107;
 pytest tests/test_spine_answer_eval.py tests/test_spine_retrieval_eval.py -> 12 passed.
 Next: when ingestion finishes, M4 twice (generator Muse Spark / judge local Qwen, then swapped).
+
+### L-19 | 2026-09-25T23:48:34Z | S2-execute | claude-code | executor | Phase 8
+Did: owner approved rewriting the unpushed history so no commit names the local server (filter-branch
+over origin/main..HEAD, hash map kept in the session scratchpad; every hash in this file is the
+rewritten one). Found on the live lane: every upload was indexed twice, by the upload route and by the
+file watcher reacting to the new file (Harbor corpus: 2,126 vector rows for 1,097 keyword rows). The
+upload route now owns the whole ingestion of its files and creates the research tasks the watcher used
+to create; the watcher skips managed upload paths (8ee0a83a). Governance for the measurement harness
+(feature `research.retrieval-evaluation`), AI-001 evidence for the liveness bounds, and two
+self-improvement tests the review asked for (3b3b1686). Feature docs, Tech.md and both contracts
+(6ab79206, 2f74297e). M4's first run graded every chunk 0 (uploads are stored as `<uuid>.<ext>`) and
+counted Muse Spark's spend as $0 (a chat turn reports tokens, not cost); both fixed (71ca4220).
+Scenario 86 now checks that the Vector Chunks and Keyword Chunks cards agree after an upload
+(f60f393b).
+Result: after the fix and the product's reprocess route, the Harbor project holds 1,097 vector and
+1,097 keyword chunks with provenance coverage 1.0. M4 mapping check: 59 of 60 retrieved chunks map to
+a corpus file, 33 grade above 0. Full suite on the Studio: 3 failed, 2,480 passed, 14 skipped, 1
+error, all from the test container: the public-repo audit fails on `git ls-files` (no checkout
+in the container), the invite and update-confirmation tests fail there, and the error is the
+container's missing `hypothesis`. All three failing tests pass locally on this branch.
+Verified: `pytest tests/test_spine_single_ingestion.py` 2 passed (2 fail on origin/main);
+`pytest tests/test_spine_answer_eval.py` 4 passed; `python scripts/security_benchmark.py
+--fail-on-threshold` 100% (28/28); check_feature_obligations and check_change_obligations pass;
+`python scripts/feature_docs.py --seed-missing --generate-site --check` pass (86 features);
+`python3 scripts/public_repo_quality_audit.py` passed; `pytest
+tests/test_connections.py::test_invite_redeem_rejects_breached_password
+tests/test_updates_security.py::test_local_update_apply_accepts_matching_confirmation` 2 passed; `git log -p origin/main..HEAD | grep -ci
+<host>` 0.
+Next: read M4 (both directions), then the hostile-document chat and the governed coding run.
+
+### L-20 | 2026-09-26T01:22:08Z | S2-execute | claude-code | executor | Phase 8
+Did: M4 both directions on the live lane; the owner approved merging PR #43 (testing catch-up), merged
+as a merge commit (611d7a21). Scenario 86 failed on the rebuilt stack (20/23): sticky upload
+suggestions covered the tab row at 375 px, a side effect of 8ee0a83a; uploads now skip that
+suggestion and are classified by the researcher's file name (c6921068). The hostile-document chat
+found two more defects: the agent's folder-sync tool registered every upload again and bypassed the
+spine (0f2d8ff4), and document markup escaped the tool-output block (1095ce1e). Harness fixes:
+the M4 CLI and the W3 harness stop the Pi worker in their loop (99f0d50c, 63d0e32f). Governed coding
+run with the two models (W3 A, B, E). DEC-12.
+Result: M4 context precision 0.75 [0.58, 0.92] (n 24); no judge trusted (Qwen relevance kappa 0.568,
+claim 1.000; Muse Spark 0.453, 0.926), so faithfulness not measured; spend $0.0069 and $0.0080 against
+a $1.00 cap. Hostile chat: prompt block and tool block each balanced, no raw protected tag, canary only
+inside wrappers and escaped, no canary in any of 4 answers. Coding run: blocked, no codes, all 5
+fail-closed probes pass; its recorded reason is misleading (follow-up task filed). testing now differs
+from main only by AGENTS.md (+13, #39).
+Verified: QA lane 2026-09-26T01-09-32-847Z 86 23/23, 85 10/10, 24 9/9, 23 13/13;
+2026-09-26T01-16-25-274Z 29 33/33 (shared linked folder); `pytest tests/test_spine_single_ingestion.py`
+6 passed (6 fail on origin/main); `pytest tests/test_spine_prompt_boundaries.py` 17 passed (the new
+test fails on origin/main); `pytest tests/test_spine_answer_eval.py` 6 passed; Studio container: 167
+passed (sync, documents, Pi tool-loop suites), 251 passed (tool, boundary, content-guard suites);
+`git diff --stat origin/main origin/testing` AGENTS.md only.
+Next: governance checks, full suite at HEAD, docs, CF closeout, push and PR into main.

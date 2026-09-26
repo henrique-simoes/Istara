@@ -271,6 +271,14 @@
 <p>them too raced the route and left two copies of each chunk in the vector store (2,134 rows for</p>
 <p>1,097 spans on the Harbor Ledger corpus). Reprocess cleans existing duplicates.</p>
 <ul>
+<li>**Uploads are classified by the researcher&#x27;s file name.** An upload is stored as <code>&lt;uuid&gt;.&lt;ext&gt;</code>,</li>
+</ul>
+<p>so the task rules keyed on the name (interview, survey, usability, field notes, diary, competitor)</p>
+<p>never matched it; the route now passes the original name for classification and task titles. An</p>
+<p>upload does not raise the watcher&#x27;s sticky &quot;new research file&quot; suggestion (the upload has its own</p>
+<p>confirmation; stacked suggestions covered the Memory tabs at 375 px). Files dropped into a watched</p>
+<p>folder still raise it.</p>
+<ul>
 <li>**Chunking parameters mean what they say.** <code>chunk_overlap=0</code> is zero (it used to become the</li>
 </ul>
 <p>default 180), a chunk size must be positive, and the splitter always advances, so a large overlap</p>

@@ -298,7 +298,10 @@ Retrieval provenance and separation (2026-09-25):
   derived index. Claim verification and evidence retrieval search the source index only, so
   derived prose can never confirm itself.
 - Evidence is presented to models by rank, inside the untrusted-content wrapper, which survives
-  truncation; document text cannot open or close the wrapper or a protected block.
+  truncation; document text cannot open or close the wrapper or a protected block. Document text a
+  model reads through a tool gets the same treatment inside `<tool_output>`.
+- Every path that registers a source document creates its evidence units: the agent's folder-sync
+  tool runs the Documents sync itself rather than registering bare rows.
 - Retrieval quality is measured, not assumed: span-graded qrels (`app.evals.retrieval_eval`) grade
   retrieval, and answer faithfulness is judged only by a validated judge that is never the model
   under test (`app.evals.answer_eval`). Measurements are evidence about the system, never research

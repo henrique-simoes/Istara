@@ -702,6 +702,10 @@ File uploaded → FileProcessor extracts text
 The upload route owns an upload's whole ingestion (Document, evidence units with provenance on
 every chunk, both indices, research tasks). The FileWatcher indexes linked folders and skips
 managed uploads: indexing them too raced the route and duplicated every vector (2026-09-25).
+Research tasks are classified and titled by the researcher's file name, not the stored
+`<uuid>.<ext>`. Folder sync has one implementation (`register_untracked_project_files`), used by
+the Documents sync route and, through `app/core/project_folder_sync.py`, by the agent's
+`sync_project_documents` tool; files are matched by path, so an upload is never registered twice.
 
 **Embedding caching** prevents re-embedding unchanged content, critical for local hardware where embedding is expensive.
 
@@ -3287,7 +3291,9 @@ Branch `fix/spine-findings-measurements-20260925`; evidence in
 
 - **Prompt boundaries.** Truncation keeps the untrusted-content wrapper closed
   (`content_guard.truncate_preserving_wrappers`); document text cannot open or close the wrapper or a
-  protected tag (entity-escaped), and the RAG budget is a hard limit for plain text too.
+  protected tag (entity-escaped), and the RAG budget is a hard limit for plain text too. The same
+  escaping applies to data-gathering tool results inside `<tool_output>` (documents, memories, web
+  pages), which models read with tools.
 - **Derived text is not evidence.** Agent notes and skill artifacts live in a separate derived
   index, never in the source index claim verification searches; notes are scoped by exact agent id.
   Every source chunk carries its evidence unit and span (`services/retrieval_provenance.py`), and
