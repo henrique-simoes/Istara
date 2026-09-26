@@ -232,7 +232,8 @@
    "scenarios": [
     "10-settings-models",
     "36-llm-servers",
-    "84-token-session-lifecycle"
+    "84-token-session-lifecycle",
+    "87-embedding-model-migration"
    ],
    "sub_features": [
     "model catalog",
@@ -240,10 +241,11 @@
     "strict routing",
     "telemetry",
     "security-integrity",
-    "token/session custody"
+    "token/session custody",
+    "embedding model switch (re-index)"
    ],
    "drive": "mixed",
-   "newest_scenario_change": "2026-09-10",
+   "newest_scenario_change": "2026-09-26",
    "live_verdict": "pass (container qa-ui-loopback lane 2026-09-11): 10 27/27 + 84 13/13 + 26 17/17",
    "live_verified_at": "2026-09-11",
    "notes": "25 14/14 + 26 17/17 + 36 8/8 + 43 13/13 + 64 19/19 + 68 12/12 + 74 8/8; 84 extended for B5/W1.4 (admin/researcher/viewer/stranger custody cells); first container execution 2026-09-11 green after W2 cookie-restore + session-list + confirm-dialog fixes; 10 green after W2 disabled-option guard"
