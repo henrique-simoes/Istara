@@ -779,15 +779,21 @@ class AgentResearchMixin:
 
         # Track created IDs for auto-linking
         created_nugget_ids: list[str] = []
+        # id -> text of this run's findings: links go to the closest in meaning (finding_links).
+        support_texts: dict[str, str] = {}
         created_fact_ids: list[str] = []
         created_insight_ids: list[str] = []
         created_recommendation_ids: list[str] = []
         created_evidence_unit_ids: list[str] = []
         finding_agent_id = task.agent_id or self.agent_id
 
+        from app.core.finding_links import supporting_ids
         from app.services.research_finding_links import (
             persist_scoped_derivation_links as persist_links,
         )  # noqa: E501,I001
+
+        def _candidates(ids: list[str]) -> list[tuple[str, str]]:
+            return [(i, support_texts.get(i, "")) for i in ids]
 
         for nugget_data in output.nuggets:
             nid = str(uuid.uuid4())
@@ -829,6 +835,7 @@ class AgentResearchMixin:
             )
             db.add(nugget)
             created_nugget_ids.append(nid)
+            support_texts[nid] = nugget.text
 
             evidence_unit_id = None
             source_document_id = nugget_data.get("source_document_id")
@@ -910,7 +917,9 @@ class AgentResearchMixin:
                 db,
                 Nugget,
                 fact_data.get("nugget_ids"),
-                created_nugget_ids[-5:],
+                await supporting_ids(
+                    [fact_data.get("text", "")], _candidates(created_nugget_ids), k=5
+                ),
                 project_id,
                 task,
                 "fact",
@@ -928,6 +937,7 @@ class AgentResearchMixin:
             )
             db.add(fact)
             created_fact_ids.append(fid)
+            support_texts[fid] = fact.text
 
         for insight_data in output.insights:
             iid = str(uuid.uuid4())
@@ -935,7 +945,11 @@ class AgentResearchMixin:
                 db,
                 Fact,
                 insight_data.get("fact_ids"),
-                created_fact_ids[-3:],
+                await supporting_ids(
+                    insight_data.get("supporting_facts") or [insight_data.get("text", "")],
+                    _candidates(created_fact_ids),
+                    k=3,
+                ),
                 project_id,
                 task,
                 "insight",
@@ -954,6 +968,7 @@ class AgentResearchMixin:
             )
             db.add(insight)
             created_insight_ids.append(iid)
+            support_texts[iid] = insight.text
 
         for rec_data in output.recommendations:
             rid = str(uuid.uuid4())
@@ -961,7 +976,11 @@ class AgentResearchMixin:
                 db,
                 Insight,
                 rec_data.get("insight_ids"),
-                created_insight_ids[-2:],
+                await supporting_ids(
+                    rec_data.get("supporting_insights") or [rec_data.get("text", "")],
+                    _candidates(created_insight_ids),
+                    k=2,
+                ),
                 project_id,
                 task,
                 "recommendation",
