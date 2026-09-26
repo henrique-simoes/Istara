@@ -147,6 +147,42 @@ def test_the_w3_harness_stops_the_pi_worker_while_its_event_loop_still_runs(monk
     assert loop_closed_at_shutdown == [False]
 
 
+def test_the_unreconciled_report_probe_is_judged_whichever_stage_runs_first():
+    # Live lane, 2026-09-26: stages A-E in one call computed E after C, and P5 (a report refused
+    # while applications are unreconciled) was left without a verdict although C had proven it.
+    from qa.scripts import w3_live_ensemble
+
+    gate_before = {"report_allowed": False, "reason": "Task has 9 unreconciled applications."}
+    artifact = {
+        "stages": {
+            "C": {"gate_before": gate_before},
+            "E": {
+                "ok": True,
+                "probes": [
+                    {"id": "P1-missing-coder", "pass": True},
+                    {"id": "P5-unreconciled-report", "note": "stage C"},
+                ],
+            },
+        }
+    }
+    w3_live_ensemble.record_unreconciled_report_probe(artifact)
+    p5 = artifact["stages"]["E"]["probes"][1]
+    assert p5["pass"] is True and p5["gate_before"] == gate_before
+
+    allowed = {
+        "stages": {
+            "C": {"gate_before": {"report_allowed": True}},
+            "E": {"probes": [{"id": "P5-unreconciled-report"}]},
+        }
+    }
+    w3_live_ensemble.record_unreconciled_report_probe(allowed)
+    assert allowed["stages"]["E"]["probes"][0]["pass"] is False
+
+    without_c = {"stages": {"E": {"probes": [{"id": "P5-unreconciled-report"}]}}}
+    w3_live_ensemble.record_unreconciled_report_probe(without_c)
+    assert "pass" not in without_c["stages"]["E"]["probes"][0]
+
+
 # ── M4 v2 judge validation (DEC-14, pre-registered 2026-09-26) ──
 
 
