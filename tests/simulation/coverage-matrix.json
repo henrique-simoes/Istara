@@ -101,7 +101,7 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-04",
-   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25, backend at 1095ce1e): 29 33/33 with ISTARA_SIM_SHARED_FOLDER bound into the backend and the runner by a disposable override (run .results/runs/2026-09-26T01-16-25-274Z; linked-folder sync registered the external file, synced=1). Without the shared folder the link-folder check is 400 by design (run 2026-09-26T01-09-32-847Z, 31/32). Earlier: pass (batch3 live 2026-09-08)",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25, backend at 762d55d3): 29 33/33 with ISTARA_SIM_SHARED_FOLDER bound into the backend and the runner by a disposable override (run .results/runs/2026-09-26T01-40-57-667Z; also at 1095ce1e, run 2026-09-26T01-16-25-274Z; linked-folder sync registered the external file, synced=1). Without the shared folder the link-folder check is 400 by design (run 2026-09-26T01-09-32-847Z, 31/32). Earlier: pass (batch3 live 2026-09-08)",
    "live_verified_at": "2026-09-26",
    "notes": "15 8/8"
   },
@@ -176,7 +176,7 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-25",
-   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25, backend at 0f2d8ff4+1095ce1e): 86 23/23 + 85 10/10 + 24 9/9 + 23 13/13 (run .results/runs/2026-09-26T01-09-32-847Z). 86 now also checks that the Vector Chunks and Keyword Chunks cards agree after an upload (one ingestion writer). Run 2026-09-25T23-55-34-007Z failed 86 20/23: sticky upload suggestions covered the tab row at 375 px; fixed in c6921068, re-run 2026-09-26T00-48-10-050Z 23/23. Earlier: 86 22/22 run 2026-09-25T19-58-53-943Z; first passing run 2026-09-25T19-43-40-637Z (screenshots 86-health-empty/-traceable/-375px/-dark, 86-role-*)",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-26, Mac Studio, QA_RUN_ID cs76-sept25, backend at 762d55d3): 86 23/23 + 85 10/10 + 24 9/9 + 23 13/13 (run .results/runs/2026-09-26T01-39-07-546Z; also at 1095ce1e, run 2026-09-26T01-09-32-847Z). 86 now also checks that the Vector Chunks and Keyword Chunks cards agree after an upload (one ingestion writer). Run 2026-09-25T23-55-34-007Z failed 86 20/23: sticky upload suggestions covered the tab row at 375 px; fixed in c6921068, re-run 2026-09-26T00-48-10-050Z 23/23. Earlier: 86 22/22 run 2026-09-25T19-58-53-943Z; first passing run 2026-09-25T19-43-40-637Z (screenshots 86-health-empty/-traceable/-375px/-dark, 86-role-*)",
    "live_verified_at": "2026-09-26",
    "notes": "86: fresh [SIM-86] project, uploads through the Documents file chooser, card 100% (18 of 18 source chunks carry an evidence unit), loading/error/Retry, degraded branch from a labelled fixture payload, roles admin/researcher/viewer/stranger, keyboard Tab+Enter to the Health tab, 375px tab reachability (tab row now wraps), dark contrast (tab labels and Health labels gained dark:text-slate-400; first run found 16 nodes at 4.23:1). 23 prior browser. 85: under the provider stub vectors are SHA-256 noise, so the two relevance checks can also be satisfied by the vector lane; the keyword behaviour they cover is pinned by tests/test_retrieval_correctness_fixes.py, which fails on origin/main. The rank badge and reprocess-idempotence checks discriminate in this lane."
   },

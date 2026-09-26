@@ -6,6 +6,21 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-26 — Research-spine findings and retrieval measurements (branch fix/spine-findings-measurements-20260925)
+
+Scope: F3, F5, F7–F17 fixed on top of PR #42, six measurement harnesses (`backend/app/evals/`), and the defects found driving the product on the live lane (the owner's two models: Meta Muse Spark 1.3 Contributor and a local Qwen3.8-27B). Every behaviour change has a pytest that fails on `origin/main` (run from a `git archive` of `9272d41e` in `istara-test:1`, `--network none`). Lifecycle `docs/build-stream/2026-09-25-spine-findings-and-retrieval-measurements.md`; evidence `docs/build-stream/2026-09-25-spine-findings-evidence.md`.
+
+| Area | Result |
+| --- | --- |
+| Backend | Full suite at `762d55d3` in `istara-test:1` (`--network none`, `-m "not live_llm"`): 3 failed, 2,492 passed, 14 skipped, 1 error. The 3 failures and 1 collection error are container-only (the public-repo audit needs a git checkout; the invite and update-confirmation tests fail only in the container; the image lacks `hypothesis`); all three failing tests pass locally |
+| Measurements | M1 nDCG@10 BM25 0.717 / vector 0.571 / hybrid 0.700 (76 span-graded questions, bootstrap CIs); M2 12 re-indexed ablations, none better after Holm, 3 significantly worse; M3 budget recall 0.167 (2k) → 1.000 (≥16k); M4 context precision 0.75 [0.58, 0.92], faithfulness not measured (no judge met κ ≥ 0.60 on relevance: 0.568, 0.453); M5 provenance coverage 1.0 (1,097/1,097); M6 planted successful-but-wrong run teaches nothing strong |
+| Browser lane (QA `ui`, contract stub, cs76-sept25) | 86 23/23, 85 10/10, 24 9/9, 23 13/13 (run `2026-09-26T01-39-07-546Z`); 29 33/33 (run `2026-09-26T01-40-57-667Z`) with `ISTARA_SIM_SHARED_FOLDER` bound into backend and runner by a disposable override (without it, link-folder is 400 by design). Scenario 86 caught a regression mid-round (20/23: sticky upload suggestions covered the tabs at 375 px), fixed in c6921068 |
+| Live lane | M4 both directions ($0.0069 + $0.0080, cap $1.00); hostile-document chat on both models: prompt and tool-output blocks balanced, no raw protected tag, canary escaped and never in an answer; governed coding run blocked with two identities (as required), all five fail-closed probes pass |
+| Governance | `security_benchmark --fail-on-threshold` 100% (125 changed paths, 36 triggered); `check_change_obligations` and `check_feature_obligations --base origin/main --head HEAD` pass; `feature_docs.py --seed-missing --generate-site --check` 86 features; simulation static 124 files + lib 41/41; real-user benchmark `npm run check` 108/0; CF `gate after` 0 new failures (7 complexity warnings recorded) |
+| testing | PR #43 merged as a merge commit (611d7a21): `testing` differs from `main` only by AGENTS.md (+13, #39); promotion not run |
+
+Residuals: judge calibration needs a human-labelled relevance set; governed coding needs a third identity; the embedder is English-only (Spanish vector nDCG@10 0.028).
+
 ## 2026-09-11 — FINAL certification on 25e2063d (main-readiness-final certification-final)
 
 Scope: full release-matrix re-run on the frozen final SHA `25e2063d33bc948cb6e80c93015a09e82e207b50` (branch `conductor/readiness5-20260910`, baseline `origin/main` `fa6a1a39` strict ancestor; 7 commits past the last pushed CI SHA `15ef4835`: pi-preflight harness fix, promotion-range lint clear 274→0, prompt-byte restoration + dispatch regressions, all blind/delta reviewed). Dossier rewritten at `docs/promotion/2026-09-09-promotion-certification.md` (FINAL header bound to `25e2063d`; W5 header + 2026-09-09 dossier kept as appendix); topology counts refreshed in `TESTING.md` (this checkpoint). Exact CI command from `backend/`, keyless lane, py3.12.13, both pi surfaces installed. No push/PR/merge/settings — owner checklist (push → CI observation → `testing-promotion` env creation → protection PUT → `promote-testing.yml` dispatch with exact SHA → PR verification) is in dossier §5.

@@ -4,12 +4,12 @@
 item: spine-findings-and-retrieval-measurements
 branch: fix/spine-findings-measurements-20260925
 cf: { spec: CF-SPEC-2, tasks: [CF-1, CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8, CF-9, CF-10, CF-11, CF-12, CF-13, CF-14] }
-phase: "Phase 8 — live lane (Muse Spark 1.3 Contributor + local Qwen, DEC-11)"
-stage: S2-execute
-status: in-progress
+phase: "Phase 12 — ship"
+stage: S5-ship
+status: done
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-25T22:32:26Z, ledger: L-18 }
-next_action: "When the Harbor corpus upload into istara-cs76-live finishes, run `python -m app.evals.answer_eval` twice inside it (generator pi-muse-spark / judge pi-local-qwen, then swapped) with a spend cap; then the governed coding run and the hostile-document chat. Before any push, the owner decides how unpushed commits that name the local server are handled. Phase 7b (CF-SPEC-3, other session): S3 pending an independent blind review via 2026-09-25-spine-findings-phase7b-blind-pack.md."
+last: { agent: claude-code, at: 2026-09-26T01:46:09Z, ledger: L-22 }
+next_action: "None in this plan. Delivery is the PR into main (squash merge once its required CI is green). Open elsewhere: Phase 7b (CF-SPEC-3, other session) needs its independent blind review via 2026-09-25-spine-findings-phase7b-blind-pack.md; M4 faithfulness needs a human-labelled relevance set."
 ```
 
 Evidence (four-part records per finding): `2026-09-25-spine-findings-evidence.md` beside this file.
@@ -208,6 +208,32 @@ in thinking mode). Acceptance: both models answer the M4 questions within their 
 report lists judge agreement with the planted labels (Cohen's kappa) before any score is trusted.
 Verification: `python -m app.evals.answer_eval --project-id <harbor> --generator <A> --judges <B>
 --max-usd <cap>` in istara-cs76-live, then with A and B swapped.
+
+## Phase 12 — ship
+
+**Outcome vs the S0 goal.** Every open finding (F3, F5, F7-F17) is fixed, each pinned by a pytest
+that fails on `origin/main` and driven through the product (QA `ui` lane scenarios, live lane). The
+six measurements exist as harnesses with results (M1-M3 with the real embedder; M4 on the owner's two
+models; M5 as a Health-tab invariant; M6 in the default suite). `testing` took `main` (PR #43, merge
+commit 611d7a21); the promotion itself was not run. Compass Forge was driven throughout; CF-SPEC-2 is
+accepted with command evidence on all 14 tasks, and six CF defects were reported (IST-CF-1..6).
+
+**Residual risk.** Faithfulness (M4) is unmeasured until the judges are calibrated on human labels.
+Governed coding cannot promote with two model identities (DEC-11). The embedder is English-only.
+Seven complexity warnings from `gate after` are recorded, not fixed (the moved sync loop, Pi runtime
+methods touched by liveness and structured output, one test module's symbol count). Phase 7b
+(CF-SPEC-3, other session) still waits for its independent blind review. No independent S3 reviewer
+ran on this plan (the owner does not allow subagents); its review coverage is self-only.
+
+**Retro (blameless).** What worked: pinning each finding with a test that fails on `main` before the
+fix, and driving the product afterwards; the live lane and the UI suite found nine defects the static
+map had not listed (double indexing, uuid classification, sticky suggestions at 375 px, a
+spine-bypassing agent sync, markup escaping tool output, Pi thinking level, liveness, structured
+output on Meta, harness exits). What to do differently: validate a measurement harness against the
+product's real storage before its first number (M4's first run graded uploads by path, and uploads
+are stored under uuids); run `gate after` straight after every refactor, not at the end (it caught an
+import cycle a quick fix introduced); record owner decisions about models before building live env
+files, so the env and the plan agree from the start.
 
 ## Ledger
 
@@ -520,3 +546,36 @@ test fails on origin/main); `pytest tests/test_spine_answer_eval.py` 6 passed; S
 passed (sync, documents, Pi tool-loop suites), 251 passed (tool, boundary, content-guard suites);
 `git diff --stat origin/main origin/testing` AGENTS.md only.
 Next: governance checks, full suite at HEAD, docs, CF closeout, push and PR into main.
+
+### L-21 | 2026-09-26T01:46:09Z | S2-execute | claude-code | executor | Phase 8
+Did: the owner asked this session to fix the coding run's misleading refusal instead of filing it
+(L-20 said "follow-up task filed"; that task was withdrawn). Coder selection now names the usable
+identities and the required count, and a run in which no coder ran says so (ffe09529); live re-run
+shows the corrected reason. Compass Forge's `gate after` then reported six new import cycles from the
+agent tool importing the Documents route module; the routes now register their folder sync in
+`app/core/project_folder_sync.py` and the tool calls it there, and this round's additions to
+already-complex functions moved into helpers (762d55d3). Feature docs (documents library, memory
+knowledge, chat overview), Tech.md and the research-validity contract updated; systems map updated and
+copied to the owner's Documents folder; CF evidence rows recorded for CF-3, CF-6..CF-13. The long-form
+benchmark's blocker for a refused coding run now quotes the backend's reason (148939d4), and TESTING.md
+lists the measurement harnesses.
+Result: no selection change (an uncredentialed catalog entry is never used to make up the count).
+`gate after` 0 new failures; 7 complexity warnings recorded (the moved sync loop under its new name,
+`_project_llm_server`, four `session.mjs` methods from the liveness and structured-output work,
+`tests/test_autoresearch.py` symbol count).
+Verified: full backend suite at 762d55d3 in `istara-test:1`: 3 failed, 2,492 passed, 14 skipped, 1
+error (container-only, unchanged from main); QA lane 2026-09-26T01-39-07-546Z 86 23/23, 85 10/10, 24 9/9, 23 13/13 and 2026-09-26T01-40-57-667Z 29 33/33; `pytest tests/pi_production/test_w7_validation.py`
+49 passed (2 new fail on origin/main); research-validity suites 168 passed in the Studio container;
+security benchmark 100% (125 changed paths, 36 triggered); change and feature obligations pass;
+feature docs 86; simulation static 124 files and lib 41/41; real-user benchmark `npm run check` 108/0.
+Next: CF closeout and S5.
+
+### L-22 | 2026-09-26T01:46:09Z | S5-ship | claude-code | executor | Phase 12
+Did: Compass Forge closeout: evidence rows for CF-9 (full suite) and CF-14, `finish-task` CF-1..CF-14,
+`spec accept CF-SPEC-2`, `evaluation record --outcome mixed`. Phase 12 section with the plan summary,
+residual risk and retro. Status Block set to done.
+Result: CF-SPEC-2 accepted; all 14 tasks done with command evidence (asserted, not run by Compass
+Forge). The PR into `main` carries the delivery; its required CI decides the squash merge.
+Verified: `compass-forge spec accept CF-SPEC-2` -> status accepted; `verify_lifecycle.py` on this file
+(run after this entry).
+Next: stage exit: plan done; delivery is the PR into `main`.
