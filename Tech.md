@@ -474,9 +474,10 @@ User sends message
   ├─ Prompt RAG selects relevant persona sections (within identity budget)
   │
   ├─ RAG retrieves relevant document chunks
-  │   └─ compress_rag_chunks() applies question-aware compression
-  │      (LongLLMLingua pattern: reorder most relevant first,
-  │       differentiated compression by rank)
+  │   └─ compress_rag_chunks() passes the chunks through verbatim when they
+  │      fit the RAG budget; only under budget pressure does it apply
+  │      question-aware compression (LongLLMLingua pattern: retrieval order
+  │      kept, differentiated compression by rank)
   │
   ├─ Context Summarizer applies cost-escalating pipeline:
   │   1. DAG-based lossless compression (if enabled)
@@ -684,7 +685,7 @@ Results are merged using **weighted Reciprocal Rank Fusion** (`w / (60 + rank)` 
 
 **Keyword query semantics** (`core/keyword_index.py`). The query runs as an exact FTS5 phrase first, and the all-terms (`OR`) query fills the remaining top-k, so an adjacent match ranks first without suppressing chunks that use the same words apart. Two-character tokens (`UX`, `AI`, `P1`, `Q4`) are kept; a short English stopword list is dropped from the `OR` query.
 
-**One evidence formatter.** `rag.format_context_part` labels every retrieved chunk (`[Source: …, page …, relevance: …]`) and wraps it in the ContentGuard untrusted-content delimiters. `retrieve_context` and `build_compressed_rag_context` (Chat and Interfaces, after compression to the RAG token budget) both use it, and the compressed path returns exactly the chunks that reached the prompt, so the SSE `done` event cites only those.
+**One evidence formatter.** `rag.format_context_part` labels every retrieved chunk (`[Source: …, page …, rank N]`: the rank, never the fused RRF value, which reads as "irrelevant" at ~0.016 for the best chunk) and wraps it in the ContentGuard untrusted-content delimiters. `retrieve_context` and `build_compressed_rag_context` (Chat and Interfaces, after compression to the RAG token budget) both use it, and the compressed path returns exactly the chunks that reached the prompt, so the SSE `done` event cites only those.
 
 **Re-ingestion is idempotent.** Chunks are keyed by the file's full stored path; `VectorStore.delete_file_source` deletes both the full-path and the basename spelling from the vector and keyword indices before upload, reprocess and documents sync re-ingest, and `delete_by_source` clears keyword rows even when a project has no vector table.
 
@@ -695,8 +696,16 @@ File uploaded → FileProcessor extracts text
   → Chunker splits into ~1,200 char chunks (180 overlap)
     → Embeddings generated (batch, cached)
       → Chunks stored in LanceDB (per-project database)
-        → FileWatcher detects new files → auto-creates research tasks
+        → Upload route creates the file's research tasks (from the plaintext, before encryption)
 ```
+
+The upload route owns an upload's whole ingestion (Document, evidence units with provenance on
+every chunk, both indices, research tasks). The FileWatcher indexes linked folders and skips
+managed uploads: indexing them too raced the route and duplicated every vector (2026-09-25).
+Research tasks are classified and titled by the researcher's file name, not the stored
+`<uuid>.<ext>`. Folder sync has one implementation (`register_untracked_project_files`), used by
+the Documents sync route and, through `app/core/project_folder_sync.py`, by the agent's
+`sync_project_documents` tool; files are matched by path, so an upload is never registered twice.
 
 **Embedding caching** prevents re-embedding unchanged content, critical for local hardware where embedding is expensive.
 
@@ -3258,7 +3267,10 @@ validated provider response): a numeric entry written under a different
 embedding model/dimension is discarded and re-embedded rather than served, and
 an entry whose dimension cannot be verified yet is treated as a miss (fail
 closed). Chat temperature, thinking, and effort controls are generation
-controls only.
+controls only. A dimension says nothing about which model produced a vector, so embeddings also
+carry a behavioural fingerprint (a hash of the vectors a fixed probe produces): the cache is keyed
+by `namespace#fingerprint`, a store is bound to the fingerprint that wrote it, and vector health
+reports `fingerprint_mismatch` for a same-dimension model swap (2026-09-25).
 
 ### Telemetry export (contract v1, 2026-09-24)
 
@@ -3270,3 +3282,35 @@ source does not record is `null` with provenance `unknown`, never 0; `host` is a
 machine name. Standard library only; nothing in the backend imports it. Its tests are
 `tests/test_export_telemetry_v1.py`, and the feature is registered in
 `testing/feature_coverage.yml`.
+
+### Research-spine findings and retrieval measurements (2026-09-25)
+
+Branch `fix/spine-findings-measurements-20260925`; evidence in
+`docs/build-stream/2026-09-25-spine-findings-evidence.md`, lifecycle in
+`docs/build-stream/2026-09-25-spine-findings-and-retrieval-measurements.md`.
+
+- **Prompt boundaries.** Truncation keeps the untrusted-content wrapper closed
+  (`content_guard.truncate_preserving_wrappers`); document text cannot open or close the wrapper or a
+  protected tag (entity-escaped), and the RAG budget is a hard limit for plain text too. The same
+  escaping applies to data-gathering tool results inside `<tool_output>` (documents, memories, web
+  pages), which models read with tools.
+- **Derived text is not evidence.** Agent notes and skill artifacts live in a separate derived
+  index, never in the source index claim verification searches; notes are scoped by exact agent id.
+  Every source chunk carries its evidence unit and span (`services/retrieval_provenance.py`), and
+  provenance coverage is a health invariant (Memory > Health).
+- **Ranking semantics.** Evidence is labelled by rank, compression keeps retrieval order, finding
+  search returns source evidence first and marks findings provisional, and every `top_k` is bounded.
+- **Learning loops.** Skill routing requires relevance before learned priors count; self-verified
+  outcomes stay provisional; ReasoningBank reads are side-effect free (use is counted when a memory
+  reaches a prompt); persona learnings are project-scoped.
+- **Plan DAG.** A failed prerequisite blocks its dependents, and plan steps never share one database
+  session concurrently.
+- **RAG tuning** optimises nDCG@10 on span-graded qrels over sandbox indices
+  (`app.evals.retrieval_eval`), never mutates settings and fails closed without a benchmark.
+  Measurement harnesses: `app.evals.retrieval_eval` (evaluate / ablate / budget) and
+  `app.evals.answer_eval` (faithfulness and context precision with validated judges that never grade
+  their own model). `app.evals.stats` holds the metrics and paired tests.
+- **Pi runtime.** Per-endpoint, progress-based liveness (idle and total budgets, larger for local
+  endpoints); an endpoint's thinking level is the default for turns that set none; failed turns carry
+  the provider's reason; structured output works on providers that accept only `tool_choice: auto`
+  (Meta) without accepting free-form text; pinned pi-ai 0.87.1 adds Meta as a provider.

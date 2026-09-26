@@ -864,7 +864,11 @@ function buildFauxResponse(spec) {
 
 /** Build a deterministic faux provider for Node unit tests only. */
 export function buildFauxProviderBinding(endpoint) {
-  const faux = fauxProvider({ tokensPerSecond: 0 });
+  // `faux_tokens_per_second` (tests only) streams the scripted text at a set rate, so liveness can
+  // be tested against a slow but steady model.
+  const rate = Number.isFinite(endpoint.faux_tokens_per_second) && endpoint.faux_tokens_per_second > 0
+    ? endpoint.faux_tokens_per_second : 0;
+  const faux = fauxProvider({ tokensPerSecond: rate });
   faux.setResponses((endpoint.faux_responses || []).map(buildFauxResponse));
   const models = createModels();
   models.setProvider(faux.provider);

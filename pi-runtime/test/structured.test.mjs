@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { captureParameters, mapToolChoiceForApi, translateOutputSchema } from "../src/structured.mjs";
+import { bindingProviderId, captureParameters, mapToolChoiceForApi, structuredPromptText, translateOutputSchema } from "../src/structured.mjs";
 
 const WORKER = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "worker.mjs");
 
@@ -32,6 +32,47 @@ test("capture tool parameters keep an object root accepted by OpenAI-compatible 
     parameters.properties.verdict.anyOf.map((arm) => arm.const),
     ["pass", "fail"],
   );
+});
+
+test("OpenAI Responses forces the named capture tool (Meta Muse Spark serves this API)", () => {
+  // Found on the live lane (2026-09-25): structured runs on an openai-responses endpoint failed
+  // closed with tool_choice_unsupported before any request, so every structured skill and judge
+  // on Meta's API failed. pi-ai's Responses transport passes tool_choice through unchanged, and
+  // the Responses API takes the flat named-function form.
+  assert.deepEqual(
+    mapToolChoiceForApi("openai-responses", { kind: "tool", name: "emit_structured_output" }),
+    { type: "function", name: "emit_structured_output" },
+  );
+  assert.equal(mapToolChoiceForApi("openai-responses", { kind: "required" }), "required");
+  assert.equal(mapToolChoiceForApi("openai-responses", { kind: "auto" }), "auto");
+});
+
+test("a provider whose API accepts only tool_choice auto gets auto, never a forced choice", () => {
+  // Meta's Responses API (Muse Spark) answers HTTP 400 "only \"auto\" is supported for
+  // tool_choice": a forced or named choice fails every structured run.
+  const named = { kind: "tool", name: "emit_structured_output" };
+  assert.equal(mapToolChoiceForApi("openai-responses", named, { provider: "meta" }), "auto");
+  assert.equal(mapToolChoiceForApi("openai-responses", { kind: "required" }, { provider: "meta" }), "auto");
+  assert.deepEqual(mapToolChoiceForApi("openai-responses", named, { provider: "openai" }), {
+    type: "function",
+    name: "emit_structured_output",
+  });
+});
+
+test("the binding's provider is the endpoint's pi_provider, not Istara's per-endpoint registry name", () => {
+  // Live, 2026-09-25: model.provider was "pi-endpoint-pi-muse-spark", so the auto-only rule for
+  // "meta" never matched and Meta still received a forced tool_choice.
+  const binding = { capability_receipt: { pi_provider: "meta" }, model: { provider: "pi-endpoint-pi-muse-spark" } };
+  assert.equal(bindingProviderId(binding), "meta");
+  assert.equal(bindingProviderId({ model: { provider: "zai" } }), "zai");
+  assert.equal(bindingProviderId(null), "");
+});
+
+test("an unforced structured run asks for the capture tool; a forced one leaves the prompt alone", () => {
+  assert.equal(structuredPromptText("What is the capital?", { forced: true }), "What is the capital?");
+  const unforced = structuredPromptText("What is the capital?", { forced: false });
+  assert.ok(unforced.startsWith("What is the capital?"));
+  assert.ok(unforced.includes("emit_structured_output"));
 });
 
 test("Codex Responses requires the sole structured capture tool", () => {

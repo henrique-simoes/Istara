@@ -632,3 +632,47 @@ async def test_autoresearch_engine_rejects_paused_project_before_runner_work():
             max_iterations=1,
             project_id=project_id,
         )
+
+
+class _SandboxRunner:
+    """A runner that measures on a sandbox and must be closed when the loop ends (F3)."""
+
+    loop_type = "rag_params"
+    needs_persona_lock = False
+
+    def __init__(self, fail_baseline: bool = False):
+        self.fail_baseline = fail_baseline
+        self.closed = 0
+
+    async def measure_baseline(self, target):
+        if self.fail_baseline:
+            raise RuntimeError("retrieval benchmark unavailable")
+        return 0.5
+
+    def close(self):
+        self.closed += 1
+
+
+@pytest.mark.parametrize("fail_baseline", [False, True])
+async def test_the_engine_closes_a_runner_sandbox_when_the_loop_ends(monkeypatch, fail_baseline):
+    """The RAG tuning loop measures on sandbox indices rebuilt per chunking; the engine removes
+    them when the loop ends, including when the baseline fails closed without a benchmark."""
+    from app.core.autoresearch_engine import AutoresearchEngine
+
+    engine = AutoresearchEngine()
+
+    async def _active(project_id):
+        return project_id
+
+    async def _is_active(project_id):
+        return True
+
+    monkeypatch.setattr(engine, "_require_active_project_id", _active)
+    monkeypatch.setattr(engine, "_is_project_active", _is_active)
+    runner = _SandboxRunner(fail_baseline=fail_baseline)
+    if fail_baseline:
+        with pytest.raises(RuntimeError):
+            await engine.run_loop(runner, "rag", max_iterations=0, project_id="p1")
+    else:
+        await engine.run_loop(runner, "rag", max_iterations=0, project_id="p1")
+    assert runner.closed == 1

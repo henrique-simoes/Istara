@@ -36,6 +36,7 @@ from .endpoints import (
     PiEndpointResolver,
     ResolvedPiEndpoint,
 )
+from .liveness import LOCAL_RESPONSE_START_MS
 from .model_management_compat import SUPPORTED_PROVIDERS, host_is_plannable
 
 logger = logging.getLogger(__name__)
@@ -238,6 +239,9 @@ class PiModelManager:
                 source="local",
                 api_key="ollama",
                 kind="local",
+                # A local server may load weights before it answers (and embeds whole batches
+                # while other work runs): 30 s failed under ordinary load (DEC-10).
+                timeout_ms=LOCAL_RESPONSE_START_MS,
             ),
             _CatalogEntry(
                 endpoint_id="pi-local-lmstudio",
@@ -248,6 +252,9 @@ class PiModelManager:
                 source="local",
                 api_key=settings.lmstudio_api_key or "lm-studio",
                 kind="local",
+                # A local server may load weights before it answers (and embeds whole batches
+                # while other work runs): 30 s failed under ordinary load (DEC-10).
+                timeout_ms=LOCAL_RESPONSE_START_MS,
             ),
         ]
 
@@ -403,6 +410,7 @@ class PiModelManager:
                 bool(capabilities.get("vision", False)) if isinstance(capabilities, dict) else False
             ),
             kind="local" if is_local else "remote",
+            timeout_ms=LOCAL_RESPONSE_START_MS if is_local else 30_000,
         )
 
     def reset_db_projection(self) -> None:

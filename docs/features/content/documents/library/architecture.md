@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["documents.upload", "documents.preview", "chat.files"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/documents/DocumentsView.tsx", "frontend/src/stores/documentStore.ts", "backend/app/api/routes/documents.py"]
+code_references: ["frontend/src/components/documents/DocumentsView.tsx", "frontend/src/stores/documentStore.ts", "backend/app/api/routes/documents.py", "backend/app/skills/system_actions.py", "backend/app/core/project_folder_sync.py"]
 api_references: ["backend/app/api/routes/documents.py"]
-test_references: ["tests/test_documents.py", "tests/test_project_rbac.py"]
-last_verified: 2026-05-22
+test_references: ["tests/test_documents.py", "tests/test_project_rbac.py", "tests/test_spine_single_ingestion.py"]
+last_verified: 2026-09-26
 compass: CF-SPEC-53 / CF-657; CF-SPEC-131
 ---
 
@@ -45,6 +45,7 @@ Library payloads expose each document's Research Spine state. Documents remain r
 
 - The feature is mounted through `frontend/src/components/documents/DocumentsView.tsx` and the UI navigation path recorded in the inventory.
 - Folder sync and file-watch registration must create `source_span` evidence units from raw file text before any later skill, agent, or report can use the material as accepted research.
+- There is one folder-sync implementation, `register_untracked_project_files` in `backend/app/api/routes/documents.py`. The Documents view's sync route calls it, and the agent's `sync_project_documents` tool reaches it through `app/core/project_folder_sync.py` (the routes register it there when they load; a tool importing a route module would close an import cycle through the Pi runtime, and without the registration the tool registers nothing). Files are matched by resolved path (by name only for path-less legacy rows), so an upload stored as `<uuid>.<ext>` is never registered twice, and a new file always gets its text, evidence units and index rows. The tool used to keep its own copy that matched by file name and registered bare rows (found on the live lane, 2026-09-25).
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
@@ -58,6 +59,8 @@ Library payloads expose each document's Research Spine state. Documents remain r
 - `tests/test_documents.py::test_document_create_registers_raw_source_evidence_units`
 - `tests/test_documents.py::test_documents_sync_registers_raw_source_evidence_units`
 - `tests/test_project_rbac.py`
+- `tests/test_spine_single_ingestion.py::test_the_agent_sync_tool_does_not_register_an_upload_again`
+- `tests/test_spine_single_ingestion.py::test_the_agent_sync_tool_ingests_a_folder_file_through_the_research_spine`
 
 ## Related Features
 

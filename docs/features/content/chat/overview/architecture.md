@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["chat.sessions", "chat.model-controls", "chat.files", "chat.audio", "chat.steering"]
 related_glossary: ["rag", "mcp"]
-code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py"]
+code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/skills/system_actions.py"]
 api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "frontend/src/lib/chatApi.ts", "frontend/src/lib/sessionsApi.ts"]
-test_references: ["tests/test_chat.py", "tests/test_sessions.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-09-01
+test_references: ["tests/test_chat.py", "tests/test_sessions.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/test_spine_prompt_boundaries.py"]
+last_verified: 2026-09-26
 compass: CF-SPEC-102 / CF-1295
 ---
 
@@ -55,6 +55,7 @@ Chat is the project-scoped conversational workspace for working with Istara agen
 - Chat-triggered Context-DAG compaction is scheduled through the ContextDAG lifecycle owner, deduplicated per session, and drained during application shutdown. This keeps asynchronous database work from outliving the event loop and prevents concurrent responses from creating duplicate compaction nodes.
 - The composer fails closed for the legacy/Istara engine when `/api/chat/model-catalog` reports no passive cached chat readiness. Typed drafts, attachments, voice input, and pending-prefill auto-sends remain disabled until a connected model is ready, with an actionable Settings status; Pi keeps its own endpoint-resolution gate.
 - Chat injects a protected Research Spine promotion gate into the runtime system prompt. Prompt-RAG, RAG snippets, tool output, and memories may support conversation, but chat must label provisional material and cannot present it as accepted research.
+- Data-gathering tool results (documents, memories, web pages, project files) reach the model inside `<tool_output>`, a protected tag. Their own wrapper and protected-block markup is escaped first (`neutralize_boundary_markup`, as for retrieved text), so a document can neither close the block nor open an `<instructions>` block of its own (found driving a hostile document through chat on the live lane, 2026-09-25; `tests/test_spine_prompt_boundaries.py::test_document_markup_cannot_escape_a_tool_output_block`).
 - The `search_findings` system action returns each finding with accepted/provisional/reportable status so ReAct/tool-assisted chat answers preserve the same gate state shown in Findings and Reports.
 - Steering status/input is a global-admin capability in the current backend contract. Researcher chat sessions must not mount steering polling or steering mutation controls during normal chat journeys; negative authorization tests may still assert that researcher calls are rejected.
 - Voice transcription uploads must carry the active project id and pass project researcher authorization before Istara reads audio bytes or invokes transcription. Missing, blank, hidden, or viewer-only project claims fail before audio processing.

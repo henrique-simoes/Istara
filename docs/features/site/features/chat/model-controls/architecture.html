@@ -397,6 +397,12 @@
 <p>trace continuity; the accounting row never lives inside that 120-char</p>
 <p>identity field. Ledger identity fields carry <code>endpoint_id</code>/<code>node_id</code> only,</p>
 <p>never endpoint URLs, keys, prompts, or response content.</p>
+<h2 id="default-thinking-level-2026-09-25">Default Thinking Level (2026-09-25)</h2>
+<ul>
+<li>A thinking level chosen in the chat controls applies to that turn. Turns that set none (skills,</li>
+</ul>
+<p>coding runs, evaluations) use the endpoint&#x27;s configured <code>thinking_level</code>, so a model that always</p>
+<p>reasons works outside chat too.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>The feature is mounted through <code>frontend/src/components/chat/ChatView.tsx</code> and the UI navigation path recorded in the inventory.</li>
@@ -581,6 +587,7 @@
 <li class="toc-level-3"><a href="#stores">Stores</a></li>
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
 <li class="toc-level-3"><a href="#agentic-dispatcher-and-engine-selection-pi-replacement-w1">Agentic Dispatcher And Engine Selection (Pi Replacement W1)</a></li>
+<li class="toc-level-2"><a href="#default-thinking-level-2026-09-25">Default Thinking Level (2026-09-25)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
 <li class="toc-level-2"><a href="#agentic-core-resolution-cf-spec-1">Agentic Core Resolution (CF-SPEC-1)</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>

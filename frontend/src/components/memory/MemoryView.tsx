@@ -21,6 +21,7 @@ import {
 import ContextDAGView from "./ContextDAGView";
 import { memory as memoryApi, agents as agentsApi, documents as documentsApi, reasoningBank } from "@/lib/api";
 import { memorySourceLabel, type MemorySourceDocument } from "@/lib/memorySourceLabels";
+import type { MemoryProvenance } from "@/lib/memoryApi";
 import type { ReasoningMemoryItem } from "@/lib/reasoningBankTypes";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,7 @@ interface MemoryStats {
   chunk_size: number;
   chunk_overlap: number;
   hybrid_weights: { vector: number; keyword: number };
+  provenance?: MemoryProvenance;
 }
 
 interface AgentNote {
@@ -779,6 +781,62 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
 
 // ---- Health Tab ----
 
+/**
+ * Health invariant (measurement 5): every source chunk should trace to the evidence unit it was
+ * cut from, so a retrieved passage can be followed back to its source span and coding state.
+ */
+function ProvenanceCard({ provenance }: { provenance: MemoryProvenance }) {
+  const percent =
+    provenance.coverage === null ? null : Math.round(provenance.coverage * 1000) / 10;
+  const tone =
+    provenance.status === "ok"
+      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+      : provenance.status === "empty"
+        ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+  const label =
+    provenance.status === "ok"
+      ? "All traceable"
+      : provenance.status === "empty"
+        ? "No source chunks yet"
+        : provenance.status === "unavailable"
+          ? "Unavailable"
+          : "Needs re-index";
+  return (
+    <section aria-labelledby="provenance-heading">
+      <h3 id="provenance-heading" className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">
+        Evidence Provenance
+      </h3>
+      <div
+        className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 space-y-3"
+        data-testid="provenance-card"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-slate-600 dark:text-slate-300">
+            Source chunks traceable to an evidence unit
+          </span>
+          <span className={cn("text-xs px-2 py-0.5 rounded-full shrink-0", tone)}>{label}</span>
+        </div>
+        <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="provenance-coverage">
+          {percent === null ? "—" : `${percent}%`}
+        </p>
+        <p className="text-xs text-slate-600 dark:text-slate-300">
+          {provenance.with_evidence_unit} of {provenance.source_chunks} source chunks carry an
+          evidence unit id.
+          {provenance.status === "degraded" &&
+            " Reprocess the files listed under Sources to index them with provenance."}
+        </p>
+        {provenance.legacy_derived_rows > 0 && (
+          <p className="text-xs text-slate-600 dark:text-slate-300">
+            {provenance.legacy_derived_rows} older rows hold agent notes or skill output. They are
+            excluded from evidence search.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function HealthTab({ projectId }: { projectId: string }) {
   const [stats, setStats] = useState<MemoryStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -802,14 +860,14 @@ function HealthTab({ projectId }: { projectId: string }) {
   }, [fetchStats]);
 
   if (loading && !stats) {
-    return <p className="text-sm text-slate-400 py-8 text-center">Loading health data...</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-400 py-8 text-center">Loading health data...</p>;
   }
 
   if (error) {
     return (
       <div className="text-center py-12">
         <AlertTriangle size={32} className="mx-auto text-yellow-500 mb-3" />
-        <p className="text-sm text-slate-500">{error}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{error}</p>
         <button
           onClick={fetchStats}
           aria-label="Retry loading health data"
@@ -831,24 +889,26 @@ function HealthTab({ projectId }: { projectId: string }) {
       <div className="grid grid-cols-2 gap-3">
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.vector_chunks}</p>
-          <p className="text-xs text-slate-500">Vector Chunks</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Vector Chunks</p>
         </div>
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.keyword_chunks}</p>
-          <p className="text-xs text-slate-500">Keyword Chunks</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Keyword Chunks</p>
         </div>
       </div>
 
+      {stats.provenance && <ProvenanceCard provenance={stats.provenance} />}
+
       {/* Embedding Config */}
       <div>
-        <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Embedding Configuration</h3>
+        <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Embedding Configuration</h3>
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Embedding Model</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Embedding Model</span>
             <span className="text-xs font-mono text-slate-700 dark:text-slate-300">{stats.embedding_model}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Vector Dimensions</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Vector Dimensions</span>
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-slate-700 dark:text-slate-300">
                 {stats.vector_dimensions || "N/A"}
@@ -861,7 +921,7 @@ function HealthTab({ projectId }: { projectId: string }) {
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Dimension Status</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Dimension Status</span>
             <span className={cn(
               "text-xs px-2 py-0.5 rounded-full",
               dimOk
@@ -876,14 +936,14 @@ function HealthTab({ projectId }: { projectId: string }) {
 
       {/* Chunking Config */}
       <div>
-        <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Chunking Configuration</h3>
+        <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Chunking Configuration</h3>
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Chunk Size</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Chunk Size</span>
             <span className="text-xs font-mono text-slate-700 dark:text-slate-300">{stats.chunk_size} chars</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Chunk Overlap</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Chunk Overlap</span>
             <span className="text-xs font-mono text-slate-700 dark:text-slate-300">{stats.chunk_overlap} chars</span>
           </div>
         </div>
@@ -891,10 +951,10 @@ function HealthTab({ projectId }: { projectId: string }) {
 
       {/* Hybrid Search Weights */}
       <div>
-        <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Hybrid Search Weights</h3>
+        <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Hybrid Search Weights</h3>
         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Vector Weight</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Vector Weight</span>
             <div className="flex items-center gap-2">
               <div className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                 <div
@@ -908,7 +968,7 @@ function HealthTab({ projectId }: { projectId: string }) {
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Keyword Weight</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Keyword Weight</span>
             <div className="flex items-center gap-2">
               <div className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                 <div
@@ -927,7 +987,7 @@ function HealthTab({ projectId }: { projectId: string }) {
       {/* Sources Breakdown */}
       {stats.sources.length > 0 && (
         <div>
-          <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Sources ({stats.sources.length})</h3>
+          <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Sources ({stats.sources.length})</h3>
           <div className="space-y-1" role="region" aria-label="Source breakdown" tabIndex={0}>
             {stats.sources.map((source) => {
               const label = memorySourceLabel(source.name, sourceDocuments);
@@ -948,7 +1008,7 @@ function HealthTab({ projectId }: { projectId: string }) {
           onClick={fetchStats}
           disabled={loading}
           aria-label="Refresh health data"
-          className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-50"
+          className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-50"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Refresh
         </button>
@@ -968,7 +1028,7 @@ export default function MemoryView() {
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <Brain size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-          <p className="text-sm text-slate-500">Select a project to view its memory</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Select a project to view its memory</p>
         </div>
       </div>
     );
@@ -992,18 +1052,19 @@ export default function MemoryView() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 px-4 pt-3">
+      {/* Tabs: wrap at narrow widths, where a single row was clipped by the view's overflow-hidden */}
+      <div className="flex flex-wrap items-center gap-1 px-4 pt-3">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             aria-label={`Switch to ${tab.label} tab`}
+            aria-pressed={activeTab === tab.id}
             className={cn(
               "flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors",
               activeTab === tab.id
                 ? "bg-istara-100 text-istara-700 dark:bg-istara-900/30 dark:text-istara-400 font-medium"
-                : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
             )}
           >
             <tab.icon size={14} />

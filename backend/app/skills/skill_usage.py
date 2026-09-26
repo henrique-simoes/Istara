@@ -82,6 +82,45 @@ class SkillUsageMixin:
                 project_id=scoped_project_id,
             )
 
+    def record_provisional_execution(self, skill_name: str, project_id: str | None = None) -> None:
+        """Count a run whose quality nothing independent has judged yet.
+
+        It moves neither successes, failures, quality nor utility. Human review (task_review)
+        records the decided outcome later, so a self-verified but wrong run cannot teach routing
+        a strong positive signal (governance contract; measurement 6).
+        """
+        from app.core.autoresearch_isolation import is_autoresearch_active
+
+        if is_autoresearch_active():
+            return
+        now = datetime.now(UTC).isoformat()
+        stats = self._usage_stats.setdefault(skill_name, self._empty_usage_stats())
+        stats["provisional"] = int(stats.get("provisional", 0)) + 1
+        stats["last_used"] = now
+        scoped_project_id = str(project_id or "").strip()
+        if scoped_project_id:
+            projects = stats.setdefault("projects", {})
+            scoped = projects.setdefault(scoped_project_id, self._empty_usage_stats())
+            scoped["provisional"] = int(scoped.get("provisional", 0)) + 1
+            scoped["last_used"] = now
+        self._save_stats()
+
+    def record_learning_signal(
+        self, skill_name: str, signal, project_id: str | None = None
+    ) -> None:
+        """Record a governed ``LearningSignal``: decided outcomes count, undecided ones do not."""
+        from app.core.self_improvement_policy import is_undecided_learning_state
+
+        if is_undecided_learning_state(signal):
+            self.record_provisional_execution(skill_name, project_id=project_id)
+            return
+        self.record_execution(
+            skill_name,
+            signal.learning_success,
+            signal.research_quality_score,
+            project_id=project_id,
+        )
+
     def _notify_low_utility_skill(
         self,
         skill_name: str,

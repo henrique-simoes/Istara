@@ -612,10 +612,13 @@ async def search_findings(
     project_id: str,
     request: Request,
     query: str = "",
-    top_k: int = 10,
+    top_k: int = Query(10, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """Semantic search across project findings using the vector store."""
+    """Source evidence (hybrid retrieval, ranked) plus matching provisional findings.
+
+    ``top_k`` is bounded: it sizes a retrieval over the whole project index.
+    """
     await require_project_access(db, request, project_id, min_role="viewer")
     if not query:
         return {"results": [], "query": ""}

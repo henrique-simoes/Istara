@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import get_visible_project_or_404
-from app.core.reasoning_bank import reasoning_bank
+from app.core.reasoning_bank import format_memory_context, reasoning_bank
 from app.core.security_middleware import require_admin_from_request
 from app.models.database import get_db
 
@@ -101,6 +101,9 @@ async def retrieve_memories(
 ):
     """Retrieve reasoning memories and their prompt-ready context."""
     scoped_project_id = await _require_admin_project_scope(db, request, body.project_id)
+    # One retrieval, rendered here. This is an inspection, not a use, so it counts nothing.
+    # It used to retrieve twice (once directly, once inside context_for_query) and increment
+    # usage both times (F16).
     memories = await reasoning_bank.retrieve(
         project_id=scoped_project_id,
         query=body.query,
@@ -109,15 +112,7 @@ async def retrieve_memories(
         limit=body.limit,
         include_global=False,
     )
-    context = await reasoning_bank.context_for_query(
-        project_id=scoped_project_id,
-        query=body.query,
-        agent_id=body.agent_id,
-        source_kinds=body.source_kinds,
-        limit=body.limit,
-        include_global=False,
-    )
-    return {"memories": memories, "context": context}
+    return {"memories": memories, "context": format_memory_context(memories)}
 
 
 @router.post("/consolidate")

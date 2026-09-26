@@ -196,14 +196,21 @@ def _enforce_test_provider_network_policy(endpoint: ResolvedPiEndpoint) -> None:
     enforce_test_provider_network_policy(endpoint)
 
 
+def _session_limits(endpoint: ResolvedPiEndpoint) -> dict[str, int]:
+    """The endpoint's run budgets for the worker session (DEC-10): progress-based idle plus a
+    total backstop, larger for local endpoints."""
+    return {
+        "max_wall_clock_ms": int(endpoint.max_run_ms),
+        "max_idle_ms": int(endpoint.idle_timeout_ms),
+    }
+
+
 def _turn_bind_params(params: Any, endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
     """Map TurnParams onto the worker's provider params (master plan §5.3).
 
     Only explicitly-set knobs are forwarded; everything else keeps the
     endpoint/worker defaults so a bare turn behaves exactly as before.
     """
-    if params is None:
-        return {}
     mapped: dict[str, Any] = {}
     temperature = getattr(params, "temperature", None)
     if temperature is not None:
@@ -211,7 +218,11 @@ def _turn_bind_params(params: Any, endpoint: ResolvedPiEndpoint) -> dict[str, An
     max_tokens = getattr(params, "max_tokens", None)
     if max_tokens:
         mapped["max_tokens"] = int(max_tokens)
-    thinking_mode = getattr(params, "thinking_mode", None)
+    # The turn's choice wins; otherwise the endpoint's configured level. Without either the worker
+    # sends no reasoning setting, which an always-reasoning model refuses.
+    thinking_mode = getattr(params, "thinking_mode", None) or getattr(
+        endpoint, "thinking_level", None
+    )
     if thinking_mode:
         mapped["thinking_level"] = str(thinking_mode)
     timeout_s = getattr(params, "timeout_s", None)
@@ -355,6 +366,7 @@ class PiExecutionService:
                 history=history,
                 revision=revision,
                 catalog=catalog,
+                limits=_session_limits(endpoint),
             )
             session_opened = True
             await sup.bind_provider(
@@ -607,6 +619,7 @@ class PiExecutionService:
                 history=[],
                 revision=_session_revision(messages, endpoint),
                 catalog=[],
+                limits=_session_limits(endpoint),
             )
             opened = True
             await sup.bind_provider(

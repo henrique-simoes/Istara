@@ -126,10 +126,10 @@ footer { color: var(--ui-ink-subtle); font-size: 14px; margin-top: 30px; }
   <div class="theme"><button type="button" id="theme-btn" aria-label="Switch between light and dark theme">Theme</button></div>
   <div class="kicker">Istara · architecture and evaluation · September 2026</div>
   <h1>Istara Systems Map</h1>
-  <p class="lede">Istara claims hybrid RAG, GraphRAG, Prompt-RAG, LLMLingua compression, a ReasoningBank, Memento skills and self-evolving agents. This page shows what each one is <em>in the code</em>, how they connect, how they are measured today, and what an evaluation found. Four defects are fixed on branch <code>istara-september-improvements</code>. Every claim cites a file, and every claim says whether it was re-verified.</p>
+  <p class="lede">Istara claims hybrid RAG, GraphRAG, Prompt-RAG, LLMLingua compression, a ReasoningBank, Memento skills and self-evolving agents. This page shows what each one is <em>in the code</em>, how they connect, how they are measured, and what an evaluation found. All seventeen findings are now fixed: four in PR #42, the other thirteen on branch <code>fix/spine-findings-measurements-20260925</code>, each pinned by a test that fails on <code>main</code>. Six measurements now exist as reusable harnesses with results. Every claim cites a file, and every claim says whether it was re-verified.</p>
   <nav class="toc" aria-label="Sections">
     <a href="#glance">At a glance</a><a href="#retrieval">Retrieval</a><a href="#fusion">Fusion</a><a href="#budget">Context budget</a>
-    <a href="#graph">Evidence graph</a><a href="#agents">Agents &amp; learning</a><a href="#eval">How it is measured</a><a href="#findings">Findings</a><a href="#next">What to measure next</a>
+    <a href="#graph">Evidence graph</a><a href="#agents">Agents &amp; learning</a><a href="#eval">How it is measured</a><a href="#findings">Findings</a><a href="#measured">Measurements</a><a href="#next">What to measure next</a>
   </nav>
 </header>
 
@@ -210,7 +210,9 @@ footer { color: var(--ui-ink-subtle); font-size: 14px; margin-top: 30px; }
       <tr><td><code>tests/simulation/</code> (80+ scenarios)</td><td>UI journeys: views render, a RAG query returns more than 0 results</td><td>whether results are relevant</td></tr>
       <tr><td><code>tests/real_user_benchmark/</code></td><td>long persona journeys; research-spine gates (3 coders, Fleiss' κ); a ReasoningBank probe</td><td>retrieval relevance; the probe counts memories rather than checking them</td></tr>
       <tr><td><code>tests/pi_benchmark/</code></td><td>engine contracts, a blind position-swapped judge layer</td><td>retrieval IR metrics; under the DeepSeek-only policy the judge is also the model under test</td></tr>
-      <tr><td>Autoresearch <code>rag_params</code></td><td>a "precision@k" that is <code>0.6·mean(fused score) + 0.4·coverage</code> <span class="tag verified">re-verified</span></td><td>any relevance judgment (F3)</td></tr>
+      <tr><td>Autoresearch <code>rag_params</code></td><td>was a "precision@k" of <code>0.6·mean(fused score) + 0.4·coverage</code>; now nDCG@10 against span-graded qrels, re-indexing each candidate in a scratch copy</td><td>F3 fixed; the objective is only as good as the qrels it is given</td></tr>
+      <tr><td><code>backend/app/evals/retrieval_eval.py</code> (new)</td><td>M1–M3: Recall@k, nDCG@10, MRR with bootstrap intervals; re-indexing ablations with paired randomization tests and Holm correction; budget recall per context window, attributing each lost span to a step</td><td>answer quality (that is M4); the benchmark is synthetic, so the numbers are Istara's on this corpus</td></tr>
+      <tr><td><code>backend/app/evals/answer_eval.py</code> (new)</td><td>M4: RAGAS-style faithfulness and context precision on the live lane; the judge is validated against planted claims and graded chunks (Cohen's κ) before any score counts, is never the model under test, and a spend cap stops the run</td><td>human-labelled calibration; with two models (owner decision) the judge panel has one member per direction</td></tr>
     </tbody>
   </table></div>
   <div class="callout warn"><p><strong>The QA lane cannot measure vectors.</strong> The container provider stub returns 8-dimensional vectors derived from a SHA-256 of the text <span class="tag verified">re-verified</span>, so vector similarity is unrelated to meaning. Any retrieval check in that lane measures BM25 and the plumbing. That is exactly where this round's defects were, but it is not a vector evaluation.</p></div>
@@ -235,7 +237,7 @@ footer { color: var(--ui-ink-subtle); font-size: 14px; margin-top: 30px; }
 
 <section class="panel" id="findings">
   <h2>Findings register</h2>
-  <p class="sub">Seventeen findings from the static map, each with its confidence and current status. Fixed means pinned by a test that fails before the change and passes after it.</p>
+  <p class="sub">Seventeen findings from the static map, each with its confidence and current status. Fixed means pinned by a test that fails on <code>main</code> and passes after the change, and driven through the product (a browser scenario or the live lane). Evidence for each is in <code>docs/build-stream/2026-09-25-spine-findings-evidence.md</code>.</p>
   <div class="filterbar">
     <div class="seg" role="group" aria-label="Filter findings" id="ffilter">
       <button type="button" aria-pressed="true" data-f="all">All</button><button type="button" aria-pressed="false" data-f="fixed">Fixed</button><button type="button" aria-pressed="false" data-f="partial">Partly</button><button type="button" aria-pressed="false" data-f="open">Open</button>
@@ -245,21 +247,71 @@ footer { color: var(--ui-ink-subtle); font-size: 14px; margin-top: 30px; }
   <div class="tablewrap"><table id="ftable"></table></div>
 </section>
 
+<section class="panel" id="measured">
+  <h2>Measurements: what retrieval and answers actually achieve</h2>
+  <p class="sub">Six harnesses, run on the Mac Studio in containers. M1–M3 use the real local embedder (nomic-embed-text, 768 dimensions) on the committed Harbor Ledger corpus: 67 synthetic files and 76 questions graded by answer span (30 lexical, 30 paraphrase, 12 fact, 4 Spanish). Intervals are 95% bootstrap; comparisons are paired randomization tests with Holm correction across the 12 ablations.</p>
+  <h3>M1 · Relevance: hybrid does not beat BM25 here</h3>
+  <div class="bars" role="img" aria-label="nDCG at 10: BM25 0.717, vector 0.571, hybrid 0.700">
+    <div class="barrow"><span>BM25</span><div class="bartrack"><div class="barfill" style="width:71.7%;background:var(--lane-lex)"></div></div><span class="barval">0.717 [0.64–0.80]</span></div>
+    <div class="barrow"><span>Vector</span><div class="bartrack"><div class="barfill" style="width:57.1%;background:var(--lane-vec)"></div></div><span class="barval">0.571 [0.50–0.65]</span></div>
+    <div class="barrow"><span>Hybrid 0.7/0.3</span><div class="bartrack"><div class="barfill" style="width:70.0%;background:var(--lane-fuse)"></div></div><span class="barval">0.700 [0.63–0.77]</span></div>
+  </div>
+  <p class="claim">nDCG@10. Hybrid vs BM25: −0.018, p = 0.50 (no difference). Vector is worse than both (p ≤ 0.0003). Hybrid wins on paraphrase (0.523 vs 0.471) and fact questions, loses on lexical (0.852 vs 0.932) and Spanish (0.433 vs 0.648): the embedder is English-only (vector nDCG@10 on Spanish 0.028). This set is now F3's tuning objective.</p>
+  <h3>M2 · Ablations: the defaults hold, three changes make it worse</h3>
+  <p>Each variant re-indexes the corpus. No single change beats the defaults after Holm correction (chunk size 400: +0.051, Holm p 0.39). Three are significantly worse: chunk size 800 (−0.022, Holm p 0.007), vector weight 0.9 (−0.047, 0.0006) and RRF k = 10 (−0.034, 0.0006). M2 also found a defect: an explicit zero overlap became 180, and large overlaps never terminated (fixed, with tests).</p>
+  <h3>M3 · Budget recall: how much retrieved evidence reaches the prompt</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Context window</th><th>RAG budget (tokens)</th><th>Budget recall before</th><th>After Phase 7b</th></tr></thead>
+    <tbody>
+      <tr><td>2,048</td><td class="num">102</td><td class="num">0.167</td><td class="num">0.167</td></tr>
+      <tr><td>4,096</td><td class="num">204</td><td class="num">0.762</td><td class="num">0.762</td></tr>
+      <tr><td>8,192</td><td class="num">409</td><td class="num">0.960</td><td class="num">0.960</td></tr>
+      <tr><td>16,384 and above</td><td class="num">819–4,000</td><td class="num">0.996</td><td class="num">1.000</td></tr>
+    </tbody>
+  </table></div>
+  <p class="claim">227 answer spans retrieved at top 5. One span was lost at every budget: the compressor shortened the rank-2 chunk even when everything fit, and the lines it removed were the answer. Compression now runs only under budget pressure. A model with a 2k window still sees about one answer span in six.</p>
+  <h3>M4 · Answers on the live lane</h3>
+  <p>The owner's two models, each generating while the other judges: Meta Muse Spark 1.3 Contributor and a local Qwen3.8-27B. 24 questions per direction through the chat path, with a $1.00 cap. Before any score counts, each judge must agree with known labels (Cohen's κ ≥ 0.60) on relevance and on 28 planted claims.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Generator</th><th>Judge</th><th>Judge κ: relevance / claims</th><th>Trusted</th><th>Context precision</th><th>Spend</th></tr></thead>
+    <tbody>
+      <tr><td>Muse Spark</td><td>local Qwen</td><td class="num">0.568 / 1.000</td><td>no</td><td class="num">0.75 [0.58–0.92]</td><td class="num">$0.0069</td></tr>
+      <tr><td>local Qwen</td><td>Muse Spark</td><td class="num">0.453 / 0.926</td><td>no</td><td class="num">0.75 [0.58–0.92]</td><td class="num">$0.0080</td></tr>
+    </tbody>
+  </table></div>
+  <p class="claim">Context precision comes from the qrels, so it is the same in both directions: 18 of 24 prompts lead with relevant evidence, and 6 (paraphrase and Spanish questions) carry none. <strong>Faithfulness was not measured</strong>: both judges handle claims well but miss the relevance bar, so the harness withheld the score, and the rule was not loosened after the fact. Settling it needs a small human-labelled relevance set.</p>
+  <h3>M5 · Provenance coverage</h3>
+  <p>The share of source chunks carrying an <code>evidence_unit_id</code> was 0%. It is now a health invariant on the Memory view's Health tab (status <em>degraded</em> below 100%). Live Harbor project after upload: <strong>1,097 of 1,097</strong> source chunks, coverage 1.0.</p>
+  <h3>M6 · Learning-loop safety</h3>
+  <p>A planted skill run that succeeds and returns a confident, wrong synthesis now teaches nothing strong: ReasoningBank stores it as <em>provisional</em> at confidence 0.55, the skill's success count does not move, routing gets no lift, and self-evolution finds no candidate. Only human approval or Research Spine reportability counts as verified.</p>
+  <h3>Found on the live lane</h3>
+  <div class="grid">
+    <div class="card"><h4>Every upload indexed twice</h4><p>The upload route and the file watcher both indexed each upload: 2,126 vector rows for 1,097 keyword rows. The route now owns ingestion; scenario 86 checks the two counts agree.</p></div>
+    <div class="card"><h4>A two-minute stopwatch on local models</h4><p>Every Pi run had a fixed 120 s limit. Liveness is now progress-based: idle and total budgets per endpoint, with local defaults of 300 s idle and one hour total.</p></div>
+    <div class="card"><h4>Thinking level ignored; silent failures</h4><p>An endpoint's configured thinking level never reached the model, and a failed turn did not say why. Both fixed.</p></div>
+    <div class="card"><h4>Structured output on Meta</h4><p>Meta accepts only <code>tool_choice: auto</code>, so every structured call failed. The capture tool is now offered with <code>auto</code> and still fails closed without a call.</p></div>
+    <div class="card"><h4>Uploads classified by a uuid</h4><p>Task rules keyed on the file name never matched an upload stored as <code>&lt;uuid&gt;.md</code>, and each upload raised a sticky suggestion that covered the tabs on a phone. Both fixed; scenario 86 caught it.</p></div>
+    <div class="card"><h4>A second, stale folder sync</h4><p>The agent's sync tool registered every upload again and added new files with no evidence units. It now calls the Documents sync.</p></div>
+    <div class="card"><h4>Markup escaping tool output</h4><p>Documents read through tools landed raw inside <code>&lt;tool_output&gt;</code>, where a hostile file could close the block or open <code>&lt;instructions&gt;</code>. Tool results are now neutralised like retrieved text.</p></div>
+    <div class="card"><h4>Two models cannot govern coding</h4><p>A coding run with the two live models was blocked, as the spine requires three identities. Its recorded reason named a missing secret on an unconfigured entry; it now says two identities are usable and three are required.</p></div>
+  </div>
+</section>
+
 <section class="panel" id="next">
   <h2>What to measure next</h2>
-  <p class="sub">Istara <em>generates answers</em>, so unlike a context-only tool, answer-level RAG evaluation applies here. The order below goes from cheapest and most decisive to most expensive.</p>
+  <p class="sub">What these results leave open, cheapest and most decisive first.</p>
   <div class="grid">
-    <div class="card"><h4>1 · A relevance set (qrels)</h4><p>Take a synthetic research corpus (the seeder's slice), write 50–100 researcher questions, and pool the top 10 from BM25, vector and hybrid for graded relevance labels, TREC-style. Report Recall@k, nDCG@10 and MRR with bootstrap confidence intervals. This one set replaces the autoresearch pseudo-score (F3) as the tuning objective.</p></div>
-    <div class="card"><h4>2 · Fusion and chunking ablations</h4><p>With qrels in hand, sweep the 0.7/0.3 weights, k = 60, the chunk size and overlap, <strong>re-indexing per setting</strong>. The current loop mutates the chunk size without re-chunking, so it measures nothing. Compare with a paired randomization test (Smucker et al., CIKM 2007).</p></div>
-    <div class="card"><h4>3 · Budget recall</h4><p>Of the relevant chunks retrieved, how many survive the 409-token compression? Measure recall as a function of the context window. This is the number that decides whether the model ever sees the evidence.</p></div>
-    <div class="card"><h4>4 · Answer faithfulness</h4><p>RAGAS-style faithfulness and context precision (Es et al., EACL 2024), or ARES with a small human-labelled calibration set (Saad-Falcon et al., NAACL 2024). This needs the owner-gated live lane. Validate the judge against human labels before trusting it, and never let the judge be the model under test.</p></div>
-    <div class="card"><h4>5 · Provenance coverage</h4><p>The share of retrieved chunks carrying an <code>evidence_unit_id</code>. It is 0% today. Once the retriever and the evidence graph meet, this becomes a health invariant the research spine can gate on.</p></div>
-    <div class="card"><h4>6 · Learning-loop safety</h4><p>For ReasoningBank, skills and self-evolution: does a learned signal come from a <em>verified</em> outcome? A synthetic benchmark can plant a successful-but-wrong tool run and check that nothing strong is learned from it (F10).</p></div>
+    <div class="card"><h4>1 · Calibrate the judges</h4><p>Label 50–100 question/chunk pairs by hand, then re-run judge validation (ARES-style, Saad-Falcon et al., NAACL 2024). That separates judge error from the span-graded truth, and it unlocks the faithfulness number M4 withheld.</p></div>
+    <div class="card"><h4>2 · A third model identity</h4><p>Governed coding and a real judge panel need three distinct identities; with two, every run is operational only. Worth revisiting when the owner adds a model.</p></div>
+    <div class="card"><h4>3 · Multilingual retrieval</h4><p>Vector nDCG@10 on Spanish is 0.028 with the English-only embedder. Test a multilingual embedder on the same qrels before any non-English research.</p></div>
+    <div class="card"><h4>4 · Fusion weights, with more questions</h4><p>A BM25-leaning weight (vector 0.3) scored +0.031 without surviving correction. More paraphrase and fact questions would show whether it is real.</p></div>
+    <div class="card"><h4>5 · Small windows</h4><p>At a 2k context window the model sees one answer span in six. Budget allocation for small local models deserves its own study.</p></div>
+    <div class="card"><h4>6 · Keep the invariants running</h4><p>Provenance coverage (M5) and learning-loop safety (M6) run in the default suite and the Health tab; a drop is a regression, not a metric.</p></div>
   </div>
 </section>
 
 <footer>
-  <p>Branch <code>istara-september-improvements</code>, from <code>origin/main@7f44a307</code>. The fix commit is <code>6e500ad8</code>. The static map was produced by a research agent and spot-checked by hand; tests and UI runs were driven in containers on the Mac Studio with the provider stub and synthetic data only. The methods are taught in the Compass Forge course <a href="https://claude.ai/artifact/RwN1gVWZH1zk7ToTyZRXAP">Measuring Code Intelligence</a>.</p>
+  <p>First round: branch <code>istara-september-improvements</code> (PR #42). This round: branch <code>fix/spine-findings-measurements-20260925</code>, from <code>origin/main@9272d41e</code>; the lifecycle and four-part evidence are in <code>docs/build-stream/2026-09-25-spine-findings-*.md</code>. The static map was produced by a research agent and spot-checked by hand; tests and UI runs were driven in containers on the Mac Studio with the provider stub and synthetic data only. The methods are taught in the Compass Forge course <a href="https://claude.ai/artifact/RwN1gVWZH1zk7ToTyZRXAP">Measuring Code Intelligence</a>.</p>
 </footer>
 </div>
 <script>
@@ -357,21 +409,21 @@ footer { color: var(--ui-ink-subtle); font-size: 14px; margin-top: 30px; }
   const FINDINGS = [
     ["F1", "high", "fixed", "Self-evolution's first promotion replaced the whole persona with a one-section overlay, erasing identity in every project", "self_evolution.py"],
     ["F2", "high", "fixed", "Chat and Interfaces injected raw chunks with no source label and no untrusted wrapper, and cited sources that never reached the prompt", "chat.py, interfaces.py, rag.py"],
-    ["F3", "high", "open", "The autoresearch RAG-tuning objective rewards the weights it tunes, re-indexes nothing, and teaches noise to the ReasoningBank", "autoresearch_runners/rag_params.py"],
+    ["F3", "high", "fixed", "The autoresearch RAG-tuning objective rewarded the weights it tuned, re-indexed nothing, and taught noise to the ReasoningBank (now nDCG@10 on qrels, re-indexed per candidate)", "autoresearch_runners/rag_params.py"],
     ["F4", "high", "fixed", "BM25 ran the OR query only when an exact phrase matched nothing, and dropped two-character tokens", "keyword_index.py"],
-    ["F5", "high", "open", "LLM-generated artifacts and agent notes are indexed as evidence at full confidence and can confirm themselves", "agent_research.py, agent_memory.py"],
+    ["F5", "high", "fixed", "LLM-generated artifacts and agent notes were indexed as evidence at full confidence and could confirm themselves (now a separate derived index, excluded from evidence retrieval)", "agent_research.py, agent_memory.py"],
     ["F6", "high", "fixed", "Re-ingestion deleted by basename while chunks are keyed by full path, so every reprocess duplicated the file", "files.py, documents.py, rag.py"],
-    ["F7", "medium", "open", "The file watcher deletes a file's keyword rows and re-adds only its vectors, so a watched upload can lose its BM25 entries (not runtime-verified)", "file_watcher.py"],
-    ["F8", "medium-high", "open", "Plan-DAG steps share one AsyncSession concurrently, and failed prerequisites count as satisfied", "agent_research.py"],
-    ["F9", "medium", "open", "Project-scoped evidence mutates cross-project state: persona overlays, the skill-embedding cache, global settings during tuning", "several"],
-    ["F10", "medium", "open", "Skill routing learns strong positive signals from raw tool success", "agent_skill_tools.py"],
-    ["F11", "medium", "open", "The default embedding identity cannot detect a same-dimension model swap", "embedding_profile.py, rag.py"],
-    ["F12", "medium", "partial", "Fused RRF values shown as relevance and mixed with other score scales (the UI now shows ranks)", "rag.py, finding_search.py, MemoryView.tsx"],
-    ["F13", "medium", "open", "Truncation at 800 characters can cut through the untrusted-content wrapper", "agent_lifecycle.py, reasoning_bank.py"],
-    ["F14", "medium", "open", "Protected-tag pinning can be triggered by document content", "prompt_compressor.py"],
-    ["F15", "medium", "open", "With file encryption on, knowledge sync can index ciphertext", "knowledge_sync.py"],
-    ["F16", "low-medium", "open", "Reads with side effects: ReasoningBank usage counts, double retrieval, health checks writing manifests", "reasoning_bank.py, vector_health.py"],
-    ["F17", "low", "open", "Smaller smells: 0 treated as unset, unbounded tool top-k, whole-table pandas loads for pagination, dead code", "several"],
+    ["F7", "medium", "fixed", "The file watcher deleted a file's keyword rows and re-added only its vectors, so a watched upload could lose its BM25 entries", "file_watcher.py"],
+    ["F8", "medium-high", "fixed", "Plan-DAG steps shared one AsyncSession concurrently, and failed prerequisites counted as satisfied", "agent_research.py"],
+    ["F9", "medium", "fixed", "Project-scoped evidence mutated cross-project state: persona overlays, the skill-embedding cache, global settings during tuning", "several"],
+    ["F10", "medium", "fixed", "Skill routing learned strong positive signals from raw tool success (a self-verified run is now provisional and adds no routing lift)", "agent_skill_tools.py"],
+    ["F11", "medium", "fixed", "The default embedding identity could not detect a same-dimension model swap", "embedding_profile.py, rag.py"],
+    ["F12", "medium", "fixed", "Fused RRF values were shown as relevance and mixed with other score scales", "rag.py, finding_search.py, MemoryView.tsx"],
+    ["F13", "medium", "fixed", "Truncation at 800 characters could cut through the untrusted-content wrapper", "agent_lifecycle.py, reasoning_bank.py"],
+    ["F14", "medium", "fixed", "Protected-tag pinning could be triggered by document content, and the RAG budget was not enforced", "prompt_compressor.py"],
+    ["F15", "medium", "fixed", "With file encryption on, knowledge sync could index ciphertext", "knowledge_sync.py"],
+    ["F16", "low-medium", "fixed", "Reads with side effects: ReasoningBank usage counts, double retrieval, health checks writing manifests", "reasoning_bank.py, vector_health.py"],
+    ["F17", "low", "fixed", "Smaller smells: 0 treated as unset, unbounded tool top-k, whole-table pandas loads for pagination, dead code", "several"],
   ];
   const ft = document.getElementById("ftable");
   const label = { fixed: "fixed", partial: "partly", open: "open" };

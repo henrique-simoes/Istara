@@ -23,6 +23,9 @@ from app.skills.skill_manager import skill_manager
 
 logger = logging.getLogger("app.core.agent")
 
+# A learned prior may add at most this share of a skill's own relevance (a weak prior).
+_LEARNED_PRIOR_SHARE = 0.5
+
 SKILL_KEYWORDS: dict[str, str] = {
     "interview": "user-interviews",
     "transcript": "user-interviews",
@@ -102,6 +105,11 @@ class SkillCandidate:
     score: float = 0.0
     matched_via: str = "ranked"
     reasons: list[str] = field(default_factory=list)
+    # Relevance to THIS task (explicit, keyword, lexical, semantic) and learned priors (usage
+    # statistics, telemetry quality, ReasoningBank) are kept apart: a prior may reorder relevant
+    # skills, never make an irrelevant one eligible (F10; governance contract).
+    relevance: float = 0.0
+    learned: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -110,6 +118,8 @@ class SkillCandidate:
             "description": self.description,
             "phase": self.phase,
             "score": round(self.score, 4),
+            "relevance": round(self.relevance, 4),
+            "learned": round(self.learned, 4),
             "matched_via": self.matched_via,
             "reasons": self.reasons[:6],
         }
@@ -139,6 +149,10 @@ def _bump(
     if not skill:
         return
     candidate = candidates.setdefault(skill_name, _candidate_for_skill(skill))
+    if matched_via == "learned":
+        candidate.learned += amount
+    else:
+        candidate.relevance += amount
     candidate.score += amount
     if matched_via != "ranked" and candidate.matched_via == "ranked":
         candidate.matched_via = matched_via
@@ -365,7 +379,17 @@ async def rank_skill_candidates(
             candidate.reasons.extend(note for note in meta_notes if note not in candidate.reasons)
 
     floor = max(0.0, float(getattr(settings, "agent_react_skill_min_candidate_score", 0.12)))
-    selected = [candidate for candidate in candidates.values() if candidate.score >= floor]
+    selected: list[SkillCandidate] = []
+    for candidate in candidates.values():
+        # Eligibility is relevance alone. A skill with a perfect history but nothing in common
+        # with the task used to clear the 0.12 floor on its +0.18 usage boost for ANY query.
+        if candidate.relevance < floor:
+            continue
+        prior = max(
+            -candidate.relevance, min(candidate.learned, _LEARNED_PRIOR_SHARE * candidate.relevance)
+        )
+        candidate.score = candidate.relevance + prior
+        selected.append(candidate)
     selected.sort(key=lambda item: item.score, reverse=True)
     return selected[: max(1, int(limit or settings.agent_react_skill_candidate_limit))]
 

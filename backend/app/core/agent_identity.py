@@ -25,6 +25,7 @@ prompt to fit within the available budget using two strategies:
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 from app.config import settings
@@ -80,6 +81,31 @@ def persona_file_path(agent_id: str, filename: str) -> Path:
     if overlay.exists():
         return overlay
     return source_persona_path(agent_id, filename)
+
+
+def project_persona_path(agent_id: str, project_id: str, filename: str) -> Path:
+    """Where self-evolution writes learnings promoted from ONE project's evidence.
+
+    Promotions used to land in the agent-wide overlay, which every project's Prompt-RAG reads,
+    so one project's evidence changed every project's agent (F9). The project file holds only
+    the promoted sections and is merged onto the persona at read time, for that project only.
+    """
+    safe_project = re.sub(r"[^A-Za-z0-9_.-]", "_", str(project_id))
+    return runtime_personas_dir() / agent_id / "projects" / safe_project / filename
+
+
+def load_project_learnings(agent_id: str, project_id: str | None, filename: str) -> str:
+    """The project's promoted sections for one persona file ("" when none or no project)."""
+    if not project_id:
+        return ""
+    path = project_persona_path(agent_id, project_id, filename)
+    if not path.exists():
+        return ""
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except Exception as e:
+        logger.warning(f"Failed to read project persona learnings {path}: {e}")
+        return ""
 
 
 def writeable_persona_path(agent_id: str, filename: str, *, source: bool = False) -> Path:
@@ -154,6 +180,7 @@ def load_agent_identity(
     agent_id: str,
     max_tokens: int | None = None,
     strategy: str | None = None,
+    project_id: str | None = None,
 ) -> str:
     """Load and compose the full agent identity from persona MD files.
 
@@ -164,6 +191,8 @@ def load_agent_identity(
             is applied using the chosen strategy.
             If None, uses settings.max_context_tokens * 0.3 (30% of
             context window reserved for agent identity).
+        project_id: When given, the learnings self-evolution promoted from that project are
+            merged in. Without it, the agent-wide persona only.
         strategy: Compression strategy when over budget.
             "llmlingua" — Heuristic token-level compression (default).
             "truncate"  — Legacy proportional file truncation.
@@ -176,7 +205,10 @@ def load_agent_identity(
     sections: list[tuple[str, str]] = []  # (filename, content)
 
     for filename in IDENTITY_FILES:
-        content = _load_persona_file(agent_id, filename)
+        content = _load_persona_file(agent_id, filename) or ""
+        learned = load_project_learnings(agent_id, project_id, filename)
+        if learned:
+            content = f"{content}\n\n{learned}".strip()
         if content:
             sections.append((filename, content))
 

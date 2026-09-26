@@ -7,7 +7,7 @@ import { Agent } from "@earendil-works/pi-agent-core";
 import { buildProviderBinding } from "./provider.mjs";
 import { buildAgentTools } from "./tools.mjs";
 import { LIMITS, PROTOCOL_VERSION } from "./protocol.mjs";
-import { STRUCTURED_TOOL_NAME, captureParameters, mapToolChoiceForApi, normalizeToolChoice, translateOutputSchema } from "./structured.mjs";
+import { STRUCTURED_TOOL_NAME, bindingProviderId, captureParameters, mapToolChoiceForApi, normalizeToolChoice, structuredPromptText, translateOutputSchema } from "./structured.mjs";
 
 // Bound on close(): waitForIdle settles only when the agent loop finishes,
 // and an in-flight authority tool call settles only on tool.result — so an
@@ -78,6 +78,9 @@ function providerMessages(messages) {
   });
 }
 
+// Frames that show the provider (or the run start) is making progress; they re-arm the idle watch.
+const PROGRESS_FRAMES = new Set(["run.started", "assistant.delta", "thinking.delta", "tool.call"]);
+
 export class PiSession {
   constructor({ sessionKey, systemPrompt, history, revision, catalog, limits, emit }) {
     this.sessionKey = sessionKey;
@@ -121,6 +124,37 @@ export class PiSession {
 
   _frame(type, extra) {
     this._emit({ v: PROTOCOL_VERSION, type, session_key: this.sessionKey, ...extra });
+    if (PROGRESS_FRAMES.has(type)) this._armIdle();
+  }
+
+  /**
+   * Run liveness (DEC-10): the idle watch fails a run whose provider stays silent longer than
+   * `limits.max_idle_ms`. Every text, thinking or tool-call frame re-arms it, and it is paused
+   * while tool calls are pending: time spent in Istara's own tools is not provider silence.
+   */
+  _armIdle() {
+    const run = this._run;
+    if (!run || run.terminated) return;
+    if (run.idleTimer) {
+      clearTimeout(run.idleTimer);
+      run.idleTimer = null;
+    }
+    const maxIdleMs = Number.isFinite(this._limits.max_idle_ms) && this._limits.max_idle_ms > 0
+      ? this._limits.max_idle_ms : null;
+    if (maxIdleMs === null || this._pendingTools.size > 0) return;
+    const runId = run.runId;
+    run.idleTimer = setTimeout(() => {
+      if (this._run && this._run.runId === runId && !this._run.terminated) {
+        this.failActiveRun("idle_timeout_exceeded");
+      }
+    }, maxIdleMs);
+  }
+
+  _clearRunTimers() {
+    if (!this._run) return;
+    if (this._run.timeout) clearTimeout(this._run.timeout);
+    if (this._run.idleTimer) clearTimeout(this._run.idleTimer);
+    this._run.idleTimer = null;
   }
 
   _requestToolCall(toolCallId, name, args) {
@@ -139,6 +173,7 @@ export class PiSession {
     if (!resolve) return false;
     this._pendingTools.delete(toolCallId);
     resolve(outcome);
+    this._armIdle(); // the provider is working again once the last pending tool returns
     return true;
   }
 
@@ -286,7 +321,8 @@ export class PiSession {
     let mapped = null;
     if (choice) {
       const api = (this._binding && this._binding.model && this._binding.model.api) || "";
-      mapped = mapToolChoiceForApi(api, choice);
+      const provider = bindingProviderId(this._binding);
+      mapped = mapToolChoiceForApi(api, choice, { provider });
       if (mapped === null) {
         if (this._binding && this._binding.isReal) {
           // A real provider family we cannot force must fail closed — an
@@ -298,7 +334,9 @@ export class PiSession {
         mapped = null;
       }
     }
-    return { structuredTool, toolChoice: mapped, outputSchema: wantsStructured ? outputSchema : null };
+    // A structured run is forced unless the provider accepts only "auto" (see structured.mjs).
+    const structuredForced = !(wantsStructured && mapped === "auto");
+    return { structuredTool, toolChoice: mapped, outputSchema: wantsStructured ? outputSchema : null, structuredForced };
   }
 
   async prompt(runId, text, options = {}) {
@@ -360,7 +398,7 @@ export class PiSession {
       for (const call of this._binding.forcedToolCalls || []) {
         await this._requestToolCall(`forced-${runId}-${call.name}`, call.name, call.arguments || {});
       }
-      await this._agent.prompt(text);
+      await this._agent.prompt(shape.structuredTool ? structuredPromptText(text, { forced: shape.structuredForced }) : text);
       this._settleRun(runId);
     } catch (err) {
       this._settleRun(runId, err);
@@ -430,7 +468,7 @@ export class PiSession {
     }
     if (!this._run || this._run.runId !== runId || this._run.terminated) return;
     this._run.terminated = true;
-    if (this._run.timeout) clearTimeout(this._run.timeout);
+    this._clearRunTimers();
     if (this._run.forcedError) {
       this._frame("run.failed", { run_id: runId, error: this._run.forcedError });
       return;
@@ -519,7 +557,7 @@ export class PiSession {
     this._run.forcedError = error;
     if (this._run.directProvider && this._run.controller) {
       this._run.terminated = true;
-      if (this._run.timeout) clearTimeout(this._run.timeout);
+      this._clearRunTimers();
       this._run.controller.abort();
       this._frame("run.failed", { run_id: runId, error });
       return true;
@@ -532,7 +570,7 @@ export class PiSession {
   _settleRun(runId, err) {
     if (!this._run || this._run.runId !== runId || this._run.terminated) return;
     this._run.terminated = true;
-    if (this._run.timeout) clearTimeout(this._run.timeout);
+    this._clearRunTimers();
     if (this._run.structuredToolInstalled && this._agent) {
       // The forced capture tool lives only for the structured run.
       this._agent.state.tools = this._tools;

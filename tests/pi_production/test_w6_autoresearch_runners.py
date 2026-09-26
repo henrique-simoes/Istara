@@ -17,8 +17,9 @@ Two design decisions from the plan are covered explicitly:
   ``sweep_truncated`` rather than silently narrowing (the sweep-space model
   listing is not an LLM chat call and keeps its engine gate);
 * ``rag_params`` embedding-skip — the ``_llm_hypothesis`` chat call dispatches,
-  but the ``_score_single_query`` retrieval-eval embedding stays on the legacy
-  plane (never routed through ``agentic.embed``) until the W8 gateway.
+  but the retrieval-eval embedding (``SandboxIndex.search`` in
+  ``app.evals.retrieval_eval`` since the 2026-09-25 objective rewrite, F3) goes
+  through ``embed_text`` and is never routed through ``agentic.embed`` directly.
 
 Covered here (all stubbed/static — no live model activity):
 
@@ -47,6 +48,7 @@ from app.core.autoresearch_runners.rag_params import RAGParamsRunner
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNNERS = REPO_ROOT / "backend/app/core/autoresearch_runners"
+EVALS = REPO_ROOT / "backend/app/evals"
 
 SPINE_PHASES = {
     "intent",
@@ -83,8 +85,8 @@ MIGRATED_SITES = [
 # ── helpers ─────────────────────────────────────────────────────────────
 
 
-def _function_source(module: str, function_name: str) -> str:
-    path = RUNNERS / f"{module}.py"
+def _function_source(module: str, function_name: str, *, root: Path = RUNNERS) -> str:
+    path = root / f"{module}.py"
     text = path.read_text(encoding="utf-8")
     tree = ast.parse(text)
     for node in ast.walk(tree):
@@ -512,7 +514,9 @@ def test_rag_params_hypothesis_migrates_but_embedding_stays_legacy():
     assert "autoresearch.rag_params.hypothesize" in hypo
     assert "llm_router.chat" not in hypo  # W9 retired the legacy fallthrough
 
-    score_query = _function_source("rag_params", "_score_single_query")
+    # The objective moved to the retrieval benchmark (F3, 2026-09-25); its embed site is the
+    # sandbox search, which scores every candidate.
+    score_query = _function_source("retrieval_eval", "search", root=EVALS)
     assert "embed_text" in score_query, (
         "retrieval-eval embedding must stay on the legacy plane"
     )
@@ -566,7 +570,7 @@ async def test_rag_params_mismatched_target_fails_closed_before_dispatch(
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher)
     monkeypatch.setattr("app.core.llm_router.llm_router", router)
 
-    async def _boom(self, project_id):  # pragma: no cover - must never be reached
+    async def _boom(self):  # pragma: no cover - must never be reached
         raise AssertionError("retrieval must not run under a mismatched target")
 
     monkeypatch.setattr(RAGParamsRunner, "_evaluate_retrieval", _boom)
@@ -602,8 +606,10 @@ async def test_rag_params_matched_target_binds_retrieval_to_authorized(
     """A matching target resolves retrieval under the authorized binding."""
     seen: list[str] = []
 
-    async def _capture(self, project_id):
-        seen.append(project_id)
+    async def _capture(self):
+        # The objective scores a fixed benchmark; what must hold is that every measurement runs
+        # under the authorized binding, never the caller-controlled target.
+        seen.append(self._project_id)
         return 0.0
 
     monkeypatch.setattr(RAGParamsRunner, "_evaluate_retrieval", _capture)

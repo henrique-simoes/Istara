@@ -211,7 +211,6 @@ async def stage_c(project_id: str, task_id: str, unit_ids: list[str],
     from app.models.database import async_session, register_models
     from app.models.task import Task
     from app.services.research_validity_reconciliation import (
-        _is_reconciled_code_application,
         _is_unresolved_code_application,
         assess_task_research_validity,
         create_reconciliation_decision,
@@ -525,6 +524,16 @@ async def amain(args) -> dict:
     return artifact
 
 
+async def _amain_and_stop_worker(args) -> dict:
+    """Run the stages, then stop the Pi worker while this event loop still runs."""
+    try:
+        return await amain(args)
+    finally:
+        from app.core import pi_runtime
+
+        await pi_runtime.shutdown_supervisor()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", default=CARENAV_PROJECT_ID)
@@ -537,7 +546,7 @@ def main() -> None:
                         help="Scratch task id for the stage-C report-gate run")
     args = parser.parse_args()
     args.stages = {s.strip().upper() for s in args.stages.split(",") if s.strip()}
-    artifact = asyncio.run(amain(args))
+    artifact = asyncio.run(_amain_and_stop_worker(args))
     summary = {k: (v.get("ok") if isinstance(v, dict) else v)
                for k, v in artifact["stages"].items()}
     print(json.dumps({"stages_ok": summary, "out": args.out}))

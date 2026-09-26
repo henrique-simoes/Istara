@@ -9,7 +9,7 @@ the SAME exact upstream releases of `@earendil-works/pi-agent-core` and
 `@earendil-works/pi-ai`, and their lockfiles must agree with their
 `package.json` manifests so a fresh `npm ci` is reproducible:
 
-1. ``EXPECTED_PINS`` — the exact versions the wave pinned (0.85.1/0.85.1).
+1. ``EXPECTED_PINS`` — the exact versions the wave pinned (0.87.1/0.87.1).
 2. Each surface's ``package.json`` pins both packages with exact versions
    (no ``^``/``~`` ranges).
 3. Each surface's ``package-lock.json`` root dependencies equal the
@@ -32,12 +32,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 PI_PACKAGES = ("@earendil-works/pi-agent-core", "@earendil-works/pi-ai")
 
-# Exact pins approved for this wave (verified upstream 0.85.1/0.85.1; the
-# 0.84.3 -> 0.85.1 lockstep bump is gated by the classified diff-proof
-# docs/build-stream/pi-compat-20260908-0851-diff-proof.json).
+# Exact pins approved for this wave (verified upstream 0.87.1/0.87.1; the
+# 0.85.1 -> 0.87.1 lockstep bump, which adds Meta as a provider, is gated by the
+# classified diff-proof docs/build-stream/pi-compat-20260925-0871-diff-proof.json;
+# the previous bump's proof is docs/build-stream/pi-compat-20260908-0851-diff-proof.json).
 EXPECTED_PINS = {
-    "@earendil-works/pi-agent-core": "0.85.1",
-    "@earendil-works/pi-ai": "0.85.1",
+    "@earendil-works/pi-agent-core": "0.87.1",
+    "@earendil-works/pi-ai": "0.87.1",
 }
 
 # lockfileVersion 3 is what `npm install` produces for current npm; treat it
@@ -60,7 +61,7 @@ def _deps_for(manifest: dict) -> dict:
 
 
 def test_bundled_surfaces_pin_exact_approved_versions():
-    """Both pi-runtime and labs/pi-replacement pin 0.85.1 with exact specs."""
+    """Both pi-runtime and labs/pi-replacement pin 0.87.1 with exact specs."""
     for label, root in SURFACES:
         manifest = _load_json(root / "package.json")
         pins = _deps_for(manifest)
@@ -77,7 +78,7 @@ def test_bundled_surfaces_pin_exact_approved_versions():
 
 
 def test_lockfiles_match_manifests_and_resolve_pins():
-    """package-lock root deps == package.json deps and resolve to 0.85.1."""
+    """package-lock root deps == package.json deps and resolve to 0.87.1."""
     for label, root in SURFACES:
         manifest = _load_json(root / "package.json")
         lock = _load_json(root / "package-lock.json")

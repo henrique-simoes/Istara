@@ -2041,6 +2041,58 @@ test("a blocked current coding run never counts as Research Spine validation", a
   assert.match(blockers[0], /blocked current coding run/i);
 });
 
+test("a refused coding run's blocker quotes why no coder ran", async () => {
+  // Live lane, 2026-09-26: with two configured model identities the run is refused, and the
+  // backend now says so ("No coder ran: ... 2 distinct model identities usable ...; 3 required").
+  // The long-form report must carry that reason, not only "blocked".
+  const logger = makeLogger();
+  const blockers = [];
+  const featureResults = {};
+  const reason = "No coder ran: coder selection failed closed (insufficient_distinct_pi_models: "
+    + "2 distinct model identities usable (model-a, model-b); 3 required).";
+  const refusedRun = {
+    id: "run-refused",
+    status: "blocked",
+    promotion_status: "blocked",
+    reliability_method: "insufficient_independent_models",
+    distinct_model_count: 0,
+    rater_count: 0,
+    code_application_count: 0,
+    fallback_reason: reason,
+  };
+  const api = {
+    async get(path) {
+      if (path === "/api/research-validity/contract") {
+        return { contract: {}, qualitative_coding_protocol: {} };
+      }
+      if (path.includes("/summary")) return { coding_run_count: 1, evidence_unit_count: 4 };
+      if (path.includes("/evidence-units")) return makeSubstantiveUnits();
+      if (path.includes("/coding-runs")) return [refusedRun];
+      if (path.includes("/traceability")) return { edges: [] };
+      if (path.includes("/telemetry-audit")) return { status: "ok" };
+      return {};
+    },
+    async post() {
+      return refusedRun;
+    },
+  };
+
+  await exerciseResearchSpineValidation({
+    api,
+    projectId: "project-a",
+    logger,
+    featureResults,
+    blockers,
+    codingValidationEnabled: true,
+    codingValidationLimit: 4,
+  });
+
+  assert.equal(featureResults.codingValidation, false);
+  assert.equal(blockers.length, 1);
+  assert.match(blockers[0], /blocked current coding run/i);
+  assert.ok(blockers[0].includes("2 distinct model identities usable (model-a, model-b); 3 required"), blockers[0]);
+});
+
 test("low-agreement coding remains blocked until human reconciliation accepts it", async () => {
   const logger = makeLogger();
   const blockers = [];
