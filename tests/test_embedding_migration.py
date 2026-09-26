@@ -65,6 +65,7 @@ async def install(tmp_path, monkeypatch):
             raise RuntimeError(f"model {model} not served")
         return await models[model](texts)
 
+    real_dispatch = embeddings._dispatch_embed
     monkeypatch.setattr(embeddings, "_dispatch_embed", _dispatch)
     embedding_profile.reset_embedding_profile_cache()
     await init_db()
@@ -88,7 +89,13 @@ async def install(tmp_path, monkeypatch):
     await derived.add_chunks(
         await embeddings.embed_chunks([TextChunk(text="An agent note.", source="agent:note")])
     )
-    yield {"models": models, "probe": _probe, "texts": texts, "current": current}
+    yield {
+        "models": models,
+        "probe": _probe,
+        "texts": texts,
+        "current": current,
+        "real_dispatch": real_dispatch,
+    }
     await _clear_profiles()
     embedding_profile.reset_embedding_profile_cache()
 
@@ -254,3 +261,46 @@ async def test_an_admin_starts_a_migration_and_reads_its_progress(install, monke
         await asyncio.sleep(0.05)
     assert body["migration"]["state"] == "done", body
     assert body["active"]["model_id"] == "new-embed" and body["active"]["version"] == 2
+
+
+async def test_the_real_gateway_path_moves_an_install_whose_setting_names_the_old_model(
+    install, monkeypatch
+):
+    """Nothing stubbed between the migration and the embeddings gateway (2026-09-26, live lane).
+
+    The probe asked the gateway for a model other than the active profile's and was refused
+    (embedding_profile_model_mismatch), and the local Ollama plane only accepted the model named
+    in OLLAMA_EMBED_MODEL, so no migration could run on a real install.
+    """
+    from app.core import embeddings
+    from app.core.pi_runtime import embedding_profile, model_manager_provisioning
+    from app.core.pi_runtime.embeddings_gateway import EmbeddingsGateway
+    from app.services import embedding_migration
+
+    served: list[str] = []
+    provisioned: list[str] = []
+
+    async def _native(self, endpoint, model, texts):
+        served.append(model)
+        vectors = await install["models"][model](texts) if model in install["models"] else None
+        if vectors is None:
+            raise RuntimeError(f"model {model} not found")
+        return vectors, {}
+
+    async def _ensure(endpoint, model):
+        provisioned.append(model)
+        return True
+
+    monkeypatch.setattr(embeddings, "_dispatch_embed", install["real_dispatch"])
+    monkeypatch.setattr(EmbeddingsGateway, "_call_native_ollama", _native)
+    monkeypatch.setattr(model_manager_provisioning, "ensure_endpoint_model", _ensure)
+    monkeypatch.setattr(settings, "ollama_embed_model", "old-embed")
+    assert embedding_profile.get_active_embedding_profile().endpoint_id == "pi-local-ollama"
+
+    status = await embedding_migration.run_migration(model_id="new-embed", prompt_scheme="raw")
+
+    assert status["state"] == "done", status
+    assert provisioned[0] == "new-embed"
+    assert set(served) == {"new-embed"}
+    assert embedding_profile.get_active_embedding_profile().model_id == "new-embed"
+    assert len(_rows("proj-a")[0]["vector"]) == 12

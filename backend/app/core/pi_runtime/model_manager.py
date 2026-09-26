@@ -123,6 +123,8 @@ class _CatalogEntry:
     resolved: ResolvedPiEndpoint | None = None
 
 
+# The built-in local serving planes: they embed with whatever model a request names.
+_LOCAL_SERVING_PLANES = frozenset({"pi-local-ollama", "pi-local-lmstudio"})
 _LOCAL_SERVER_TYPES = {"ollama", "lmstudio"}
 
 
@@ -813,7 +815,11 @@ class PiModelManager:
             if pinned is None or pinned.provider_kind != "openai_compat":
                 raise PiEndpointResolutionError("unknown_pi_embed_endpoint")
             if requested_model and requested_model != "default":
-                if self._embedding_model(pinned) != requested_model:
+                # Ollama and LM Studio serve any model they hold: the model is a request field and
+                # provisioning pulls it, and the embedding profile, not the classical setting,
+                # names it. An endpoint configured for one model still refuses another.
+                serves_any = pinned.endpoint_id in _LOCAL_SERVING_PLANES
+                if not serves_any and self._embedding_model(pinned) != requested_model:
                     raise PiEndpointResolutionError("pi_embed_endpoint_model_mismatch")
             return self._materialize(pinned)
 

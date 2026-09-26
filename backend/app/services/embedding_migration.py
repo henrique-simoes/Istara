@@ -41,10 +41,27 @@ def is_running() -> bool:
 
 
 async def _probe_embed(texts: list[str], model: str) -> list[list[float]]:
-    from app.core.agentic import agentic
-    from app.core.agentic.types import TurnParams
+    """Embed ``texts`` with ``model`` on the active profile's endpoint, before anything changes.
 
-    return await agentic.embed(texts=texts, params=TurnParams(model=model))
+    The gateway serves only its profile's model (that is what keeps vector spaces apart), so the
+    probe gets a candidate profile of its own; a local serving plane pulls the model first.
+    """
+    from dataclasses import replace
+
+    from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+    from app.core.pi_runtime.embeddings_gateway import EmbeddingsGateway
+    from app.core.pi_runtime.model_manager_provisioning import ensure_endpoint_model
+
+    candidate = replace(get_active_embedding_profile(), model_id=model)
+    gateway = EmbeddingsGateway(profile=candidate)
+    try:
+        manager = gateway.manager()
+        await manager.ensure_db_projection()
+        endpoint = manager.resolve_embed(model, endpoint_id=candidate.endpoint_id)
+        await ensure_endpoint_model(endpoint, model)
+        return (await gateway.embed(texts))["embeddings"]
+    finally:
+        await gateway.aclose()
 
 
 def _stores() -> list:

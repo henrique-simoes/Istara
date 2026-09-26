@@ -134,6 +134,36 @@ def test_embedding_resolution_pins_endpoint_identity_not_only_model_name():
     assert resolved.endpoint_id == "embed-shadow"
 
 
+@pytest.mark.parametrize(
+    ("endpoint_id", "setting"),
+    [("pi-local-ollama", "ollama_embed_model"), ("pi-local-lmstudio", "lmstudio_embed_model")],
+)
+def test_a_local_serving_plane_embeds_the_profile_model_whatever_the_setting(
+    monkeypatch, endpoint_id, setting
+):
+    # The profile owns the model. Ollama and LM Studio serve any model they hold (the model is a
+    # request field and provisioning pulls it), so an upgrade that changes OLLAMA_EMBED_MODEL's
+    # default, or a migration to another model, must not make a pinned local embed fail closed.
+    from app.core.pi_runtime.endpoints import PiEndpointResolver
+
+    monkeypatch.setattr(settings, setting, "the-new-default")
+    manager = PiModelManager(PiEndpointResolver([]))
+
+    resolved = manager.resolve_embed("the-profile-model", endpoint_id=endpoint_id)
+
+    assert resolved.endpoint_id == endpoint_id
+
+
+def test_a_fixed_model_endpoint_still_refuses_another_model():
+    manager = PiModelManager(
+        endpoints=[_endpoint("embed-primary", "shared-embed")],
+        include_local=False,
+    )
+
+    with pytest.raises(PiEndpointResolutionError, match="pi_embed_endpoint_model_mismatch"):
+        manager.resolve_embed("other-embed", endpoint_id="embed-primary")
+
+
 def test_missing_pinned_embedding_endpoint_fails_closed_even_when_model_matches():
     manager = PiModelManager(
         endpoints=[_endpoint("embed-primary", "shared-embed")],
