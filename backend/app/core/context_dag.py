@@ -28,6 +28,9 @@ from app.models.message import Message
 
 logger = logging.getLogger(__name__)
 
+# Budget for the one retry of a summary that hit the cap with no text.
+DAG_SUMMARY_RETRY_TOKENS = 2048
+
 
 class ContextDAG:
     """Manages hierarchical context summarization for chat sessions."""
@@ -674,22 +677,22 @@ class ContextDAG:
             from app.core.agentic import agentic
             from app.core.agentic.types import TurnParams
 
-            outcome = await agentic.completion(
-                purpose="dag_compaction",
-                project_id="",
-                system=None,
-                messages=[{"role": "user", "content": prompt}],
-                # Thinking off: a reasoning model otherwise spends the whole summary budget on
-                # hidden reasoning and returns no text (G2, 2026-09-26).
-                params=TurnParams(
-                    temperature=0.2,
-                    max_tokens=settings.dag_summary_max_tokens,
-                    thinking_mode="off",
-                ),
-            )
-            summary = outcome.text
-            if summary and summary.strip():
-                return summary.strip()
+            outcome = None
+            # A reasoning model can spend the whole summary budget on hidden reasoning (even with
+            # thinking off) and stop with no text; one retry gives it room (G2, 2026-09-26).
+            for budget in (settings.dag_summary_max_tokens, DAG_SUMMARY_RETRY_TOKENS):
+                outcome = await agentic.completion(
+                    purpose="dag_compaction",
+                    project_id="",
+                    system=None,
+                    messages=[{"role": "user", "content": prompt}],
+                    params=TurnParams(temperature=0.2, max_tokens=budget, thinking_mode="off"),
+                )
+                summary = outcome.text
+                if summary and summary.strip():
+                    return summary.strip()
+                if getattr(outcome, "stop_reason", None) != "length":
+                    break
             logger.warning(
                 "DAG summarization returned no text (stop_reason=%s); using the mechanical summary",
                 getattr(outcome, "stop_reason", None),

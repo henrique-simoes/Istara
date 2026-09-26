@@ -39,12 +39,31 @@ def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
     return dot / norm if norm else 0.0
 
 
+# text -> document vector for this process: a run links many claims to the same candidates, and
+# embedding every candidate once per claim made a grouped skill run six times slower (G1).
+_DOC_VECTORS: dict[str, list[float]] = {}
+_DOC_VECTORS_MAX = 20000
+
+
+async def _document_vectors(texts: list[str]) -> list[list[float]]:
+    from app.core.embeddings import TextChunk, embed_chunks
+
+    missing = [t for t in dict.fromkeys(texts) if t not in _DOC_VECTORS]
+    if missing:
+        if len(_DOC_VECTORS) + len(missing) > _DOC_VECTORS_MAX:
+            _DOC_VECTORS.clear()
+        embedded = await embed_chunks([TextChunk(text=t, source="finding") for t in missing])
+        for text, item in zip(missing, embedded, strict=True):
+            _DOC_VECTORS[text] = item.vector
+    return [_DOC_VECTORS[t] for t in texts]
+
+
 async def _semantic_scores(
     queries: list[str], candidates: list[tuple[str, str]]
 ) -> dict[str, float]:
     from app.core.embeddings import embed_text
 
-    docs = [await embed_text(text, role="document") for _, text in candidates]
+    docs = await _document_vectors([text for _, text in candidates])
     best: dict[str, float] = {}
     for query in queries:
         vector = await embed_text(query, role="query")

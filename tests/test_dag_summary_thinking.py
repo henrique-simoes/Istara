@@ -33,10 +33,30 @@ async def test_an_empty_summary_is_logged_with_its_stop_reason(monkeypatch, capl
     from app.core.context_dag import ContextDAG
 
     async def completion(**kwargs):
-        return SimpleNamespace(text="", stop_reason="length")
+        return SimpleNamespace(text="", stop_reason="stop")
 
     monkeypatch.setattr(agentic, "completion", completion)
     with caplog.at_level(logging.WARNING, logger="app.core.context_dag"):
         summary = await ContextDAG()._summarize_batch([{"role": "user", "content": "hello"}])
     assert summary.startswith("[Fallback summary")
-    assert any("stop_reason=length" in r.getMessage() for r in caplog.records)
+    assert any("stop_reason=stop" in r.getMessage() for r in caplog.records)
+
+
+async def test_an_empty_summary_at_the_cap_is_retried_with_room_to_reason(monkeypatch):
+    # Live lane: a reasoning model kept thinking with thinking off, and every call stopped at the
+    # 300-token cap with no text. One retry with a larger budget gets the summary.
+    from app.core.agentic import agentic
+    from app.core.context_dag import ContextDAG
+
+    budgets = []
+
+    async def completion(**kwargs):
+        budgets.append(kwargs["params"].max_tokens)
+        if len(budgets) == 1:
+            return SimpleNamespace(text="", stop_reason="length")
+        return SimpleNamespace(text="P1's shop code is HX-1234.", stop_reason="stop")
+
+    monkeypatch.setattr(agentic, "completion", completion)
+    summary = await ContextDAG()._summarize_batch([{"role": "user", "content": "HX-1234"}])
+    assert summary == "P1's shop code is HX-1234."
+    assert budgets[1] > budgets[0]

@@ -53,3 +53,23 @@ def test_storage_no_longer_links_by_recency():
     for stale in ("created_nugget_ids[-5:]", "created_fact_ids[-3:]", "created_insight_ids[-2:]"):
         assert stale not in source
     assert "supporting_ids(" in source
+
+
+async def test_candidates_are_embedded_once_in_one_batch(monkeypatch):
+    from app.core import embeddings
+
+    batches = []
+
+    async def embed_chunks(chunks, **kwargs):
+        batches.append([c.text for c in chunks])
+        return [type("E", (), {"vector": [1.0, float(len(c.text))]})() for c in chunks]
+
+    async def embed_text(text, role="query"):
+        return [1.0, 60.0]
+
+    monkeypatch.setattr(embeddings, "embed_chunks", embed_chunks)
+    monkeypatch.setattr(embeddings, "embed_text", embed_text)
+    finding_links._DOC_VECTORS.clear()
+    for claim in ("first claim", "second claim", "third claim"):
+        await finding_links.supporting_ids([claim], NUGGETS, k=1)
+    assert len(batches) == 1 and len(batches[0]) == 3
