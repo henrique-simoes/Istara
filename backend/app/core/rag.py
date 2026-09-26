@@ -16,6 +16,7 @@ from app.core.content_guard import ContentGuard, neutralize_boundary_markup
 from app.core.embeddings import EmbeddedChunk, TextChunk, embed_chunks, embed_text
 from app.core.keyword_index import KeywordIndex
 from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+from app.core.vector_identity import identity_differs, write_manifest
 
 _guard = ContentGuard()
 
@@ -49,19 +50,6 @@ def is_derived_source(source: str) -> bool:
 
 def _sql_literal(value: str) -> str:
     return str(value).replace("'", "''")
-
-
-# The fields that define a vector space; a store bound under one never serves another.
-_VECTOR_IDENTITY_FIELDS = (
-    "profile_id",
-    "version",
-    "model_id",
-    "cache_namespace",
-    "dimension",
-    "dtype",
-    "normalization",
-    "prompt_scheme",
-)
 
 
 class VectorProfileMismatchError(RuntimeError):
@@ -141,18 +129,6 @@ class VectorStore:
             "prompt_scheme": profile.prompt_scheme,
         }
 
-    @staticmethod
-    def _identity_differs(bound: dict, active: dict) -> bool:
-        """Whether the manifest's vector space differs from the active profile's.
-
-        Manifests written before prompt schemes existed hold vectors of raw text.
-        """
-        defaults = {"prompt_scheme": "raw"}
-        return any(
-            bound.get(field, defaults.get(field)) != active[field]
-            for field in _VECTOR_IDENTITY_FIELDS
-        )
-
     def _ensure_profile_binding(self, *, bind_fingerprint: bool = False) -> dict[str, str | int]:
         """Bind this project index once and reject silent vector-space drift.
 
@@ -175,7 +151,7 @@ class VectorStore:
             bound = json.loads(self._profile_manifest.read_text(encoding="utf-8"))
         except (OSError, ValueError, TypeError) as exc:
             raise VectorProfileMismatchError("invalid_vector_profile_manifest") from exc
-        if self._identity_differs(bound, active):
+        if identity_differs(bound, active):
             raise VectorProfileMismatchError("vector_profile_mismatch")
         self._check_fingerprint(bound, bind_if_missing=bind_fingerprint)
         return active
@@ -206,13 +182,9 @@ class VectorStore:
         """Point this store's manifest at the active profile (after the migration re-embeds it)."""
         from app.core.embeddings import known_embed_fingerprint
 
-        binding: dict = dict(self._active_profile_binding())
+        binding = self._active_profile_binding()
         fingerprint = known_embed_fingerprint(str(binding["cache_namespace"]))
-        if fingerprint:
-            binding["fingerprint"] = fingerprint
-        tmp = self._profile_manifest.with_suffix(".tmp")
-        tmp.write_text(json.dumps(binding, sort_keys=True) + "\n", encoding="utf-8")
-        tmp.replace(self._profile_manifest)
+        write_manifest(self._profile_manifest, binding, fingerprint)
 
     def check_profile_binding(self) -> None:
         """Read-only binding check for health reads: never creates a manifest.
@@ -227,7 +199,7 @@ class VectorStore:
         except (OSError, ValueError, TypeError) as exc:
             raise VectorProfileMismatchError("invalid_vector_profile_manifest") from exc
         active = self._active_profile_binding()
-        if self._identity_differs(bound, active):
+        if identity_differs(bound, active):
             raise VectorProfileMismatchError("vector_profile_mismatch")
         self._check_fingerprint(bound, bind_if_missing=False)
 

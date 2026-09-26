@@ -123,6 +123,69 @@ class _CatalogEntry:
     resolved: ResolvedPiEndpoint | None = None
 
 
+_LOCAL_SERVER_TYPES = {"ollama", "lmstudio"}
+
+
+def _server_capabilities(row: object) -> dict:
+    """An LLMServer row's capabilities JSON, or {} when it is missing or not an object."""
+    try:
+        capabilities = json.loads(getattr(row, "capabilities", "") or "{}")
+    except (TypeError, ValueError):
+        return {}
+    return capabilities if isinstance(capabilities, dict) else {}
+
+
+def _server_base_url(provider_type: str, row: object) -> str | None:
+    """The row's OpenAI-style base URL, or None when its host cannot be planned."""
+    host = (getattr(row, "host", "") or "").rstrip("/")
+    if not host_is_plannable(host):
+        return None
+    if provider_type in _LOCAL_SERVER_TYPES and not host.endswith("/v1"):
+        return f"{host}/v1"
+    return host
+
+
+def _server_api_key(provider_type: str, row: object) -> str | None:
+    """The row's key (decrypted), a local server's placeholder, or None when decryption fails."""
+    encrypted_key = getattr(row, "api_key", "") or ""
+    if encrypted_key:
+        try:
+            from app.core.field_encryption import decrypt_field
+
+            return decrypt_field(encrypted_key)
+        except Exception:
+            logger.debug(
+                "pi model manager: LLMServer key projection failed for %s",
+                getattr(row, "id", "?"),
+            )
+            return None
+    if provider_type == "ollama":
+        return "ollama"
+    if provider_type == "lmstudio":
+        return settings.lmstudio_api_key or "lm-studio"
+    return ""
+
+
+def _server_model(provider_type: str, row: object, capabilities: dict) -> str:
+    """The row's first advertised model, else the provider's configured default."""
+    models = capabilities.get("models")
+    if isinstance(models, list) and models and models[0]:
+        return models[0]
+    if provider_type == "ollama":
+        return settings.ollama_model
+    if provider_type == "lmstudio":
+        return settings.lmstudio_model
+    return getattr(row, "name", "") or "default"
+
+
+def _server_embedding_model(provider_type: str) -> str:
+    if provider_type == "lmstudio":
+        return settings.lmstudio_embed_model
+    if provider_type == "ollama":
+        return settings.ollama_embed_model
+    return ""
+
+
 class PiModelManager:
     """Select from the Pi catalog, never by donor capacity/scoring."""
 
@@ -349,66 +412,24 @@ class PiModelManager:
         # types and project through the openai_compat provider kind.
         if provider_type not in SUPPORTED_PROVIDERS:
             return None
-        try:
-            capabilities = json.loads(getattr(row, "capabilities", "") or "{}")
-        except (TypeError, ValueError):
-            capabilities = {}
-        host = (getattr(row, "host", "") or "").rstrip("/")
-        if not host_is_plannable(host):
+        host = _server_base_url(provider_type, row)
+        api_key = _server_api_key(provider_type, row) if host is not None else None
+        if host is None or api_key is None:
             return None
-        is_local = bool(getattr(row, "is_local", False)) or provider_type in {"ollama", "lmstudio"}
-        if provider_type in {"ollama", "lmstudio"} and not host.endswith("/v1"):
-            host = f"{host}/v1"
-        provider_kind = (
-            "anthropic_compat" if provider_type.startswith("anthropic") else "openai_compat"
-        )
-        encrypted_key = getattr(row, "api_key", "") or ""
-        api_key = ""
-        if encrypted_key:
-            try:
-                from app.core.field_encryption import decrypt_field
-
-                api_key = decrypt_field(encrypted_key)
-            except Exception:
-                logger.debug(
-                    "pi model manager: LLMServer key projection failed for %s",
-                    getattr(row, "id", "?"),
-                )
-                return None
-        elif provider_type == "ollama":
-            api_key = "ollama"
-        elif provider_type == "lmstudio":
-            api_key = settings.lmstudio_api_key or "lm-studio"
-        models = capabilities.get("models") if isinstance(capabilities, dict) else None
-        model = (models[0] if isinstance(models, list) and models else "") or (
-            settings.ollama_model
-            if provider_type == "ollama"
-            else settings.lmstudio_model
-            if provider_type == "lmstudio"
-            else (getattr(row, "name", "") or "default")
-        )
+        capabilities = _server_capabilities(row)
+        is_local = bool(getattr(row, "is_local", False)) or provider_type in _LOCAL_SERVER_TYPES
         return _CatalogEntry(
             endpoint_id=f"pi-llm-{getattr(row, 'id', '')}",
-            provider_kind=provider_kind,
-            base_url=host,
-            model=model,
-            embedding_model=(
-                settings.lmstudio_embed_model
-                if provider_type == "lmstudio"
-                else settings.ollama_embed_model
-                if provider_type == "ollama"
-                else ""
+            provider_kind=(
+                "anthropic_compat" if provider_type.startswith("anthropic") else "openai_compat"
             ),
+            base_url=host,
+            model=_server_model(provider_type, row, capabilities),
+            embedding_model=_server_embedding_model(provider_type),
             source="llm_server",
             api_key=api_key,
-            context_window=(
-                int(capabilities.get("context_window", 0) or 0)
-                if isinstance(capabilities, dict)
-                else 0
-            ),
-            supports_vision=(
-                bool(capabilities.get("vision", False)) if isinstance(capabilities, dict) else False
-            ),
+            context_window=int(capabilities.get("context_window", 0) or 0),
+            supports_vision=bool(capabilities.get("vision", False)),
             kind="local" if is_local else "remote",
             timeout_ms=LOCAL_RESPONSE_START_MS if is_local else 30_000,
         )

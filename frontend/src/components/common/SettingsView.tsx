@@ -195,7 +195,7 @@ export default function SettingsView() {
       )}
 
       {/* Embedding model: governed switch with a full re-index (admins) */}
-      {canManageInfrastructure && <EmbeddingModelSection />}
+      <EmbeddingModelSection canManage={canManageInfrastructure} />
 
       {/* Hardware */}
       {canManageInfrastructure && hardware && (

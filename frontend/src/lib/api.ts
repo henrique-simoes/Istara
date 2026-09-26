@@ -1,6 +1,6 @@
 /** API client for Istara backend. */
 
-import type { DataIntegrityQuarantineRequest } from "@/lib/apiRequestTypes";
+import type { DataIntegrityQuarantineRequest, EmbeddingMigrationRequest } from "@/lib/apiRequestTypes";
 import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent, PermissionRequestItem } from "@/lib/types";
 import type { ReasoningMemoryItem, ReasoningBankSummary } from "@/lib/reasoningBankTypes";
 
@@ -590,11 +590,13 @@ export const settings = {
       { method: "POST", body: JSON.stringify({ engine }) }
     ),
   embeddingProfile: () => request<EmbeddingProfileStatus>("/api/settings/embedding-profile"),
-  startEmbeddingMigration: (modelId: string, promptScheme = "auto") =>
-    request<EmbeddingProfileStatus>("/api/settings/embedding-profile", {
+  startEmbeddingMigration: (modelId: string, promptScheme = "auto") => {
+    const body: EmbeddingMigrationRequest = { model_id: modelId, prompt_scheme: promptScheme };
+    return request<EmbeddingProfileStatus>("/api/settings/embedding-profile", {
       method: "POST",
-      body: JSON.stringify({ model_id: modelId, prompt_scheme: promptScheme }),
-    }),
+      body: JSON.stringify(body),
+    });
+  },
   maintenance: () => request<any>("/api/settings/maintenance"),
   integrationsStatus: () =>
     request<{ stitch_configured: boolean; figma_configured: boolean }>(
