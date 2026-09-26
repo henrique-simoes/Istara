@@ -70,6 +70,9 @@ def test_theme_coverage_and_binary_ndcg():
     assert binary_ndcg(["no", "has eta theta iota kappa lambda mu"], quotes[1:]) == pytest.approx(
         0.6309, abs=1e-3
     )
+    # A span repeated in several passages is credited once: the score stays within [0, 1].
+    repeated = ["eta theta iota kappa lambda mu"] * 4
+    assert binary_ndcg(repeated, quotes[1:]) == 1.0
 
 
 def _noise(seed, n):

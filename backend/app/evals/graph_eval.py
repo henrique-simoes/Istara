@@ -314,11 +314,21 @@ def theme_coverage(texts: Sequence[str], quotes: Sequence[str], k: int = 10) -> 
 
 
 def binary_ndcg(texts: Sequence[str], targets: Sequence[str], k: int = 10) -> float:
-    """nDCG@k with a passage graded 1 when it contains any target span."""
+    """nDCG@k where a passage earns 1 for a target span not already credited higher up.
+
+    The corpus repeats quotes across files, so a span can appear in several passages; crediting it
+    once keeps the score in [0, 1] and rewards distinct evidence, not duplicates.
+    """
     from app.evals.stats import ndcg
 
-    grades = [1 if any(_span_in(t, [text]) for t in targets) else 0 for text in list(texts)[:k]]
-    ideal = [1] * min(k, max(1, len(targets)))
+    credited: set[str] = set()
+    grades = []
+    for text in list(texts)[:k]:
+        new = next((t for t in targets if t not in credited and _span_in(t, [text])), None)
+        if new is not None:
+            credited.add(new)
+        grades.append(1 if new is not None else 0)
+    ideal = [1] * min(k, max(1, len(set(targets))))
     return ndcg(grades, ideal, k)
 
 
