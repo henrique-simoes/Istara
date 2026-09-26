@@ -8,8 +8,8 @@ related_features: ["settings.llm-servers", "settings.general", "compute.pool"]
 related_glossary: ["rag"]
 code_references: ["frontend/src/components/chat/ChatView.tsx", "frontend/src/components/chat/ChatModelControls.tsx", "frontend/src/components/chat/chatViewParts.tsx", "frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "frontend/src/lib/modelCatalog.ts", "frontend/src/stores/chatStore.ts", "frontend/src/stores/sessionStore.ts", "frontend/src/lib/chatApi.ts", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/api/routes/settings.py", "backend/app/main.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/agentic/legacy.py", "backend/app/core/agentic/usage_ledger.py", "backend/app/core/pi_runtime/engine.py", "backend/app/core/pi_runtime/oauth.py"]
 api_references: ["backend/app/api/routes/chat.py", "backend/app/api/routes/sessions.py", "backend/app/core/agentic/usage_ledger.py"]
-test_references: ["frontend/src/lib/modelCatalog.test.ts", "frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_migration/test_model_management_migration.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/pi_production/test_w1_agentic_contract.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_legacy_long_horizon.py", "tests/pi_production/test_chat_pi_asgi.py", "tests/benchmarks/long_horizon_runner.py", "tests/simulation/scenarios/10-settings-models.mjs", "tests/simulation/scenarios/26-model-session-persistence.mjs"]
-last_verified: 2026-09-01
+test_references: ["frontend/src/lib/modelCatalog.test.ts", "frontend/src/lib/modelProviders.test.ts", "tests/test_chat.py", "tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_migration/test_model_management_migration.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/pi_production/test_w1_agentic_contract.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_legacy_long_horizon.py", "tests/pi_production/test_chat_pi_asgi.py", "tests/benchmarks/long_horizon_runner.py", "tests/simulation/scenarios/10-settings-models.mjs", "tests/simulation/scenarios/26-model-session-persistence.mjs", "tests/test_pi_turn_failures_and_thinking.py"]
+last_verified: 2026-09-25
 compass: CF-SPEC-77 / CF-986; CF-SPEC-8
 ---
 
@@ -156,6 +156,12 @@ The selected Chat model menu is a generation control only. It never changes the 
   trace continuity; the accounting row never lives inside that 120-char
   identity field. Ledger identity fields carry `endpoint_id`/`node_id` only,
   never endpoint URLs, keys, prompts, or response content.
+
+## Default Thinking Level (2026-09-25)
+
+- A thinking level chosen in the chat controls applies to that turn. Turns that set none (skills,
+  coding runs, evaluations) use the endpoint's configured `thinking_level`, so a model that always
+  reasons works outside chat too.
 
 ## Architecture Notes
 

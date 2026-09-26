@@ -267,6 +267,13 @@
 <li>Use the visible controls to connect a model without typing an endpoint URL; credentials stay in server custody.</li>
 <li>Move to Chat to change the model and effort for an individual conversation.</li>
 </ul>
+<h2 id="embedding-model">Embedding Model</h2>
+<p>Administrators see <code>Settings &gt; Embedding model</code>: the model that turns documents and questions into</p>
+<p>vectors for semantic search, the prompts it is given, and the profile version. To switch models,</p>
+<p>type the model name (it must already be served, for example <code>ollama pull embeddinggemma</code>) and choose</p>
+<p><code>Re-index with this model</code>. Istara checks the model first and changes nothing if it cannot embed;</p>
+<p>otherwise it re-embeds every project&#x27;s stored chunks while you watch the progress. Keyword search</p>
+<p>keeps working throughout, and nothing is deleted.</p>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
 <li>Global Agentic Core and Pi endpoint configuration updates for authorized administrators.</li>
@@ -306,6 +313,7 @@
 <li class="toc-level-2"><a href="#where-it-lives">Where It Lives</a></li>
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
+<li class="toc-level-2"><a href="#embedding-model">Embedding Model</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>

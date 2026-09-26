@@ -39,3 +39,9 @@ export interface FileEncryptionEnableRequest {
 export interface FileEncryptionRotateRequest {
   confirm_rotation: boolean;
 }
+
+/** POST /api/settings/embedding-profile (admin): move the install to another embedding model. */
+export interface EmbeddingMigrationRequest {
+  model_id: string;
+  prompt_scheme?: string;
+}

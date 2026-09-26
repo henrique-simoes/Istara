@@ -15,7 +15,7 @@
 [![Platform](https://img.shields.io/badge/plataforma-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](installer/)
 [![GitHub](https://img.shields.io/badge/GitHub-henrique--simoes%2FIstara-181717?logo=github)](https://github.com/henrique-simoes/Istara)
 
-[**Instalar em 1 Minuto**](#instalar) · [**Site de documentação**](https://henrique-simoes.github.io/Istara/) · [**Arquitetura**](#arquitetura) · [**Testes**](TESTING.md) · [**Segurança**](SECURITY.md) · [**Mapa de Docs**](DOCUMENTATION.md) · [**Referências**](#referências-acadêmicas-e-padrões) · [**Contribuir**](CONTRIBUTING.md)
+[**Instalar em 1 Minuto**](#instalar) · [**Site de documentação**](https://henrique-simoes.github.io/Istara/) · [**Arquitetura**](#arquitetura) · [**Testes**](TESTING.md) · [**Segurança**](SECURITY.md) · [**Referências**](#referências-acadêmicas-e-padrões) · [**Contribuir**](CONTRIBUTING.md)
 
 ---
 
@@ -179,7 +179,7 @@ temporários espalhados.
   gitignored e o modelo fixo `google/gemma-4-e4b`. Endpoints e tokens privados
   nunca são commitados, e os testes não devem procurar nem carregar múltiplos
   modelos pesados.
-- **Organização da documentação:** veja [DOCUMENTATION.md](DOCUMENTATION.md)
+- **Organização da documentação:** veja [AGENTS.md](AGENTS.md)
   para o mapa canônico de docs atuais, docs geradas, notas de compatibilidade,
   histórico de testes, evidências de segurança e markdown runtime ignorado.
 
@@ -803,7 +803,7 @@ Echo é a agente de garantia de qualidade. Ela executa a suíte de teste de simu
 ## Screenshots
 
 Capturas de tela são omitidas intencionalmente até que os ativos do deploy público estejam estáveis.
-*Referências adicionais de arquitetura e processo estão em [DOCUMENTATION.md](DOCUMENTATION.md).*
+*Referências adicionais de arquitetura e processo estão em [AGENTS.md](AGENTS.md).*
 
 ---
 
@@ -866,7 +866,7 @@ python scripts/production_rehearsal.py --json
 ```
 
 Veja [CONTRIBUTING.md](CONTRIBUTING.md) para instruções de configuração, guia de estilo de código e checklist de mudanças.
-Veja [TESTING.md](TESTING.md), [SECURITY.md](SECURITY.md) e [DOCUMENTATION.md](DOCUMENTATION.md) antes de mudanças sensíveis para release.
+Veja [TESTING.md](TESTING.md), [SECURITY.md](SECURITY.md) e [AGENTS.md](AGENTS.md) antes de mudanças sensíveis para release.
 
 ---
 

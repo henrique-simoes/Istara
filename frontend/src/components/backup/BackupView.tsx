@@ -240,7 +240,7 @@ export default function BackupView() {
   const lastBackup = backupList.length > 0 ? backupList[0] : null;
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
+    <div className="flex-1 w-full overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
       <ViewOnboarding viewId="backup" title="Data Protection" description="Create and restore backups of your entire Istara instance — database, files, vector store, and settings." chatPrompt="How do I backup my data?" />
       {/* Header */}
       <div className="flex items-center gap-3">

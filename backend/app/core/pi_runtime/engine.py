@@ -45,6 +45,7 @@ from .endpoints import (
     enforce_test_provider_network_policy,
 )
 from .idempotency import execute_with_idempotency
+from .liveness import LOCAL_RESPONSE_START_MS
 from .model_manager import PiModelManager
 from .protocol import TERMINAL_RUN_TYPES
 from .supervisor import PiRuntimeSupervisor, current_tool_call_context, get_supervisor
@@ -170,6 +171,10 @@ def _bind_payload(
         # treats null/true as "keep the tier-4 record's modalities".
         "supports_vision": endpoint.supports_vision,
     }
+    if endpoint.is_local:
+        # Local-first (DEC-10): a local server still loading its model answers 503 "Loading
+        # model"; the worker waits for it up to the response-start budget. Remote never waits.
+        payload["load_wait_ms"] = LOCAL_RESPONSE_START_MS
     bind_params = _turn_bind_params(params, endpoint)
     if bind_params:
         # Canonical generation/retry knobs (worker-validated keys only:
@@ -196,14 +201,21 @@ def _enforce_test_provider_network_policy(endpoint: ResolvedPiEndpoint) -> None:
     enforce_test_provider_network_policy(endpoint)
 
 
+def _session_limits(endpoint: ResolvedPiEndpoint) -> dict[str, int]:
+    """The endpoint's run budgets for the worker session (DEC-10): progress-based idle plus a
+    total backstop, larger for local endpoints."""
+    return {
+        "max_wall_clock_ms": int(endpoint.max_run_ms),
+        "max_idle_ms": int(endpoint.idle_timeout_ms),
+    }
+
+
 def _turn_bind_params(params: Any, endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
     """Map TurnParams onto the worker's provider params (master plan §5.3).
 
     Only explicitly-set knobs are forwarded; everything else keeps the
     endpoint/worker defaults so a bare turn behaves exactly as before.
     """
-    if params is None:
-        return {}
     mapped: dict[str, Any] = {}
     temperature = getattr(params, "temperature", None)
     if temperature is not None:
@@ -211,7 +223,11 @@ def _turn_bind_params(params: Any, endpoint: ResolvedPiEndpoint) -> dict[str, An
     max_tokens = getattr(params, "max_tokens", None)
     if max_tokens:
         mapped["max_tokens"] = int(max_tokens)
-    thinking_mode = getattr(params, "thinking_mode", None)
+    # The turn's choice wins; otherwise the endpoint's configured level. Without either the worker
+    # sends no reasoning setting, which an always-reasoning model refuses.
+    thinking_mode = getattr(params, "thinking_mode", None) or getattr(
+        endpoint, "thinking_level", None
+    )
     if thinking_mode:
         mapped["thinking_level"] = str(thinking_mode)
     timeout_s = getattr(params, "timeout_s", None)
@@ -355,6 +371,7 @@ class PiExecutionService:
                 history=history,
                 revision=revision,
                 catalog=catalog,
+                limits=_session_limits(endpoint),
             )
             session_opened = True
             await sup.bind_provider(
@@ -607,6 +624,7 @@ class PiExecutionService:
                 history=[],
                 revision=_session_revision(messages, endpoint),
                 catalog=[],
+                limits=_session_limits(endpoint),
             )
             opened = True
             await sup.bind_provider(

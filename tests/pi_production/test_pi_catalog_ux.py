@@ -173,7 +173,7 @@ def test_catalog_provider_auth_hints(client):
     # Codex model ids instead of silently defaulting to an API key.
     assert "api_key" in providers["openai"]["login_methods"]
     assert "oauth" in providers["openai"]["login_methods"]
-    assert "gpt-5.4" in providers["openai"]["oauth_model_ids"]
+    assert "gpt-5.5" in providers["openai"]["oauth_model_ids"]
     # Google is API-key/ambient-credential only in the installed Pi loaders.
     assert "api_key" in providers["google"]["login_methods"]
     assert "oauth" not in providers["google"]["login_methods"]
@@ -339,7 +339,7 @@ def test_update_endpoint_reuses_catalog_and_keychain_custody(client, monkeypatch
         json={
             "endpoint_id": endpoint_id,
             "pi_provider": "deepseek",
-            "pi_model": "deepseek-v4-flash",
+            "pi_model": "deepseek-flash",
             "api_key": "sk-new",
         },
     )
@@ -349,7 +349,7 @@ def test_update_endpoint_reuses_catalog_and_keychain_custody(client, monkeypatch
         for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
         if item["endpoint_id"] == endpoint_id
     )
-    assert endpoint["model"] == "deepseek-v4-flash"
+    assert endpoint["model"] == "deepseek-flash"
     assert endpoint["base_url"].startswith("https://")
     assert endpoint["context_window"] > 0
     assert endpoint["keychain_service"] == "istara-pi-deepseek"
@@ -372,7 +372,7 @@ def test_update_endpoint_reuses_catalog_and_keychain_custody(client, monkeypatch
         for item in client.get("/api/settings/pi-endpoints").json()["endpoints"]
         if item["endpoint_id"] == endpoint_id
     )
-    assert after_rejection["model"] == "deepseek-v4-flash"
+    assert after_rejection["model"] == "deepseek-flash"
 
 
 @pytest.mark.parametrize("endpoint_id", ["pi-petals-legacy", "pi-deepseek-default"])
@@ -625,7 +625,7 @@ def test_oauth_credential_is_consumed_into_endpoint_custody(client, monkeypatch)
         json={
             "endpoint_id": endpoint_id,
             "pi_provider": "openai-codex",
-            "pi_model": "gpt-5.4",
+            "pi_model": "gpt-5.5",
             "auth_provider": "openai-codex",
             "auth_method": "oauth_device_code",
             "oauth_flow_id": flow.flow_id,
@@ -667,7 +667,7 @@ def test_oauth_endpoint_sparse_update_preserves_existing_custody(client):
         json={
             "endpoint_id": endpoint_id,
             "pi_provider": "openai-codex",
-            "pi_model": "gpt-5.4",
+            "pi_model": "gpt-5.5",
             "auth_provider": "openai-codex",
             "auth_method": "oauth_device_code",
             "oauth_flow_id": flow.flow_id,
@@ -686,7 +686,7 @@ def test_oauth_endpoint_sparse_update_preserves_existing_custody(client):
         json={
             "endpoint_id": endpoint_id,
             "pi_provider": "openai-codex",
-            "pi_model": "gpt-5.4",
+            "pi_model": "gpt-5.5",
         },
     )
     assert updated.status_code == 200, updated.text
@@ -704,7 +704,7 @@ def test_catalog_openai_codex_transport_is_distinct():
         endpoint_id="codex-test",
         provider_kind="openai_codex",
         base_url="https://chatgpt.com/backend-api",
-        model="gpt-5.4",
+        model="gpt-5.5",
         keychain_service="istara-pi-oauth-openai-codex",
         auth_provider="openai-codex",
         auth_method="oauth_device_code",

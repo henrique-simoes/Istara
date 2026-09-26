@@ -272,6 +272,24 @@
 <li>Project-scoped state or artifact updates associated with memory health.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
+<h2 id="evidence-provenance">Evidence Provenance</h2>
+<ul>
+<li>The **Evidence Provenance** card shows how many of the project&#x27;s source chunks can be traced to</li>
+</ul>
+<p>the exact passage (evidence unit) they came from. 100% (&quot;All traceable&quot;) means every passage the</p>
+<p>knowledge base retrieves can be followed back to its source text and coding state.</p>
+<ul>
+<li>&quot;No source chunks yet&quot; means nothing has been indexed. &quot;Needs re-index&quot; means some chunks were</li>
+</ul>
+<p>indexed before provenance existed: reprocess the files listed under Sources to fix it.</p>
+<ul>
+<li>If the card mentions older rows holding agent notes or skill output, those rows are kept out of</li>
+</ul>
+<p>evidence search; they are not source evidence.</p>
+<ul>
+<li>If the embedding model is swapped for another one of the same size, Memory Health reports a</li>
+</ul>
+<p>fingerprint mismatch instead of silently mixing the two models&#x27; vectors; re-index to recover.</p>
 <h2 id="embeddings-and-engine-selection">Embeddings And Engine Selection</h2>
 <ul>
 <li>Retrieval and memory features use one versioned embedding profile owned by Pi Model Management. The</li>
@@ -323,6 +341,7 @@
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
+<li class="toc-level-2"><a href="#evidence-provenance">Evidence Provenance</a></li>
 <li class="toc-level-2"><a href="#embeddings-and-engine-selection">Embeddings And Engine Selection</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>

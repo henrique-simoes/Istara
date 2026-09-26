@@ -12,8 +12,7 @@ from watchfiles import Change, awatch
 
 from app.api.websocket import broadcast_file_processed, broadcast_suggestion
 from app.config import settings
-from app.core.embeddings import embed_chunks
-from app.core.file_encryption import encrypt_file_in_place, protect_document_text, read_file_text
+from app.core.file_encryption import protect_document_text, read_file_text
 from app.core.file_processor import get_supported_extensions, process_file
 from app.core.rag import VectorStore
 
@@ -72,7 +71,8 @@ class FileWatcher:
         """Get all watched directories."""
         return dict(self._watched_dirs)
 
-    async def _is_project_paused(self, project_id: str) -> bool:
+    @staticmethod
+    async def _is_project_paused(project_id: str) -> bool:
         from app.models.database import async_session
         from app.models.project import Project
 
@@ -82,11 +82,17 @@ class FileWatcher:
 
     # ── File classification for auto-task creation ──────────────────────
 
-    def _classify_file(self, file_path: Path) -> list[tuple[str, str, str]]:
-        """Classify a file and return applicable (skill_name, task_title, priority) tuples."""
-        filename = file_path.name.lower()
+    @staticmethod
+    def _classify_file(file_path: Path, named: Path) -> list[tuple[str, str, str]]:
+        """Classify a file and return applicable (skill_name, task_title, priority) tuples.
+
+        ``named`` carries the name the researcher gave the file, which differs from ``file_path``
+        when it is stored under another one (an upload is stored as ``<uuid>.<ext>``); the name
+        rules and task titles use it, the content rules read ``file_path``.
+        """
+        filename = named.name.lower()
         ext = file_path.suffix.lower()
-        stem = file_path.stem
+        stem = named.stem
 
         # Read first 500 chars for content-based heuristics
         try:
@@ -153,17 +159,25 @@ class FileWatcher:
         except (OSError, ValueError):
             return False
 
-    async def _create_research_tasks(self, file_path: Path, project_id: str) -> int:
+    @staticmethod
+    async def create_research_tasks(
+        file_path: Path, project_id: str, *, display_name: str | None = None, notify: bool = True
+    ) -> int:
         """Create research tasks for a processed file based on its classification.
+
+        ``display_name`` is the researcher's name for a file stored under another one. ``notify``
+        raises the sticky "new research file" suggestion; the upload route turns it off because
+        the researcher who uploaded the file already has the upload's own confirmation.
 
         Returns:
             Number of tasks created.
         """
-        if await self._is_project_paused(project_id):
+        if await FileWatcher._is_project_paused(project_id):
             logger.info("Skipping auto-task creation for paused project %s", project_id)
             return 0
 
-        skill_tasks = self._classify_file(file_path)
+        named = Path(display_name) if display_name else file_path
+        skill_tasks = FileWatcher._classify_file(file_path, named)
         if not skill_tasks:
             return 0
 
@@ -211,13 +225,14 @@ class FileWatcher:
 
         # Notify user and wake agent
         if created > 0:
-            try:
-                await broadcast_suggestion(
-                    f"New research file: {file_path.name} — created {created} analysis task(s).",
-                    project_id,
+            if notify:
+                message = (
+                    f"New research file: {file_path.name} — created {created} analysis task(s)."
                 )
-            except Exception:
-                pass
+                try:
+                    await broadcast_suggestion(message, project_id)
+                except Exception:
+                    pass
 
             try:
                 from app.core.agent import agent as agent_orchestrator
@@ -372,6 +387,14 @@ class FileWatcher:
         if not file_path.exists():
             return None
 
+        # A file uploaded through the product is ingested by the upload route, which owns its
+        # Document, evidence units, both indices and research tasks. Every project's upload
+        # directory is also watched, so indexing it here too raced the route and left two copies
+        # of every chunk in the vector store (the keyword index replaces rows; the vector store
+        # appended them).
+        if self._is_managed_upload_path(file_path):
+            return None
+
         suffix = file_path.suffix.lower()
         if suffix not in get_supported_extensions():
             return None
@@ -390,27 +413,25 @@ class FileWatcher:
         # Process the file
         result = process_file(file_path)
         if result.error:
-            if self._is_managed_upload_path(file_path):
-                encrypt_file_in_place(file_path)
             logger.error(f"Error processing {file_path}: {result.error}")
             return {"file": file_key, "error": result.error}
 
         if not result.chunks:
-            if self._is_managed_upload_path(file_path):
-                encrypt_file_in_place(file_path)
             logger.warning(f"No text extracted from {file_path}")
             return None
 
-        # Delete old embeddings for this source
+        # Register the Document FIRST so its evidence units exist when the chunks are indexed.
+        try:
+            await self._register_document(file_path, project_id)
+        except Exception as e:
+            logger.warning(f"Failed to register document for {file_path}: {e}")
+
+        # Replace this file's rows in BOTH indices. The old path deleted by source (which also
+        # clears BM25 rows) and then re-added vectors only, so every watched edit erased the
+        # file's keyword searchability (F7).
         store = VectorStore(project_id)
-        await store.delete_by_source(file_key)
-
-        # Embed and store
-        embedded = await embed_chunks(result.chunks)
-        count = await store.add_chunks(embedded)
-
-        if self._is_managed_upload_path(file_path):
-            encrypt_file_in_place(file_path)
+        await store.delete_file_source(file_path)
+        count = await self._index_with_provenance(project_id, file_path, result.chunks)
 
         # Mark as processed
         self._processed_files[file_key] = file_path.stat().st_mtime
@@ -432,17 +453,38 @@ class FileWatcher:
 
         # Auto-create research tasks based on file classification
         try:
-            await self._create_research_tasks(file_path, project_id)
+            await self.create_research_tasks(file_path, project_id)
         except Exception as e:
             logger.warning(f"Failed to create research tasks for {file_path}: {e}")
 
-        # Register as a Document in the Documents system
-        try:
-            await self._register_document(file_path, project_id)
-        except Exception as e:
-            logger.warning(f"Failed to register document for {file_path}: {e}")
-
         return summary
+
+    async def _index_with_provenance(self, project_id: str, file_path: Path, chunks: list) -> int:
+        """Index a watched file's chunks with the evidence units of its Document."""
+        from sqlalchemy import select
+
+        from app.models.database import async_session
+        from app.models.document import Document
+        from app.services.retrieval_provenance import (
+            document_source_text,
+            index_document_source_chunks,
+        )
+
+        async with async_session() as db:
+            rows = await db.execute(
+                select(Document).where(
+                    Document.project_id == project_id,
+                    (Document.file_path == str(file_path)) | (Document.file_name == file_path.name),
+                )
+            )
+            document = rows.scalars().first()
+            return await index_document_source_chunks(
+                project_id,
+                chunks,
+                document_id=document.id if document else None,
+                document_text=document_source_text(document) if document else "",
+                db=db,
+            )
 
     async def scan_directory(self, directory: str, project_id: str) -> list[dict]:
         """Scan a directory and process all supported files.

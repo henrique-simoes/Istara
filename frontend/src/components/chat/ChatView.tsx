@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Send, Paperclip, Loader2, StopCircle, Upload, X, FolderOpen, FileText, Mic, Activity } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,7 +13,7 @@ import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { cn, formatDate } from "@/lib/utils";
 import { chat as chatApi, files as filesApi, documents as documentsApi, steering as steeringApi } from "@/lib/api";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
-import ChatSessionsSidebar from "./ChatSessionsSidebar";
+import ChatSessionsSidebar, { ChatSessionsToggle } from "./ChatSessionsSidebar";
 import ChatModelControls from "./ChatModelControls";
 import type { PiCatalogProvider, PiEndpointInfo } from "@/lib/types";
 import { isChatSendReady } from "@/lib/modelCatalog";
@@ -85,6 +85,9 @@ export default function ChatView() {
   const [input, setInput] = useState("");
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  // Below md the chat list is a drawer (a fixed column left the conversation 151 px at 375 px).
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const closeSessions = useCallback(() => setSessionsOpen(false), []);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [showDocPicker, setShowDocPicker] = useState(false);
   const [pickerDocs, setPickerDocs] = useState<{ id: string; title: string }[]>([]);
@@ -304,7 +307,7 @@ export default function ChatView() {
   return (
     <div className="flex-1 min-w-0 flex min-h-0 overflow-hidden">
       {activeProjectId && (
-        <ChatSessionsSidebar projectId={activeProjectId} />
+        <ChatSessionsSidebar projectId={activeProjectId} mobileOpen={sessionsOpen} onMobileClose={closeSessions} />
       )}
 
       {/* Main chat area */}
@@ -316,6 +319,8 @@ export default function ChatView() {
         onDrop={handleDrop}
       >
         <ViewOnboarding viewId="chat" title="Your Research Assistant" description="Chat with your AI agent about research. Upload files, ask questions, or run analysis skills. Agents understand your project context." chatPrompt="What can I do in Chat?" />
+
+        <ChatSessionsToggle open={sessionsOpen} visible={Boolean(activeProjectId)} onToggle={() => setSessionsOpen((open) => !open)} />
 
         {/* Toolbar */}
         <ChatModelControls

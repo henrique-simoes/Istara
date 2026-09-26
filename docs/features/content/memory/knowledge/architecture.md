@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["memory.agent", "memory.context-dag", "documents.library"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/memory/MemoryView.tsx", "frontend/src/lib/memoryApi.ts", "backend/app/api/routes/memory.py"]
+code_references: ["frontend/src/components/memory/MemoryView.tsx", "frontend/src/lib/memoryApi.ts", "backend/app/api/routes/memory.py", "backend/app/core/file_watcher.py", "backend/app/evals/retrieval_eval.py"]
 api_references: ["backend/app/api/routes/memory.py"]
-test_references: ["tests/test_memory.py"]
-last_verified: 2026-05-19
+test_references: ["tests/test_memory.py", "tests/test_spine_single_ingestion.py", "tests/test_spine_chunking_parameters.py", "tests/test_spine_retrieval_eval.py"]
+last_verified: 2026-09-26
 compass: CF-SPEC-60 / CF-757
 ---
 
@@ -34,6 +34,29 @@ The Memory knowledge tab manages project knowledge artifacts and retrieval mater
 ### API And Backend
 
 - `backend/app/api/routes/memory.py`
+
+## Ingestion, Chunking And Measured Retrieval (2026-09-25)
+
+- **One writer per uploaded file.** The upload route owns an upload's ingestion (Document, evidence
+  units, both indices) and creates its research tasks from the plaintext before encryption. The
+  file watcher, which also watches every project's upload directory, skips managed uploads: indexing
+  them too raced the route and left two copies of each chunk in the vector store (2,134 rows for
+  1,097 spans on the Harbor Ledger corpus). Reprocess cleans existing duplicates.
+- **Uploads are classified by the researcher's file name.** An upload is stored as `<uuid>.<ext>`,
+  so the task rules keyed on the name (interview, survey, usability, field notes, diary, competitor)
+  never matched it; the route now passes the original name for classification and task titles. An
+  upload does not raise the watcher's sticky "new research file" suggestion (the upload has its own
+  confirmation; stacked suggestions covered the Memory tabs at 375 px). Files dropped into a watched
+  folder still raise it.
+- **Chunking parameters mean what they say.** `chunk_overlap=0` is zero (it used to become the
+  default 180), a chunk size must be positive, and the splitter always advances, so a large overlap
+  can no longer loop forever.
+- **Measured retrieval.** `python -m app.evals.retrieval_eval evaluate|ablate|budget` measures
+  nDCG@10, Recall@10 and MRR@10 with bootstrap intervals on span-graded qrels over the Harbor Ledger
+  corpus, with paired randomization tests (Holm) for ablations and budget recall per context
+  window. Results with the local nomic-embed-text embedder are in
+  `docs/build-stream/2026-09-25-spine-findings-evidence.md` (measurements 1-3); the five-embedder
+  comparison behind the BGE-M3 default (DEC-15) is in the same file.
 
 ## Architecture Notes
 

@@ -6,10 +6,10 @@ audience: architecture
 status: deprecated
 related_features: ["chat.model-controls", "settings.connection-strings"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/model_manager.py", "backend/app/core/pi_runtime/endpoints.py", "backend/app/core/petals_bridge.py"]
+code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/lib/modelProviders.ts", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/model_manager.py", "backend/app/core/pi_runtime/endpoints.py", "backend/app/core/petals_bridge.py", "backend/app/core/pi_runtime/liveness.py", "pi-runtime/src/structured.mjs"]
 api_references: ["backend/app/api/routes/settings.py", "backend/app/api/routes/petals.py"]
-test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_settings_agentic_pi_endpoints.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w1_agentic_contract.py", "tests/pi_production/test_same_model_donor_isolation.py", "tests/petals_bridge/test_petals_bridge.py", "tests/pi_production/test_w8_embeddings_gateway.py"]
-last_verified: 2026-08-24
+test_references: ["frontend/src/lib/modelProviders.test.ts", "tests/test_settings_agentic_pi_endpoints.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w1_agentic_contract.py", "tests/pi_production/test_same_model_donor_isolation.py", "tests/petals_bridge/test_petals_bridge.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/test_pi_local_liveness.py", "tests/test_pi_turn_failures_and_thinking.py", "pi-runtime/test/liveness.test.mjs", "pi-runtime/test/structured.test.mjs"]
+last_verified: 2026-09-25
 compass: CF-SPEC-94 / CF-1193; CF-SPEC-8 (Pi replacement W1 model catalog; W8 projection refresh)
 ---
 
@@ -117,6 +117,41 @@ public `/api/settings/status` is redacted and passive.
   before public-provider HTTP when `ISTARA_TEST_BLOCK_EXTERNAL_LLM=1`; only
   loopback, faux, Docker, and reserved test domains remain eligible for
   deterministic contract coverage.
+
+### Endpoint Liveness, Thinking Level, Provider Errors And Structured Output (2026-09-25)
+
+- **Progress-based liveness (DEC-10).** A run is judged by progress: `idle_timeout_ms` bounds the
+  silence between streamed provider events (text, thinking and tool-call frames re-arm it; time in
+  Istara's own tools does not count) and `max_run_ms` is the total backstop. Defaults depend on
+  locality: remote 120 s idle / 600 s total (the OpenAI and Anthropic SDKs' 10-minute default),
+  local 300 s idle / 3,600 s total and 300 s for the response to start (Open WebUI's Ollama default,
+  llama.cpp server's read/write default). `locality` (`auto` | `local` | `remote`) infers local from
+  loopback, private, link-local, ULA and tailnet (100.64/10, `*.ts.net`) hosts, `*.local`,
+  `host.docker.internal` and single-label service names. The worker reports
+  `idle_timeout_exceeded` or `wall_clock_budget_exceeded`; the supervisor waits the idle budget plus
+  30 s so the worker's reason arrives first. `timeout_ms` (response start) may be up to 600 s. The
+  built-in Ollama and LM Studio entries and locally flagged servers use the local budgets.
+- **A local model that is still loading is waited for (2026-09-26).** llama.cpp and LM Studio
+  answer 503 "Loading model" (TGI: "Model is currently loading") while they load weights, and the
+  worker used to fail that turn at once. A local binding now carries `load_wait_ms` (the 300 s
+  response-start budget) and the worker retries a loading answer with backoff (1 s doubling, 10 s
+  steps) until the model answers or the budget is spent. The wait does not spend `max_retries`,
+  happens only before the attempt's first visible output, stops at once on abort, and a turn that
+  outlives it fails with the provider's message plus "the model was still loading after 300 s".
+  Remote endpoints never wait: a remote 503 is an outage.
+- **Thinking level.** An endpoint's `thinking_level` (`off` .. `max`) is the default for turns that
+  do not set `TurnParams.thinking_mode`. Before, only chat sent a level, so an always-reasoning model
+  (Z.ai GLM-5.3-flash) refused every other call with HTTP 400.
+- **Failure reasons.** A failed turn's `TurnResult.error` carries the provider's reason (for example
+  the provider's 400 text or `wall_clock_budget_exceeded`); it used to be dropped.
+- **Structured output.** The worker forces its capture tool through `tool_choice`. The OpenAI
+  Responses API is mapped (auto / required / named). Providers whose API accepts only `auto` (Meta)
+  get `auto` plus an instruction to call the capture tool; only a schema-valid capture call counts,
+  so a run without it fails closed (`structured_output_missing`). The provider identity comes from
+  the capability receipt's `pi_provider`, since `model.provider` is Istara's per-endpoint name.
+- **Pinned pi-ai 0.87.1** (2026-09-25) adds the `meta` provider (Muse Spark 1.1-1.3 and the
+  Contributor models, direct at `api.meta.ai`) and `radius`; see
+  `docs/architecture/pi-compatibility-authority.md` for the classified diff-proof.
 
 ## Architecture Notes
 

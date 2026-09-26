@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { Plus, Star, Trash2, Pencil, MoreHorizontal, MessageSquare } from "lucide-react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useAgentStore } from "@/stores/agentStore";
@@ -8,9 +8,56 @@ import { cn } from "@/lib/utils";
 
 interface ChatSessionsSidebarProps {
   projectId: string;
+  /** Below the md breakpoint the list is a drawer, closed unless opened from the chat toolbar. */
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarProps) {
+/** Opens the chat list on a phone, where it is a drawer instead of a column. */
+export function ChatSessionsToggle({ open, visible, onToggle }: { open: boolean; visible: boolean; onToggle: () => void }) {
+  if (!visible) return null;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-controls="chat-sessions"
+      className="md:hidden mx-3 mt-2 inline-flex items-center gap-1.5 self-start rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-istara-500"
+    >
+      <MessageSquare size={14} aria-hidden="true" /> Chats
+    </button>
+  );
+}
+
+/** The list's frame: an open column on wide screens; below md a drawer that Escape or the backdrop closes. */
+function ChatDrawerFrame({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+  return (
+    <>
+      {open && <div className="fixed inset-0 z-30 bg-slate-900/40 md:hidden" onClick={onClose} aria-hidden="true" />}
+      <div
+        id="chat-sessions"
+        className={cn(
+          "w-56 shrink-0 flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900",
+          open ? "flex fixed inset-y-0 left-0 z-40 shadow-xl md:static md:z-auto md:shadow-none" : "hidden md:flex"
+        )}
+      >
+        {children}
+      </div>
+    </>
+  );
+}
+
+const noop = () => {};
+
+export default function ChatSessionsSidebar({ projectId, mobileOpen = false, onMobileClose = noop }: ChatSessionsSidebarProps) {
   const {
     sessions,
     activeSessionId,
@@ -41,6 +88,7 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
 
   const handleNew = async () => {
     await createSession(projectId);
+    onMobileClose();
   };
 
   const handleRenameSubmit = async (id: string) => {
@@ -79,7 +127,11 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
     return (
       <div
         key={session.id}
-        onClick={() => !isRenaming && selectSession(projectId, session.id)}
+        onClick={() => {
+          if (isRenaming) return;
+          selectSession(projectId, session.id);
+          onMobileClose();
+        }}
         className={cn(
           "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors",
           isActive
@@ -194,7 +246,7 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
   }, [menuOpenId]);
 
   return (
-    <div className="w-56 shrink-0 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+    <ChatDrawerFrame open={mobileOpen} onClose={onMobileClose}>
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-slate-200 dark:border-slate-800">
         <h3 className="text-xs font-semibold text-slate-500 uppercase">Chats</h3>
@@ -243,6 +295,6 @@ export default function ChatSessionsSidebar({ projectId }: ChatSessionsSidebarPr
           </>
         )}
       </div>
-    </div>
+    </ChatDrawerFrame>
   );
 }

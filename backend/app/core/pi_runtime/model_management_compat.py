@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from typing import Any
 from urllib.parse import urlparse
+
+from app.config import settings
 
 # Providers the Pi catalog projection accepts. This set MUST stay in lockstep
 # with PiModelManager._project_llm_server (model_manager.py) — the manager
@@ -130,4 +133,90 @@ def plan_migration(rows: Iterable[Any]) -> dict[str, Any]:
             "zero blocked rows",
             "rollback drill recorded",
         ],
+    }
+
+
+logger = logging.getLogger(__name__)
+
+# LLMServer rows projected onto Pi catalog entries (base URL, key, models, capabilities).
+LOCAL_SERVER_TYPES = {"ollama", "lmstudio"}
+
+
+def server_capabilities(row: object) -> dict:
+    """An LLMServer row's capabilities JSON, or {} when it is missing or not an object."""
+    try:
+        capabilities = json.loads(getattr(row, "capabilities", "") or "{}")
+    except (TypeError, ValueError):
+        return {}
+    return capabilities if isinstance(capabilities, dict) else {}
+
+
+def server_base_url(provider_type: str, row: object) -> str | None:
+    """The row's OpenAI-style base URL, or None when its host cannot be planned."""
+    host = (getattr(row, "host", "") or "").rstrip("/")
+    if not host_is_plannable(host):
+        return None
+    if provider_type in LOCAL_SERVER_TYPES and not host.endswith("/v1"):
+        return f"{host}/v1"
+    return host
+
+
+def server_api_key(provider_type: str, row: object) -> str | None:
+    """The row's key (decrypted), a local server's placeholder, or None when decryption fails."""
+    encrypted_key = getattr(row, "api_key", "") or ""
+    if encrypted_key:
+        try:
+            from app.core.field_encryption import decrypt_field
+
+            return decrypt_field(encrypted_key)
+        except Exception:
+            logger.debug(
+                "pi model manager: LLMServer key projection failed for %s",
+                getattr(row, "id", "?"),
+            )
+            return None
+    if provider_type == "ollama":
+        return "ollama"
+    if provider_type == "lmstudio":
+        return settings.lmstudio_api_key or "lm-studio"
+    return ""
+
+
+def server_model(provider_type: str, row: object, capabilities: dict) -> str:
+    """The row's first advertised model, else the provider's configured default."""
+    models = capabilities.get("models")
+    if isinstance(models, list) and models and models[0]:
+        return models[0]
+    if provider_type == "ollama":
+        return settings.ollama_model
+    if provider_type == "lmstudio":
+        return settings.lmstudio_model
+    return getattr(row, "name", "") or "default"
+
+
+def server_embedding_model(provider_type: str) -> str:
+    """The provider's configured embedding model for an LLMServer row."""
+    if provider_type == "lmstudio":
+        return settings.lmstudio_embed_model
+    if provider_type == "ollama":
+        return settings.ollama_embed_model
+    return ""
+
+
+def llm_server_row_fields(provider_type: str, row: object) -> dict | None:
+    """Catalog fields for an LLMServer row, or None for an unsupported type or an unservable row."""
+    if provider_type not in SUPPORTED_PROVIDERS:
+        return None
+    host = server_base_url(provider_type, row)
+    api_key = server_api_key(provider_type, row) if host is not None else None
+    if host is None or api_key is None:
+        return None
+    capabilities = server_capabilities(row)
+    return {
+        "base_url": host,
+        "api_key": api_key,
+        "capabilities": capabilities,
+        "is_local": bool(getattr(row, "is_local", False)) or provider_type in LOCAL_SERVER_TYPES,
+        "model": server_model(provider_type, row, capabilities),
+        "embedding_model": server_embedding_model(provider_type),
     }

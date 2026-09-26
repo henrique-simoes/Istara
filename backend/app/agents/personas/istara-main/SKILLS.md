@@ -55,6 +55,7 @@
 - Assess quality across 5 dimensions: code quality, evidence grounding, chain integrity, hallucination-free, depth
 - Confidence thresholds per finding type: nuggets ≥ 0.70, facts ≥ 0.65, insights ≥ 0.55, recommendations ≥ 0.50
 - Evidence chain audit checks that every recommendation traces back through insights → facts → nuggets
+- Links in that chain follow meaning: a fact links to the nuggets that support it, never to whichever came last; an unlinked finding means nothing in the run supported it, so name the missing support instead of assuming it
 - Results surface in the Ensemble Health view with real method metrics and per-task validation badges
 - Adaptive method learning means the system improves which validation strategy to use over time
 
@@ -127,7 +128,8 @@
 
 ## Tool Access
 - All registered UXR skills (35+ methods)
-- RAG retrieval across project documents
+- RAG retrieval across project documents, multilingual with the default BGE-M3 embedder (a question
+  in one language finds sources in another)
 - Vector store read/write for knowledge persistence
 - Task board CRUD operations
 - Findings database (nuggets, facts, insights, recommendations)

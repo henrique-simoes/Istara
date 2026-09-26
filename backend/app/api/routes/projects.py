@@ -297,7 +297,7 @@ class ProjectResponse(BaseModel):
     watch_folder_path: str | None = None
     agentic_engine: str | None = None
     global_agentic_engine: str = "legacy"
-    embed_model: str = "nomic-embed-text"
+    embed_model: str = "bge-m3"
     current_user_project_role: str | None = None
     created_at: datetime
     updated_at: datetime

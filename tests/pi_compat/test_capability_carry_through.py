@@ -446,8 +446,8 @@ def test_sparse_put_switch_preserves_genuine_operator_veto():
         cost_cache_write_per_mtok=8.0,
     )
     assert persisted.supports_reasoning is False
-    payload = _real_sparse_put(persisted, pi_model="deepseek-v4-flash")
-    assert payload["model"] == "deepseek-v4-flash"
+    payload = _real_sparse_put(persisted, pi_model="deepseek-flash")
+    assert payload["model"] == "deepseek-flash"
     assert payload["supports_reasoning"] is False
     assert payload["cost_input_per_mtok"] == 8.0
 

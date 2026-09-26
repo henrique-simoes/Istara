@@ -179,7 +179,7 @@ export default function MetaHyperagentView() {
 
   if (!activeProjectId) {
     return (
-      <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
+      <div className="flex-1 w-full overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           <Sparkles size={24} className="text-istara-600 dark:text-istara-400" />
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -209,7 +209,7 @@ export default function MetaHyperagentView() {
   // Disabled empty state
   if (!isEnabled && activeVariants.length === 0 && pendingProposals.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
+      <div className="flex-1 w-full overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
           <Sparkles size={24} className="text-istara-600 dark:text-istara-400" />
@@ -259,7 +259,7 @@ export default function MetaHyperagentView() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
+    <div className="flex-1 w-full overflow-y-auto p-6 max-w-4xl mx-auto space-y-6">
       <ViewOnboarding viewId="meta-hyperagent" title="Self-Improvement Engine" description="The meta-agent's audit trail — hyperparameter tuning, A/B testing, and self-modification. Agents optimize themselves." chatPrompt="What does the meta-agent do?" />
       {/* Header */}
       <div className="flex items-center gap-3">

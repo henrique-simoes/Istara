@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["settings.llm-servers", "compute.pool"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "frontend/src/app/globals.css", "frontend/src/components/layout/StatusBar.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py", "backend/app/core/runtime_freshness.py"]
+code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "frontend/src/app/globals.css", "frontend/src/components/layout/StatusBar.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py", "backend/app/core/runtime_freshness.py", "frontend/src/components/settings/EmbeddingModelSection.tsx", "backend/app/services/embedding_migration.py", "backend/app/core/embedding_prompts.py", "backend/app/core/vector_identity.py", "backend/app/core/pi_runtime/embedding_profile.py"]
 api_references: ["backend/app/api/routes/settings.py"]
-test_references: ["tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "frontend/src/lib/modelCatalog.test.ts"]
-last_verified: 2026-08-30
+test_references: ["tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "frontend/src/lib/modelCatalog.test.ts", "tests/test_embedding_migration.py", "tests/test_embedding_prompts.py", "frontend/src/components/settings/EmbeddingModelSection.test.ts"]
+last_verified: 2026-09-26
 compass: CF-SPEC-55 / CF-684; CF-SPEC-66 / CF-856; CF-SPEC-91 / CF-1156
 ---
 
@@ -64,6 +64,31 @@ Settings shows backend and LLM health, a first-class Agentic Core comparison and
 - `/api/settings/status` also includes `runtime.frontend` freshness diagnostics. The status bar shows `Runtime bundle stale` when the production Next build predates tracked frontend source files, preventing stale bundles from being mistaken for current project-isolation behavior.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes. The shared UI tokens and state contract live in root `DESIGN.md` and the semantic projection in `frontend/src/app/globals.css`.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
+
+## Embedding Model (2026-09-26)
+
+- The persisted embedding profile, not settings, decides the model an install embeds with, and each
+  vector store fails closed when the active identity (model, cache namespace, dimension, prompt
+  scheme, profile version) differs from the one it was built with. `Settings > Embedding model`
+  (`EmbeddingModelSection.tsx`, administrators only; the server checks too) shows the active model,
+  its prompt scheme and profile version, and moves the install to another model:
+  `POST /api/settings/embedding-profile` probes the target first (400 and no change when it cannot
+  embed), activates a new profile version (the old one stays on record), then re-embeds every
+  project's source and derived tables from the text they already hold in the background
+  (`app/services/embedding_migration.py`), keeping provenance, offsets and evidence units, and rebinds
+  each store's manifest. BM25 is untouched. One migration runs at a time (409); `GET` reports
+  progress; a failure stops with its reason and a re-run resumes with the tables not yet moved.
+- Embedders receive their model card's query and document prompts (`app/core/embedding_prompts.py`:
+  EmbeddingGemma, Qwen3-Embedding, nomic-embed-text; BGE-M3 and unknown models take raw text). The
+  scheme is part of the vector-space identity; profiles and stores from before schemes existed are
+  raw, and a fresh install takes the model card's scheme (`EMBED_PROMPT_SCHEME=auto`).
+- The default embedder is BGE-M3 (`OLLAMA_EMBED_MODEL=bge-m3`, 1024 dimensions, pulled on first use),
+  chosen by the rule fixed before the numbers (DEC-15): on 118 span-graded questions it had the
+  highest hybrid nDCG@10 (0.788 vs 0.523 for the former nomic-embed-text default; Spanish 0.723 vs
+  0.224) with no significant English regression. Qwen3-Embedding 0.6B (0.781) was statistically tied;
+  EmbeddingGemma (0.741) and prompted nomic (0.632) also qualified. `python -m app.evals.embedder_compare`
+  reruns the decision on new reports.
+- Journey: scenario 87 (`tests/simulation/scenarios/87-embedding-model-migration.mjs`).
 
 ## Agents, Skills, LLM, MCP, And Permissions
 

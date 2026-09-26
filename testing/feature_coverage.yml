@@ -137,6 +137,7 @@ features:
       - ".github/workflows/qa-artifact.yml"
       - ".github/workflows/promote-testing.yml"
       - ".github/workflows/build-installers.yml"
+      - ".github/workflows/pages.yml"
       - ".github/workflows/scorecard.yml"
       - ".github/workflows/sync-staging.yml"
       - ".github/workflows/track-autoresearch.yml"
@@ -516,12 +517,11 @@ features:
       - "testing/TESTING_STRATEGY.md"
       - "testing/TEST_HISTORY.md"
       - "testing/AI_EVALS_STRATEGY.md"
-      - "CHANGE_CHECKLIST.md"
       - "README.md"
       - "README.pt-BR.md"
       - "Tech.md"
-      - "SYSTEM_CHANGE_MATRIX.md"
-      - "DOCUMENTATION.md"
+      - "AGENTS.md"
+      - "CLAUDE.md"
       - "CONTRIBUTING.md"
       - "SECURITY.md"
       - "scripts/feature_docs.py"
@@ -1071,4 +1071,26 @@ features:
         - check_integrity
     acceptance: "Engine-comparison reports and metric schemas stay schema-valid artifacts; they never masquerade as live certification evidence."
     introduced_in: "readiness5-20260910-W1"
+    last_verified_sha: "pending"
+
+  - id: research.retrieval-evaluation
+    status: active
+    owner: research-platform
+    paths:
+      - "backend/app/evals/*.py"
+    exceptions: []
+    requires_human_review: true
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - governance
+        - research_spine_contract
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - check_integrity
+        - pytest_research_validity
+    acceptance: "Retrieval and answer measurements grade relevance from span-graded judgments over a sandbox index or the product-ingested corpus, report intervals and paired tests, never mutate process-wide settings, fail closed without a benchmark, and never let a judge score its own model's answers."
+    introduced_in: "spine-findings-20260925"
     last_verified_sha: "pending"

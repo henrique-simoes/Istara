@@ -14,12 +14,16 @@ import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-
 CHAT_MODEL = os.environ.get("QA_CONTRACT_CHAT_MODEL", "istara-qa-contract-chat:latest")
 EMBED_MODEL = os.environ.get(
     "QA_CONTRACT_EMBED_MODEL", "istara-qa-contract-embed:latest"
 )
 EMBEDDING_DIMENSION = 8
+
+
+def is_missing_model(model: Any) -> bool:
+    """A model this contract double does not serve (Ollama answers 404 "model not found")."""
+    return isinstance(model, str) and model.startswith("qa-missing-")
 
 
 def embedding_for_text(text: str) -> list[float]:
@@ -144,6 +148,9 @@ class ProviderStubHandler(BaseHTTPRequestHandler):
         try:
             payload = self._read_json()
             if self.path == "/api/embed":
+                if is_missing_model(payload.get("model")):
+                    self._send_json(404, {"error": f"model '{payload.get('model')}' not found"})
+                    return
                 vectors = embeddings_for_input(payload.get("input"))
                 self._send_json(
                     200,
@@ -191,6 +198,9 @@ class ProviderStubHandler(BaseHTTPRequestHandler):
                 self._send_json(200, {"details": {"family": "qa-contract"}})
                 return
             if self.path == "/v1/embeddings":
+                if is_missing_model(payload.get("model")):
+                    self._send_json(404, {"error": {"message": "model not found"}})
+                    return
                 vectors = embeddings_for_input(payload.get("input"))
                 self._send_json(
                     200,

@@ -173,9 +173,29 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
                 }
                 for index, unit_id in enumerate(unit_ids)
             ],
-            facts=[{"text": "Participants cannot discover collaboration controls."}],
-            insights=[{"text": "Collaboration onboarding lacks clear affordances."}],
-            recommendations=[{"text": "Clarify invitation and permission controls."}],
+            # Findings link to the nuggets that support them by meaning (finding_links), so the
+            # fact states what the three nuggets say.
+            facts=[
+                {
+                    "text": "Participants could not find invitations, understand permissions, "
+                    "or return to the workspace."
+                }
+            ],
+            insights=[
+                {
+                    "text": "Collaboration onboarding lacks clear affordances.",
+                    "supporting_facts": [
+                        "Participants could not find invitations, understand permissions, "
+                        "or return to the workspace."
+                    ],
+                }
+            ],
+            recommendations=[
+                {
+                    "text": "Clarify invitation and permission controls.",
+                    "supporting_insights": ["Collaboration onboarding lacks clear affordances."],
+                }
+            ],
         )
         orchestrator = AgentOrchestrator()
         await orchestrator._store_findings(db, project_id, output, task)
@@ -298,7 +318,7 @@ async def test_source_to_three_model_reliability_human_done_and_report(monkeypat
         fact_id = facts[0].id
         insight_id = insights[0].id
         recommendation_id = recommendations[0].id
-        assert json.loads(facts[0].nugget_ids) == ordered_nugget_ids
+        assert set(json.loads(facts[0].nugget_ids)) == set(ordered_nugget_ids)
         assert json.loads(insights[0].fact_ids) == [fact_id]
         assert json.loads(recommendations[0].insight_ids) == [insight_id]
         derivation_edges = (

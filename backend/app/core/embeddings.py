@@ -13,6 +13,7 @@ import logging
 from dataclasses import dataclass
 
 from app.core.embedding_cache import embedding_cache
+from app.core.embedding_prompts import EmbedRole, apply_scheme
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,19 @@ logger = logging.getLogger(__name__)
 # validated against it so an entry written under a different embedding
 # model/dimension can never flow into retrieval.
 _known_embed_dimensions: dict[str, int] = {}
+
+# Serving-model fingerprints per profile namespace (F11). A profile's name and dimension cannot
+# tell two models apart: with the default LM Studio profile the identity is the literal
+# "default", and a swapped model of the same dimension passed every check. The fingerprint is a
+# hash of the vectors a fixed probe produces, so it changes whenever the model serving the
+# endpoint changes. The fingerprinted namespace keys the embedding cache, so vectors cached
+# from another model are never served, and it binds every vector store manifest.
+_known_fingerprints: dict[str, tuple[str, float]] = {}
+FINGERPRINT_PROBE_TEXTS = (
+    "Istara embedding identity probe: participant quotes about onboarding.",
+    "Istara embedding identity probe: invoice reminders arrive late.",
+)
+FINGERPRINT_TTL_SECONDS = 300.0
 
 
 def record_known_embed_dimension(model: str, dimension: int) -> None:
@@ -76,11 +90,66 @@ def _embed_model_name() -> str:
     return get_active_embedding_profile().model_id
 
 
+def _prompted(text: str, role: EmbedRole) -> str:
+    """The string the embedder receives: ``text`` under the active profile's prompt scheme."""
+    from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+
+    return apply_scheme(get_active_embedding_profile().prompt_scheme, role, text)
+
+
 def _embed_cache_namespace() -> str:
     """Return the version-bound cache identity for the active vector space."""
     from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
 
     return get_active_embedding_profile().cache_namespace
+
+
+def fingerprint_vectors(vectors: list[list[float]]) -> str:
+    """Stable identity of a vector space: the hash of the probe vectors, rounded."""
+    import hashlib
+
+    payload = ";".join(",".join(f"{x:.4f}" for x in vector) for vector in vectors)
+    return hashlib.sha256(f"{len(vectors[0])}|{payload}".encode()).hexdigest()[:16]
+
+
+def known_embed_fingerprint(namespace: str | None = None) -> str | None:
+    """The fingerprint measured in this process for the active profile, if still fresh."""
+    import time
+
+    entry = _known_fingerprints.get(namespace or _embed_cache_namespace())
+    if entry and time.monotonic() - entry[1] < FINGERPRINT_TTL_SECONDS:
+        return entry[0]
+    return None
+
+
+async def ensure_embed_fingerprint(*, force: bool = False) -> str:
+    """Measure (or reuse) the serving model's fingerprint for the active profile.
+
+    One probe batch per profile and TTL window, plus a probe whenever ``force`` is set (health
+    checks). The probe also records the dimension for the fingerprinted namespace.
+    """
+    import time
+
+    base = _embed_cache_namespace()
+    if not force:
+        fingerprint = known_embed_fingerprint(base)
+        if fingerprint:
+            return fingerprint
+    # One probe text per call: the same request shape as an ordinary single-text embed.
+    vectors = [
+        _validate_embedding_vectors(await _dispatch_embed([text]), expected_count=1)[0]
+        for text in FINGERPRINT_PROBE_TEXTS
+    ]
+    fingerprint = fingerprint_vectors(vectors)
+    _known_fingerprints[base] = (fingerprint, time.monotonic())
+    record_known_embed_dimension(f"{base}#{fingerprint}", len(vectors[0]))
+    record_known_embed_dimension(base, len(vectors[0]))
+    return fingerprint
+
+
+async def _space_namespace() -> str:
+    """Cache namespace of the vector space the serving model actually produces."""
+    return f"{_embed_cache_namespace()}#{await ensure_embed_fingerprint()}"
 
 
 async def _dispatch_embed(texts: list[str], *, project_id: str | None = None) -> list[list[float]]:
@@ -93,10 +162,16 @@ async def _dispatch_embed(texts: list[str], *, project_id: str | None = None) ->
     )
 
 
-async def embed_text(text: str) -> list[float]:
-    """Embed a single text string, checking the cache first."""
+async def embed_text(text: str, *, role: EmbedRole = "query") -> list[float]:
+    """Embed a single text string, checking the cache first.
+
+    ``role`` is "query" for what is searched with and "document" for what is searched; the active
+    profile's prompt scheme formats the text for that role. The cache keys on the formatted text,
+    so a query and a document with the same words are two embeddings.
+    """
+    text = _prompted(text, role)
     model = _embed_model_name()
-    cache_namespace = _embed_cache_namespace()
+    cache_namespace = await _space_namespace()
 
     cached = await embedding_cache.get(cache_namespace, text)
     if cached is not None:
@@ -126,6 +201,7 @@ async def embed_text(text: str) -> list[float]:
 
     vectors = _validate_embedding_vectors(await _dispatch_embed([text]), expected_count=1)
     record_known_embed_dimension(cache_namespace, len(vectors[0]))
+    record_known_embed_dimension(_embed_cache_namespace(), len(vectors[0]))
     vector = vectors[0]
     await embedding_cache.put(cache_namespace, text, vector)
     return vector
@@ -141,14 +217,19 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
     Returns:
         List of embedded chunks with vectors.
     """
+    if not chunks:
+        return []
     model = _embed_model_name()
-    cache_namespace = _embed_cache_namespace()
+    cache_namespace = await _space_namespace()
     results: list[EmbeddedChunk] = [None] * len(chunks)  # type: ignore[list-item]
+
+    # Chunks are documents; the cache and the model both see the formatted text.
+    prompted = [_prompted(chunk.text, "document") for chunk in chunks]
 
     # First pass: check cache for each chunk
     uncached_indices: list[int] = []
     for idx, chunk in enumerate(chunks):
-        cached = await embedding_cache.get(cache_namespace, chunk.text)
+        cached = await embedding_cache.get(cache_namespace, prompted[idx])
         if cached is not None:
             known = known_embed_dimension(cache_namespace)
             if known is not None:
@@ -187,17 +268,18 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
     for batch_start in range(0, len(uncached_indices), batch_size):
         batch_indices = uncached_indices[batch_start : batch_start + batch_size]
         batch_chunks = [chunks[i] for i in batch_indices]
-        texts = [c.text for c in batch_chunks]
+        texts = [prompted[i] for i in batch_indices]
 
         vectors = _validate_embedding_vectors(
             await _dispatch_embed(texts), expected_count=len(texts)
         )
         record_known_embed_dimension(cache_namespace, len(vectors[0]))
+        record_known_embed_dimension(_embed_cache_namespace(), len(vectors[0]))
 
         for i, (chunk, vector) in enumerate(zip(batch_chunks, vectors)):
             original_idx = batch_indices[i]
             results[original_idx] = EmbeddedChunk(chunk=chunk, vector=vector)
-            await embedding_cache.put(cache_namespace, chunk.text, vector)
+            await embedding_cache.put(cache_namespace, prompted[original_idx], vector)
 
     return results
 

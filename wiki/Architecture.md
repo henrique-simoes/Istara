@@ -1,7 +1,7 @@
 # Istara Architecture
 
 > Status: Public/reference architecture page.
-> Authority: Useful for external or wiki readers, but not the canonical internal development-control document. For live repo work, start with `AGENTS.md`, Compass Forge, and `DOCUMENTATION.md`.
+> Authority: Useful for external or wiki readers, but not the canonical internal development-control document. For live repo work, start with `AGENTS.md`, Compass Forge, and `AGENTS.md`.
 
 This page describes Istara's system architecture, data flow, and key design decisions.
 
@@ -84,7 +84,7 @@ Every research activity originates as a **Task** on the Kanban board, executes a
 | Database | SQLite + aiosqlite | Zero-config, local-first, ACID-compliant |
 | Vector Store | LanceDB (embedded) | No extra server process, columnar storage, hybrid search |
 | LLM | LM Studio / Ollama | Local inference, OpenAI-compatible APIs |
-| Embeddings | nomic-embed-text | Runs on CPU, tiny memory footprint |
+| Embeddings | BGE-M3 | Multilingual (100+ languages), runs on CPU, 1024 dimensions |
 | Real-time | WebSocket (FastAPI) | 16 broadcast event types, full UI synchronization |
 | Desktop | Tauri v2 (Rust) | Thin GUI tray, delegates to `istara.sh` for process management |
 

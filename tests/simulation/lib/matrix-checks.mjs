@@ -2,11 +2,55 @@
  * Shared UI-matrix checks for simulation scenarios (W5 browser-spine-acceptance).
  *
  * Covers two Full UI Testing Suite Contract obligations that individual views
- * must re-prove per surface: 375px reflow (no horizontal page overflow) and
+ * must re-prove per surface: 375px reflow (no horizontal page overflow, nothing in the view cut
+ * off) and
  * keyboard Tab navigation with a visible focus indicator. Failures are
  * recorded as failed checks, never thrown — the caller's remaining checks
  * must always still run.
  */
+
+/**
+ * Elements inside `main` that are cut off past the viewport's right edge, reported where the
+ * overflow starts (the element sticks out while its parent does not). The page itself never
+ * scrolls sideways when an ancestor clips, so document scrollWidth alone missed a Settings column
+ * 527 px wide at 375 px (2026-09-26). Content inside its own horizontal scroller is reachable and
+ * excluded, as are hidden elements and anything that starts past the edge (an off-canvas drawer).
+ */
+export async function clippedInMain(page) {
+  return page.evaluate(clippedElements);
+}
+
+/** Runs in the page: the cut-off elements inside `main`, one line each. */
+function clippedElements() {
+  const main = document.querySelector("main");
+  if (!main) return [];
+  const vw = window.innerWidth;
+  const all = [...main.querySelectorAll("*")];
+  // Starts on screen, ends past the edge, while its parent ends on screen.
+  const sticksOut = (el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.left < vw && r.right > vw + 1 && el.parentElement.getBoundingClientRect().right <= vw + 1;
+  };
+  const scrollers = all.filter((a) => ["auto", "scroll"].includes(getComputedStyle(a).overflowX) && a.scrollWidth > a.clientWidth);
+  const insideScroller = (el) => scrollers.some((s) => s !== el && s.contains(el));
+  const label = (el) => (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 40);
+  return all
+    .filter((el) => sticksOut(el) && el.checkVisibility({ visibilityProperty: true }) && !insideScroller(el))
+    .map((el) => `${el.tagName.toLowerCase()} right=${Math.round(el.getBoundingClientRect().right)} "${label(el)}"`);
+}
+
+/**
+ * Put the app in `theme` ("light" | "dark") through its own toggle and return whether the page is
+ * dark. Istara stores an explicit choice, so emulating the colour scheme alone does not switch a
+ * page whose theme an earlier scenario chose.
+ */
+export async function setTheme(page, theme) {
+  const label = theme === "dark" ? "Switch to dark mode" : "Switch to light mode";
+  const toggle = page.locator(`button[aria-label="${label}"]`).first();
+  if (await toggle.isVisible({ timeout: 3000 }).catch(() => false)) await toggle.click();
+  await page.waitForTimeout(400);
+  return page.evaluate(() => document.documentElement.classList.contains("dark"));
+}
 
 /** Emulate a 375px viewport, measure horizontal overflow, restore desktop. */
 export async function reflow375Check(page, checks, { name, onNarrow = null } = {}) {
@@ -22,6 +66,12 @@ export async function reflow375Check(page, checks, { name, onNarrow = null } = {
       name: `${name}: 375px reflow (no horizontal overflow)`,
       passed: overflowPx <= 5,
       detail: `scrollWidth=${metrics.scrollWidth} clientWidth=${metrics.clientWidth} overflow=${overflowPx}px`,
+    });
+    const clipped = await clippedInMain(page);
+    checks.push({
+      name: `${name}: 375px nothing in the view is cut off`,
+      passed: clipped.length === 0,
+      detail: clipped.length ? `${clipped.length} cut off: ${clipped.slice(0, 3).join("; ")}` : "none cut off",
     });
     if (typeof onNarrow === "function") await onNarrow();
   } catch (error) {

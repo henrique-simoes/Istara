@@ -818,3 +818,149 @@ test("synchronous transient provider throws retry only within the bounded budget
   assert.equal(calls, 2);
   assert.deepEqual(events, [{ type: "done", reason: "stop", message }]);
 });
+
+// --- Local-first: a local server that is still loading its model is waited for (DEC-10) -------
+
+function loadingThenDone({ failures, message }) {
+  let calls = 0;
+  const done = { stopReason: "stop", content: [{ type: "text", text: "ready" }], timestamp: 0 };
+  const loading = {
+    stopReason: "error",
+    errorMessage: '503: {"message":"Loading model","type":"unavailable_error","code":503}',
+    content: [],
+    timestamp: 0,
+  };
+  return {
+    get calls() { return calls; },
+    done,
+    models: {
+      streamSimple() {
+        calls += 1;
+        if (calls <= failures) {
+          return (async function* () { yield { type: "error", reason: "error", error: message || loading }; })();
+        }
+        return (async function* () { yield { type: "done", reason: "stop", message: done }; })();
+      },
+    },
+  };
+}
+
+function fakeClock() {
+  const clock = { now: 0, sleeps: [] };
+  clock.sleep = async (ms) => { clock.sleeps.push(ms); clock.now += ms; return true; };
+  clock.read = () => clock.now;
+  return clock;
+}
+
+async function drain(stream) {
+  const events = [];
+  for await (const event of stream) events.push(event);
+  return events;
+}
+
+test("a local model still loading is waited for with backoff, outside the retry budget", async () => {
+  const provider = loadingThenDone({ failures: 3 });
+  const clock = fakeClock();
+  const events = await drain(streamWithGuardedRetry(provider.models, {}, {}, {}, 0, {
+    loadWaitMs: 300_000, sleep: clock.sleep, now: clock.read,
+  }));
+  assert.equal(provider.calls, 4);
+  assert.deepEqual(clock.sleeps, [1_000, 2_000, 4_000]);
+  assert.deepEqual(events, [{ type: "done", reason: "stop", message: provider.done }]);
+});
+
+test("the load wait stops at its budget and says the model was still loading", async () => {
+  const provider = loadingThenDone({ failures: 1_000 });
+  const clock = fakeClock();
+  const events = await drain(streamWithGuardedRetry(provider.models, {}, {}, {}, 0, {
+    loadWaitMs: 30_000, sleep: clock.sleep, now: clock.read,
+  }));
+  assert.equal(clock.sleeps.reduce((a, b) => a + b, 0), 30_000);
+  assert.ok(clock.sleeps.every((ms) => ms <= 10_000));
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, "error");
+  assert.match(events[0].error.errorMessage, /Loading model/);
+  assert.match(events[0].error.errorMessage, /still loading after 30 s/);
+});
+
+test("without a load wait (a remote endpoint) a loading answer fails at once", async () => {
+  const provider = loadingThenDone({ failures: 1 });
+  const clock = fakeClock();
+  const events = await drain(streamWithGuardedRetry(provider.models, {}, {}, {}, 0, {
+    sleep: clock.sleep, now: clock.read,
+  }));
+  assert.equal(provider.calls, 1);
+  assert.deepEqual(clock.sleeps, []);
+  assert.equal(events[0].type, "error");
+  assert.doesNotMatch(events[0].error.errorMessage, /still loading/);
+});
+
+test("only a loading answer is waited for; other failures keep the retry budget", async () => {
+  const refused = { stopReason: "error", errorMessage: "400 invalid request", content: [], timestamp: 0 };
+  const provider = loadingThenDone({ failures: 1, message: refused });
+  const clock = fakeClock();
+  const events = await drain(streamWithGuardedRetry(provider.models, {}, {}, {}, 0, {
+    loadWaitMs: 300_000, sleep: clock.sleep, now: clock.read,
+  }));
+  assert.equal(provider.calls, 1);
+  assert.deepEqual(clock.sleeps, []);
+  assert.equal(events[0].error, refused);
+});
+
+test("an abort during the load wait ends the stream as aborted", async () => {
+  const provider = loadingThenDone({ failures: 1_000 });
+  const controller = new AbortController();
+  let slept = 0;
+  const sleep = async () => { slept += 1; controller.abort(); return false; };
+  const events = await drain(streamWithGuardedRetry(provider.models, {}, {}, { signal: controller.signal }, 0, {
+    loadWaitMs: 300_000, sleep, now: () => 0,
+  }));
+  assert.equal(slept, 1);
+  assert.equal(provider.calls, 1);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].reason, "aborted");
+  assert.equal(events[0].error.stopReason, "aborted");
+});
+
+test("a local binding waits for a loopback server that answers 503 Loading model", async (t) => {
+  let requests = 0;
+  const { server, port } = await startLoopback((req, res) => {
+    requests += 1;
+    if (requests === 1) {
+      // llama.cpp's server answers this way while it loads the model's weights.
+      res.writeHead(503, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: { code: 503, message: "Loading model", type: "unavailable_error" } }));
+      return;
+    }
+    res.writeHead(200, { "content-type": "text/event-stream" });
+    res.write(sseChunk("Loaded."));
+    res.write(sseChunk(null, "stop"));
+    res.end("data: [DONE]\n\n");
+  });
+  t.after(() => server.close());
+
+  const h = new WorkerHarness();
+  t.after(() => h.close());
+  await openSession(h, "sess-loading", { catalog: [] });
+  h.send({
+    v: 2,
+    type: "provider.bind",
+    session_key: "sess-loading",
+    endpoint: {
+      endpoint_id: "loopback",
+      provider_kind: "openai_compat",
+      base_url: `http://127.0.0.1:${port}/v1`,
+      model: "test-model",
+      api_key: "test-key",
+      load_wait_ms: 20_000,
+      params: { timeout_ms: 5000, max_retries: 0 },
+    },
+  });
+  h.send({ v: 2, type: "turn.prompt", session_key: "sess-loading", run_id: "run-l", text: "go" });
+
+  const completed = await h.waitFor((f) => f.type === "run.completed" && f.run_id === "run-l");
+  assert.equal(completed.stop_reason, "stop");
+  assert.equal(requests, 2);
+  const deltas = h.frames.filter((f) => f.type === "assistant.delta" && f.run_id === "run-l").map((f) => f.text);
+  assert.equal(deltas.join(""), "Loaded.");
+});

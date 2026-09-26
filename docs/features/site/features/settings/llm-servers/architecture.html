@@ -365,6 +365,51 @@
 <p>before public-provider HTTP when <code>ISTARA_TEST_BLOCK_EXTERNAL_LLM=1</code>; only</p>
 <p>loopback, faux, Docker, and reserved test domains remain eligible for</p>
 <p>deterministic contract coverage.</p>
+<h3 id="endpoint-liveness-thinking-level-provider-errors-and-structured-output-2026-09-25">Endpoint Liveness, Thinking Level, Provider Errors And Structured Output (2026-09-25)</h3>
+<ul>
+<li>**Progress-based liveness (DEC-10).** A run is judged by progress: <code>idle_timeout_ms</code> bounds the</li>
+</ul>
+<p>silence between streamed provider events (text, thinking and tool-call frames re-arm it; time in</p>
+<p>Istara&#x27;s own tools does not count) and <code>max_run_ms</code> is the total backstop. Defaults depend on</p>
+<p>locality: remote 120 s idle / 600 s total (the OpenAI and Anthropic SDKs&#x27; 10-minute default),</p>
+<p>local 300 s idle / 3,600 s total and 300 s for the response to start (Open WebUI&#x27;s Ollama default,</p>
+<p>llama.cpp server&#x27;s read/write default). <code>locality</code> (<code>auto</code> | <code>local</code> | <code>remote</code>) infers local from</p>
+<p>loopback, private, link-local, ULA and tailnet (100.64/10, <code>*.ts.net</code>) hosts, <code>*.local</code>,</p>
+<p><code>host.docker.internal</code> and single-label service names. The worker reports</p>
+<p><code>idle_timeout_exceeded</code> or <code>wall_clock_budget_exceeded</code>; the supervisor waits the idle budget plus</p>
+<p>30 s so the worker&#x27;s reason arrives first. <code>timeout_ms</code> (response start) may be up to 600 s. The</p>
+<p>built-in Ollama and LM Studio entries and locally flagged servers use the local budgets.</p>
+<ul>
+<li>**A local model that is still loading is waited for (2026-09-26).** llama.cpp and LM Studio</li>
+</ul>
+<p>answer 503 &quot;Loading model&quot; (TGI: &quot;Model is currently loading&quot;) while they load weights, and the</p>
+<p>worker used to fail that turn at once. A local binding now carries <code>load_wait_ms</code> (the 300 s</p>
+<p>response-start budget) and the worker retries a loading answer with backoff (1 s doubling, 10 s</p>
+<p>steps) until the model answers or the budget is spent. The wait does not spend <code>max_retries</code>,</p>
+<p>happens only before the attempt&#x27;s first visible output, stops at once on abort, and a turn that</p>
+<p>outlives it fails with the provider&#x27;s message plus &quot;the model was still loading after 300 s&quot;.</p>
+<p>Remote endpoints never wait: a remote 503 is an outage.</p>
+<ul>
+<li>**Thinking level.** An endpoint&#x27;s <code>thinking_level</code> (<code>off</code> .. <code>max</code>) is the default for turns that</li>
+</ul>
+<p>do not set <code>TurnParams.thinking_mode</code>. Before, only chat sent a level, so an always-reasoning model</p>
+<p>(Z.ai GLM-5.3-flash) refused every other call with HTTP 400.</p>
+<ul>
+<li>**Failure reasons.** A failed turn&#x27;s <code>TurnResult.error</code> carries the provider&#x27;s reason (for example</li>
+</ul>
+<p>the provider&#x27;s 400 text or <code>wall_clock_budget_exceeded</code>); it used to be dropped.</p>
+<ul>
+<li>**Structured output.** The worker forces its capture tool through <code>tool_choice</code>. The OpenAI</li>
+</ul>
+<p>Responses API is mapped (auto / required / named). Providers whose API accepts only <code>auto</code> (Meta)</p>
+<p>get <code>auto</code> plus an instruction to call the capture tool; only a schema-valid capture call counts,</p>
+<p>so a run without it fails closed (<code>structured_output_missing</code>). The provider identity comes from</p>
+<p>the capability receipt&#x27;s <code>pi_provider</code>, since <code>model.provider</code> is Istara&#x27;s per-endpoint name.</p>
+<ul>
+<li>**Pinned pi-ai 0.87.1** (2026-09-25) adds the <code>meta</code> provider (Muse Spark 1.1-1.3 and the</li>
+</ul>
+<p>Contributor models, direct at <code>api.meta.ai</code>) and <code>radius</code>; see</p>
+<p><code>docs/architecture/pi-compatibility-authority.md</code> for the classified diff-proof.</p>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
 <li>Compatibility is implemented by read-only row projection, not a public legacy route. User-facing configuration is mounted through <code>frontend/src/components/settings/PiModelManagement.tsx</code> and documented under <code>settings.general</code>.</li>
@@ -420,6 +465,7 @@
 <li class="toc-level-3"><a href="#api-and-backend">API And Backend</a></li>
 <li class="toc-level-3"><a href="#isolated-pi-model-catalog-pi-replacement-w1">Isolated Pi Model Catalog (Pi Replacement W1)</a></li>
 <li class="toc-level-3"><a href="#live-catalog-refresh-and-merged-model-view">Live Catalog Refresh And Merged Model View</a></li>
+<li class="toc-level-3"><a href="#endpoint-liveness-thinking-level-provider-errors-and-structured-output-2026-09-25">Endpoint Liveness, Thinking Level, Provider Errors And Structured Output (2026-09-25)</a></li>
 <li class="toc-level-2"><a href="#architecture-notes">Architecture Notes</a></li>
 <li class="toc-level-2"><a href="#agents-skills-llm-mcp-and-permissions">Agents, Skills, LLM, MCP, And Permissions</a></li>
 <li class="toc-level-2"><a href="#tests-and-verification">Tests And Verification</a></li>

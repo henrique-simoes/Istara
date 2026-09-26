@@ -318,6 +318,23 @@ each admitted coder, numeric current-run Fleiss' Kappa and Krippendorff's Alpha,
 and exact route provenance. Same-model replicas and one/two-model operational
 validation cannot be represented as independent multi-model research evidence.
 
+Pi provider turns are bounded per endpoint (2026-09-25). Liveness is progress-based: an idle
+limit on the silence between streamed provider events and a total run budget, with larger
+defaults only for endpoints on loopback, private, link-local or tailnet addresses (configurable
+within fixed maximums). A failed turn carries the provider's reason to internal callers, never a
+credential. A configured thinking level is honoured. When a provider accepts only
+`tool_choice: "auto"`, structured output stays fail-closed: only a schema-valid capture-tool call
+counts, and free-form text never does.
+
+Embedding-model changes keep vector spaces apart (2026-09-26). An install moves to another embedder
+only through `POST /api/settings/embedding-profile`, which requires administrator authority: the
+target is probed first, a new embedding-profile version becomes active, and every project's stores
+are re-embedded from their stored text and rebound, so no store ever mixes two models or prompt
+schemes. The embeddings gateway serves only the active profile's model; the built-in local serving
+planes embed the model the profile names, and an endpoint configured for one model refuses another.
+A local binding waits for a model that is still loading only within the response-start budget, and
+remote endpoints never wait.
+
 Remote comparative benchmarks execute dependencies and test code in disposable
 Docker runners. Authoritative results record source revision/state,
 digest-qualified runner identity, deployed backend/frontend image identities,

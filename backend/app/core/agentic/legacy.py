@@ -397,6 +397,21 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
                 arguments = tool_call.get("params") or {}
                 if not isinstance(arguments, dict):
                     arguments = {}
+                if allowed_names is not None and name not in allowed_names:
+                    # Catalog admission, as the Pi plane enforces it: a tool the session did not
+                    # advertise never executes, whatever the model writes. The model is told so.
+                    logger.warning("Refused tool call outside the session catalog: %s", name)
+                    history.append({"role": "assistant", "content": f"[Tool: {name}]"})
+                    history.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                f"[Tool result for {name}]:\ntool_not_allowed: `{name}` is not "
+                                f"available in this session.\n\n{followup}"
+                            ),
+                        }
+                    )
+                    continue
                 tool_calls_seen.append({"tool": name, "params": arguments})
                 await _emit(stream_cb, {"type": "tool_call", "tool": name, "params": arguments})
                 result = await tool_executor(name, arguments, project_id, agent_id)
@@ -434,20 +449,20 @@ async def _react_loop(kwargs: dict[str, Any]) -> dict[str, Any]:
             stop = "turn_budget_exceeded" if tool_call else "stop"
             return _outcome(stop)
 
-        # Hallucinated-tool filtering for the W2 streaming chat surfaces
-        # (chat.py semantics): names outside the advertised catalog never
-        # execute; their user-visible argument text is recovered when enabled.
+        # Catalog admission on EVERY surface: names outside the advertised catalog never execute
+        # (it used to apply to streaming chat only, so non-streaming and delegated turns could run
+        # a tool the session never offered). Streaming surfaces also recover the call's
+        # user-visible argument text (chat.py semantics).
         extracted_text = ""
-        if stream_tokens and allowed_names is not None and raw_calls:
+        if allowed_names is not None and raw_calls:
             real_calls: list[dict[str, Any]] = []
             for call in raw_calls:
                 name, arguments = _tool_call_parts(call)
                 if name in allowed_names:
                     real_calls.append(call)
-                elif getattr(params, "hallucination_text_extract", True):
-                    logger.info(
-                        "Hallucinated tool call '%s' — extracting text from arguments", name
-                    )
+                    continue
+                logger.warning("Refused tool call outside the session catalog: %s", name)
+                if stream_tokens and getattr(params, "hallucination_text_extract", True):
                     extracted = arguments.get(
                         "text", arguments.get("content", arguments.get("response", ""))
                     )

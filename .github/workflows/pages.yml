@@ -10,7 +10,6 @@ on:
       - "scripts/feature_docs.py"
       - "scripts/feature_docs_assets.py"
       - "tests/test_feature_docs.py"
-      - "DOCUMENTATION.md"
       - "README.md"
       - "README.pt-BR.md"
       - "Tech.md"

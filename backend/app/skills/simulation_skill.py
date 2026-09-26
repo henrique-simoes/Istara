@@ -7,6 +7,7 @@ before deploying real research.
 
 import logging
 
+from app.core.content_guard import truncate_preserving_wrappers
 from app.core.participant_simulation import (
     GameScenario,
     ParticipantProfile,
@@ -71,7 +72,10 @@ class SimulationSkill(BaseSkill):
         scenario = GameScenario(
             id="user_test",
             name="Research Instrument Test",
-            description=f"Testing robustness of: {skill_input.user_context[:100]}",
+            description=(
+                "Testing robustness of: "
+                + truncate_preserving_wrappers(skill_input.user_context, 100)
+            ),
             scenario_type="prisoners_dilemma",  # Use as base logic for response effort
         )
 

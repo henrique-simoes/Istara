@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { captureParameters, mapToolChoiceForApi, translateOutputSchema } from "../src/structured.mjs";
+import { bindingProviderId, captureParameters, isAutoToolChoice, mapToolChoiceForApi, resolveStructuredChoice, structuredPromptText, translateOutputSchema } from "../src/structured.mjs";
 
 const WORKER = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "worker.mjs");
 
@@ -32,6 +32,92 @@ test("capture tool parameters keep an object root accepted by OpenAI-compatible 
     parameters.properties.verdict.anyOf.map((arm) => arm.const),
     ["pass", "fail"],
   );
+});
+
+test("OpenAI Responses forces the named capture tool (Meta Muse Spark serves this API)", () => {
+  // Found on the live lane (2026-09-25): structured runs on an openai-responses endpoint failed
+  // closed with tool_choice_unsupported before any request, so every structured skill and judge
+  // on Meta's API failed. pi-ai's Responses transport passes tool_choice through unchanged, and
+  // the Responses API takes the flat named-function form.
+  assert.deepEqual(
+    mapToolChoiceForApi("openai-responses", { kind: "tool", name: "emit_structured_output" }),
+    { type: "function", name: "emit_structured_output" },
+  );
+  assert.equal(mapToolChoiceForApi("openai-responses", { kind: "required" }), "required");
+  assert.equal(mapToolChoiceForApi("openai-responses", { kind: "auto" }), "auto");
+});
+
+test("a provider whose API accepts only tool_choice auto gets auto, never a forced choice", () => {
+  // Meta's Responses API (Muse Spark) answers HTTP 400 "only \"auto\" is supported for
+  // tool_choice": a forced or named choice fails every structured run.
+  const named = { kind: "tool", name: "emit_structured_output" };
+  assert.equal(mapToolChoiceForApi("openai-responses", named, { provider: "meta" }), "auto");
+  assert.equal(mapToolChoiceForApi("openai-responses", { kind: "required" }, { provider: "meta" }), "auto");
+  assert.deepEqual(mapToolChoiceForApi("openai-responses", named, { provider: "openai" }), {
+    type: "function",
+    name: "emit_structured_output",
+  });
+});
+
+test("the binding's provider is the endpoint's pi_provider, not Istara's per-endpoint registry name", () => {
+  // Live, 2026-09-25: model.provider was "pi-endpoint-pi-muse-spark", so the auto-only rule for
+  // "meta" never matched and Meta still received a forced tool_choice.
+  const binding = { capability_receipt: { pi_provider: "meta" }, model: { provider: "pi-endpoint-pi-muse-spark" } };
+  assert.equal(bindingProviderId(binding), "meta");
+  assert.equal(bindingProviderId({ model: { provider: "zai" } }), "zai");
+  assert.equal(bindingProviderId(null), "");
+});
+
+test("DeepSeek and Anthropic thinking runs get tool_choice auto; without thinking they are forced", () => {
+  // Live, 2026-09-26: DeepSeek V4 Flash answered HTTP 400 "Thinking mode does not support this
+  // tool_choice" to the forced capture tool. Anthropic documents the same rule for extended
+  // thinking (only auto or none). Without thinking both still accept a forced choice.
+  const named = { kind: "tool", name: "emit_structured_output" };
+  assert.equal(mapToolChoiceForApi("openai-completions", named, { provider: "deepseek", thinking: true }), "auto");
+  assert.deepEqual(mapToolChoiceForApi("openai-completions", named, { provider: "deepseek", thinking: false }), {
+    type: "function",
+    function: { name: "emit_structured_output" },
+  });
+  assert.deepEqual(mapToolChoiceForApi("anthropic-messages", named, { provider: "anthropic", thinking: true }), { type: "auto" });
+  assert.deepEqual(mapToolChoiceForApi("anthropic-messages", named, { provider: "anthropic" }), {
+    type: "tool",
+    name: "emit_structured_output",
+  });
+});
+
+test("a structured choice is resolved from the binding: api, provider and whether it thinks", () => {
+  const named = { kind: "tool", name: "emit_structured_output" };
+  const deepseek = (reasoning) => ({
+    isReal: true,
+    model: { api: "openai-completions", provider: "pi-endpoint-pi-deepseek-flash" },
+    capability_receipt: { pi_provider: "deepseek" },
+    params: reasoning ? { reasoning } : {},
+  });
+  assert.deepEqual(resolveStructuredChoice(deepseek("low"), named), { mapped: "auto", forced: false });
+  assert.deepEqual(resolveStructuredChoice(deepseek(null), named), {
+    mapped: { type: "function", function: { name: "emit_structured_output" } },
+    forced: true,
+  });
+  const claude = {
+    isReal: true,
+    model: { api: "anthropic-messages", provider: "pi-endpoint-x" },
+    capability_receipt: { pi_provider: "anthropic" },
+    params: { reasoning: "high" },
+  };
+  // The Anthropic auto form is an object; it must still count as unforced.
+  assert.deepEqual(resolveStructuredChoice(claude, named), { mapped: { type: "auto" }, forced: false });
+  assert.equal(isAutoToolChoice({ type: "auto" }), true);
+  assert.equal(isAutoToolChoice("required"), false);
+  // A real binding whose API cannot express the choice is refused (null), never silently unforced.
+  const unknown = { isReal: true, model: { api: "mystery-api" }, params: {} };
+  assert.deepEqual(resolveStructuredChoice(unknown, named), { mapped: null, forced: true });
+});
+
+test("an unforced structured run asks for the capture tool; a forced one leaves the prompt alone", () => {
+  assert.equal(structuredPromptText("What is the capital?", { forced: true }), "What is the capital?");
+  const unforced = structuredPromptText("What is the capital?", { forced: false });
+  assert.ok(unforced.startsWith("What is the capital?"));
+  assert.ok(unforced.includes("emit_structured_output"));
 });
 
 test("Codex Responses requires the sole structured capture tool", () => {

@@ -1,9 +1,19 @@
 # Inspired by Karpathy's autoresearch (MIT) — https://github.com/karpathy/autoresearch
 """Loop 4: RAG Parameter Tuning.
 
-Optimizes retrieval parameters — chunk_size, chunk_overlap, hybrid weights —
-by running test queries against a project's vector store and measuring
-precision@k.
+Tunes retrieval parameters (chunk size, overlap, hybrid weights, RRF k) against RELEVANCE
+JUDGMENTS: the objective is mean nDCG@10 of the production hybrid retriever on the retrieval
+benchmark's qrels (``app.evals.retrieval_eval``, measurement 1).
+
+The previous objective was ``0.6 x mean(fused score) + 0.4 x coverage`` over five fixed queries
+(F3). The fused RRF score is proportional to the weights being tuned, so raising either weight
+raised the "precision@k" with no change in what was retrieved. Chunk-size mutations never
+re-indexed anything, and every mutation was a ``setattr`` on the process-wide settings, which
+other projects' requests read while the measurement ran.
+
+Now every candidate is measured on a sandbox index rebuilt from the benchmark corpus whenever
+chunking changes. The candidate is passed explicitly and never written to ``settings``, and
+without a benchmark the loop fails closed instead of optimising a proxy.
 """
 
 from __future__ import annotations
@@ -23,16 +33,16 @@ PARAM_RANGES = {
     "rag_chunk_overlap": (50, 400),
     "rag_hybrid_vector_weight": (0.3, 0.9),
     "rag_hybrid_keyword_weight": (0.1, 0.7),
+    "rag_rrf_k": (10, 200),
 }
 
-# Test queries used for evaluation (UX-research domain)
-TEST_QUERIES = [
-    "What are the key usability issues found in the interviews?",
-    "Summarize participant feedback on onboarding flow",
-    "What design patterns were most effective?",
-    "List the main pain points from user testing sessions",
-    "How do participants describe their experience with search?",
-]
+_CONFIG_FIELDS = {
+    "rag_chunk_size": "chunk_size",
+    "rag_chunk_overlap": "chunk_overlap",
+    "rag_hybrid_vector_weight": "vector_weight",
+    "rag_hybrid_keyword_weight": "keyword_weight",
+    "rag_rrf_k": "rrf_k",
+}
 
 
 class RAGParamsRunner(BaseLoopRunner):
@@ -44,20 +54,38 @@ class RAGParamsRunner(BaseLoopRunner):
     def __init__(self) -> None:
         self._original_values: dict[str, float | int] = {}
         self._project_id: str = ""
+        self._candidate: dict[str, float | int] = {}
+        self.objective = None  # app.evals.retrieval_eval.RetrievalObjective
 
     # ------------------------------------------------------------------
     # BaseLoopRunner interface
     # ------------------------------------------------------------------
 
     async def measure_baseline(self, target: str) -> float:
-        """Measure current retrieval quality.  *target* is a project_id."""
-        project_id = self._bind_target_scope(target)
+        """nDCG@10 of the current configuration on the retrieval benchmark (fails closed)."""
+        self._bind_target_scope(target)
         self._snapshot_current_params()
-        return await self._evaluate_retrieval(project_id)
+        self._candidate = {}
+        self.close()
+        from app.evals.retrieval_eval import Qrels, RetrievalObjective
+
+        qrels = Qrels.load(
+            settings.retrieval_benchmark_qrels or _default_qrels(),
+            settings.retrieval_benchmark_corpus or None,
+        )
+        self.objective = RetrievalObjective(qrels)
+        return await self._evaluate_retrieval()
 
     async def measure(self, target: str) -> float:
-        """Measure retrieval quality after a parameter mutation."""
-        return await self._evaluate_retrieval(self._bind_target_scope(target))
+        """nDCG@10 of the candidate configuration, on its own sandbox index."""
+        self._bind_target_scope(target)
+        return await self._evaluate_retrieval()
+
+    def close(self) -> None:
+        """Delete the sandbox indices (called by the engine when the loop ends)."""
+        if self.objective is not None:
+            self.objective.close()
+            self.objective = None
 
     async def hypothesize(
         self, target: str, current_score: float, history: list[dict]
@@ -72,20 +100,16 @@ class RAGParamsRunner(BaseLoopRunner):
         return self._random_perturbation()
 
     async def apply_mutation(self, target: str, mutation: dict) -> Callable[[], Awaitable[None]]:
-        """Apply parameter changes to settings in-memory.  Returns revert fn."""
-        old_values: dict[str, float | int] = {}
-        params = mutation.get("params", {})
+        """Stage a candidate for the next measurement. Nothing process-wide changes.
 
-        for key, value in params.items():
-            if hasattr(settings, key):
-                old_values[key] = getattr(settings, key)
-                setattr(settings, key, value)
-                logger.debug(f"RAGParamsRunner: {key} = {value} (was {old_values[key]})")
+        The candidate lives on this runner and reaches only the sandbox objective. The old
+        ``setattr(settings, ...)`` changed retrieval for every project while it measured (F9).
+        """
+        params = mutation.get("params", {})
+        self._candidate = {k: v for k, v in params.items() if k in PARAM_RANGES}
 
         async def _revert() -> None:
-            for k, v in old_values.items():
-                setattr(settings, k, v)
-                logger.debug(f"RAGParamsRunner: reverted {k} = {v}")
+            self._candidate = {}
 
         return _revert
 
@@ -234,49 +258,20 @@ class RAGParamsRunner(BaseLoopRunner):
         # Fallback to random perturbation
         return self._random_perturbation()
 
-    async def _evaluate_retrieval(self, project_id: str) -> float:
-        """Run test queries and measure retrieval quality as average precision@k."""
-        from app.core.rag import VectorStore
+    def _config(self):
+        from app.evals.retrieval_eval import RetrievalConfig
 
-        store = VectorStore(project_id)
-        count = await store.count()
-        if count == 0:
-            logger.warning(f"RAGParamsRunner: project '{project_id}' has no indexed chunks")
-            return 0.0
+        overrides = {_CONFIG_FIELDS[k]: v for k, v in self._candidate.items()}
+        return RetrievalConfig.from_settings(**overrides)
 
-        scores: list[float] = []
-        for query in TEST_QUERIES:
-            try:
-                score = await self._score_single_query(project_id, query)
-                scores.append(score)
-            except Exception as e:
-                logger.debug(f"Query evaluation failed: {e}")
-                scores.append(0.0)
+    async def _evaluate_retrieval(self) -> float:
+        """Mean nDCG@10 over the benchmark questions (relevance judgments, not fused scores)."""
+        if self.objective is None:
+            raise RuntimeError("rag_params: measure_baseline must run first")
+        return await self.objective.score(self._config())
 
-        return sum(scores) / len(scores) if scores else 0.0
 
-    async def _score_single_query(self, project_id: str, query: str) -> float:
-        """Score a single retrieval query using relevance assessment."""
-        from app.core.embeddings import embed_text
-        from app.core.rag import hybrid_search
+def _default_qrels():
+    from app.evals.retrieval_eval import DEFAULT_QRELS
 
-        # W6 embedding-skip: retrieval-eval embeddings stay on the legacy plane
-        # (via ``embed_text``) until the W8 embeddings gateway; the count-to-zero
-        # allowlist tracks this embed site separately from the migrated chat call
-        # in ``_llm_hypothesis`` (master plan §8 W6).
-        query_vector = await embed_text(query)
-        results = await hybrid_search(project_id, query, query_vector)
-
-        if not results:
-            return 0.0
-
-        # Score based on: number of results, score distribution, and content relevance
-        # More results with higher scores = better
-        num_results = len(results)
-        avg_score = sum(r.score for r in results) / num_results if num_results else 0.0
-
-        # Penalize if too few results
-        coverage = min(1.0, num_results / max(settings.rag_top_k, 1))
-
-        # Combined score
-        return avg_score * 0.6 + coverage * 0.4
+    return DEFAULT_QRELS

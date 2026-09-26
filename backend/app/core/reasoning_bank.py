@@ -17,7 +17,7 @@ from typing import Any
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.content_guard import ContentGuard
+from app.core.content_guard import ContentGuard, neutralize_boundary_markup
 from app.models.database import async_session
 from app.models.reasoning_memory import ReasoningMemoryItem
 
@@ -127,6 +127,57 @@ async def _record_reasoning_bank_telemetry(
         logger.debug("ReasoningBank telemetry skipped: %s", exc)
 
 
+_MIN_MEMORY_BODY_CHARS = 80
+_MAX_PREFILTER_TERMS = 8
+_MAX_CANDIDATES = 2000
+
+
+def format_memory_context(memories: list[dict], *, max_chars: int = 1500) -> str:
+    """Render retrieved memories for a prompt within ``max_chars``, one closed wrapper each.
+
+    Each memory's title and content sit INSIDE its untrusted wrapper (both come from stored traces),
+    and the block is assembled line by line against the budget. It is never sliced after wrapping,
+    because a slice could drop a closing tag and leave memory text outside the delimiter.
+    """
+    if not memories:
+        return ""
+    header = "\n".join(["## Relevant Reasoning Memory", REASONING_BANK_SPINE_NOTICE])
+    if len(header) > max_chars:
+        return ""
+    lines = [header]
+    used = len(header)
+    for memory in memories:
+        memory_id = str(memory.get("id", ""))
+        prefix = (
+            f"- [{_clean_text(memory.get('outcome'), max_chars=30)}/"
+            f"{_clean_text(memory.get('source_kind'), max_chars=50)}] "
+            f"(confidence {float(memory.get('confidence') or 0):.2f}): "
+        )
+        # Neutralise before measuring: escaping markup lengthens the text, and the wrapper would
+        # otherwise do it after the budget check.
+        body = neutralize_boundary_markup(
+            _guard.sanitize_for_prompt(
+                f"{_clean_text(memory.get('title'), max_chars=255)}\n"
+                f"{_clean_text(memory.get('content', ''), max_chars=500)}"
+            )
+        )
+        source = f"reasoning_memory:{memory_id}"
+        overhead = len(prefix) + len(_guard.wrap_untrusted("", source=source)) + 1
+        room = max_chars - used - overhead
+        if room < _MIN_MEMORY_BODY_CHARS:
+            break
+        if len(body) > room:
+            body = body[: room - 3].rstrip() + "..."
+        line = prefix + _guard.wrap_untrusted(body, source=source)
+        if used + len(line) + 1 > max_chars:
+            break
+        lines.append(line)
+        used += len(line) + 1
+    if len(lines) == 1:
+        return ""
+    return "\n".join(lines)
+
+
 class ReasoningMemoryService:
     """Persist, retrieve, and summarize distilled reasoning memories."""
 
@@ -226,7 +277,13 @@ class ReasoningMemoryService:
             confidence = 0.55
 
         if judge_score is not None:
-            confidence = max(confidence, min(1.0, max(0.0, judge_score)))
+            if is_success or is_failure:
+                confidence = max(confidence, min(1.0, max(0.0, judge_score)))
+            else:
+                # A neutral/provisional trace (self-verified output, an autoresearch candidate)
+                # has no independent judgement behind its score. It stays a weak prior whatever
+                # score it reports (governance contract; F3's pseudo-score fed straight in here).
+                confidence = min(max(confidence, min(1.0, max(0.0, judge_score))), 0.6)
 
         return [
             {
@@ -296,14 +353,29 @@ class ReasoningMemoryService:
         errors: list[str] | None = None,
         validation_reason: str = "",
         trace_id: str = "",
+        self_verified: bool | None = None,
     ) -> list[dict]:
-        outcome = "success" if success and verified else "failure"
+        """``verified`` is INDEPENDENT verification (human-approved review). ``self_verified`` is
+        the agent's own check. A passing self-check is recorded as a provisional trace, never as
+        a success, and its score cannot raise the memory's confidence (measurement 6)."""
+        if not success:
+            outcome = "failure"
+        elif verified:
+            outcome = "success"
+        elif self_verified is False:
+            outcome = "failure"
+        elif self_verified:
+            outcome = "provisional"
+            quality_score = None
+        else:
+            outcome = "failure"
         trajectory = {
             "task_title": task_title,
             "task_description": task_description,
             "skill_name": skill_name,
             "output_summary": output_summary,
             "verified": verified,
+            "self_verified": self_verified,
             "quality_score": quality_score,
             "errors": errors or [],
             "validation_reason": validation_reason,
@@ -404,7 +476,26 @@ class ReasoningMemoryService:
                 )
             if source_kinds:
                 stmt = stmt.where(ReasoningMemoryItem.source_kind.in_(source_kinds))
-            stmt = stmt.order_by(ReasoningMemoryItem.updated_at.desc()).limit(200)
+            # Relevance BEFORE recency: pre-filter in SQL to rows that share a query term, then
+            # cap. Taking the 200 newest rows first made any older relevant lesson unreachable
+            # once 200 newer ones existed (F16).
+            match_terms = sorted(query_tokens, key=len, reverse=True)[:_MAX_PREFILTER_TERMS]
+            stmt = stmt.where(
+                or_(
+                    *[
+                        column.ilike(f"%{term}%")
+                        for term in match_terms
+                        for column in (
+                            ReasoningMemoryItem.title,
+                            ReasoningMemoryItem.description,
+                            ReasoningMemoryItem.content,
+                            ReasoningMemoryItem.domain,
+                            ReasoningMemoryItem.tags_json,
+                        )
+                    ]
+                )
+            )
+            stmt = stmt.order_by(ReasoningMemoryItem.updated_at.desc()).limit(_MAX_CANDIDATES)
             result = await session.execute(stmt)
             candidates = result.scalars().all()
 
@@ -432,10 +523,8 @@ class ReasoningMemoryService:
 
             scored.sort(key=lambda pair: pair[0], reverse=True)
             selected = scored[: max(1, min(20, limit))]
-            for _, item in selected:
-                item.usage_count = (item.usage_count or 0) + 1
-            if selected:
-                await session.commit()
+            # A query: no usage_count increment, no commit (F16: every read, including admin
+            # inspection and routing, counted as a "use" and committed the caller's session).
             return [
                 {
                     **item.to_dict(),
@@ -449,6 +538,19 @@ class ReasoningMemoryService:
         async with async_session() as session:
             return await _retrieve(session)
 
+    async def record_usage(self, memory_ids: list[str]) -> None:
+        """Command: count one use of each memory that was actually put into a prompt."""
+        ids = [memory_id for memory_id in dict.fromkeys(memory_ids) if memory_id]
+        if not ids:
+            return
+        async with async_session() as session:
+            rows = await session.execute(
+                select(ReasoningMemoryItem).where(ReasoningMemoryItem.id.in_(ids))
+            )
+            for item in rows.scalars().all():
+                item.usage_count = (item.usage_count or 0) + 1
+            await session.commit()
+
     async def context_for_query(
         self,
         *,
@@ -459,7 +561,10 @@ class ReasoningMemoryService:
         limit: int = 5,
         max_chars: int = 1500,
         include_global: bool = False,
+        record_usage: bool = True,
     ) -> str:
+        """Prompt-ready memory context. Counts one use per memory that made it into the text,
+        unless ``record_usage`` is false (inspection)."""
         memories = await self.retrieve(
             project_id=project_id,
             query=query,
@@ -468,23 +573,20 @@ class ReasoningMemoryService:
             limit=limit,
             include_global=include_global,
         )
-        if not memories:
-            return ""
-        lines = [
-            "## Relevant Reasoning Memory",
-            REASONING_BANK_SPINE_NOTICE,
-        ]
-        for memory in memories:
-            memory_id = str(memory.get("id", ""))
-            content = _guard.wrap_untrusted(
-                _clean_text(memory.get("content", ""), max_chars=500),
-                source=f"reasoning_memory:{memory_id}",
-            )
-            lines.append(
-                f"- [{memory.get('outcome')}/{memory.get('source_kind')}] "
-                f"{memory.get('title')} (confidence {memory.get('confidence', 0):.2f}): {content}"
-            )
-        return _clean_text("\n".join(lines), max_chars=max_chars)
+        context = format_memory_context(memories, max_chars=max_chars)
+        if record_usage and context:
+            try:
+                await self.record_usage(
+                    [
+                        str(m.get("id"))
+                        for m in memories
+                        if f'source="reasoning_memory:{m.get("id")}"' in context
+                    ]
+                )
+            except Exception as exc:
+                # Usage accounting is bookkeeping: it must never cost the prompt its context.
+                logger.debug("ReasoningBank usage count skipped: %s", exc)
+        return context
 
     async def consolidate_duplicates(self, *, project_id: str | None = None) -> dict:
         async with async_session() as session:

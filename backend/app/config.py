@@ -127,8 +127,16 @@ class PiApiEndpoint(BaseModel):
     model: str
     keychain_service: str
     keychain_account: str = ""
-    timeout_ms: int = Field(default=30_000, ge=1, le=120_000)
+    # How long to wait for the response to START (the provider SDK's request timeout). A local
+    # server may load weights first, so local endpoints default to 300 s when this is not set.
+    timeout_ms: int = Field(default=30_000, ge=1, le=600_000)
     max_retries: int = Field(default=0, ge=0, le=3)
+    # Run liveness (app.core.pi_runtime.liveness, DEC-10): ``auto`` infers local from the base
+    # URL host. ``idle_timeout_ms`` bounds the silence between streamed events; ``max_run_ms`` is
+    # the total backstop. ``None`` takes the local or remote default.
+    locality: Literal["auto", "local", "remote"] = "auto"
+    idle_timeout_ms: int | None = Field(default=None, ge=1_000, le=3_600_000)
+    max_run_ms: int | None = Field(default=None, ge=1_000, le=86_400_000)
     # Trustworthy per-endpoint pricing (USD per 1M tokens) resolved from the
     # deployment's contract. The worker feeds these into the pi-ai model rates so
     # a real turn's usage is priced and the per-run ``max_cost_usd`` ceiling can
@@ -150,6 +158,10 @@ class PiApiEndpoint(BaseModel):
     # advertised; catalog-managed models set this explicitly so the runtime
     # does not force provider defaults onto a non-reasoning model.
     supports_reasoning: bool | None = None
+    # Default reasoning effort for turns that do not set ``TurnParams.thinking_mode``. Some models
+    # always reason (Z.ai GLM-5.3-flash refuses a request with thinking off), so an endpoint must
+    # be able to say how much. ``None`` keeps the worker's default.
+    thinking_level: Literal["off", "minimal", "low", "medium", "high", "xhigh", "max"] | None = None
     # Provider-auth metadata is non-secret and lets the runtime choose the
     # correct Pi transport (for example Codex Responses adds account headers).
     pi_provider: str = ""
@@ -261,12 +273,18 @@ class Settings(BaseSettings):
     # Ollama
     ollama_host: str = "http://localhost:11434"
     ollama_model: str = "qwen3:latest"
-    ollama_embed_model: str = "nomic-embed-text"
+    # Chosen by the pre-registered rule (DEC-15, 2026-09-26): BGE-M3 had the highest hybrid nDCG@10
+    # (0.788 vs nomic-embed-text 0.523; Spanish 0.723 vs 0.224). Existing installs keep their
+    # persisted profile until an administrator switches (Settings -> Embedding model).
+    ollama_embed_model: str = "bge-m3"
 
     # LM Studio (OpenAI-compatible API)
     lmstudio_host: str = "http://localhost:1234"
     lmstudio_model: str = "default"
     lmstudio_embed_model: str = "default"
+    # Query/document prompts for the embedder ("auto" = the model card's; see embedding_prompts).
+    # Only a new embedding profile takes it: existing profiles keep the scheme they were built with.
+    embed_prompt_scheme: str = "auto"
     lmstudio_api_key: str = ""
     lmstudio_auto_load_enabled: bool = True
     lmstudio_auto_context_reload: bool = False
@@ -400,6 +418,13 @@ class Settings(BaseSettings):
     rag_score_threshold: float = 0.3
     rag_hybrid_vector_weight: float = 0.7
     rag_hybrid_keyword_weight: float = 0.3
+    rag_rrf_k: int = 60  # Reciprocal Rank Fusion constant (Cormack et al. 2009)
+    # Graph-assisted retrieval (G3, DEC-2): widen hybrid hits through facts to sibling evidence.
+    rag_graph_expansion: bool = False
+    # Retrieval benchmark (qrels + corpus) that autoresearch RAG tuning optimises against. Empty:
+    # the repository copy under tests/ when present. Without it, RAG tuning fails closed.
+    retrieval_benchmark_qrels: str = ""
+    retrieval_benchmark_corpus: str = ""
 
     # DAG Context Summarization
     dag_enabled: bool = True
@@ -407,6 +432,8 @@ class Settings(BaseSettings):
     dag_batch_size: int = 32
     dag_rollup_threshold: int = 4
     dag_summary_max_tokens: int = 300
+    # Pi endpoint for DAG summaries ("" = the default endpoint); a light model keeps them fast.
+    dag_summary_endpoint_id: str = ""
 
     # Design integrations
     stitch_api_key: str = ""

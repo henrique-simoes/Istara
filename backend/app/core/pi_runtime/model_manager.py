@@ -21,7 +21,6 @@ Catalog sources, all projected to exact-identity entries:
 
 from __future__ import annotations
 
-import json
 import logging
 import weakref
 from collections.abc import Iterable
@@ -36,7 +35,8 @@ from .endpoints import (
     PiEndpointResolver,
     ResolvedPiEndpoint,
 )
-from .model_management_compat import SUPPORTED_PROVIDERS, host_is_plannable
+from .liveness import LOCAL_RESPONSE_START_MS
+from .model_management_compat import llm_server_row_fields
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +238,9 @@ class PiModelManager:
                 source="local",
                 api_key="ollama",
                 kind="local",
+                # A local server may load weights before it answers (and embeds whole batches
+                # while other work runs): 30 s failed under ordinary load (DEC-10).
+                timeout_ms=LOCAL_RESPONSE_START_MS,
             ),
             _CatalogEntry(
                 endpoint_id="pi-local-lmstudio",
@@ -248,6 +251,9 @@ class PiModelManager:
                 source="local",
                 api_key=settings.lmstudio_api_key or "lm-studio",
                 kind="local",
+                # A local server may load weights before it answers (and embeds whole batches
+                # while other work runs): 30 s failed under ordinary load (DEC-10).
+                timeout_ms=LOCAL_RESPONSE_START_MS,
             ),
         ]
 
@@ -340,69 +346,25 @@ class PiModelManager:
         # MUST be dropped here (silent config loss at the migration gate
         # otherwise). vllm/sglang/llamacpp/mlx are OpenAI-compatible server
         # types and project through the openai_compat provider kind.
-        if provider_type not in SUPPORTED_PROVIDERS:
+        fields = llm_server_row_fields(provider_type, row)
+        if fields is None:
             return None
-        try:
-            capabilities = json.loads(getattr(row, "capabilities", "") or "{}")
-        except (TypeError, ValueError):
-            capabilities = {}
-        host = (getattr(row, "host", "") or "").rstrip("/")
-        if not host_is_plannable(host):
-            return None
-        is_local = bool(getattr(row, "is_local", False)) or provider_type in {"ollama", "lmstudio"}
-        if provider_type in {"ollama", "lmstudio"} and not host.endswith("/v1"):
-            host = f"{host}/v1"
-        provider_kind = (
-            "anthropic_compat" if provider_type.startswith("anthropic") else "openai_compat"
-        )
-        encrypted_key = getattr(row, "api_key", "") or ""
-        api_key = ""
-        if encrypted_key:
-            try:
-                from app.core.field_encryption import decrypt_field
-
-                api_key = decrypt_field(encrypted_key)
-            except Exception:
-                logger.debug(
-                    "pi model manager: LLMServer key projection failed for %s",
-                    getattr(row, "id", "?"),
-                )
-                return None
-        elif provider_type == "ollama":
-            api_key = "ollama"
-        elif provider_type == "lmstudio":
-            api_key = settings.lmstudio_api_key or "lm-studio"
-        models = capabilities.get("models") if isinstance(capabilities, dict) else None
-        model = (models[0] if isinstance(models, list) and models else "") or (
-            settings.ollama_model
-            if provider_type == "ollama"
-            else settings.lmstudio_model
-            if provider_type == "lmstudio"
-            else (getattr(row, "name", "") or "default")
-        )
+        capabilities = fields["capabilities"]
+        is_local = fields["is_local"]
         return _CatalogEntry(
             endpoint_id=f"pi-llm-{getattr(row, 'id', '')}",
-            provider_kind=provider_kind,
-            base_url=host,
-            model=model,
-            embedding_model=(
-                settings.lmstudio_embed_model
-                if provider_type == "lmstudio"
-                else settings.ollama_embed_model
-                if provider_type == "ollama"
-                else ""
+            provider_kind=(
+                "anthropic_compat" if provider_type.startswith("anthropic") else "openai_compat"
             ),
+            base_url=fields["base_url"],
+            model=fields["model"],
+            embedding_model=fields["embedding_model"],
             source="llm_server",
-            api_key=api_key,
-            context_window=(
-                int(capabilities.get("context_window", 0) or 0)
-                if isinstance(capabilities, dict)
-                else 0
-            ),
-            supports_vision=(
-                bool(capabilities.get("vision", False)) if isinstance(capabilities, dict) else False
-            ),
+            api_key=fields["api_key"],
+            context_window=int(capabilities.get("context_window", 0) or 0),
+            supports_vision=bool(capabilities.get("vision", False)),
             kind="local" if is_local else "remote",
+            timeout_ms=LOCAL_RESPONSE_START_MS if is_local else 30_000,
         )
 
     def reset_db_projection(self) -> None:
@@ -733,6 +695,33 @@ class PiModelManager:
             return entry.embedding_model
         return entry.model
 
+    def _embed_candidates(self) -> list[_CatalogEntry]:
+        """OpenAI-compatible entries, without a non-Petals entry squatting on a Petals id."""
+        candidates = [
+            entry
+            for entry in self._entries.values()
+            if entry.provider_kind == "openai_compat"
+            and not (
+                is_reserved_petals_endpoint_id(entry.endpoint_id) and not _is_petals_entry(entry)
+            )
+        ]
+        if not candidates:
+            raise PiEndpointResolutionError("no_matching_pi_embed_endpoint")
+        return candidates
+
+    def _pinned_embed_entry(self, endpoint_id: str, requested_model: str) -> _CatalogEntry:
+        """The profile's pinned endpoint, refused when it is unknown or cannot embed the model."""
+        pinned = self._entries.get(endpoint_id)
+        if pinned is None or pinned.provider_kind != "openai_compat":
+            raise PiEndpointResolutionError("unknown_pi_embed_endpoint")
+        # The built-in local serving planes (Ollama, LM Studio) embed with whatever model the
+        # request names: provisioning pulls it, and the embedding profile, not the classical
+        # setting, names it. An endpoint configured for one model still refuses another.
+        fixed_model = pinned.source != "local" and requested_model not in ("", "default")
+        if fixed_model and self._embedding_model(pinned) != requested_model:
+            raise PiEndpointResolutionError("pi_embed_endpoint_model_mismatch")
+        return pinned
+
     @staticmethod
     def _is_active_local(entry: _CatalogEntry, provider: str) -> bool:
         if entry.kind != "local":
@@ -766,27 +755,12 @@ class PiModelManager:
             configured = self._entries.get(endpoint_id)
             if configured is None or not _is_petals_entry(configured):
                 raise PiEndpointResolutionError("petals_endpoint_namespace_conflict")
-        candidates = [
-            entry
-            for entry in self._entries.values()
-            if entry.provider_kind == "openai_compat"
-            and not (
-                is_reserved_petals_endpoint_id(entry.endpoint_id) and not _is_petals_entry(entry)
-            )
-        ]
-        if not candidates:
-            raise PiEndpointResolutionError("no_matching_pi_embed_endpoint")
+        candidates = self._embed_candidates()
         active_provider = (provider or settings.llm_provider or "ollama").strip().lower()
         requested_model = (model or self._active_embed_model(active_provider) or "").strip()
 
         if endpoint_id:
-            pinned = self._entries.get(endpoint_id)
-            if pinned is None or pinned.provider_kind != "openai_compat":
-                raise PiEndpointResolutionError("unknown_pi_embed_endpoint")
-            if requested_model and requested_model != "default":
-                if self._embedding_model(pinned) != requested_model:
-                    raise PiEndpointResolutionError("pi_embed_endpoint_model_mismatch")
-            return self._materialize(pinned)
+            return self._materialize(self._pinned_embed_entry(endpoint_id, requested_model))
 
         if requested_model and requested_model != "default":
             exact = [

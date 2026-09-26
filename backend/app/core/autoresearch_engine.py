@@ -289,6 +289,7 @@ class AutoresearchEngine:
             self._active_project_id = None
             if callable(bind_project):
                 bind_project("")
+            _close_runner(runner)
             # Release persona lock
             if runner.needs_persona_lock:
                 from app.core.agent_identity import release_persona_lock
@@ -566,3 +567,13 @@ class AutoresearchEngine:
 
 # Singleton
 autoresearch_engine = AutoresearchEngine()
+
+
+def _close_runner(runner: object) -> None:
+    """Runners that measure on sandboxes (rag_params) remove them when the loop ends."""
+    close_runner = getattr(runner, "close", None)
+    if callable(close_runner):
+        try:
+            close_runner()
+        except Exception as exc:
+            logger.debug("Runner close skipped: %s", exc)

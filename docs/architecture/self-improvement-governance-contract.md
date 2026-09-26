@@ -42,6 +42,14 @@ Telemetry observes process events
   fallback non-promotional.
 - GraphRAG is synthesis and traceability; it fails closed if task/report gates
   or evidence dependencies are missing.
+- Learning signals are relevance-gated and never self-certified (2026-09-25): a learned skill prior
+  counts only for a candidate that is relevant to the task; a model's own self-verification yields a
+  provisional signal, never a success; reading ReasoningBank memories is side-effect free (use is
+  counted when a memory reaches a prompt); persona learnings promoted from one project are stored
+  and composed for that project only.
+- The RAG tuning objective is relevance on span-graded judgments over sandbox indices, never a
+  score the tuned parameters can raise by themselves; candidates are never written to process-wide
+  settings, and the loop fails closed without a benchmark.
 - Prompt-RAG and LLMLingua are context tools. Mandatory coding methodology,
   codebooks, reliability policy, promotion gates, route/evidence schemas, and
   auth constraints are injected deterministically and protected from
@@ -140,6 +148,15 @@ References: [ReasoningBank](https://arxiv.org/abs/2509.25140),
     Engineering concern: irreversible persona edits are hard to audit.
     Integration concern: agents can optimize around gates.
     Decision: reject. Final reason: protected Research Spine changes require governed review.
+
+11. Proposed design: tune RAG parameters by the mean fused retrieval score.
+    Failure mode: the fused Reciprocal Rank Fusion value grows with the weights being tuned, so the
+    objective rises whatever is retrieved (Goodhart's law).
+    Scientific concern: an objective must measure relevance, not the knob.
+    Engineering concern: setattr on shared settings changes every project mid-measurement.
+    Integration concern: chunk-size candidates never re-indexed, so they measured nothing.
+    Decision: reject (2026-09-25). Final reason: nDCG@10 on span-graded qrels over sandbox indices,
+    candidates passed explicitly, fail closed without a benchmark.
 
 ## Implementation Anchors
 

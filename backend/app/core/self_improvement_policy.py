@@ -53,12 +53,17 @@ def learning_signal_for_research_output(
     execution_success: bool,
     verification_success: bool = False,
     report_allowed: bool = False,
+    self_verified: bool | None = None,
 ) -> LearningSignal:
     """Return a spine-aware signal for Memento/ReasoningBank/telemetry.
 
-    A tool can execute successfully while still producing only provisional
-    research output.  Memento Skills may learn strongly only after verification
-    or Research Spine reportability gates succeed.
+    A tool can execute successfully while still producing only provisional research output.
+    Memento Skills may learn strongly only from INDEPENDENT verification (human-approved review)
+    or Research Spine reportability. ``self_verified`` is the agent's own reflection or heuristic
+    check of its output: the same system grading itself. A successful-but-wrong run passes it
+    (measurement 6), so it yields a provisional, undecided signal, never a strong positive one.
+    ``self_verified=False`` (the self-check ran and rejected the output) stays a weak failure.
+    ``None`` means no self-check ran. ``verification_success`` means independent verification.
     """
 
     if not execution_success:
@@ -83,6 +88,26 @@ def learning_signal_for_research_output(
             else "reportable_research_output",
         )
 
+    if self_verified is False:
+        return LearningSignal(
+            execution_success=True,
+            verification_success=False,
+            report_allowed=False,
+            learning_success=False,
+            research_quality_score=0.3,
+            learning_state="self_verification_failed",
+        )
+
+    if self_verified:
+        return LearningSignal(
+            execution_success=True,
+            verification_success=False,
+            report_allowed=False,
+            learning_success=False,
+            research_quality_score=0.55,
+            learning_state="self_verified_provisional",
+        )
+
     return LearningSignal(
         execution_success=True,
         verification_success=False,
@@ -91,3 +116,11 @@ def learning_signal_for_research_output(
         research_quality_score=0.45,
         learning_state="candidate_provisional_output",
     )
+
+
+def is_undecided_learning_state(signal: LearningSignal) -> bool:
+    """True when nothing independent has judged the output yet (neither success nor failure).
+
+    Undecided outcomes must not move success or failure counts; human review decides later.
+    """
+    return signal.learning_state in {"self_verified_provisional", "candidate_provisional_output"}

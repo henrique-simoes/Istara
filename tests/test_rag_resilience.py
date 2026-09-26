@@ -1,9 +1,9 @@
 """RAG resilience tests for degraded compute environments."""
 
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
-from unittest.mock import AsyncMock
 
 from app.config import settings
 from app.core import rag
@@ -25,9 +25,7 @@ def test_keyword_index_dir_env_override_wins(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_ingest_chunks_preserves_keyword_index_when_embeddings_fail(
-    tmp_path, monkeypatch
-):
+async def test_ingest_chunks_preserves_keyword_index_when_embeddings_fail(tmp_path, monkeypatch):
     """Document ingestion should remain searchable when vector compute is offline."""
     monkeypatch.setattr(settings, "data_dir", str(tmp_path / "data"))
     monkeypatch.setattr(settings, "lance_db_path", str(tmp_path / "lance"))
@@ -76,9 +74,7 @@ async def test_retrieve_context_falls_back_to_keyword_search(tmp_path, monkeypat
         ]
     )
 
-    context = await rag.retrieve_context(
-        project_id, "clearer billing previews", top_k=3
-    )
+    context = await rag.retrieve_context(project_id, "clearer billing previews", top_k=3)
 
     assert context.has_context
     assert context.retrieved[0].source == "checkout-notes.md"
@@ -152,9 +148,7 @@ async def test_keyword_fallback_preserves_evidence_provenance(tmp_path, monkeypa
 
 
 @pytest.mark.asyncio
-async def test_keyword_fallback_without_provenance_is_non_promotional(
-    tmp_path, monkeypatch
-):
+async def test_keyword_fallback_without_provenance_is_non_promotional(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "data_dir", str(tmp_path / "data"))
     monkeypatch.setattr(settings, "lance_db_path", str(tmp_path / "lance"))
 
@@ -225,9 +219,7 @@ async def test_retrieve_context_records_content_free_hybrid_retrieval_telemetry(
 
 
 @pytest.mark.asyncio
-async def test_retrieved_prompt_injection_text_remains_untrusted_context(
-    tmp_path, monkeypatch
-):
+async def test_retrieved_prompt_injection_text_remains_untrusted_context(tmp_path, monkeypatch):
     """RAG should never turn retrieved document instructions into system instructions."""
     monkeypatch.setattr(settings, "data_dir", str(tmp_path / "data"))
     monkeypatch.setattr(settings, "lance_db_path", str(tmp_path / "lance"))
@@ -257,9 +249,7 @@ async def test_retrieved_prompt_injection_text_remains_untrusted_context(
 
 
 @pytest.mark.asyncio
-async def test_vector_store_add_chunks_tolerates_legacy_table_schema(
-    tmp_path, monkeypatch
-):
+async def test_vector_store_add_chunks_tolerates_legacy_table_schema(tmp_path, monkeypatch):
     """Older LanceDB tables should keep ingesting when newer metadata fields exist."""
     monkeypatch.setattr(settings, "lance_db_path", str(tmp_path / "lance"))
 
@@ -348,8 +338,14 @@ async def test_hybrid_search_dedupes_by_provenance_not_repeated_text(monkeypatch
     repeated_text = "I could not find where to invite the team."
 
     class FakeStore:
+        table_name = rag.SOURCE_TABLE
+
         def __init__(self, project_id):
             self.project_id = project_id
+
+        def keyword_index(self):
+            # The store names its paired BM25 index (source vs derived namespace).
+            return rag.KeywordIndex(self.project_id)
 
         async def search(self, *args, **kwargs):
             return [

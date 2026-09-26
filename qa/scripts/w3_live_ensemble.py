@@ -211,7 +211,6 @@ async def stage_c(project_id: str, task_id: str, unit_ids: list[str],
     from app.models.database import async_session, register_models
     from app.models.task import Task
     from app.services.research_validity_reconciliation import (
-        _is_reconciled_code_application,
         _is_unresolved_code_application,
         assess_task_research_validity,
         create_reconciliation_decision,
@@ -449,6 +448,22 @@ async def stage_e(project_id: str) -> dict:
             "probes": probes}
 
 
+def record_unreconciled_report_probe(artifact: dict) -> None:
+    """Judge probe P5 from stage C's report gate, whichever of C and E ran first.
+
+    P5 passes when the report was refused while applications were unreconciled
+    (stage C's ``gate_before.report_allowed`` is False). Without stage C it stays
+    unjudged rather than guessed.
+    """
+    gate_before = (artifact["stages"].get("C") or {}).get("gate_before")
+    if gate_before is None:
+        return
+    for probe in (artifact["stages"].get("E") or {}).get("probes", []):
+        if probe.get("id") == "P5-unreconciled-report":
+            probe["pass"] = gate_before.get("report_allowed") is False
+            probe["gate_before"] = gate_before
+
+
 async def amain(args) -> dict:
     from app.models.database import register_models
 
@@ -491,12 +506,7 @@ async def amain(args) -> dict:
         artifact["stages"]["C"] = await stage_c(
             args.project, args.task, unit_ids,
             (b.get("codebook_version_id") if b else None))
-        p5pass = (artifact["stages"]["C"].get("gate_before") or {}).get(
-            "report_allowed") is False
-        for stage in (artifact["stages"].get("E") or {}).get("probes", []):
-            if stage.get("id") == "P5-unreconciled-report":
-                stage["pass"] = p5pass
-                stage["gate_before"] = artifact["stages"]["C"].get("gate_before")
+        record_unreconciled_report_probe(artifact)
     if "D" in args.stages:
         b = artifact["stages"].get("B", {})
         target_run = (artifact["stages"].get("C") or {}).get("run_id") or (
@@ -519,10 +529,21 @@ async def amain(args) -> dict:
             (b.get("codebook_version_id") if b else None))
     if "E" in args.stages and "E" not in artifact["stages"]:
         artifact["stages"]["E"] = await stage_e(args.project)
+        record_unreconciled_report_probe(artifact)
     artifact["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     with open(args.out, "w") as f:
         json.dump(artifact, f, indent=2, default=str)
     return artifact
+
+
+async def _amain_and_stop_worker(args) -> dict:
+    """Run the stages, then stop the Pi worker while this event loop still runs."""
+    try:
+        return await amain(args)
+    finally:
+        from app.core import pi_runtime
+
+        await pi_runtime.shutdown_supervisor()
 
 
 def main() -> None:
@@ -537,7 +558,7 @@ def main() -> None:
                         help="Scratch task id for the stage-C report-gate run")
     args = parser.parse_args()
     args.stages = {s.strip().upper() for s in args.stages.split(",") if s.strip()}
-    artifact = asyncio.run(amain(args))
+    artifact = asyncio.run(_amain_and_stop_worker(args))
     summary = {k: (v.get("ok") if isinstance(v, dict) else v)
                for k, v in artifact["stages"].items()}
     print(json.dumps({"stages_ok": summary, "out": args.out}))

@@ -24,8 +24,7 @@ from app.core.agent_models import (
     _resolve_project_folder,
 )
 from app.core.context_hierarchy import context_hierarchy
-from app.core.embeddings import TextChunk
-from app.core.rag import ingest_chunks, retrieve_context
+from app.core.rag import retrieve_context
 from app.core.self_check import Confidence, verify_claim
 from app.core.self_improvement_policy import learning_signal_for_research_output
 from app.core.telemetry import telemetry_recorder
@@ -40,6 +39,21 @@ from app.skills.registry import registry
 from app.skills.skill_manager import skill_manager
 
 logger = logging.getLogger("app.core.agent")
+
+
+def _transitive_prerequisites(plan: ResearchPlan, step: ResearchStep) -> set[str]:
+    """Every step this step depends on, directly or through other steps."""
+    by_id = {s.id: s for s in [*plan.steps, *plan.past_steps]}
+    seen: set[str] = set()
+    stack = list(step.depends_on or [])
+    while stack:
+        dep = stack.pop()
+        if dep in seen:
+            continue
+        seen.add(dep)
+        if dep in by_id:
+            stack.extend(by_id[dep].depends_on or [])
+    return seen
 
 
 class AgentResearchMixin:
@@ -315,12 +329,7 @@ class AgentResearchMixin:
             execution_success=bool(output.success),
         )
 
-        skill_manager.record_execution(
-            skill_name,
-            learning_signal.learning_success,
-            learning_signal.research_quality_score,
-            project_id=project.id,
-        )
+        skill_manager.record_learning_signal(skill_name, learning_signal, project_id=project.id)
         task.skill_name = skill_name
         if output.success:
             try:
@@ -518,12 +527,39 @@ class AgentResearchMixin:
         plan.status = "executing"
         total_steps = len(plan.steps)
         remaining = list(plan.steps)
-        executed_ids: set[str] = set()
+        completed_ids: set[str] = set()
+        unsuccessful_ids: set[str] = set()  # failed, or blocked by a failed prerequisite
+        # One AsyncSession must never be used by two tasks at once (SQLAlchemy asyncio guidance).
+        # Steps still run their skills and model calls concurrently; every use of the shared
+        # session inside a step goes through this lock (F8).
+        db_lock = asyncio.Lock()
         step_num = 0
 
         while remaining:
-            # Find steps whose dependencies are all satisfied
-            ready = [s for s in remaining if all(d in executed_ids for d in (s.depends_on or []))]
+            resolved = completed_ids | unsuccessful_ids
+            # LLMCompiler semantics: a step whose prerequisite failed does not run.
+            blocked = [
+                s
+                for s in remaining
+                if any(d in unsuccessful_ids for d in (s.depends_on or []))
+                and all(d in resolved for d in (s.depends_on or []))
+            ]
+            for s in blocked:
+                failed_deps = [d for d in (s.depends_on or []) if d in unsuccessful_ids]
+                s.status = "blocked"
+                s.result = f"Not run: prerequisite step(s) {', '.join(failed_deps)} did not succeed"
+                remaining.remove(s)
+                plan.past_steps.append(s)
+                unsuccessful_ids.add(s.id)
+                step_num += 1
+                await broadcast_plan_progress(
+                    task.id, step_num, total_steps, s.description[:80], s.status
+                )
+            if blocked:
+                continue
+
+            # Find steps whose dependencies all completed successfully
+            ready = [s for s in remaining if all(d in completed_ids for d in (s.depends_on or []))]
             if not ready:
                 # Deadlock: remaining steps have unresolvable dependencies
                 for s in remaining:
@@ -566,19 +602,22 @@ class AgentResearchMixin:
             # Execute ready steps in parallel
             results = await asyncio.gather(
                 *[
-                    self._execute_single_step(db, task, project, step, rag_context, plan)
+                    self._execute_single_step(db, task, project, step, rag_context, plan, db_lock)
                     for step in ready
                 ],
                 return_exceptions=True,
             )
 
-            for step, result in zip(ready, results):
+            for step, result in zip(ready, results, strict=True):
                 if isinstance(result, Exception):
                     step.status = "failed"
-                    step.result = f"Step failed: {str(result)[:200]}"
+                    step.result = step.result or f"Step failed: {str(result)[:200]}"
                 remaining.remove(step)
                 plan.past_steps.append(step)
-                executed_ids.add(step.id)
+                if step.status == "completed":
+                    completed_ids.add(step.id)
+                else:
+                    unsuccessful_ids.add(step.id)
                 step_num += 1
                 await broadcast_plan_progress(
                     task.id, step_num, total_steps, step.description[:80], step.status
@@ -593,10 +632,17 @@ class AgentResearchMixin:
             if s.result
         )
 
+        not_completed = [s for s in plan.past_steps if s.status != "completed"]
+        outcome_note = (
+            f"\n\n[Plan outcome] {len(not_completed)} of {len(plan.past_steps)} step(s) did not "
+            "complete: " + ", ".join(f"{s.id} ({s.status})" for s in not_completed)
+            if not_completed
+            else ""
+        )
         await self._mark_task_ready_for_review(
             db,
             task,
-            f"[Research Plan]\n{plan_summary}\n\n[Results]\n{compiled}",
+            f"[Research Plan]\n{plan_summary}\n\n[Results]\n{compiled}{outcome_note}",
         )
 
         await broadcast_task_progress(
@@ -619,9 +665,17 @@ class AgentResearchMixin:
         step: ResearchStep,
         rag_context,
         plan: ResearchPlan,
+        db_lock: asyncio.Lock | None = None,
     ) -> None:
-        """Execute a single research step (used by DAG-parallel executor)."""
+        """Execute a single research step (used by DAG-parallel executor).
+
+        ``db_lock`` serialises this step's use of the shared session with its siblings'.
+        The step sees only the results of its own (transitive) prerequisites.
+        """
         step.status = "executing"
+        db_lock = db_lock or asyncio.Lock()
+        prerequisites = _transitive_prerequisites(plan, step)
+        prior = [s for s in plan.past_steps if s.id in prerequisites and s.status == "completed"]
         try:
             if step.skill_name:
                 skill = registry.get(step.skill_name)
@@ -629,12 +683,10 @@ class AgentResearchMixin:
                     task_context = step.description
                     if rag_context.has_context:
                         task_context += f"\n\n## Relevant Documents\n{rag_context.context_text}"
-                    # Add context from completed steps
-                    if plan.past_steps:
+                    # Add context from this step's completed prerequisites only
+                    if prior:
                         task_context += "\n\nPrevious findings:\n" + "\n".join(
-                            f"- {s.description}: {s.result[:150]}"
-                            for s in plan.past_steps
-                            if s.result
+                            f"- {s.description}: {s.result[:150]}" for s in prior if s.result
                         )
                     skill_input = SkillInput(
                         project_id=project.id,
@@ -647,18 +699,25 @@ class AgentResearchMixin:
                     )
                     output = await asyncio.wait_for(skill.execute(skill_input), timeout=300)
                     step.result = output.summary or ""
-                    if output.success:
+                    if not output.success:
+                        step.status = "failed"
+                        step.result = step.result or f"Skill '{step.skill_name}' reported failure"
+                        return
+                    async with db_lock:
                         await self._store_findings(db, project.id, output, task)
                 else:
+                    step.status = "failed"
                     step.result = f"Skill '{step.skill_name}' not found"
+                    return
             else:
-                system_prompt = await context_hierarchy.compose_context(
-                    db,
-                    project_id=project.id,
-                    task_context=step.description,
-                )
+                async with db_lock:
+                    system_prompt = await context_hierarchy.compose_context(
+                        db,
+                        project_id=project.id,
+                        task_context=step.description,
+                    )
                 prev_context = "\n".join(
-                    f"- {s.description}: {s.result[:200]}" for s in plan.past_steps if s.result
+                    f"- {s.description}: {s.result[:200]}" for s in prior if s.result
                 )
                 # W3 (L3): skill-less plan step through the AgenticDispatcher
                 # (``spine.step_execute``); DAG-parallel callers fan out to
@@ -720,6 +779,11 @@ class AgentResearchMixin:
 
         # Track created IDs for auto-linking
         created_nugget_ids: list[str] = []
+        # Links by meaning, planned before any write (finding_links.plan_links); index -> stored id.
+        from app.core.finding_links import plan_links
+
+        link_plan = await plan_links(output)
+        stored: dict[str, dict[int, str]] = {"nugget": {}, "fact": {}, "insight": {}}
         created_fact_ids: list[str] = []
         created_insight_ids: list[str] = []
         created_recommendation_ids: list[str] = []
@@ -730,7 +794,11 @@ class AgentResearchMixin:
             persist_scoped_derivation_links as persist_links,
         )  # noqa: E501,I001
 
-        for nugget_data in output.nuggets:
+        def _planned(kind: str, level: str, index: int) -> list[str]:
+            ids = stored[kind]
+            return [ids[i] for i in link_plan[level][index] if i in ids]
+
+        for nugget_index, nugget_data in enumerate(output.nuggets):
             nid = str(uuid.uuid4())
             # Laws of UX finding enrichment
             try:
@@ -770,6 +838,7 @@ class AgentResearchMixin:
             )
             db.add(nugget)
             created_nugget_ids.append(nid)
+            stored["nugget"][nugget_index] = nid
 
             evidence_unit_id = None
             source_document_id = nugget_data.get("source_document_id")
@@ -845,13 +914,13 @@ class AgentResearchMixin:
                 except Exception as e:
                     logger.debug("CodeApplication creation skipped: %s", e)
 
-        for fact_data in output.facts:
+        for fact_index, fact_data in enumerate(output.facts):
             fid = str(uuid.uuid4())
             linked_nuggets = await persist_links(
                 db,
                 Nugget,
                 fact_data.get("nugget_ids"),
-                created_nugget_ids[-5:],
+                _planned("nugget", "facts", fact_index),
                 project_id,
                 task,
                 "fact",
@@ -869,14 +938,15 @@ class AgentResearchMixin:
             )
             db.add(fact)
             created_fact_ids.append(fid)
+            stored["fact"][fact_index] = fid
 
-        for insight_data in output.insights:
+        for insight_index, insight_data in enumerate(output.insights):
             iid = str(uuid.uuid4())
             linked_facts = await persist_links(
                 db,
                 Fact,
                 insight_data.get("fact_ids"),
-                created_fact_ids[-3:],
+                _planned("fact", "insights", insight_index),
                 project_id,
                 task,
                 "insight",
@@ -895,14 +965,15 @@ class AgentResearchMixin:
             )
             db.add(insight)
             created_insight_ids.append(iid)
+            stored["insight"][insight_index] = iid
 
-        for rec_data in output.recommendations:
+        for rec_index, rec_data in enumerate(output.recommendations):
             rid = str(uuid.uuid4())
             linked_insights = await persist_links(
                 db,
                 Insight,
                 rec_data.get("insight_ids"),
-                created_insight_ids[-2:],
+                _planned("insight", "recommendations", rec_index),
                 project_id,
                 task,
                 "recommendation",
@@ -984,16 +1055,26 @@ class AgentResearchMixin:
                     skill_name=task.skill_name,
                 )
                 readable_content = readable_artifact["content"]
+                # Skill artifacts are model output: they go to the DERIVED index, never to the
+                # source evidence index where they could confirm their own claims (F5). They are
+                # chunked in full (the old 2,000-character slice silently dropped the rest), and
+                # re-running the skill replaces its earlier rows instead of duplicating them.
+                from app.core.file_processor import chunk_text
+                from app.core.rag import ingest_derived_chunks
+
                 chunks = [
-                    TextChunk(
-                        text=readable_content[:2000],
+                    *chunk_text(
+                        readable_content,
                         source=f"skill:{task.skill_name}:{readable_artifact['file_name']}",
                     ),
-                    TextChunk(
-                        text=content[:2000], source=f"skill:{task.skill_name}:{filename}:raw"
-                    ),
+                    *chunk_text(content, source=f"skill:{task.skill_name}:{filename}:raw"),
                 ]
-                await ingest_chunks(project_id, chunks)
+                await ingest_derived_chunks(
+                    project_id,
+                    chunks,
+                    agent_id=task.agent_id or self.agent_id,
+                    kind="skill_artifact",
+                )
                 # Create a Document record so artifacts appear in Documents view
                 try:
                     from app.models.document import Document
@@ -1246,13 +1327,10 @@ class AgentResearchMixin:
 
                 learning_signal = learning_signal_for_research_output(
                     execution_success=bool(output.success),
-                    verification_success=bool(verified),
+                    self_verified=bool(verified),
                 )
-                skill_manager.record_execution(
-                    skill_name,
-                    learning_signal.learning_success,
-                    learning_signal.research_quality_score,
-                    project_id=project_id,
+                skill_manager.record_learning_signal(
+                    skill_name, learning_signal, project_id=project_id
                 )
 
                 if verified:

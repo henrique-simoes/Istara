@@ -371,7 +371,12 @@ OPENAI_TOOLS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "The search query"},
-                    "top_k": {"type": "integer", "description": "Number of results (default 5)"},
+                    "top_k": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20,
+                        "description": "Number of results (default 5, at most 20)",
+                    },
                 },
                 "required": ["query"],
             },
@@ -745,7 +750,7 @@ SYSTEM_TOOLS = [
             "top_k": {
                 "type": "integer",
                 "required": False,
-                "description": "Number of results (default 5)",
+                "description": "Number of results (default 5, at most 20)",
             },
         },
     },
@@ -1056,7 +1061,12 @@ async def execute_tool(
                 result_str = json.dumps(result, ensure_ascii=False)
             else:
                 result_str = result
-            result = f"<tool_output>\n{result_str}\n</tool_output>"
+            # What these tools return is data (documents, memories, web pages): its wrapper and
+            # protected-block markup is escaped, so it can neither close this block nor pose as a
+            # protected methodology block. The retrieval path does the same (F13/F14).
+            from app.core.content_guard import neutralize_boundary_markup
+
+            result = f"<tool_output>\n{neutralize_boundary_markup(result_str)}\n</tool_output>"
 
         duration_ms = (time.perf_counter() - start_perf) * 1000.0
         try:
@@ -1151,21 +1161,44 @@ async def _exec_create_task(params: dict, project_id: str, agent_id: str) -> str
         )
 
 
+def _document_matches(doc: Document, needle: str) -> bool:
+    """Case-insensitive match on the document's REVEALED text and its metadata.
+
+    Document text is stored through ``protect_document_text``: with FILE_ENCRYPTION_ENABLED a SQL
+    ``content_text ILIKE`` matches ciphertext and finds nothing (F15). This matches what the
+    Documents full-text search route matches.
+    """
+    from app.core.file_encryption import reveal_document_text
+
+    if not needle:
+        return True
+    fields = [doc.title, doc.description, doc.file_name, doc.tags]
+    haystack = "\n".join([*(f or "" for f in fields), reveal_document_text(doc.content_text or "")])
+    return needle in haystack.lower()
+
+
+def _document_line(doc: Document) -> str:
+    tags_str = ""
+    try:
+        tags = json.loads(doc.tags or "[]")
+        if tags:
+            tags_str = f" [tags: {', '.join(tags[:3])}]"
+    except Exception:
+        pass
+    return (
+        f"- **{doc.title}** (ID: {doc.id}, "
+        f"type: {doc.file_type or 'unknown'}, "
+        f"phase: {doc.phase or 'none'}, "
+        f"source: {doc.source.value if doc.source else 'unknown'})"
+        f"{tags_str}"
+    )
+
+
 async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -> str:
     async with async_session() as db:
         query = select(Document).where(Document.project_id == project_id)
 
         search = params.get("query", "")
-        if search:
-            like = f"%{search}%"
-            query = query.where(
-                (Document.title.ilike(like))
-                | (Document.description.ilike(like))
-                | (Document.content_text.ilike(like))
-                | (Document.tags.ilike(like))
-                | (Document.file_name.ilike(like))
-            )
-
         if params.get("phase"):
             query = query.where(Document.phase == params["phase"])
         if params.get("tag"):
@@ -1173,29 +1206,19 @@ async def _exec_search_documents(params: dict, project_id: str, agent_id: str) -
         if params.get("source"):
             query = query.where(Document.source == params["source"])
 
-        result = await db.execute(query.order_by(Document.created_at.desc()).limit(10))
-        docs = result.scalars().all()
+        # Match on revealed text in Python (F15), newest first, at most 10.
+        result = await db.execute(query.order_by(Document.created_at.desc()))
+        needle = str(search).lower()
+        docs = []
+        for doc in result.scalars():
+            if _document_matches(doc, needle):
+                docs.append(doc)
+                if len(docs) >= 10:
+                    break
 
         if not docs:
             return f"No documents found matching '{search}' in this project."
-
-        lines = [f"Found {len(docs)} document(s):"]
-        for doc in docs:
-            tags_str = ""
-            try:
-                tags = json.loads(doc.tags or "[]")
-                if tags:
-                    tags_str = f" [tags: {', '.join(tags[:3])}]"
-            except Exception:
-                pass
-            lines.append(
-                f"- **{doc.title}** (ID: {doc.id}, "
-                f"type: {doc.file_type or 'unknown'}, "
-                f"phase: {doc.phase or 'none'}, "
-                f"source: {doc.source.value if doc.source else 'unknown'})"
-                f"{tags_str}"
-            )
-        return "\n".join(lines)
+        return "\n".join([f"Found {len(docs)} document(s):", *(_document_line(d) for d in docs)])
 
 
 async def _exec_list_tasks(params: dict, project_id: str, agent_id: str) -> str:
@@ -1445,18 +1468,33 @@ async def _exec_get_document_content(params: dict, project_id: str, agent_id: st
         )
 
 
-async def _exec_search_memory(params: dict, project_id: str, agent_id: str) -> str:
-    from app.core.rag import retrieve_context
+_SEARCH_MEMORY_MAX_TOP_K = 20
 
-    rag = await retrieve_context(project_id, params["query"], top_k=params.get("top_k", 5))
+
+def _bounded_top_k(value: Any, *, default: int = 5, maximum: int = _SEARCH_MEMORY_MAX_TOP_K) -> int:
+    """The model chooses ``top_k``; the product bounds it (F17: it was passed through unbounded)."""
+    try:
+        requested = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(1, min(maximum, requested))
+
+
+async def _exec_search_memory(params: dict, project_id: str, agent_id: str) -> str:
+    from app.core import rag as rag_module
+
+    rag = await rag_module.retrieve_context(
+        project_id, params["query"], top_k=_bounded_top_k(params.get("top_k", 5))
+    )
 
     if not rag.has_context:
         return f"No relevant information found in the knowledge base for: '{params['query']}'"
 
-    lines = [f"Found {len(rag.retrieved)} relevant passage(s):"]
-    for r in rag.retrieved:
+    lines = [f"Found {len(rag.retrieved)} relevant passage(s), best match first:"]
+    for rank, r in enumerate(rag.retrieved, 1):
         preview = r.text[:200] + "..." if len(r.text) > 200 else r.text
-        lines.append(f"- [{r.source}] (score: {r.score:.2f}) {preview}")
+        # Rank, not the fused RRF value: 0.02 is the best possible fusion and reads as "irrelevant".
+        lines.append(f"- #{rank} [{r.source}] {preview}")
     return "\n".join(lines)
 
 
@@ -1486,47 +1524,26 @@ async def _exec_update_task(params: dict, project_id: str, agent_id: str) -> str
 
 
 async def _exec_sync_project_documents(params: dict, project_id: str, agent_id: str) -> str:
-    """Trigger a document sync for the project folder."""
+    """Register the project folder's untracked files, as the Documents view's sync does.
+
+    It used to register bare rows matched by file name: uploads (stored as <uuid>.<ext>) were
+    registered again, and new files got no text, evidence units or index rows.
+    """
+    from app.core import project_folder_sync
+
+    sync = project_folder_sync.registered()
+    if sync is None:
+        return "Folder sync is unavailable: the Documents service is not loaded."
     async with async_session() as db:
-        project_result = await db.execute(select(Project).where(Project.id == project_id))
-        project = project_result.scalar_one_or_none()
+        project = await db.get(Project, project_id)
+        if not _resolve_project_folder(project, project_id).exists():
+            return "No project folder found."
+        result = await sync(db, project, project_id)
 
-    folder = _resolve_project_folder(project, project_id)
-    if not folder.exists():
-        return "No project folder found."
-
-    async with async_session() as db:
-        files = [f for f in folder.iterdir() if f.is_file() and not f.name.startswith(".")]
-
-        existing_result = await db.execute(
-            select(Document.file_name).where(Document.project_id == project_id)
-        )
-        existing_names = {r for r in existing_result.scalars().all()}
-
-        new_count = 0
-        for f in files:
-            if f.name not in existing_names:
-                doc = Document(
-                    id=str(uuid.uuid4()),
-                    project_id=project_id,
-                    title=f.stem.replace("-", " ").replace("_", " ").title(),
-                    file_name=f.name,
-                    file_path=str(f),
-                    file_type=f.suffix,
-                    file_size=f.stat().st_size,
-                    source="project_file",
-                    status="ready",
-                )
-                db.add(doc)
-                new_count += 1
-
-        if new_count:
-            await db.commit()
-
-        return (
-            f"Synced project folder: {new_count} new document(s) "
-            f"registered, {len(files)} total files."
-        )
+    return (
+        f"Synced project folder: {result['synced']} new document(s) "
+        f"registered, {result['total']} total document(s)."
+    )
 
 
 # ── Executor Registry ─────────────────────────────────────────────

@@ -16,6 +16,10 @@
 //                     output event of an attempt, classified by pi-ai's
 //                     isRetryableAssistantError).
 //
+// `endpoint.load_wait_ms` (local endpoints only) is how long a binding waits,
+// with backoff, for a server that answers "model still loading" before its
+// first output; it does not spend max_retries.
+//
 // `endpoint.pricing` carries the backend-resolved model rates (USD per 1M
 // tokens: input_per_mtok/output_per_mtok/cache_read_per_mtok/cache_write_per_mtok)
 // onto the pi-ai model `cost` object so real usage is priced and the per-run
@@ -379,18 +383,101 @@ function attachProviderModel(stream, observation) {
   return out;
 }
 
+// Local-first (DEC-10): a local server that is still loading its model's weights answers
+// 503 "Loading model" (llama.cpp, LM Studio) or "Model is currently loading" (TGI). That is
+// not a failure of the model, so a local binding waits for it with backoff, up to the local
+// response-start budget, without spending the retry budget. Remote endpoints never wait.
+const LOAD_WAIT_FIRST_MS = 1_000;
+const LOAD_WAIT_STEP_CAP_MS = 10_000;
+
+/** Whether a failed turn is a server saying its model is still loading. */
+export function isModelLoadingError(message) {
+  if (!message || message.stopReason !== "error") return false;
+  const text = String(message.errorMessage || "");
+  return /\b503\b|unavailable/i.test(text) && /\bloading\b/i.test(text);
+}
+
+function sleepUnlessAborted(ms, signal) {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve(false);
+      return;
+    }
+    const timer = setTimeout(() => resolve(true), ms);
+    signal?.addEventListener("abort", () => {
+      clearTimeout(timer);
+      resolve(false);
+    }, { once: true });
+  });
+}
+
+/**
+ * The retry decision for one guarded stream: how long to wait before the next attempt, or null
+ * when the failure is final. A loading answer waits (within `loadWaitMs`, measured from the
+ * first attempt); any other failure retries at once while pi-ai classifies it as transient and
+ * the retry budget lasts.
+ */
+function retryPolicy(maxRetries, { loadWaitMs = 0, now = Date.now } = {}) {
+  const startedAt = now();
+  let retries = 0;
+  let loadWaits = 0;
+  return {
+    delayBefore(message) {
+      if (loadWaitMs > 0 && isModelLoadingError(message)) {
+        const remaining = loadWaitMs - (now() - startedAt);
+        if (remaining <= 0) return null;
+        loadWaits += 1;
+        return Math.min(LOAD_WAIT_FIRST_MS * 2 ** (loadWaits - 1), LOAD_WAIT_STEP_CAP_MS, remaining);
+      }
+      if (retries < maxRetries && message && isRetryableAssistantError(message)) {
+        retries += 1;
+        return 0;
+      }
+      return null;
+    },
+    // A loading answer that outlived the wait says so, so the operator knows the server,
+    // not the model's output, is what failed.
+    explain(message) {
+      if (loadWaitMs <= 0 || !isModelLoadingError(message)) return message;
+      const seconds = Math.round(loadWaitMs / 1000);
+      return { ...message, errorMessage: `${message.errorMessage} (the model was still loading after ${seconds} s)` };
+    },
+  };
+}
+
 /**
  * Stream an assistant turn with a bounded worker-side retry budget. A retry
  * is allowed only while no visible output has been emitted for the current
  * attempt AND pi-ai's isRetryableAssistantError classifies the failure as
  * transient. Non-visible events (start/text_start/thinking_start) are
  * buffered so a restarted attempt never leaks partial state downstream.
+ * `waiting.loadWaitMs` (local endpoints only) additionally waits for a server
+ * whose model is still loading; `waiting.sleep` and `waiting.now` are test seams.
  */
-export function streamWithGuardedRetry(models, model, context, options, maxRetries = 0) {
+export function streamWithGuardedRetry(models, model, context, options, maxRetries = 0, waiting = {}) {
   const out = createAssistantMessageEventStream();
-  let attempt = 0;
-  const runAttempt = () => {
-    attempt += 1;
+  const policy = retryPolicy(maxRetries, waiting);
+  const sleep = waiting.sleep || sleepUnlessAborted;
+  const finish = (event, message) => {
+    out.push(event);
+    out.end(message);
+  };
+  const retryOrFail = async (message, event, { visible, flush }) => {
+    const delayMs = visible ? null : policy.delayBefore(message);
+    if (delayMs === null) {
+      const final = message ? policy.explain(message) : message;
+      flush();
+      finish(final === message ? event : { ...event, error: final }, final);
+      return;
+    }
+    if (delayMs > 0 && !(await sleep(delayMs, options?.signal))) {
+      const aborted = { stopReason: "aborted", errorMessage: "aborted", timestamp: Date.now(), content: [] };
+      finish({ type: "error", reason: "aborted", error: aborted }, aborted);
+      return;
+    }
+    runAttempt();
+  };
+  function runAttempt() {
     let buffered = [];
     let visible = false;
     const flush = () => {
@@ -406,20 +493,12 @@ export function streamWithGuardedRetry(models, model, context, options, maxRetri
         const inner = models.streamSimple(model, context, options);
         for await (const event of inner) {
           if (event.type === "error") {
-            const message = event.error;
-            if (!visible && attempt <= maxRetries && message && isRetryableAssistantError(message)) {
-              runAttempt();
-              return;
-            }
-            flush();
-            out.push(event);
-            out.end(message);
+            await retryOrFail(event.error, event, { visible, flush });
             return;
           }
           if (event.type === "done") {
             flush();
-            out.push(event);
-            out.end(event.message);
+            finish(event, event.message);
             return;
           }
           if (!visible && VISIBLE_EVENT_TYPES.has(event.type)) {
@@ -437,27 +516,16 @@ export function streamWithGuardedRetry(models, model, context, options, maxRetri
         // here is a transport-level anomaly. Apply the same classifier as
         // event-shaped failures so programmer/configuration errors are not
         // retried as if they were transient provider outages.
-        const errorMessage = String(error?.message || error || "provider_stream_failed");
-        const retryable = isRetryableAssistantError({
-          stopReason: "error",
-          errorMessage,
-        });
-        if (!visible && attempt <= maxRetries && retryable) {
-          runAttempt();
-          return;
-        }
-        flush();
         const failure = {
           stopReason: "error",
-          errorMessage,
+          errorMessage: String(error?.message || error || "provider_stream_failed"),
           timestamp: Date.now(),
           content: [],
         };
-        out.push({ type: "error", reason: "error", error: failure });
-        out.end(failure);
+        await retryOrFail(failure, { type: "error", reason: "error", error: failure }, { visible, flush });
       }
     })();
-  };
+  }
   runAttempt();
   return out;
 }
@@ -717,6 +785,18 @@ export async function resolveCapabilities(endpoint, modelApi) {
   };
 }
 
+// The backend sends `load_wait_ms` only for a local endpoint (its response-start budget).
+const MAX_LOAD_WAIT_MS = 3_600_000;
+
+function loadWaitFor(endpoint) {
+  const value = endpoint.load_wait_ms;
+  if (value === undefined || value === null) return 0;
+  if (!Number.isInteger(value) || value < 0 || value > MAX_LOAD_WAIT_MS) {
+    throw new Error("invalid_provider_binding:load_wait_ms");
+  }
+  return value;
+}
+
 export async function buildRealProvider(endpoint) {
   const { provider_kind: kind, base_url: baseUrl, model: modelId, api_key: apiKey } = endpoint;
   if (!baseUrl || !modelId || !apiKey) throw new Error("incomplete_provider_binding");
@@ -724,6 +804,7 @@ export async function buildRealProvider(endpoint) {
   const params = mapProviderParams(endpoint.params);
   const wireParams = filterParamsForApi(params, modelApi);
   const maxRetries = params.maxRetries ?? 0;
+  const loadWaitMs = loadWaitFor(endpoint);
   // Real model rates come from the backend-resolved endpoint pricing, not a
   // hardcoded zero — otherwise pi-ai prices every real turn at $0 and the
   // per-run cost ceiling can never fail closed (see session.mjs). pi-ai prices
@@ -810,6 +891,7 @@ export async function buildRealProvider(endpoint) {
           ...wireParams,
         },
         maxRetries,
+        { loadWaitMs },
       );
       return attachProviderModel(stream, observation);
     },
@@ -864,7 +946,11 @@ function buildFauxResponse(spec) {
 
 /** Build a deterministic faux provider for Node unit tests only. */
 export function buildFauxProviderBinding(endpoint) {
-  const faux = fauxProvider({ tokensPerSecond: 0 });
+  // `faux_tokens_per_second` (tests only) streams the scripted text at a set rate, so liveness can
+  // be tested against a slow but steady model.
+  const rate = Number.isFinite(endpoint.faux_tokens_per_second) && endpoint.faux_tokens_per_second > 0
+    ? endpoint.faux_tokens_per_second : 0;
+  const faux = fauxProvider({ tokensPerSecond: rate });
   faux.setResponses((endpoint.faux_responses || []).map(buildFauxResponse));
   const models = createModels();
   models.setProvider(faux.provider);
