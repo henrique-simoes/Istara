@@ -391,6 +391,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 _recovery_log.info("No incomplete tasks to recover.")
     except Exception as e:
         _recovery_log.warning(f"Checkpoint recovery skipped: {e}")
+    try:
+        from app.services.research_validity_service import settle_interrupted_coding_runs
+
+        async with async_session() as db:
+            settled = await settle_interrupted_coding_runs(db)
+        if settled:
+            _recovery_log.warning(
+                f"Settled {len(settled)} coding run(s) interrupted by the last shutdown as blocked."
+            )
+    except Exception as e:
+        _recovery_log.warning(f"Interrupted coding-run settlement skipped: {e}")
 
     # Startup cleanup: remove orphaned sessions/messages whose project no longer exists
     _cleanup_log = _startup_log.getLogger("startup.cleanup")

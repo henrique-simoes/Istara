@@ -77,6 +77,9 @@ Sources
   model do not create independent raters. Public coding-run requests therefore
   require `max_coders` in the range 3–5, and selection fails closed when that
   many distinct models are unavailable.
+- A coding run cut off by a restart never stays `running`: coding runs execute inside the one
+  backend process, so at startup any run still `running` becomes `blocked` with the reason
+  stated, and its applications can never be promoted (2026-09-26).
 - Every admitted coder must return a valid application for every selected
   evidence unit. Its quote must be non-empty and an exact contiguous substring
   of that resolved evidence unit's raw `source_text`; a valid unit identifier
