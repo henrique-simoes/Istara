@@ -1061,7 +1061,12 @@ async def execute_tool(
                 result_str = json.dumps(result, ensure_ascii=False)
             else:
                 result_str = result
-            result = f"<tool_output>\n{result_str}\n</tool_output>"
+            # What these tools return is data (documents, memories, web pages): its wrapper and
+            # protected-block markup is escaped, so it can neither close this block nor pose as a
+            # protected methodology block. The retrieval path does the same (F13/F14).
+            from app.core.content_guard import neutralize_boundary_markup
+
+            result = f"<tool_output>\n{neutralize_boundary_markup(result_str)}\n</tool_output>"
 
         duration_ms = (time.perf_counter() - start_perf) * 1000.0
         try:
