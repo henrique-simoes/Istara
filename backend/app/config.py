@@ -273,7 +273,10 @@ class Settings(BaseSettings):
     # Ollama
     ollama_host: str = "http://localhost:11434"
     ollama_model: str = "qwen3:latest"
-    ollama_embed_model: str = "nomic-embed-text"
+    # Chosen by the pre-registered rule (DEC-15, 2026-09-26): BGE-M3 had the highest hybrid nDCG@10
+    # (0.788 vs nomic-embed-text 0.523; Spanish 0.723 vs 0.224). Existing installs keep their
+    # persisted profile until an administrator switches (Settings -> Embedding model).
+    ollama_embed_model: str = "bge-m3"
 
     # LM Studio (OpenAI-compatible API)
     lmstudio_host: str = "http://localhost:1234"

@@ -82,6 +82,12 @@ Settings shows backend and LLM health, a first-class Agentic Core comparison and
   EmbeddingGemma, Qwen3-Embedding, nomic-embed-text; BGE-M3 and unknown models take raw text). The
   scheme is part of the vector-space identity; profiles and stores from before schemes existed are
   raw, and a fresh install takes the model card's scheme (`EMBED_PROMPT_SCHEME=auto`).
+- The default embedder is BGE-M3 (`OLLAMA_EMBED_MODEL=bge-m3`, 1024 dimensions, pulled on first use),
+  chosen by the rule fixed before the numbers (DEC-15): on 118 span-graded questions it had the
+  highest hybrid nDCG@10 (0.788 vs 0.523 for the former nomic-embed-text default; Spanish 0.723 vs
+  0.224) with no significant English regression. Qwen3-Embedding 0.6B (0.781) was statistically tied;
+  EmbeddingGemma (0.741) and prompted nomic (0.632) also qualified. `python -m app.evals.embedder_compare`
+  reruns the decision on new reports.
 - Journey: scenario 87 (`tests/simulation/scenarios/87-embedding-model-migration.mjs`).
 
 ## Agents, Skills, LLM, MCP, And Permissions

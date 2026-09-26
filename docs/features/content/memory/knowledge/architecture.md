@@ -55,7 +55,8 @@ The Memory knowledge tab manages project knowledge artifacts and retrieval mater
   nDCG@10, Recall@10 and MRR@10 with bootstrap intervals on span-graded qrels over the Harbor Ledger
   corpus, with paired randomization tests (Holm) for ablations and budget recall per context
   window. Results with the local nomic-embed-text embedder are in
-  `docs/build-stream/2026-09-25-spine-findings-evidence.md` (measurements 1-3).
+  `docs/build-stream/2026-09-25-spine-findings-evidence.md` (measurements 1-3); the five-embedder
+  comparison behind the BGE-M3 default (DEC-15) is in the same file.
 
 ## Architecture Notes
 

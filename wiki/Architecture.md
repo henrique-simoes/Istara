@@ -84,7 +84,7 @@ Every research activity originates as a **Task** on the Kanban board, executes a
 | Database | SQLite + aiosqlite | Zero-config, local-first, ACID-compliant |
 | Vector Store | LanceDB (embedded) | No extra server process, columnar storage, hybrid search |
 | LLM | LM Studio / Ollama | Local inference, OpenAI-compatible APIs |
-| Embeddings | nomic-embed-text | Runs on CPU, tiny memory footprint |
+| Embeddings | BGE-M3 | Multilingual (100+ languages), runs on CPU, 1024 dimensions |
 | Real-time | WebSocket (FastAPI) | 16 broadcast event types, full UI synchronization |
 | Desktop | Tauri v2 (Rust) | Thin GUI tray, delegates to `istara.sh` for process management |
 

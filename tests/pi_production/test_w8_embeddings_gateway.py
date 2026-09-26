@@ -352,7 +352,7 @@ async def test_gateway_openai_compatible_v1_embeddings():
                     base_url="http://gpu.local:8000/v1",
                     api_key="sekret",
                     kind="remote",
-                    model=settings.ollama_embed_model,
+                    model="nomic-embed-text",
                 ),
             ]
         )

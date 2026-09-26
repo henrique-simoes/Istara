@@ -1109,7 +1109,7 @@ All settings are configurable via environment variables or `.env`:
 | `LMSTUDIO_API_KEY` | empty | Optional bearer token for OpenAI-compatible providers |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `qwen3:latest` | Default chat model |
-| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
+| `OLLAMA_EMBED_MODEL` | `bge-m3` | Embedding model (DEC-15; pulled on first use) |
 
 ### Context & RAG
 

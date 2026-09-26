@@ -9,11 +9,11 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-/** Embedders with published query/document prompts that Istara applies (embedding_prompts.py). */
+/** Embedders Istara knows the prompts for (embedding_prompts.py), in DEC-15's measured order. */
 const SUGGESTED_MODELS = [
-  { model: "embeddinggemma", note: "Google EmbeddingGemma 300M, 100+ languages" },
+  { model: "bge-m3", note: "BGE-M3, 100+ languages (default)" },
   { model: "qwen3-embedding:0.6b", note: "Qwen3-Embedding 0.6B, 100+ languages" },
-  { model: "bge-m3", note: "BGE-M3, 100+ languages" },
+  { model: "embeddinggemma", note: "Google EmbeddingGemma 300M, 100+ languages" },
   { model: "nomic-embed-text", note: "nomic-embed-text, English" },
 ];
 
