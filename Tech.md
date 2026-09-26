@@ -3313,4 +3313,13 @@ Branch `fix/spine-findings-measurements-20260925`; evidence in
 - **Pi runtime.** Per-endpoint, progress-based liveness (idle and total budgets, larger for local
   endpoints); an endpoint's thinking level is the default for turns that set none; failed turns carry
   the provider's reason; structured output works on providers that accept only `tool_choice: auto`
-  (Meta) without accepting free-form text; pinned pi-ai 0.87.1 adds Meta as a provider.
+  (Meta) without accepting free-form text; pinned pi-ai 0.87.1 adds Meta as a provider. Thinking
+  runs on DeepSeek and Anthropic, which refuse a forced tool choice, get `auto` the same way.
+- **Embeddings (2026-09-26).** Queries and documents get their model card's prompts
+  (`app/core/embedding_prompts.py`: EmbeddingGemma, Qwen3-Embedding, nomic-embed-text; raw text for
+  BGE-M3 and unknown models). The prompt scheme is part of the embedding profile and of each store's
+  identity (`app/core/vector_identity.py`); older profiles and stores are raw. An administrator moves
+  the install to another model from Settings (`POST /api/settings/embedding-profile`,
+  `app/services/embedding_migration.py`): the model is probed, a new profile version becomes active,
+  every project's tables are re-embedded from their stored text and rebound; BM25 is untouched. The
+  default embedder is chosen by the pre-registered rule in `app/evals/embedder_compare.py` (DEC-15).

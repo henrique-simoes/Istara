@@ -6,10 +6,10 @@ audience: researcher
 status: documented
 related_features: ["settings.llm-servers", "compute.pool"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py"]
+code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py", "frontend/src/components/settings/EmbeddingModelSection.tsx", "backend/app/services/embedding_migration.py", "backend/app/core/embedding_prompts.py", "backend/app/core/vector_identity.py", "backend/app/core/pi_runtime/embedding_profile.py"]
 api_references: ["backend/app/api/routes/settings.py"]
-test_references: ["tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_production/test_pi_catalog_ux.py"]
-last_verified: 2026-08-26
+test_references: ["tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/test_embedding_migration.py", "tests/test_embedding_prompts.py", "frontend/src/components/settings/EmbeddingModelSection.test.ts"]
+last_verified: 2026-09-26
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -41,6 +41,15 @@ System Status And Models exists so the work represented by Settings > System Sta
 - Start from Settings > System Status, Agentic Core, And Pi Models when the current task needs global execution or provider configuration.
 - Use the visible controls to connect a model without typing an endpoint URL; credentials stay in server custody.
 - Move to Chat to change the model and effort for an individual conversation.
+
+## Embedding Model
+
+Administrators see `Settings > Embedding model`: the model that turns documents and questions into
+vectors for semantic search, the prompts it is given, and the profile version. To switch models,
+type the model name (it must already be served, for example `ollama pull embeddinggemma`) and choose
+`Re-index with this model`. Istara checks the model first and changes nothing if it cannot embed;
+otherwise it re-embeds every project's stored chunks while you watch the progress. Keyword search
+keeps working throughout, and nothing is deleted.
 
 ## Inputs, Outputs, And Expected Outcomes
 

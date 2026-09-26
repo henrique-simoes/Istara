@@ -1000,3 +1000,37 @@ B status "blocked", promotion_status "blocked", kappa null, code_application_cou
 A ok, E ok
 ```
 The harness also left the Pi worker running at exit (fixed in 63d0e32f; the re-run ends cleanly).
+
+## Phase 13: DeepSeek V4 Flash as the third live identity, and structured output on thinking runs
+
+**What it is for.** A governed coding run needs three distinct model identities, and every M4 judge
+must be another model than the generator. The owner added DeepSeek V4 Flash (DEC-13).
+
+**Flow driven.** Pi's own `deepseek` provider (pi-ai 0.87.1 catalog: `deepseek-flash`, "DeepSeek V4.1
+Flash", and `deepseek-v4-pro`) as endpoint `pi-deepseek-flash`, key in a 0600 file on the Studio
+(`~/cf-remote/eval/secure/`, kept for testing at the owner's request). The Keychain item Istara's
+built-in endpoint reads turned out to be revoked (HTTP 401 "Authentication Fails"); the owner pasted
+a new key in a hidden terminal. Probes through Istara's dispatcher in `istara-cs76-live`.
+
+**Output inspected.**
+```
+pi-deepseek-flash: status=success text='ready' served_model=deepseek-flash 1.2s
+pi-muse-spark:     status=success text='ready' served_model=muse-spark-1.3-contributor 3.4s
+pi-local-qwen:     served qwen3.8-27b-ud-q4k-xl (stop=length: its reasoning used the probe's 1,024 tokens)
+```
+Structured output on DeepSeek failed before the fix:
+```
+PiRuntimeTurnError pi_runtime_turn_error:400: {"message":"Thinking mode does not support this tool_choice ..."}
+```
+After 18f14145, in the rebuilt live backend:
+```
+pi-deepseek-flash: status=success value={'city': 'Paris'} 1.4s
+pi-muse-spark:     status=success value={'city': 'Paris'} 2.6s
+```
+`pi-runtime/test/structured.test.mjs` gains two tests (they fail to load on `origin/main`: the helper
+does not exist); the worker suite is 109/109.
+
+**Why that proves it.** DeepSeek's thinking mode, like Anthropic's extended thinking, refuses a
+forced tool choice; the worker now offers the capture tool with `auto` and asks for it in the prompt
+when the binding thinks, and a run without the capture call still fails closed. The Anthropic auto
+object is now also recognised as unforced (the string comparison missed it).

@@ -300,6 +300,11 @@ Retrieval provenance and separation (2026-09-25):
 - Evidence is presented to models by rank, inside the untrusted-content wrapper, which survives
   truncation; document text cannot open or close the wrapper or a protected block. Document text a
   model reads through a tool gets the same treatment inside `<tool_output>`.
+- One vector space per index: its identity is the embedding profile's model, cache namespace,
+  dimension, prompt scheme and version, plus a behavioural fingerprint. Queries and documents are
+  embedded with the model card's prompts for their role. Changing the embedder is a governed
+  migration (a new profile version, every table re-embedded from its stored text, manifests rebound);
+  nothing ever compares vectors from two spaces.
 - Every path that registers a source document creates its evidence units: the agent's folder-sync
   tool runs the Documents sync itself rather than registering bare rows.
 - Retrieval quality is measured, not assumed: span-graded qrels (`app.evals.retrieval_eval`) grade
