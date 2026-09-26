@@ -1,0 +1,199 @@
+# Professional-readiness review (2026-09-26)
+
+```yaml
+item: professional-readiness-review
+branch: plan/professional-readiness-20260926
+phase: "Phase 1 — surveys, channels, deployments"
+stage: S1-plan
+status: in-progress
+blocked_on: null
+last: { agent: claude-code, at: 2026-09-26T21:10:00Z, ledger: L-1 }
+next_action: "Create the CF spec, then start Phase 1: write the failing tests for D-1 to D-6."
+```
+
+## Plan overview
+
+**Question.** Is Istara ready for UX researchers doing professional work? Answer it per area with
+measurements and real browser journeys, fix what fails, and end with a dated verdict per area:
+*ready*, *ready with caveats*, or *not ready*, each with its evidence.
+
+**Why now.** The previous round found RAG weak (nDCG@10 0.52) and evidence-graph links mostly wrong
+(12% supported) while every structural check passed. This plan assumes every other area can hide the
+same kind of problem until it is measured.
+
+**Spirit.** Istara is local-first, and every feature that touches research data extends the Research
+Spine (`AGENTS.md` §1, `docs/architecture/research-validity-contract.md`). Model output stays
+provisional until source-grounded coding, reliability, reconciliation and a human Done gate accept
+it. Nothing in this plan creates report evidence by a shortcut.
+
+**Appetite.** One plan, five working phases plus ship. Studio-only execution, synthetic data only,
+live spend capped at $1 per run (the three live identities: Muse Spark 1.3 Contributor
+`pi-muse-spark`, DeepSeek V4 Flash `pi-deepseek-flash`, the owner's local Qwen3.8-27B
+`pi-local-qwen`).
+
+**Non-goals.** New research methods; replacing the coding protocol; any path that bypasses coding,
+reliability, reconciliation, the Done gate or the report gate; code signing with the owner's Apple or
+Windows certificates (the owner holds those secrets); real third-party channel credentials.
+
+### What the recon found before any measurement (read from the code, 2026-09-26)
+
+These are hypotheses to prove with failing tests first, not conclusions.
+
+| ID | Area | Where | Suspected defect |
+|---|---|---|---|
+| D-1 | Channels | `services/inbound_processor.py` (intro state) | The participant's first message, sent before any question, is stored as the answer to question 1. |
+| D-2 | Channels | `services/adaptive_interview.py::_handle_wrap_up` | The closing question is sent together with "thank you" and the conversation is marked completed, so its answer is never recorded. |
+| D-3 | Deployments | `DeploymentWizard.tsx` vs `adaptive_interview.py` | The wizard saves `adaptive_enabled` / `max_follow_ups`; the backend reads `adaptive` / `max_probes_per_question`. The adaptive toggle does nothing. |
+| D-4 | Deployments | `inbound_processor.py`, `deployment_service.py` | `target_responses` is display-only: no quota closes a deployment. |
+| D-5 | Deployments | whole flow | No informed-consent step: answers are stored before, and regardless of, consent. No screener. No reminders. |
+| D-6 | Surveys | `api/routes/surveys.py::sync_responses` | Every sync re-ingests every response (the adapters return all responses), duplicating nuggets and evidence units and inflating `response_count`. |
+| D-7 | Surveys, channels | ingestion paths | Answers become evidence units, but nothing starts governed coding or names a path to a report. |
+| D-8 | Coding | `core/research_validity.py::normalize_coder_applications` | The reliability matrix treats each coder's exact **set** of free-text labels as one nominal category (case- and spelling-sensitive), although the protocol asks for one `primary_code` for nominal reliability. The saved three-identity run coded with **no codebook** (`codebook_version_id: null`). |
+| D-9 | Reports | `api/routes/reports.py`, `ProjectReportsView.tsx` | No report export (Markdown, DOCX, PDF, CSV). Project export writes to the server's disk, which a browser user on Docker cannot reach. |
+| D-10 | Installers | `.github/workflows/build-installers.yml` | `tauri build` runs with `continue-on-error`: all three platform builds fail (Windows MSI rejects CalVer minor 305 > 255; Linux lacks the updater signing key; macOS codesign import fails), the workflow is green, and each main push publishes a release with only a DMG and a `latest.json` with empty signatures. |
+| D-11 | Installers | `homebrew/istara.rb`, tap repo | The cask pins 2026.03.30.6; the tap was last pushed 2026-03-30. `VERSION` says 2026.05.27.3 while the latest tag is v2026.09.26.6. |
+| D-12 | Spine | `core/agent_research.py` (skill nugget storage), `research_validity_reconciliation.py::_task_finding_support_diagnostics` | No skill sets `source_document_id` on its nuggets, so every skill nugget is stored as a `candidate_atom`, no coding run starts, and the report gate (every task nugget needs an accepted coded unit) can never pass: skill output may never reach a report through the product path. |
+
+## Pre-registered readiness criteria (DEC-2, fixed before any number)
+
+Verdict rule for every area: **ready** when every criterion passes; **ready with caveats** when every
+*Blocker* criterion passes and each failing non-Blocker criterion is documented with its residual
+risk; **not ready** when any Blocker criterion fails. Deterministic criteria are exact (a count, not
+an estimate). Model-dependent criteria report a point estimate with a 95% bootstrap interval
+(2,000 resamples, seed 7) and, where two arms are compared, a paired sign-flip randomization test
+(10,000 permutations) with Holm correction across the family named in the row.
+
+### Area 1 — menus nobody has walked (and Area 5 — UX)
+
+| ID | Criterion | Measure | Pass | Blocker |
+|---|---|---|---|---|
+| U1 | Every view in `HomeClient.tsx` and every tab/sub-menu inside it is walked in a browser in this plan | views and tabs walked / total | 1.00 | yes |
+| U2 | Each walked surface is checked for happy path, empty, loading, error, 375 px (nothing cut off), dark via the app toggle, keyboard focus | states checked / states applicable | 1.00 | yes |
+| U3 | No open Blocker or Major UI defect (dead end, silent failure, control that does nothing, text cut off, unreadable contrast, action with no feedback) | open Blocker+Major | 0 | yes |
+| U4 | Each fixed defect has a Playwright scenario step that fails on `main` and passes after | fixed defects with a scenario step / fixed defects | 1.00 | no |
+| U5 | Every coverage-matrix row carries a verdict dated in this plan | rows dated 2026-09-26 or later / rows | 1.00 | no |
+
+### Area 2 — surveys, channels, deployments
+
+Measured with synthetic participants driven through the stub Slack, Telegram and WhatsApp adapters
+(`simulate-inbound`) and a stub survey platform; real third-party credentials fail closed as
+`not_runnable`.
+
+| ID | Criterion | Measure | Pass | Blocker |
+|---|---|---|---|---|
+| S1 | Answer attribution: each stored answer names the question the participant was actually shown | correct / stored answers, 30 scripted conversations (10 per channel) | 1.00 | yes |
+| S2 | Answer completeness: every answer given, including the closing question, is stored exactly once | stored-once / given | 1.00 | yes |
+| S3 | Consent: no answer is stored before consent; a participant who declines gets no stored answer and no further questions | violations | 0 | yes |
+| S4 | Quota: a deployment stops accepting new participants at its target | conversations started past target | 0 | no |
+| S5 | Survey re-sync is idempotent | duplicate evidence units after 3 syncs of the same responses | 0 | yes |
+| S6 | Spine entry: every stored answer has an evidence unit whose `source_text` contains the answer verbatim; answers can be coded by a governed three-model run, reconciled, and reach a report only through an approved Done task | span fidelity; path proven end to end (live) | 1.00; yes | yes |
+| S7 | Researcher needs when preparing and sending: consent, screener, quota, reminders, raw-data export (CSV) — each present and working in the browser | present-and-working / 5 | 5/5 ready; ≥ 3/5 caveats | no |
+| S8 | Adaptive follow-up setting in the UI changes behaviour | toggle honoured (test) | yes | no |
+
+### Area 3 — Research Spine features
+
+| ID | Criterion | Measure | Pass | Blocker |
+|---|---|---|---|---|
+| C1 | Coding agreement is measured correctly: the reliability matrix follows the protocol's nominal `primary_code` rule with label normalisation, and a construction test shows known-agreeing coders score κ = 1 and known-disagreeing coders κ ≤ 0 | unit tests | pass | yes |
+| C2 | Diagnosis of near-zero agreement: three live coders on ≥ 40 Harbor evidence units, arm A = no codebook (today's default), arm B = a Harbor codebook with definitions and inclusion/exclusion criteria. Report κ and α per arm, per-coder accuracy against the planted theme (span-graded truth), and the paired difference (units as pairs) | κ_B − κ_A, accuracy per coder | Decision rule DEC-3 | no |
+| C3 | With a codebook, three-model agreement reaches the product's own threshold on Harbor | Fleiss κ (arm B) | ≥ 0.60 ready; 0.40–0.60 caveats; < 0.40 not ready | no |
+| C4 | Codebook versioning: a new version never rewrites an old one; runs record the version they used; coders receive definitions and inclusion/exclusion criteria | tests + prompt inspection | pass | yes |
+| R0 | End to end through the product: Harbor interviews uploaded, the `user-interviews` skill run as a Kanban task, codes reviewed, task approved → a report exists | report produced with ≥ 1 finding | yes | yes |
+| R1 | Every claim in a generated report traces to an exact source span (G1 walk) | traced / claims | 1.00 | yes |
+| R2 | Report gate: In Review tasks, unreconciled codes and provisional findings never appear in a report | seeded-fault tests | pass | yes |
+| R3 | Export formats researchers use: a report downloads from the browser as Markdown and DOCX with source citations, and the coded data as CSV | formats working in browser | 3/3 | no |
+| K1 | Kanban: only a human with researcher+ role moves a task to Done; agents cannot; viewer cannot; approval is recorded | role-matrix tests + browser | pass | yes |
+| A1 | Agents creating agents: a proposal carries evidence, needs human approval, and never self-activates; a created agent inherits the spine gates | tests + audit | pass | yes |
+| E1 | Skills evolving (skill factory, self-evolution, meta-hyperagent, autoresearch) meet the governance contract: no strong signal from raw success, no global mutation from project evidence, no report evidence created | contract-clause audit with a test per clause | every clause has a passing guard test | yes |
+| SK1 | Findings-producing skills: none silently returns zero facts for a valid single input when its schema promises facts | skills with the gap | 0 (or documented) | no |
+| G1 | Evidence-graph links: fact→nugget supported share (judged, validated judge) | re-measure after changes | improve on 0.65; ≥ 0.75 target | no |
+| G2 | Context-DAG summary recall of planted facts | re-measure | improve on 0.48; ≥ 0.60 target | no |
+| G3 | Graph-assisted retrieval ships only by the DEC-2 rule of the graph plan (coverage@10 significantly higher, no v2 style significantly worse, Holm) | paired test | rule | no |
+
+### Area 4 — installers
+
+| ID | Criterion | Measure | Pass | Blocker |
+|---|---|---|---|---|
+| I1 | The release workflow fails when a platform build fails (no silent green) | workflow contract test | pass | yes |
+| I2 | Each published channel installs the current version: DMG, Linux AppImage/deb, Windows installer, Homebrew cask, curl one-liner, Docker compose | channels verified current / channels | all reachable ones | yes |
+| I3 | Fresh install on the Studio (macOS) and in Linux containers reaches first run with clear first-run guidance | fresh-install journeys | pass | yes |
+| I4 | `VERSION` equals the latest tag; the Homebrew cask updates automatically | drift | 0 | no |
+| I5 | What cannot be verified is stated (Windows without a machine; signing without the owner's certificates) | honesty | stated | yes |
+
+## Phases
+
+| Phase | Goal | Acceptance | Verification |
+|---|---|---|---|
+| 1 Surveys, channels, deployments | fix D-1 to D-7; consent, screener, quota, reminders, CSV export; prove S1-S8 | S1-S8 | pytest (fail on `main` first), scenario 89, live spine run |
+| 2 Spine quality | D-8 fix; C1-C4; R1-R3 (report export); K1; A1; E1; SK1; G1-G3 re-measured | Area 3 table | pytest, live runs, scenario steps |
+| 3 Menus and UX | walk every view and tab (U1-U5); fix defects; scenarios; refresh stale verdicts | Areas 1 and 5 | browser walk on the QA `ui` lane, scenarios |
+| 4 Installers | D-10, D-11; I1-I5 | Area 4 | workflow run, fresh installs on the Studio and in Linux containers |
+| 5 Ship | docs, map, readiness report (Artifact), PRs merged, `main` = `testing`, lane torn down | all verdicts dated | governance checks, `verify_lifecycle.py` |
+
+Each phase lands as its own PR into `main` followed by a `main → testing` sync PR (DEC-1).
+
+**Rollback.** Every behaviour change is behind a test; consent, screener and quota are deployment
+settings defaulting to the old behaviour only where a researcher has not configured them (consent
+defaults on for new deployments, DEC-4). The reliability-matrix change is a methodology fix recorded
+as a decision with its evidence; old runs keep their stored metrics.
+
+**Top risks.** Live coder variance at small n (bound by ≥ 40 units and bootstrap intervals);
+installer signing needs owner-held secrets (state it, do not fake it); browser walk breadth (24 views
+× tabs × states) — the walk is recorded as a table, not narrated.
+
+## Decision log
+
+DEC-1 | 2026-09-26 | S0-frame | owner
+Context: the owner's handoff prompt of 2026-09-26 ("Istara — professional-readiness review").
+Decision: frame approved by the handoff: review, measure, fix and prove the five areas; work
+autonomously; branch, commit, push, open and merge PRs once required CI is green; after any
+direct-to-`main` merge, merge a `main → testing` sync PR in the same session; no subagents; review
+coverage self-only; Studio-only execution; synthetic data; $1 per live run.
+Why: owner instruction. This is the plan's only owner gate.
+
+DEC-2 | 2026-09-26 | S1-plan | claude-code (pre-registered before any number)
+Context: the handoff asks for pre-registered criteria per area.
+Decision: the criteria tables above, with the verdict rule stated at their head, are fixed now.
+A criterion may be tightened later but never loosened; any change is a new DEC with its reason.
+Why: fixing the bar before the numbers is what makes the verdicts evidence rather than narrative.
+
+DEC-3 | 2026-09-26 | S1-plan | claude-code (pre-registered before any number)
+Context: C2 asks why three-model agreement is near zero.
+Decision: attribute the cause by these rules, in order. (a) **Metric artifact** if, on the same
+coder outputs, κ on normalised `primary_code` exceeds κ on exact label sets by ≥ 0.20. (b)
+**Codebook** if κ_B − κ_A ≥ 0.20 with the paired test significant (p < 0.05, Holm over κ and α).
+(c) **Prompt / model** if in arm B at least one coder's accuracy against the planted theme is
+< 0.60 while the others are ≥ 0.70. (d) **Genuine ambiguity** if in arm B every coder's accuracy is
+≥ 0.70 and κ_B is still < 0.40 (coders are right about different, defensible codes). More than one
+cause may hold; each is reported with its numbers.
+Why: separates the four explanations the handoff names using quantities fixed in advance.
+
+DEC-4 | 2026-09-26 | S1-plan | claude-code
+Context: D-5; professional research requires informed consent before data collection.
+Decision: new deployments ask for consent by default (a researcher can edit the text, and can turn
+it off only with an explicit setting that is shown on the deployment card). Until the participant
+consents, nothing they send is stored as research data; a decline ends the conversation politely
+and stores only a consent-declined marker with no content. Existing deployments keep their
+behaviour (no retroactive consent prompt mid-conversation).
+Why: consent-before-collection is the norm (ESOMAR/ICC, GDPR Art. 6/7); making it default-on is
+the safe choice, and not retrofitting it avoids breaking live conversations.
+
+DEC-5 | 2026-09-26 | S1-plan | claude-code (pre-registered before any number)
+Context: recon found D-12 after DEC-2 was written.
+Decision: add R0 (Blocker) to Area 3. A fix may ground a skill nugget in a source document only by
+exact, contiguous substring match against the task's own input documents (no fuzzy match, no
+model judgement); an ungrounded nugget stays a candidate.
+Why: tightening is allowed by DEC-2; exact-substring grounding keeps the contract's rule that
+evidence units come from raw source spans.
+
+## Ledger
+
+### L-1 | 2026-09-26T21:10:00Z | S0-frame | claude-code | framer | —
+Did: read the handoff; oriented on `main` = `testing` = 06545a8a; gated the CF binary (all seven
+probes pass); refreshed the CF index; read the survey, channel, deployment, codebook, reliability,
+report, release-workflow and Homebrew code paths; pulled the latest release and its build logs.
+Result: frame written with 11 recon hypotheses (D-1 to D-11) and pre-registered criteria (DEC-2,
+DEC-3). Every desktop build in run 36263309378 failed while the workflow reported success.
+Verified: `gh run view 36263309378 --log` (three `Error failed to bundle project` lines);
+`gh release view v2026.09.26.6` (assets: DMG, latest.json only); code reads cited in the D table.
+Next: CF spec, then Phase 1 failing tests.
