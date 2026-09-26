@@ -116,3 +116,21 @@ def test_a_cycle_is_counted():
 
 def test_containment_ignores_case_and_whitespace_runs():
     assert normalise("The  receipt\nis") == "the receipt is"
+
+
+async def test_link_support_judges_every_fact_and_insight_link(monkeypatch):
+    from app.evals import graph_eval
+
+    judged = []
+
+    async def judge(endpoint, claim, evidence):
+        judged.append((claim, evidence))
+        return "receipt" in evidence.lower()
+
+    monkeypatch.setattr(graph_eval, "_judge_support", judge)
+    rows = _rows()
+    rows["facts"][0].text = "Receipts get lost."
+    rows["insights"][0].text = "Paper handling costs time."
+    result = await graph_eval.link_support(GraphSnapshot(rows), "stub")
+    assert result["fact_to_nugget"]["share"] == 0.5 and result["fact_to_nugget"]["n"] == 2
+    assert result["insight_to_fact"]["n"] == 1 and len(judged) == 3

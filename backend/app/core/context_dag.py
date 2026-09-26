@@ -679,11 +679,21 @@ class ContextDAG:
                 project_id="",
                 system=None,
                 messages=[{"role": "user", "content": prompt}],
-                params=TurnParams(temperature=0.2, max_tokens=settings.dag_summary_max_tokens),
+                # Thinking off: a reasoning model otherwise spends the whole summary budget on
+                # hidden reasoning and returns no text (G2, 2026-09-26).
+                params=TurnParams(
+                    temperature=0.2,
+                    max_tokens=settings.dag_summary_max_tokens,
+                    thinking_mode="off",
+                ),
             )
             summary = outcome.text
             if summary and summary.strip():
                 return summary.strip()
+            logger.warning(
+                "DAG summarization returned no text (stop_reason=%s); using the mechanical summary",
+                getattr(outcome, "stop_reason", None),
+            )
         except Exception as e:
             logger.warning("DAG summarization LLM call failed: %s", e)
 
