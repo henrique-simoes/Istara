@@ -34,6 +34,8 @@ Interview Preview And Tags exists so the work represented by Interviews > Previe
 - Open Interviews > Preview And Tags from the Istara navigation or the parent tab.
 - Use the visible controls in this surface to work with interview preview and tags in the active project context.
 - Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- On a phone, the open interview fills the screen: **All interviews** goes back to the list, and the
+  tags button opens the tags panel over the interview.
 
 ## Supported Workflows
 

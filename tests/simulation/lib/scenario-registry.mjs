@@ -116,4 +116,5 @@ export const scenarioFiles = Object.freeze([
   "85-retrieval-correctness",
   "86-evidence-provenance-health",
   "87-embedding-model-migration",
+  "88-phone-layout",
 ]);

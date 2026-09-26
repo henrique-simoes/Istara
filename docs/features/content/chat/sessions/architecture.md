@@ -48,6 +48,11 @@ The chat session sidebar manages project-scoped conversation history and new ses
 - Session create and update validate `agent_id` against the same active project before storing it. Universal system agents are allowed; project-owned agents from another project, inactive agents, and orphaned project-scoped agents are rejected.
 - Session create and update also reject embedding-only model names at the persistence boundary, so a stale or direct API override cannot route an embedding transport through chat.
 - The sidebar derives `scopedSessions` from the active project before rendering rows, counts, and actions.
+- On a phone (below the md breakpoint) the list is a drawer (2026-09-26): `ChatView` holds
+  `sessionsOpen`, `ChatSessionsToggle` ("Chats", `aria-controls="chat-sessions"`) opens it over the
+  conversation with a backdrop, and picking or creating a chat, the backdrop, or Escape closes it. A
+  fixed 224 px column had left the conversation 151 px at 375 px, with the send button off screen.
+  Desktop keeps the open column. Journey: scenario 88.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 

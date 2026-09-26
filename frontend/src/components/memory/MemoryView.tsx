@@ -176,7 +176,7 @@ function MemorySearchResults({
 }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-semibold uppercase text-slate-500">Search Results ({results.length})</h3>
+      <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Search Results ({results.length})</h3>
       {results.length === 0 ? (
         <p className="text-sm text-slate-400 py-4 text-center">No results found.</p>
       ) : (
@@ -230,7 +230,7 @@ function MemorySourcesList({
   if (sources.length === 0) return null;
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Sources</h3>
+      <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Sources</h3>
       <div className="space-y-1" role="region" aria-label="Source files" tabIndex={0}>
         {sources.map((source) => {
           const label = memorySourceLabel(source.name, sourceDocuments);
@@ -278,7 +278,7 @@ function MemoryChunksList({
 }) {
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Chunks</h3>
+      <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Chunks</h3>
       {loading ? (
         <p className="text-sm text-slate-400 py-4 text-center">Loading...</p>
       ) : chunks.length === 0 ? (
@@ -296,7 +296,7 @@ function MemoryChunksList({
                   <span className="text-xs text-slate-500 truncate max-w-[300px]" title={chunk.source}>
                     {memorySourceLabel(chunk.source, sourceDocuments)}
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                     {chunk.chunk_type}
                   </span>
                 </div>
@@ -444,7 +444,7 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
       />
 
       {/* Stats bar + Re-index button */}
-      <div className="flex items-center justify-between text-xs text-slate-500">
+      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-4">
           <span>{total} chunks total</span>
           <span>{sources.length} sources</span>
@@ -624,7 +624,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="font-medium text-sm text-slate-900 dark:text-white truncate">{agent.name}</span>
-                        <p className="text-xs text-slate-500">{agent.id}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{agent.id}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {notes !== undefined && (

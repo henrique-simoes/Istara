@@ -11,8 +11,10 @@
  *      are stored under the full path, so every reprocess appended another copy);
  *   4. the results show a rank, not the raw fusion score as a percentage ("1.6%" for the best match);
  *   5. the Memory view passes the matrix AGENTS.md asks of every changed surface: keyboard focus is
- *      visible on the search box, 375px reflow has no horizontal scroll, dark mode renders, and an
- *      axe-core WCAG 2.1 AA scan finds no serious or critical violation on the results.
+ *      visible on the search box, 375px reflow has no horizontal scroll, dark mode renders, and
+ *      axe-core WCAG 2.1 AA finds no serious or critical violation on the results in the light and
+ *      the dark theme, each set through the app's own toggle (2026-09-26: the dark theme's grey
+ *      metadata text was 4.23:1, unseen while only one theme was scanned).
  *
  * Steps 1-3 seed and reprocess through the API (labelled "API-behind-browser" per AGENTS.md); every
  * assertion about retrieval is read from the rendered page. Synthetic data only. Runs in the
@@ -27,6 +29,7 @@
  */
 
 import { getApiBase, authHeaders } from "../lib/api-client.mjs";
+import { setTheme } from "../lib/matrix-checks.mjs";
 
 export const name = "Retrieval correctness (Memory search)";
 export const id = "85-retrieval-correctness";
@@ -175,33 +178,37 @@ export async function run(ctx) {
   checks.push({ name: "375px reflow: no horizontal page scroll", passed: overflow <= 1, detail: `overflow=${overflow}px` });
   if (viewport) await page.setViewportSize(viewport);
 
-  await page.emulateMedia({ colorScheme: "dark" });
-  await openMemory(ctx);
-  await searchInUi(ctx, "billing previews");
-  await ctx.screenshot("85-memory-dark");
-  const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  checks.push({ name: "Dark mode renders the results", passed: /rgb\((\d+), (\d+), (\d+)\)/.test(darkBg), detail: `body=${darkBg}` });
-  await page.emulateMedia({ colorScheme: "light" });
-
-  let axeDetail = "axe unavailable";
-  let axePassed = false;
-  try {
-    const { default: AxeBuilder } = await import("@axe-core/playwright");
+  // Both themes, through the app's own toggle (an earlier scenario may have stored a choice).
+  const startedDark = await page.evaluate(() => document.documentElement.classList.contains("dark"));
+  for (const theme of ["light", "dark"]) {
+    const isDark = await setTheme(page, theme);
     await openMemory(ctx);
     await searchInUi(ctx, "billing previews");
+    if (theme === "dark") {
+      await ctx.screenshot("85-memory-dark");
+      const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+      checks.push({ name: "Dark mode renders the results", passed: isDark && !/rgb\(255, 255, 255\)/.test(darkBg), detail: `html.dark=${isDark} body=${darkBg}` });
+    }
+    checks.push({ name: `axe-core WCAG 2.1 AA (${theme}): no serious or critical violation on the results`, ...(await axeResults(page)) });
+  }
+  await setTheme(page, startedDark ? "dark" : "light");
+
+  const passed = checks.filter((c) => c.passed).length;
+  return { checks, passed, failed: checks.length - passed };
+}
+
+async function axeResults(page) {
+  try {
+    const { default: AxeBuilder } = await import("@axe-core/playwright");
     const result = await new AxeBuilder({ page }).include("main").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
     const blocking = result.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-    axePassed = blocking.length === 0;
-    axeDetail = blocking.length
+    const detail = blocking.length
       ? blocking
           .map((v) => `${v.id}(${v.nodes.length}): ${v.nodes.slice(0, 3).map((n) => `${n.target.join(" ")} ${(n.any?.[0]?.message || "").slice(0, 90)}`).join(" | ")}`)
           .join("; ")
       : `0 serious/critical; ${result.violations.length} minor/moderate`;
+    return { passed: blocking.length === 0, detail };
   } catch (e) {
-    axeDetail = e.message;
+    return { passed: false, detail: e.message };
   }
-  checks.push({ name: "axe-core WCAG 2.1 AA: no serious or critical violation on the results", passed: axePassed, detail: axeDetail });
-
-  const passed = checks.filter((c) => c.passed).length;
-  return { checks, passed, failed: checks.length - passed };
 }

@@ -96,7 +96,7 @@ export default function QualityView() {
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-6 text-slate-900 dark:text-slate-100">
+    <div className="flex-1 w-full overflow-y-auto p-6 max-w-5xl mx-auto space-y-6 text-slate-900 dark:text-slate-100">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Quality Dashboard</h2>

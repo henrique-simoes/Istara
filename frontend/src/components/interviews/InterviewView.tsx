@@ -30,6 +30,14 @@ import { cn } from "@/lib/utils";
 import { ApiError } from "@/hooks/useApiCall";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import { FilePreview, SendToAgentButton, TagCreatePopover, fileIcon, isImage } from "./interviewPreviewParts";
+import {
+  TAGS_PANEL_CLASS,
+  explorerClass,
+  inspectorToggleClass,
+  showsList,
+  useTagsCollapsedOnPhone,
+  workspaceClass,
+} from "./interviewLayout";
 
 function cleanFilename(name: string): string {
   const parts = (name || "").split("/");
@@ -60,6 +68,10 @@ export default function InterviewView() {
 
   // Right panel collapse state
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  // Phone layout: the list and the open interview take turns; tags start collapsed.
+  const [listOpen, setListOpen] = useState(false);
+  const listShown = showsList(selectedFile, listOpen);
+  useTagsCollapsedOnPhone(setRightPanelCollapsed);
 
   // Tag creation state
   const [tagCreatePopover, setTagCreatePopover] = useState<{
@@ -144,6 +156,7 @@ export default function InterviewView() {
   };
 
   const handleFileSelect = (filename: string, type: string) => {
+    setListOpen(false);
     setSelectedFile(filename);
     setSelectedFileType(type);
     setAnalysisResult("");
@@ -336,13 +349,15 @@ export default function InterviewView() {
   }
 
   return (
-    <div className="flex-1 flex overflow-hidden bg-white dark:bg-slate-950">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white dark:bg-slate-950">
+      {/* The banner sits above the columns: inside the row it became a column of its own. */}
       <ViewOnboarding
         viewId="interviews"
         title="Interview Analysis Workbench"
         description="Manage interview recordings and transcripts with master-detail navigation, phrase highlights, and grounded qualitative coding."
         chatPrompt="How do I analyze interviews and extract grounded quotes?"
       />
+    <div className="flex-1 min-h-0 flex overflow-hidden">
 
       {/* Tag creation popover */}
       {tagCreatePopover && (
@@ -355,10 +370,7 @@ export default function InterviewView() {
       )}
 
       {/* ── 1. Left Column: Master Interview Explorer Sidebar ── */}
-      <aside
-        className="w-80 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/50 dark:bg-slate-900/60 shrink-0"
-        aria-label="Interviews explorer"
-      >
+      <aside className={explorerClass(listShown)} aria-label="Interviews explorer">
         {/* Sidebar Header */}
         <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <div className="flex items-center justify-between gap-2 mb-2.5">
@@ -588,10 +600,17 @@ export default function InterviewView() {
       </aside>
 
       {/* ── 2. Center Column: Transcript & Media Detail Workbench ── */}
-      <main className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-950 overflow-hidden">
+      <main className={workspaceClass(listShown)}>
         {/* Workspace Toolbar Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <div className="min-w-0 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setListOpen(true)}
+              className="md:hidden inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-istara-500"
+            >
+              <ArrowLeft size={14} aria-hidden="true" /> All interviews
+            </button>
             {selectedFile ? (
               <div className="flex items-center gap-2 min-w-0">
                 <span className="font-semibold text-sm text-slate-900 dark:text-white truncate">
@@ -718,7 +737,7 @@ export default function InterviewView() {
       </main>
 
       {/* ── 3. Right Column: Inspector Toggle & Panel ── */}
-      <div className="flex flex-col items-center justify-start py-2 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shrink-0">
+      <div className={inspectorToggleClass(listShown)}>
         <button
           onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
           className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
@@ -730,10 +749,7 @@ export default function InterviewView() {
       </div>
 
       {!rightPanelCollapsed && (
-        <aside
-          className="w-72 flex flex-col bg-slate-50/70 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shrink-0"
-          aria-label="Tags and grounded nuggets"
-        >
+        <aside className={TAGS_PANEL_CLASS} aria-label="Tags and grounded nuggets">
           {/* Tags Header */}
           <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase mb-2 flex items-center justify-between">
@@ -878,6 +894,7 @@ export default function InterviewView() {
           </div>
         </aside>
       )}
+    </div>
     </div>
   );
 }
