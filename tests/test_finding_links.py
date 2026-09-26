@@ -52,7 +52,7 @@ def test_storage_no_longer_links_by_recency():
     source = inspect.getsource(agent_research)
     for stale in ("created_nugget_ids[-5:]", "created_fact_ids[-3:]", "created_insight_ids[-2:]"):
         assert stale not in source
-    assert "supporting_ids(" in source
+    assert "plan_links(" in source
 
 
 async def test_candidates_are_embedded_once_in_one_batch(monkeypatch):
@@ -73,3 +73,24 @@ async def test_candidates_are_embedded_once_in_one_batch(monkeypatch):
     for claim in ("first claim", "second claim", "third claim"):
         await finding_links.supporting_ids([claim], NUGGETS, k=1)
     assert len(batches) == 1 and len(batches[0]) == 3
+
+
+async def test_links_are_planned_from_the_output_before_storage(monkeypatch):
+    async def semantic(queries, candidates):
+        raise RuntimeError("lexical path")
+
+    monkeypatch.setattr(finding_links, "_semantic_scores", semantic)
+    output = type("O", (), {})()
+    output.nuggets = [{"text": t} for _, t in NUGGETS]
+    output.facts = [{"text": "Receipts get lost in pockets and laundry."}]
+    output.insights = [
+        {
+            "text": "Paper is fragile.",
+            "supporting_facts": ["Receipts get lost in pockets and laundry."],
+        }
+    ]
+    output.recommendations = [
+        {"text": "Capture receipts at the counter.", "supporting_insights": ["Paper is fragile."]}
+    ]
+    plan = await finding_links.plan_links(output)
+    assert plan == {"facts": [[0]], "insights": [[0]], "recommendations": [[0]]}

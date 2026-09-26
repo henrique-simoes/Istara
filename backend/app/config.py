@@ -432,6 +432,8 @@ class Settings(BaseSettings):
     dag_batch_size: int = 32
     dag_rollup_threshold: int = 4
     dag_summary_max_tokens: int = 300
+    # Pi endpoint for DAG summaries ("" = the default endpoint); a light model keeps them fast.
+    dag_summary_endpoint_id: str = ""
 
     # Design integrations
     stitch_api_key: str = ""

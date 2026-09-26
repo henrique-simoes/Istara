@@ -60,3 +60,20 @@ async def test_an_empty_summary_at_the_cap_is_retried_with_room_to_reason(monkey
     summary = await ContextDAG()._summarize_batch([{"role": "user", "content": "HX-1234"}])
     assert summary == "P1's shop code is HX-1234."
     assert budgets[1] > budgets[0]
+
+
+async def test_an_operator_can_route_summaries_to_a_chosen_endpoint(monkeypatch):
+    from app.config import settings
+    from app.core.agentic import agentic
+    from app.core.context_dag import ContextDAG
+
+    seen = {}
+
+    async def completion(**kwargs):
+        seen.update(kwargs)
+        return SimpleNamespace(text="summary", stop_reason="stop")
+
+    monkeypatch.setattr(agentic, "completion", completion)
+    monkeypatch.setattr(settings, "dag_summary_endpoint_id", "pi-light")
+    await ContextDAG()._summarize_batch([{"role": "user", "content": "x"}])
+    assert seen["params"].endpoint_id == "pi-light"

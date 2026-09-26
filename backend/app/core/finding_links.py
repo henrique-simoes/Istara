@@ -90,3 +90,31 @@ async def supporting_ids(
         scores, floor = _lexical_scores(queries, candidates), MIN_OVERLAP
     ranked = sorted((s, cid) for cid, s in scores.items() if s >= floor)
     return [cid for _, cid in reversed(ranked)][:k]
+
+
+async def _indexes(queries: Sequence[str], texts: Sequence[str], k: int) -> list[int]:
+    candidates = [(str(i), t) for i, t in enumerate(texts)]
+    return [int(i) for i in await supporting_ids(queries, candidates, k=k)]
+
+
+async def plan_links(output) -> dict[str, list[list[int]]]:
+    """Which earlier findings each fact, insight and recommendation rests on, by index.
+
+    Computed from the skill's output before storage opens a write transaction: embedding writes its
+    own usage rows, and doing it while the findings transaction held SQLite's write lock made every
+    embed wait for the lock (a grouped skill run went from 99 s to 560 s).
+    """
+    nuggets = [str(n.get("text", "")) for n in output.nuggets or []]
+    facts = [str(f.get("text", "")) for f in output.facts or []]
+    insights = [str(i.get("text", "")) for i in output.insights or []]
+    return {
+        "facts": [await _indexes([t], nuggets, 5) for t in facts],
+        "insights": [
+            await _indexes(i.get("supporting_facts") or [i.get("text", "")], facts, 3)
+            for i in output.insights or []
+        ],
+        "recommendations": [
+            await _indexes(r.get("supporting_insights") or [r.get("text", "")], insights, 2)
+            for r in output.recommendations or []
+        ],
+    }

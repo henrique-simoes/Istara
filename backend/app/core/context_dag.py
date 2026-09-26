@@ -29,7 +29,7 @@ from app.models.message import Message
 logger = logging.getLogger(__name__)
 
 # Budget for the one retry of a summary that hit the cap with no text.
-DAG_SUMMARY_RETRY_TOKENS = 2048
+DAG_SUMMARY_RETRY_TOKENS = 8192
 
 
 class ContextDAG:
@@ -686,7 +686,12 @@ class ContextDAG:
                     project_id="",
                     system=None,
                     messages=[{"role": "user", "content": prompt}],
-                    params=TurnParams(temperature=0.2, max_tokens=budget, thinking_mode="off"),
+                    params=TurnParams(
+                        temperature=0.2,
+                        max_tokens=budget,
+                        thinking_mode="off",
+                        endpoint_id=settings.dag_summary_endpoint_id or None,
+                    ),
                 )
                 summary = outcome.text
                 if summary and summary.strip():
