@@ -3314,4 +3314,3 @@ Branch `fix/spine-findings-measurements-20260925`; evidence in
   endpoints); an endpoint's thinking level is the default for turns that set none; failed turns carry
   the provider's reason; structured output works on providers that accept only `tool_choice: auto`
   (Meta) without accepting free-form text; pinned pi-ai 0.87.1 adds Meta as a provider.
-

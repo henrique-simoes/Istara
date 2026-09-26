@@ -273,7 +273,7 @@ fooled (`verified: true, confidence 0.95`). The harness then runs the real
 ReasoningBank, Memento usage, hooks) and inspects every learning surface afterwards.
 
 **Output inspected.** On `origin/main` ReasoningBank stored the wrong run as a success:
-`assert not [{... 'confidence': 0.85, 'content': 'Reuse this strategy when the new task resembles the origi...` 
+`assert not [{... 'confidence': 0.85, 'content': 'Reuse this strategy when the new task resembles the origi...`
 On this branch the harness prints:
 ```
 LEARNING-LOOP-SAFETY {"reasoning_bank": [["provisional", 0.55]], "skill_stats": {"executions": 0,
