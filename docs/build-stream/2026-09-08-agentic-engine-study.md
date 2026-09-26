@@ -3,12 +3,12 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: agentic-engine-study
-branch: testing
+branch: main   # testing was promoted to main by squash merge (PR #34, 2f106b57), so its commits are not ancestors of main
 phase: "Study + teaching page (complete)"
 stage: S5-ship
 status: done
 blocked_on: null
-last: { agent: opencode, at: 2026-09-08T00:00:00Z, ledger: L-002 }
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:39:14Z, ledger: L-1 }
 next_action: "Owner picks long-horizon proposals from Phase 10 of the page; no code changes pending."
 ```
 <!-- /STATUS BLOCK -->
@@ -30,3 +30,9 @@ No behavior changes in this initiative.
   zero page errors, light-on-dark screenshots reviewed). Synced to QA
   checkout for reference. No app code touched; no tests affected; no rebuild
   needed.
+
+### L-1 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. Its work reached main through the squash merge of testing (PR #34, 2f106b57); the block named `testing`, whose commits a squash leaves off main's history.
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.

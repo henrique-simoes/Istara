@@ -6,11 +6,11 @@ item: pi-full-replacement
 branch: Review_pi_test
 cf: { spec: CF-SPEC-8, tasks: [pi-full-20260720-w0-IMPL, pi-full-20260720-w0-REVIEW] }
 phase: "W9 — final ratchet, dead-code retirement, architecture docs"
-stage: S3-review
-status: in-progress
+stage: closed
+status: closed-superseded
 blocked_on: null
-last: { agent: gpt-5.6-sol, at: 2026-07-22T10:47:31Z, ledger: L-74 }
-next_action: "Advance the conductor beyond the passed W9 delta review toward the remaining ship and benchmark stages."
+last: { agent: releasing-manager, at: "2026-09-12T00:00:00Z", ledger: L-80 }
+next_action: "Closed 2026-09-12 (post-promotion closeout): superseded: Pi full replacement completed; evidence ledger L-72..L-80 and main 2f106b57."
 ```
 <!-- /STATUS BLOCK -->
 

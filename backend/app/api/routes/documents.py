@@ -976,7 +976,7 @@ async def sync_project_documents(
                 content_preview = content_text[:2000]
                 if result.chunks:
                     store = VectorStore(project_id)
-                    await store.delete_by_source(file_path.name)
+                    await store.delete_file_source(file_path)
                     chunks_indexed = await ingest_chunks(project_id, result.chunks)
                     total_chunks_indexed += chunks_indexed
 

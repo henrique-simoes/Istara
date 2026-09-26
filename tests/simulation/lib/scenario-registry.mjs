@@ -113,4 +113,5 @@ export const scenarioFiles = Object.freeze([
   "82-quality-dashboard",
   "83-chat-model-controls",
   "84-token-session-lifecycle",
+  "85-retrieval-correctness",
 ]);

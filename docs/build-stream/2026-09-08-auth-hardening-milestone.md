@@ -3,12 +3,12 @@
 <!-- STATUS BLOCK -->
 ```yaml
 item: auth-hardening-milestone
-branch: testing
+branch: main   # testing was promoted to main by squash merge (PR #34, 2f106b57), so its commits are not ancestors of main
 phase: "Phase 4 — Validation, port, QA proof (complete)"
 stage: S5-ship
 status: done
 blocked_on: null
-last: { agent: opencode, at: 2026-09-07T22:45:24Z, ledger: L-004 }
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:39:14Z, ledger: L-1 }
 next_action: "Owner merge decision; residual list in L-003/L-004. No merge performed."
 ```
 <!-- /STATUS BLOCK -->
@@ -70,3 +70,9 @@ next_action: "Owner merge decision; residual list in L-003/L-004. No merge perfo
   reads live; idle-timeout unit test green. New tests this lane: WS MFA,
   idle-timeout. Fixed along the way: `select`/`_select` alias slips in both
   WS files (caught by the new tests, not by existing suite).
+
+### L-1 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. Its work reached main through the squash merge of testing (PR #34, 2f106b57); the block named `testing`, whose commits a squash leaves off main's history.
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.

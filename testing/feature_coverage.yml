@@ -202,6 +202,28 @@ features:
     introduced_in: "pending"
     last_verified_sha: "pending"
 
+  - id: telemetry.export-v1
+    status: active
+    owner: platform
+    paths:
+      - "scripts/export_telemetry_v1.py"
+      - "tests/test_export_telemetry_v1.py"
+    exceptions: []
+    requires_human_review: false
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - governance
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - check_integrity
+        - pytest_telemetry_export
+    acceptance: "agentic_usage_rows export as telemetry contract v1 rows, read-only, metadata only; a default 0 is unknown, never a measurement."
+    introduced_in: "pending"
+    last_verified_sha: "pending"
+
   - id: qa.disposable-runtime
     status: active
     owner: platform

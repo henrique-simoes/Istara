@@ -345,7 +345,7 @@ async def upload_file(
 
     # Remove existing chunks for this source before re-ingesting
     store = VectorStore(project_id)
-    await store.delete_by_source(file_path.name)
+    await store.delete_file_source(file_path)
 
     # Ingest chunks into vector store
     content_text = "\n\n".join(c.text for c in result.chunks)
@@ -731,7 +731,7 @@ async def reprocess_files(project_id: str, request: Request, db: AsyncSession = 
             if result.chunks:
                 # Remove existing chunks for this source before re-ingesting
                 store = VectorStore(project_id)
-                await store.delete_by_source(file_path.name)
+                await store.delete_file_source(file_path)
 
                 chunks = await ingest_chunks(project_id, result.chunks)
                 total_chunks += chunks

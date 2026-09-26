@@ -104,3 +104,25 @@ def test_checked_in_convergence_last_ledger_resolves_uniquely():
     ref = re.search(r"ledger:\s*(L-\d+)", text).group(1)
     count = len(re.findall(rf"^###\s+{ref}\b", text, re.M))
     assert count == 1
+
+
+def test_superseded_is_terminal():
+    """Build Stream's `superseded` closes a lifecycle, like `done`: its open roadmap rows are then checked as terminal."""
+    text = """# x
+<!-- STATUS BLOCK -->
+```yaml
+item: x
+phase: "Phase 2 — y"
+stage: S5-ship
+status: superseded
+last: { agent: a, at: 2026-09-24T00:00:00Z, ledger: L-1 }
+next_action: "None."
+```
+<!-- /STATUS BLOCK -->
+
+| 1 | a | done |
+| 2 | b | done |
+
+### L-1 | 2026-09-24T00:00:00Z | S5 | a | b | c
+"""
+    assert verify(text) == []

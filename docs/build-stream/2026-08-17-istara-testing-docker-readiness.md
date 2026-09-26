@@ -4,13 +4,13 @@
 ```yaml
 item: istara-testing-docker-readiness
 branch: testing
-cf: { spec: CF-SPEC-53, decisions: [20], tasks: [CF-651, CF-652, CF-653, CF-654, CF-655, CF-656, CF-657, CF-658, CF-659, CF-660, CF-661, CF-662, CF-663, CF-664] }
+# not addressable here: the Compass Forge database that held these records was replaced; kept as history. was> cf: { spec: CF-SPEC-53, decisions: [20], tasks: [CF-651, CF-652, CF-653, CF-654, CF-655, CF-656, CF-657, CF-658, CF-659, CF-660, CF-661, CF-662, CF-663, CF-664] }
 phase: "Phase 1 — readiness assessment and public CI/testing reframe"
-stage: S1-plan
-status: in-progress
-blocked_on: "Owner approval, a new implementation spec, provider/runtime validation, and missing CI enforcement"
-last: { agent: pi, at: 2026-08-18T00:03:55Z, ledger: L-3 }
-next_action: "Create and approve the public provider-agnostic CI/testing implementation contract; do not launch Conductor implementation or mutate multivac yet."
+stage: closed
+status: closed-superseded
+blocked_on: null
+last: { agent: claude-opus-5-5, at: 2026-09-24T03:39:14Z, ledger: L-4 }
+next_action: "Closed 2026-09-12 (post-promotion closeout): superseded: container-first QA suite and docker-compose.qa.yml ui profile shipped in the testing train (CI run 34637179724)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -136,3 +136,9 @@ Result: The future initiative is explicitly provider-agnostic and developer-usab
 Verified: `compass-forge status`; `compass-forge next`; `compass-forge agent-brief --compact`; `compass-forge refresh`; `compass-forge index refresh`; `compass-forge intelligence impact --path docs/build-stream/2026-08-17-istara-testing-docker-readiness.md`; `compass-forge intelligence why docs/build-stream/2026-08-17-istara-testing-docker-readiness.md`; read-only inspection of the branch, candidate worktree, CI workflows, change-obligation checks, testing docs, Compose overlay, and provider/runtime contracts; no implementation, Docker startup, provider request, or `multivac` mutation.
 
 Next: Obtain owner approval, create the new implementation spec, then use Conductor for the public CI/testing delivery only.
+
+### L-4 | 2026-09-24T03:39:14Z | S5-ship | claude-opus-5-5 | executor | —
+Did: record correction found by Ainulindalë's truth reconciler. Its Compass Forge references are not addressable: that database was replaced (the current one starts at CF-SPEC-1, 2026-08-24).
+Result: the Status Block says what is true today.
+Verified: `git merge-base --is-ancestor 2f106b57 origin/main` (the squash of testing); `git diff --stat 2f106b57 9620e5d8` empty; `compass-forge spec show` for each named spec.
+Next: as the block says.

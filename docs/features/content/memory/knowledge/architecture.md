@@ -42,6 +42,7 @@ The Memory knowledge tab manages project knowledge artifacts and retrieval mater
 - `frontend/src/components/memory/MemoryView.tsx` remounts project-backed memory tabs when the active project changes so local chunks, search results, notes, and health state do not linger across projects.
 - Memory source rows, health breakdowns, filters, search results, and chunks resolve uploaded document metadata to a human-readable title (with the filename as a disambiguator); the canonical source path remains in the DOM title and is still used for filtering and deletion.
 - If document metadata cannot be loaded, the UI safely falls back to the source basename without blocking memory browsing.
+- Search results render their hybrid rank (`data-testid=memory-result-rank`) rather than the reciprocal-rank-fusion sum, which ranges about 0.005-0.02 and read as "1.6%" for the best match. `KeywordIndex.search` runs the exact-phrase query first and fills top-k from the all-terms query, keeping two-character tokens; `VectorStore.delete_file_source` deletes both the full-path and basename spellings of a source, so reprocess is idempotent. Pinned by `tests/test_retrieval_correctness_fixes.py` and simulation scenario `85-retrieval-correctness`.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
