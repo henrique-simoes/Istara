@@ -83,8 +83,8 @@ def _reason(exc: BaseException) -> str:
     import httpx
 
     if isinstance(exc, httpx.HTTPStatusError):
-        response = exc.response
-        return f"the embedding server answered {response.status_code} {response.reason_phrase}".strip()
+        status = f"{exc.response.status_code} {exc.response.reason_phrase}".strip()
+        return f"the embedding server answered {status}"
     text = str(exc).splitlines()[0] if str(exc) else type(exc).__name__
     return _URL.sub("<embedding server>", text).strip()[:300]
 

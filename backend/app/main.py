@@ -218,6 +218,19 @@ def _write_initial_admin_credentials_file(
     return path
 
 
+async def _settle_interrupted_coding_runs(log) -> None:
+    """Coding runs a previous process left running settle as blocked (they cannot still run)."""
+    try:
+        from app.services.research_validity_service import settle_interrupted_coding_runs
+
+        async with async_session() as db:
+            settled = await settle_interrupted_coding_runs(db)
+        if settled:
+            log.warning(f"Settled {len(settled)} coding run(s) interrupted by the last shutdown.")
+    except Exception as e:
+        log.warning(f"Interrupted coding-run settlement skipped: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown lifecycle."""
@@ -391,17 +404,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 _recovery_log.info("No incomplete tasks to recover.")
     except Exception as e:
         _recovery_log.warning(f"Checkpoint recovery skipped: {e}")
-    try:
-        from app.services.research_validity_service import settle_interrupted_coding_runs
-
-        async with async_session() as db:
-            settled = await settle_interrupted_coding_runs(db)
-        if settled:
-            _recovery_log.warning(
-                f"Settled {len(settled)} coding run(s) interrupted by the last shutdown as blocked."
-            )
-    except Exception as e:
-        _recovery_log.warning(f"Interrupted coding-run settlement skipped: {e}")
+    await _settle_interrupted_coding_runs(_recovery_log)
 
     # Startup cleanup: remove orphaned sessions/messages whose project no longer exists
     _cleanup_log = _startup_log.getLogger("startup.cleanup")
