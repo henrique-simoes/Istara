@@ -32,4 +32,8 @@ def test_upgrade_head_succeeds_on_fresh_sqlite(tmp_path: Path) -> None:
         revision = connection.execute(
             "SELECT version_num FROM alembic_version"
         ).fetchone()
-    assert revision == ("032_pi_tool_executions",)
+    assert revision == ("033_embedding_prompt_scheme",)
+    with sqlite3.connect(database_path) as connection:
+        columns = {row[1]: row for row in connection.execute("PRAGMA table_info(embedding_profiles)")}
+    # Profiles from before prompt schemes existed were built from raw text.
+    assert columns["prompt_scheme"][4] == "'raw'"
