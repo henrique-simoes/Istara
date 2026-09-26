@@ -242,6 +242,26 @@ the default stays and the result is reported. Existing installs change model onl
 embedding-profile version and a re-index.
 Why: A default embedder is a product-wide decision; it needs a rule fixed before the numbers exist.
 
+DEC-16 | 2026-09-26 | S2-execute | claude-code (by the DEC-15 rule)
+Context: the five-arm comparison ran on qrels v2 (118 questions, 46 Spanish) on the Studio. The
+rule's code (`app/evals/embedder_compare.py`, 1a25f1e6, 03:17Z) was committed after the two nomic
+arms and before any candidate result (EmbeddingGemma 03:40Z, Qwen3 03:45Z, BGE-M3 03:48Z).
+Decision: BGE-M3 is the default embedder. All four candidates qualify (Holm p 0.0002 overall and in
+Spanish; no English style significantly worse). Hybrid nDCG@10: BGE-M3 0.788, Qwen3-Embedding-0.6B
+0.781, EmbeddingGemma 0.741, prompted nomic 0.632, shipped nomic 0.523. The top two do not differ
+(p = 0.68), so the higher mean wins; the EmbeddingGemma preference applies only when it is one of
+the tied pair, which it is not (it is lower than BGE-M3, p = 0.035 unadjusted, supplementary).
+Why: the rule fixed before the numbers. Caveat recorded: every candidate is lower than nomic on the
+12 fact questions (BGE-M3 0.718 vs 0.848), not significant after Holm (p 0.50).
+
+DEC-17 | 2026-09-26 | S2-execute | owner
+Context: scenario 87's 375 px check found the Settings column 527 px wide and clipped; the same sizing
+defect sat in six more views, and a probe of every view found Chat, Interviews, Documents and
+Notifications cut off in other ways. I raised the six-view fix as a separate task.
+Decision: the owner adopted it into this plan. Every view is fixed and a stricter shared 375 px check
+(nothing inside `main` cut off, not only no page scroll) plus scenario 88 cover them.
+Why: owner instruction.
+
 ## Phase 8 — live lane (Muse Spark 1.3 Contributor + local Qwen)
 
 Goal: measure answers on the live lane with the owner's two models (DEC-11): M4 faithfulness and
@@ -657,3 +677,55 @@ Result: plan reopened; branch `fix/spine-open-items-20260926`.
 Verified: `compass-forge spec plan CF-SPEC-4` -> planned; `ollama list` in istara-cs76-embed shows the
 four models.
 Next: gate before; extend the qrels with Spanish questions; implement role-aware embedding prompts.
+
+### L-24 | 2026-09-26T03:03:21Z | S2-execute | claude-code | executor | Phase 13
+Did: DeepSeek V4 Flash wired as the third live identity through Pi's own `deepseek` provider
+(`pi-deepseek-flash`, key only in a 0600 file on the Studio). Its structured output failed ("Thinking
+mode does not support this tool_choice"); DeepSeek and Anthropic thinking runs now get `auto` with the
+capture tool, still fail-closed (18f14145, `pi-runtime/src/structured.mjs`).
+Result: live probe returned the schema-valid object in 1.2 s.
+Verified: `node --test` (pi-runtime) 109/109 then; live `structured_probe.py pi-deepseek-flash`.
+Next: prompts and the embedder comparison.
+
+### L-25 | 2026-09-26T03:48:35Z | S2-execute | claude-code | executor | Phase 14
+Did: role-aware prompts from each model card, part of the vector-space identity (7cbc6cd3; alembic
+033); qrels v2 with 42 Spanish questions (8548b856); the DEC-15 rule as code (1a25f1e6); the admin
+switch with a full re-index (0dd67a3d; Settings > Embedding model, scenario 87 b6f2fc41); M4 v2
+judge validation (2b7b96cb); the seven gate-after complexity warnings cleared (aebfc271); five-arm
+comparison on the Studio.
+Result: DEC-16 (BGE-M3). Arms: see DEC-16; reports in the evidence file.
+Verified: `python -m app.evals.embedder_compare --baseline nomic-raw --prefer embeddinggemma ...`
+(istara-test:1) -> winner bge-m3, qualifying [bge-m3, qwen3-0.6b, embeddinggemma, nomic-prompted];
+`compass-forge gate after` -> 0 new warnings (416 -> 405).
+Next: default change and the live migration.
+
+### L-26 | 2026-09-26T04:11:25Z | S2-execute | claude-code | executor | Phase 14
+Did: BGE-M3 default (24e5a1b9); the local model load wait (b11ba0d7: the owner's local server
+answered 503 "Loading model" and the worker failed in 0.3 s); the fresh-database head test at 033
+(ff2e4030). The live migration of the Harbor project found two defects no stub could: the probe asked
+the gateway for a non-active model, and the local Ollama plane accepted only OLLAMA_EMBED_MODEL, so no
+switch could run and every existing install would have failed closed on upgrade to the new default
+(53f4722d).
+Result: live switch nomic -> BGE-M3 through `POST /api/settings/embedding-profile`: 1,099 rows in
+211 s, profile v2, 1024 dims, provenance 1.0; the product's search then found the answer span in the
+top 10 for 114 of 118 questions (Spanish 44 of 46).
+Verified: full backend suite (istara-test:1, network none) 2,515 passed, 4 failed + 1 error, all
+environmental and failing on main too except the alembic head test, fixed in ff2e4030; worker
+115/115; `migrate_live.py bge-m3`; `live_hits.py` over qrels v2.
+Next: governance, then QA scenarios.
+
+### L-27 | 2026-09-26T04:23:13Z | S2-execute | claude-code | executor | Phase 16
+Did: security package revalidated (AI-001, AUTHZ-002) and personas updated (7f4a7d6a); a coding run
+cut off by a restart settles as blocked at startup (3ecb32d8; the live lane had one stuck "running"
+since 03:06Z); scenario 87's failed switch traced to the probe pulling first on a provider without a
+pull route, and its refusal showing the provider URL: the probe embeds first and reasons carry the
+status, never an address (41becb0c); Settings clipped at 375 px (c3189e5d).
+Result: CF-SPEC-3 accepted (its blind review waived by DEC-13; CF-20, CF-25, CF-26 closed with the
+M3 re-run and `test_spine_rag_budget_passthrough.py` 11 passed); CF-SPEC-1 withdrawn as superseded by
+PR #42.
+Verified: `python3 scripts/security_benchmark.py --fail-on-threshold --changed-paths-file ...` ->
+pass; `check_change_obligations.py` -> passed; `check_feature_obligations.py` -> passed;
+`public_repo_quality_audit.py` -> passed; QA run 2026-09-26T04-15-47-927Z: 23 13/13, 24 9/9,
+29 33/33, 85 10/10, 86 23/23, 87 16/22 (the two defects above).
+Next: phone layout (DEC-17), QA re-run, M4 v2, governed coding run.
+

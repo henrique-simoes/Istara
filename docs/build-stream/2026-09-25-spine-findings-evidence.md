@@ -1034,3 +1034,141 @@ does not exist); the worker suite is 109/109.
 forced tool choice; the worker now offers the capture tool with `auto` and asks for it in the prompt
 when the binding thinks, and a run without the capture call still fails closed. The Anthropic auto
 object is now also recognised as unforced (the string comparison missed it).
+
+## Phase 14: the default embedder, chosen by the rule fixed before the numbers (DEC-15, DEC-16)
+
+**What it is for.** nomic-embed-text is English-only, and Istara's participants speak other
+languages. A default embedder is a product-wide choice, so DEC-15 fixed the selection rule before any
+candidate ran.
+
+**Flow driven.** M1 `evaluate` once per arm on qrels v2 (118 span-graded questions: 30 lexical, 30
+paraphrase, 12 fact, 46 Spanish) in `istara-test:1`, each arm in a fresh data directory so the
+embedding profile bootstraps from the arm's model and prompt scheme, embedders served by the labelled
+Ollama container `istara-cs76-embed`. Then `python -m app.evals.embedder_compare --baseline nomic-raw
+--prefer embeddinggemma` over the five reports. The rule's code (1a25f1e6) was committed at 03:17Z,
+after the two nomic arms and before any candidate finished (EmbeddingGemma 03:40Z, Qwen3 03:45Z,
+BGE-M3 03:48Z).
+
+**Output inspected.** Hybrid nDCG@10 (Holm-adjusted p against the shipped baseline):
+```
+nomic-raw (shipped) 0.523                    es 0.224  lex 0.852  par 0.523  fact 0.848
+nomic-prompted      0.632 (0.0002)           es 0.393  lex 0.956  par 0.645  fact 0.703 (d -0.145, 0.497)
+embeddinggemma      0.741 (0.0002)           es 0.651  lex 0.943  par 0.711  fact 0.653 (d -0.195, 0.497)
+qwen3-0.6b          0.781 (0.0002)           es 0.706  lex 0.955  par 0.760  fact 0.684 (d -0.164, 0.497)
+bge-m3              0.788 (0.0002)           es 0.723  lex 0.971  par 0.731  fact 0.718 (d -0.130, 0.497)
+qualifying ['bge-m3', 'qwen3-0.6b', 'embeddinggemma', 'nomic-prompted']  top_two_p 0.6817  winner bge-m3
+supplementary (not decision-bearing): bge-m3 vs embeddinggemma p=0.0350; qwen3-0.6b vs embeddinggemma p=0.0446
+```
+
+**Why that proves it.** Every candidate is significantly better overall and in Spanish, and none is
+significantly worse on an English style, so all four qualify. The top two are tied (p 0.68), so the
+higher mean wins; the preference for EmbeddingGemma decides only a tie it is part of, and it scores
+below both. Caveat kept visible: all candidates are lower than nomic on the 12 fact questions, a
+difference the test cannot separate from noise at n = 12.
+
+## Found on the live lane: no install could switch its embedding model, and the new default would have broken every existing one
+
+**What it is for.** Existing installs move to BGE-M3 only through a new profile version and a full
+re-index, never by mixing vector spaces. The migration had passed its unit tests, which stubbed the
+probe and the embed dispatch.
+
+**Flow driven.** `POST /api/settings/embedding-profile {"model_id": "bge-m3"}` inside
+`istara-cs76-live` against the Harbor project (67 files, 1,097 chunks, nomic-embed-text, profile v1),
+then all 118 qrels v2 questions through the product's search route (`GET /api/memory/{id}/search`,
+top 10).
+
+**Output inspected.** Before the fix:
+```
+start 400 {"detail":"embedding_model_unavailable: embedding_profile_model_mismatch"}
+```
+The probe asked the gateway for a model other than the active profile's (refused, correctly), and the
+local Ollama plane compared every pinned request against `OLLAMA_EMBED_MODEL`, so the profile's model
+could never differ from the setting: once the default names BGE-M3, every existing install whose
+profile names nomic would fail closed on every embed. After 53f4722d:
+```
+migration {"state": "done", "model_id": "bge-m3", "dimension": 1024, "stores_total": 2, "stores_done": 2,
+           "rows_reembedded": 1099, "error": ""} in 211s
+after {"version": 2, "model_id": "bge-m3", "endpoint_id": "pi-local-ollama", "dimension": 1024}
+stats after {"vector_chunks": 1097, "vector_dimensions": 1024, "provenance": {"coverage": 1.0, "status": "ok"}}
+fact hit@10 10/12 · lexical 30/30 · paraphrase 30/30 · spanish 44/46 · overall 114/118 = 0.966
+```
+
+**Why that proves it.** The switch ran on a real install through the admin route: every source and
+derived row was re-embedded (1,097 + 2), the manifest and profile moved together, provenance stayed
+complete, and the product's own search finds the answer span for 96.6% of the questions afterwards.
+`test_the_real_gateway_path_moves_an_install_whose_setting_names_the_old_model` now runs the
+migration through the real gateway with the setting still naming the old model, and the authority
+tests pin that a local serving plane embeds the profile's model while a fixed-model endpoint still
+refuses another.
+
+## Found on the live lane: a local model that was still loading failed the turn in 0.3 s
+
+**What it is for.** Istara is local-first. A local server loads its model's weights before it
+answers, and DEC-10 gives a local endpoint 300 s for its response to start.
+
+**Flow driven.** The governed coding call (`coder_probe.py pi-local-qwen high`) while the owner's
+local server was reloading; then the worker's guarded stream against a loopback server that answers
+llama.cpp's loading reply once.
+
+**Output inspected.** Before:
+```
+EXC PiRuntimeTurnError error=503: {"message":"Loading model","type":"unavailable_error","code":503} 0.3s
+```
+After b11ba0d7, the worker tests (the loopback answers `{"error":{"code":503,"message":"Loading
+model"}}` first):
+```
+✔ a local model still loading is waited for with backoff, outside the retry budget   (sleeps 1000, 2000, 4000)
+✔ the load wait stops at its budget and says the model was still loading             (".. still loading after 30 s")
+✔ without a load wait (a remote endpoint) a loading answer fails at once
+✔ only a loading answer is waited for; other failures keep the retry budget
+✔ an abort during the load wait ends the stream as aborted
+✔ a local binding waits for a loopback server that answers 503 Loading model         (2 requests, "Loaded.")
+ℹ tests 115  pass 115  fail 0
+```
+and the live probe once the server was up: `pi-local-qwen: status=success text='ready' 14.3s`.
+
+**Why that proves it.** The backend sends `load_wait_ms` (300,000) only for local endpoints
+(`test_a_local_binding_waits_for_a_model_that_is_still_loading`); the worker retries only a loading
+answer, only before visible output, within that budget, and says why when the budget runs out.
+
+## Found on the live lane: a coding run cut off by a restart stayed "running" forever
+
+**What it is for.** A coding run's state gates promotion; a run that never settles misleads anyone
+reading the project's coding history.
+
+**Flow driven.** The live DB after the coding run stopped mid-way (the process ended while the local
+coder was still loading); then `settle_interrupted_coding_runs` at startup.
+
+**Output inspected.**
+```
+('d9c09f05-…', '73cef9d3-…', 'running', '2026-09-26 03:06:47', None, '')
+```
+`tests/test_interrupted_coding_runs.py` (fails on `origin/main`: the function does not exist):
+running -> blocked, promotion blocked, reason "Interrupted: the backend stopped before this coding
+run finished …", completed_at set; a completed run untouched; the startup lifespan calls it.
+
+**Why that proves it.** Coding runs execute inside the one backend process, so a run still running at
+startup cannot still be running; it now fails closed with its reason stated.
+
+## Found by scenario 87: a provider without a pull route could not switch, and the refusal showed the server's address
+
+**What it is for.** Settings must refuse a model that cannot embed, switch to one that can, and never
+show where the embedding server lives (on a local server that is a private address).
+
+**Flow driven.** Scenario 87 in the QA `ui` lane (contract stub), then the probe inside the QA
+backend.
+
+**Output inspected.** Before:
+```
+FAIL Switching re-indexes with visible progress and ends on the new model: progress=false done=false state=idle
+PASS A model the provider does not serve is refused … (embedding_model_unavailable: Client error '404 Not Found'
+     for url 'http://qa-provider-stub:1…
+ERR EmbeddingMigrationError embedding_model_unavailable: Client error '404 Not Found' for url 'http://qa-provider-stub:11434/api/pull'
+```
+After 41becb0c: the probe embeds first and pulls only on a miss; `_reason` keeps the status and drops
+addresses (`test_a_refusal_names_the_status_never_the_server_address`, `test_a_failed_migration_
+reports_its_reason_without_addresses`, `test_the_probe_pulls_a_model_only_when_the_server_does_not_
+serve_it`; migration suite 10/10).
+
+**Why that proves it.** A server that already serves the model is never asked to pull it, a server
+that cannot pull keeps the embed's own reason, and no reason Istara shows carries a URL.
