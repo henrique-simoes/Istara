@@ -131,6 +131,14 @@ public `/api/settings/status` is redacted and passive.
   `idle_timeout_exceeded` or `wall_clock_budget_exceeded`; the supervisor waits the idle budget plus
   30 s so the worker's reason arrives first. `timeout_ms` (response start) may be up to 600 s. The
   built-in Ollama and LM Studio entries and locally flagged servers use the local budgets.
+- **A local model that is still loading is waited for (2026-09-26).** llama.cpp and LM Studio
+  answer 503 "Loading model" (TGI: "Model is currently loading") while they load weights, and the
+  worker used to fail that turn at once. A local binding now carries `load_wait_ms` (the 300 s
+  response-start budget) and the worker retries a loading answer with backoff (1 s doubling, 10 s
+  steps) until the model answers or the budget is spent. The wait does not spend `max_retries`,
+  happens only before the attempt's first visible output, stops at once on abort, and a turn that
+  outlives it fails with the provider's message plus "the model was still loading after 300 s".
+  Remote endpoints never wait: a remote 503 is an outage.
 - **Thinking level.** An endpoint's `thinking_level` (`off` .. `max`) is the default for turns that
   do not set `TurnParams.thinking_mode`. Before, only chat sent a level, so an always-reasoning model
   (Z.ai GLM-5.3-flash) refused every other call with HTTP 400.

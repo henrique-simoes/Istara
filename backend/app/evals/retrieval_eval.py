@@ -118,6 +118,8 @@ class Qrels:
     files: dict[str, str]
     questions: list[Question]
     occurrences: dict[str, list[SpanOccurrence]] = field(default_factory=dict)
+    # The generator's planted quote banks per theme (exact strings), as the file carries them.
+    theme_banks: dict[str, list[str]] = field(default_factory=dict)
 
     @classmethod
     def load(cls, path: Path | str = DEFAULT_QRELS, corpus_dir: Path | str | None = None) -> Qrels:
@@ -152,7 +154,13 @@ class Qrels:
             )
             for q in data["questions"]
         ]
-        qrels = cls(name=data["name"], corpus_dir=corpus, files=files, questions=questions)
+        qrels = cls(
+            name=data["name"],
+            corpus_dir=corpus,
+            files=files,
+            questions=questions,
+            theme_banks=banks,
+        )
         qrels._index_occurrences()
         return qrels
 

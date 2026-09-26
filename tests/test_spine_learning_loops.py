@@ -276,7 +276,7 @@ async def test_skill_description_cache_follows_descriptions_and_the_embedding_sp
     embedded: list[str] = []
     dims = {"n": 3}
 
-    async def _embed(text):
+    async def _embed(text, **_kwargs):
         embedded.append(text)
         return [1.0] * dims["n"]
 

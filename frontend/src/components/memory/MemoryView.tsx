@@ -176,7 +176,7 @@ function MemorySearchResults({
 }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-xs font-semibold uppercase text-slate-500">Search Results ({results.length})</h3>
+      <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Search Results ({results.length})</h3>
       {results.length === 0 ? (
         <p className="text-sm text-slate-400 py-4 text-center">No results found.</p>
       ) : (
@@ -187,7 +187,7 @@ function MemorySearchResults({
                 <div className="flex items-center gap-2">
                   <FileText size={12} className="text-slate-400" />
                   <span
-                    className="text-xs text-slate-500 truncate max-w-[300px]"
+                    className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[300px]"
                     title={result.source}
                   >
                     {memorySourceLabel(result.source, sourceDocuments)}
@@ -230,7 +230,7 @@ function MemorySourcesList({
   if (sources.length === 0) return null;
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Sources</h3>
+      <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Sources</h3>
       <div className="space-y-1" role="region" aria-label="Source files" tabIndex={0}>
         {sources.map((source) => {
           const label = memorySourceLabel(source.name, sourceDocuments);
@@ -278,13 +278,13 @@ function MemoryChunksList({
 }) {
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase text-slate-500 mb-2">Chunks</h3>
+      <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Chunks</h3>
       {loading ? (
         <p className="text-sm text-slate-400 py-4 text-center">Loading...</p>
       ) : chunks.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
           <Database size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-          <p className="text-sm text-slate-500 mb-1">No chunks in knowledge base</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No chunks in knowledge base</p>
           <p className="text-xs text-slate-400">Upload files to populate the knowledge base</p>
         </div>
       ) : (
@@ -293,10 +293,10 @@ function MemoryChunksList({
             <div key={index} className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 truncate max-w-[300px]" title={chunk.source}>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[300px]" title={chunk.source}>
                     {memorySourceLabel(chunk.source, sourceDocuments)}
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                     {chunk.chunk_type}
                   </span>
                 </div>
@@ -323,7 +323,7 @@ function MemoryChunksList({
             onClick={() => setPage((current) => Math.max(1, current - 1))}
             disabled={page <= 1}
             aria-label="Previous page"
-            className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30"
           >
             <ChevronLeft size={14} /> Prev
           </button>
@@ -332,7 +332,7 @@ function MemoryChunksList({
             onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
             disabled={page >= totalPages}
             aria-label="Next page"
-            className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30"
           >
             Next <ChevronRight size={14} />
           </button>
@@ -444,7 +444,7 @@ function KnowledgeBaseTab({ projectId }: { projectId: string }) {
       />
 
       {/* Stats bar + Re-index button */}
-      <div className="flex items-center justify-between text-xs text-slate-500">
+      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-4">
           <span>{total} chunks total</span>
           <span>{sources.length} sources</span>
@@ -577,7 +577,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
             subTab === "notes"
               ? "bg-istara-50 text-istara-700 dark:bg-istara-950/50 dark:text-istara-300"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
           )}
         >
           <FileText size={13} />
@@ -589,7 +589,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
             subTab === "reasoning"
               ? "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
           )}
         >
           <Sparkles size={13} className="text-amber-500" />
@@ -604,7 +604,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
           ) : agentList.length === 0 ? (
             <div className="text-center py-12 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
               <Users size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-              <p className="text-sm text-slate-500 mb-1">No agents found</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No agents found</p>
               <p className="text-xs text-slate-400">Agent notes will appear here as agents work on tasks</p>
             </div>
           ) : (
@@ -624,7 +624,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="font-medium text-sm text-slate-900 dark:text-white truncate">{agent.name}</span>
-                        <p className="text-xs text-slate-500">{agent.id}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{agent.id}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {notes !== undefined && (
@@ -668,7 +668,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
             <button
               onClick={fetchReasoningMemories}
               disabled={reasoningLoading}
-              className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
             >
               <RefreshCw size={12} className={cn(reasoningLoading && "animate-spin")} />
               Refresh
@@ -689,7 +689,7 @@ function AgentMemoryTab({ projectId }: { projectId: string }) {
           {!reasoningLoading && !reasoningError && reasoningMemories.length === 0 && (
             <div className="text-center py-12 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
               <Brain size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-              <p className="text-sm text-slate-500 mb-1">No reasoning memories yet</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No reasoning memories yet</p>
               <p className="text-xs text-slate-400">
                 As agents execute tasks and reflect on outcomes, lessons and rules are synthesized into ReasoningBank.
               </p>

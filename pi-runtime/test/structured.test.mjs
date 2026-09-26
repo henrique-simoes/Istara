@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { bindingProviderId, captureParameters, mapToolChoiceForApi, structuredPromptText, translateOutputSchema } from "../src/structured.mjs";
+import { bindingProviderId, captureParameters, isAutoToolChoice, mapToolChoiceForApi, resolveStructuredChoice, structuredPromptText, translateOutputSchema } from "../src/structured.mjs";
 
 const WORKER = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "worker.mjs");
 
@@ -66,6 +66,51 @@ test("the binding's provider is the endpoint's pi_provider, not Istara's per-end
   assert.equal(bindingProviderId(binding), "meta");
   assert.equal(bindingProviderId({ model: { provider: "zai" } }), "zai");
   assert.equal(bindingProviderId(null), "");
+});
+
+test("DeepSeek and Anthropic thinking runs get tool_choice auto; without thinking they are forced", () => {
+  // Live, 2026-09-26: DeepSeek V4 Flash answered HTTP 400 "Thinking mode does not support this
+  // tool_choice" to the forced capture tool. Anthropic documents the same rule for extended
+  // thinking (only auto or none). Without thinking both still accept a forced choice.
+  const named = { kind: "tool", name: "emit_structured_output" };
+  assert.equal(mapToolChoiceForApi("openai-completions", named, { provider: "deepseek", thinking: true }), "auto");
+  assert.deepEqual(mapToolChoiceForApi("openai-completions", named, { provider: "deepseek", thinking: false }), {
+    type: "function",
+    function: { name: "emit_structured_output" },
+  });
+  assert.deepEqual(mapToolChoiceForApi("anthropic-messages", named, { provider: "anthropic", thinking: true }), { type: "auto" });
+  assert.deepEqual(mapToolChoiceForApi("anthropic-messages", named, { provider: "anthropic" }), {
+    type: "tool",
+    name: "emit_structured_output",
+  });
+});
+
+test("a structured choice is resolved from the binding: api, provider and whether it thinks", () => {
+  const named = { kind: "tool", name: "emit_structured_output" };
+  const deepseek = (reasoning) => ({
+    isReal: true,
+    model: { api: "openai-completions", provider: "pi-endpoint-pi-deepseek-flash" },
+    capability_receipt: { pi_provider: "deepseek" },
+    params: reasoning ? { reasoning } : {},
+  });
+  assert.deepEqual(resolveStructuredChoice(deepseek("low"), named), { mapped: "auto", forced: false });
+  assert.deepEqual(resolveStructuredChoice(deepseek(null), named), {
+    mapped: { type: "function", function: { name: "emit_structured_output" } },
+    forced: true,
+  });
+  const claude = {
+    isReal: true,
+    model: { api: "anthropic-messages", provider: "pi-endpoint-x" },
+    capability_receipt: { pi_provider: "anthropic" },
+    params: { reasoning: "high" },
+  };
+  // The Anthropic auto form is an object; it must still count as unforced.
+  assert.deepEqual(resolveStructuredChoice(claude, named), { mapped: { type: "auto" }, forced: false });
+  assert.equal(isAutoToolChoice({ type: "auto" }), true);
+  assert.equal(isAutoToolChoice("required"), false);
+  // A real binding whose API cannot express the choice is refused (null), never silently unforced.
+  const unknown = { isReal: true, model: { api: "mystery-api" }, params: {} };
+  assert.deepEqual(resolveStructuredChoice(unknown, named), { mapped: null, forced: true });
 });
 
 test("an unforced structured run asks for the capture tool; a forced one leaves the prompt alone", () => {

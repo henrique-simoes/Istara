@@ -13,6 +13,7 @@ import logging
 from dataclasses import dataclass
 
 from app.core.embedding_cache import embedding_cache
+from app.core.embedding_prompts import EmbedRole, apply_scheme
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,13 @@ def _embed_model_name() -> str:
     return get_active_embedding_profile().model_id
 
 
+def _prompted(text: str, role: EmbedRole) -> str:
+    """The string the embedder receives: ``text`` under the active profile's prompt scheme."""
+    from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+
+    return apply_scheme(get_active_embedding_profile().prompt_scheme, role, text)
+
+
 def _embed_cache_namespace() -> str:
     """Return the version-bound cache identity for the active vector space."""
     from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
@@ -154,8 +162,14 @@ async def _dispatch_embed(texts: list[str], *, project_id: str | None = None) ->
     )
 
 
-async def embed_text(text: str) -> list[float]:
-    """Embed a single text string, checking the cache first."""
+async def embed_text(text: str, *, role: EmbedRole = "query") -> list[float]:
+    """Embed a single text string, checking the cache first.
+
+    ``role`` is "query" for what is searched with and "document" for what is searched; the active
+    profile's prompt scheme formats the text for that role. The cache keys on the formatted text,
+    so a query and a document with the same words are two embeddings.
+    """
+    text = _prompted(text, role)
     model = _embed_model_name()
     cache_namespace = await _space_namespace()
 
@@ -209,10 +223,13 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
     cache_namespace = await _space_namespace()
     results: list[EmbeddedChunk] = [None] * len(chunks)  # type: ignore[list-item]
 
+    # Chunks are documents; the cache and the model both see the formatted text.
+    prompted = [_prompted(chunk.text, "document") for chunk in chunks]
+
     # First pass: check cache for each chunk
     uncached_indices: list[int] = []
     for idx, chunk in enumerate(chunks):
-        cached = await embedding_cache.get(cache_namespace, chunk.text)
+        cached = await embedding_cache.get(cache_namespace, prompted[idx])
         if cached is not None:
             known = known_embed_dimension(cache_namespace)
             if known is not None:
@@ -251,7 +268,7 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
     for batch_start in range(0, len(uncached_indices), batch_size):
         batch_indices = uncached_indices[batch_start : batch_start + batch_size]
         batch_chunks = [chunks[i] for i in batch_indices]
-        texts = [c.text for c in batch_chunks]
+        texts = [prompted[i] for i in batch_indices]
 
         vectors = _validate_embedding_vectors(
             await _dispatch_embed(texts), expected_count=len(texts)
@@ -262,7 +279,7 @@ async def embed_chunks(chunks: list[TextChunk], batch_size: int = 32) -> list[Em
         for i, (chunk, vector) in enumerate(zip(batch_chunks, vectors)):
             original_idx = batch_indices[i]
             results[original_idx] = EmbeddedChunk(chunk=chunk, vector=vector)
-            await embedding_cache.put(cache_namespace, chunk.text, vector)
+            await embedding_cache.put(cache_namespace, prompted[original_idx], vector)
 
     return results
 

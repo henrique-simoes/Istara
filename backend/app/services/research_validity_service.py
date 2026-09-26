@@ -405,6 +405,32 @@ async def _select_pi_coders(
     ]
 
 
+INTERRUPTED_RUN_REASON = (
+    "Interrupted: the backend stopped before this coding run finished, so its coders, reliability "
+    "and promotion never settled. Start a new coding run."
+)
+
+
+async def settle_interrupted_coding_runs(db: AsyncSession) -> list[str]:
+    """Settle, at startup, the coding runs a previous process left ``running``.
+
+    Coding runs execute inside the one backend process, so a run still ``running`` when the
+    backend starts was cut off. It becomes blocked with the reason stated; settled runs are left
+    alone. Returns the ids settled.
+    """
+    rows = (
+        (await db.execute(select(CodingRun).where(CodingRun.status == "running"))).scalars().all()
+    )
+    now = datetime.now(UTC)
+    for run in rows:
+        run.status = "blocked"
+        run.promotion_status = "blocked"
+        run.fallback_reason = INTERRUPTED_RUN_REASON
+        run.completed_at = now
+    await db.commit()
+    return [run.id for run in rows]
+
+
 async def run_independent_coding_run(
     db: AsyncSession,
     *,

@@ -28,6 +28,11 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.core.agentic.dispatcher import AgenticDispatcher
+from app.core.embeddings import TextChunk
+from app.core.pi_runtime.embedding_profile import (
+    ActiveEmbeddingProfile,
+    reset_embedding_profile_cache,
+)
 from app.core.pi_runtime.embeddings_gateway import (
     EmbeddingsGateway,
     PiEmbeddingError,
@@ -36,14 +41,9 @@ from app.core.pi_runtime.embeddings_gateway import (
     default_embed_model,
     validate_embedding_vectors,
 )
-from app.core.pi_runtime.embedding_profile import (
-    ActiveEmbeddingProfile,
-    reset_embedding_profile_cache,
-)
 from app.core.pi_runtime.endpoints import PiEndpointResolutionError, ResolvedPiEndpoint
 from app.core.pi_runtime.model_manager import PiModelManager, reset_live_db_projections
 from app.core.pi_runtime.model_manager_provisioning import ensure_endpoint_model
-from app.core.embeddings import TextChunk
 from app.models.agentic_usage import AgenticUsageRow
 from app.models.database import async_session, init_db
 
@@ -108,10 +108,7 @@ def _function_source(path: Path, function_name: str) -> str:
     text = path.read_text(encoding="utf-8")
     tree = ast.parse(text)
     for node in ast.walk(tree):
-        if (
-            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and node.name == function_name
-        ):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
             return ast.get_source_segment(text, node) or ""
     raise AssertionError(f"{function_name} not found in {path}")
 
@@ -122,9 +119,7 @@ async def test_cached_batch_vectors_use_the_same_validation_boundary(monkeypatch
     from app.core import embeddings
 
     chunks = [TextChunk(text="cached", source="test")]
-    monkeypatch.setattr(
-        embeddings.embedding_cache, "get", lambda *_: _async_value(["bad"])
-    )
+    monkeypatch.setattr(embeddings.embedding_cache, "get", lambda *_: _async_value(["bad"]))
     monkeypatch.setattr(
         embeddings, "_dispatch_embed", lambda *_args, **_kwargs: _async_value([[0.25]])
     )
@@ -154,9 +149,7 @@ async def test_cache_hit_dimension_is_checked_against_engine_known_dimension(
     # prior provider response recorded it).
     monkeypatch.setattr(embeddings, "_known_embed_dimensions", {model: 2})
     # The cache holds a numeric-but-stale 3-dim entry.
-    monkeypatch.setattr(
-        embeddings.embedding_cache, "get", lambda *_: _async_value([0.1, 0.2, 0.3])
-    )
+    monkeypatch.setattr(embeddings.embedding_cache, "get", lambda *_: _async_value([0.1, 0.2, 0.3]))
     dispatched = []
 
     async def fake_dispatch(*_a, **_k):
@@ -192,9 +185,7 @@ async def test_cache_hit_matching_known_dimension_is_served(monkeypatch):
         embeddings, "_known_fingerprints", {namespace: ("fp-known", time.monotonic())}
     )
     monkeypatch.setattr(embeddings, "_known_embed_dimensions", {f"{namespace}#fp-known": 2})
-    monkeypatch.setattr(
-        embeddings.embedding_cache, "get", lambda *_: _async_value([0.5, 0.6])
-    )
+    monkeypatch.setattr(embeddings.embedding_cache, "get", lambda *_: _async_value([0.5, 0.6]))
     dispatched = []
     monkeypatch.setattr(
         embeddings,
@@ -220,11 +211,8 @@ async def test_cache_hit_with_unknown_engine_dimension_fails_closed(monkeypatch)
     closed and re-embed rather than serve an unverifiable vector space."""
     from app.core import embeddings
 
-    model = embeddings._embed_model_name()
     monkeypatch.setattr(embeddings, "_known_embed_dimensions", {})
-    monkeypatch.setattr(
-        embeddings.embedding_cache, "get", lambda *_: _async_value([1.0, 2.0, 3.0])
-    )
+    monkeypatch.setattr(embeddings.embedding_cache, "get", lambda *_: _async_value([1.0, 2.0, 3.0]))
     dispatched = []
 
     async def fake_dispatch(*_a, **_k):
@@ -242,7 +230,7 @@ async def test_cache_hit_with_unknown_engine_dimension_fails_closed(monkeypatch)
     assert result == [0.1, 0.2]
     assert dispatched
     assert stored
-    assert embeddings.known_embed_dimension(model) == 2
+    assert embeddings.known_embed_dimension(embeddings._embed_cache_namespace()) == 2
 
 
 @pytest.mark.asyncio
@@ -288,14 +276,9 @@ async def test_record_known_dimension_persists_for_later_hits(monkeypatch):
     after a restart-style unknown state are then trusted."""
     from app.core import embeddings
 
-    model = embeddings._embed_model_name()
     monkeypatch.setattr(embeddings, "_known_embed_dimensions", {})
-    monkeypatch.setattr(
-        embeddings.embedding_cache, "get", lambda *_: _async_value(None)
-    )
-    monkeypatch.setattr(
-        embeddings, "_dispatch_embed", lambda *_a, **_k: _async_value([[0.5, 0.6]])
-    )
+    monkeypatch.setattr(embeddings.embedding_cache, "get", lambda *_: _async_value(None))
+    monkeypatch.setattr(embeddings, "_dispatch_embed", lambda *_a, **_k: _async_value([[0.5, 0.6]]))
     stored = []
     monkeypatch.setattr(
         embeddings.embedding_cache, "put", lambda *args: _async_record(stored, args)
@@ -303,7 +286,7 @@ async def test_record_known_dimension_persists_for_later_hits(monkeypatch):
 
     await embeddings.embed_text("probe")
 
-    assert embeddings.known_embed_dimension(model) == 2
+    assert embeddings.known_embed_dimension(embeddings._embed_cache_namespace()) == 2
     assert stored
 
 
@@ -369,7 +352,7 @@ async def test_gateway_openai_compatible_v1_embeddings():
                     base_url="http://gpu.local:8000/v1",
                     api_key="sekret",
                     kind="remote",
-                    model=settings.ollama_embed_model,
+                    model="nomic-embed-text",
                 ),
             ]
         )
@@ -502,9 +485,7 @@ async def test_local_missing_embedding_usage_is_flagged_in_ledger():
     project_id = f"w8-local-{uuid.uuid4().hex[:12]}"
     manager = _isolated(PiModelManager(endpoints=[_endpoint(cost_input_per_mtok=1.0)]))
     dispatcher = AgenticDispatcher(
-        embeddings_gateway=EmbeddingsGateway(
-            manager=manager, client=_mock_client(handler)
-        )
+        embeddings_gateway=EmbeddingsGateway(manager=manager, client=_mock_client(handler))
     )
 
     await dispatcher.embed(texts=["local text"], project_id=project_id, engine="pi")
@@ -555,12 +536,8 @@ def test_unpinned_resolver_is_not_a_runtime_authority(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "ollama")
     manager = PiModelManager(
         endpoints=[
-            _endpoint(
-                endpoint_id="pi-llm-remote", kind="remote", base_url="http://r:8000/v1"
-            ),
-            _endpoint(
-                endpoint_id="pi-local-lmstudio", base_url="http://127.0.0.1:1234/v1"
-            ),
+            _endpoint(endpoint_id="pi-llm-remote", kind="remote", base_url="http://r:8000/v1"),
+            _endpoint(endpoint_id="pi-local-lmstudio", base_url="http://127.0.0.1:1234/v1"),
             _endpoint(),
         ]
     )
@@ -569,12 +546,8 @@ def test_unpinned_resolver_is_not_a_runtime_authority(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "lmstudio")
     no_ollama = PiModelManager(
         endpoints=[
-            _endpoint(
-                endpoint_id="pi-llm-remote", kind="remote", base_url="http://r:8000/v1"
-            ),
-            _endpoint(
-                endpoint_id="pi-local-lmstudio", base_url="http://127.0.0.1:1234/v1"
-            ),
+            _endpoint(endpoint_id="pi-llm-remote", kind="remote", base_url="http://r:8000/v1"),
+            _endpoint(endpoint_id="pi-local-lmstudio", base_url="http://127.0.0.1:1234/v1"),
         ]
     )
     assert no_ollama.resolve_embed().endpoint_id == "pi-local-lmstudio"
@@ -589,9 +562,7 @@ def test_unpinned_resolver_is_not_a_runtime_authority(monkeypatch):
             ),
         ]
     )
-    with pytest.raises(
-        PiEndpointResolutionError, match="no_matching_pi_embed_endpoint_model"
-    ):
+    with pytest.raises(PiEndpointResolutionError, match="no_matching_pi_embed_endpoint_model"):
         remote_only.resolve_embed()
 
 
@@ -632,9 +603,7 @@ def test_resolve_embed_fail_closed_without_compatible_entries():
             ),
         ]
     )
-    with pytest.raises(
-        PiEndpointResolutionError, match="no_matching_pi_embed_endpoint"
-    ):
+    with pytest.raises(PiEndpointResolutionError, match="no_matching_pi_embed_endpoint"):
         manager.resolve_embed()
 
 
@@ -670,10 +639,7 @@ async def test_vector_space_invariant_probes_both_engines(monkeypatch):
         calls.append((engine, model, check_stored))
         return {"status": "ok", "model": model, "model_dim": 2}
 
-    assert (
-        await assert_vector_space_invariant(dimension_probe=probe)
-        == settings.ollama_embed_model
-    )
+    assert await assert_vector_space_invariant(dimension_probe=probe) == settings.ollama_embed_model
     assert calls == [
         ("legacy", settings.ollama_embed_model, False),
         ("pi", settings.ollama_embed_model, False),
@@ -691,9 +657,7 @@ async def test_vector_space_invariant_raises_on_dimension_divergence(monkeypatch
             "model_dim": 2 if engine == "legacy" else 3,
         }
 
-    with pytest.raises(
-        VectorSpaceInvariantError, match="vector_space_invariant_violation"
-    ):
+    with pytest.raises(VectorSpaceInvariantError, match="vector_space_invariant_violation"):
         await assert_vector_space_invariant(dimension_probe=probe)
 
 
@@ -702,9 +666,7 @@ async def test_vector_space_invariant_probe_failure_is_typed(monkeypatch):
     async def probe(*, engine, model, check_stored):
         return {"status": "error", "message": f"{engine} unavailable"}
 
-    with pytest.raises(
-        VectorSpaceInvariantError, match="vector_space_invariant_probe_failed"
-    ):
+    with pytest.raises(VectorSpaceInvariantError, match="vector_space_invariant_probe_failed"):
         await assert_vector_space_invariant(dimension_probe=probe)
 
 
@@ -785,7 +747,12 @@ async def test_embed_text_routes_through_agentic_embed_with_cache_in_front(monke
     vector = await embeddings_module.embed_text("hello")
     assert vector == [0.5, 0.6]
     assert len(spy.calls) == 1
-    assert spy.calls[0]["texts"] == ["hello"]
+    # The query reaches the model under the active profile's prompt scheme (raw text for "raw").
+    from app.core.embedding_prompts import apply_scheme
+    from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+
+    scheme = get_active_embedding_profile().prompt_scheme
+    assert spy.calls[0]["texts"] == [apply_scheme(scheme, "query", "hello")]
     assert spy.calls[0]["params"].model == settings.ollama_embed_model
 
     # Second call hits the cache — the dispatcher is not touched again.
@@ -927,16 +894,12 @@ async def test_ensure_embed_model_rejects_local_provisioning_failure(monkeypatch
         ensure_model,
     )
 
-    with pytest.raises(
-        PiEndpointResolutionError, match="embedding_model_provision_failed"
-    ):
+    with pytest.raises(PiEndpointResolutionError, match="embedding_model_provision_failed"):
         await embeddings_module.ensure_embed_model()
 
 
 async def test_provisioner_remote_is_noop_and_local_ollama_ensures(monkeypatch):
-    remote = _endpoint(
-        endpoint_id="pi-llm-9", kind="remote", base_url="http://r:8000/v1"
-    )
+    remote = _endpoint(endpoint_id="pi-llm-9", kind="remote", base_url="http://r:8000/v1")
     assert await ensure_endpoint_model(remote, "m") is False
 
     ensured = []
@@ -1005,12 +968,8 @@ async def test_provisioner_lmstudio_load_false_fails_typed(monkeypatch):
 
 
 async def test_provisioner_unknown_local_plane_fails_typed():
-    unknown = _endpoint(
-        endpoint_id="pi-llm-3", kind="local", base_url="http://10.0.0.8:9000/v1"
-    )
-    with pytest.raises(
-        PiEndpointResolutionError, match="provision_unsupported_local_endpoint"
-    ):
+    unknown = _endpoint(endpoint_id="pi-llm-3", kind="local", base_url="http://10.0.0.8:9000/v1")
+    with pytest.raises(PiEndpointResolutionError, match="provision_unsupported_local_endpoint"):
         await ensure_endpoint_model(unknown, "m")
 
 
@@ -1084,15 +1043,11 @@ async def test_settings_pi_catalog_info_merges_identity_view(monkeypatch):
 
         def catalog(self):
             return [
-                PiEndpointInfo(
-                    "pi-local-ollama", "stub-model", "openai_compat", kind="local"
-                ),
+                PiEndpointInfo("pi-local-ollama", "stub-model", "openai_compat", kind="local"),
                 PiEndpointInfo("pi-llm-7", "gpu-model", "openai_compat", kind="remote"),
             ]
 
-    monkeypatch.setattr(
-        "app.core.pi_runtime.model_manager.PiModelManager", _StubManager
-    )
+    monkeypatch.setattr("app.core.pi_runtime.model_manager.PiModelManager", _StubManager)
     entries = await settings_routes._pi_catalog_info()
     assert [e["endpoint_id"] for e in entries] == ["pi-local-ollama", "pi-llm-7"]
     # Identity/capability view only — never URLs or keys.
@@ -1118,15 +1073,14 @@ async def test_settings_pi_catalog_info_fails_closed_when_projection_is_unavaila
 ):
     """The compatibility model inventory must not hide Pi authority failures."""
     from fastapi import HTTPException
+
     from app.api.routes import settings as settings_routes
 
     class _BrokenManager:
         async def ensure_db_projection(self):
             raise RuntimeError("projection unavailable")
 
-    monkeypatch.setattr(
-        "app.core.pi_runtime.model_manager.PiModelManager", _BrokenManager
-    )
+    monkeypatch.setattr("app.core.pi_runtime.model_manager.PiModelManager", _BrokenManager)
 
     with pytest.raises(HTTPException) as exc_info:
         await settings_routes._pi_catalog_info()
@@ -1186,9 +1140,7 @@ async def test_dispatcher_pi_embed_success_and_failure_accounting(monkeypatch):
             "status": "success",
         }
     )
-    dispatcher = AgenticDispatcher(
-        legacy_executor=legacy_spy, embeddings_gateway=ok_gateway
-    )
+    dispatcher = AgenticDispatcher(legacy_executor=legacy_spy, embeddings_gateway=ok_gateway)
     vectors = await dispatcher.embed(texts=["x"], project_id="p1", engine="pi")
     assert vectors == [[0.7]]
     assert legacy_calls == []
@@ -1205,9 +1157,7 @@ async def test_dispatcher_pi_embed_success_and_failure_accounting(monkeypatch):
             exc=PiEndpointResolutionError("no_matching_pi_embed_endpoint")
         ),
     )
-    with pytest.raises(
-        PiEndpointResolutionError, match="no_matching_pi_embed_endpoint"
-    ):
+    with pytest.raises(PiEndpointResolutionError, match="no_matching_pi_embed_endpoint"):
         await failing.embed(texts=["x"], project_id="p1", engine="pi")
     assert legacy_calls == []
     assert len(recorded) == 1
@@ -1223,17 +1173,13 @@ def test_static_wrappers_dispatch_and_drop_direct_legacy_calls():
     source = (REPO_ROOT / "backend/app/core/embeddings.py").read_text(encoding="utf-8")
     assert "ollama.embed(" not in source and "ollama.embed_batch(" not in source
     assert "agentic.embed" in source
-    validation = _function_source(
-        REPO_ROOT / "backend/app/core/validation.py", "_get_embeddings"
-    )
+    validation = _function_source(REPO_ROOT / "backend/app/core/validation.py", "_get_embeddings")
     assert "agentic.embed" in validation
     assert "llm_router.embed_batch" not in validation
 
 
 def test_static_dispatcher_embed_dispatches_pi_to_gateway():
-    source = _function_source(
-        REPO_ROOT / "backend/app/core/agentic/dispatcher.py", "embed"
-    )
+    source = _function_source(REPO_ROOT / "backend/app/core/agentic/dispatcher.py", "embed")
     assert "_embed_gateway" in source
     assert "pi_embed_gateway_unavailable" not in source
 
@@ -1242,21 +1188,15 @@ def test_static_ux_parity_hooks():
     # Classical LLM-server CRUD is retired; Pi endpoint mutations refresh the
     # live Pi authority directly.
     assert not (REPO_ROOT / "backend/app/api/routes/llm_servers.py").exists()
-    settings_source = (REPO_ROOT / "backend/app/api/routes/settings.py").read_text(
-        encoding="utf-8"
-    )
+    settings_source = (REPO_ROOT / "backend/app/api/routes/settings.py").read_text(encoding="utf-8")
     assert settings_source.count("reset_live_settings_catalogs()") >= 3
-    discovery = (REPO_ROOT / "backend/app/core/network_discovery.py").read_text(
-        encoding="utf-8"
-    )
+    discovery = (REPO_ROOT / "backend/app/core/network_discovery.py").read_text(encoding="utf-8")
     assert "reset_live_db_projections" in discovery
     # The settings response computes one catalog snapshot per branch so the
     # default metadata and public catalog cannot drift between awaits.
     assert settings_source.count("pi_catalog = await _pi_catalog_info()") == 2
     assert settings_source.count('"pi_catalog": pi_catalog') == 2
-    projects = (REPO_ROOT / "backend/app/api/routes/projects.py").read_text(
-        encoding="utf-8"
-    )
+    projects = (REPO_ROOT / "backend/app/api/routes/projects.py").read_text(encoding="utf-8")
     assert "agentic_engine" in projects
     main = (REPO_ROOT / "backend/app/main.py").read_text(encoding="utf-8")
     assert "assert_vector_space_invariant" in main
@@ -1266,8 +1206,6 @@ def test_static_ux_parity_hooks():
 
 
 def test_static_legacy_embed_executor_uses_pi_model_authority():
-    source = _function_source(
-        REPO_ROOT / "backend/app/core/agentic/legacy.py", "_embed"
-    )
+    source = _function_source(REPO_ROOT / "backend/app/core/agentic/legacy.py", "_embed")
     assert "EmbeddingsGateway" in source
     assert "ollama" not in source

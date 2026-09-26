@@ -1408,3 +1408,37 @@ async def delete_pi_endpoint(endpoint_id: str, request: Request):
         "default_model": default_model,
         "research_endpoint_ids": list(settings.pi_research_endpoint_ids),
     }
+
+
+class EmbeddingMigrationRequest(BaseModel):
+    model_id: str = Field(..., min_length=1, max_length=255)
+    prompt_scheme: str = Field(default="auto", max_length=40)
+
+
+@router.get("/settings/embedding-profile")
+async def embedding_profile_status(request: Request):
+    """The active embedding profile and the state of the last migration (admin)."""
+    from app.core.pi_runtime.embedding_profile import public_embedding_profile
+    from app.services.embedding_migration import migration_status
+
+    require_admin_from_request(request)
+    return {"active": public_embedding_profile(), "migration": migration_status()}
+
+
+@router.post("/settings/embedding-profile", status_code=202)
+async def start_embedding_migration(data: EmbeddingMigrationRequest, request: Request):
+    """Move the install to another embedding model or prompt scheme and re-index every project.
+
+    The target is checked first (it must embed); nothing changes when it cannot. The re-index then
+    runs in the background; GET this path for progress.
+    """
+    from app.core.pi_runtime.embedding_profile import public_embedding_profile
+    from app.services.embedding_migration import EmbeddingMigrationError, start_migration
+
+    require_admin_from_request(request)
+    try:
+        status = await start_migration(model_id=data.model_id, prompt_scheme=data.prompt_scheme)
+    except EmbeddingMigrationError as exc:
+        code = 409 if str(exc) == "migration_already_running" else 400
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
+    return {"active": public_embedding_profile(), "migration": status}

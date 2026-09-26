@@ -188,9 +188,25 @@ export function normalizeToolChoice(toolChoice) {
 // A structured run there offers the capture tool with "auto" and asks for it in the prompt; the
 // capture and validation rules are unchanged, so free-form text still never counts.
 const AUTO_ONLY_TOOL_CHOICE_PROVIDERS = new Set(["meta"]);
+// Providers whose thinking mode refuses a forced or named choice. DeepSeek, 2026-09-26: "Thinking
+// mode does not support this tool_choice" (HTTP 400). Anthropic documents the same for extended
+// thinking (only auto or none). Without thinking both accept a forced choice.
+const AUTO_ONLY_WHEN_THINKING_PROVIDERS = new Set(["deepseek", "anthropic"]);
 
-export function mapToolChoiceForApi(api, choice, { provider } = {}) {
-  if (AUTO_ONLY_TOOL_CHOICE_PROVIDERS.has(String(provider || "").toLowerCase())) return "auto";
+function autoChoice(api) {
+  return api === "anthropic-messages" ? { type: "auto" } : "auto";
+}
+
+/** Whether a mapped tool choice lets the model decide (string "auto" or Anthropic's object). */
+export function isAutoToolChoice(mapped) {
+  return mapped === "auto" || Boolean(mapped && typeof mapped === "object" && mapped.type === "auto");
+}
+
+export function mapToolChoiceForApi(api, choice, { provider, thinking = false } = {}) {
+  const id = String(provider || "").toLowerCase();
+  if (AUTO_ONLY_TOOL_CHOICE_PROVIDERS.has(id) || (thinking && AUTO_ONLY_WHEN_THINKING_PROVIDERS.has(id))) {
+    return autoChoice(api);
+  }
   if (api === "openai-completions") {
     if (choice.kind === "auto") return "auto";
     if (choice.kind === "required") return "required";
@@ -226,6 +242,19 @@ export function mapToolChoiceForApi(api, choice, { provider } = {}) {
 export function structuredPromptText(text, { forced }) {
   if (forced) return text;
   return `${text}\n\nReturn your final answer only by calling the ${STRUCTURED_TOOL_NAME} tool with an object that matches its schema.`;
+}
+
+/**
+ * The tool choice a run sends, from its binding: the model's API, the upstream provider and whether
+ * this binding thinks. `mapped` is null when a real binding's API cannot express the choice (the
+ * caller fails the run closed). `forced` is false only when the provider leaves the call to the
+ * model ("auto"), and then the prompt asks for the capture tool; capture rules are unchanged.
+ */
+export function resolveStructuredChoice(binding, choice) {
+  const api = (binding && binding.model && binding.model.api) || "";
+  const thinking = Boolean(binding && binding.params && binding.params.reasoning);
+  const mapped = mapToolChoiceForApi(api, choice, { provider: bindingProviderId(binding), thinking });
+  return { mapped, forced: !isAutoToolChoice(mapped) };
 }
 
 /**

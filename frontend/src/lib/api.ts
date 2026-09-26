@@ -1,6 +1,6 @@
 /** API client for Istara backend. */
 
-import type { DataIntegrityQuarantineRequest } from "@/lib/apiRequestTypes";
+import type { DataIntegrityQuarantineRequest, EmbeddingMigrationRequest } from "@/lib/apiRequestTypes";
 import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent, PermissionRequestItem } from "@/lib/types";
 import type { ReasoningMemoryItem, ReasoningBankSummary } from "@/lib/reasoningBankTypes";
 
@@ -554,6 +554,32 @@ export { memory } from "./memoryApi";
 
 // --- Settings ---
 
+export interface EmbeddingProfile {
+  profile_id: string;
+  version: number;
+  model_id: string;
+  endpoint_id: string;
+  dimension: number;
+  prompt_scheme: string;
+  health_status: string;
+}
+
+export interface EmbeddingMigration {
+  state: "idle" | "running" | "done" | "failed";
+  model_id?: string;
+  prompt_scheme?: string;
+  stores_total?: number;
+  stores_done?: number;
+  stores_skipped?: number;
+  rows_reembedded?: number;
+  error?: string;
+}
+
+export interface EmbeddingProfileStatus {
+  active: EmbeddingProfile;
+  migration: EmbeddingMigration;
+}
+
 export const settings = {
   hardware: () => request<any>("/api/settings/hardware"),
   models: () => request<any>("/api/settings/models"),
@@ -563,6 +589,14 @@ export const settings = {
       "/api/settings/agentic-engine",
       { method: "POST", body: JSON.stringify({ engine }) }
     ),
+  embeddingProfile: () => request<EmbeddingProfileStatus>("/api/settings/embedding-profile"),
+  startEmbeddingMigration: (modelId: string, promptScheme = "auto") => {
+    const body: EmbeddingMigrationRequest = { model_id: modelId, prompt_scheme: promptScheme };
+    return request<EmbeddingProfileStatus>("/api/settings/embedding-profile", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
   maintenance: () => request<any>("/api/settings/maintenance"),
   integrationsStatus: () =>
     request<{ stitch_configured: boolean; figma_configured: boolean }>(

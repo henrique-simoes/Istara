@@ -1,5 +1,5 @@
 {
- "version": 1,
+ "version": 2,
  "name": "harbor-ledger-retrieval-qrels",
  "corpus": "tests/document_corpus/rich",
  "corpus_glob": "sources/**/*",
@@ -1057,6 +1057,506 @@
    ],
    "related_theme": null,
    "related": []
+  },
+  {
+   "id": "ES-5",
+   "style": "spanish",
+   "theme": "T1",
+   "text": "¿Qué se repite con las facturas atrasadas cada vez que cierran el periodo?",
+   "targets": [
+    "En cada cierre, lo mismo: facturas vencidas que nadie persiguió porque nadie sabía que estaban vencidas."
+   ],
+   "related_theme": "T1",
+   "related": []
+  },
+  {
+   "id": "ES-6",
+   "style": "spanish",
+   "theme": "T1",
+   "text": "¿Qué escribió en la referencia un cliente que solo pagó una parte de lo que debía?",
+   "targets": [
+    "Un cliente pagó la mitad y puso 'gracias' en el concepto. ¿La mitad de qué? Perdí una hora descifrando.",
+    "A client paid half and wrote 'thanks!' in the memo. Half of what? Thanks for what? I spent an hour decoding gratitude."
+   ],
+   "related_theme": "T1",
+   "related": []
+  },
+  {
+   "id": "ES-7",
+   "style": "spanish",
+   "theme": "T1",
+   "text": "¿Qué dato le falta al listado de deudas vencidas?",
+   "targets": [
+    "La lista de vencidos muestra montos pero no responsables. Alguien me debe y nadie sabe quién lo llamó.",
+    "The aging report lists amounts but not owners. Someone owes me $3,800 and the row doesn't say who chased it last."
+   ],
+   "related_theme": "T1",
+   "related": []
+  },
+  {
+   "id": "ES-8",
+   "style": "spanish",
+   "theme": "T1",
+   "text": "¿Por qué cobrar tarde pone en peligro los sueldos del equipo?",
+   "targets": [
+    "Mi gente depende de cobrar a tiempo. Cada factura tardía es nómina en riesgo."
+   ],
+   "related_theme": "T1",
+   "related": []
+  },
+  {
+   "id": "ES-9",
+   "style": "spanish",
+   "theme": "T2",
+   "text": "¿Qué les ocurre a los comprobantes impresos en papel de calor con los meses?",
+   "targets": [
+    "El papel térmico se borra. En marzo los recibos de enero son fantasmas y reconstruyo con el banco.",
+    "Thermal paper fades. By March the January receipts are blank ghosts and I'm reconstructing from card statements."
+   ],
+   "related_theme": "T2",
+   "related": []
+  },
+  {
+   "id": "ES-10",
+   "style": "spanish",
+   "theme": "T2",
+   "text": "¿Cuántos pasos está dispuesta a dar en el mostrador antes de rendirse?",
+   "targets": [
+    "Si toma más de tres clics lo odio. En la caja no hay tres clics de sobra.",
+    "If it takes more than three clicks I hate it. At the counter there are no three clicks to spare."
+   ],
+   "related_theme": "T2",
+   "related": []
+  },
+  {
+   "id": "ES-11",
+   "style": "spanish",
+   "theme": "T2",
+   "text": "¿Cómo terminan registradas las compras que el dueño paga con billetes?",
+   "targets": [
+    "Las compras en efectivo nunca entran. El dueño paga, me avisa el lunes, y yo le creo por fe.",
+    "Cash purchases at the supply house never make it in. The owner pays cash, tells me Monday, I believe him on faith."
+   ],
+   "related_theme": "T2",
+   "related": []
+  },
+  {
+   "id": "ES-12",
+   "style": "spanish",
+   "theme": "T2",
+   "text": "¿Cómo describe su segundo mes del año en cuanto a comprobantes fotografiados?",
+   "targets": [
+    "Foto de foto de recibo. Así es mi febrero. Que lo audite quien pueda.",
+    "A photo of a photo of a receipt. That's what my February looks like. Try auditing that."
+   ],
+   "related_theme": "T2",
+   "related": []
+  },
+  {
+   "id": "ES-13",
+   "style": "spanish",
+   "theme": "T2",
+   "text": "¿Qué tres compras de combustible y hielo no quedaron anotadas al comenzar la semana?",
+   "targets": [
+    "Le doy un ejemplo del viernes: gasolina, hielo, propano — tres recibos, cero registrados el lunes."
+   ],
+   "related_theme": "T2",
+   "related": []
+  },
+  {
+   "id": "ES-14",
+   "style": "spanish",
+   "theme": "T3",
+   "text": "¿En cuántas horas quiere liquidar a los proveedores y cuánto tarda de verdad?",
+   "targets": [
+    "Mi meta es pagar a proveedores en 48 horas. Con la cadena actual, son seis días si alguien se enferma."
+   ],
+   "related_theme": "T3",
+   "related": []
+  },
+  {
+   "id": "ES-15",
+   "style": "spanish",
+   "theme": "T3",
+   "text": "¿Por qué se frenan los gastos grandes que requieren su autorización?",
+   "targets": [
+    "Todo lo que pasa de quinientos necesita mi firma, y yo estoy en una escalera medio día.",
+    "Everything over five hundred needs my sign-off, and I'm on a ladder half the day. The whole company queues behind my phone battery."
+   ],
+   "related_theme": "T3",
+   "related": []
+  },
+  {
+   "id": "ES-16",
+   "style": "spanish",
+   "theme": "T3",
+   "text": "¿Qué pasa con las compras apuradas que evitan el circuito de aprobación?",
+   "targets": [
+    "Las compras urgentes rodean la cadena y luego las regañan. El sistema entrena la evasión.",
+    "Emergency purchases route around the chain entirely, then get scolded retroactively. The system trains circumvention."
+   ],
+   "related_theme": "T3",
+   "related": []
+  },
+  {
+   "id": "ES-17",
+   "style": "spanish",
+   "theme": "T3",
+   "text": "¿Por qué quien reemplaza al aprobador no puede decidir con información?",
+   "targets": [
+    "La suplencia existe en papel. En la práctica no ve los adjuntos: aprueba a ciegas o no aprueba.",
+    "Deputy coverage exists on paper. In practice the deputy can't see the attachments, so they approve blind or not at all."
+   ],
+   "related_theme": "T3",
+   "related": []
+  },
+  {
+   "id": "ES-18",
+   "style": "spanish",
+   "theme": "T3",
+   "text": "¿Cómo reciben el aviso los dos socios que tienen que dar el visto bueno?",
+   "targets": [
+    "Dos socios deben aprobar pero el aviso es secuencial. En paralelo tardaría la mitad.",
+    "Two partners must both approve, but the app notifies them sequentially. Parallel would halve the wait and nobody can explain why it doesn't."
+   ],
+   "related_theme": "T3",
+   "related": []
+  },
+  {
+   "id": "ES-19",
+   "style": "spanish",
+   "theme": "T4",
+   "text": "¿Qué opina la contadora de que el sistema empareje pagos sin certeza?",
+   "targets": [
+    "Eso no es conciliación, eso es adivinanza. Adivinar con dinero ajeno es mala práctica, aunque acierte."
+   ],
+   "related_theme": "T4",
+   "related": []
+  },
+  {
+   "id": "ES-20",
+   "style": "spanish",
+   "theme": "T4",
+   "text": "¿Por qué la llaman sus clientes cuando el extracto y la contabilidad no coinciden?",
+   "targets": [
+    "Mis clientes me llaman cuando el banco y los libros no cuadran. El 'casi' automático es el culpable la mitad de las veces."
+   ],
+   "related_theme": "T4",
+   "related": []
+  },
+  {
+   "id": "ES-21",
+   "style": "spanish",
+   "theme": "T4",
+   "text": "¿Qué necesita ver para revisar con gusto los emparejamientos dudosos?",
+   "targets": [
+    "Que me muestre la confianza de cada coincidencia y reviso el diez por ciento dudoso con gusto.",
+    "Show me confidence per match and I'll review the shaky ten percent gladly. Certainty theater I will not accept."
+   ],
+   "related_theme": "T4",
+   "related": []
+  },
+  {
+   "id": "ES-22",
+   "style": "spanish",
+   "theme": "T4",
+   "text": "¿Dónde dice que se gana la confianza en la conciliación automática?",
+   "targets": [
+    "El registro de cambios es donde vive la confianza. Si veo quién confirmó qué, lo dejo adivinar.",
+    "The override log is where trust lives. If I can see who confirmed what and undo it, I'll let it guess."
+   ],
+   "related_theme": "T4",
+   "related": []
+  },
+  {
+   "id": "ES-23",
+   "style": "spanish",
+   "theme": "T4",
+   "text": "¿Qué error cometió el emparejamiento en primavera y cuándo lo descubrieron?",
+   "targets": [
+    "En abril emparejó un pago al trabajo equivocado. Facturamos novecientos de menos y lo vimos en julio.",
+    "Last April it matched a supplier payment to the wrong job. We underbilled by nine hundred and found out in July."
+   ],
+   "related_theme": "T4",
+   "related": []
+  },
+  {
+   "id": "ES-24",
+   "style": "spanish",
+   "theme": "T5",
+   "text": "¿Por qué los sueldos no pueden esperar al cobro de los clientes?",
+   "targets": [
+    "Mi gente depende de eso. La nómina no espera a que el cliente pague."
+   ],
+   "related_theme": "T5",
+   "related": []
+  },
+  {
+   "id": "ES-25",
+   "style": "spanish",
+   "theme": "T5",
+   "text": "¿Qué hace la empresa de nómina un día antes de lo previsto?",
+   "targets": [
+    "La proveedora descuenta un día antes 'por proceso'. Ese día me cuesta sueño y matemáticas.",
+    "The payroll provider debits a day early 'for processing'. That day costs me sleep and overdraft math."
+   ],
+   "related_theme": "T5",
+   "related": []
+  },
+  {
+   "id": "ES-26",
+   "style": "spanish",
+   "theme": "T5",
+   "text": "¿Qué aviso sobre el faltante del jueves agradecería de la aplicación?",
+   "targets": [
+    "Si la app dijera 'este jueves faltan cuatro mil cien', la abrazaría. Profesionalmente.",
+    "If the app said 'this Thursday needs $4,100 you don't have yet', I'd kiss it. Professionally."
+   ],
+   "related_theme": "T5",
+   "related": []
+  },
+  {
+   "id": "ES-27",
+   "style": "spanish",
+   "theme": "T6",
+   "text": "¿Qué pasa en la fila cuando una traducción confusa llega en el momento de más gente?",
+   "targets": [
+    "En hora pico, nadie lee la letra pequeña. Si la traducción confunde, la fila se detiene y todos pagan."
+   ],
+   "related_theme": "T6",
+   "related": []
+  },
+  {
+   "id": "ES-28",
+   "style": "spanish",
+   "theme": "T6",
+   "text": "¿Qué firmó un cliente sin entenderlo por culpa del idioma?",
+   "targets": [
+    "Le doy un ejemplo del viernes: un cliente firmó algo que no entendía porque la traducción sonaba oficial."
+   ],
+   "related_theme": "T6",
+   "related": []
+  },
+  {
+   "id": "ES-29",
+   "style": "spanish",
+   "theme": "T6",
+   "text": "¿Qué problema tienen los avisos de error en la versión en español?",
+   "targets": [
+    "Los mensajes de error los tradujo alguien que nunca vio el error. 'Inténtelo más tarde' no es ayuda, es abandono.",
+    "Error messages are translated by someone who never saw the error. 'Inténtelo más tarde' for a locked account is not advice, it's abandonment."
+   ],
+   "related_theme": "T6",
+   "related": []
+  },
+  {
+   "id": "ES-30",
+   "style": "spanish",
+   "theme": "T6",
+   "text": "¿Cómo se las arregla el personal con los términos en la ventanilla?",
+   "targets": [
+    "El personal improvisa traducciones en ventanilla. Improvisar no es una estrategia de localización.",
+    "Bilingual staff improvise translations at the counter. Improvisation is not a localization strategy."
+   ],
+   "related_theme": "T6",
+   "related": []
+  },
+  {
+   "id": "ES-31",
+   "style": "spanish",
+   "theme": "T7",
+   "text": "¿Qué dato pide el trámite por internet y después se pierde?",
+   "targets": [
+    "El flujo en línea pregunta el motivo y luego lo pierde. Pregunto '¿en qué le ayudo?' a quien ya respondió.",
+    "The online flow collects the reason for visit, then drops it. I ask 'what brings you in' to someone who already answered."
+   ],
+   "related_theme": "T7",
+   "related": []
+  },
+  {
+   "id": "ES-32",
+   "style": "spanish",
+   "theme": "T7",
+   "text": "¿Qué muestran los clientes para probar cuánto dinero tienen?",
+   "targets": [
+    "Los clientes traen capturas de sus propias cuentas como prueba de su propio dinero. Que eso cale.",
+    "Customers bring screenshots of their own accounts as proof of their own money. Let that sink in."
+   ],
+   "related_theme": "T7",
+   "related": []
+  },
+  {
+   "id": "ES-33",
+   "style": "spanish",
+   "theme": "T7",
+   "text": "¿Por qué nadie deja notas cuando pasa un caso a otro compañero?",
+   "targets": [
+    "Las notas de traspaso existen pero nadie las escribe porque el campo está a tres clics en hora pico.",
+    "Handoff notes exist but nobody writes them because the field is buried three tabs deep during a rush."
+   ],
+   "related_theme": "T7",
+   "related": []
+  },
+  {
+   "id": "ES-34",
+   "style": "spanish",
+   "theme": "T7",
+   "text": "¿Qué indicación sobre lo que el cliente ya probó le ahorraría tiempo por la mañana?",
+   "targets": [
+    "Un aviso de 'el cliente ya intentó X' me salvaría las mañanas. Nunca ha existido.",
+    "A simple 'customer already tried X' banner would save my mornings. It has never existed."
+   ],
+   "related_theme": "T7",
+   "related": []
+  },
+  {
+   "id": "ES-35",
+   "style": "spanish",
+   "theme": "T8",
+   "text": "¿Qué parte de las alertas de fraude no sirve para nada?",
+   "targets": [
+    "El noventa por ciento es ruido. Borré cuarenta y tres antes del almuerzo. Cada falsa alarma enseña a ignorar la real.",
+    "Ninety percent of these are noise. I cleared forty-three before lunch. Every false alarm teaches customers to ignore the real one."
+   ],
+   "related_theme": "T8",
+   "related": []
+  },
+  {
+   "id": "ES-36",
+   "style": "spanish",
+   "theme": "T8",
+   "text": "¿Qué pasa con la gravedad que indican las alertas?",
+   "targets": [
+    "Los niveles son decoración: todo llega URGENTE. Cuando todo urge, priorizar es astrología.",
+    "Severity levels are decoration: everything arrives as URGENT. When everything is urgent, triage is astrology."
+   ],
+   "related_theme": "T8",
+   "related": []
+  },
+  {
+   "id": "ES-37",
+   "style": "spanish",
+   "theme": "T8",
+   "text": "¿Qué quiere silenciar en lugar de apagar todas las notificaciones?",
+   "targets": [
+    "Déjeme pausar un comercio, no el canal. Mi supermercado no es un modelo de amenaza.",
+    "Let me snooze a merchant, not the channel. My grocery store is not a threat model."
+   ],
+   "related_theme": "T8",
+   "related": []
+  },
+  {
+   "id": "ES-38",
+   "style": "spanish",
+   "theme": "T8",
+   "text": "¿Cómo se descubrieron los dos fraudes verdaderos del año anterior?",
+   "targets": [
+    "Dos fraudes reales el año pasado, ambos los detectaron clientes llamando. Piénselo antes de agregar más.",
+    "Two genuine frauds last year, both caught by customers calling us, not by alerts. Sit with that before adding more."
+   ],
+   "related_theme": "T8",
+   "related": []
+  },
+  {
+   "id": "ES-39",
+   "style": "spanish",
+   "theme": "T9",
+   "text": "¿Con qué frase empiezan las llamadas de los clientes cuando las cuentas no cuadran?",
+   "targets": [
+    "Mis clientes me llaman cuando algo no cuadra, y la llamada siempre empieza con 'te mandé una captura'."
+   ],
+   "related_theme": "T9",
+   "related": []
+  },
+  {
+   "id": "ES-40",
+   "style": "spanish",
+   "theme": "T9",
+   "text": "¿Qué acabaría con el envío de pantallazos al contador?",
+   "targets": [
+    "El acceso compartido con permisos por alcance acabaría la era de las capturas. O granular o nada.",
+    "Technically that's a broken workflow. Shared access with scoped permissions would end the screenshot era."
+   ],
+   "related_theme": "T9",
+   "related": []
+  },
+  {
+   "id": "ES-41",
+   "style": "spanish",
+   "theme": "T9",
+   "text": "¿Qué condición haría que los dueños compartieran el acceso con su contador?",
+   "targets": [
+    "El acceso con fecha de caducidad: los dueños lo darían si supieran que expira. Confianza con temporizador.",
+    "Scoped access needs an expiry date or owners will never grant it. Trust with a timer."
+   ],
+   "related_theme": "T9",
+   "related": []
+  },
+  {
+   "id": "ES-42",
+   "style": "spanish",
+   "theme": "T9",
+   "text": "¿Qué mandó cuando la contadora pidió la copia de seguridad?",
+   "targets": [
+    "Me pidió 'el respaldo'. Mandé un zip indescifrable. Ambos fingimos que estaba bien.",
+    "She asked for 'the backup'. I sent a zip of inscrutable exports. We both pretended that was fine."
+   ],
+   "related_theme": "T9",
+   "related": []
+  },
+  {
+   "id": "ES-43",
+   "style": "spanish",
+   "theme": "T10",
+   "text": "¿Cuántas idas al banco cuesta que devuelvan un cheque por el tope?",
+   "targets": [
+    "La fila no perdona, y el límite tampoco: un cheque rechazado son dos visitas."
+   ],
+   "related_theme": "T10",
+   "related": []
+  },
+  {
+   "id": "ES-44",
+   "style": "spanish",
+   "theme": "T10",
+   "text": "¿Cómo se calcula el tope de depósitos y qué mensaje de error aparece?",
+   "targets": [
+    "El límite cuenta por cheque, por día, por mes — tres relojes, un error críptico. Muéstreme los relojes.",
+    "The limit counts per check, per day, per month — three dials, one cryptic error. Show me the dials."
+   ],
+   "related_theme": "T10",
+   "related": []
+  },
+  {
+   "id": "ES-45",
+   "style": "spanish",
+   "theme": "T10",
+   "text": "¿Qué pasa con los pedidos para ampliar el límite?",
+   "targets": [
+    "La solicitud de aumento entra a una cola sin plazo. Mi dinero espera en un vestíbulo sin sillas.",
+    "Raise requests go into a queue with no SLA. My money waits in a lobby with no chairs."
+   ],
+   "related_theme": "T10",
+   "related": []
+  },
+  {
+   "id": "ES-46",
+   "style": "spanish",
+   "theme": "T10",
+   "text": "¿Qué pasa con los ingresos del lunes después de un fin de semana con mucha venta?",
+   "targets": [
+    "Un fin de semana bueno significa depósitos altos el lunes. Predecible para todos menos el software.",
+    "A big catering weekend means Monday deposits spike. Predictable to everyone except the software."
+   ],
+   "related_theme": "T10",
+   "related": []
+  }
+ ],
+ "revisions": [
+  {
+   "version": 2,
+   "date": "2026-09-26",
+   "note": "ES-5..ES-46 added (42 Spanish questions) to compare multilingual embedders (DEC-15). Written by the implementing agent as paraphrases of the generator's planted Spanish quotes; each targets the Spanish quote and, where the bank has one, its English counterpart. Every target is checked to occur in the corpus at load time."
   }
  ]
 }

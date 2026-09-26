@@ -326,6 +326,15 @@ credential. A configured thinking level is honoured. When a provider accepts onl
 `tool_choice: "auto"`, structured output stays fail-closed: only a schema-valid capture-tool call
 counts, and free-form text never does.
 
+Embedding-model changes keep vector spaces apart (2026-09-26). An install moves to another embedder
+only through `POST /api/settings/embedding-profile`, which requires administrator authority: the
+target is probed first, a new embedding-profile version becomes active, and every project's stores
+are re-embedded from their stored text and rebound, so no store ever mixes two models or prompt
+schemes. The embeddings gateway serves only the active profile's model; the built-in local serving
+planes embed the model the profile names, and an endpoint configured for one model refuses another.
+A local binding waits for a model that is still loading only within the response-start budget, and
+remote endpoints never wait.
+
 Remote comparative benchmarks execute dependencies and test code in disposable
 Docker runners. Authoritative results record source revision/state,
 digest-qualified runner identity, deployed backend/frontend image identities,

@@ -1109,7 +1109,7 @@ All settings are configurable via environment variables or `.env`:
 | `LMSTUDIO_API_KEY` | empty | Optional bearer token for OpenAI-compatible providers |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `qwen3:latest` | Default chat model |
-| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Embedding model |
+| `OLLAMA_EMBED_MODEL` | `bge-m3` | Embedding model (DEC-15; pulled on first use) |
 
 ### Context & RAG
 
@@ -3313,4 +3313,15 @@ Branch `fix/spine-findings-measurements-20260925`; evidence in
 - **Pi runtime.** Per-endpoint, progress-based liveness (idle and total budgets, larger for local
   endpoints); an endpoint's thinking level is the default for turns that set none; failed turns carry
   the provider's reason; structured output works on providers that accept only `tool_choice: auto`
-  (Meta) without accepting free-form text; pinned pi-ai 0.87.1 adds Meta as a provider.
+  (Meta) without accepting free-form text; pinned pi-ai 0.87.1 adds Meta as a provider. Thinking
+  runs on DeepSeek and Anthropic, which refuse a forced tool choice, get `auto` the same way. A local
+  server that answers 503 "Loading model" is waited for with backoff up to the 300 s response-start
+  budget (`load_wait_ms` on the binding), outside the retry budget; remote endpoints never wait.
+- **Embeddings (2026-09-26).** Queries and documents get their model card's prompts
+  (`app/core/embedding_prompts.py`: EmbeddingGemma, Qwen3-Embedding, nomic-embed-text; raw text for
+  BGE-M3 and unknown models). The prompt scheme is part of the embedding profile and of each store's
+  identity (`app/core/vector_identity.py`); older profiles and stores are raw. An administrator moves
+  the install to another model from Settings (`POST /api/settings/embedding-profile`,
+  `app/services/embedding_migration.py`): the model is probed, a new profile version becomes active,
+  every project's tables are re-embedded from their stored text and rebound; BM25 is untouched. The
+  default embedder is chosen by the pre-registered rule in `app/evals/embedder_compare.py` (DEC-15).

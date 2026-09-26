@@ -331,7 +331,7 @@ async def _embedding_similarity(
         query_vector = await embed_text(query)
 
     section_text = section.header + " " + section.content[:500]
-    section_vector = await embed_text(section_text)
+    section_vector = await embed_text(section_text, role="document")
     if len(section_vector) != len(query_vector):
         raise ValueError("embedding dimension mismatch between query and section")
 

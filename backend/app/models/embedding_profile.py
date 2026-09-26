@@ -38,6 +38,8 @@ class EmbeddingProfile(Base):
     )
     cache_namespace: Mapped[str] = mapped_column(String(320), nullable=False)
     health_status: Mapped[str] = mapped_column(String(40), nullable=False, default="unknown")
+    # Query/document prompt scheme (app.core.embedding_prompts); part of the vector-space identity.
+    prompt_scheme: Mapped[str] = mapped_column(String(40), nullable=False, default="raw")
     migration_source: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False

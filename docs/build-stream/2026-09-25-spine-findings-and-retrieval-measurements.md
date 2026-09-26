@@ -2,14 +2,14 @@
 
 ```yaml
 item: spine-findings-and-retrieval-measurements
-branch: fix/spine-findings-measurements-20260925
-cf: { spec: CF-SPEC-2, tasks: [CF-1, CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8, CF-9, CF-10, CF-11, CF-12, CF-13, CF-14] }
-phase: "Phase 12 — ship"
+branch: fix/spine-open-items-20260926
+cf: { spec: CF-SPEC-4, tasks: [CF-27, CF-28, CF-29, CF-30, CF-31, CF-32, CF-33, CF-34, CF-35, CF-36, CF-37, CF-38, CF-39, CF-40, CF-41, CF-42, CF-43, CF-44] }
+phase: "Phases 13-17 — open items (CF-SPEC-4)"
 stage: S5-ship
 status: done
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-26T01:46:09Z, ledger: L-22 }
-next_action: "None in this plan. Delivery is the PR into main (squash merge once its required CI is green). Open elsewhere: Phase 7b (CF-SPEC-3, other session) needs its independent blind review via 2026-09-25-spine-findings-phase7b-blind-pack.md; M4 faithfulness needs a human-labelled relevance set."
+last: { agent: claude-code, at: 2026-09-26T07:20:00Z, ledger: L-30 }
+next_action: "Nothing left in this plan: PR #45 carries it into main (squash merge once required CI is green, owner-authorized); then tear down the Studio lane, keeping ~/cf-remote/eval/secure."
 ```
 
 Evidence (four-part records per finding): `2026-09-25-spine-findings-evidence.md` beside this file.
@@ -58,6 +58,11 @@ public workflows naming private hosts.
 | 10 Docs and governance | Tech.md, contracts, personas, feature docs, security benchmark | obligation checkers and security benchmark pass |
 | 11 `testing` catch-up | promotion train | `main` merged into `testing` the way the design allows; dry-run promotion diff shows PRs #40-#42 survive |
 | 12 Ship | PR into `main` | required CI green; squash merge |
+| 13 Third model (CF-SPEC-4) | DeepSeek V4 Flash through Pi; three-identity governed coding run | probe: served model; W3 A-E with 3 distinct served identities, Fleiss kappa + Krippendorff alpha, reconciliation and report gate |
+| 14 Embedder | role-aware prompts; multilingual candidates; default by DEC-15 | pytest (prompt scheme in the vector-space identity, profile migration re-index); extended M1 comparison; scenario for any UI change |
+| 15 Judges and faithfulness | M4 v2 (DEC-14) with three models | judge validation report; faithfulness per generator from trusted judges |
+| 16 Complexity | seven gate-after warnings | `gate after` reports no new warnings |
+| 17 Ship | PR into `main` | required CI green; squash merge |
 
 Rollback: every phase is a separate commit; revert the phase commit.
 
@@ -191,6 +196,72 @@ Why: Loosening a validation rule after seeing which way it fell is outcome-drive
 spine's point is that unvalidated judgments never become evidence. Rejected: scoring faithfulness
 with the claim-validated judges as a secondary analysis (it would read as a result).
 
+DEC-13 | 2026-09-26 | S1-plan | owner
+Context: The plan shipped (PR #44) with open items: no independent review, faithfulness unmeasured,
+governed coding limited to two identities, an English-only embedder, and seven complexity warnings.
+Decision: Owner instructions: forget independent reviews (none will be run for this plan, and Phase
+7b's blind pack is withdrawn); add DeepSeek V4 Flash as the third live model (DEC-11 extended: Muse
+Spark 1.3 Contributor, local Qwen, DeepSeek V4 Flash); find, download and serve a better embedding
+model (EmbeddingGemma suggested); complete every other open item. The plan reopens as Phases 13-17
+under CF-SPEC-4.
+Why: Owner instruction.
+
+DEC-14 | 2026-09-26 | S1-plan | claude-code
+Context: M4 v1 trusted a judge only if it matched the qrels on 0/1/2 relevance grades and on planted
+claims (kappa >= 0.60 each). No reported score uses a judge's relevance grades (context precision
+comes from the qrels), and the qrels can give grade 1 only to planted related quotes, so a judge that
+calls ordinary on-topic text "1" is scored wrong by construction. Both judges passed the claim task
+(1.000, 0.926) and failed relevance (0.568, 0.453). This rule change is prompted by that outcome, and
+is recorded before any v2 run.
+Decision (pre-registered, M4 v2): (a) a judge is trusted for faithfulness when Cohen's kappa is at
+least 0.60 on at least 50 construction-labelled claims (verbatim supported, first-sentence supported,
+other-theme unsupported, number-altered contradiction, negated contradiction where a deterministic
+negation exists); (b) relevance is validated on a balanced, construction-labelled set as a binary
+"contains the answer" task (a chunk carrying a target span versus a chunk of another theme or a
+related quote of the same theme), kappa reported beside the trust decision, not gating it, because no
+score uses it; (c) each generator is judged by the two other models, never by itself, and the two
+judges' agreement on claims is reported; (d) the v1 rule's outcome is reported for the same run.
+Faithfulness is reported only for trusted judges.
+Why: Validate a judge on the task it performs (UMBRELA's point), with truth known by construction on a
+synthetic corpus. Rejected: human labels (none available in this session; construction labels are the
+ground truth for planted answers), scoring faithfulness from untrusted judges.
+
+DEC-15 | 2026-09-26 | S1-plan | claude-code
+Context: nomic-embed-text is English-only (vector nDCG@10 on the 4 Spanish questions: 0.028), and
+Istara sends raw text to every embedder although the model cards specify query/document prompts.
+Decision (pre-registered selection rule): candidates EmbeddingGemma-300m, Qwen3-Embedding-0.6B and
+BGE-M3, each with its model card's prompts, against the shipped nomic-embed-text (raw) and
+nomic-embed-text with its own prefixes. Qrels extended with at least 30 new Spanish questions written
+against the corpus's planted Spanish quotes. Metric: hybrid nDCG@10 (the product's retrieval) and
+vector nDCG@10, paired sign-flip randomization tests against the shipped baseline, Holm correction
+across candidates. A candidate qualifies if it is significantly better than the shipped baseline on
+hybrid nDCG@10 overall and on the Spanish subset, and not significantly worse on any English style.
+The default becomes the qualifying candidate with the highest hybrid nDCG@10; when the top two do not
+differ significantly, EmbeddingGemma (owner's suggestion, smallest) is preferred. If none qualifies,
+the default stays and the result is reported. Existing installs change model only through a new
+embedding-profile version and a re-index.
+Why: A default embedder is a product-wide decision; it needs a rule fixed before the numbers exist.
+
+DEC-16 | 2026-09-26 | S2-execute | claude-code (by the DEC-15 rule)
+Context: the five-arm comparison ran on qrels v2 (118 questions, 46 Spanish) on the Studio. The
+rule's code (`app/evals/embedder_compare.py`, 1a25f1e6, 03:17Z) was committed after the two nomic
+arms and before any candidate result (EmbeddingGemma 03:40Z, Qwen3 03:45Z, BGE-M3 03:48Z).
+Decision: BGE-M3 is the default embedder. All four candidates qualify (Holm p 0.0002 overall and in
+Spanish; no English style significantly worse). Hybrid nDCG@10: BGE-M3 0.788, Qwen3-Embedding-0.6B
+0.781, EmbeddingGemma 0.741, prompted nomic 0.632, shipped nomic 0.523. The top two do not differ
+(p = 0.68), so the higher mean wins; the EmbeddingGemma preference applies only when it is one of
+the tied pair, which it is not (it is lower than BGE-M3, p = 0.035 unadjusted, supplementary).
+Why: the rule fixed before the numbers. Caveat recorded: every candidate is lower than nomic on the
+12 fact questions (BGE-M3 0.718 vs 0.848), not significant after Holm (p 0.50).
+
+DEC-17 | 2026-09-26 | S2-execute | owner
+Context: scenario 87's 375 px check found the Settings column 527 px wide and clipped; the same sizing
+defect sat in six more views, and a probe of every view found Chat, Interviews, Documents and
+Notifications cut off in other ways. I raised the six-view fix as a separate task.
+Decision: the owner adopted it into this plan. Every view is fixed and a stricter shared 375 px check
+(nothing inside `main` cut off, not only no page scroll) plus scenario 88 cover them.
+Why: owner instruction.
+
 ## Phase 8 — live lane (Muse Spark 1.3 Contributor + local Qwen)
 
 Goal: measure answers on the live lane with the owner's two models (DEC-11): M4 faithfulness and
@@ -234,6 +305,52 @@ product's real storage before its first number (M4's first run graded uploads by
 are stored under uuids); run `gate after` straight after every refactor, not at the end (it caught an
 import cycle a quick fix introduced); record owner decisions about models before building live env
 files, so the env and the plan agree from the start.
+
+## Phases 13-17 — open items (CF-SPEC-4)
+
+Goal: close every item Phase 12 left open (DEC-13): a third live model identity and a governed
+coding run with three identities; judge-validated faithfulness (DEC-14); a measured multilingual
+embedder with role-aware prompts and a safe migration (DEC-15); the seven complexity warnings.
+Setup: branch `fix/spine-open-items-20260926` from `main` at 169128dc; Studio embedder container
+`istara-cs76-embed` (labelled) serving nomic-embed-text, embeddinggemma, qwen3-embedding:0.6b and
+bge-m3; the owner's DeepSeek key from the macOS Keychain and the Meta key re-entered in a hidden
+terminal (both only in 0600 files on the Studio, never printed).
+Acceptance: as in the phase table rows 13-17. Verification: pytest failing on origin/main first per
+behaviour change; extended M1 on the Studio; live-lane runs; security benchmark; obligations; CF
+gate after with no new failures or warnings; CI green on the PR.
+
+### Phases 13-17 summary
+
+**Outcome vs the goal (DEC-13).** Every open item is closed. DeepSeek V4 Flash is the third live
+identity, and the governed coding run with three identities runs end to end (A-E, twice): three served
+models, α 0.51 routes to reconciliation, the report gate refuses then allows, all six fail-closed
+probes pass. Faithfulness is measured (M4 v2, DEC-14): every judge trusted, three generators each
+judged by the other two, 0.62-0.76. The default embedder is BGE-M3 by the pre-registered rule (DEC-15,
+DEC-16), with role-aware prompts in the vector-space identity, an admin switch that re-indexes every
+store, and a live migration of the Harbor project (114 of 118 answers in the top 10 afterwards). The
+seven complexity warnings are cleared and this round added none (gate after: 0 new, 403 inherited).
+CF-SPEC-3 is accepted and CF-SPEC-1 withdrawn as superseded. Found on the way and fixed, each with a
+test: a local model still loading failed at once; no install could switch its embedder (and the new
+default would have broken existing ones); a coding run cut off by a restart never settled; a
+provider without a pull route could not switch, and the refusal showed the server's address; every
+content view clipped or crowded at 375 px (DEC-17, owner-adopted); Memory's grey text failed AA in
+dark mode; the W3 harness left one probe unjudged.
+
+**Residual risk.** The construction labels behind judge validation are synthetic; a human-labelled
+set would add external validity. Every multilingual candidate scored below nomic on the 12 fact
+questions (not significant). Spanish is the only non-English language in the qrels. The governed
+coding run's agreement on the Harbor slice is low (κ near zero), which is what reconciliation is for,
+but it says the models code this corpus differently. Independent reviews were waived by the owner
+(DEC-13); review coverage is self-only.
+
+**Retro (blameless).** What worked: pre-registering the embedder rule and the M4 protocol before any
+run, which made both decisions mechanical; driving the migration on the live lane, which found the
+two defects every stubbed test had missed; probing every view at 375 px instead of trusting the
+scroll-width check. What to do differently: run a real-gateway test for any code path that switches
+identities (stubs hid the probe and plane defects); pause live agents on every backend restart
+(`live-run.sh` now does); let a formatter touch only files already under it (ruff reflowed a whole QA
+script once, reverted).
+
 
 ## Ledger
 
@@ -579,3 +696,113 @@ Forge). The PR into `main` carries the delivery; its required CI decides the squ
 Verified: `compass-forge spec accept CF-SPEC-2` -> status accepted; `verify_lifecycle.py` on this file
 (run after this entry).
 Next: stage exit: plan done; delivery is the PR into `main`.
+
+### L-23 | 2026-09-26T02:38:48Z | S1-plan | claude-code | planner | Phase 13
+Did: owner decisions recorded (DEC-13); the skills library's blind-coverage row committed on its own
+branch (`docs/istara-blind-coverage-20260926`, c695716) with the owner's waiver; the DeepSeek key
+located by name in the MacBook Keychain (service `istara-pi-deepseek`; no value read yet); pi-ai
+0.87.1 serves DeepSeek's Flash as `deepseek-flash` ("DeepSeek V4.1 Flash", $0.30/$1.20 per Mtok);
+EmbeddingGemma-300m is the only Gemma embedding model (Google releases page); four candidate
+embedders pulled into a labelled Ollama container on the Studio. Pre-registered M4 v2 (DEC-14) and
+the embedder selection rule (DEC-15) before any new run. CF-SPEC-4 created, clarified, planned and
+tasked (CF-27..CF-44).
+Result: plan reopened; branch `fix/spine-open-items-20260926`.
+Verified: `compass-forge spec plan CF-SPEC-4` -> planned; `ollama list` in istara-cs76-embed shows the
+four models.
+Next: gate before; extend the qrels with Spanish questions; implement role-aware embedding prompts.
+
+### L-24 | 2026-09-26T03:03:21Z | S2-execute | claude-code | executor | Phase 13
+Did: DeepSeek V4 Flash wired as the third live identity through Pi's own `deepseek` provider
+(`pi-deepseek-flash`, key only in a 0600 file on the Studio). Its structured output failed ("Thinking
+mode does not support this tool_choice"); DeepSeek and Anthropic thinking runs now get `auto` with the
+capture tool, still fail-closed (18f14145, `pi-runtime/src/structured.mjs`).
+Result: live probe returned the schema-valid object in 1.2 s.
+Verified: `node --test` (pi-runtime) 109/109 then; live `structured_probe.py pi-deepseek-flash`.
+Next: prompts and the embedder comparison.
+
+### L-25 | 2026-09-26T03:48:35Z | S2-execute | claude-code | executor | Phase 14
+Did: role-aware prompts from each model card, part of the vector-space identity (7cbc6cd3; alembic
+033); qrels v2 with 42 Spanish questions (8548b856); the DEC-15 rule as code (1a25f1e6); the admin
+switch with a full re-index (0dd67a3d; Settings > Embedding model, scenario 87 b6f2fc41); M4 v2
+judge validation (2b7b96cb); the seven gate-after complexity warnings cleared (aebfc271); five-arm
+comparison on the Studio.
+Result: DEC-16 (BGE-M3). Arms: see DEC-16; reports in the evidence file.
+Verified: `python -m app.evals.embedder_compare --baseline nomic-raw --prefer embeddinggemma ...`
+(istara-test:1) -> winner bge-m3, qualifying [bge-m3, qwen3-0.6b, embeddinggemma, nomic-prompted];
+`compass-forge gate after` -> 0 new warnings (416 -> 405).
+Next: default change and the live migration.
+
+### L-26 | 2026-09-26T04:11:25Z | S2-execute | claude-code | executor | Phase 14
+Did: BGE-M3 default (24e5a1b9); the local model load wait (b11ba0d7: the owner's local server
+answered 503 "Loading model" and the worker failed in 0.3 s); the fresh-database head test at 033
+(ff2e4030). The live migration of the Harbor project found two defects no stub could: the probe asked
+the gateway for a non-active model, and the local Ollama plane accepted only OLLAMA_EMBED_MODEL, so no
+switch could run and every existing install would have failed closed on upgrade to the new default
+(53f4722d).
+Result: live switch nomic -> BGE-M3 through `POST /api/settings/embedding-profile`: 1,099 rows in
+211 s, profile v2, 1024 dims, provenance 1.0; the product's search then found the answer span in the
+top 10 for 114 of 118 questions (Spanish 44 of 46).
+Verified: full backend suite (istara-test:1, network none) 2,515 passed, 4 failed + 1 error, all
+environmental and failing on main too except the alembic head test, fixed in ff2e4030; worker
+115/115; `migrate_live.py bge-m3`; `live_hits.py` over qrels v2.
+Next: governance, then QA scenarios.
+
+### L-27 | 2026-09-26T04:23:13Z | S2-execute | claude-code | executor | Phase 16
+Did: security package revalidated (AI-001, AUTHZ-002) and personas updated (7f4a7d6a); a coding run
+cut off by a restart settles as blocked at startup (3ecb32d8; the live lane had one stuck "running"
+since 03:06Z); scenario 87's failed switch traced to the probe pulling first on a provider without a
+pull route, and its refusal showing the provider URL: the probe embeds first and reasons carry the
+status, never an address (41becb0c); Settings clipped at 375 px (c3189e5d).
+Result: CF-SPEC-3 accepted (its blind review waived by DEC-13; CF-20, CF-25, CF-26 closed with the
+M3 re-run and `test_spine_rag_budget_passthrough.py` 11 passed); CF-SPEC-1 withdrawn as superseded by
+PR #42.
+Verified: `python3 scripts/security_benchmark.py --fail-on-threshold --changed-paths-file ...` ->
+pass; `check_change_obligations.py` -> passed; `check_feature_obligations.py` -> passed;
+`public_repo_quality_audit.py` -> passed; QA run 2026-09-26T04-15-47-927Z: 23 13/13, 24 9/9,
+29 33/33, 85 10/10, 86 23/23, 87 16/22 (the two defects above).
+Next: phone layout (DEC-17), QA re-run, M4 v2, governed coding run.
+
+
+### L-28 | 2026-09-26T05:47:00Z | S2-execute | claude-code | executor | Phase 16
+Did: DEC-17 phone layout (7de5c3bb, 00b10cc0): the content column of Settings, Quality, Skills,
+Backup, Ensemble health and Meta-Hyperagent sized to its widest card; Chat's list is a drawer below
+md; Interviews' list and interview take turns, tags open over it, the banner sits above the columns,
+and the coding gutter stacks under the text; Documents and Notifications headers wrap. The shared
+375 px check fails on anything cut off inside `main`; scenario 88 drives every shell view at
+375 px. Scenario 85 scans both themes through the app toggle, which found Memory's grey text below
+AA in dark mode (fixed). The gate budgets were restored (6290bd50): gate after 0 new failures,
+0 new warnings (403 inherited, from 416). Live agents were paused after the backend restart (they had
+run skills on the live models alongside M4); `live-run.sh` now pauses them on every start.
+Result: QA ui lane 22 scenarios 318/320 on the first pass (run 2026-09-26T04-51-06-707Z), both
+failures fixed and re-run green (85 11/11, 88 11/11, 29 33/33, 23, 86, 75, 19 green); full backend
+suite 2,525 passed (3 failures + 1 error container-only, same on main).
+Verified: `istara-qa-run-cs76.sh sim <22 scenarios>`; `fullrun.sh istara-work open-items-2`;
+`compass-forge gate after --task CF-29 --summary`; CF-27..CF-31, CF-33, CF-35..CF-42 finished with
+command evidence.
+Next: M4 v2 directions 2 and 3, then the governed coding run with three identities.
+
+### L-29 | 2026-09-26T07:05:00Z | S2-execute | claude-code | executor | Phase 15
+Did: M4 v2 (DEC-14) in three directions on the live lane (BGE-M3 after the migration): DeepSeek,
+Muse and local Qwen each generating while the other two judge; the live backend rebuilt at e66f663e
+(the stuck coding run settled as blocked on start; agents paused by `live-run.sh`); the governed
+coding run with three identities, stages A-E, twice; the W3 harness's P5 ordering defect fixed
+(48712df6) and run 2 driven with the fix; the map and its Documents copy updated.
+Result: M4 v2: every judge trusted (claims κ 1.00 on 69; relevance κ 0.81-0.85 on 60); faithfulness
+DeepSeek 0.69/0.76, Muse 0.63/0.62, Qwen 0.76/0.72; judge agreement κ 0.72/0.94/0.79; context
+precision 0.73; spend $0.27. Coding: 3 distinct served models, α 0.507/0.508, needs_reconciliation;
+report gate refused (9 and 7 unreconciled) then allowed; probes 6/6 (run 2). One agent skill call
+landed before the post-restart pause took effect.
+Verified: `answer_eval` x3 (reports /app/data/m4v2/); `w3_live_ensemble.py --stages A,B,C,D,E` x2
+(`{"stages_ok": {"A": true, "B": true, "C": true, "D": true, "E": true}}`); `pytest
+../tests/test_spine_answer_eval.py` 10 passed.
+Next: S5: CF-32, CF-34, CF-43, CF-44 and spec accept; PR, CI, merge; teardown.
+
+### L-30 | 2026-09-26T07:20:00Z | S5-ship | claude-code | executor | Phases 13-17
+Did: CF-SPEC-4 tasks CF-32, CF-34, CF-43, CF-44 finished with command evidence and the spec
+accepted; evaluation recorded (pass); the Phases 13-17 summary written; branch pushed and PR #45
+opened into `main` (https://github.com/henrique-simoes/Istara/pull/45).
+Result: CF-SPEC-1 withdrawn, CF-SPEC-2, CF-SPEC-3 and CF-SPEC-4 accepted; no host name, address,
+attribution line or model id in the branch.
+Verified: `compass-forge spec accept CF-SPEC-4` -> accepted; `compass-forge evaluation record
+--outcome pass`; `verify_lifecycle.py` on this file (run after this entry).
+Next: stage complete; the merge and the Studio teardown follow outside the plan.

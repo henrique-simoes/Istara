@@ -274,6 +274,13 @@
 <li>Session create and update validate <code>agent_id</code> against the same active project before storing it. Universal system agents are allowed; project-owned agents from another project, inactive agents, and orphaned project-scoped agents are rejected.</li>
 <li>Session create and update also reject embedding-only model names at the persistence boundary, so a stale or direct API override cannot route an embedding transport through chat.</li>
 <li>The sidebar derives <code>scopedSessions</code> from the active project before rendering rows, counts, and actions.</li>
+<li>On a phone (below the md breakpoint) the list is a drawer (2026-09-26): <code>ChatView</code> holds</li>
+</ul>
+<p><code>sessionsOpen</code>, <code>ChatSessionsToggle</code> (&quot;Chats&quot;, <code>aria-controls=&quot;chat-sessions&quot;</code>) opens it over the</p>
+<p>conversation with a backdrop, and picking or creating a chat, the backdrop, or Escape closes it. A</p>
+<p>fixed 224 px column had left the conversation 151 px at 375 px, with the send button off screen.</p>
+<p>Desktop keeps the open column. Journey: scenario 88.</p>
+<ul>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
 </ul>

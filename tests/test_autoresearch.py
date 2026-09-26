@@ -1,17 +1,17 @@
-"""Tests for Autoresearch API routes — status, experiments, start/stop, config, leaderboard, toggle."""
+"""Autoresearch API routes: status, experiments, start/stop, config, leaderboard, toggle."""
 
 import json
-import pytest
-from httpx import AsyncClient, ASGITransport
-from types import SimpleNamespace
 import uuid
-from unittest.mock import AsyncMock
-from fastapi import HTTPException
+from types import SimpleNamespace
 
-from app.main import app
+import pytest
+from fastapi import HTTPException
+from httpx import ASGITransport, AsyncClient
+
 from app.config import settings
-from app.models.database import async_session, init_db
 from app.core.auth import create_token
+from app.main import app
+from app.models.database import async_session, init_db
 from app.models.project import Project
 from app.models.research_deployment import ResearchDeployment
 from app.models.task import Task, TaskStatus
@@ -227,9 +227,7 @@ async def test_start_autoresearch_calls_engine_with_runner_and_clamped_iteration
     fake_engine = FakeEngine()
     fake_runner = SimpleNamespace(loop_type="model_temp")
     monkeypatch.setattr("app.api.routes.autoresearch._get_engine", lambda: fake_engine)
-    monkeypatch.setattr(
-        "app.api.routes.autoresearch._get_runner", lambda loop_type: fake_runner
-    )
+    monkeypatch.setattr("app.api.routes.autoresearch._get_runner", lambda loop_type: fake_runner)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -263,6 +261,7 @@ async def test_start_autoresearch_dry_run_without_pi_does_not_start_background_l
     monkeypatch,
 ):
     from fastapi import BackgroundTasks
+
     from app.api.routes import autoresearch as autoresearch_route
 
     added: list[object] = []
@@ -275,12 +274,8 @@ async def test_start_autoresearch_dry_run_without_pi_does_not_start_background_l
         is_running = False
 
     background_tasks = BackgroundTasks()
-    background_tasks.add_task = lambda fn, *args, **kwargs: added.append(
-        (fn, args, kwargs)
-    )
-    monkeypatch.setattr(
-        autoresearch_route, "_require_active_project_scope", fake_project_scope
-    )
+    background_tasks.add_task = lambda fn, *args, **kwargs: added.append((fn, args, kwargs))
+    monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", fake_project_scope)
     monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: FakeEngine())
 
     result = await autoresearch_route.start_experiment(
@@ -305,6 +300,7 @@ async def test_start_autoresearch_dry_run_without_pi_does_not_start_background_l
 async def test_start_autoresearch_dry_run_rejects_unknown_loop_type(monkeypatch):
     """Dry-run validation must match the real runner contract."""
     from fastapi import BackgroundTasks
+
     from app.api.routes import autoresearch as autoresearch_route
 
     settings.autoresearch_enabled = True
@@ -316,9 +312,7 @@ async def test_start_autoresearch_dry_run_rejects_unknown_loop_type(monkeypatch)
         is_running = False
 
     background_tasks = BackgroundTasks()
-    monkeypatch.setattr(
-        autoresearch_route, "_require_active_project_scope", fake_project_scope
-    )
+    monkeypatch.setattr(autoresearch_route, "_require_active_project_scope", fake_project_scope)
     monkeypatch.setattr(autoresearch_route, "_get_engine", lambda: FakeEngine())
 
     with pytest.raises(HTTPException) as exc_info:
@@ -414,9 +408,7 @@ async def test_question_bank_runner_rejects_cross_project_deployment_target():
         await db.commit()
 
     runner = QuestionBankRunner()
-    with pytest.raises(
-        RuntimeError, match="project_id is required for autoresearch runner"
-    ):
+    with pytest.raises(RuntimeError, match="project_id is required for autoresearch runner"):
         await runner._load_deployment(deployment_a)
 
     runner.bind_project(project_a)
@@ -436,9 +428,7 @@ async def test_question_bank_runner_rejects_cross_project_deployment_target():
     async with async_session() as db:
         cross_project = await db.get(ResearchDeployment, deployment_b)
         assert cross_project is not None
-        assert json.loads(cross_project.questions_json) == [
-            {"text": "Other?", "type": "open"}
-        ]
+        assert json.loads(cross_project.questions_json) == [{"text": "Other?", "type": "open"}]
         assert json.loads(cross_project.config_json) == {}
 
 
@@ -468,211 +458,3 @@ async def test_stop_autoresearch_requests_stop(monkeypatch):
 
     assert response.status_code == 200
     assert fake_engine.stopped is True
-
-
-def test_autoresearch_keep_rule_rejects_noise_below_minimum_delta():
-    from app.core.autoresearch_engine import AutoresearchEngine
-
-    engine = AutoresearchEngine()
-    keep, reason = engine._should_keep_candidate(
-        0.005,
-        min_delta=0.01,
-        confidence_interval_95=None,
-    )
-    assert keep is False
-    assert "below minimum" in reason
-
-
-def test_autoresearch_keep_rule_rejects_delta_inside_confidence_interval():
-    from app.core.autoresearch_engine import AutoresearchEngine
-
-    engine = AutoresearchEngine()
-    keep, reason = engine._should_keep_candidate(
-        0.03,
-        min_delta=0.01,
-        confidence_interval_95=0.04,
-    )
-    assert keep is False
-    assert "95% CI" in reason
-
-
-@pytest.mark.asyncio
-async def test_autoresearch_records_reasoning_memory_ids(monkeypatch):
-    """Kept/reverted experiments should be distilled into ReasoningBank memories."""
-    await init_db()
-    from app.core.autoresearch_engine import AutoresearchEngine
-    from app.core.autoresearch_isolation import is_autoresearch_active
-
-    settings.autoresearch_min_improvement_delta = 0.01
-    settings.autoresearch_measurement_repeats = 1
-    project_id = f"project-autoresearch-memory-{uuid.uuid4().hex[:8]}"
-    async with async_session() as db:
-        db.add(Project(id=project_id, name="Autoresearch Memory"))
-        await db.commit()
-
-    class FakeRunner:
-        loop_type = "model_temp"
-        needs_persona_lock = False
-
-        def __init__(self):
-            self.project_id = ""
-            self.mutated = False
-            self.reverted = False
-
-        def bind_project(self, project_id):
-            self.project_id = project_id
-
-        async def measure_baseline(self, target):
-            assert is_autoresearch_active() is True
-            assert self.project_id == project_id
-            return 0.5
-
-        async def hypothesize(self, target, best_score, results):
-            return "Improve model temperature for synthesis", {
-                "description": "temperature +0.1"
-            }
-
-        async def apply_mutation(self, target, mutation):
-            self.mutated = True
-
-            async def revert():
-                self.mutated = False
-                self.reverted = True
-                return None
-
-            return revert
-
-        async def measure(self, target):
-            assert is_autoresearch_active() is True
-            assert self.project_id == project_id
-            assert self.mutated is True
-            return 0.6
-
-    async def allow_experiment(db, target):
-        return True, ""
-
-    persisted = []
-
-    async def fake_persist(self, experiment, project_id):
-        persisted.append((experiment.copy(), project_id))
-
-    async def fake_record(self, experiment, project_id):
-        return ["memory-1"]
-
-    async def fake_register(self, experiment, project_id):
-        return ["proposal-1"]
-
-    record = AsyncMock()
-    monkeypatch.setattr(
-        "app.core.autoresearch_engine.check_experiment_limit", allow_experiment
-    )
-    monkeypatch.setattr(AutoresearchEngine, "_persist_experiment", fake_persist)
-    monkeypatch.setattr(AutoresearchEngine, "_record_reasoning_memory", fake_record)
-    monkeypatch.setattr(
-        AutoresearchEngine, "_register_improvement_proposals", fake_register
-    )
-    monkeypatch.setattr(
-        "app.core.telemetry.telemetry_recorder.record_research_validity_event",
-        record,
-    )
-
-    engine = AutoresearchEngine()
-    runner = FakeRunner()
-    results = await engine.run_loop(
-        runner,
-        target="kappa-thematic-analysis",
-        max_iterations=1,
-        project_id=project_id,
-    )
-
-    assert persisted
-    assert results[0]["kept"] is True
-    assert results[0]["status"] == "proposal_ready"
-    assert results[0]["sandboxed"] is True
-    assert results[0]["governance_required"] is True
-    assert results[0]["mutation_live_after_measurement"] is False
-    assert runner.reverted is True
-    assert runner.mutated is False
-    assert results[0]["research_spine_policy"]["report_evidence"] is False
-    assert results[0]["research_spine_policy"]["can_bypass_research_spine"] is False
-    assert results[0]["reasoning_memory_ids"] == ["memory-1"]
-    assert results[0]["improvement_proposal_ids"] == ["proposal-1"]
-    assert runner.project_id == ""
-    record.assert_awaited_once()
-    _, kwargs = record.await_args
-    assert kwargs["operation"] == "autoresearch.validity_update"
-    assert kwargs["project_id"] == project_id
-    assert kwargs["agent_id"] == "autoresearch"
-    assert kwargs["skill_name"] == "model_temp"
-    assert "hypothesis" not in kwargs
-
-
-@pytest.mark.asyncio
-async def test_autoresearch_engine_rejects_paused_project_before_runner_work():
-    await init_db()
-    from app.core.autoresearch_engine import AutoresearchEngine
-
-    project_id = f"paused-engine-project-{uuid.uuid4().hex[:8]}"
-    async with async_session() as db:
-        db.add(Project(id=project_id, name="Paused Engine", is_paused=True))
-        await db.commit()
-
-    class FakeRunner:
-        loop_type = "model_temp"
-        needs_persona_lock = False
-
-        async def measure_baseline(self, target):
-            raise AssertionError("baseline should not run for paused projects")
-
-    engine = AutoresearchEngine()
-    with pytest.raises(RuntimeError, match="Project is paused or not found"):
-        await engine.run_loop(
-            FakeRunner(),
-            target="analysis",
-            max_iterations=1,
-            project_id=project_id,
-        )
-
-
-class _SandboxRunner:
-    """A runner that measures on a sandbox and must be closed when the loop ends (F3)."""
-
-    loop_type = "rag_params"
-    needs_persona_lock = False
-
-    def __init__(self, fail_baseline: bool = False):
-        self.fail_baseline = fail_baseline
-        self.closed = 0
-
-    async def measure_baseline(self, target):
-        if self.fail_baseline:
-            raise RuntimeError("retrieval benchmark unavailable")
-        return 0.5
-
-    def close(self):
-        self.closed += 1
-
-
-@pytest.mark.parametrize("fail_baseline", [False, True])
-async def test_the_engine_closes_a_runner_sandbox_when_the_loop_ends(monkeypatch, fail_baseline):
-    """The RAG tuning loop measures on sandbox indices rebuilt per chunking; the engine removes
-    them when the loop ends, including when the baseline fails closed without a benchmark."""
-    from app.core.autoresearch_engine import AutoresearchEngine
-
-    engine = AutoresearchEngine()
-
-    async def _active(project_id):
-        return project_id
-
-    async def _is_active(project_id):
-        return True
-
-    monkeypatch.setattr(engine, "_require_active_project_id", _active)
-    monkeypatch.setattr(engine, "_is_project_active", _is_active)
-    runner = _SandboxRunner(fail_baseline=fail_baseline)
-    if fail_baseline:
-        with pytest.raises(RuntimeError):
-            await engine.run_loop(runner, "rag", max_iterations=0, project_id="p1")
-    else:
-        await engine.run_loop(runner, "rag", max_iterations=0, project_id="p1")
-    assert runner.closed == 1

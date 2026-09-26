@@ -258,6 +258,9 @@ async def init_db() -> None:
             "ALTER TABLE scheduled_tasks ADD COLUMN interval_seconds INTEGER",
             "ALTER TABLE scheduled_tasks ADD COLUMN execution_count INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE scheduled_tasks ADD COLUMN last_status VARCHAR(20) NOT NULL DEFAULT ''",
+            # Embedding prompt scheme: older profiles were built from raw text.
+            "ALTER TABLE embedding_profiles ADD COLUMN prompt_scheme VARCHAR(40) "
+            "NOT NULL DEFAULT 'raw'",
             # Checkpoint/recovery hardening.
             "ALTER TABLE task_checkpoints ADD COLUMN agent_state VARCHAR(20) "
             "NOT NULL DEFAULT 'idle'",

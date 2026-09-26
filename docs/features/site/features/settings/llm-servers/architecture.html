@@ -380,6 +380,16 @@
 <p>30 s so the worker&#x27;s reason arrives first. <code>timeout_ms</code> (response start) may be up to 600 s. The</p>
 <p>built-in Ollama and LM Studio entries and locally flagged servers use the local budgets.</p>
 <ul>
+<li>**A local model that is still loading is waited for (2026-09-26).** llama.cpp and LM Studio</li>
+</ul>
+<p>answer 503 &quot;Loading model&quot; (TGI: &quot;Model is currently loading&quot;) while they load weights, and the</p>
+<p>worker used to fail that turn at once. A local binding now carries <code>load_wait_ms</code> (the 300 s</p>
+<p>response-start budget) and the worker retries a loading answer with backoff (1 s doubling, 10 s</p>
+<p>steps) until the model answers or the budget is spent. The wait does not spend <code>max_retries</code>,</p>
+<p>happens only before the attempt&#x27;s first visible output, stops at once on abort, and a turn that</p>
+<p>outlives it fails with the provider&#x27;s message plus &quot;the model was still loading after 300 s&quot;.</p>
+<p>Remote endpoints never wait: a remote 503 is an outage.</p>
+<ul>
 <li>**Thinking level.** An endpoint&#x27;s <code>thinking_level</code> (<code>off</code> .. <code>max</code>) is the default for turns that</li>
 </ul>
 <p>do not set <code>TurnParams.thinking_mode</code>. Before, only chat sent a level, so an always-reasoning model</p>

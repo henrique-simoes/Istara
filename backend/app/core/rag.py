@@ -16,6 +16,7 @@ from app.core.content_guard import ContentGuard, neutralize_boundary_markup
 from app.core.embeddings import EmbeddedChunk, TextChunk, embed_chunks, embed_text
 from app.core.keyword_index import KeywordIndex
 from app.core.pi_runtime.embedding_profile import get_active_embedding_profile
+from app.core.vector_identity import identity_differs, write_manifest
 
 _guard = ContentGuard()
 
@@ -125,6 +126,7 @@ class VectorStore:
             "dimension": profile.dimension,
             "dtype": profile.dtype,
             "normalization": profile.normalization,
+            "prompt_scheme": profile.prompt_scheme,
         }
 
     def _ensure_profile_binding(self, *, bind_fingerprint: bool = False) -> dict[str, str | int]:
@@ -149,16 +151,7 @@ class VectorStore:
             bound = json.loads(self._profile_manifest.read_text(encoding="utf-8"))
         except (OSError, ValueError, TypeError) as exc:
             raise VectorProfileMismatchError("invalid_vector_profile_manifest") from exc
-        identity_fields = (
-            "profile_id",
-            "version",
-            "model_id",
-            "cache_namespace",
-            "dimension",
-            "dtype",
-            "normalization",
-        )
-        if any(bound.get(field) != active[field] for field in identity_fields):
+        if identity_differs(bound, active):
             raise VectorProfileMismatchError("vector_profile_mismatch")
         self._check_fingerprint(bound, bind_if_missing=bind_fingerprint)
         return active
@@ -185,6 +178,14 @@ class VectorStore:
             tmp.write_text(json.dumps(updated, sort_keys=True) + "\n", encoding="utf-8")
             tmp.replace(self._profile_manifest)
 
+    def rebind_to_active_profile(self) -> None:
+        """Point this store's manifest at the active profile (after the migration re-embeds it)."""
+        from app.core.embeddings import known_embed_fingerprint
+
+        binding = self._active_profile_binding()
+        fingerprint = known_embed_fingerprint(str(binding["cache_namespace"]))
+        write_manifest(self._profile_manifest, binding, fingerprint)
+
     def check_profile_binding(self) -> None:
         """Read-only binding check for health reads: never creates a manifest.
 
@@ -198,16 +199,7 @@ class VectorStore:
         except (OSError, ValueError, TypeError) as exc:
             raise VectorProfileMismatchError("invalid_vector_profile_manifest") from exc
         active = self._active_profile_binding()
-        identity_fields = (
-            "profile_id",
-            "version",
-            "model_id",
-            "cache_namespace",
-            "dimension",
-            "dtype",
-            "normalization",
-        )
-        if any(bound.get(field) != active[field] for field in identity_fields):
+        if identity_differs(bound, active):
             raise VectorProfileMismatchError("vector_profile_mismatch")
         self._check_fingerprint(bound, bind_if_missing=False)
 

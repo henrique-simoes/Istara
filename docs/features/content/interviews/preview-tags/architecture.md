@@ -37,6 +37,11 @@ Interview preview parts display file previews, send-to-agent actions, and tag cr
 ## Architecture Notes
 
 - The feature is mounted through `frontend/src/components/interviews/interviewPreviewParts.tsx` and the UI navigation path recorded in the inventory.
+- On a phone (below the md breakpoint) the three columns take turns (2026-09-26,
+  `interviewLayout.ts`): the open interview fills the screen, "All interviews" returns to the list,
+  picking an interview opens it again, and the tags panel starts collapsed and opens over the
+  interview. The fixed list (320 px) and tags panel (288 px) had left the interview no room at
+  375 px. Desktop is unchanged. Journey: scenario 88.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.
 
