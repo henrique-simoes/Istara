@@ -89,6 +89,16 @@ async function openView(page, label, viewId) {
   await navigateTo(page, label, viewId);
   await page.locator("main").first().waitFor({ state: "visible", timeout: 15000 });
   await page.waitForTimeout(1200);
+  await dismissToasts(page);
+}
+
+/** A toast spans a phone's width at the top; a user dismisses it before reaching what it covers. */
+async function dismissToasts(page) {
+  const dismiss = page.locator('[aria-label="Toast notifications"] button[aria-label="Dismiss notification"]');
+  for (let i = 0; i < 6 && (await dismiss.count()) > 0; i += 1) {
+    await dismiss.first().click({ timeout: 2000 }).catch(() => {});
+    await page.waitForTimeout(250);
+  }
 }
 
 async function isOnScreen(page, selector) {
@@ -197,6 +207,7 @@ async function checkDark(ctx, checks) {
   const wasLight = await toDark.isVisible({ timeout: 3000 }).catch(() => false);
   if (wasLight) await toDark.click({ timeout: 10000 });
   await page.waitForTimeout(500);
+  await dismissToasts(page);
   await page.locator(CHATS_BUTTON).first().click({ timeout: 10000 });
   await page.locator(DRAWER).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
   const isDark = await page.evaluate(() => document.documentElement.classList.contains("dark"));

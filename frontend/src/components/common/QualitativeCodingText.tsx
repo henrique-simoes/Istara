@@ -314,8 +314,8 @@ function normalizeCodeEntry(code: any): CodeEntry {
         </div>
       </div>
 
-      {/* Rendered content with optional Margin Gutter Rail */}
-      <div className="flex gap-4 items-start">
+      {/* Rendered content with optional Margin Gutter Rail (below the text on a phone) */}
+      <div className="flex flex-col md:flex-row gap-4 items-start">
         <div
           ref={containerRef}
           onMouseUp={handleMouseUp}
@@ -369,7 +369,7 @@ function normalizeCodeEntry(code: any): CodeEntry {
         {showGutter && (
           <aside
             aria-label="Margin Gutter Annotations"
-            className="w-56 shrink-0 border-l border-slate-200 dark:border-slate-800 pl-3 space-y-2 select-none overflow-y-auto max-h-[600px]"
+            className="w-full md:w-56 shrink-0 md:border-l border-slate-200 dark:border-slate-800 md:pl-3 space-y-2 select-none overflow-y-auto max-h-[600px]"
           >
             <div className="text-[10px] uppercase font-semibold tracking-wider text-slate-400 mb-2 flex items-center justify-between">
               <span>Gutter Annotations</span>
