@@ -12,6 +12,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.finding import Nugget
@@ -48,9 +49,30 @@ async def ingest_responses(
     created = 0
     evidence_units_created = 0
     skipped = 0
+    duplicates = 0
+    new_responses = 0
+    link_source = link.external_survey_name or f"survey-{link.external_survey_id}"
+
+    # Platforms return every response on every pull, so a re-sync must not store the same answer
+    # twice. An answer is identified by its survey, response id and question; responses without an
+    # id cannot be matched safely and are always stored (two identical anonymous answers are two
+    # data points, not one).
+    existing = {
+        (row.source_location, row.text)
+        for row in (
+            await db.execute(
+                select(Nugget.source_location, Nugget.text).where(
+                    Nugget.project_id == project_id,
+                    Nugget.source == link_source,
+                    Nugget.task_id.is_(None),
+                )
+            )
+        ).all()
+    }
 
     for response in responses:
-        response_id = str(response.get("id", "") or "")
+        response_id = str(response.get("id", "") or "").strip()
+        stored_any = False
         for qa in response.get("answers", []):
             question = qa.get("question", "").strip()
             answer = qa.get("answer", "").strip()
@@ -60,13 +82,20 @@ async def ingest_responses(
                 skipped += 1
                 continue
 
-            source_location = f"response_{response_id}"
+            if response_id:
+                source_location = f"response_{response_id}"
+            else:
+                source_location = f"response_anon-{uuid.uuid4().hex[:12]}"
             source_text = f"Q: {question}\nA: {answer}"
+            if response_id and (source_location, source_text) in existing:
+                duplicates += 1
+                continue
+            existing.add((source_location, source_text))
             nugget = Nugget(
                 id=str(uuid.uuid4()),
                 project_id=project_id,
                 text=source_text,
-                source=link.external_survey_name or f"survey-{link.external_survey_id}",
+                source=link_source,
                 source_location=source_location,
                 tags=json.dumps(["survey", link.external_survey_name or "unknown"]),
                 phase="discover",
@@ -86,20 +115,25 @@ async def ingest_responses(
             )
             evidence_units_created += len(units)
             created += 1
+            stored_any = True
+        if stored_any:
+            new_responses += 1
 
     # Update link metadata
-    link.response_count = (link.response_count or 0) + len(responses)
-    link.last_response_at = datetime.now(UTC)
+    link.response_count = (link.response_count or 0) + new_responses
+    if new_responses:
+        link.last_response_at = datetime.now(UTC)
 
     await db.commit()
 
     logger.info(
-        "Ingested %d provisional nuggets and %d evidence units "
-        "from %d responses (skipped %d empty answers) for link %s",
+        "Ingested %d provisional nuggets and %d evidence units from %d responses "
+        "(skipped %d empty and %d already-stored answers) for link %s",
         created,
         evidence_units_created,
         len(responses),
         skipped,
+        duplicates,
         link.id,
     )
 
@@ -107,5 +141,7 @@ async def ingest_responses(
         "nuggets_created": created,
         "evidence_units_created": evidence_units_created,
         "responses_processed": len(responses),
+        "new_responses": new_responses,
+        "duplicate_answers_skipped": duplicates,
         "empty_answers_skipped": skipped,
     }

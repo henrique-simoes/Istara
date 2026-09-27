@@ -15,6 +15,7 @@ from app.models.channel_conversation import ChannelConversation
 from app.models.database import get_db
 from app.models.research_deployment import ResearchDeployment
 from app.services import deployment_service
+from app.services.adaptive_interview import DEFAULT_CONSENT_MESSAGE
 
 router = APIRouter()
 
@@ -143,6 +144,12 @@ async def create_deployment(
     await get_active_project_or_404(db, request, scoped_project_id, min_role="researcher")
 
     questions = [q.model_dump() for q in data.questions]
+    # New deployments ask for informed consent unless the researcher explicitly turns it off:
+    # nothing a participant sends is stored as research data before they agree.
+    config = dict(data.config or {})
+    config.setdefault("consent_required", True)
+    if config["consent_required"] and not config.get("consent_message"):
+        config["consent_message"] = DEFAULT_CONSENT_MESSAGE
     try:
         deployment = await deployment_service.create_deployment(
             db=db,
@@ -151,7 +158,7 @@ async def create_deployment(
             deployment_type=data.deployment_type,
             questions=questions,
             channel_instance_ids=data.channel_instance_ids,
-            config=data.config,
+            config=config,
             target_responses=data.target_responses,
         )
     except ValueError as e:
@@ -415,6 +422,45 @@ async def handle_response(
         pass  # Never block response handling on broadcast failure
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Raw-data export
+# ---------------------------------------------------------------------------
+
+
+def _csv_response(rows: list[dict], columns: list[str], filename: str) -> Response:
+    import csv
+    import io
+
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=columns, extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(row)
+    safe = "".join(ch if ch.isalnum() or ch in "-_." else "-" for ch in filename).strip("-")
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{safe or "export"}.csv"'},
+    )
+
+
+@router.get("/deployments/{deployment_id}/export.csv")
+async def export_deployment_csv(
+    deployment_id: str,
+    request: Request,
+    project_id: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Download every stored answer of a deployment as a pseudonymous CSV (researcher+)."""
+    deployment = await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="researcher"
+    )
+    rows = await deployment_service.export_deployment_rows(db, deployment)
+    return _csv_response(
+        rows, deployment_service.EXPORT_COLUMNS, f"{deployment.name}-raw-responses"
+    )
 
 
 # ---------------------------------------------------------------------------

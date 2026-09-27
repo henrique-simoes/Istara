@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft, Play, Pause, CheckCircle2, Radio, BarChart3, Users, Search,
-  MessageSquare, Clock, TrendingUp,
+  MessageSquare, Clock, TrendingUp, Download, RefreshCw,
 } from "lucide-react";
 import { deployments as deploymentsApi } from "@/lib/api";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { cn } from "@/lib/utils";
 import type { ResearchDeployment, DeploymentAnalytics, ChannelConversation } from "@/lib/types";
 import ConversationTranscript from "./ConversationTranscript";
@@ -21,43 +22,132 @@ const TABS: { id: DashboardTab; icon: any; label: string }[] = [
   { id: "timeline", icon: Clock, label: "Timeline" },
 ];
 
+// Conversation states in which a participant is still taking part (see adaptive_interview.py).
+const IN_PROGRESS_STATES = new Set(["intro", "consent", "screening", "questions", "probing", "closing"]);
+
+const STATE_LABELS: Record<string, string> = {
+  intro: "invited",
+  consent: "awaiting consent",
+  screening: "screening",
+  questions: "answering",
+  probing: "follow-up",
+  closing: "closing question",
+  completed: "completed",
+  declined: "declined consent",
+  screened_out: "screened out",
+  withdrawn: "withdrew",
+  closed_quota: "study full",
+};
+
+function stateLabel(state: string): string {
+  return STATE_LABELS[state] ?? state;
+}
+
+function stateBadgeClass(state: string): string {
+  if (state === "completed") return "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300";
+  if (IN_PROGRESS_STATES.has(state)) return "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300";
+  return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+}
+
 interface DeploymentDashboardProps {
   deployment: ResearchDeployment;
   onBack: () => void;
 }
 
 export default function DeploymentDashboard({ deployment, onBack }: DeploymentDashboardProps) {
+  const { canWriteActiveProject } = useRoleCapabilities();
   const [activeTab, setActiveTab] = useState<DashboardTab>("live");
   const [analytics, setAnalytics] = useState<DeploymentAnalytics | null>(null);
   const [conversations, setConversations] = useState<ChannelConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [transcriptConvId, setTranscriptConvId] = useState<string | null>(null);
+  const [studyState, setStudyState] = useState(deployment.state);
+  const [counts, setCounts] = useState({
+    current: deployment.current_responses,
+    target: deployment.target_responses,
+  });
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const projectId = deployment.project_id;
 
-  useEffect(() => {
-    Promise.all([
+  // The live feed stays live: reload conversations, analytics and the study's counts on an
+  // interval while the dashboard is open, and on demand.
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
       deploymentsApi.analytics(deployment.id, projectId).then(setAnalytics).catch(() => {}),
       deploymentsApi.conversations(deployment.id, projectId).then(setConversations).catch(() => {}),
-    ]).finally(() => setLoading(false));
+      deploymentsApi
+        .get(deployment.id, projectId)
+        .then((fresh) => {
+          setStudyState(fresh.state);
+          setCounts({ current: fresh.current_responses, target: fresh.target_responses });
+        })
+        .catch(() => {}),
+    ]);
+    setRefreshing(false);
+    setLoading(false);
   }, [deployment.id, projectId]);
 
-  const handleActivate = async () => {
+  useEffect(() => {
+    refresh();
+    const timer = window.setInterval(refresh, 15000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
+
+  const runAction = async (
+    action: () => Promise<unknown>,
+    nextState: ResearchDeployment["state"],
+    doneMessage: string,
+    failMessage: string
+  ) => {
     setActionLoading(true);
-    try { await deploymentsApi.activate(deployment.id, projectId); } catch {} finally { setActionLoading(false); }
+    setActionError(null);
+    setNotice(null);
+    try {
+      await action();
+      setStudyState(nextState);
+      setNotice(doneMessage);
+    } catch (err) {
+      setActionError(err instanceof Error ? `${failMessage} ${err.message}` : failMessage);
+    } finally {
+      setActionLoading(false);
+    }
   };
-  const handlePause = async () => {
-    setActionLoading(true);
-    try { await deploymentsApi.pause(deployment.id, projectId); } catch {} finally { setActionLoading(false); }
-  };
-  const handleComplete = async () => {
-    setActionLoading(true);
-    try { await deploymentsApi.complete(deployment.id, projectId); } catch {} finally { setActionLoading(false); }
+  const handleActivate = () =>
+    runAction(
+      () => deploymentsApi.activate(deployment.id, projectId),
+      "active",
+      "Study is live. Participants who message the selected channels will be invited.",
+      "Could not activate the study."
+    );
+  const handlePause = () =>
+    runAction(
+      () => deploymentsApi.pause(deployment.id, projectId),
+      "paused",
+      "Study paused. Participants are told it is paused and nothing they send is recorded.",
+      "Could not pause the study."
+    );
+  const handleComplete = () =>
+    runAction(
+      () => deploymentsApi.complete(deployment.id, projectId),
+      "completed",
+      "Study closed.",
+      "Could not close the study."
+    );
+  const handleExport = async () => {
+    setActionError(null);
+    setNotice(null);
+    try {
+      const name = await deploymentsApi.exportCsv(deployment.id, projectId);
+      setNotice(`Downloaded ${name}.`);
+    } catch (err) {
+      setActionError(err instanceof Error ? `Export failed: ${err.message}` : "Export failed.");
+    }
   };
 
-  const progress = deployment.target_responses > 0
-    ? Math.round((deployment.current_responses / deployment.target_responses) * 100)
-    : 0;
 
   const renderTabContent = () => {
     if (loading) {
@@ -85,45 +175,38 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
           <button onClick={onBack} aria-label="Back to deployments" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
             <ArrowLeft size={16} />
           </button>
-          <div className="flex-1">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">{deployment.name}</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">
-              {deployment.deployment_type.replace("_", " ")} &middot; {deployment.questions.length} questions
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white break-words">{deployment.name}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              <span className="capitalize">{deployment.deployment_type.replace("_", " ")}</span> &middot;{" "}
+              {deployment.questions.length} questions &middot; {studyState}
+              {deployment.config?.consent_required ? " \u00b7 consent asked first" : ""}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {deployment.state === "draft" && (
-              <button onClick={handleActivate} disabled={actionLoading} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
-                <Play size={12} /> Activate
-              </button>
-            )}
-            {deployment.state === "active" && (
-              <button onClick={handlePause} disabled={actionLoading} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors">
-                <Pause size={12} /> Pause
-              </button>
-            )}
-            {(deployment.state === "active" || deployment.state === "paused") && (
-              <button onClick={handleComplete} disabled={actionLoading} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                <CheckCircle2 size={12} /> Complete
-              </button>
-            )}
-          </div>
+          <StudyActions
+            canWrite={canWriteActiveProject}
+            studyState={studyState}
+            busy={actionLoading}
+            refreshing={refreshing}
+            onActivate={handleActivate}
+            onPause={handlePause}
+            onComplete={handleComplete}
+            onRefresh={refresh}
+            onExport={handleExport}
+          />
         </div>
+        {actionError && (
+          <p role="alert" className="mb-3 text-xs text-red-600 dark:text-red-400">{actionError}</p>
+        )}
+        {notice && !actionError && (
+          <p role="status" className="mb-3 text-xs text-slate-600 dark:text-slate-300">{notice}</p>
+        )}
 
-        {/* Progress */}
-        <div className="mb-3">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
-            <span>{deployment.current_responses} / {deployment.target_responses} responses</span>
-            <span>{progress}%</span>
-          </div>
-          <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-istara-500 rounded-full transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
-          </div>
-        </div>
+        <StudyProgress current={counts.current} target={counts.target} />
 
         {/* Sub-tabs */}
         <div className="flex items-center gap-1 overflow-x-auto">
@@ -165,8 +248,90 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
 
 // --- Sub-components ---
 
+const ACTION = "flex items-center gap-1 px-3 py-1.5 text-xs text-white rounded-lg disabled:opacity-50 transition-colors";
+
+function StudyActions({
+  canWrite,
+  studyState,
+  busy,
+  refreshing,
+  onActivate,
+  onPause,
+  onComplete,
+  onRefresh,
+  onExport,
+}: {
+  canWrite: boolean;
+  studyState: ResearchDeployment["state"];
+  busy: boolean;
+  refreshing: boolean;
+  onActivate: () => void;
+  onPause: () => void;
+  onComplete: () => void;
+  onRefresh: () => void;
+  onExport: () => void;
+}) {
+  const running = studyState === "active" || studyState === "paused";
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {canWrite && studyState === "draft" && (
+        <button onClick={onActivate} disabled={busy} className={cn(ACTION, "bg-green-600 hover:bg-green-700")}>
+          <Play size={12} /> Activate
+        </button>
+      )}
+      {canWrite && studyState === "active" && (
+        <button onClick={onPause} disabled={busy} className={cn(ACTION, "bg-amber-600 hover:bg-amber-700")}>
+          <Pause size={12} /> Pause
+        </button>
+      )}
+      {canWrite && studyState === "paused" && (
+        <button onClick={onActivate} disabled={busy} className={cn(ACTION, "bg-green-600 hover:bg-green-700")}>
+          <Play size={12} /> Resume
+        </button>
+      )}
+      {canWrite && running && (
+        <button onClick={onComplete} disabled={busy} className={cn(ACTION, "bg-blue-600 hover:bg-blue-700")}>
+          <CheckCircle2 size={12} /> Complete
+        </button>
+      )}
+      <button
+        onClick={onRefresh}
+        disabled={refreshing}
+        aria-label="Refresh study data"
+        title="Refresh (also refreshes every 15 seconds)"
+        className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+      >
+        <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+      </button>
+      {canWrite && (
+        <button
+          onClick={onExport}
+          className="flex items-center gap-1 px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        >
+          <Download size={12} /> Export CSV
+        </button>
+      )}
+    </div>
+  );
+}
+
+function StudyProgress({ current, target }: { current: number; target: number }) {
+  const progress = target > 0 ? Math.round((current / target) * 100) : 0;
+  return (
+    <div className="mb-3">
+      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+        <span>{current} / {target} participants finished</span>
+        <span>{progress}%</span>
+      </div>
+      <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+        <div className="h-full bg-istara-500 rounded-full transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function LiveFeed({ conversations, onViewTranscript }: { conversations: ChannelConversation[]; onViewTranscript: (id: string) => void }) {
-  const active = conversations.filter((c) => c.state === "active");
+  const active = conversations.filter((c) => IN_PROGRESS_STATES.has(c.state));
   const recent = [...conversations].sort((a, b) => {
     const aTime = a.last_message_at || a.started_at;
     const bTime = b.last_message_at || b.started_at;
@@ -193,7 +358,9 @@ function LiveFeed({ conversations, onViewTranscript }: { conversations: ChannelC
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-900 dark:text-white">{conv.participant_name}</span>
-                  <span className="text-xs text-green-600 dark:text-green-400">Q{conv.current_question_index + 1}</span>
+                  <span className="text-xs text-green-700 dark:text-green-300">
+                    {conv.current_question_index > 0 ? `Q${conv.current_question_index}` : stateLabel(conv.state)}
+                  </span>
                 </div>
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   Last message: {conv.last_message_at ? new Date(conv.last_message_at).toLocaleTimeString() : "---"}
@@ -207,6 +374,11 @@ function LiveFeed({ conversations, onViewTranscript }: { conversations: ChannelC
       {/* Recent activity */}
       <div>
         <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Recent Activity</h3>
+        {recent.length === 0 && (
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            No participants yet. When someone messages one of the study&apos;s channels, they appear here.
+          </p>
+        )}
         <div className="space-y-2">
           {recent.map((conv) => (
             <button
@@ -216,13 +388,8 @@ function LiveFeed({ conversations, onViewTranscript }: { conversations: ChannelC
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-900 dark:text-white">{conv.participant_name}</span>
-                <span className={cn(
-                  "text-xs px-2 py-0.5 rounded-full",
-                  conv.state === "completed" ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400" :
-                  conv.state === "active" ? "bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400" :
-                  "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                )}>
-                  {conv.state}
+                <span className={cn("text-xs px-2 py-0.5 rounded-full", stateBadgeClass(conv.state))}>
+                  {stateLabel(conv.state)}
                 </span>
               </div>
             </button>
@@ -295,16 +462,13 @@ function ParticipantTracker({ conversations, onViewTranscript }: { conversations
               <tr key={conv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <td className="px-3 py-2 text-sm text-slate-900 dark:text-white">{conv.participant_name}</td>
                 <td className="px-3 py-2">
-                  <span className={cn(
-                    "text-xs px-2 py-0.5 rounded-full",
-                    conv.state === "completed" ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400" :
-                    conv.state === "active" ? "bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400" :
-                    "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                  )}>
-                    {conv.state}
+                  <span className={cn("text-xs px-2 py-0.5 rounded-full", stateBadgeClass(conv.state))}>
+                    {stateLabel(conv.state)}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-sm text-slate-600 dark:text-slate-300">Q{conv.current_question_index + 1}</td>
+                <td className="px-3 py-2 text-sm text-slate-600 dark:text-slate-300">
+                  {conv.current_question_index > 0 ? `Q${conv.current_question_index}` : "\u2014"}
+                </td>
                 <td className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{new Date(conv.started_at).toLocaleDateString()}</td>
                 <td className="px-3 py-2">
                   <button
@@ -329,8 +493,9 @@ function FindingsPipeline({ analytics }: { analytics: DeploymentAnalytics | null
       <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Findings Pipeline</h3>
       <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
         <TrendingUp size={32} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Findings will be automatically extracted as conversations complete.
+        <p className="text-sm text-slate-600 dark:text-slate-300 max-w-md mx-auto">
+          Every answer is stored as raw evidence. Findings are not extracted automatically: analyse the
+          responses through a task so they are coded and reviewed before anything reaches a report.
         </p>
         {analytics && (
           <div className="mt-4 flex items-center justify-center gap-6 text-xs text-slate-500 dark:text-slate-400">

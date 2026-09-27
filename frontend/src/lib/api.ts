@@ -5,7 +5,7 @@ import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, Inter
 import type { ReasoningMemoryItem, ReasoningBankSummary } from "@/lib/reasoningBankTypes";
 
 import { API_BASE } from "@/lib/runtimeConfig";
-import { authHeaders as _getAuthHeaders, del, get, patch, post, request } from "@/lib/apiClient";
+import { authHeaders as _getAuthHeaders, del, downloadFile, get, patch, post, request } from "@/lib/apiClient";
 
 // Update routes are implemented in updatesApi.ts:
 // /api/updates/version, /api/updates/check, /api/updates/prepare, /api/updates/apply.
@@ -1042,6 +1042,11 @@ export const deployments = {
     get<any>(
       `/api/deployments/${deploymentId}/conversations/${conversationId}/transcript?project_id=${encodeURIComponent(projectId)}`
     ),
+  exportCsv: (id: string, projectId: string) =>
+    downloadFile(
+      `/api/deployments/${id}/export.csv?project_id=${encodeURIComponent(projectId)}`,
+      "deployment-raw-responses.csv"
+    ),
 };
 
 // --- Surveys ---
@@ -1069,6 +1074,11 @@ export const surveys = {
       post<any>(`/api/surveys/links/${id}/sync?project_id=${encodeURIComponent(projectId)}`, {}),
     responses: (id: string, projectId: string) =>
       get<any[]>(`/api/surveys/links/${id}/responses?project_id=${encodeURIComponent(projectId)}`),
+    exportCsv: (id: string, projectId: string) =>
+      downloadFile(
+        `/api/surveys/links/${id}/export.csv?project_id=${encodeURIComponent(projectId)}`,
+        "survey-responses.csv"
+      ),
   },
 };
 

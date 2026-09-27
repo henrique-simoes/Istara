@@ -117,4 +117,5 @@ export const scenarioFiles = Object.freeze([
   "86-evidence-provenance-health",
   "87-embedding-model-migration",
   "88-phone-layout",
+  "89-study-participant-journey",
 ]);

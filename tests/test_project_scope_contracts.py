@@ -21,23 +21,16 @@ def read_repo(path: str) -> str:
 def test_permission_requests_bind_project_settings_to_active_project_scope() -> None:
     route = read_repo("backend/app/api/routes/permission_requests.py")
     api = read_repo("frontend/src/lib/api.ts")
-    project_settings = read_repo(
-        "frontend/src/components/settings/ProjectSettingsView.tsx"
-    )
+    project_settings = read_repo("frontend/src/components/settings/ProjectSettingsView.tsx")
     admin_dashboard = read_repo("frontend/src/components/admin/AdminDashboard.tsx")
 
     assert "async def _get_project_permission_request" in route
     assert "PermissionRequest.id == request_id" in route
     assert "PermissionRequest.project_id == project_id" in route
     assert "project_id: str | None = None" in route
-    assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    )
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert "project_id or mine=true is required" not in route
-    assert (
-        "elif is_global_admin(subject):\n        item = await _get_permission_request"
-        in route
-    )
+    assert "elif is_global_admin(subject):\n        item = await _get_permission_request" in route
 
     assert (
         'review: (id: string, data: { status: "approved" | "rejected"; review_note?: string }, projectId?: string)'
@@ -50,9 +43,7 @@ def test_permission_requests_bind_project_settings_to_active_project_scope() -> 
         'permissionRequests.list({ project_id: activeProjectId, status: "pending" })'
         in project_settings
     )
-    assert (
-        "permissionRequests.review(id, { status }, activeProjectId)" in project_settings
-    )
+    assert "permissionRequests.review(id, { status }, activeProjectId)" in project_settings
     assert 'permissionRequests.list({ status: "pending" })' in admin_dashboard
     assert "permissionRequests.review(id, { status });" in admin_dashboard
 
@@ -69,38 +60,21 @@ def test_interfaces_status_screens_and_handoff_require_active_project_scope() ->
     assert "/api/interfaces/status?project_id=${encodeURIComponent(projectId)}" in api
     assert "list: (projectId: string)" in api
     assert "/api/interfaces/screens?project_id=${encodeURIComponent(projectId)}" in api
-    assert (
-        "/api/interfaces/handoff/briefs?project_id=${encodeURIComponent(projectId)}"
-        in api
-    )
+    assert "/api/interfaces/handoff/briefs?project_id=${encodeURIComponent(projectId)}" in api
 
     assert "if (!projectId)" in store
     assert "set({ status: null, error: null });" in store
-    assert (
-        "set({ screens: [], selectedScreenId: null, loading: true, error: null });"
-        in store
-    )
+    assert "set({ screens: [], selectedScreenId: null, loading: true, error: null });" in store
     assert "set({ briefs: [] });" in store
 
     assert "const scopedScreens = activeProjectId" in screens_tab
-    assert (
-        "screens.filter((screen: any) => screen.project_id === activeProjectId)"
-        in screens_tab
-    )
-    assert (
-        "selectedScreen && selectedScreen.project_id === activeProjectId" in screens_tab
-    )
+    assert "screens.filter((screen: any) => screen.project_id === activeProjectId)" in screens_tab
+    assert "selectedScreen && selectedScreen.project_id === activeProjectId" in screens_tab
 
     assert "const scopedScreens = activeProjectId" in handoff_tab
-    assert (
-        "screens.filter((screen: any) => screen.project_id === activeProjectId)"
-        in handoff_tab
-    )
+    assert "screens.filter((screen: any) => screen.project_id === activeProjectId)" in handoff_tab
     assert "const scopedBriefs = activeProjectId" in handoff_tab
-    assert (
-        "briefs.filter((brief: any) => brief.project_id === activeProjectId)"
-        in handoff_tab
-    )
+    assert "briefs.filter((brief: any) => brief.project_id === activeProjectId)" in handoff_tab
     assert "disabled={!activeProjectId || generatingBrief}" in handoff_tab
 
     assert "scoped_project_id = require_project_id(project_id)" in screens_route
@@ -119,9 +93,7 @@ def test_interfaces_status_screens_and_handoff_require_active_project_scope() ->
 def test_interfaces_configuration_credentials_are_project_owned() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     figma_tab = read_repo("frontend/src/components/interfaces/FigmaTab.tsx")
-    onboarding = read_repo(
-        "frontend/src/components/interfaces/InterfacesOnboarding.tsx"
-    )
+    onboarding = read_repo("frontend/src/components/interfaces/InterfacesOnboarding.tsx")
     common = read_repo("backend/app/api/routes/interfaces_common.py")
     integrations_route = read_repo("backend/app/api/routes/interfaces_integrations.py")
     config_model = read_repo("backend/app/models/interface_config.py")
@@ -129,9 +101,7 @@ def test_interfaces_configuration_credentials_are_project_owned() -> None:
 
     assert "stitch: (data: { api_key: string; project_id: string })" in api
     assert "figma: (data: { api_token: string; project_id: string })" in api
-    assert (
-        "interfacesApi.figma.designSystem(fileKey.trim(), activeProjectId)" in figma_tab
-    )
+    assert "interfacesApi.figma.designSystem(fileKey.trim(), activeProjectId)" in figma_tab
     assert "disabled={!figmaUrl.trim() || !activeProjectId || importing}" in figma_tab
     assert "project_id: activeProjectId" in figma_tab
     assert "project_id: activeProjectId" in onboarding
@@ -180,12 +150,8 @@ def test_integrations_overview_recent_activity_is_project_scoped() -> None:
 def test_integrations_deployments_tab_is_project_scoped() -> None:
     source = read_repo("frontend/src/components/integrations/DeploymentsTab.tsx")
     wizard = read_repo("frontend/src/components/integrations/DeploymentWizard.tsx")
-    dashboard = read_repo(
-        "frontend/src/components/integrations/DeploymentDashboard.tsx"
-    )
-    transcript = read_repo(
-        "frontend/src/components/integrations/ConversationTranscript.tsx"
-    )
+    dashboard = read_repo("frontend/src/components/integrations/DeploymentDashboard.tsx")
+    transcript = read_repo("frontend/src/components/integrations/ConversationTranscript.tsx")
     api = read_repo("frontend/src/lib/api.ts")
 
     assert 'import { useProjectStore } from "@/stores/projectStore";' in source
@@ -199,30 +165,26 @@ def test_integrations_deployments_tab_is_project_scoped() -> None:
     assert "deploymentsList.map" not in source
     assert "deploymentsList.reduce" not in source
     assert "fetchDeployments();" not in source
-    assert "if (!activeProjectId || !deploymentType) return;" in wizard
+    draft = read_repo("frontend/src/components/integrations/deploymentDraft.ts")
+    assert "if (!activeProjectId || !draft.deploymentType) return;" in wizard
     assert "fetchChannels(undefined, activeProjectId)" in wizard
     assert (
-        "channelInstances.filter((c) => c.is_active && c.project_id === activeProjectId)"
-        in wizard
+        "channelInstances.filter((c) => c.is_active && c.project_id === activeProjectId)" in wizard
     )
-    assert "project_id: activeProjectId" in wizard
+    # The payload builder receives the active project and scopes the deployment to it.
+    assert "buildDeploymentPayload(draft, activeProjectId)" in wizard
+    assert "project_id: projectId" in draft
     assert "deploymentsApi.analytics(deployment.id, projectId)" in dashboard
     assert "deploymentsApi.conversations(deployment.id, projectId)" in dashboard
     assert "deploymentsApi.activate(deployment.id, projectId)" in dashboard
     assert "projectId={projectId}" in dashboard
-    assert (
-        "deploymentsApi.transcript(deploymentId, conversationId, projectId)"
-        in transcript
-    )
+    assert "deploymentsApi.transcript(deploymentId, conversationId, projectId)" in transcript
     assert "list: (projectId: string)" in api
     assert "get: (id: string, projectId: string)" in api
     assert "activate: (id: string, projectId: string)" in api
     assert "analytics: (id: string, projectId: string)" in api
     assert "/api/deployments/${id}?project_id=${encodeURIComponent(projectId)}" in api
-    assert (
-        "/api/deployments/${id}/analytics?project_id=${encodeURIComponent(projectId)}"
-        in api
-    )
+    assert "/api/deployments/${id}/analytics?project_id=${encodeURIComponent(projectId)}" in api
     assert (
         "/api/deployments/${deploymentId}/conversations/${conversationId}/transcript?project_id=${encodeURIComponent(projectId)}"
         in api
@@ -235,26 +197,19 @@ def test_backend_deployments_enforce_project_owned_channels_and_conversations() 
     inbound = read_repo("backend/app/services/inbound_processor.py")
 
     assert "async def _get_active_project_deployment_or_404" in route
-    assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    )
-    assert (
-        'raise HTTPException(status_code=404, detail="Deployment not found")' in route
-    )
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert 'raise HTTPException(status_code=404, detail="Deployment not found")' in route
     assert "ResearchDeployment.id == deployment_id" in route
     assert "ResearchDeployment.project_id == scoped_project_id" in route
     assert (
-        "await require_project_access(db, request, scoped_project_id, min_role=min_role)"
-        in route
+        "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
         and 'await get_active_project_or_404(db, request, scoped_project_id, min_role="researcher"'
         in route
     )
     assert "async def _get_deployment_or_404" not in route
     assert "validate_channel_instances_for_project" in service
     assert "instance.project_id != project_id" in service
-    assert (
-        "channel_instance_ids_json=json.dumps(scoped_channel_instance_ids)" in service
-    )
+    assert "channel_instance_ids_json=json.dumps(scoped_channel_instance_ids)" in service
     assert (
         "async def get_deployment(\n    db: AsyncSession,\n    deployment_id: str,\n    *,\n    project_id: str,"
         in service
@@ -302,24 +257,16 @@ def test_research_integrity_by_id_routes_require_active_project_scope() -> None:
     assert "async def _get_project_codebook_or_404" in codebooks_route
     assert "async def _get_project_code_or_404" in codebooks_route
     assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")'
-        in codebooks_route
+        'raise HTTPException(status_code=400, detail="project_id is required")' in codebooks_route
     )
-    assert (
-        "Codebook.id == codebook_id, Codebook.project_id == scoped_project_id"
-        in codebooks_route
-    )
+    assert "Codebook.id == codebook_id, Codebook.project_id == scoped_project_id" in codebooks_route
     assert ".join(Codebook, Codebook.id == Code.codebook_id)" in codebooks_route
-    assert (
-        "Code.id == code_id, Codebook.project_id == scoped_project_id"
-        in codebooks_route
-    )
+    assert "Code.id == code_id, Codebook.project_id == scoped_project_id" in codebooks_route
     assert "project_id: str | None = Query(default=None)" in codebooks_route
 
     assert "def _require_project_id(project_id: str | None) -> str:" in code_apps_route
     assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")'
-        in code_apps_route
+        'raise HTTPException(status_code=400, detail="project_id is required")' in code_apps_route
     )
     assert "project_id: str | None = Query(default=None)" in code_apps_route
     assert "CodeApplication.id == application_id" in code_apps_route
@@ -348,9 +295,7 @@ def test_integrations_subtabs_defensively_filter_by_active_project() -> None:
     store = read_repo("frontend/src/stores/integrationsStore.ts")
 
     assert "const scopedChannelInstances = activeProjectId" in messaging
-    assert (
-        "channelInstances.filter((c) => c.project_id === activeProjectId)" in messaging
-    )
+    assert "channelInstances.filter((c) => c.project_id === activeProjectId)" in messaging
     assert "const selectedInstance = scopedChannelInstances.find" in messaging
     assert "scopedChannelInstances.map((instance)" in messaging
     assert "channelInstances.map((instance)" not in messaging
@@ -360,14 +305,12 @@ def test_integrations_subtabs_defensively_filter_by_active_project() -> None:
         "surveyIntegrations.filter((integration) => integration.project_id === activeProjectId)"
         in surveys
     )
-    assert "scopedSurveyIntegrations.map((integration)" in surveys
+    # Only the active project's integrations reach the cards; the cards render what they receive.
+    assert "integrations={scopedSurveyIntegrations}" in surveys
     assert "surveyIntegrations.map((integration)" not in surveys
 
     assert "const scopedMCPClients = activeProjectId" in mcp_tab
-    assert (
-        "mcpClients.filter((client) => client.project_id === activeProjectId)"
-        in mcp_tab
-    )
+    assert "mcpClients.filter((client) => client.project_id === activeProjectId)" in mcp_tab
     assert "scopedMCPClients.map((client)" in mcp_tab
     assert "mcpClients.map((client)" not in mcp_tab
 
@@ -401,31 +344,22 @@ def test_integrations_survey_detail_actions_require_active_project_scope() -> No
     assert "createSurvey: (id: string, data: any, projectId: string)" in api
     assert "sync: (id: string, projectId: string)" in api
     assert "responses: (id: string, projectId: string)" in api
+    assert "/api/surveys/integrations/${id}?project_id=${encodeURIComponent(projectId)}" in api
     assert (
-        "/api/surveys/integrations/${id}?project_id=${encodeURIComponent(projectId)}"
-        in api
+        "/api/surveys/integrations/${id}/surveys?project_id=${encodeURIComponent(projectId)}" in api
     )
     assert (
-        "/api/surveys/integrations/${id}/surveys?project_id=${encodeURIComponent(projectId)}"
-        in api
+        "/api/surveys/integrations/${id}/create?project_id=${encodeURIComponent(projectId)}" in api
     )
-    assert (
-        "/api/surveys/integrations/${id}/create?project_id=${encodeURIComponent(projectId)}"
-        in api
-    )
-    assert (
-        "/api/surveys/links/${id}/sync?project_id=${encodeURIComponent(projectId)}"
-        in api
-    )
-    assert (
-        "/api/surveys/links/${id}/responses?project_id=${encodeURIComponent(projectId)}"
-        in api
-    )
+    assert "/api/surveys/links/${id}/sync?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/surveys/links/${id}/responses?project_id=${encodeURIComponent(projectId)}" in api
 
+    linked = read_repo("frontend/src/components/integrations/useLinkedSurveys.ts")
     assert "if (!activeProjectId) return;" in surveys
-    assert "setLinkedSurveys([]);" in surveys
-    assert "links.filter((link) => link.project_id === activeProjectId)" in surveys
-    assert "surveysApi.links.sync(linkId, activeProjectId)" in surveys
+    assert "useLinkedSurveys(activeProjectId)" in surveys
+    assert "setLinks([]);" in linked
+    assert "all.filter((link) => link.project_id === projectId)" in linked
+    assert "surveysApi.links.sync(linkId, projectId)" in linked
     assert "surveysApi.integrations.delete(id, activeProjectId)" in surveys
     assert "fetchSurveyIntegrations(activeProjectId)" in surveys
 
@@ -437,12 +371,7 @@ def test_integrations_survey_detail_actions_require_active_project_scope() -> No
     assert "async def _get_project_link_or_404" in route
     assert "integration.project_id != scoped_project_id" in route
     assert "link.project_id != scoped_project_id" in route
-    assert (
-        route.count(
-            'project_id: str | None = Query(None, description="Active project")'
-        )
-        >= 5
-    )
+    assert route.count('project_id: str | None = Query(None, description="Active project")') >= 5
 
 
 def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
@@ -469,21 +398,10 @@ def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
     )
     assert "/api/mcp/clients?project_id=${encodeURIComponent(projectId)}" in api
     assert "/api/mcp/clients/${id}?project_id=${encodeURIComponent(projectId)}" in api
-    assert (
-        "/api/mcp/clients/${id}/discover?project_id=${encodeURIComponent(projectId)}"
-        in api
-    )
-    assert (
-        "/api/mcp/clients/${id}/tools?project_id=${encodeURIComponent(projectId)}"
-        in api
-    )
-    assert (
-        "/api/mcp/clients/${id}/call?project_id=${encodeURIComponent(projectId)}" in api
-    )
-    assert (
-        "/api/mcp/clients/${id}/health?project_id=${encodeURIComponent(projectId)}"
-        in api
-    )
+    assert "/api/mcp/clients/${id}/discover?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/mcp/clients/${id}/tools?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/mcp/clients/${id}/call?project_id=${encodeURIComponent(projectId)}" in api
+    assert "/api/mcp/clients/${id}/health?project_id=${encodeURIComponent(projectId)}" in api
 
     assert "if (!activeProjectId) return;" in mcp_tab
     assert "mcpApi.clients.discover(clientId, activeProjectId)" in mcp_tab
@@ -505,28 +423,11 @@ def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
 
     assert "async def _get_project_client_or_404" in route
     assert "server.project_id != scoped_project_id" in route
-    assert (
-        route.count(
-            'project_id: str | None = Query(None, description="Active project")'
-        )
-        >= 5
-    )
-    assert (
-        "await _get_project_client_or_404(\n        db, request, server_id, project_id"
-        in route
-    )
-    assert (
-        "removed = await unregister_server(db, server_id, project_id=scoped_project_id)"
-        in route
-    )
-    assert (
-        'source_id=f"register:{server.id}",\n            project_id=project_id,'
-        in route
-    )
-    assert (
-        'source_id=f"discover:{server_id}",\n            project_id=scoped_project_id,'
-        in route
-    )
+    assert route.count('project_id: str | None = Query(None, description="Active project")') >= 5
+    assert "await _get_project_client_or_404(\n        db, request, server_id, project_id" in route
+    assert "removed = await unregister_server(db, server_id, project_id=scoped_project_id)" in route
+    assert 'source_id=f"register:{server.id}",\n            project_id=project_id,' in route
+    assert 'source_id=f"discover:{server_id}",\n            project_id=scoped_project_id,' in route
     assert (
         'source_id=f"call:{server_id}:{data.tool_name}",\n            project_id=scoped_project_id,'
         in route
@@ -552,27 +453,18 @@ def test_integrations_mcp_detail_actions_require_active_project_scope() -> None:
     assert ".where(ResearchDeployment.project_id == pid)" in server
     assert "async def search_memory(project_id: str, query: str" in server
     assert 'retrieve_context(\n                    args["project_id"]' in server
-    assert (
-        'return {"error": "Project is paused", "project_id": args["project_id"]}'
-        in server
-    )
+    assert 'return {"error": "Project is paused", "project_id": args["project_id"]}' in server
 
 
 def test_integrations_messaging_detail_panels_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     messaging = read_repo("frontend/src/components/integrations/MessagingTab.tsx")
-    messages_panel = read_repo(
-        "frontend/src/components/integrations/ChannelMessagesPanel.tsx"
-    )
+    messages_panel = read_repo("frontend/src/components/integrations/ChannelMessagesPanel.tsx")
     conversations_panel = read_repo(
         "frontend/src/components/integrations/ChannelConversationsPanel.tsx"
     )
-    instance_card = read_repo(
-        "frontend/src/components/integrations/ChannelInstanceCard.tsx"
-    )
-    setup_wizard = read_repo(
-        "frontend/src/components/integrations/ChannelSetupWizard.tsx"
-    )
+    instance_card = read_repo("frontend/src/components/integrations/ChannelInstanceCard.tsx")
+    setup_wizard = read_repo("frontend/src/components/integrations/ChannelSetupWizard.tsx")
     route = read_repo("backend/app/api/routes/channels.py")
     service = read_repo("backend/app/services/channel_service.py")
 
@@ -608,40 +500,26 @@ def test_integrations_messaging_detail_panels_require_active_project_scope() -> 
         in route
     )
     assert (
-        "await require_project_access(db, request, scoped_project_id, min_role=min_role)"
-        in route
+        "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
     )
     assert "instance is None or instance.project_id != scoped_project_id" in route
-    assert (
-        'project_id: str | None = Query(None, description="Active project")' in route
-    )
+    assert 'project_id: str | None = Query(None, description="Active project")' in route
     assert "project_id=scoped_project_id" in route
 
-    assert (
-        "async def list_channel_instances(" in service and "project_id: str," in service
-    )
-    assert (
-        "async def start_channel_instance(" in service and "project_id: str," in service
-    )
+    assert "async def list_channel_instances(" in service and "project_id: str," in service
+    assert "async def start_channel_instance(" in service and "project_id: str," in service
     assert "Project.is_paused.is_(False)" in service
     assert 'raise RuntimeError("Project is paused or not found")' in service
     assert "project_id does not match channel instance" in service
-    assert (
-        "async def stop_channel_instance(" in service and "project_id: str," in service
-    )
-    assert (
-        "async def health_check_instance(" in service and "project_id: str," in service
-    )
+    assert "async def stop_channel_instance(" in service and "project_id: str," in service
+    assert "async def health_check_instance(" in service and "project_id: str," in service
     assert "async def get_message_history(" in service and "project_id: str," in service
     assert "async def get_conversations(" in service and "project_id: str," in service
     assert "async def send_message(" in service and "project_id: str," in service
     assert "ChannelInstance.project_id == scoped_project_id" in service
     assert "ChannelMessage.project_id == scoped_project_id" in service
     assert "ChannelConversation.project_id == scoped_project_id" in service
-    assert (
-        'resolved_project_id = (project_id or instance.project_id or "").strip()'
-        in service
-    )
+    assert 'resolved_project_id = (project_id or instance.project_id or "").strip()' in service
     assert "if not resolved_project_id:" in service
     assert "project_id=resolved_project_id" in service
 
@@ -651,14 +529,10 @@ def test_integrations_store_and_api_accept_project_filters() -> None:
     api = read_repo("frontend/src/lib/api.ts")
 
     assert (
-        "fetchChannels: (platform?: string, projectId?: string | null) => Promise<void>;"
-        in store
+        "fetchChannels: (platform?: string, projectId?: string | null) => Promise<void>;" in store
     )
     assert "fetchDeployments: (projectId?: string | null) => Promise<void>;" in store
-    assert (
-        "fetchSurveyIntegrations: (projectId?: string | null) => Promise<void>;"
-        in store
-    )
+    assert "fetchSurveyIntegrations: (projectId?: string | null) => Promise<void>;" in store
     assert "fetchMCPClients: (projectId?: string | null) => Promise<void>;" in store
     assert "if (!projectId)" in store
     assert "const list = await channels.list(platform, projectId);" in store
@@ -676,10 +550,7 @@ def test_integrations_store_and_api_accept_project_filters() -> None:
         in api
     )
     assert "list: async (projectId: string): Promise<MCPServerConfig[]>" in api
-    assert (
-        "get<any>(`/api/mcp/clients?project_id=${encodeURIComponent(projectId)}`)"
-        in api
-    )
+    assert "get<any>(`/api/mcp/clients?project_id=${encodeURIComponent(projectId)}`)" in api
 
 
 def test_backend_project_owned_integration_lists_require_scope_for_non_admins() -> None:
@@ -769,9 +640,7 @@ def test_task_kanban_requires_active_project_scope() -> None:
     assert "new URLSearchParams({ project_id: projectId })" in api
     assert "const taskScopeParams = (projectId: string" in api
     assert "get: (id: string, projectId: string)" in api
-    assert (
-        "update: (id: string, data: Record<string, unknown>, projectId: string)" in api
-    )
+    assert "update: (id: string, data: Record<string, unknown>, projectId: string)" in api
     assert "move: (id: string, status: string, projectId: string" in api
     assert "delete: (id: string, projectId: string)" in api
     assert "approve: (taskId: string, projectId: string" in api
@@ -799,10 +668,7 @@ def test_task_kanban_requires_active_project_scope() -> None:
     assert "tasksApi.update(taskId, data, projectId)" in store
     assert "if (activeProjectId) fetchTasks(activeProjectId);" in kanban
     assert "projectId={activeProjectId}" in kanban
-    assert (
-        'moveTask(task.id, status === "done" ? "in_review" : status, activeProjectId)'
-        in kanban
-    )
+    assert 'moveTask(task.id, status === "done" ? "in_review" : status, activeProjectId)' in kanban
     assert "moveTask(taskId, newStatus, activeProjectId)" in kanban
     assert "deleteTask(deleteConfirm, activeProjectId)" in kanban
     assert "activeProjectId !== task.project_id" in editor
@@ -826,9 +692,7 @@ def test_task_kanban_requires_active_project_scope() -> None:
     assert "def _require_project_id(project_id: str | None) -> str:" in route
     assert "async def _get_project_task_or_404" in route
     assert "async def _get_authorized_project_task_or_404" in route
-    assert (
-        'raise HTTPException(status_code=422, detail="project_id is required")' in route
-    )
+    assert 'raise HTTPException(status_code=422, detail="project_id is required")' in route
     assert (
         'await get_visible_project_or_404(db, request, scoped_project_id, min_role="viewer")'
         in route
@@ -837,12 +701,8 @@ def test_task_kanban_requires_active_project_scope() -> None:
         "await get_visible_project_or_404(db, request, scoped_project_id, min_role=min_role)"
         in route
     )
-    assert (
-        "select(Task).where(Task.id == task_id, Task.project_id == project_id)" in route
-    )
-    assert (
-        "return await _get_project_task_or_404(db, task_id, scoped_project_id)" in route
-    )
+    assert "select(Task).where(Task.id == task_id, Task.project_id == project_id)" in route
+    assert "return await _get_project_task_or_404(db, task_id, scoped_project_id)" in route
     assert "Task.project_id == scoped_project_id" in route
     assert "is_global_admin" not in route
 
@@ -864,9 +724,7 @@ def test_compute_pool_requires_active_project_scope() -> None:
     assert "modelWarnings: (projectId: string)" in api
     assert "/api/compute/stats?project_id=${encodeURIComponent(projectId)}" in api
     assert "/api/compute/nodes?project_id=${encodeURIComponent(projectId)}" in api
-    assert (
-        "/api/compute/model-warnings?project_id=${encodeURIComponent(projectId)}" in api
-    )
+    assert "/api/compute/model-warnings?project_id=${encodeURIComponent(projectId)}" in api
 
     assert "fetchStats: (projectId?: string | null) => Promise<void>;" in store
     assert "if (!projectId)" in store
@@ -878,15 +736,10 @@ def test_compute_pool_requires_active_project_scope() -> None:
     assert "computeApi.modelWarnings(activeProjectId)" in view
     assert "node.health_state || node.state" in view
     assert "NOT_READY_NODE_STATES.has(readinessState)" in view
-    assert (
-        "node.is_healthy && (!readinessState || READY_NODE_STATES.has(readinessState))"
-        in view
-    )
+    assert "node.is_healthy && (!readinessState || READY_NODE_STATES.has(readinessState))" in view
 
     assert "def _require_project_id(project_id: str | None) -> str:" in route
-    assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    )
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert (
         'await get_visible_project_or_404(db, request, scoped_project_id, min_role="viewer")'
         in route
@@ -894,18 +747,14 @@ def test_compute_pool_requires_active_project_scope() -> None:
     assert "compute_registry.get_stats(project_id=scoped_project_id)" in route
     assert "compute_registry.get_warnings(project_id=scoped_project_id)" in route
     assert "current_user_context_for_payload" in route
-    assert (
-        "jwt_user_context = await current_user_context_for_payload(db, jwt_payload)"
-        in route
-    )
+    assert "jwt_user_context = await current_user_context_for_payload(db, jwt_payload)" in route
     assert 'authenticated_role = str(jwt_payload.get("role", ""))' not in route
     assert "user = await db.get(User, user_id)" in route
     assert "authorized_project_count" in route
     assert "is_global_admin" not in route
     assert "all nodes for global admins" not in route
     assert (
-        "project_id = self._authorized_project_for_content_dispatch(project_id)"
-        in chat_stream_body
+        "project_id = self._authorized_project_for_content_dispatch(project_id)" in chat_stream_body
     )
 
     assert 'computeStats: () => get<any>("/api/admin/compute/stats")' in api
@@ -922,10 +771,7 @@ def test_llm_server_inventory_and_health_checks_require_global_admin_access() ->
     assert '@router.get("/settings/pi-endpoints")' in settings_route
     assert "async def list_pi_endpoints(request: Request):" in settings_route
     assert '@router.post("/settings/pi-endpoints")' in settings_route
-    assert (
-        "async def add_pi_endpoint(data: PiEndpointRequest, request: Request):"
-        in settings_route
-    )
+    assert "async def add_pi_endpoint(data: PiEndpointRequest, request: Request):" in settings_route
     assert '@router.put("/settings/pi-endpoints/{endpoint_id}")' in settings_route
     assert '@router.delete("/settings/pi-endpoints/{endpoint_id}")' in settings_route
     assert settings_route.count('require_global_role(request, "admin")') >= 12
@@ -967,9 +813,7 @@ def test_llm_server_inventory_and_health_checks_require_global_admin_access() ->
 def test_autoresearch_project_surfaces_require_active_project_scope() -> None:
     api = read_repo("frontend/src/lib/api.ts")
     store = read_repo("frontend/src/stores/autoresearchStore.ts")
-    dashboard = read_repo(
-        "frontend/src/components/autoresearch/ExperimentDashboard.tsx"
-    )
+    dashboard = read_repo("frontend/src/components/autoresearch/ExperimentDashboard.tsx")
     history = read_repo("frontend/src/components/autoresearch/ExperimentHistory.tsx")
     leaderboard = read_repo("frontend/src/components/autoresearch/LeaderboardTab.tsx")
     route = read_repo("backend/app/api/routes/autoresearch.py")
@@ -1068,25 +912,12 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
     assert "const data = await agentsApi.a2aLog(projectId, 100);" in store
     assert "a2aLog: (projectId: string, limit = 100)" in api
     assert 'params.set("project_id", projectId);' in api
-    assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    )
-    assert (
-        'await require_project_access(db, request, project_id, min_role="viewer")'
-        in route
-    )
-    assert (
-        'await require_project_access(db, request, project_id, min_role="viewer")'
-        in route
-    )
-    assert (
-        "messages = await a2a.get_full_log(db, limit, project_id=project_id)" in route
-    )
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+    assert 'await require_project_access(db, request, project_id, min_role="viewer")' in route
+    assert 'await require_project_access(db, request, project_id, min_role="viewer")' in route
+    assert "messages = await a2a.get_full_log(db, limit, project_id=project_id)" in route
     assert '"project_id is required for A2A agent/discover."' in a2a_route
-    assert (
-        "agents = filter_agent_dicts_for_project(agents, project_id, request)"
-        in a2a_route
-    )
+    assert "agents = filter_agent_dicts_for_project(agents, project_id, request)" in a2a_route
     assert 'min_role="viewer"' in a2a_route
     assert "async def get_project_inbox(" in a2a_service
     assert (
@@ -1094,29 +925,17 @@ def test_agents_a2a_project_view_passes_active_project_id() -> None:
         in read_repo("backend/app/models/agent.py")
     )
     assert "project_id=scoped_project_id" in a2a_service
-    assert (
-        "metadata_project_ids and metadata_project_ids != {scoped_project_id}"
-        in a2a_service
-    )
+    assert "metadata_project_ids and metadata_project_ids != {scoped_project_id}" in a2a_service
     assert "async def mark_read(" in a2a_service and "project_id: str," in a2a_service
     assert '_require_project_id(project_id, "A2A message mutations")' in a2a_service
-    assert (
-        "resolved_project_ids = await _resolve_message_project_ids(db, messages)"
-        in a2a_service
-    )
+    assert "resolved_project_ids = await _resolve_message_project_ids(db, messages)" in a2a_service
     assert 'claims["row"] = row_project_id' in a2a_service
     assert "async def get_conversation_thread(" in a2a_service
     assert "project_id: str," in a2a_service
     assert "project_id=task.project_id" in lifecycle
-    assert (
-        "await get_project_inbox(db, self._agent_id, unread_only=True, limit=3)"
-        in lifecycle
-    )
+    assert "await get_project_inbox(db, self._agent_id, unread_only=True, limit=3)" in lifecycle
     assert "await mark_read(db, msg_id, project_id=msg_project_id)" in lifecycle
-    assert (
-        "await get_project_inbox(db, self._agent_id, unread_only=True, limit=3)"
-        in sub_worker
-    )
+    assert "await get_project_inbox(db, self._agent_id, unread_only=True, limit=3)" in sub_worker
     assert "project_id=project_id" in sub_worker
 
 
@@ -1131,10 +950,7 @@ def test_agent_creation_proposals_require_active_project_scope() -> None:
 
     assert "creationProposals: {" in api
     assert "all: (projectId: string, limit = 20)" in api
-    assert (
-        "/api/agents/creation-proposals/all?project_id=${encodeURIComponent(projectId)}"
-        in api
-    )
+    assert "/api/agents/creation-proposals/all?project_id=${encodeURIComponent(projectId)}" in api
     assert "approve: (id: string, projectId: string)" in api
     assert "reject: (id: string, projectId: string" in api
 
@@ -1146,20 +962,13 @@ def test_agent_creation_proposals_require_active_project_scope() -> None:
     assert "create: (data: {" in api
     assert "}, projectId: string)" in api
     assert "project_id: projectId" in api
-    assert "createAgent: async (data, projectId)" in read_repo(
-        "frontend/src/stores/agentStore.ts"
-    )
-    assert "useProjectStore" in read_repo(
-        "frontend/src/components/agents/CreateAgentWizard.tsx"
-    )
+    assert "createAgent: async (data, projectId)" in read_repo("frontend/src/stores/agentStore.ts")
+    assert "useProjectStore" in read_repo("frontend/src/components/agents/CreateAgentWizard.tsx")
 
     assert "async def _require_agent_proposal_project_scope" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    )
-    assert (
-        "await require_project_access(db, request, scoped_project_id, min_role=min_role)"
-        in route
+        "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
     )
     assert (
         'await require_project_access(db, request, scoped_project_id, min_role="project_admin")'
@@ -1168,12 +977,8 @@ def test_agent_creation_proposals_require_active_project_scope() -> None:
     assert 'scope="project"' in route
     assert "factory.get_pending_proposals(project_id=scoped_project_id)" in route
     assert "factory.get_all_proposals(limit, project_id=scoped_project_id)" in route
-    assert (
-        "factory.approve_proposal(proposal_id, project_id=scoped_project_id)" in route
-    )
-    assert (
-        "factory.reject_proposal(" in route and "project_id=scoped_project_id" in route
-    )
+    assert "factory.approve_proposal(proposal_id, project_id=scoped_project_id)" in route
+    assert "factory.reject_proposal(" in route and "project_id=scoped_project_id" in route
     assert "project_id=scoped_project_id" in route
 
     assert "project_id: str" in factory
@@ -1195,9 +1000,7 @@ def test_meta_hyperagent_surfaces_require_active_project_scope() -> None:
     usage = read_repo("backend/app/skills/skill_usage.py")
 
     assert "status: (projectId: string)" in api
-    assert (
-        "/api/meta-hyperagent/status?project_id=${encodeURIComponent(projectId)}" in api
-    )
+    assert "/api/meta-hyperagent/status?project_id=${encodeURIComponent(projectId)}" in api
     assert "proposals: (projectId: string)" in api
     assert "toggle: (enabled: boolean, projectId: string)" in api
 
@@ -1210,9 +1013,7 @@ def test_meta_hyperagent_surfaces_require_active_project_scope() -> None:
 
     assert "async def _require_admin_project_scope" in route
     assert "async def _require_admin_active_project_scope" in route
-    assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    )
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert (
         'await get_visible_project_or_404(db, request, scoped_project_id, min_role="viewer")'
         in route
@@ -1221,17 +1022,13 @@ def test_meta_hyperagent_surfaces_require_active_project_scope() -> None:
         'await get_active_project_or_404(db, request, scoped_project_id, min_role="viewer")'
         in route
     )
-    assert (
-        "meta_hyperagent.get_pending_proposals(project_id=scoped_project_id)" in route
-    )
+    assert "meta_hyperagent.get_pending_proposals(project_id=scoped_project_id)" in route
     assert "meta_hyperagent.start(project_id=scoped_project_id)" in route
     assert "project_id=project_id" in route
 
     assert 'project_id: str = ""' in core
     assert "async def observe_cycle(self, project_id: str | None = None)" in core
-    assert (
-        "reasoning_bank.summary(\n                project_id=scoped_project_id" in core
-    )
+    assert "reasoning_bank.summary(\n                project_id=scoped_project_id" in core
     assert "skill_manager.get_usage_stats(project_id=scoped_project_id)" in core
     assert "project_learning_count" in core
     assert "learning_count >= 10" in core
@@ -1262,55 +1059,34 @@ def test_skills_surfaces_require_active_project_scope() -> None:
     assert "health: (projectId: string)" in api
     assert "/api/skills/health/all?project_id=${encodeURIComponent(projectId)}" in api
     assert "all: (projectId: string, limit = 50)" in api
-    assert (
-        "/api/skills/proposals/all?project_id=${encodeURIComponent(projectId)}" in api
-    )
+    assert "/api/skills/proposals/all?project_id=${encodeURIComponent(projectId)}" in api
     assert "approve: (id: string, projectId: string)" in api
     assert "all: (projectId: string, limit = 20)" in api
-    assert (
-        "/api/skills/creation-proposals/all?project_id=${encodeURIComponent(projectId)}"
-        in api
-    )
+    assert "/api/skills/creation-proposals/all?project_id=${encodeURIComponent(projectId)}" in api
 
-    assert (
-        "const { activeProjectId, canWriteActiveProject } = useProjectStore();" in view
-    )
+    assert "const { activeProjectId, canWriteActiveProject } = useProjectStore();" in view
     assert "projectId ? skillsApi.health(projectId)" in view
     assert "skillsApi.proposals.all(activeProjectId)" in view
     assert "skillsApi.creationProposals.all(activeProjectId)" in view
     assert "skillsApi.proposals.approve(id, activeProjectId)" in view
     assert "skillsApi.creationProposals.approve(id, activeProjectId)" in view
-    assert (
-        "}, [activeProjectId, fetchCreationProposals, fetchProposals, fetchSkills]);"
-        in view
-    )
+    assert "}, [activeProjectId, fetchCreationProposals, fetchProposals, fetchSkills]);" in view
 
     assert "async def _require_skill_project_scope" in route
     assert "async def _require_active_skill_project_scope" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    )
-    assert (
-        "await require_project_access(db, request, scoped_project_id, min_role=min_role)"
-        in route
+        "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
     )
     assert "await get_active_project_or_404(" in route
     assert "skill_manager.get_pending_proposals(project_id=scoped_project_id)" in route
-    assert (
-        "skill_manager.get_all_proposals(limit, project_id=scoped_project_id)" in route
-    )
-    assert (
-        "skill_manager.get_pending_creation_proposals(project_id=scoped_project_id)"
-        in route
-    )
+    assert "skill_manager.get_all_proposals(limit, project_id=scoped_project_id)" in route
+    assert "skill_manager.get_pending_creation_proposals(project_id=scoped_project_id)" in route
     assert (
         "skill_manager.get_all_creation_proposals(" in route
         and "project_id=scoped_project_id" in route
     )
-    assert (
-        "skill_manager.approve_proposal(proposal_id, project_id=scoped_project_id)"
-        in route
-    )
+    assert "skill_manager.approve_proposal(proposal_id, project_id=scoped_project_id)" in route
     assert (
         "skill_manager.approve_creation_proposal(" in route
         and "project_id=scoped_project_id" in route
@@ -1321,13 +1097,8 @@ def test_skills_surfaces_require_active_project_scope() -> None:
     assert "project_id is required for skill creation proposals" in creation
     assert "proposal.project_id == scoped_project_id" in proposals
     assert "proposal.project_id == scoped_project_id" in creation
-    assert (
-        "def get_skill_health(self, name: str, project_id: str | None = None)" in usage
-    )
-    assert (
-        "skill_manager.get_skill_health(skill.name, project_id=task.project_id)"
-        in execution
-    )
+    assert "def get_skill_health(self, name: str, project_id: str | None = None)" in usage
+    assert "skill_manager.get_skill_health(skill.name, project_id=task.project_id)" in execution
     assert "project_id=task.project_id" in execution
     assert "async def register_skill_update_proposal(" in governance
     assert "project_id is required for {source_system} proposals" in governance
@@ -1348,8 +1119,7 @@ def test_background_autonomous_processes_are_project_safe_by_default() -> None:
     assert "autonomous_quality_agents_enabled: bool = (" in config
     assert "False  # Dev/Admin QA loops only when explicitly enabled" in config
     assert (
-        "autonomous_quality_agents_enabled = app_settings.autonomous_quality_agents_enabled"
-        in main
+        "autonomous_quality_agents_enabled = app_settings.autonomous_quality_agents_enabled" in main
     )
     assert "Autonomous quality audit/simulation agents disabled" in main
     assert "devops_agent.start_task_worker()" in main
@@ -1378,14 +1148,9 @@ def test_self_evolution_routes_and_engine_require_active_project_scope() -> None
     docs = read_repo("docs/features/content/agents/detail/architecture.md")
 
     assert "async def _require_self_evolution_project_scope" in route
-    assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    )
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert "await get_active_project_or_404(" in route
-    assert (
-        "await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)"
-        in route
-    )
+    assert "await require_agent_by_id(db, request, agent_id, project_id=scoped_project_id)" in route
     assert "self_evolution.scan_for_promotions(" in route
     assert "project_id=scoped_project_id" in route
     assert "self_evolution.scan_all_agents(project_id=scoped_project_id)" in route
@@ -1393,9 +1158,7 @@ def test_self_evolution_routes_and_engine_require_active_project_scope() -> None
     assert "def _normalize_project_id(project_id: str | None) -> str:" in engine
     assert "async def _is_project_active(self, project_id: str) -> bool:" in engine
     assert "Project is paused or not found" in engine
-    assert (
-        '"Skipping self-evolution scan for %s because project_id is required"' in engine
-    )
+    assert '"Skipping self-evolution scan for %s because project_id is required"' in engine
     assert "AgentLearning.project_id == scoped_project_id" in engine
     assert '"project_id": scoped_project_id' in engine
     assert '"Learning not found for project"' in engine
@@ -1428,9 +1191,7 @@ def test_chat_sessions_require_active_project_scope() -> None:
     route = read_repo("backend/app/api/routes/sessions.py")
 
     assert "get: (sessionId: string, projectId: string)" in sessions_api
-    assert (
-        "`/api/sessions/detail/${sessionId}?${projectQuery(projectId)}`" in sessions_api
-    )
+    assert "`/api/sessions/detail/${sessionId}?${projectQuery(projectId)}`" in sessions_api
     assert (
         "update: (sessionId: string, projectId: string, data: Record<string, unknown>)"
         in sessions_api
@@ -1438,16 +1199,11 @@ def test_chat_sessions_require_active_project_scope() -> None:
     assert "delete: (sessionId: string, projectId: string)" in sessions_api
     assert "star: (sessionId: string, projectId: string)" in sessions_api
 
-    assert (
-        'const ACTIVE_SESSION_KEY_PREFIX = "istara-active-session:";' in session_store
-    )
+    assert 'const ACTIVE_SESSION_KEY_PREFIX = "istara-active-session:";' in session_store
     assert "function activeSessionKey(projectId: string): string" in session_store
     assert "activeSessionId: null" in session_store
     assert "const isProjectSwitch = get().projectId !== projectId;" in session_store
-    assert (
-        "{ projectId, sessions: [], activeSessionId: null, loading: true }"
-        in session_store
-    )
+    assert "{ projectId, sessions: [], activeSessionId: null, loading: true }" in session_store
     assert "const hasCurrent = !isProjectSwitch && current" in session_store
     assert "const savedId = getSavedSessionId(projectId);" in session_store
     assert "sessionsApi.update(id, projectId, data)" in session_store
@@ -1455,33 +1211,22 @@ def test_chat_sessions_require_active_project_scope() -> None:
     assert "sessionsApi.star(id, projectId)" in session_store
 
     assert "sessionsApi.get(sessionId, projectId)" in chat_store
-    assert (
-        'set({ messages: [], streamingContent: "", error: null, usage: null });'
-        in chat_store
-    )
+    assert 'set({ messages: [], streamingContent: "", error: null, usage: null });' in chat_store
     assert "set({ messages: [], error: e.message });" in chat_store
 
     assert "updateSession(activeProjectId, activeSessionId, data)" in chat_view
-    assert (
-        "const scopedSessions = sessions.filter((s) => s.project_id === projectId);"
-        in sidebar
-    )
+    assert "const scopedSessions = sessions.filter((s) => s.project_id === projectId);" in sidebar
     assert "selectSession(projectId, session.id)" in sidebar
     assert "deleteSession(projectId, session.id)" in sidebar
     assert "toggleStar(projectId, session.id)" in sidebar
 
     assert "const scopedSessions = activeProjectId" in context_dag
-    assert (
-        "sessions.filter((session) => session.project_id === activeProjectId)"
-        in context_dag
-    )
+    assert "sessions.filter((session) => session.project_id === activeProjectId)" in context_dag
     assert "const scopedActiveSessionId = scopedSessions.some" in context_dag
     assert "selectSession(activeProjectId, e.target.value)" in context_dag
 
     assert "def require_project_id(project_id: str | None) -> str:" in route
-    assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    )
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert "async def require_active_project_session" in route
     assert "ChatSession.project_id == scoped_project_id" in route
     assert "Message.project_id == scoped_project_id" in route
@@ -1494,9 +1239,7 @@ def test_context_hierarchy_project_composition_is_project_local() -> None:
     docs = read_repo("docs/features/content/context/editor/architecture.md")
 
     assert "scoped_project_id = self._normalize_project_id(project_id)" in core
-    assert (
-        "query = query.where(ContextDocument.project_id == scoped_project_id)" in core
-    )
+    assert "query = query.where(ContextDocument.project_id == scoped_project_id)" in core
     assert "(ContextDocument.project_id == project_id) |" not in core
     assert '(ContextDocument.project_id == "") |' not in core
     assert "ContextDocument.level <= 2" not in core
@@ -1526,17 +1269,12 @@ def test_agent_detail_status_and_log_routes_require_active_project_scope() -> No
     scope = read_repo("backend/app/api/agent_project_scope.py")
 
     assert "async def require_agent_project_access" in scope
-    assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")' in scope
-    )
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in scope
     assert "await require_agent_project_access(" in scope
     assert "def redact_global_agent_state_for_project_view" in scope
     assert 'redacted["memory"] = {}' in scope
     assert 'redacted["current_task"] = ""' in scope
-    assert (
-        "await require_agent_by_id(db, request, agent_id, project_id=project_id)"
-        in route
-    )
+    assert "await require_agent_by_id(db, request, agent_id, project_id=project_id)" in route
     assert "scoped_project_id = agent_project_id(agent)" in route
     assert "project_id=scoped_project_id" in route
     assert '"requested_scope": "universal"' in route
@@ -1621,44 +1359,32 @@ def test_loops_views_and_api_require_active_project_scope() -> None:
     assert "schedules: (projectId: string)" in api
     assert "/api/schedules?project_id=" in api
     assert "getSchedule: (scheduleId: string, projectId: string)" in api
-    assert (
-        "/api/schedules/${scheduleId}?project_id=${encodeURIComponent(projectId)}"
-        in api
-    )
+    assert "/api/schedules/${scheduleId}?project_id=${encodeURIComponent(projectId)}" in api
     assert "updateSchedule: (scheduleId: string, data:" in api
     assert "deleteSchedule: (scheduleId: string, projectId: string)" in api
     assert "executionStats: (projectId: string" in api
     assert "health: (projectId: string)" in api
 
     assert "async def _require_loop_project_scope" in route
+    assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
     assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")' in route
-    )
-    assert (
-        "await require_project_access(db, request, scoped_project_id, min_role=min_role)"
-        in route
+        "await require_project_access(db, request, scoped_project_id, min_role=min_role)" in route
     )
     assert "ScheduledTask.project_id == project_id" in route
     assert "source_ids=source_ids" in route
     assert '"project_id": s.project_id' in route
     assert "def _require_project_id(project_id: str | None) -> str:" in scheduler_route
     assert (
-        'raise HTTPException(status_code=400, detail="project_id is required")'
-        in scheduler_route
+        'raise HTTPException(status_code=400, detail="project_id is required")' in scheduler_route
     )
     assert "async def _get_project_schedule_or_404" in scheduler_route
     assert "ScheduledTask.project_id == scoped_project_id" in scheduler_route
-    assert (
-        'project_id: str | None = Query(None, description="Active project")'
-        in scheduler_route
-    )
+    assert 'project_id: str | None = Query(None, description="Active project")' in scheduler_route
     assert "source_ids: list[str] | None = None" in service
     assert "project_id: str | None = None" in service
     assert "LoopExecution.project_id == scoped_project_id" in service
     assert "def _execution_matches_project" in service
-    assert (
-        "LoopExecution.source_id.in_(source_ids) if source_ids else false()" in service
-    )
+    assert "LoopExecution.source_id.in_(source_ids) if source_ids else false()" in service
     assert "project_id=task.project_id" in scheduler
 
 
@@ -1694,13 +1420,8 @@ def test_governed_evolution_requires_active_project_scope() -> None:
 
     for route in (governance_route, archive_route, reasoning_route):
         assert "async def _require_admin_project_scope" in route
-        assert (
-            'raise HTTPException(status_code=400, detail="project_id is required")'
-            in route
-        )
-        assert (
-            "await get_visible_project_or_404(db, request, scoped_project_id" in route
-        )
+        assert 'raise HTTPException(status_code=400, detail="project_id is required")' in route
+        assert "await get_visible_project_or_404(db, request, scoped_project_id" in route
 
     assert "include_global=False" in reasoning_route
     assert "include_global: bool = False" in reasoning_core
@@ -1727,10 +1448,7 @@ def test_websocket_project_events_are_active_project_filtered() -> None:
     )
     assert '"deployment_id"' in websocket and '"deploymentId"' in websocket
     assert "PROJECT_BOUND_EVENT_TYPES" in websocket
-    assert (
-        "Dropping project-bound websocket event without resolvable project_id"
-        in websocket
-    )
+    assert "Dropping project-bound websocket event without resolvable project_id" in websocket
     assert 'record.get("active_project_id") != project_id' in websocket
     assert "await self._connection_can_receive(db, record, project_id)" in websocket
     assert "function shouldDeliverEvent" in hook
@@ -1740,15 +1458,9 @@ def test_websocket_project_events_are_active_project_filtered() -> None:
 def test_notifications_are_active_project_scoped() -> None:
     sidebar = read_repo("frontend/src/components/layout/Sidebar.tsx")
     view = read_repo("frontend/src/components/notifications/NotificationsView.tsx")
-    list_tab = read_repo(
-        "frontend/src/components/notifications/NotificationListTab.tsx"
-    )
-    category_filter = read_repo(
-        "frontend/src/components/notifications/CategoryFilter.tsx"
-    )
-    prefs_tab = read_repo(
-        "frontend/src/components/notifications/NotificationPrefsTab.tsx"
-    )
+    list_tab = read_repo("frontend/src/components/notifications/NotificationListTab.tsx")
+    category_filter = read_repo("frontend/src/components/notifications/CategoryFilter.tsx")
+    prefs_tab = read_repo("frontend/src/components/notifications/NotificationPrefsTab.tsx")
     store = read_repo("frontend/src/stores/notificationStore.ts")
     api = read_repo("frontend/src/lib/notificationApi.ts")
     types = read_repo("frontend/src/lib/types.ts")

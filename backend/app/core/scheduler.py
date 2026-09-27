@@ -212,8 +212,14 @@ class Scheduler:
         logger.info("Scheduler stopped.")
 
     async def _tick(self) -> None:
-        """Find and execute all due tasks."""
+        """Find and execute all due tasks, then send due study reminders."""
         now = datetime.now(UTC)
+        try:
+            from app.services.deployment_reminders import send_due_reminders
+
+            await send_due_reminders(now=now)
+        except Exception:
+            logger.exception("Study reminder sweep failed")
 
         async with async_session() as db:
             await self._reset_stale_running_tasks(db, now)
