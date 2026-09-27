@@ -530,13 +530,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # an engine switch must never silently change the embedding space, or
     # every stored vector is invalidated.
     try:
-        from app.core.pi_runtime.embeddings_gateway import assert_vector_space_invariant
+        from app.core.pi_runtime.embeddings_gateway import startup_vector_space_status
         from app.core.vector_health import check_embedding_dimensions
 
-        shared_embed_model = await assert_vector_space_invariant(
-            dimension_probe=check_embedding_dimensions
-        )
-        _log.info(f"Vector-space invariant OK (embed model: {shared_embed_model})")
+        vector_space = await startup_vector_space_status(dimension_probe=check_embedding_dimensions)
+        app.state.vector_space = vector_space
+        if vector_space["status"] == "ok":
+            _log.info(f"Vector-space invariant OK (embed model: {vector_space['model']})")
+        else:
+            _log.warning(
+                "Embedding model %s is not reachable yet; starting without it. Embedding and "
+                "retrieval fail until it is reachable (%s)",
+                vector_space["model"],
+                vector_space["reason"],
+            )
     except Exception as e:
         _log.critical(
             "Vector-space invariant check failed; refusing startup to prevent unsafe "
