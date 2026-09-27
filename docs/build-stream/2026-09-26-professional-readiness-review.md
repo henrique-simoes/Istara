@@ -186,6 +186,27 @@ model judgement); an ungrounded nugget stays a candidate.
 Why: tightening is allowed by DEC-2; exact-substring grounding keeps the contract's rule that
 evidence units come from raw source spans.
 
+DEC-6 | 2026-09-27 | S2-execute | claude-code
+Context: D-1/D-2 needed a rule for which participant messages are research data.
+Decision: every message the engine sends records `pending_prompt` (kind, exact text, question
+index); a reply is stored only when it answers a pending question, follow-up probe or closing
+question, attributed to that exact text. A captured answer's evidence unit holds the answer only;
+the question is kept as `prompt_text` and passed to coders as `asked` context.
+Why: attribution by position (the old `current_question_index - 1`) mis-files any reply that is
+not an answer (greeting, consent, screener, STOP); storing the researcher's question as a codable
+unit would let coders code the researcher's words as participant data.
+
+DEC-7 | 2026-09-27 | S2-execute | claude-code
+Context: D-13 found in the walk: when a study is paused or closed, a participant's next message
+fell through to the project's Pi agent path (off by default via `pi_replacement_enabled`, but with
+no sender allowlist when on).
+Decision: a sender with any conversation in a non-active study on that channel is never routed to
+the agent: unfinished participants get the paused/closed notice, finished ones get silence. The
+missing sender allowlist for opt-in channel agent replies is recorded as residual risk R-1, not
+fixed in this plan (it is off on every shipped configuration).
+Why: participants must never reach an agent that can read project research data; the allowlist is
+a separate security feature with its own design.
+
 ## Ledger
 
 ### L-1 | 2026-09-26T21:10:00Z | S0-frame | claude-code | framer | —
@@ -197,3 +218,54 @@ DEC-3). Every desktop build in run 36263309378 failed while the workflow reporte
 Verified: `gh run view 36263309378 --log` (three `Error failed to bundle project` lines);
 `gh release view v2026.09.26.6` (assets: DMG, latest.json only); code reads cited in the D table.
 Next: CF spec, then Phase 1 failing tests.
+
+### L-2 | 2026-09-27T00:40:00Z | S2-execute | claude-code | executor | Phase 1
+Did: CF-SPEC-5 created, clarified, planned, tasked (CF-45..58); gate before on CF-45. Failing tests
+first (`tests/test_deployment_participant_flow.py`, `tests/test_deployment_research_ops.py`: 16
+red, 4 green on `main`, the greeting stored as the Q1 answer and an empty probe confirmed). Fixed
+D-1 to D-6 and the walk's findings: engine rewritten around `pending_prompt` (consent, screener,
+closing, STOP, quota, failed-probe fallback, both adaptive key spellings); inbound attribution,
+quota and held-study routing; reminder sweep in the scheduler tick; consent on by default for new
+deployments (DEC-4); pseudonymous CSV exports for deployments and survey links; survey re-sync
+idempotent; answer-only evidence units (DEC-6). UI: wizard step "Consent & Screening", wrap-up and
+reminder settings, visible errors; dashboard live refresh, state feedback, Resume, Export CSV,
+plain-word outcomes, real overview counts, role gating (viewers cannot create or export); Surveys
+tab no longer pre-fills sample answers or invents "No response provided", reports sync results,
+exports CSV. Persona protocols, Tech.md and three researcher feature docs rewritten to match.
+Result: see Phase 1 results.
+Verified: Studio `pr-pytest.sh` 107 then 80 and 47 passed on the Phase 1 suites; `tsc --noEmit`
+clean; eslint 0 errors (touched files clean); frontend unit 124/124; simulation static 41/41;
+scenario 89 27/27 (run 2026-09-27T00-14-34-198Z) and 3/9 on a `main` lane (run
+2026-09-27T00-17-30-405Z); `python -m app.evals.study_capture_eval` before/after (below);
+`check_change_obligations.py` and `check_feature_obligations.py` pass; feature docs check passes.
+Next: full backend suite on the Studio, then the Phase 1 PR into `main` and the sync PR.
+
+## Phase 1 — surveys, channels, deployments
+
+Results (2026-09-27). S1-S5 from `python -m app.evals.study_capture_eval` on the Studio (30
+synthetic participants, 10 per channel, seed 7; 30 survey responses synced three times), exact
+counts; before = `origin/main` 06545a8a, after = this branch. Reports in
+`~/cf-remote/eval/measure/readiness-0926/s1-s5-*.json` (Studio).
+
+| Criterion | Before | After | Pass bar | Verdict |
+|---|---|---|---|---|
+| S1 attribution (stored answers filed under the prompt shown) | 0 / 116 (15 real answers misfiled, 101 non-answers stored) | **55 / 55** | 1.00 | pass |
+| S2 completeness (answers given stored exactly once, closing included) | 0 / 55 | **55 / 55** | 1.00 | pass |
+| S3 non-research data stored (before consent, declined, screened out, after STOP) | 101 | **0** | 0 | pass |
+| S4 quota (participants past the target with answers stored) | 9 of 9 | **0 of 9** | 0 | pass |
+| S5 survey re-sync (duplicate evidence units after 3 syncs of 30 responses) | 360 (response count 90) | **0** (response count 30) | 0 | pass |
+| S6 spine entry (answers coded, reconciled, reported through a Done task) | no path | not yet: needs D-7/D-12 (Phase 2) | proven live | open |
+| S7 consent, screener, quota, reminders, raw export in the browser | 0 / 5 | **5 / 5** (scenario 89; reminders by test, set in the wizard) | 5/5 | pass |
+| S8 adaptive setting honoured | no (key mismatch) | **yes** (tests) | yes | pass |
+
+Found on the way and fixed, each with a test or scenario step: the dashboard's "Active Now" never
+listed anyone (it filtered on a state deployment conversations never have); the question badge was
+off by one; Activate/Pause/Complete gave no feedback and swallowed errors; the overview cards
+summed the wrong numbers and one was a hard-coded "--"; the live feed and progress never refreshed;
+the action row was cut off at 375 px; viewers were offered "New Deployment"; the Questionnaire
+Studio came pre-filled with caregiver answers, stored empty answers as "No response provided" and
+always reported 0 nuggets; a paused study handed participants to the project agent path; a
+participant's "Q:" line became a codable evidence unit.
+
+Residual: R-1 opt-in channel agent replies (`pi_replacement_enabled`) have no sender allowlist
+(off on every shipped configuration). Diary-study pacing between prompts is not scheduled.

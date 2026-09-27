@@ -6,6 +6,17 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-27 — Professional-readiness review, Phase 1: surveys, channels, deployments (branch plan/professional-readiness-20260926)
+
+Lifecycle `docs/build-stream/2026-09-26-professional-readiness-review.md`. Studio, `istara-test:1` with `--network none`; QA `ui` lane `pr-readiness-0926`.
+
+| Layer | Result |
+|---|---|
+| New backend tests | `test_deployment_participant_flow.py`, `test_deployment_research_ops.py`, `test_study_capture_eval.py`: 16 red / 4 green on `main` first, all green after (Phase 1 suites 80 + 47 passed) |
+| S1-S5 harness (`app.evals.study_capture_eval`, 30 participants, 30 survey responses) | attribution 0/116 → 55/55; completeness 0/55 → 55/55; non-research data stored 101 → 0; quota overshoot 9 → 0; duplicate survey units after 3 syncs 360 → 0 |
+| Browser lane | scenario 89 (new) 27/27, run `2026-09-27T00-14-34-198Z`; the same scenario on a `main` lane 3/9, run `2026-09-27T00-17-30-405Z` |
+| Frontend | `tsc --noEmit` clean; unit 124/124; eslint 0 errors |
+
 ## 2026-09-26 — Graph quality measured (branch plan/graph-quality-measurement-20260926)
 
 Lifecycle `docs/build-stream/2026-09-26-graph-quality-measurement.md`. Live lane (Studio), Harbor corpus, product skills; before = main, after = this branch.
