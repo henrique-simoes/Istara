@@ -400,6 +400,7 @@ class UserInterviewsSkill(BaseSkill):
         # D-14/D-15: read every transcript in full, with its own file name, in windows sized to
         # the model that serves the skill. Nothing is cut at a fixed character count.
         from app.skills.skill_windows import (
+            extraction_char_budget,
             plan_windows,
             read_sources,
             resolve_call_budget,
@@ -413,7 +414,9 @@ class UserInterviewsSkill(BaseSkill):
         if not sources and skill_input.user_context:
             sources = [("inline-context", skill_input.user_context)]
         budget = resolve_call_budget(skill_input.project_id)
-        window_chars = window_char_budget(budget, 1500)
+        window_chars = extraction_char_budget(budget, 1500)
+        # Synthesis reads the analyses, not the transcripts: it may use the whole context.
+        synthesis_chars = window_char_budget(budget, 1500)
         passages = [
             (name, window.text)
             for name, text in sources
@@ -482,7 +485,7 @@ class UserInterviewsSkill(BaseSkill):
         # Nothing to synthesise when no passage yielded a nugget (a failed analysis, SK4).
         if all_analyses and any(a.get("nuggets") for a in all_analyses):
             analyses_text = json.dumps(all_analyses, indent=2)
-            if len(analyses_text) > window_chars:
+            if len(analyses_text) > synthesis_chars:
                 compact = [
                     {
                         "source_file": a.get("source_file"),
@@ -491,7 +494,7 @@ class UserInterviewsSkill(BaseSkill):
                     }
                     for a in all_analyses
                 ]
-                analyses_text = json.dumps(compact, indent=1)[:window_chars]
+                analyses_text = json.dumps(compact, indent=1)[:synthesis_chars]
             synthesis_prompt = SYNTHESIS_PROMPT.format(
                 context=context,
                 analyses=analyses_text,

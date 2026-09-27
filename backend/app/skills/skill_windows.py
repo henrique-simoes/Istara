@@ -170,6 +170,19 @@ def plan_windows(sources: list[tuple[str, str]], max_chars: int) -> list[SkillWi
     return windows
 
 
+# Output tokens an extraction window needs per character it reads (D-29): nuggets quote the data,
+# so the answer grows with the window. Measured on DeepSeek V4 Flash, Harbor Ledger interviews: a
+# 6,000-character window took 5,626 output tokens; 12,000 characters overran the 8,192-token answer.
+EXTRACTION_CHARS_PER_OUTPUT_TOKEN = 0.8
+
+
+def extraction_char_budget(budget: SkillCallBudget, static_tokens: int) -> int:
+    """Characters one extraction window may hold: what fits the context AND whose nuggets fit the
+    model's output budget. More, smaller windows beat one window whose answer is cut off."""
+    by_output = int(budget.max_output_tokens * EXTRACTION_CHARS_PER_OUTPUT_TOKEN)
+    return max(1000, min(window_char_budget(budget, static_tokens), by_output))
+
+
 def window_char_budget(budget: SkillCallBudget, static_tokens: int) -> int:
     """Characters of research data one call can carry after the prompt, schema and output."""
     data_tokens = budget.context_tokens - budget.max_output_tokens - static_tokens - 256
@@ -223,7 +236,7 @@ async def analyse_in_windows(
     if not sources and skill_input.user_context:
         sources = [(empty_label, skill_input.user_context)]
     budget = resolve_call_budget(skill_input.project_id)
-    windows = plan_windows(sources, window_char_budget(budget, 1500))
+    windows = plan_windows(sources, extraction_char_budget(budget, 1500))
     datas, labelled = [], []
     failed = 0
     for window in windows:
@@ -270,7 +283,7 @@ def estimated_calls(files: list[str], project_id: str | None) -> int:
             total += os.path.getsize(path)
         except OSError:
             continue
-    per_window = window_char_budget(resolve_call_budget(project_id), 1500)
+    per_window = extraction_char_budget(resolve_call_budget(project_id), 1500)
     return max(1, -(-total // per_window)) + 1
 
 

@@ -283,3 +283,30 @@ async def test_custom_discover_skills_synthesise_facts_from_one_input(
     assert [f["text"] for f in output.facts] == ["Invoices are chased by hand."]
     assert output.insights and output.recommendations
     assert "marker-S-000" in agentic.prompts[-1]  # the synthesis sees the nuggets it rests on
+
+
+def test_extraction_windows_fit_the_output_budget(monkeypatch):
+    """D-29: a window's nuggets must fit the model's output. On DeepSeek a 6,000-character window
+    needed 5,626 output tokens; windows sized to a 32k context (about 65,000 characters) overran the
+    8,192-token output and every call failed (idle timeout, missing structured output)."""
+    from app.skills import skill_windows
+
+    budget = skill_windows.SkillCallBudget(context_tokens=32768, max_output_tokens=8192)
+    extraction = skill_windows.extraction_char_budget(budget, 1500)
+    assert extraction <= int(8192 * skill_windows.EXTRACTION_CHARS_PER_OUTPUT_TOKEN)
+    assert extraction < skill_windows.window_char_budget(budget, 1500)
+    small = skill_windows.SkillCallBudget(context_tokens=4096, max_output_tokens=1024)
+    assert skill_windows.extraction_char_budget(small, 1500) >= 1000
+
+
+def test_every_extraction_path_uses_the_output_bounded_budget():
+    import inspect
+
+    from app.skills import skill_factory, skill_windows
+    from app.skills.discover import user_interviews
+
+    assert "extraction_char_budget(" in inspect.getsource(skill_windows.analyse_in_windows)
+    assert "extraction_char_budget(" in inspect.getsource(skill_windows.estimated_calls)
+    assert "plan_windows(sources, extraction_char_budget(" in inspect.getsource(skill_factory)
+    interviews = inspect.getsource(user_interviews.UserInterviewsSkill.execute)
+    assert "extraction_char_budget(" in interviews
