@@ -650,10 +650,10 @@ def create_skill(
         async def execute(self, skill_input: SkillInput) -> SkillOutput:
             """Read all of the input: one call per window, then one synthesis pass (DEC-9)."""
             from app.skills.skill_windows import (
+                extraction_char_budget,
                 plan_windows,
                 read_sources,
                 resolve_call_budget,
-                window_char_budget,
             )
 
             sources = read_sources(skill_input.files) if skill_input.files else []
@@ -669,7 +669,7 @@ def create_skill(
                 + min(count_tokens(output_schema), int(settings.skill_execute_max_schema_tokens))
                 + 600
             )
-            windows = plan_windows(sources, window_char_budget(budget, static_tokens))
+            windows = plan_windows(sources, extraction_char_budget(budget, static_tokens))
             if len(windows) <= 1:
                 window = windows[0] if windows else None
                 output = await self._execute_once(
