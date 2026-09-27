@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, FileQuestion, RefreshCw, Trash2, Link2, ListChecks, Sparkles, Send, CheckCircle2, Loader2, ClipboardList } from "lucide-react";
+import { Plus, FileQuestion, RefreshCw, Trash2, Link2, ListChecks, Sparkles, Send, CheckCircle2, Loader2, ClipboardList, Download } from "lucide-react";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { permissionRequests, surveys as surveysApi } from "@/lib/api";
@@ -28,18 +28,15 @@ export default function SurveysTab() {
 
   // Studio state
   const [surveyTabMode, setSurveyTabMode] = useState<"platforms" | "studio">("platforms");
-  const [surveyTitle, setSurveyTitle] = useState("Caregiver Experience & Workload Survey");
-  const [questions, setQuestions] = useState<string[]>([
-    "How satisfied are you with the medication notification schedule? (1 = Very Frustrated, 5 = Highly Satisfied)",
-    "What was the most difficult step in sharing care updates with other family members?",
-    "Which aspect of the clinical oversight dashboard would you improve first?",
-  ]);
+  // The studio records a real participant's answers into the Research Spine, so it starts empty:
+  // pre-filled sample answers would be one click away from becoming fabricated evidence.
+  const [surveyTitle, setSurveyTitle] = useState("");
+  const [questions, setQuestions] = useState<string[]>([]);
   const [newQuestionText, setNewQuestionText] = useState("");
-  const [answers, setAnswers] = useState<Record<number, string>>({
-    0: "2 - Notifications arrived at unpredictable times during work shifts, causing alert fatigue.",
-    1: "Adding secondary caregivers required multiple manual authorization steps that timed out.",
-    2: "Clearer visibility of clinical review status and audit logs on care plan changes.",
-  });
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [studioError, setStudioError] = useState<string | null>(null);
+  const [linkNotice, setLinkNotice] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [submittingResponse, setSubmittingResponse] = useState(false);
   const [ingestSuccess, setIngestSuccess] = useState<{
     nuggets: number;
@@ -75,13 +72,39 @@ export default function SurveysTab() {
   const handleSync = async (linkId: string) => {
     if (!activeProjectId) return;
     setSyncing(linkId);
+    setLinkError(null);
+    setLinkNotice(null);
     try {
-      await surveysApi.links.sync(linkId, activeProjectId);
+      const result = await surveysApi.links.sync(linkId, activeProjectId);
+      if (result?.demo) {
+        setLinkNotice("Demo survey: there are no platform responses to pull.");
+      } else if (result?.status === "no_new_responses") {
+        setLinkNotice("No responses on the platform yet.");
+      } else {
+        const fresh = result?.nuggets_created ?? 0;
+        const already = result?.duplicate_answers_skipped ?? 0;
+        setLinkNotice(
+          `Stored ${fresh} new answer${fresh === 1 ? "" : "s"}` +
+            (already ? `; ${already} already stored were skipped.` : ".")
+        );
+      }
       await fetchLinks();
-    } catch {
-      // silent
+    } catch (err) {
+      setLinkError(err instanceof Error ? `Sync failed: ${err.message}` : "Sync failed.");
     } finally {
       setSyncing(null);
+    }
+  };
+
+  const handleExportLink = async (linkId: string) => {
+    if (!activeProjectId) return;
+    setLinkError(null);
+    setLinkNotice(null);
+    try {
+      const name = await surveysApi.links.exportCsv(linkId, activeProjectId);
+      setLinkNotice(`Downloaded ${name}.`);
+    } catch (err) {
+      setLinkError(err instanceof Error ? `Export failed: ${err.message}` : "Export failed.");
     }
   };
 
@@ -121,8 +144,14 @@ export default function SurveysTab() {
 
   const handleIngestDirectSurvey = async () => {
     if (!activeProjectId || submittingResponse) return;
+    const answered = questions.filter((_, idx) => (answers[idx] || "").trim());
+    if (!surveyTitle.trim() || answered.length === 0) {
+      setStudioError("Give the survey a name and enter at least one answer before recording.");
+      return;
+    }
     setSubmittingResponse(true);
     setIngestSuccess(null);
+    setStudioError(null);
     try {
       const resp = await post<any>("/api/surveys/responses/ingest", {
         project_id: activeProjectId,
@@ -132,18 +161,20 @@ export default function SurveysTab() {
             id: `resp-${Date.now()}`,
             answers: questions.map((q, idx) => ({
               question: q,
-              answer: answers[idx] || "No response provided",
+              // An unanswered question is skipped, never stored as an invented answer.
+              answer: (answers[idx] || "").trim(),
             })),
           },
         ],
       });
       setIngestSuccess({
-        nuggets: resp.created || 0,
+        nuggets: resp.nuggets_created || 0,
         evidence_units: resp.evidence_units_created || 0,
       });
+      setAnswers({});
       await fetchLinks();
     } catch (e) {
-      console.error("Failed to ingest survey response:", e);
+      setStudioError(e instanceof Error ? `Could not record the response: ${e.message}` : "Could not record the response.");
     } finally {
       setSubmittingResponse(false);
     }
@@ -235,9 +266,11 @@ export default function SurveysTab() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-500 block mb-1">Survey Title</label>
+                <label htmlFor="studio-survey-title" className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1">Survey Title</label>
                 <input
+                  id="studio-survey-title"
                   type="text"
+                  placeholder="e.g., Onboarding phone survey"
                   value={surveyTitle}
                   onChange={(e) => setSurveyTitle(e.target.value)}
                   className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-istara-500"
@@ -296,14 +329,21 @@ export default function SurveysTab() {
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-blue-600 dark:text-blue-400" />
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Simulate Participant Response</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Record a Participant&apos;s Answers</h3>
                 </div>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-medium">
-                  Live Spine Input
+                  Stored as raw evidence
                 </span>
               </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                For answers a real participant gave you another way (a phone call, a paper form). Each answer
+                becomes a raw evidence unit; empty answers are skipped. Never enter invented answers here.
+              </p>
 
               <div className="space-y-3">
+                {questions.length === 0 && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Add the survey&apos;s questions first.</p>
+                )}
                 {questions.map((q, idx) => (
                   <div key={idx} className="space-y-1">
                     <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
@@ -320,6 +360,9 @@ export default function SurveysTab() {
                 ))}
               </div>
 
+              {studioError && (
+                <p role="alert" className="text-xs text-red-600 dark:text-red-400">{studioError}</p>
+              )}
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
                 <button
                   onClick={handleIngestDirectSurvey}
@@ -327,7 +370,7 @@ export default function SurveysTab() {
                   className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-istara-600 hover:bg-istara-700 text-white transition-colors disabled:opacity-50 shadow-xs"
                 >
                   {submittingResponse ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                  Submit & Ingest into Research Spine
+                  Record response
                 </button>
               </div>
             </div>
@@ -406,6 +449,12 @@ export default function SurveysTab() {
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Linked Surveys</h3>
             </div>
           </div>
+          {linkError && (
+            <p role="alert" className="px-5 pt-3 text-xs text-red-600 dark:text-red-400">{linkError}</p>
+          )}
+          {linkNotice && !linkError && (
+            <p role="status" className="px-5 pt-3 text-xs text-slate-600 dark:text-slate-300">{linkNotice}</p>
+          )}
 
           {linksLoading ? (
             <div className="p-4 space-y-3">
@@ -438,6 +487,14 @@ export default function SurveysTab() {
                       {link.last_response_at ? new Date(link.last_response_at).toLocaleDateString() : "---"}
                     </td>
                     <td className="px-5 py-3 text-right">
+                      <button
+                        onClick={() => handleExportLink(link.id)}
+                        aria-label={`Export ${link.external_survey_name} responses as CSV`}
+                        title="Export stored answers (CSV)"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-istara-600 hover:bg-istara-50 dark:hover:bg-istara-900/20 transition-colors"
+                      >
+                        <Download size={14} />
+                      </button>
                       <button
                         onClick={() => handleSync(link.id)}
                         disabled={syncing === link.id}

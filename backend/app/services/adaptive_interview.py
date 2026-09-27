@@ -1,13 +1,21 @@
 """Adaptive Interview Engine — AURA-style conversational state machine for research deployments.
 
-Manages the flow of multi-turn research interviews with adaptive probing,
-rate limiting, and LLM-judged saturation detection.
+Manages the flow of multi-turn research interviews with informed consent, screening, adaptive
+probing, rate limiting, and LLM-judged saturation detection.
 
-Conversation states: intro -> questions -> probing -> wrap_up -> completed
+Conversation states:
+intro -> [consent] -> [screening] -> questions <-> probing -> [closing] -> completed,
+with the terminal states declined, screened_out, withdrawn and closed_quota.
+
+Every message the engine sends records ``pending_prompt`` in the conversation metadata: the exact
+text the participant was shown and what kind of prompt it was. The inbound processor stores a
+participant's message as research data only when it answers a pending question, probe or closing
+question, so a greeting, a consent reply or a screener answer never becomes an evidence unit.
 """
 
 import json
 import logging
+import re
 import time
 from enum import Enum
 
@@ -21,10 +29,154 @@ class ConversationState(str, Enum):  # noqa: UP042 -- StrEnum would change str(m
     """State machine states for a research conversation."""
 
     INTRO = "intro"
+    CONSENT = "consent"
+    SCREENING = "screening"
     QUESTIONS = "questions"
     PROBING = "probing"
     WRAP_UP = "wrap_up"
+    CLOSING = "closing"
     COMPLETED = "completed"
+    DECLINED = "declined"
+    SCREENED_OUT = "screened_out"
+    WITHDRAWN = "withdrawn"
+    CLOSED_QUOTA = "closed_quota"
+
+
+# Prompt kinds whose replies are research answers (stored as evidence units).
+ANSWER_PROMPT_KINDS = frozenset({"question", "probe", "closing"})
+# States in which a participant still owes the study a reply (reminders apply).
+AWAITING_REPLY_STATES = frozenset(
+    {
+        ConversationState.CONSENT.value,
+        ConversationState.SCREENING.value,
+        ConversationState.QUESTIONS.value,
+        ConversationState.PROBING.value,
+        ConversationState.CLOSING.value,
+    }
+)
+FINISHED_STATES = frozenset(
+    {
+        ConversationState.COMPLETED.value,
+        ConversationState.DECLINED.value,
+        ConversationState.SCREENED_OUT.value,
+        ConversationState.WITHDRAWN.value,
+        ConversationState.CLOSED_QUOTA.value,
+    }
+)
+
+DEFAULT_CONSENT_MESSAGE = (
+    "Before we start: this is a research study. The research team will store and analyse your "
+    "answers to improve the product, and may quote them in research reports without your name. "
+    "Taking part is voluntary, and you can stop at any time by replying STOP."
+)
+CONSENT_INSTRUCTION = "Reply YES to take part, or NO if you'd rather not."
+DEFAULT_DECLINED_MESSAGE = "No problem, thank you for letting us know. We won't ask you anything else."
+DEFAULT_SCREENED_OUT_MESSAGE = (
+    "Thank you! This study is looking for a different group of participants, so we won't need "
+    "anything else from you."
+)
+DEFAULT_WITHDRAWN_MESSAGE = (
+    "You've left the study. We won't send you anything else or store anything you send here."
+)
+DEFAULT_QUOTA_FULL_MESSAGE = (
+    "Thank you for your interest! This study already has all the participants it needs."
+)
+DEFAULT_PAUSED_MESSAGE = (
+    "This study is paused at the moment. The research team will pick it up again soon; "
+    "nothing you send now will be recorded."
+)
+DEFAULT_REMINDER_MESSAGE = "Just a gentle reminder, whenever you have a moment:"
+
+_YES = {
+    "yes", "y", "yeah", "yep", "yes please", "sure", "ok", "okay", "i agree", "agree", "agreed",
+    "i consent", "consent", "sim", "si", "sí", "oui", "ja", "👍",
+}
+_NO = {
+    "no", "n", "nope", "no thanks", "no thank you", "não", "nao", "non", "nein", "decline",
+    "i decline", "i do not agree", "i don't agree", "i dont agree", "stop",
+}
+MAX_CONSENT_ATTEMPTS = 2
+
+
+def _normalise_reply(text: str) -> str:
+    cleaned = re.sub(r"[\s\u00a0]+", " ", str(text or "")).strip().casefold()
+    return cleaned.strip(" .!?,;:\"'")
+
+
+def is_withdrawal(text: str) -> bool:
+    """A participant leaves the study by sending exactly STOP (any case, punctuation aside)."""
+    return _normalise_reply(text) in {"stop", "unsubscribe", "quit study", "withdraw"}
+
+
+def consent_reply(text: str) -> bool | None:
+    """True for a clear yes, False for a clear no, None when the reply is unclear."""
+    normalised = _normalise_reply(text)
+    if normalised in _YES:
+        return True
+    if normalised in _NO:
+        return False
+    return None
+
+
+def _as_int(value: object, default: int) -> int:
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_float(value: object, default: float) -> float:
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
+def normalise_screener(value: object) -> list[dict]:
+    """Return screener items as ``[{"text": str, "accept": [str, ...]}]``."""
+    items: list[dict] = []
+    if not isinstance(value, list):
+        return items
+    for raw in value:
+        if isinstance(raw, str):
+            raw = {"text": raw}
+        if not isinstance(raw, dict):
+            continue
+        text = str(raw.get("text") or "").strip()
+        if not text:
+            continue
+        accept = raw.get("accept") or raw.get("accepted_answers") or []
+        if isinstance(accept, str):
+            accept = [part for part in accept.split(",")]
+        items.append({"text": text, "accept": [str(a).strip() for a in accept if str(a).strip()]})
+    return items
+
+
+def deployment_config(deployment: ResearchDeployment) -> dict:
+    """Return the deployment config with canonical keys.
+
+    The deployment wizard saves ``adaptive_enabled`` / ``max_follow_ups``; older rows and the
+    channel-deployment skill use ``adaptive`` / ``max_probes_per_question``. Both spellings are
+    honoured here so the researcher's setting always takes effect.
+    """
+    try:
+        raw = json.loads(deployment.config_json or "{}")
+    except (json.JSONDecodeError, TypeError):
+        raw = {}
+    if not isinstance(raw, dict):
+        raw = {}
+    config = dict(raw)
+    config["adaptive"] = bool(raw.get("adaptive", raw.get("adaptive_enabled", False)))
+    config["max_probes_per_question"] = max(
+        0, _as_int(raw.get("max_probes_per_question", raw.get("max_follow_ups", 2)), 2)
+    )
+    config["consent_required"] = bool(raw.get("consent_required", False))
+    config["consent_message"] = str(raw.get("consent_message") or DEFAULT_CONSENT_MESSAGE)
+    config["screener"] = normalise_screener(raw.get("screener"))
+    config["closing_question"] = str(raw.get("closing_question") or "").strip()
+    config["reminder_after_hours"] = max(0.0, _as_float(raw.get("reminder_after_hours", 0), 0.0))
+    config["max_reminders"] = max(0, _as_int(raw.get("max_reminders", 1), 1))
+    return config
 
 
 # ---------------------------------------------------------------------------
@@ -51,6 +203,51 @@ def _build_action(
     return result
 
 
+def _prompt(
+    metadata: dict,
+    kind: str,
+    text: str,
+    *,
+    question_index: int | None = None,
+) -> None:
+    """Record what the participant is being shown, so their reply is attributed to it."""
+    metadata["pending_prompt"] = {"kind": kind, "text": text, "question_index": question_index}
+    metadata["last_sent_at"] = time.time()
+
+
+def _send(
+    metadata: dict,
+    state: ConversationState,
+    text: str,
+    *,
+    kind: str,
+    prompt_text: str | None = None,
+    question_index: int | None = None,
+) -> dict:
+    _prompt(metadata, kind, prompt_text if prompt_text is not None else text,
+            question_index=question_index)
+    metadata["state"] = state.value
+    return _build_action(
+        "send_message",
+        text,
+        state=state.value,
+        question_index=question_index,
+        metadata=metadata,
+    )
+
+
+def _finish(metadata: dict, state: ConversationState, text: str) -> dict:
+    metadata.pop("pending_prompt", None)
+    metadata["state"] = state.value
+    metadata["last_sent_at"] = time.time()
+    return _build_action("complete", text, state=state.value, metadata=metadata)
+
+
+def _question_text(questions: list[dict], index: int) -> str:
+    item = questions[index]
+    return str(item.get("text") if isinstance(item, dict) else item)
+
+
 # ---------------------------------------------------------------------------
 # Core engine
 # ---------------------------------------------------------------------------
@@ -69,14 +266,28 @@ async def get_next_action(
     - state: the new conversation state
     - question_index: (optional) index of the question being asked
     """
-    questions = json.loads(deployment.questions_json)
-    config = json.loads(deployment.config_json)
+    questions = json.loads(deployment.questions_json or "[]")
+    config = deployment_config(deployment)
     metadata = _parse_metadata(conversation)
-    current_state = metadata.get("state", ConversationState.INTRO)
+    current_state = metadata.get("state") or conversation.state or ConversationState.INTRO.value
+    if current_state == "active":
+        current_state = ConversationState.INTRO.value
+
+    if current_state in FINISHED_STATES:
+        return _build_action("complete", "", state=current_state)
+
+    # A participant can leave at any point after the study has started talking to them.
+    if current_state != ConversationState.INTRO.value and is_withdrawal(last_message):
+        metadata["withdrawn_at"] = time.time()
+        return _finish(metadata, ConversationState.WITHDRAWN, DEFAULT_WITHDRAWN_MESSAGE)
 
     # Rate limiting — check if we need to wait between questions
-    delay_seconds = config.get("delay_between_questions", 0)
-    if delay_seconds > 0:
+    delay_seconds = _as_float(config.get("delay_between_questions", 0), 0.0)
+    if delay_seconds > 0 and current_state not in {
+        ConversationState.INTRO.value,
+        ConversationState.CONSENT.value,
+        ConversationState.SCREENING.value,
+    }:
         last_sent = metadata.get("last_sent_at", 0)
         elapsed = time.time() - last_sent
         if elapsed < delay_seconds:
@@ -84,57 +295,165 @@ async def get_next_action(
                 "wait",
                 "",
                 state=current_state,
-                metadata={"wait_seconds": round(delay_seconds - elapsed, 1)},
+                metadata={**metadata, "wait_seconds": round(delay_seconds - elapsed, 1)},
             )
 
     # --- State machine transitions ---
 
-    if current_state == ConversationState.INTRO:
+    if current_state == ConversationState.INTRO.value:
         return _handle_intro(config, questions, metadata)
 
-    if current_state == ConversationState.QUESTIONS:
+    if current_state == ConversationState.CONSENT.value:
+        return _handle_consent(config, questions, metadata, last_message)
+
+    if current_state == ConversationState.SCREENING.value:
+        return _handle_screening(config, questions, metadata, last_message)
+
+    if current_state == ConversationState.QUESTIONS.value:
         return await _handle_questions(
             conversation, deployment, questions, config, metadata, last_message
         )
 
-    if current_state == ConversationState.PROBING:
-        return await _handle_probing(conversation, deployment, config, metadata, last_message)
+    if current_state == ConversationState.PROBING.value:
+        return await _handle_probing(
+            conversation, deployment, questions, config, metadata, last_message
+        )
 
-    if current_state == ConversationState.WRAP_UP:
+    if current_state == ConversationState.CLOSING.value:
+        return _finish(metadata, ConversationState.COMPLETED, _thank_you(config))
+
+    if current_state == ConversationState.WRAP_UP.value:
         return _handle_wrap_up(config, metadata)
 
     # Already completed
-    return _build_action("complete", "", state=ConversationState.COMPLETED)
+    return _build_action("complete", "", state=ConversationState.COMPLETED.value)
+
+
+def _intro_message(config: dict) -> str:
+    return str(
+        config.get("intro_message")
+        or "Hi! Thank you for participating in this research study. "
+        "Your responses will help us improve our product."
+    )
+
+
+def _thank_you(config: dict) -> str:
+    return str(
+        config.get("thank_you_message")
+        or "Thank you for your time and thoughtful responses! Your input is invaluable."
+    )
+
+
+def _start_screener_or_questions(
+    config: dict, questions: list[dict], metadata: dict, *, lead: str = ""
+) -> dict:
+    prefix = f"{lead}\n\n" if lead else ""
+    screener = config.get("screener") or []
+    if screener:
+        metadata["screener_index"] = 0
+        text = screener[0]["text"]
+        return _send(
+            metadata, ConversationState.SCREENING, f"{prefix}{text}", kind="screener",
+            prompt_text=text,
+        )
+    return _first_question(config, questions, metadata, lead=lead)
+
+
+def _first_question(config: dict, questions: list[dict], metadata: dict, *, lead: str = "") -> dict:
+    if questions:
+        text = _question_text(questions, 0)
+        body = f"{lead}\n\nLet's begin:\n{text}" if lead else text
+        return _send(
+            metadata, ConversationState.QUESTIONS, body, kind="question", prompt_text=text,
+            question_index=1,
+        )
+    return _handle_wrap_up(config, metadata, lead=lead)
 
 
 def _handle_intro(config: dict, questions: list[dict], metadata: dict) -> dict:
-    """Handle the intro state — send greeting and first question."""
-    intro_message = config.get(
-        "intro_message",
-        "Hi! Thank you for participating in this research study. "
-        "Your responses will help us improve our product.",
-    )
-
-    if questions:
-        text = f"{intro_message}\n\nLet's begin:\n{questions[0]['text']}"
-        metadata["state"] = ConversationState.QUESTIONS
-        metadata["last_sent_at"] = time.time()
-        return _build_action(
-            "send_message",
-            text,
-            state=ConversationState.QUESTIONS,
-            question_index=1,
-            metadata=metadata,
+    """Send the greeting, then consent, the screener, or the first question."""
+    intro_message = _intro_message(config)
+    if config.get("consent_required"):
+        consent_text = f"{config['consent_message']}\n\n{CONSENT_INSTRUCTION}"
+        metadata["consent_attempts"] = 0
+        return _send(
+            metadata,
+            ConversationState.CONSENT,
+            f"{intro_message}\n\n{consent_text}",
+            kind="consent",
+            prompt_text=consent_text,
         )
+    return _start_screener_or_questions(config, questions, metadata, lead=intro_message)
 
-    # No questions — go straight to wrap-up
-    metadata["state"] = ConversationState.WRAP_UP
-    return _build_action(
-        "send_message",
-        intro_message,
-        state=ConversationState.WRAP_UP,
-        metadata=metadata,
+
+def _handle_consent(
+    config: dict, questions: list[dict], metadata: dict, last_message: str
+) -> dict:
+    """Record the participant's consent decision; nothing they send before a yes is stored."""
+    decision = consent_reply(last_message)
+    if decision is True:
+        metadata["consent"] = {"given": True, "at": time.time()}
+        return _start_screener_or_questions(config, questions, metadata, lead="Thank you!")
+    attempts = int(metadata.get("consent_attempts", 0)) + 1
+    metadata["consent_attempts"] = attempts
+    if decision is False or attempts >= MAX_CONSENT_ATTEMPTS:
+        metadata["consent"] = {"given": False, "at": time.time()}
+        return _finish(metadata, ConversationState.DECLINED, DEFAULT_DECLINED_MESSAGE)
+    return _send(
+        metadata,
+        ConversationState.CONSENT,
+        f"Sorry, I didn't catch that. {CONSENT_INSTRUCTION}",
+        kind="consent",
     )
+
+
+def _screener_accepts(item: dict, answer: str) -> bool:
+    accepted = {_normalise_reply(a) for a in item.get("accept") or []}
+    return not accepted or _normalise_reply(answer) in accepted
+
+
+def _handle_screening(
+    config: dict, questions: list[dict], metadata: dict, last_message: str
+) -> dict:
+    """Ask each screener question; answers go to metadata, never to research evidence."""
+    screener = config.get("screener") or []
+    index = int(metadata.get("screener_index", 0))
+    if index >= len(screener):
+        return _first_question(config, questions, metadata)
+    item = screener[index]
+    qualified = _screener_accepts(item, last_message)
+    answers = list(metadata.get("screener_answers") or [])
+    answers.append(
+        {"question": item["text"], "answer": str(last_message or "").strip(), "qualified": qualified}
+    )
+    metadata["screener_answers"] = answers
+    if not qualified:
+        return _finish(
+            metadata,
+            ConversationState.SCREENED_OUT,
+            str(config.get("screened_out_message") or DEFAULT_SCREENED_OUT_MESSAGE),
+        )
+    index += 1
+    metadata["screener_index"] = index
+    if index < len(screener):
+        return _send(metadata, ConversationState.SCREENING, screener[index]["text"], kind="screener")
+    return _first_question(config, questions, metadata, lead="Thanks, you're a great fit.")
+
+
+def _next_question_or_wrap_up(
+    config: dict, questions: list[dict], metadata: dict, q_index: int
+) -> dict:
+    """Send the question after ``q_index`` (1-based count of questions shown so far)."""
+    metadata["probe_count"] = 0
+    if q_index < len(questions):
+        return _send(
+            metadata,
+            ConversationState.QUESTIONS,
+            _question_text(questions, q_index),
+            kind="question",
+            question_index=q_index + 1,
+        )
+    return _handle_wrap_up(config, metadata)
 
 
 async def _handle_questions(
@@ -145,11 +464,10 @@ async def _handle_questions(
     metadata: dict,
     last_message: str,
 ) -> dict:
-    """Handle the questions state — advance to next question or transition to probing."""
+    """Handle the questions state — probe the answer or advance to the next question."""
     q_index = conversation.current_question_index
 
-    # Check if we should probe the current answer before moving on
-    if config.get("adaptive", False) and last_message:
+    if config.get("adaptive") and config.get("max_probes_per_question", 0) > 0 and last_message:
         needs_probe = await _should_probe(deployment, last_message, config)
         if needs_probe:
             clarification = await generate_clarification(
@@ -159,70 +477,38 @@ async def _handle_questions(
                 project_id=deployment.project_id,
             )
             if clarification:
-                metadata["state"] = ConversationState.PROBING
-                metadata["probe_count"] = metadata.get("probe_count", 0) + 1
-                metadata["last_sent_at"] = time.time()
-                return _build_action(
-                    "send_message",
+                metadata["probe_count"] = 1
+                return _send(
+                    metadata,
+                    ConversationState.PROBING,
                     clarification,
-                    state=ConversationState.PROBING,
+                    kind="probe",
                     question_index=q_index,
-                    metadata=metadata,
                 )
 
-    # Move to next question
-    if q_index < len(questions):
-        metadata["last_sent_at"] = time.time()
-        return _build_action(
-            "send_message",
-            questions[q_index]["text"],
-            state=ConversationState.QUESTIONS,
-            question_index=q_index + 1,
-            metadata=metadata,
-        )
-
-    # All questions done — wrap up
-    metadata["state"] = ConversationState.WRAP_UP
-    return _handle_wrap_up(config, metadata)
+    return _next_question_or_wrap_up(config, questions, metadata, q_index)
 
 
 async def _handle_probing(
     conversation: ChannelConversation,
     deployment: ResearchDeployment,
+    questions: list[dict],
     config: dict,
     metadata: dict,
     last_message: str,
 ) -> dict:
-    """Handle the probing state — continue probing or return to questions."""
+    """Handle the probing state — probe again, or return to the question flow."""
     max_probes = config.get("max_probes_per_question", 2)
-    probe_count = metadata.get("probe_count", 0)
+    probe_count = int(metadata.get("probe_count", 0))
+    q_index = conversation.current_question_index
 
-    # Check saturation
     if probe_count >= max_probes or await _is_saturated(
         last_message,
         config,
         project_id=deployment.project_id,
     ):
-        # Return to questions flow
-        metadata["state"] = ConversationState.QUESTIONS
-        metadata["probe_count"] = 0
-        questions = json.loads(deployment.questions_json)
-        q_index = conversation.current_question_index
+        return _next_question_or_wrap_up(config, questions, metadata, q_index)
 
-        if q_index < len(questions):
-            metadata["last_sent_at"] = time.time()
-            return _build_action(
-                "send_message",
-                questions[q_index]["text"],
-                state=ConversationState.QUESTIONS,
-                question_index=q_index + 1,
-                metadata=metadata,
-            )
-        # All questions done
-        metadata["state"] = ConversationState.WRAP_UP
-        return _handle_wrap_up(config, metadata)
-
-    # Generate another probe
     clarification = await generate_clarification(
         conversation,
         last_message,
@@ -231,42 +517,23 @@ async def _handle_probing(
     )
     if clarification:
         metadata["probe_count"] = probe_count + 1
-        metadata["last_sent_at"] = time.time()
-        return _build_action(
-            "send_message",
-            clarification,
-            state=ConversationState.PROBING,
-            metadata=metadata,
+        return _send(
+            metadata, ConversationState.PROBING, clarification, kind="probe", question_index=q_index
         )
 
-    # Probe generation failed — move on
-    metadata["state"] = ConversationState.QUESTIONS
-    metadata["probe_count"] = 0
-    return _build_action(
-        "send_message",
-        "",
-        state=ConversationState.QUESTIONS,
-        metadata=metadata,
-    )
+    # Probe generation failed: move on rather than leave the participant waiting on nothing.
+    return _next_question_or_wrap_up(config, questions, metadata, q_index)
 
 
-def _handle_wrap_up(config: dict, metadata: dict) -> dict:
-    """Handle the wrap-up state — send closing message."""
-    thank_you = config.get(
-        "thank_you_message",
-        "Thank you for your time and thoughtful responses! Your input is invaluable.",
-    )
-    closing = config.get("closing_question", "")
-    text = f"{closing}\n\n{thank_you}" if closing else thank_you
-
-    metadata["state"] = ConversationState.COMPLETED
-    metadata["last_sent_at"] = time.time()
-    return _build_action(
-        "complete",
-        text,
-        state=ConversationState.COMPLETED,
-        metadata=metadata,
-    )
+def _handle_wrap_up(config: dict, metadata: dict, *, lead: str = "") -> dict:
+    """Ask the closing question on its own, or thank the participant and finish."""
+    closing = str(config.get("closing_question") or "").strip()
+    if closing and not metadata.get("closing_asked"):
+        metadata["closing_asked"] = True
+        body = f"{lead}\n\n{closing}" if lead else closing
+        return _send(metadata, ConversationState.CLOSING, body, kind="closing", prompt_text=closing)
+    thank_you = _thank_you(config)
+    return _finish(metadata, ConversationState.COMPLETED, f"{lead}\n\n{thank_you}" if lead else thank_you)
 
 
 # ---------------------------------------------------------------------------

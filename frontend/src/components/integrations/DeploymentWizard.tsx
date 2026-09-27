@@ -7,7 +7,7 @@ import { useIntegrationsStore } from "@/stores/integrationsStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 
-const STEPS = ["type", "questions", "adaptive", "channels", "targets", "deploy"] as const;
+const STEPS = ["type", "questions", "participants", "adaptive", "channels", "targets", "deploy"] as const;
 type Step = (typeof STEPS)[number];
 
 const DEPLOYMENT_TYPES = [
@@ -15,6 +15,14 @@ const DEPLOYMENT_TYPES = [
   { id: "survey", label: "Survey", description: "Sequential question delivery with fixed structure" },
   { id: "diary_study", label: "Diary Study", description: "Longitudinal check-ins over days or weeks" },
 ] as const;
+
+const DEFAULT_CONSENT_MESSAGE =
+  "Before we start: this is a research study. The research team will store and analyse your answers to improve the product, and may quote them in research reports without your name. Taking part is voluntary, and you can stop at any time by replying STOP.";
+
+interface ScreenerDraft {
+  text: string;
+  accept: string;
+}
 
 interface DeploymentWizardProps {
   onClose: () => void;
@@ -31,8 +39,17 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
   const [maxFollowUps, setMaxFollowUps] = useState(2);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [targetResponses, setTargetResponses] = useState(20);
+  const [introMessage, setIntroMessage] = useState("");
+  const [consentRequired, setConsentRequired] = useState(true);
+  const [consentMessage, setConsentMessage] = useState(DEFAULT_CONSENT_MESSAGE);
+  const [screener, setScreener] = useState<ScreenerDraft[]>([]);
+  const [closingQuestion, setClosingQuestion] = useState("");
+  const [thankYouMessage, setThankYouMessage] = useState("");
+  const [remindersEnabled, setRemindersEnabled] = useState(true);
+  const [reminderAfterHours, setReminderAfterHours] = useState(24);
   const [deploying, setDeploying] = useState(false);
   const [deployed, setDeployed] = useState(false);
+  const [deployError, setDeployError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchChannels(undefined, activeProjectId);
@@ -50,6 +67,10 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
     setQuestions(updated);
   };
 
+  const updateScreener = (idx: number, field: keyof ScreenerDraft, value: string) => {
+    setScreener((prev) => prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item)));
+  };
+
   const toggleChannel = (id: string) => {
     setSelectedChannels((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
@@ -59,19 +80,37 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
   const handleDeploy = async () => {
     if (!activeProjectId || !deploymentType) return;
     setDeploying(true);
+    setDeployError(null);
     try {
+      const config: Record<string, unknown> = {
+        adaptive_enabled: adaptiveEnabled,
+        max_follow_ups: maxFollowUps,
+        consent_required: consentRequired,
+        consent_message: consentRequired ? consentMessage.trim() || DEFAULT_CONSENT_MESSAGE : "",
+        screener: screener
+          .filter((item) => item.text.trim())
+          .map((item) => ({
+            text: item.text.trim(),
+            accept: item.accept.split(",").map((a) => a.trim()).filter(Boolean),
+          })),
+        reminder_after_hours: remindersEnabled ? reminderAfterHours : 0,
+        max_reminders: remindersEnabled ? 1 : 0,
+      };
+      if (introMessage.trim()) config.intro_message = introMessage.trim();
+      if (closingQuestion.trim()) config.closing_question = closingQuestion.trim();
+      if (thankYouMessage.trim()) config.thank_you_message = thankYouMessage.trim();
       await deploymentsApi.create({
         project_id: activeProjectId,
         name: name || `${deploymentType} deployment`,
         deployment_type: deploymentType,
         questions: questions.filter((q) => q.text.trim()),
-        config: { adaptive_enabled: adaptiveEnabled, max_follow_ups: maxFollowUps },
+        config,
         channel_instance_ids: selectedChannels,
         target_responses: targetResponses,
       });
       setDeployed(true);
-    } catch {
-      // error
+    } catch (err) {
+      setDeployError(err instanceof Error ? err.message : "The deployment could not be created.");
     } finally {
       setDeploying(false);
     }
@@ -81,6 +120,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
     switch (currentStep) {
       case "type": return !!deploymentType;
       case "questions": return questions.some((q) => q.text.trim());
+      case "participants": return !consentRequired || consentMessage.trim().length > 0;
       case "adaptive": return true;
       case "channels": return selectedChannels.length > 0;
       case "targets": return targetResponses > 0 && name.trim().length > 0;
@@ -94,7 +134,10 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
 
   return (
     <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden">
+      <section
+        aria-label="New deployment wizard"
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden"
+      >
         {/* Progress bar */}
         <div className="h-1 bg-slate-100 dark:bg-slate-800">
           <div className="h-full bg-istara-500 transition-all duration-300" style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }} />
@@ -117,6 +160,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                   <button
                     key={t.id}
                     onClick={() => setDeploymentType(t.id)}
+                    aria-pressed={deploymentType === t.id}
                     className={cn(
                       "flex flex-col w-full p-4 rounded-xl border-2 transition-all text-left",
                       deploymentType === t.id
@@ -143,6 +187,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                     <span className="text-xs font-medium text-slate-400 mt-2.5 w-6 shrink-0">Q{i + 1}</span>
                     <input
                       type="text"
+                      aria-label={`Question ${i + 1}`}
                       placeholder={`Question ${i + 1}...`}
                       value={q.text}
                       onChange={(e) => updateQuestion(i, e.target.value)}
@@ -158,6 +203,107 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                 <button onClick={addQuestion} className="flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400 transition-colors">
                   <Plus size={14} /> Add Question
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step: Consent & screening */}
+          {currentStep === "participants" && (
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Consent &amp; Screening</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                What participants see first. Nothing they send is stored as research data until they agree and qualify.
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="deployment-intro" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Welcome message <span className="font-normal text-slate-400">(optional)</span>
+                  </label>
+                  <textarea
+                    id="deployment-intro"
+                    rows={2}
+                    value={introMessage}
+                    onChange={(e) => setIntroMessage(e.target.value)}
+                    placeholder="Hi! Thanks for helping us improve our product."
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
+                  />
+                </div>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={consentRequired}
+                    onChange={(e) => setConsentRequired(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 dark:border-slate-600 text-istara-600 focus:ring-istara-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-slate-900 dark:text-white">Ask for informed consent</span>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Participants reply YES or NO. A NO ends the conversation and nothing is stored.
+                    </p>
+                  </div>
+                </label>
+                {consentRequired && (
+                  <div>
+                    <label htmlFor="deployment-consent" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Consent statement
+                    </label>
+                    <textarea
+                      id="deployment-consent"
+                      rows={4}
+                      value={consentMessage}
+                      onChange={(e) => setConsentMessage(e.target.value)}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
+                    />
+                  </div>
+                )}
+                {!consentRequired && (
+                  <p role="note" className="text-xs rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+                    Without a consent step, answers are stored from the first question. Make sure you have consent another way.
+                  </p>
+                )}
+                <div>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Screening questions</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                    Asked after consent. List the answers that qualify, separated by commas; leave empty to accept any answer.
+                  </p>
+                  <div className="space-y-2">
+                    {screener.map((item, i) => (
+                      <div key={i} className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          aria-label={`Screening question ${i + 1}`}
+                          placeholder="e.g., Do you export reports every week?"
+                          value={item.text}
+                          onChange={(e) => updateScreener(i, "text", e.target.value)}
+                          className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            aria-label={`Qualifying answers for screening question ${i + 1}`}
+                            placeholder="yes"
+                            value={item.accept}
+                            onChange={(e) => updateScreener(i, "accept", e.target.value)}
+                            className="w-full sm:w-32 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
+                          />
+                          <button
+                            onClick={() => setScreener((prev) => prev.filter((_, j) => j !== i))}
+                            aria-label={`Remove screening question ${i + 1}`}
+                            className="p-2 rounded-lg text-slate-400 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setScreener((prev) => [...prev, { text: "", accept: "" }])}
+                      className="flex items-center gap-1 text-sm text-istara-600 hover:text-istara-700 dark:text-istara-400 transition-colors"
+                    >
+                      <Plus size={14} /> Add screening question
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -182,10 +328,11 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                 </label>
                 {adaptiveEnabled && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label htmlFor="deployment-max-follow-ups" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       Max Follow-ups per Question
                     </label>
                     <input
+                      id="deployment-max-follow-ups"
                       type="number"
                       min={0}
                       max={5}
@@ -241,12 +388,13 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
           {/* Step: Targets */}
           {currentStep === "targets" && (
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Set Targets</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Name your deployment and set response targets.</p>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Targets &amp; Wrap-up</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Name your deployment, set the number of participants, and decide how it ends.</p>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Deployment Name</label>
+                  <label htmlFor="deployment-name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Deployment Name</label>
                   <input
+                    id="deployment-name"
                     type="text"
                     placeholder="e.g., Q1 User Interview Sprint"
                     value={name}
@@ -256,17 +404,66 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target Responses</label>
+                  <label htmlFor="deployment-target" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target participants</label>
                   <input
+                    id="deployment-target"
                     type="number"
                     min={1}
                     value={targetResponses}
                     onChange={(e) => setTargetResponses(parseInt(e.target.value) || 1)}
                     className="w-32 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
                   />
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    The deployment will auto-complete when this target is reached.
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    When this many participants have finished, new people are told the study is full.
+                    Anyone already taking part can finish.
                   </p>
+                </div>
+                <div>
+                  <label htmlFor="deployment-closing" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Closing question <span className="font-normal text-slate-400">(optional)</span>
+                  </label>
+                  <input
+                    id="deployment-closing"
+                    type="text"
+                    placeholder="e.g., Is there anything else you'd like to tell us?"
+                    value={closingQuestion}
+                    onChange={(e) => setClosingQuestion(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="deployment-thanks" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Thank-you message <span className="font-normal text-slate-400">(optional)</span>
+                  </label>
+                  <input
+                    id="deployment-thanks"
+                    type="text"
+                    placeholder="Thank you for your time!"
+                    value={thankYouMessage}
+                    onChange={(e) => setThankYouMessage(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={remindersEnabled}
+                      onChange={(e) => setRemindersEnabled(e.target.checked)}
+                      className="rounded border-slate-300 dark:border-slate-600 text-istara-600 focus:ring-istara-500"
+                    />
+                    <span className="text-sm font-medium text-slate-900 dark:text-white">Send one reminder after</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    aria-label="Reminder delay in hours"
+                    disabled={!remindersEnabled}
+                    value={reminderAfterHours}
+                    onChange={(e) => setReminderAfterHours(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-20 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500 disabled:opacity-50"
+                  />
+                  <span className="text-sm text-slate-600 dark:text-slate-400">hours of silence</span>
                 </div>
               </div>
             </div>
@@ -291,8 +488,14 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
                     <p><strong>Type:</strong> {deploymentType}</p>
                     <p><strong>Questions:</strong> {questions.filter((q) => q.text.trim()).length}</p>
                     <p><strong>Channels:</strong> {selectedChannels.length}</p>
-                    <p><strong>Target:</strong> {targetResponses} responses</p>
+                    <p><strong>Target:</strong> {targetResponses} participants</p>
+                    <p><strong>Consent:</strong> {consentRequired ? "asked first" : "not asked"}</p>
+                    <p><strong>Screening questions:</strong> {screener.filter((item) => item.text.trim()).length}</p>
+                    <p><strong>Reminder:</strong> {remindersEnabled ? `after ${reminderAfterHours} h` : "off"}</p>
                   </div>
+                  {deployError && (
+                    <p role="alert" className="mb-4 text-sm text-red-600 dark:text-red-400">{deployError}</p>
+                  )}
                   <button
                     onClick={handleDeploy}
                     disabled={deploying}
@@ -330,7 +533,7 @@ export default function DeploymentWizard({ onClose }: DeploymentWizardProps) {
             )}
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

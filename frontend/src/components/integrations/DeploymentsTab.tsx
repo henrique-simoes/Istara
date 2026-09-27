@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Plus, Rocket, MessageSquare, CheckCircle2, Activity, Users } from "lucide-react";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
 import { useProjectStore } from "@/stores/projectStore";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
+import { deployments as deploymentsApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import DeploymentWizard from "./DeploymentWizard";
 import DeploymentDashboard from "./DeploymentDashboard";
@@ -25,24 +27,36 @@ export default function DeploymentsTab() {
   } = useIntegrationsStore();
   const { activeProjectId } = useProjectStore();
 
+  const { canWriteActiveProject } = useRoleCapabilities();
   const [showWizard, setShowWizard] = useState(false);
+  const [overview, setOverview] = useState<{
+    conversations_started: number;
+    participants_finished: number;
+    answers_stored: number;
+  } | null>(null);
 
   useEffect(() => {
     selectDeployment(null);
-    if (activeProjectId) {
-      fetchDeployments(activeProjectId);
-    }
-  }, [activeProjectId, fetchDeployments, selectDeployment]);
+    setOverview(null);
+  }, [activeProjectId, selectDeployment]);
+
+  // Reload the list and its counts whenever the list is shown (first load, and on returning
+  // from a study's dashboard), so the cards never show numbers from before the researcher looked.
+  useEffect(() => {
+    if (!activeProjectId || selectedDeploymentId) return;
+    fetchDeployments(activeProjectId);
+    deploymentsApi.overview(activeProjectId).then(setOverview).catch(() => setOverview(null));
+  }, [activeProjectId, selectedDeploymentId, fetchDeployments]);
 
   const scopedDeployments = activeProjectId
     ? deploymentsList.filter((d) => d.project_id === activeProjectId)
     : [];
   const selectedDeployment = scopedDeployments.find((d) => d.id === selectedDeploymentId);
-  const canCreateDeployment = Boolean(activeProjectId);
+  // Viewers can follow a study but not create one (the API requires researcher access).
+  const canCreateDeployment = Boolean(activeProjectId) && canWriteActiveProject;
 
-  // Summary stats
-  const totalConversations = scopedDeployments.reduce((acc, d) => acc + d.current_responses, 0);
-  const completedConversations = scopedDeployments.filter((d) => d.state === "completed").reduce((acc, d) => acc + d.current_responses, 0);
+  // Summary stats come from the server's counts; "--" means they could not be loaded.
+  const statValue = (value: number | undefined) => (overview && typeof value === "number" ? value : "--");
   const activeDeployments = scopedDeployments.filter((d) => d.state === "active").length;
 
   if (showWizard) {
@@ -75,6 +89,7 @@ export default function DeploymentsTab() {
         <button
           onClick={() => setShowWizard(true)}
           disabled={!canCreateDeployment}
+          title={activeProjectId && !canWriteActiveProject ? "Viewers can follow studies but not create them." : undefined}
           className="flex items-center gap-1.5 px-3 py-2 text-sm bg-istara-600 text-white rounded-lg hover:bg-istara-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 transition-colors"
         >
           <Plus size={14} />
@@ -89,21 +104,21 @@ export default function DeploymentsTab() {
             <MessageSquare size={16} className="text-blue-500" />
             <span className="text-xs text-slate-500 dark:text-slate-400">Conversations Started</span>
           </div>
-          <span className="text-xl font-bold text-slate-900 dark:text-white">{totalConversations}</span>
+          <span className="text-xl font-bold text-slate-900 dark:text-white">{statValue(overview?.conversations_started)}</span>
         </div>
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle2 size={16} className="text-green-500" />
-            <span className="text-xs text-slate-500 dark:text-slate-400">Completed</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Participants Finished</span>
           </div>
-          <span className="text-xl font-bold text-slate-900 dark:text-white">{completedConversations}</span>
+          <span className="text-xl font-bold text-slate-900 dark:text-white">{statValue(overview?.participants_finished)}</span>
         </div>
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Activity size={16} className="text-purple-500" />
-            <span className="text-xs text-slate-500 dark:text-slate-400">Findings Created</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Answers Stored</span>
           </div>
-          <span className="text-xl font-bold text-slate-900 dark:text-white">--</span>
+          <span className="text-xl font-bold text-slate-900 dark:text-white">{statValue(overview?.answers_stored)}</span>
         </div>
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">

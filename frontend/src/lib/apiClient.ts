@@ -63,3 +63,37 @@ export function patch<T>(path: string, data?: unknown): Promise<T> {
 export function del<T = void>(path: string): Promise<T> {
   return request<T>(path, { method: "DELETE" });
 }
+
+function filenameFromDisposition(header: string | null, fallback: string): string {
+  const match = header?.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  if (!match) return fallback;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
+/** Fetch an authenticated file and hand it to the browser as a download. */
+export async function downloadFile(path: string, fallbackName: string): Promise<string> {
+  const res = await fetch(apiUrl(path), { credentials: "include", headers: { ...authHeaders() } });
+  if (res.status === 401) {
+    clearToken();
+    throw new Error("Authentication required");
+  }
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof error.detail === "string" ? error.detail : `Download failed: ${res.status}`);
+  }
+  const blob = await res.blob();
+  const name = filenameFromDisposition(res.headers.get("content-disposition"), fallbackName);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  return name;
+}

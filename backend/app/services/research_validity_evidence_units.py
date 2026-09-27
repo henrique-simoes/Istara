@@ -458,6 +458,13 @@ def _compact_source_text_for_coding(
 
 def _coding_unit_payload(unit: EvidenceUnit) -> dict:
     payload = unit.to_dict()
+    try:
+        unit_metadata = json.loads(unit.metadata_json or "{}")
+    except (json.JSONDecodeError, TypeError):
+        unit_metadata = {}
+    if isinstance(unit_metadata, dict) and unit_metadata.get("prompt_text"):
+        # Context for the coder: the question this answer responds to (not itself codable).
+        payload["asked"] = str(unit_metadata["prompt_text"])
     source_text = str(payload.get("source_text") or "")
     compact_text, truncated = _compact_source_text_for_coding(source_text)
     payload["source_text"] = compact_text
@@ -526,6 +533,10 @@ def _coding_repair_messages(
     return messages
 
 
+# Source types whose text is a captured "Q: <prompt>\nA: <answer>" pair.
+RESPONSE_SOURCE_TYPES = frozenset({"survey_response", "channel_response", "deployment_response"})
+
+
 async def persist_task_nugget_evidence_units(
     db: AsyncSession,
     *,
@@ -554,7 +565,18 @@ async def persist_task_nugget_evidence_units(
         phase=phase,
     )
     persisted: list[EvidenceUnit] = []
+    prompt_text = ""
+    if source_type in RESPONSE_SOURCE_TYPES:
+        # A captured answer is stored as "Q: <prompt>\nA: <answer>". The prompt is the
+        # researcher's words, not participant data: it is kept as context on the answer unit and
+        # never becomes an evidence unit that coders would code.
+        prompt_text = " ".join(u.source_text for u in units if u.speaker == "Q").strip()
+        answer_units = [u for u in units if u.speaker != "Q"]
+        units = answer_units or units
     for unit in units:
+        unit_metadata = dict(unit.metadata)
+        if prompt_text:
+            unit_metadata["prompt_text"] = prompt_text
         evidence_unit = EvidenceUnit(
             id=unit.id,
             project_id=project_id,
@@ -573,7 +595,7 @@ async def persist_task_nugget_evidence_units(
             end_offset=unit.end_offset,
             metadata_json=json.dumps(
                 {
-                    **unit.metadata,
+                    **unit_metadata,
                     "candidate_only": candidate_only,
                     "source_type": source_type,
                     "spine_policy": (
