@@ -1128,4 +1128,3 @@ features:
     acceptance: "Desktop versions fit the MSI and sort above every earlier release; the staged bundle is exactly the git-tracked source; VERSION never falls behind the latest tag; the curl installer installs its own dependencies on macOS and Linux."
     introduced_in: "professional-readiness-20260927"
     last_verified_sha: "pending"
-
