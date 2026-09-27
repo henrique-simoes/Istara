@@ -199,13 +199,16 @@ def test_integrations_deployments_tab_is_project_scoped() -> None:
     assert "deploymentsList.map" not in source
     assert "deploymentsList.reduce" not in source
     assert "fetchDeployments();" not in source
-    assert "if (!activeProjectId || !deploymentType) return;" in wizard
+    draft = read_repo("frontend/src/components/integrations/deploymentDraft.ts")
+    assert "if (!activeProjectId || !draft.deploymentType) return;" in wizard
     assert "fetchChannels(undefined, activeProjectId)" in wizard
     assert (
         "channelInstances.filter((c) => c.is_active && c.project_id === activeProjectId)"
         in wizard
     )
-    assert "project_id: activeProjectId" in wizard
+    # The payload builder receives the active project and scopes the deployment to it.
+    assert "buildDeploymentPayload(draft, activeProjectId)" in wizard
+    assert "project_id: projectId" in draft
     assert "deploymentsApi.analytics(deployment.id, projectId)" in dashboard
     assert "deploymentsApi.conversations(deployment.id, projectId)" in dashboard
     assert "deploymentsApi.activate(deployment.id, projectId)" in dashboard
@@ -360,7 +363,8 @@ def test_integrations_subtabs_defensively_filter_by_active_project() -> None:
         "surveyIntegrations.filter((integration) => integration.project_id === activeProjectId)"
         in surveys
     )
-    assert "scopedSurveyIntegrations.map((integration)" in surveys
+    # Only the active project's integrations reach the cards; the cards render what they receive.
+    assert "integrations={scopedSurveyIntegrations}" in surveys
     assert "surveyIntegrations.map((integration)" not in surveys
 
     assert "const scopedMCPClients = activeProjectId" in mcp_tab
@@ -422,10 +426,12 @@ def test_integrations_survey_detail_actions_require_active_project_scope() -> No
         in api
     )
 
+    linked = read_repo("frontend/src/components/integrations/useLinkedSurveys.ts")
     assert "if (!activeProjectId) return;" in surveys
-    assert "setLinkedSurveys([]);" in surveys
-    assert "links.filter((link) => link.project_id === activeProjectId)" in surveys
-    assert "surveysApi.links.sync(linkId, activeProjectId)" in surveys
+    assert "useLinkedSurveys(activeProjectId)" in surveys
+    assert "setLinks([]);" in linked
+    assert "all.filter((link) => link.project_id === projectId)" in linked
+    assert "surveysApi.links.sync(linkId, projectId)" in linked
     assert "surveysApi.integrations.delete(id, activeProjectId)" in surveys
     assert "fetchSurveyIntegrations(activeProjectId)" in surveys
 

@@ -459,7 +459,7 @@ def _compact_source_text_for_coding(
 def _coding_unit_payload(unit: EvidenceUnit) -> dict:
     payload = unit.to_dict()
     try:
-        unit_metadata = json.loads(unit.metadata_json or "{}")
+        unit_metadata = json.loads(getattr(unit, "metadata_json", None) or "{}")
     except (json.JSONDecodeError, TypeError):
         unit_metadata = {}
     if isinstance(unit_metadata, dict) and unit_metadata.get("prompt_text"):
