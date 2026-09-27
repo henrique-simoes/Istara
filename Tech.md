@@ -3313,6 +3313,10 @@ Lifecycle `docs/build-stream/2026-09-26-professional-readiness-review.md`.
   (`core/research_validity.py`). Coders receive only the fields they code with, in batches of at
   most `research_validity_coding_units_per_call` units, so the owner's local model can take part
   (DEC-11).
+- **Item-level report gate.** A Done, approved task reports only the findings whose own chain is
+  accepted (`reportable_finding_ids`); the rest are held back and counted
+  (`held_back_finding_count`); a task's coding run codes up to `research_validity_max_units_per_run`
+  units (DEC-13).
 - **Reports.** `GET /api/reports/{project}/{report}/export?format=md|docx|csv` exports a report
   with the evidence trail of every finding down to the quoted source span
   (`services/report_export.py`); the share of traced findings is R1.

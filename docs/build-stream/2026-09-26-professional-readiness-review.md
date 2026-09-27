@@ -65,6 +65,7 @@ These are hypotheses to prove with failing tests first, not conclusions.
 | D-21 | Installers | `scripts/install-istara.sh` | On Linux the curl installer offered to install Homebrew for a missing Python or Node ("required ... on macOS"), and used `sudo apt-get` for ffmpeg, which fails as root in a container. |
 | D-22 | Installers | `backend/Dockerfile`, `qa/Dockerfile`, `api/routes/updates.py` | Docker images shipped no `VERSION`, so the status bar read "Istara vunknown"; a checkout read its stale `VERSION` before its release tag, so the update checker offered the release it was running. |
 | D-23 | Skills | `skills/discover/contextual_inquiry.py`, `diary_studies.py` | Both skills computed pain points and opportunities, then stored nuggets only: no facts, insights or recommendations, although their definitions promise them (SK1). |
+| D-24 | Reports | `research_validity_reconciliation.py::assess_task_research_validity`, `_load_units` | One unsupported finding blocked a task's whole report, and a coding run held at most 200 units: a real interview analysis (1,519 nuggets, 1,265 grounded, some paraphrases that can never ground) could never reach Reports, whatever the researcher reviewed. |
 
 ## Pre-registered readiness criteria (DEC-2, fixed before any number)
 
@@ -277,6 +278,18 @@ dimensions) still refuses to start.
 Why: both engines embed through the one Pi gateway (`AgenticDispatcher.embed`), so they cannot
 diverge while the model is down, and every stored vector stays bound to its model fingerprint; the
 refusal locked out every new native user.
+
+DEC-13 | 2026-09-27 | S2-execute | claude-code
+Context: D-24; the report gate blocked the whole task on any unsupported finding.
+Decision: the gate is item-level. A Done, approved task sends Reports only the findings whose own
+chain (nugget → accepted coded unit; fact → accepted nuggets; insight → accepted facts;
+recommendation → accepted insights) is accepted; the rest are held back and counted in the
+report. Unreconciled code applications, stale sources, or no accepted finding at all still block.
+A task's coding run holds up to `research_validity_max_units_per_run` (1,500) units, coded in
+batches (DEC-11). The contract text is updated to match.
+Why: the contract requires each included dependency to trace to accepted evidence; blocking the
+accepted findings because of a paraphrase elsewhere kept every real study out of Reports without
+making any report more trustworthy. Flagged to the owner as Full-risk, self-verified.
 
 ## Ledger
 

@@ -950,20 +950,39 @@ async def assess_task_research_validity(
             "report_allowed": False,
             "reason": "Task has code applications but no accepted/reconciled coded evidence.",
         }
-    if task_finding_count and support["unsupported_finding_count"]:
+    # Item level (D-24, DEC-13): each finding is reportable only through its own accepted chain;
+    # findings without one are held back and counted, never included. One unsupported finding no
+    # longer blocks the accepted rest, but a task with nothing accepted still cannot report.
+    reportable = [
+        *support["accepted_nugget_ids"],
+        *support["accepted_fact_ids"],
+        *support["accepted_insight_ids"],
+        *support["accepted_recommendation_ids"],
+    ]
+    held_back = support["unsupported_finding_count"]
+    if task_finding_count and held_back and not reportable:
         unsupported_ids = [
             f"{row['type']}:{row['id']}" for row in support["unsupported_findings"][:5]
         ]
         return {
             **base_with_support,
             "report_allowed": False,
+            "reportable_finding_ids": [],
+            "held_back_finding_count": held_back,
             "reason": (
-                f"Task has {support['unsupported_finding_count']} finding(s) without "
+                f"Task has {held_back} finding(s) without "
                 "accepted/reconciled source evidence: " + ", ".join(unsupported_ids)
             ),
         }
     return {
         **base_with_support,
         "report_allowed": True,
-        "reason": "Task has no pending research-validity blocker.",
+        "reportable_finding_ids": reportable,
+        "held_back_finding_count": held_back,
+        "reason": (
+            f"{len(reportable)} finding(s) reportable; {held_back} held back without "
+            "accepted/reconciled source evidence."
+            if held_back
+            else "Task has no pending research-validity blocker."
+        ),
     }

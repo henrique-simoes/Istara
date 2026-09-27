@@ -265,7 +265,9 @@ async def _load_units(
     evidence_unit_ids: list[str] | None,
     limit: int,
 ) -> list[EvidenceUnit]:
-    max_limit = max(1, min(limit, 200))
+    from app.config import settings
+
+    max_limit = max(1, min(limit, int(settings.research_validity_max_units_per_run)))
     if evidence_unit_ids:
         query = (
             select(EvidenceUnit)

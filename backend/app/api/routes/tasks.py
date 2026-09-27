@@ -861,9 +861,17 @@ async def create_report_from_task(
     from app.models.project_report import ProjectReport
 
     snapshot = await build_atomic_snapshot(db, task)
+    # Only findings whose own chain is accepted go in (DEC-13); the rest are held back and counted.
+    reportable = set(validity.get("reportable_finding_ids") or [])
     finding_ids: list[str] = []
     for key in ("nuggets", "facts", "insights", "recommendations"):
-        finding_ids.extend([item["id"] for item in snapshot.get(key, {}).get("items", [])])
+        finding_ids.extend(
+            [
+                item["id"]
+                for item in snapshot.get(key, {}).get("items", [])
+                if item["id"] in reportable
+            ]
+        )
 
     report = ProjectReport(
         id=str(uuid.uuid4()),
@@ -879,6 +887,7 @@ async def create_report_from_task(
                 "agent_notes": task.agent_notes,
                 "atomic_path": snapshot,
                 "review_state": task.review_state,
+                "held_back_finding_count": int(validity.get("held_back_finding_count") or 0),
             }
         ),
         executive_summary=(task.agent_notes or task.description or task.title)[:2000],

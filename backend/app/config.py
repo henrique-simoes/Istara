@@ -509,6 +509,9 @@ class Settings(BaseSettings):
     # Units per coder call (D-19): a batch must fit the smallest coder, the local model included.
     research_validity_coding_units_per_call: int = 20
     research_validity_coding_chars_per_call: int = 12000
+    # Units one coding run may hold (D-24): a task's run codes every grounded unit of its study;
+    # coders take them in batches, so this bounds time and cost, not prompt size.
+    research_validity_max_units_per_run: int = 1500
 
     # Audio is a separate, explicit catalog. Empty provider fails closed;
     # credentials are referenced by opaque keychain/encrypted-store handles.
