@@ -71,6 +71,7 @@ These are hypotheses to prove with failing tests first, not conclusions.
 | D-27 | Roles | `DocumentsView.tsx`, `SkillsView.tsx` | A viewer opening Documents triggered a sync it may not run (403 into the error banner); non-admins requested admin-only governance proposals on every Skills visit. |
 | D-28 | UX | `LoginScreen.tsx` | The sign-in form's placeholder read "Choose a username". |
 | D-29 | Skills | `skills/skill_windows.py`, `skill_factory.py` (generic runner behind about 40 skills) | Extraction windows were sized to the context only (about 65,000 characters on a 32k endpoint) while a window's nuggets need about one output token per character: on DeepSeek every thematic-analysis window overran the 8,192-token answer (idle timeout, missing structured output) and the run found nothing in 90 minutes; `main` failed the same skill on every model. |
+| D-30 | Skills | `skills/skill_windows.py::resolve_call_budget` (introduced by DEC-9 in Phase 2) | The budget lookup read the engine's `model_manager` accessor as an attribute; the exception was swallowed into the settings floor, so every skill ran on a 4,096-token context and 1,024-token answers. `user-interviews` still worked in small windows; thematic analysis's larger answers were always cut off. Unit tests had replaced the lookup with a fake, so none caught it. |
 
 ## Pre-registered readiness criteria (DEC-2, fixed before any number)
 

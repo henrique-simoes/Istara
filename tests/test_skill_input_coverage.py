@@ -310,3 +310,33 @@ def test_every_extraction_path_uses_the_output_bounded_budget():
     assert "plan_windows(sources, extraction_char_budget(" in inspect.getsource(skill_factory)
     interviews = inspect.getsource(user_interviews.UserInterviewsSkill.execute)
     assert "extraction_char_budget(" in interviews
+
+
+def test_call_budget_comes_from_the_serving_endpoint(monkeypatch):
+    """D-30: the budget lookup read `model_manager` as an attribute; it is a method, so every skill
+    silently ran on the 4,096 / 1,024-token floor and thematic analysis could never finish an
+    answer. The lookup goes through the same accessor the engine uses."""
+    from types import SimpleNamespace
+
+    from app.core.pi_runtime import seams
+    from app.skills import skill_windows
+
+    endpoint = SimpleNamespace(context_window=128000, max_tokens=8192, endpoint_id="ep-remote")
+
+    class _Manager:
+        def resolve(self, *, project_id=None, **_kw):  # noqa: ANN001
+            return endpoint
+
+    class _Service:
+        def model_manager(self):
+            return _Manager()
+
+    monkeypatch.setattr(seams, "get_pi_execution_service", lambda: _Service())
+    monkeypatch.setattr("app.config.settings.skill_execute_context_limit_tokens", 4096)
+    monkeypatch.setattr("app.config.settings.skill_execute_max_output_tokens", 1024)
+
+    budget = skill_windows.resolve_call_budget("p1")
+    assert budget.basis == "endpoint_context_window"
+    assert budget.endpoint_id == "ep-remote"
+    assert budget.context_tokens == 32768  # the configured ceiling
+    assert budget.max_output_tokens == 8192

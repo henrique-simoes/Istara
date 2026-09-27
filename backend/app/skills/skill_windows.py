@@ -79,12 +79,18 @@ def resolve_call_budget(project_id: str | None) -> SkillCallBudget:
     try:
         from app.core.pi_runtime.seams import get_pi_execution_service
 
-        manager = get_pi_execution_service().model_manager
+        # `model_manager` is the engine's accessor method (D-30: read as an attribute, it raised and
+        # every skill silently ran on the settings floor).
+        manager = get_pi_execution_service().model_manager()
         resolved = manager.resolve(project_id=project_id)
         window = int(getattr(resolved, "context_window", 0) or 0)
         endpoint_max = int(getattr(resolved, "max_tokens", 0) or 0)
         endpoint_id = str(getattr(resolved, "endpoint_id", "") or "")
     except Exception:
+        logger.warning(
+            "Skill call budget: serving endpoint not resolved; using the settings floor",
+            exc_info=True,
+        )
         return SkillCallBudget(context_tokens=floor, max_output_tokens=base_output)
     if window <= 0:
         return SkillCallBudget(
