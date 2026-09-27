@@ -2,14 +2,14 @@
 
 ```yaml
 item: professional-readiness-review
-branch: plan/professional-readiness-installers
+branch: plan/professional-readiness-p5
 cf: { spec: CF-SPEC-5, tasks: [CF-45, CF-46, CF-47, CF-48, CF-49, CF-50, CF-51, CF-52, CF-53, CF-54, CF-55, CF-56, CF-57, CF-58] }
-phase: "Phase 4 — installers"
-stage: S2-execute
-status: in-progress
-blocked_on: null
-last: { agent: claude-code, at: 2026-09-27T05:40:00Z, ledger: L-6 }
-next_action: "Merge the installers PR and its sync PR; verify the release it publishes (assets, latest.json signatures, DMG signature) and update the Homebrew tap; then Phase 5."
+phase: "Phase 5 — ship"
+stage: S5-ship
+status: blocked
+blocked_on: "owner: top up the DeepSeek API balance (402 Insufficient Balance since 2026-09-27 ~08:55 UTC); R0 and C2 need three live coders"
+last: { agent: claude-code, at: 2026-09-27T11:45:00Z, ledger: L-7 }
+next_action: "After the top-up, run `python -m app.evals.report_path_eval` (R0/R1) and `python -m app.evals.coding_agreement_eval` (C2/C3) on a fresh live lane from main, record them, and finish the local-model SK3 cells."
 ```
 
 ## Plan overview
@@ -498,3 +498,28 @@ checks; Studio DMG and amd64 deb checks above; Linux bare-container install to a
 `tests/test_release_pipeline.py`, `tests/test_updates.py`, W8 startup tests pass; CI governance
 passes.
 Next: installers PR, sync PR, then verify the published release.
+
+## Phase 5 — ship
+
+### Verdicts (2026-09-27)
+
+| Area | Verdict | Evidence |
+|---|---|---|
+| 1 Menus nobody had walked | **Ready** | Scenario 90 walks all 24 views and every sub-tab in both themes and three roles: 16/16 (run 2026-09-27T05-20-27-957Z); scenario 88 (375 px) 11/11; the 12 verdicts dated 2026-09-08 refreshed (23 scenarios, 435/438, then 30 15/15). |
+| 5 UX | **Ready with caveats** | 0 serious/critical axe violations on 96 screens (58 before), 13 controls named, subtle-text token AA on every surface. Caveats: most tab bars are `aria-pressed` toggles rather than an ARIA tab pattern; the desktop app's own UI has no automated test. |
+| 2 Surveys and channels | **Ready with caveats** | S1-S5, S7, S8 pass (attribution 55/55, completeness 55/55, non-research data 101 -> 0, quota overshoot 9 -> 0, duplicate units 360 -> 0; scenario 89 28/28). Caveats: S6 (answers through the spine to a report) has its path ("Analyse responses") but no live end-to-end proof yet (R0 is blocked, below); Slack, Telegram and WhatsApp were exercised through the protocol simulator, not real accounts; diary-study pacing is not scheduled; opt-in channel agent replies have no sender allowlist (R-1). |
+| 3 Research Spine | **Not ready** until R0 is proven live | Fixed and tested: grounding (D-12), whole-study reading (D-14, D-16, D-18, D-29, D-30), chosen model honoured (D-31), no invented findings (SK4), synthesis for every findings skill (SK1), nominal reliability (C1), coder batches (D-19), item-level report gate (D-24), export with evidence trails (R3 by API; the buttons render), reviewer attribution (K1), self-improvement boundary (E1), agents creating agents (A1). Measured: SK3 thematic analysis 0.0 -> 0.95 theme recall (paired over theme x model, p = 0.0001 Holm), 83-100% of nuggets grounded (0% before); G1 fact -> nugget link support 0.91 [0.84-0.96] (0.65 before). Open: R0 and C2/C3 need three live coders and the DeepSeek balance is exhausted; the one real three-model run measured kappa 0.029 (needs reconciliation); G1 insight -> fact 0.50 on a whole-study graph; G2 unchanged (0.38-0.44; an attempted fix lowered it to 0.06 and was reverted); G3 still does not ship. |
+| 4 Installers | **Ready with caveats** | Release v2026.09.27.4 (first on the fixed pipeline): DMG, updater archive, NSIS, MSI, AppImage, deb, rpm, each with an updater signature that verifies against the app's public key; `latest.json` on all four platforms; the Homebrew tap updated (sha256 verified); a bare Ubuntu 24.04 container installs from the curl one-liner to a healthy backend; the deb installs on amd64. Caveats: macOS is ad-hoc signed and not notarised (one "Open Anyway"); Windows installers were not installed on a Windows machine; the tap updates by hand until `HOMEBREW_TAP_TOKEN` exists; native installs run the legacy engine. |
+
+Handoff residuals: link support improved (0.65 -> 0.91); DAG recall not improved (see G2); graph expansion stays off (G3, 2026-09-27: coverage@10 0.773 -> 0.750, p = 0.03); synthetic judge labels and Spanish-only multilingual coverage were not addressed in this plan; three-model kappa near zero is measured again (0.029) and its diagnosis (C2) waits on the DeepSeek balance; `user-interviews` now yields facts from a single transcript (SK1).
+
+DEC-14 | 2026-09-27 | S5-ship | claude-code
+Context: the DeepSeek balance ran out mid-run (HTTP 402); R0 and C2 need three distinct live coders; the owner is away and a top-up is a payment.
+Decision: finish and ship everything that does not need DeepSeek, record R0 and C2 as blocked with ready-to-run commands, and set the plan to blocked on the owner. Spend accounting: the aborted after-arm DeepSeek run ($0.56, killed for D-19, measurement void) is reported separately; every valid SK3 cell stayed under $1 (largest $0.48).
+Why: a top-up is outside what an agent may do; claiming the Spine area ready without R0 would contradict the pre-registered Blocker.
+
+### L-7 | 2026-09-27T11:45:00Z | S5-ship | claude-code | executor | Phase 5
+Did: after Phases 2-4 merged (#53, #55, #58, each followed by a sync PR), the live measurements found D-29, D-30 and D-31; fixed in #60 and #64. A G2 change in #60 lowered recall and was reverted in #62. Verified release v2026.09.27.4 (assets, signatures against the app key, DMG on the Studio) and updated the Homebrew tap (henrique-simoes/homebrew-istara#1). Stopped the local-model SK3 cells (3-4 hours each) at the owner's request to wrap up. G3 coverage capped at 1 (a passage can hold several planted quotes).
+Result: verdicts above.
+Verified: `skill_theme_eval` cells in `~/cf-remote/eval/measure/readiness-0926/` (Studio); `graph_eval trace/expand`, `dag_eval` (g1/g2/g3-readiness, g2-prompt-before/after); release verification commands in L-6's successor notes; every PR's full backend suite (same four environmental failures as `main`), governance checks and CI green before merge.
+Next: owner tops up DeepSeek; then R0 and C2 (see Status Block).
