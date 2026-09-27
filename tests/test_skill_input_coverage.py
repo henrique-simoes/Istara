@@ -168,3 +168,37 @@ async def test_custom_discover_skills_read_every_note(monkeypatch, tmp_path, sma
     seen = " ".join(agentic.prompts)
     assert "marker-Q-299" in seen and "marker-Q-000" in seen
     assert output.nuggets and all(n["source"] == "notes-Q.md" for n in output.nuggets)
+
+
+@pytest.mark.asyncio
+async def test_a_task_that_names_input_documents_reads_only_those(tmp_path, monkeypatch):
+    """D-18: a task's input documents were never passed to its skill."""
+    import uuid
+
+    from app.config import settings
+    from app.core.agent_research import _task_skill_files
+    from app.models.database import async_session, init_db
+    from app.models.document import Document, DocumentSource, DocumentStatus
+    from app.models.project import Project
+    from app.models.task import Task
+
+    await init_db()
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    project_id = str(uuid.uuid4())
+    folder = tmp_path / project_id
+    folder.mkdir()
+    chosen, other = folder / "p01.md", folder / "p02.md"
+    chosen.write_text("chosen interview", encoding="utf-8")
+    other.write_text("another interview", encoding="utf-8")
+    async with async_session() as db:
+        project = Project(id=project_id, name="Inputs")
+        doc = Document(id=str(uuid.uuid4()), project_id=project_id, title="p01.md",
+                       file_name="p01.md", file_path=str(chosen), status=DocumentStatus.READY,
+                       source=DocumentSource.USER_UPLOAD)
+        named = Task(id=str(uuid.uuid4()), project_id=project_id, title="Analyse P01",
+                     input_document_ids=json.dumps([doc.id]))
+        unnamed = Task(id=str(uuid.uuid4()), project_id=project_id, title="Analyse all")
+        db.add_all([project, doc, named, unnamed])
+        await db.commit()
+        assert await _task_skill_files(db, project, named) == [str(chosen)]
+        assert await _task_skill_files(db, project, unnamed) == [str(chosen), str(other)]

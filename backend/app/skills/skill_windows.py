@@ -257,3 +257,23 @@ async def analyse_in_windows(
         "budget_basis": budget.basis,
     }
     return merge_window_data(datas), labelled, coverage
+
+
+def estimated_calls(files: list[str], project_id: str | None) -> int:
+    """How many model calls reading these files will take (windows plus one synthesis)."""
+    import os
+
+    total = 0
+    for path in files or []:
+        try:
+            total += os.path.getsize(path)
+        except OSError:
+            continue
+    per_window = window_char_budget(resolve_call_budget(project_id), 1500)
+    return max(1, -(-total // per_window)) + 1
+
+
+def scaled_timeout(base_seconds: float, files: list[str], project_id: str | None) -> float:
+    """A skill's wall-clock budget grows with the calls it must make; each call keeps its own
+    liveness in the runtime, so a long, steadily progressing analysis is never cut off early."""
+    return float(base_seconds) * estimated_calls(files, project_id)
