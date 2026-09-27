@@ -1,14 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, FileQuestion, RefreshCw, Trash2, Link2, ListChecks, Sparkles, Send, CheckCircle2, Loader2, ClipboardList, Download } from "lucide-react";
+import { Plus, FileQuestion, Trash2, Link2, ListChecks } from "lucide-react";
 import { useIntegrationsStore } from "@/stores/integrationsStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { permissionRequests, surveys as surveysApi } from "@/lib/api";
-import { post } from "@/lib/apiClient";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { cn } from "@/lib/utils";
 import SurveySetupWizard from "./SurveySetupWizard";
+import QuestionnaireStudio from "./QuestionnaireStudio";
+import LinkedSurveysTable from "./LinkedSurveysTable";
 import type { SurveyLink } from "@/lib/types";
 
 const PLATFORM_META: Record<string, { label: string; color: string; bg: string }> = {
@@ -28,20 +29,8 @@ export default function SurveysTab() {
 
   // Studio state
   const [surveyTabMode, setSurveyTabMode] = useState<"platforms" | "studio">("platforms");
-  // The studio records a real participant's answers into the Research Spine, so it starts empty:
-  // pre-filled sample answers would be one click away from becoming fabricated evidence.
-  const [surveyTitle, setSurveyTitle] = useState("");
-  const [questions, setQuestions] = useState<string[]>([]);
-  const [newQuestionText, setNewQuestionText] = useState("");
-  const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [studioError, setStudioError] = useState<string | null>(null);
   const [linkNotice, setLinkNotice] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
-  const [submittingResponse, setSubmittingResponse] = useState(false);
-  const [ingestSuccess, setIngestSuccess] = useState<{
-    nuggets: number;
-    evidence_units: number;
-  } | null>(null);
   const fetchLinks = useCallback(async () => {
     setLinkedSurveys([]);
     setLinksLoading(true);
@@ -142,44 +131,6 @@ export default function SurveysTab() {
     });
   };
 
-  const handleIngestDirectSurvey = async () => {
-    if (!activeProjectId || submittingResponse) return;
-    const answered = questions.filter((_, idx) => (answers[idx] || "").trim());
-    if (!surveyTitle.trim() || answered.length === 0) {
-      setStudioError("Give the survey a name and enter at least one answer before recording.");
-      return;
-    }
-    setSubmittingResponse(true);
-    setIngestSuccess(null);
-    setStudioError(null);
-    try {
-      const resp = await post<any>("/api/surveys/responses/ingest", {
-        project_id: activeProjectId,
-        survey_name: surveyTitle,
-        responses: [
-          {
-            id: `resp-${Date.now()}`,
-            answers: questions.map((q, idx) => ({
-              question: q,
-              // An unanswered question is skipped, never stored as an invented answer.
-              answer: (answers[idx] || "").trim(),
-            })),
-          },
-        ],
-      });
-      setIngestSuccess({
-        nuggets: resp.nuggets_created || 0,
-        evidence_units: resp.evidence_units_created || 0,
-      });
-      setAnswers({});
-      await fetchLinks();
-    } catch (e) {
-      setStudioError(e instanceof Error ? `Could not record the response: ${e.message}` : "Could not record the response.");
-    } finally {
-      setSubmittingResponse(false);
-    }
-  };
-
   if (showWizard) {
     return (
       <SurveySetupWizard
@@ -235,147 +186,12 @@ export default function SurveysTab() {
           )}
         >
           <ListChecks size={13} className="text-purple-500" />
-          Questionnaire Studio & Research Spine Ingestion
+          Questionnaire Studio
         </button>
       </div>
 
       {surveyTabMode === "studio" ? (
-        /* Questionnaire Studio & Research Spine Ingestion */
-        <div className="space-y-6">
-          {ingestSuccess && (
-            <div className="flex items-center justify-between p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 text-xs">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 size={16} />
-                <span>
-                  <strong>Success!</strong> Ingested {ingestSuccess.nuggets} provisional nuggets and {ingestSuccess.evidence_units} evidence units directly into the Research Spine.
-                </span>
-              </div>
-              <button onClick={() => setIngestSuccess(null)} className="text-emerald-500 hover:text-emerald-700">×</button>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Survey Definition Card */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <ClipboardList size={16} className="text-purple-600 dark:text-purple-400" />
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Survey Definition</h3>
-                </div>
-                <span className="text-[11px] text-slate-400 font-mono">{questions.length} Questions</span>
-              </div>
-
-              <div>
-                <label htmlFor="studio-survey-title" className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1">Survey Title</label>
-                <input
-                  id="studio-survey-title"
-                  type="text"
-                  placeholder="e.g., Onboarding phone survey"
-                  value={surveyTitle}
-                  onChange={(e) => setSurveyTitle(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-istara-500"
-                />
-              </div>
-
-              <div className="space-y-2.5">
-                <label className="text-xs font-semibold text-slate-500 block">Questions</label>
-                {questions.map((q, idx) => (
-                  <div key={idx} className="flex items-start gap-2 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-xs">
-                    <span className="font-semibold text-purple-600 dark:text-purple-400 shrink-0">Q{idx + 1}:</span>
-                    <span className="text-slate-800 dark:text-slate-200 flex-1">{q}</span>
-                    {questions.length > 1 && (
-                      <button
-                        onClick={() => setQuestions(questions.filter((_, i) => i !== idx))}
-                        className="text-slate-400 hover:text-red-500 transition-colors"
-                        title="Remove question"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    type="text"
-                    placeholder="Add a new survey question..."
-                    value={newQuestionText}
-                    onChange={(e) => setNewQuestionText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newQuestionText.trim()) {
-                        setQuestions([...questions, newQuestionText.trim()]);
-                        setNewQuestionText("");
-                      }
-                    }}
-                    className="flex-1 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-istara-500"
-                  />
-                  <button
-                    onClick={() => {
-                      if (newQuestionText.trim()) {
-                        setQuestions([...questions, newQuestionText.trim()]);
-                        setNewQuestionText("");
-                      }
-                    }}
-                    className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg transition-colors shrink-0"
-                  >
-                    Add Q
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Interactive Participant Simulation & Spine Ingestion Form */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles size={16} className="text-blue-600 dark:text-blue-400" />
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Record a Participant&apos;s Answers</h3>
-                </div>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-medium">
-                  Stored as raw evidence
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                For answers a real participant gave you another way (a phone call, a paper form). Each answer
-                becomes a raw evidence unit; empty answers are skipped. Never enter invented answers here.
-              </p>
-
-              <div className="space-y-3">
-                {questions.length === 0 && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Add the survey&apos;s questions first.</p>
-                )}
-                {questions.map((q, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                      Q{idx + 1}: {q}
-                    </p>
-                    <textarea
-                      rows={2}
-                      value={answers[idx] || ""}
-                      onChange={(e) => setAnswers({ ...answers, [idx]: e.target.value })}
-                      placeholder="Participant answer..."
-                      className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-istara-500 font-sans"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {studioError && (
-                <p role="alert" className="text-xs text-red-600 dark:text-red-400">{studioError}</p>
-              )}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                <button
-                  onClick={handleIngestDirectSurvey}
-                  disabled={submittingResponse || !activeProjectId}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-istara-600 hover:bg-istara-700 text-white transition-colors disabled:opacity-50 shadow-xs"
-                >
-                  {submittingResponse ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                  Record response
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <QuestionnaireStudio projectId={activeProjectId} onRecorded={fetchLinks} />
       ) : (
         /* Connected Platforms Mode */
         <>
@@ -440,76 +256,17 @@ export default function SurveysTab() {
         </>
       )}
 
-      {/* Linked Surveys table */}
-      {scopedSurveyIntegrations.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <Link2 size={16} className="text-slate-400" />
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Linked Surveys</h3>
-            </div>
-          </div>
-          {linkError && (
-            <p role="alert" className="px-5 pt-3 text-xs text-red-600 dark:text-red-400">{linkError}</p>
-          )}
-          {linkNotice && !linkError && (
-            <p role="status" className="px-5 pt-3 text-xs text-slate-600 dark:text-slate-300">{linkNotice}</p>
-          )}
-
-          {linksLoading ? (
-            <div className="p-4 space-y-3">
-              {Array.from({ length: 2 }).map((_, i) => (
-                <div key={i} className="h-12 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
-              ))}
-            </div>
-          ) : linkedSurveys.length === 0 ? (
-            <div className="px-5 py-8 text-center">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                No surveys linked yet. Surveys from connected platforms will appear here.
-              </p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800">
-                  <th className="px-5 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">Survey Name</th>
-                  <th className="px-5 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">Responses</th>
-                  <th className="px-5 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400">Last Response</th>
-                  <th className="px-5 py-2 text-right text-xs font-medium text-slate-500 dark:text-slate-400">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {linkedSurveys.map((link) => (
-                  <tr key={link.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="px-5 py-3 text-sm text-slate-900 dark:text-white">{link.external_survey_name}</td>
-                    <td className="px-5 py-3 text-sm text-slate-600 dark:text-slate-300">{link.response_count}</td>
-                    <td className="px-5 py-3 text-xs text-slate-500 dark:text-slate-400">
-                      {link.last_response_at ? new Date(link.last_response_at).toLocaleDateString() : "---"}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <button
-                        onClick={() => handleExportLink(link.id)}
-                        aria-label={`Export ${link.external_survey_name} responses as CSV`}
-                        title="Export stored answers (CSV)"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-istara-600 hover:bg-istara-50 dark:hover:bg-istara-900/20 transition-colors"
-                      >
-                        <Download size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleSync(link.id)}
-                        disabled={syncing === link.id}
-                        aria-label="Sync survey responses"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-istara-600 hover:bg-istara-50 dark:hover:bg-istara-900/20 transition-colors disabled:opacity-50"
-                      >
-                        <RefreshCw size={14} className={syncing === link.id ? "animate-spin" : ""} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+      {/* Linked Surveys: platform links and surveys recorded in the Questionnaire Studio */}
+      {(scopedSurveyIntegrations.length > 0 || linkedSurveys.length > 0) && (
+        <LinkedSurveysTable
+          links={linkedSurveys}
+          loading={linksLoading}
+          syncingId={syncing}
+          notice={linkNotice}
+          error={linkError}
+          onSync={handleSync}
+          onExport={handleExportLink}
+        />
       )}
     </div>
   );

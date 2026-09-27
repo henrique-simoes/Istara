@@ -148,7 +148,6 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
     }
   };
 
-  const progress = counts.target > 0 ? Math.round((counts.current / counts.target) * 100) : 0;
 
   const renderTabContent = () => {
     if (loading) {
@@ -188,45 +187,17 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
               {deployment.config?.consent_required ? " \u00b7 consent asked first" : ""}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {canWriteActiveProject && studyState === "draft" && (
-              <button onClick={handleActivate} disabled={actionLoading} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
-                <Play size={12} /> Activate
-              </button>
-            )}
-            {canWriteActiveProject && studyState === "active" && (
-              <button onClick={handlePause} disabled={actionLoading} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors">
-                <Pause size={12} /> Pause
-              </button>
-            )}
-            {canWriteActiveProject && studyState === "paused" && (
-              <button onClick={handleActivate} disabled={actionLoading} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
-                <Play size={12} /> Resume
-              </button>
-            )}
-            {canWriteActiveProject && (studyState === "active" || studyState === "paused") && (
-              <button onClick={handleComplete} disabled={actionLoading} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                <CheckCircle2 size={12} /> Complete
-              </button>
-            )}
-            <button
-              onClick={refresh}
-              disabled={refreshing}
-              aria-label="Refresh study data"
-              title="Refresh (also refreshes every 15 seconds)"
-              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
-            >
-              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-            </button>
-            {canWriteActiveProject && (
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <Download size={12} /> Export CSV
-            </button>
-            )}
-          </div>
+          <StudyActions
+            canWrite={canWriteActiveProject}
+            studyState={studyState}
+            busy={actionLoading}
+            refreshing={refreshing}
+            onActivate={handleActivate}
+            onPause={handlePause}
+            onComplete={handleComplete}
+            onRefresh={refresh}
+            onExport={handleExport}
+          />
         </div>
         {actionError && (
           <p role="alert" className="mb-3 text-xs text-red-600 dark:text-red-400">{actionError}</p>
@@ -235,16 +206,7 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
           <p role="status" className="mb-3 text-xs text-slate-600 dark:text-slate-300">{notice}</p>
         )}
 
-        {/* Progress */}
-        <div className="mb-3">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
-            <span>{counts.current} / {counts.target} participants finished</span>
-            <span>{progress}%</span>
-          </div>
-          <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-istara-500 rounded-full transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
-          </div>
-        </div>
+        <StudyProgress current={counts.current} target={counts.target} />
 
         {/* Sub-tabs */}
         <div className="flex items-center gap-1 overflow-x-auto">
@@ -285,6 +247,88 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
 }
 
 // --- Sub-components ---
+
+const ACTION = "flex items-center gap-1 px-3 py-1.5 text-xs text-white rounded-lg disabled:opacity-50 transition-colors";
+
+function StudyActions({
+  canWrite,
+  studyState,
+  busy,
+  refreshing,
+  onActivate,
+  onPause,
+  onComplete,
+  onRefresh,
+  onExport,
+}: {
+  canWrite: boolean;
+  studyState: ResearchDeployment["state"];
+  busy: boolean;
+  refreshing: boolean;
+  onActivate: () => void;
+  onPause: () => void;
+  onComplete: () => void;
+  onRefresh: () => void;
+  onExport: () => void;
+}) {
+  const running = studyState === "active" || studyState === "paused";
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {canWrite && studyState === "draft" && (
+        <button onClick={onActivate} disabled={busy} className={cn(ACTION, "bg-green-600 hover:bg-green-700")}>
+          <Play size={12} /> Activate
+        </button>
+      )}
+      {canWrite && studyState === "active" && (
+        <button onClick={onPause} disabled={busy} className={cn(ACTION, "bg-amber-600 hover:bg-amber-700")}>
+          <Pause size={12} /> Pause
+        </button>
+      )}
+      {canWrite && studyState === "paused" && (
+        <button onClick={onActivate} disabled={busy} className={cn(ACTION, "bg-green-600 hover:bg-green-700")}>
+          <Play size={12} /> Resume
+        </button>
+      )}
+      {canWrite && running && (
+        <button onClick={onComplete} disabled={busy} className={cn(ACTION, "bg-blue-600 hover:bg-blue-700")}>
+          <CheckCircle2 size={12} /> Complete
+        </button>
+      )}
+      <button
+        onClick={onRefresh}
+        disabled={refreshing}
+        aria-label="Refresh study data"
+        title="Refresh (also refreshes every 15 seconds)"
+        className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+      >
+        <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+      </button>
+      {canWrite && (
+        <button
+          onClick={onExport}
+          className="flex items-center gap-1 px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        >
+          <Download size={12} /> Export CSV
+        </button>
+      )}
+    </div>
+  );
+}
+
+function StudyProgress({ current, target }: { current: number; target: number }) {
+  const progress = target > 0 ? Math.round((current / target) * 100) : 0;
+  return (
+    <div className="mb-3">
+      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+        <span>{current} / {target} participants finished</span>
+        <span>{progress}%</span>
+      </div>
+      <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+        <div className="h-full bg-istara-500 rounded-full transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
+      </div>
+    </div>
+  );
+}
 
 function LiveFeed({ conversations, onViewTranscript }: { conversations: ChannelConversation[]; onViewTranscript: (id: string) => void }) {
   const active = conversations.filter((c) => IN_PROGRESS_STATES.has(c.state));

@@ -33,6 +33,7 @@ import { navigateTo, selectProject } from "../lib/embedding-settings.mjs";
 import { keyboardFocusCheck, reflow375Check, setTheme } from "../lib/matrix-checks.mjs";
 import { ensureRoleAccounts, driveRoleCell } from "../lib/role-variants.mjs";
 import { createVariantLedger } from "../lib/variant-obligations.mjs";
+import { NOT_ANSWERS, PARTICIPANT_SCRIPT, parseCsv, shows } from "../lib/study-journey.mjs";
 
 export const name = "Research study through messaging channels";
 export const id = "89-study-participant-journey";
@@ -252,18 +253,15 @@ async function activateAndRunParticipants(ctx, checks, state) {
   const deployments = await ctx.api.get(`/api/deployments?project_id=${encodeURIComponent(state.projectId)}`);
   state.deploymentId = (deployments || []).find((d) => d.name === STUDY_NAME)?.id || null;
 
+  await runParticipants(ctx, checks, state);
+}
+
+/** 2b. Six synthetic participants over the three channels (API-behind-browser). */
+async function runParticipants(ctx, checks, state) {
   const label = "[API-behind-browser] participants answer through Telegram, Slack and WhatsApp";
   const replies = {};
-  const script = [
-    ["p1", "telegram", ["hi", "yes", "yes", "We email PDFs around", "Big exports time out", "No, that's all"]],
-    ["p2", "slack", ["hello", "no", "actually exports are slow"]],
-    ["p3", "whatsapp", ["hi", "yes", "no"]],
-    ["p4", "slack", ["hi", "yes", "yes", "Shared drive", "STOP", "one more thing"]],
-    ["p5", "whatsapp", ["hey", "sure", "Yes", "Screenshots in chat", "Finding the latest version", "Nothing else"]],
-    ["p6", "telegram", ["hi there", "yes"]],
-  ];
   try {
-    for (const [sender, platform, texts] of script) {
+    for (const [sender, platform, texts] of PARTICIPANT_SCRIPT) {
       replies[sender] = [];
       for (const text of texts) replies[sender].push(await say(ctx, state, platform, sender, text));
     }
@@ -343,7 +341,7 @@ async function exportCsv(ctx, checks) {
       `P04|${Q1}|Shared drive`,
       `P05|${Q1}|Screenshots in chat`, `P05|${Q2}|Finding the latest version`, `P05|${CLOSING}|Nothing else`,
     ];
-    const leaked = ["hi", "hello", "yes", "no", "STOP", "sure", "hey", "one more thing", "actually exports are slow"].filter((t) => answers.some((r) => r.answer === t));
+    const leaked = NOT_ANSWERS.filter((t) => answers.some((r) => r.answer === t));
     checks.push({
       name: "Export CSV: every answer is attributed to the question actually asked; nothing else is data",
       passed: JSON.stringify(pairs) === JSON.stringify(expected) && leaked.length === 0,
@@ -358,36 +356,6 @@ async function exportCsv(ctx, checks) {
   } catch (e) {
     checks.push({ name: "Export CSV downloads from the dashboard", passed: false, detail: e.message });
   }
-}
-
-/** Playwright's isVisible() does not wait; this does. */
-async function shows(locator, timeout = 8000) {
-  return locator.waitFor({ state: "visible", timeout }).then(() => true).catch(() => false);
-}
-
-function parseCsv(text) {
-  const lines = [];
-  let row = [];
-  let field = "";
-  let quoted = false;
-  for (let i = 0; i < text.length; i += 1) {
-    const ch = text[i];
-    if (quoted) {
-      if (ch === '"' && text[i + 1] === '"') { field += '"'; i += 1; }
-      else if (ch === '"') quoted = false;
-      else field += ch;
-    } else if (ch === '"') quoted = true;
-    else if (ch === ",") { row.push(field); field = ""; }
-    else if (ch === "\n" || ch === "\r") {
-      if (ch === "\r" && text[i + 1] === "\n") i += 1;
-      row.push(field); field = "";
-      if (row.some((c) => c !== "")) lines.push(row);
-      row = [];
-    } else field += ch;
-  }
-  if (field || row.length) { row.push(field); lines.push(row); }
-  const [header, ...body] = lines;
-  return (body || []).map((cells) => Object.fromEntries((header || []).map((h, i) => [h, cells[i] ?? ""])));
 }
 
 /** 4. Pause: participants are told, and nothing they send is stored. */
