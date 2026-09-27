@@ -1035,6 +1035,22 @@ def test_global_default_endpoint_is_used_for_unqualified_chat_resolution(monkeyp
     assert manager.resolve().endpoint_id == "pi-second"
 
 
+def test_a_requirement_the_default_meets_keeps_the_chosen_default(monkeypatch):
+    """D-31: a call that states a requirement (a skill's context size) went to the first catalog
+    entry that met it, never to the model the user chose, even when that model met it too."""
+    local = _real_endpoint(endpoint_id="pi-local", model="model-local", context_window=262_144)
+    chosen = _real_endpoint(endpoint_id="pi-chosen", model="model-chosen", context_window=128_000)
+    small = _real_endpoint(endpoint_id="pi-small", model="model-small", context_window=8_192)
+    monkeypatch.setattr(settings, "pi_default_endpoint_id", "pi-chosen", raising=False)
+    manager = _isolated(PiModelManager(endpoints=[local, chosen, small], include_local=False))
+
+    assert manager.resolve(min_context=32_768).endpoint_id == "pi-chosen"
+    # A requirement the default cannot meet still goes to the first entry that can.
+    assert manager.resolve(min_context=200_000).endpoint_id == "pi-local"
+    monkeypatch.setattr(settings, "pi_default_endpoint_id", "pi-small", raising=False)
+    assert manager.resolve(min_context=32_768).endpoint_id == "pi-local"
+
+
 @pytest.mark.asyncio
 async def test_llm_server_projection_excludes_donor_rows():
     """Persisted LLMServer rows project read-only; relay donors never do."""

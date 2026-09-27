@@ -72,6 +72,7 @@ These are hypotheses to prove with failing tests first, not conclusions.
 | D-28 | UX | `LoginScreen.tsx` | The sign-in form's placeholder read "Choose a username". |
 | D-29 | Skills | `skills/skill_windows.py`, `skill_factory.py` (generic runner behind about 40 skills) | Extraction windows were sized to the context only (about 65,000 characters on a 32k endpoint) while a window's nuggets need about one output token per character: on DeepSeek every thematic-analysis window overran the 8,192-token answer (idle timeout, missing structured output) and the run found nothing in 90 minutes; `main` failed the same skill on every model. |
 | D-30 | Skills | `skills/skill_windows.py::resolve_call_budget` (introduced by DEC-9 in Phase 2) | The budget lookup read the engine's `model_manager` accessor as an attribute; the exception was swallowed into the settings floor, so every skill ran on a 4,096-token context and 1,024-token answers. `user-interviews` still worked in small windows; thematic analysis's larger answers were always cut off. Unit tests had replaced the lookup with a fake, so none caught it. |
+| D-31 | Routing | `core/pi_runtime/model_manager.py::resolve` | A call stating a requirement (a skill's `min_context`) skipped the user's chosen model and took the first capable catalog entry; every generic skill therefore ran on the owner's local model, whatever model was chosen (found when a "DeepSeek" SK3 cell was served by the local model at 211 s per window). |
 
 ## Pre-registered readiness criteria (DEC-2, fixed before any number)
 
