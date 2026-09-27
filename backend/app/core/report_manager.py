@@ -371,9 +371,7 @@ class ReportManager:
                 )
                 if validity["report_allowed"]:
                     validity_allowed.add(task_id)
-                    reportable_by_task[task_id] = set(
-                        validity.get("reportable_finding_ids") or []
-                    )
+                    reportable_by_task[task_id] = set(validity.get("reportable_finding_ids") or [])
             reportable_task_ids = validity_allowed
 
         reportable_finding_ids: list[str] = []
