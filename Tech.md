@@ -3350,6 +3350,11 @@ Lifecycle `docs/build-stream/2026-09-26-professional-readiness-review.md`.
   governance proposals. Scenario 90 walks every view and sub-tab in both themes and three roles
   (`tests/simulation/scenarios/90-menu-walk.mjs`). The sign-in copy change was revalidated against the
   security benchmark (`security/SECURITY_BENCHMARK.md`).
+- **Review status (2026-09-27).** Verdicts per area are in the lifecycle's Phase 5 section: menus
+  ready; UX, studies and installers ready with caveats; the Research Spine not ready until the
+  end-to-end report run (R0) and the three-model agreement diagnosis (C2) run, which need the
+  DeepSeek balance topped up. G3 theme coverage is capped at 1 (a passage can hold several planted
+  quotes). VERSION 2026.09.27.8.
 - **Measurement harnesses.** `app/evals/study_capture_eval.py` (S1-S5),
   `skill_theme_eval.py` (SK3 theme recall), `coding_agreement_eval.py` (C2/C3, codebook arms,
   DEC-3), `report_path_eval.py` (R0/R1 end to end).

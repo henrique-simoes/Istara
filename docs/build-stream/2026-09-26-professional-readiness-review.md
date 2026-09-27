@@ -523,4 +523,3 @@ Did: after Phases 2-4 merged (#53, #55, #58, each followed by a sync PR), the li
 Result: verdicts above.
 Verified: `skill_theme_eval` cells in `~/cf-remote/eval/measure/readiness-0926/` (Studio); `graph_eval trace/expand`, `dag_eval` (g1/g2/g3-readiness, g2-prompt-before/after); release verification commands in L-6's successor notes; every PR's full backend suite (same four environmental failures as `main`), governance checks and CI green before merge.
 Next: owner tops up DeepSeek; then R0 and C2 (see Status Block).
-
