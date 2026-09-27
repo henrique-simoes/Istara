@@ -3,12 +3,13 @@
 ```yaml
 item: professional-readiness-review
 branch: plan/professional-readiness-20260926
+cf: { spec: CF-SPEC-5, tasks: [CF-45, CF-46, CF-47, CF-48, CF-49, CF-50, CF-51, CF-52, CF-53, CF-54, CF-55, CF-56, CF-57, CF-58] }
 phase: "Phase 1 — surveys, channels, deployments"
-stage: S1-plan
+stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-26T21:10:00Z, ledger: L-1 }
-next_action: "Create the CF spec, then start Phase 1: write the failing tests for D-1 to D-6."
+last: { agent: claude-code, at: 2026-09-27T00:45:00Z, ledger: L-3 }
+next_action: "Merge the Phase 1 PR into main once CI is green, merge the main -> testing sync PR, then start Phase 2 (D-12 grounding, D-7 analysis path, D-8 reliability matrix)."
 ```
 
 ## Plan overview
@@ -269,3 +270,25 @@ participant's "Q:" line became a codable evidence unit.
 
 Residual: R-1 opt-in channel agent replies (`pi_replacement_enabled`) have no sender allowlist
 (off on every shipped configuration). Diary-study pacing between prompts is not scheduled.
+
+### L-3 | 2026-09-27T00:45:00Z | S2-execute | claude-code | executor | Phase 1
+Did: brought the CF gate to zero new warnings: split `process_inbound_channel_message` into named
+steps; rebuilt the wizard as one component per step around a pure `deploymentDraft.ts` (unit
+tested); split the Surveys tab (`QuestionnaireStudio`, `LinkedSurveysTable`, `SurveyPlatformCards`,
+`useLinkedSurveys`) and the dashboard header; moved scenario 89's helpers to
+`lib/study-journey.mjs`; added both export routes to the route-coverage list; one expiring,
+reasoned suppression for scenario 89's symbol count (same inherited class as scenarios 10, 20-22,
+29, 86). Found while splitting: studio-recorded surveys never appeared under Linked Surveys (so could
+not be exported), Sync was offered for them, "Request Platform" and non-admin removal gave no
+feedback, link-list and removal failures were silent, and the Typeform badge text failed contrast in
+dark mode; all fixed. Updated three source-string contract tests to follow the moved code (same
+project-scoping intent).
+Result: gate after 0 new failures, 0 new warnings; scenario 89 still 27/27.
+Verified: `compass-forge gate after --task CF-45 --summary` (new_failures 0, new_warnings 0);
+Studio full backend suite `-m "not live_llm" --continue-on-collection-errors`: branch 2,587 passed,
+3 failed + 1 error; `origin/main` 2,554 passed, 3 failed + 1 error, the same four (network-dependent
+breached-password check, repo-audit and update tests that need a git checkout, `hypothesis` missing
+from `istara-test:1`); `tsc` clean, vitest 127/127, eslint 0 errors; scenario 89 27/27 (run
+2026-09-27T00-36-33-370Z); change and feature obligations, security benchmark, public-repo audit and
+`git diff --check` pass.
+Next: PR into `main`, CI, merge, sync PR.
