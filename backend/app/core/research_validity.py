@@ -16,7 +16,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from hashlib import sha256
 
-from app.skills.intercoder import cohen_kappa, krippendorff_alpha
+from app.core.reliability_stats import cohen_kappa, krippendorff_alpha
 
 DEFAULT_RELIABILITY_THRESHOLD = 0.60
 
