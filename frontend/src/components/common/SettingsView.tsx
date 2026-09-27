@@ -487,6 +487,7 @@ function TelemetrySection() {
             }`}
             role="switch"
             aria-checked={telemetryEnabled}
+            aria-label="Local telemetry"
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${

@@ -671,7 +671,7 @@ export default function ProjectSettingsView() {
                     <span className="text-[10px] text-slate-400 w-16 text-right">{timeAgo(m.last_active)}</span>
                     {canManageProject && (
                       <div className="relative">
-                        <button onClick={() => setMemberMenu(memberMenu === m.user_id ? null : m.user_id)} className="p-1 rounded text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setMemberMenu(memberMenu === m.user_id ? null : m.user_id)} aria-label={`Actions for ${m.display_name || m.username || m.user_id}`} aria-haspopup="menu" aria-expanded={memberMenu === m.user_id} className="p-1 rounded text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity">
                           <MoreVertical size={14} />
                         </button>
                         {memberMenu === m.user_id && (

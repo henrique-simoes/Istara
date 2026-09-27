@@ -14,7 +14,7 @@
   --ui-surface-soft: #f1f5f9;
   --ui-ink: #0f172a;
   --ui-ink-muted: #475569;
-  --ui-ink-subtle: #64748b;
+  --ui-ink-subtle: #5b6778;
   --ui-rule: #e2e8f0;
   --ui-rule-strong: #cbd5e1;
   --ui-accent: #15803d;
@@ -42,7 +42,7 @@
   --ui-surface-soft: #1e293b;
   --ui-ink: #f8fafc;
   --ui-ink-muted: #cbd5e1;
-  --ui-ink-subtle: #94a3b8;
+  --ui-ink-subtle: #a3b1c5;
   --ui-rule: #334155;
   --ui-rule-strong: #475569;
   --ui-accent: #4ade80;
@@ -241,16 +241,32 @@ body {
 
 /*
  * WCAG 2.2 AA for legacy text utilities (professional-readiness review U4, 2026-09-27).
- * About 1,200 elements still use the raw `text-slate-400` primitive for metadata text; on white
- * it measures 2.6:1 (4.5:1 required), and amber-500/600 warning text 2.2-3.2:1. In the light theme
- * they take the semantic roles DESIGN.md prescribes (`--ui-ink-subtle`, `--ui-warning`). `:where()`
- * keeps the specificity of a single utility, so hover and focus variants still win.
+ * About 1,200 elements use raw slate text primitives for metadata. In the light theme
+ * `text-slate-400` measured 2.3-2.6:1 and `text-slate-500` 4.3:1 on the grey chips and tabs; in
+ * the dark theme `text-slate-500` and `text-slate-600` measured 2.2-3.8:1 (4.5:1 required). The
+ * scenario-90 walk found them on 58 screens. They take the semantic role DESIGN.md prescribes
+ * (`--ui-ink-subtle`, >= 4.5:1 on every surface in use), and amber warning text takes
+ * `--ui-warning`. `:where()` keeps the specificity of the utility being mapped, so hover, focus and
+ * explicit `dark:` variants that choose another colour still win.
  */
-:where(html:not(.dark)) .text-slate-400 {
+:where(html:not(.dark)) .text-slate-400,
+:where(html:not(.dark)) .text-slate-500 {
   color: var(--ui-ink-subtle);
 }
 
 :where(html:not(.dark)) .text-amber-500,
 :where(html:not(.dark)) .text-amber-600 {
   color: var(--ui-warning);
+}
+
+:where(html.dark) .text-slate-500,
+:where(html.dark) .text-slate-600 {
+  color: var(--ui-ink-subtle);
+}
+
+/* Tailwind emits `dark:` utilities as `.dark .dark\:…` (two classes); one element selector more
+   outranks them, while `dark:hover:` (three classes) still wins. */
+html.dark .dark\:text-slate-500,
+html.dark .dark\:text-slate-600 {
+  color: var(--ui-ink-subtle);
 }

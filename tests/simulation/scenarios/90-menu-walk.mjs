@@ -20,22 +20,23 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { navigateTo, selectProject } from "../lib/embedding-settings.mjs";
+import { selectProject } from "../lib/embedding-settings.mjs";
 import { setTheme } from "../lib/matrix-checks.mjs";
 
 export const name = "Every menu and sub-tab, walked";
 export const id = "90-menu-walk";
 
+// Sidebar labels as the user sees them; the last nine sit under "More views"; Notifications is the
+// header bell.
 export const VIEWS = [
   ["Chat", "chat"], ["Findings", "findings"], ["Tasks", "tasks"], ["Interviews", "interviews"],
   ["Documents", "documents"], ["Context", "context"], ["Memory", "memory"], ["Skills", "skills"],
-  ["Agents", "agents"], ["History", "history"], ["Laws", "laws"], ["Loops", "loops"],
-  ["Notifications", "notifications"], ["Backup", "backup"], ["Meta-Hyperagent", "meta-hyperagent"],
-  ["Ensemble", "ensemble"], ["Quality", "quality"], ["Compute", "compute"], ["Integrations", "integrations"],
-  ["Interfaces", "interfaces"], ["Autoresearch", "autoresearch"], ["Project settings", "project-settings"],
-  ["Admin", "admin"], ["Settings", "settings"],
-];
-const PROJECT_NAME = "[SIM-90] Menu walk";
+  ["Agents", "agents"], ["UX Laws", "laws"], ["Loops", "loops"], ["Interfaces", "interfaces"],
+  ["Integrations", "integrations"], ["Settings", "settings"], ["Notifications", "notifications"],
+  ["History", "history"], ["Backup", "backup"], ["Meta-Agent", "meta-hyperagent"],
+  ["Ensemble Health", "ensemble"], ["Quality Dashboard", "quality"], ["Compute Pool", "compute"],
+  ["Autoresearch", "autoresearch"], ["Project Settings", "project-settings"], ["Admin", "admin"],
+];const PROJECT_NAME = "[SIM-90] Menu walk";
 const MACHINE_TEXT = /\b(undefined|NaN)\b|\[object Object\]|\b[a-z]+(?:\.[a-z][a-zA-Z_]+){2,}\b/;
 const ERROR_SURFACE = /Something went wrong|Application error|Unhandled Runtime Error|Minified React error/i;
 
@@ -107,10 +108,10 @@ async function walkView(ctx, events, { label, viewId, theme }) {
   events.pageErrors.length = 0;
   events.failedRequests.length = 0;
   await closeOverlays(page);
-  const opened = await navigateTo(page, label, viewId).then(() => true).catch((e) => e.message);
-  if (opened !== true) return [{ view: viewId, tab: "(first screen)", theme, notRun: `navigation blocked: ${String(opened).slice(0, 120)}` }];
+  const via = await openView(page, label, viewId).catch((e) => `blocked: ${String(e.message).slice(0, 120)}`);
+  if (via.startsWith("blocked")) return [{ view: viewId, tab: "(first screen)", theme, notRun: `navigation ${via}` }];
   await settle(page);
-  records.push(await observe(ctx, events, { view: viewId, tab: "(first screen)", theme }));
+  records.push({ ...(await observe(ctx, events, { view: viewId, tab: "(first screen)", theme })), via });
   const tabs = await subTabs(page);
   for (const tab of tabs) {
     events.pageErrors.length = 0;
@@ -132,6 +133,26 @@ async function walkView(ctx, events, { label, viewId, theme }) {
     await closeOverlays(page);
   }
   return records;
+}
+
+/** Open a view the way a user does: the sidebar, "More views" first when it is folded, or the bell. */
+async function openView(page, label, viewId) {
+  const nav = page.locator(`nav[aria-label="Views"] button[aria-label="${label}"]`).first();
+  if (!(await nav.isVisible().catch(() => false))) {
+    const more = page.locator('nav[aria-label="Views"] button[aria-label="More views"]').first();
+    if ((await more.getAttribute("aria-expanded").catch(() => null)) === "false") await more.click();
+  }
+  if (await nav.isVisible().catch(() => false)) {
+    await nav.click();
+    return "sidebar";
+  }
+  const header = page.locator(`header button[aria-label="${label}"], button[aria-label="${label}"]`).first();
+  if (await header.isVisible().catch(() => false)) {
+    await header.click();
+    return "header";
+  }
+  await page.evaluate((detail) => window.dispatchEvent(new CustomEvent("istara:navigate", { detail })), viewId);
+  return "event-fallback";
 }
 
 async function closeOverlays(page) {
@@ -214,6 +235,12 @@ function judge(checks, walk) {
     passed: seen.length >= 48,
     detail: `${new Set(seen.map((r) => `${r.view}/${r.tab}`)).size} distinct screens; not run: ${notRun.length ? list(notRun, (r) => `${where(r)} (${r.notRun})`) : "none"}`,
   });
+  const fallback = seen.filter((r) => r.via && r.via !== "sidebar" && r.via !== "header");
+  checks.push({
+    name: "Every view opened from the sidebar or header, as a user opens it",
+    passed: fallback.length === 0,
+    detail: fallback.length ? list(fallback, (r) => `${where(r)} via ${r.via}`) : `${seen.filter((r) => r.via).length} view openings`,
+  });
   const classes = [
     ["Every screen rendered (no error boundary, no uncaught page error)", (r) => r.errorSurface || r.pageErrors.length, (r) => `${where(r)}: ${r.pageErrors[0] || "error surface"}`],
     ["No screen made a failed API request", (r) => r.failedRequests.length, (r) => `${where(r)}: ${r.failedRequests.slice(0, 2).join(", ")}`],
@@ -229,9 +256,13 @@ function judge(checks, walk) {
 
 /** Keyboard: every sidebar view button is reachable and shows a visible focus ring. */
 async function keyboardReach(page, checks) {
+  const more = page.locator('nav[aria-label="Views"] button[aria-label="More views"]').first();
+  if ((await more.getAttribute("aria-expanded").catch(() => null)) === "false") await more.click().catch(() => {});
   const results = await page.evaluate((labels) => {
     return labels.map((label) => {
-      const el = document.querySelector(`nav[aria-label="Views"] button[aria-label="${label}"]`);
+      const el =
+        document.querySelector(`nav[aria-label="Views"] button[aria-label="${label}"]`) ||
+        document.querySelector(`button[aria-label="${label}"]`);
       if (!el) return { label, reachable: false, ring: false };
       el.focus();
       const cs = getComputedStyle(el);
@@ -241,7 +272,7 @@ async function keyboardReach(page, checks) {
   }, VIEWS.map(([label]) => label));
   const missing = results.filter((r) => !r.reachable);
   checks.push({
-    name: "Keyboard: every view's sidebar button takes focus",
+    name: "Keyboard: every view's button (sidebar, More views, bell) takes focus",
     passed: missing.length === 0,
     detail: missing.length ? `not focusable/present: ${missing.map((r) => r.label).join(", ")}` : `${results.length}/${results.length}`,
   });

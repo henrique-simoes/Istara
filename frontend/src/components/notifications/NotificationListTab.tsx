@@ -163,8 +163,9 @@ export default function NotificationListTab() {
             {/* Date range */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[10px] text-slate-500 mb-0.5">From</label>
+                <label htmlFor="notifications-from-date" className="block text-[10px] text-slate-500 mb-0.5">From</label>
                 <input
+                  id="notifications-from-date"
                   type="date"
                   value={filters.from_date}
                   onChange={(e) => setFilter("from_date", e.target.value)}
@@ -172,8 +173,9 @@ export default function NotificationListTab() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-slate-500 mb-0.5">To</label>
+                <label htmlFor="notifications-to-date" className="block text-[10px] text-slate-500 mb-0.5">To</label>
                 <input
+                  id="notifications-to-date"
                   type="date"
                   value={filters.to_date}
                   onChange={(e) => setFilter("to_date", e.target.value)}
