@@ -506,6 +506,9 @@ class Settings(BaseSettings):
     # by default and must be enabled explicitly in the isolated test container;
     # synthetic receipts never satisfy the human/reportability gate.
     research_validity_synthetic_reconciliation_enabled: bool = False
+    # Units per coder call (D-19): a batch must fit the smallest coder, the local model included.
+    research_validity_coding_units_per_call: int = 20
+    research_validity_coding_chars_per_call: int = 12000
 
     # Audio is a separate, explicit catalog. Empty provider fails closed;
     # credentials are referenced by opaque keychain/encrypted-store handles.
