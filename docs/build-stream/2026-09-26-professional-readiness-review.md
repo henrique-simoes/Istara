@@ -427,4 +427,3 @@ pass; `compass-forge gate after --task CF-45`: 0 new failures, 0 new warnings af
 suppressions expiring 2026-12-31 (4 inherited import cycles, 10 complexity hotspots grown by
 Phase 2); frontend `tsc` clean, vitest 127/127; scenario 89 28/28.
 Next: Phase 2 PR into `main`, then the sync PR.
-
