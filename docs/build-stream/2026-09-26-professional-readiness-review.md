@@ -2,14 +2,14 @@
 
 ```yaml
 item: professional-readiness-review
-branch: plan/professional-readiness-p2
+branch: plan/professional-readiness-p3
 cf: { spec: CF-SPEC-5, tasks: [CF-45, CF-46, CF-47, CF-48, CF-49, CF-50, CF-51, CF-52, CF-53, CF-54, CF-55, CF-56, CF-57, CF-58] }
-phase: "Phase 2 — spine quality"
+phase: "Phase 3 — menus and UX"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-27T04:40:00Z, ledger: L-4 }
-next_action: "Merge the Phase 2 PR into main and the main -> testing sync PR; then rebase Phase 3 (menus) and Phase 4 (installers) onto main and ship them; finish the live measurements (SK3 after arm, C2, R0, G1-G3) for the Phase 5 report."
+last: { agent: claude-code, at: 2026-09-27T05:00:00Z, ledger: L-5 }
+next_action: "Merge the Phase 3 PR and its sync PR; rebase and ship Phase 4 (installers); finish SK3, C2, R0 and G1-G3 for the Phase 5 report."
 ```
 
 ## Plan overview
@@ -66,6 +66,10 @@ These are hypotheses to prove with failing tests first, not conclusions.
 | D-22 | Installers | `backend/Dockerfile`, `qa/Dockerfile`, `api/routes/updates.py` | Docker images shipped no `VERSION`, so the status bar read "Istara vunknown"; a checkout read its stale `VERSION` before its release tag, so the update checker offered the release it was running. |
 | D-23 | Skills | `skills/discover/contextual_inquiry.py`, `diary_studies.py` | Both skills computed pain points and opportunities, then stored nuggets only: no facts, insights or recommendations, although their definitions promise them (SK1). |
 | D-24 | Reports | `research_validity_reconciliation.py::assess_task_research_validity`, `_load_units` | One unsupported finding blocked a task's whole report, and a coding run held at most 200 units: a real interview analysis (1,519 nuggets, 1,265 grounded, some paraphrases that can never ground) could never reach Reports, whatever the researcher reviewed. |
+| D-25 | UX | about 1,200 legacy `text-slate-*` / `text-amber-*` uses | Metadata and warning text failed WCAG AA contrast on 58 walked screens (light 2.3-4.3:1, dark 2.2-3.8:1). |
+| D-26 | UX | Admin, Notifications, Settings, Project settings | Unnamed selects, date inputs, a telemetry switch and an icon-only member menu hidden until hover (unreachable for keyboard users). |
+| D-27 | Roles | `DocumentsView.tsx`, `SkillsView.tsx` | A viewer opening Documents triggered a sync it may not run (403 into the error banner); non-admins requested admin-only governance proposals on every Skills visit. |
+| D-28 | UX | `LoginScreen.tsx` | The sign-in form's placeholder read "Choose a username". |
 
 ## Pre-registered readiness criteria (DEC-2, fixed before any number)
 
@@ -427,3 +431,36 @@ pass; `compass-forge gate after --task CF-45`: 0 new failures, 0 new warnings af
 suppressions expiring 2026-12-31 (4 inherited import cycles, 10 complexity hotspots grown by
 Phase 2); frontend `tsc` clean, vitest 127/127; scenario 89 28/28.
 Next: Phase 2 PR into `main`, then the sync PR.
+
+## Phase 3 — menus and UX
+
+Scenario 90 (new) walks all 24 views and every sub-tab, in the light and dark theme, opening each the
+way a user does (sidebar, "More views", the bell), and checks each screen for an error surface, a
+failed Istara request, machine text, sideways overflow and serious/critical axe WCAG 2.1 AA
+violations; researcher, viewer and stranger cells walk every view the product shows them.
+
+| Criterion | Before | After |
+|---|---|---|
+| U1 every view and sub-tab opens without an error, from the UI | 7 views reachable only by a fallback event; the walk hung on a dialog | 24/24 views, 96 screens, all opened as a user opens them |
+| U2 no failed request, machine text or overflow | 0 / 0 / 0 on admin; viewer: 403 sync in Documents, 403 governance in Skills | 0 on every role |
+| U3 WCAG 2.1 AA (axe serious/critical), light and dark | 58 screens | **0** |
+| U4 keyboard: every view reachable, controls named | 7 views missing from the sidebar check; 13 unnamed controls | 24/24; 0 |
+| U5 375 px | scenario 88 11/11 (2026-09-26) | scenario 88 11/11 (2026-09-27) |
+
+Stale verdicts refreshed: the 12 views last verified on 2026-09-08 pass their scenarios on the
+rebuilt lane (23 scenarios, 435/438 then 30 15/15 with the source mounted).
+
+### L-5 | 2026-09-27T05:00:00Z | S2-execute | claude-code | executor | Phase 3
+Did: scenario 90 and its role cells; the subtle-text token raised in DESIGN.md (light `#5b6778`,
+dark `#a3b1c5`, >= 4.5:1 on every surface in use) and legacy slate/amber text utilities mapped onto
+`--ui-ink-subtle` / `--ui-warning` in `globals.css`; component fixes for the remaining contrast
+(skills health, ensemble, quality, findings badge, agents link, laws chips); names for 13 controls;
+the member menu visible on keyboard focus; list roles only with items; the design-chat log
+focusable; viewers no longer sync, non-admins no longer request governance proposals; sign-in
+placeholder; coverage matrix rows refreshed; security benchmark revalidated for the sign-in copy.
+Result: scenario 90 16/16.
+Verified: scenario 90 16/16 (run 2026-09-27T05-20-27-957Z); stale-verdict batch 23 scenarios 435/438
+(run 2026-09-27T01-44-55-011Z) and 30 15/15 (run 2026-09-27T01-55-57-767Z); simulation static 41/41;
+`tsc` clean, vitest 127/127, eslint 0 errors; `python scripts/check_a11y_contrast.py` pass;
+security benchmark pass (100%); change and feature obligations pass.
+Next: Phase 3 PR, sync PR.

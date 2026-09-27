@@ -118,4 +118,5 @@ export const scenarioFiles = Object.freeze([
   "87-embedding-model-migration",
   "88-phone-layout",
   "89-study-participant-journey",
+  "90-menu-walk",
 ]);

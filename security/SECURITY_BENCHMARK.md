@@ -335,6 +335,11 @@ planes embed the model the profile names, and an endpoint configured for one mod
 A local binding waits for a model that is still loading only within the response-start budget, and
 remote endpoints never wait.
 
+Sign-in copy revalidated (2026-09-27, professional-readiness review Phase 3). The login screen's
+username placeholder now reads "Your username" when signing in and "Choose a username" only when
+registering; no field, request, validation, rate limit or session behaviour changed. The benchmark
+was re-run on the changed paths with no new partial or failure.
+
 Remote comparative benchmarks execute dependencies and test code in disposable
 Docker runners. Authoritative results record source revision/state,
 digest-qualified runner identity, deployed backend/frontend image identities,

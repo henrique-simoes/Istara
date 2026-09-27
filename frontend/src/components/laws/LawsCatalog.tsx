@@ -270,7 +270,7 @@ function LawCard({
             {law.related_nielsen_heuristics.map((h) => (
               <span
                 key={h}
-                className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded px-1.5 py-0.5"
+                className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded px-1.5 py-0.5"
               >
                 {h}
               </span>

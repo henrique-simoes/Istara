@@ -21,6 +21,7 @@ import {
   Search,
 } from "lucide-react";
 import { improvementGovernance, skills as skillsApi } from "@/lib/api";
+import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
@@ -71,6 +72,7 @@ export default function SkillsView() {
   });
 
   const { activeProjectId, canWriteActiveProject } = useProjectStore();
+  const { isGlobalAdmin } = useRoleCapabilities();
 
   const normalizeSkillProposal = useCallback(
     (p: ProposalData): ImprovementProposal => ({
@@ -147,9 +149,12 @@ export default function SkillsView() {
     try {
       const [res, govRes] = await Promise.all([
         skillsApi.proposals.all(activeProjectId).catch(() => ({ proposals: [] })),
-        improvementGovernance
-          .proposals({ project_id: activeProjectId, limit: 30 })
-          .catch(() => ({ proposals: [] })),
+        // Governance proposals are admin-only on the server; other roles never ask (walk: 403).
+        isGlobalAdmin
+          ? improvementGovernance
+              .proposals({ project_id: activeProjectId, limit: 30 })
+              .catch(() => ({ proposals: [] }))
+          : Promise.resolve({ proposals: [] as ImprovementProposal[] }),
       ]);
       setProposals(res.proposals || []);
       const skillGov = (govRes.proposals || []).filter(
@@ -164,7 +169,7 @@ export default function SkillsView() {
       setProposalsError(e instanceof Error ? e.message : "Failed to load proposals");
     }
     setProposalsLoading(false);
-  }, [activeProjectId]);
+  }, [activeProjectId, isGlobalAdmin]);
 
   const fetchCreationProposals = useCallback(async () => {
     setCreationProposalsLoading(true);

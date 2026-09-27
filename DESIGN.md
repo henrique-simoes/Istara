@@ -55,7 +55,7 @@ for AA compliance). Neutrals are Tailwind v3 `slate`; state hues use Tailwind `a
 | `--ui-surface-soft` | `#f1f5f9` | `#1e293b` | soft wells, tiles |
 | `--ui-ink` | `#0f172a` | `#f8fafc` | primary text |
 | `--ui-ink-muted` | `#475569` | `#cbd5e1` | secondary text |
-| `--ui-ink-subtle` | `#64748b` | `#94a3b8` | helper/metadata text |
+| `--ui-ink-subtle` | `#5b6778` | `#a3b1c5` | helper/metadata text (≥ 4.5:1 on every surface, chips included) |
 | `--ui-rule` | `#e2e8f0` | `#334155` | hairline boundaries |
 | `--ui-rule-strong` | `#cbd5e1` | `#475569` | emphasized boundaries |
 | `--ui-accent` | `#15803d` | `#4ade80` | selected state, primary action |

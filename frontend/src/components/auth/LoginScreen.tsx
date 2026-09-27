@@ -742,7 +742,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={loading}
                 className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-istara-500 focus:border-transparent transition disabled:opacity-50"
-                placeholder="Choose a username"
+                placeholder={mode === "login" ? "Your username" : "Choose a username"}
               />
             </div>
             )}

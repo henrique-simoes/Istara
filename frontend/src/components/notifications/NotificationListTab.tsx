@@ -122,8 +122,9 @@ export default function NotificationListTab() {
 
             {/* Agent dropdown */}
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Agent</label>
+              <label htmlFor="notifications-agent" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Agent</label>
               <select
+                id="notifications-agent"
                 value={filters.agent_id}
                 onChange={(e) => setFilter("agent_id", e.target.value)}
                 className="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
@@ -163,8 +164,9 @@ export default function NotificationListTab() {
             {/* Date range */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[10px] text-slate-500 mb-0.5">From</label>
+                <label htmlFor="notifications-from-date" className="block text-[10px] text-slate-500 mb-0.5">From</label>
                 <input
+                  id="notifications-from-date"
                   type="date"
                   value={filters.from_date}
                   onChange={(e) => setFilter("from_date", e.target.value)}
@@ -172,8 +174,9 @@ export default function NotificationListTab() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-slate-500 mb-0.5">To</label>
+                <label htmlFor="notifications-to-date" className="block text-[10px] text-slate-500 mb-0.5">To</label>
                 <input
+                  id="notifications-to-date"
                   type="date"
                   value={filters.to_date}
                   onChange={(e) => setFilter("to_date", e.target.value)}
@@ -234,7 +237,12 @@ export default function NotificationListTab() {
         )}
 
         {/* Notification list */}
-        <div className="flex-1 overflow-y-auto" role="list" aria-label="Notifications">
+        {/* A list role only when list items are rendered (axe aria-required-children). */}
+        <div
+          className="flex-1 overflow-y-auto"
+          role={!loading && notifications.length > 0 ? "list" : undefined}
+          aria-label={!loading && notifications.length > 0 ? "Notifications" : undefined}
+        >
           {loading ? (
             <div className="flex items-center justify-center py-16 text-slate-400 dark:text-slate-500">
               <RefreshCw size={18} className="animate-spin mr-2" />
