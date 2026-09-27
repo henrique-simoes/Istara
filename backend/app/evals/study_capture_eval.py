@@ -46,7 +46,7 @@ PATHS = (
 
 
 def _participant_script(path: str, n: int) -> tuple[list[str], list[tuple[str, str]]]:
-    """Messages a participant sends, and the (question, answer) pairs a researcher expects stored."""
+    """Messages a participant sends, and the (question, answer) pairs a researcher expects."""
     answers = [f"P{n} answer {i + 1} about exports" for i in range(len(QUESTIONS))]
     closing = f"P{n} closing remark"
     if path == "decline":

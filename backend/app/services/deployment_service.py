@@ -649,7 +649,7 @@ EXPORT_COLUMNS = [
 
 
 def _consent_status(metadata: dict, config: dict) -> str:
-    """given / declined / pending (asked, no answer yet) / not_asked (e.g. turned away when full)."""
+    """given / declined / pending (asked, not answered) / not_asked (e.g. turned away when full)."""
     consent = metadata.get("consent")
     if isinstance(consent, dict):
         return "given" if consent.get("given") else "declined"
