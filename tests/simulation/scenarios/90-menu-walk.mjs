@@ -20,6 +20,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { getApiBase } from "../lib/api-client.mjs";
 import { selectProject } from "../lib/embedding-settings.mjs";
 import { setTheme } from "../lib/matrix-checks.mjs";
 
@@ -46,9 +47,12 @@ export async function run(ctx) {
   const page = ctx.page;
   const events = { pageErrors: [], failedRequests: [] };
   page.on("pageerror", (err) => events.pageErrors.push(String(err.message || err).slice(0, 200)));
+  // Istara's own API only: the Settings compute-donation card also probes the viewer's machine for a
+  // local model server (ports 1234, 11434, ...), and those probes are expected to fail.
+  const apiBase = getApiBase().replace(/\/$/, "");
   page.on("response", (res) => {
     const url = res.url();
-    if (res.status() >= 400 && url.includes("/api/")) {
+    if (res.status() >= 400 && url.startsWith(`${apiBase}/api/`)) {
       events.failedRequests.push(`${res.status()} ${res.request().method()} ${url.replace(/^https?:\/\/[^/]+/, "")}`);
     }
   });
