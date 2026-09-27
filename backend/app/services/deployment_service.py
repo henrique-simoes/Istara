@@ -509,9 +509,31 @@ async def get_deployment_overview(db: AsyncSession, project_id: str) -> dict:
         )
     )
     recent_conversations = conv_result.scalar() or 0
+    started_result = await db.execute(
+        select(func.count(ChannelConversation.id))
+        .join(
+            ResearchDeployment,
+            ChannelConversation.deployment_id == ResearchDeployment.id,
+        )
+        .where(
+            ResearchDeployment.project_id == project_id,
+            ChannelConversation.project_id == project_id,
+        )
+    )
+    from app.models.research_validity import EvidenceUnit
+
+    answers_result = await db.execute(
+        select(func.count(EvidenceUnit.id)).where(
+            EvidenceUnit.project_id == project_id,
+            EvidenceUnit.source_type.in_(("channel_response", "deployment_response")),
+        )
+    )
 
     return {
         "total_deployments": len(deployments),
+        "conversations_started": started_result.scalar() or 0,
+        "participants_finished": sum(d.current_responses or 0 for d in deployments),
+        "answers_stored": answers_result.scalar() or 0,
         "active_deployments": [
             {
                 "id": d.id,
@@ -604,3 +626,132 @@ async def get_conversation_transcript(
     )
     messages = result.scalars().all()
     return [m.to_dict() for m in messages]
+
+
+# ---------------------------------------------------------------------------
+# Raw-data export
+# ---------------------------------------------------------------------------
+
+EXPORT_COLUMNS = [
+    "participant",
+    "conversation_id",
+    "channel",
+    "conversation_state",
+    "consent",
+    "screener",
+    "question_index",
+    "prompt_kind",
+    "question",
+    "answer",
+    "answered_at",
+    "evidence_unit_id",
+]
+
+
+def _consent_status(metadata: dict, config: dict) -> str:
+    """given / declined / pending (asked, not answered) / not_asked (e.g. turned away when full)."""
+    consent = metadata.get("consent")
+    if isinstance(consent, dict):
+        return "given" if consent.get("given") else "declined"
+    if config.get("consent_required") and metadata.get("state") in {"consent", "intro", None}:
+        return "pending"
+    return "not_asked"
+
+
+def _split_question_answer(text: str) -> tuple[str, str]:
+    if text.startswith("Q: ") and "\nA: " in text:
+        question, answer = text[3:].split("\nA: ", 1)
+        return question, answer
+    return "", text
+
+
+async def export_deployment_rows(db: AsyncSession, deployment: ResearchDeployment) -> list[dict]:
+    """Return one row per stored answer (and one per participant with none), pseudonymised.
+
+    Participants are labelled P01, P02, ... in the order they started; their channel handles and
+    display names are not exported. Consent and screener answers are included so a researcher can
+    audit eligibility, and every answer names the evidence unit that holds it.
+    """
+    from app.models.research_validity import EvidenceUnit
+    from app.services.adaptive_interview import deployment_config
+
+    config = deployment_config(deployment)
+    conversations = (
+        (
+            await db.execute(
+                select(ChannelConversation)
+                .where(
+                    ChannelConversation.deployment_id == deployment.id,
+                    ChannelConversation.project_id == deployment.project_id,
+                )
+                .order_by(ChannelConversation.started_at.asc(), ChannelConversation.id.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    rows: list[dict] = []
+    for number, conversation in enumerate(conversations, start=1):
+        try:
+            metadata = json.loads(conversation.metadata_json or "{}")
+        except (json.JSONDecodeError, TypeError):
+            metadata = {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        base = {
+            "participant": f"P{number:02d}",
+            "conversation_id": conversation.id,
+            "channel": str(metadata.get("platform") or ""),
+            "conversation_state": str(metadata.get("state") or conversation.state or ""),
+            "consent": _consent_status(metadata, config),
+            "screener": "; ".join(
+                f"{item.get('question', '')}={item.get('answer', '')}"
+                for item in metadata.get("screener_answers") or []
+                if isinstance(item, dict)
+            ),
+        }
+        answer_meta = {
+            str(item.get("nugget_id")): item
+            for item in metadata.get("answers") or []
+            if isinstance(item, dict) and item.get("nugget_id")
+        }
+        nuggets = (
+            (
+                await db.execute(
+                    select(Nugget)
+                    .where(
+                        Nugget.project_id == deployment.project_id,
+                        Nugget.source_location.like(f"%conv:{conversation.id}%"),
+                    )
+                    .order_by(Nugget.created_at.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if not nuggets:
+            rows.append({**base, **{key: "" for key in EXPORT_COLUMNS if key not in base}})
+            continue
+        for nugget in nuggets:
+            question, answer = _split_question_answer(nugget.text or "")
+            unit_id = await db.scalar(
+                select(EvidenceUnit.id)
+                .where(
+                    EvidenceUnit.project_id == deployment.project_id,
+                    EvidenceUnit.source_id.like(f"%nugget:{nugget.id}"),
+                )
+                .limit(1)
+            )
+            meta = answer_meta.get(nugget.id, {})
+            rows.append(
+                {
+                    **base,
+                    "question_index": meta.get("question_index") or "",
+                    "prompt_kind": meta.get("kind") or "question",
+                    "question": question,
+                    "answer": answer,
+                    "answered_at": nugget.created_at.isoformat() if nugget.created_at else "",
+                    "evidence_unit_id": unit_id or "",
+                }
+            )
+    return rows

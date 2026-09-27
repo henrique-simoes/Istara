@@ -19,7 +19,16 @@ from app.models.database import async_session
 from app.models.finding import Nugget
 from app.models.project import Project
 from app.models.research_deployment import ResearchDeployment
-from app.services.adaptive_interview import get_next_action, update_conversation_metadata
+from app.services.adaptive_interview import (
+    ANSWER_PROMPT_KINDS,
+    DEFAULT_PAUSED_MESSAGE,
+    DEFAULT_QUOTA_FULL_MESSAGE,
+    FINISHED_STATES,
+    ConversationState,
+    get_next_action,
+    is_withdrawal,
+    update_conversation_metadata,
+)
 from app.services.research_validity_service import persist_task_nugget_evidence_units
 
 logger = logging.getLogger(__name__)
@@ -99,55 +108,473 @@ async def _get_or_create_conversation(
     return conversation
 
 
+def _conversation_metadata(conversation: ChannelConversation) -> dict:
+    try:
+        parsed = json.loads(conversation.metadata_json or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+async def _participant_in_held_study(
+    db,
+    instance: ChannelInstance,
+    participant_id: str,
+) -> tuple[ChannelConversation, ResearchDeployment] | None:
+    """Return an unfinished study conversation whose deployment is paused or closed.
+
+    A participant part-way through a study must never be handed to the project's agent when the
+    study stops being active: that agent can read the project's research data.
+    """
+    result = await db.execute(
+        select(ChannelConversation).where(
+            ChannelConversation.channel_instance_id == instance.id,
+            ChannelConversation.project_id == instance.project_id,
+            ChannelConversation.participant_id == participant_id,
+            ChannelConversation.deployment_id.is_not(None),
+        )
+    )
+    conversations = sorted(
+        result.scalars().all(),
+        key=lambda c: c.last_message_at or c.started_at or datetime.min.replace(tzinfo=UTC),
+        reverse=True,
+    )
+    for conversation in conversations:
+        deployment = await db.get(ResearchDeployment, conversation.deployment_id)
+        if deployment is not None and deployment.state != "active":
+            return conversation, deployment
+    return None
+
+
+def _answered_prompt(
+    conversation: ChannelConversation,
+    metadata: dict,
+    questions: list,
+    text: str,
+) -> dict | None:
+    """Return the prompt this message answers, or None when it is not a research answer.
+
+    Only replies to a question, a follow-up probe or the closing question are research answers.
+    Greetings, consent replies, screener answers and withdrawals are not.
+    """
+    if not text or is_withdrawal(text):
+        return None
+    state = metadata.get("state") or conversation.state
+    pending = metadata.get("pending_prompt")
+    if isinstance(pending, dict):
+        if pending.get("kind") in ANSWER_PROMPT_KINDS and state in {
+            ConversationState.QUESTIONS.value,
+            ConversationState.PROBING.value,
+            ConversationState.CLOSING.value,
+        }:
+            return pending
+        return None
+    # Conversations started before pending prompts were recorded: attribute to the question last
+    # shown, and never store anything sent before the first question.
+    q_idx = conversation.current_question_index
+    if state in {ConversationState.QUESTIONS.value, ConversationState.PROBING.value} and (
+        0 < q_idx <= len(questions)
+    ):
+        item = questions[q_idx - 1]
+        return {
+            "kind": "question",
+            "text": item.get("text", f"Question {q_idx}") if isinstance(item, dict) else str(item),
+            "question_index": q_idx,
+        }
+    return None
+
+
+def _record_outbound(
+    db,
+    *,
+    instance: ChannelInstance,
+    project_id: str | None,
+    conversation: ChannelConversation,
+    text: str,
+    metadata: dict,
+) -> None:
+    db.add(
+        ChannelMessage(
+            id=str(uuid.uuid4()),
+            channel_instance_id=instance.id,
+            project_id=project_id,
+            direction="outbound",
+            sender_id="system",
+            sender_name="Istara",
+            content=text,
+            content_type="text",
+            thread_id=conversation.id,
+            metadata_json=json.dumps(metadata),
+        )
+    )
+    instance.message_count = (instance.message_count or 0) + 1
+
+
+def _reply(message: IncomingMessage, text: str, metadata: dict) -> OutgoingMessage:
+    return OutgoingMessage(
+        channel=message.channel,
+        channel_id=message.channel_id,
+        text=text,
+        instance_id=message.instance_id,
+        metadata=metadata,
+    )
+
+
+async def _resolve_scope(db, message: IncomingMessage) -> ChannelInstance | None:
+    """Return the channel instance when the message may be processed, logging why not."""
+    instance = await db.get(ChannelInstance, message.instance_id)
+    if instance is None:
+        logger.warning(
+            "Dropping inbound %s message for unknown channel instance %s",
+            message.channel,
+            message.instance_id,
+        )
+        return None
+    if not instance.project_id:
+        logger.warning(
+            "Dropping inbound %s message for unscoped channel instance %s",
+            message.channel,
+            message.instance_id,
+        )
+        return None
+    project = await db.get(Project, instance.project_id)
+    if project is None or project.is_paused:
+        logger.info(
+            "Dropping inbound %s message for paused or missing project %s",
+            message.channel,
+            instance.project_id,
+        )
+        await broadcast_channel_status(
+            message.instance_id,
+            "paused",
+            "Project is paused or not found; inbound processing skipped.",
+        )
+        return None
+    return instance
+
+
+def _inbound_row(
+    message: IncomingMessage,
+    *,
+    project_id: str | None,
+    thread_id: str,
+    metadata: dict,
+) -> ChannelMessage:
+    return ChannelMessage(
+        id=str(uuid.uuid4()),
+        channel_instance_id=message.instance_id,
+        project_id=project_id,
+        direction="inbound",
+        sender_id=message.sender_id,
+        sender_name=message.sender_name or message.sender_id,
+        content=message.text,
+        content_type=metadata.get("content_type", "text"),
+        thread_id=thread_id,
+        external_message_id=metadata.get("external_message_id"),
+        metadata_json=json.dumps(metadata),
+    )
+
+
+async def _reply_to_held_participant(
+    db,
+    message: IncomingMessage,
+    instance: ChannelInstance,
+    project_id: str | None,
+    held: tuple[ChannelConversation, ResearchDeployment],
+    now: datetime,
+) -> OutgoingMessage | None:
+    """A study participant writes while their study is paused or closed: record, never route."""
+    conversation, deployment = held
+    held_state = _conversation_metadata(conversation).get("state") or conversation.state
+    conversation.last_message_at = now
+    db.add(
+        _inbound_row(
+            message,
+            project_id=project_id,
+            thread_id=conversation.id,
+            metadata={**(message.metadata or {}), "study_held": True},
+        )
+    )
+    instance.message_count = (instance.message_count or 0) + 1
+    if held_state in FINISHED_STATES:
+        # The participant already finished, declined or left: record the message, send nothing,
+        # and never hand them to the project's agent.
+        await db.commit()
+        return None
+    text = (
+        DEFAULT_PAUSED_MESSAGE
+        if deployment.state == "paused"
+        else "This study has closed. Thank you for taking part!"
+    )
+    reply_metadata = {
+        "deployment_id": deployment.id,
+        "conversation_id": conversation.id,
+        "study_state": deployment.state,
+    }
+    _record_outbound(
+        db,
+        instance=instance,
+        project_id=project_id,
+        conversation=conversation,
+        text=text,
+        metadata=reply_metadata,
+    )
+    await db.commit()
+    return _reply(message, text, reply_metadata)
+
+
+async def _record_channel_evidence(
+    db,
+    message: IncomingMessage,
+    instance: ChannelInstance,
+    inbound_msg: ChannelMessage,
+    project_id: str | None,
+    *,
+    summary: str,
+    evidence: dict,
+) -> None:
+    try:
+        from app.core.improvement_governance import improvement_governance
+
+        await improvement_governance.record_feature_evidence(
+            feature="whatsapp_telegram_channel_integrations",
+            source_system=f"channel_{message.channel}",
+            source_id=inbound_msg.external_message_id or inbound_msg.id,
+            project_id=project_id,
+            agent_id="channel-router",
+            summary=summary,
+            evidence={
+                "passed": True,
+                "platform": message.channel,
+                "instance_id": message.instance_id,
+                "content_type": inbound_msg.content_type,
+                "has_attachments": bool(message.attachments),
+                **evidence,
+            },
+            metrics_after={"message_count": instance.message_count},
+            db=db,
+        )
+    except Exception:
+        pass
+
+
+async def _route_to_project_agent(
+    db,
+    message: IncomingMessage,
+    instance: ChannelInstance,
+    project_id: str | None,
+    conversation: ChannelConversation,
+    inbound_msg: ChannelMessage,
+    metadata: dict,
+) -> OutgoingMessage | None:
+    """No study on this channel: record the message, then (when enabled) a Pi agent reply."""
+    await _record_channel_evidence(
+        db,
+        message,
+        instance,
+        inbound_msg,
+        project_id,
+        summary="Inbound channel message persisted without an active deployment.",
+        evidence={"deployment_routed": False},
+    )
+    # H-8: persist and commit the inbound row BEFORE running the Pi turn. A crash mid-turn must
+    # never roll the inbound record back with the transaction; the outbound reply is written in a
+    # fresh session below.
+    await db.commit()
+
+    pi_response = await build_pi_channel_reply(
+        message_channel=message.channel,
+        channel_id=message.channel_id,
+        instance_id=message.instance_id,
+        project_id=project_id,
+        inbound_message_id=inbound_msg.id,
+        inbound_text=message.text,
+        metadata=metadata,
+    )
+    if pi_response is not None and pi_response.text:
+        # Persist the real Pi channel reply in a new session so the transcript matches what the
+        # router sends back.
+        async with async_session() as out_db:
+            out_db.add(
+                ChannelMessage(
+                    id=str(uuid.uuid4()),
+                    channel_instance_id=message.instance_id,
+                    project_id=project_id,
+                    direction="outbound",
+                    sender_id="system",
+                    sender_name="Istara",
+                    content=pi_response.text,
+                    content_type="text",
+                    thread_id=conversation.id,
+                    metadata_json=json.dumps(pi_response.metadata or {}),
+                )
+            )
+            out_instance = await out_db.get(ChannelInstance, message.instance_id)
+            if out_instance is not None:
+                out_instance.message_count = (out_instance.message_count or 0) + 1
+            await out_db.commit()
+    await broadcast_channel_status(
+        message.instance_id,
+        "active",
+        f"Recorded message from {message.sender_id}",
+    )
+    return pi_response
+
+
+async def _turn_away_when_full(
+    db,
+    message: IncomingMessage,
+    instance: ChannelInstance,
+    project_id: str | None,
+    deployment: ResearchDeployment,
+    conversation: ChannelConversation,
+    conversation_meta: dict,
+) -> OutgoingMessage | None:
+    """Quota: once the target number of participants finished, nobody new starts."""
+    not_started = conversation.state in {"intro", "active"} and not conversation_meta.get("state")
+    target = deployment.target_responses or 0
+    if not (not_started and target > 0 and (deployment.current_responses or 0) >= target):
+        return None
+    conversation.state = ConversationState.CLOSED_QUOTA.value
+    conversation_meta["state"] = ConversationState.CLOSED_QUOTA.value
+    update_conversation_metadata(conversation, conversation_meta)
+    reply_metadata = {"deployment_id": deployment.id, "conversation_id": conversation.id}
+    _record_outbound(
+        db,
+        instance=instance,
+        project_id=project_id,
+        conversation=conversation,
+        text=DEFAULT_QUOTA_FULL_MESSAGE,
+        metadata=reply_metadata,
+    )
+    await db.commit()
+    return _reply(message, DEFAULT_QUOTA_FULL_MESSAGE, reply_metadata)
+
+
+async def _store_answer(
+    db,
+    message: IncomingMessage,
+    deployment: ResearchDeployment,
+    project_id: str | None,
+    conversation: ChannelConversation,
+    conversation_meta: dict,
+    inbound_msg: ChannelMessage,
+    answered: dict,
+) -> None:
+    """Persist one research answer as a provisional nugget plus a raw evidence unit.
+
+    The answer is attributed to the exact prompt the participant was shown; nothing else a
+    participant sends is research data.
+    """
+    q_text = str(answered.get("text") or "Research Question")
+    source_location = f"channel:{message.channel}:conv:{conversation.id}:msg:{inbound_msg.id}"
+    source_text = f"Q: {q_text}\nA: {message.text}"
+    nugget = Nugget(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        text=source_text,
+        source=f"channel:{message.channel}:{deployment.name}",
+        source_location=source_location,
+        tags=json.dumps(
+            [deployment.deployment_type, f"channel:{message.channel}", "channel-research"]
+        ),
+        phase="discover",
+    )
+    db.add(nugget)
+    await persist_task_nugget_evidence_units(
+        db,
+        project_id=project_id,
+        task_id=None,
+        nugget_id=nugget.id,
+        source_text=source_text,
+        source_location=source_location,
+        method=f"deployment:{deployment.deployment_type}",
+        phase="discover",
+        source_type="channel_response",
+        candidate_only=False,
+    )
+    answer_log = list(conversation_meta.get("answers") or [])
+    answer_log.append(
+        {
+            "kind": answered.get("kind"),
+            "question_index": answered.get("question_index"),
+            "question": q_text,
+            "message_id": inbound_msg.id,
+            "nugget_id": nugget.id,
+        }
+    )
+    conversation_meta["answers"] = answer_log
+    update_conversation_metadata(conversation, conversation_meta)
+
+
+async def _advance_study(
+    db,
+    message: IncomingMessage,
+    instance: ChannelInstance,
+    project_id: str | None,
+    deployment: ResearchDeployment,
+    conversation: ChannelConversation,
+    conversation_meta: dict,
+    now: datetime,
+) -> tuple[OutgoingMessage | None, dict, str]:
+    """Run the interview engine for this message and record what it sends."""
+    previous_state = conversation_meta.get("state") or conversation.state
+    action = await get_next_action(conversation, deployment, message.text)
+    action_state = _state_value(action.get("state"), conversation.state)
+    conversation.state = action_state
+    if action.get("question_index") is not None:
+        conversation.current_question_index = int(action["question_index"])
+    if action.get("metadata"):
+        update_conversation_metadata(conversation, action["metadata"])
+
+    response_text = action.get("text") or ""
+    response: OutgoingMessage | None = None
+    if action.get("action") in {"send_message", "complete"} and response_text:
+        response = _reply(
+            message,
+            response_text,
+            {"deployment_id": deployment.id, "conversation_id": conversation.id},
+        )
+        _record_outbound(
+            db,
+            instance=instance,
+            project_id=project_id,
+            conversation=conversation,
+            text=response_text,
+            metadata=response.metadata,
+        )
+    if action_state in FINISHED_STATES and previous_state not in FINISHED_STATES:
+        conversation.completed_at = now
+        if action_state == ConversationState.COMPLETED.value:
+            deployment.current_responses = (deployment.current_responses or 0) + 1
+    return response, action, action_state
+
+
 async def process_inbound_channel_message(
     message: IncomingMessage,
 ) -> OutgoingMessage | None:
     """Persist and route an inbound channel message.
 
-    This is the callback installed on ``channel_router``. It records inbound
-    traffic even when no deployment is active, then returns an OutgoingMessage
-    for active adaptive deployments so the router can send it through the same
-    adapter that received the original message.
+    This is the callback installed on ``channel_router``. It records inbound traffic even when no
+    deployment is active, then returns an OutgoingMessage for active research deployments so the
+    router can send it through the same adapter that received the original message.
     """
-    logger.info(
-        "Processing inbound %s message from %s",
-        message.channel,
-        message.sender_id,
-    )
+    logger.info("Processing inbound %s message from %s", message.channel, message.sender_id)
 
     async with async_session() as db:
-        instance = await db.get(ChannelInstance, message.instance_id)
+        instance = await _resolve_scope(db, message)
         if instance is None:
-            logger.warning(
-                "Dropping inbound %s message for unknown channel instance %s",
-                message.channel,
-                message.instance_id,
-            )
             return None
-        if not instance.project_id:
-            logger.warning(
-                "Dropping inbound %s message for unscoped channel instance %s",
-                message.channel,
-                message.instance_id,
-            )
-            return None
-        project = await db.get(Project, instance.project_id)
-        if project is None or project.is_paused:
-            logger.info(
-                "Dropping inbound %s message for paused or missing project %s",
-                message.channel,
-                instance.project_id,
-            )
-            await broadcast_channel_status(
-                message.instance_id,
-                "paused",
-                "Project is paused or not found; inbound processing skipped.",
-            )
-            return None
-
         deployment = await _active_deployment_for_instance(db, instance)
         project_id = deployment.project_id if deployment else instance.project_id
         now = datetime.now(UTC)
+
+        if deployment is None:
+            held = await _participant_in_held_study(db, instance, message.sender_id)
+            if held is not None:
+                return await _reply_to_held_participant(
+                    db, message, instance, project_id, held, now
+                )
 
         conversation = await _get_or_create_conversation(
             db,
@@ -158,204 +585,63 @@ async def process_inbound_channel_message(
             participant_name=message.sender_name or message.sender_id,
         )
         conversation.last_message_at = now
-
         metadata = dict(message.metadata or {})
         if message.attachments:
             metadata["attachments"] = message.attachments
-
-        inbound_msg = ChannelMessage(
-            id=str(uuid.uuid4()),
-            channel_instance_id=message.instance_id,
-            project_id=project_id,
-            direction="inbound",
-            sender_id=message.sender_id,
-            sender_name=message.sender_name or message.sender_id,
-            content=message.text,
-            content_type=metadata.get("content_type", "text"),
-            thread_id=conversation.id,
-            external_message_id=metadata.get("external_message_id"),
-            metadata_json=json.dumps(metadata),
+        inbound_msg = _inbound_row(
+            message, project_id=project_id, thread_id=conversation.id, metadata=metadata
         )
         db.add(inbound_msg)
-
-        if instance.message_count is None:
-            instance.message_count = 0
-        instance.message_count += 1
+        instance.message_count = (instance.message_count or 0) + 1
 
         if deployment is None:
-            try:
-                from app.core.improvement_governance import improvement_governance
-
-                await improvement_governance.record_feature_evidence(
-                    feature="whatsapp_telegram_channel_integrations",
-                    source_system=f"channel_{message.channel}",
-                    source_id=inbound_msg.external_message_id or inbound_msg.id,
-                    project_id=project_id,
-                    agent_id="channel-router",
-                    summary="Inbound channel message persisted without an active deployment.",
-                    evidence={
-                        "passed": True,
-                        "platform": message.channel,
-                        "instance_id": message.instance_id,
-                        "content_type": inbound_msg.content_type,
-                        "has_attachments": bool(message.attachments),
-                        "deployment_routed": False,
-                    },
-                    metrics_after={"message_count": instance.message_count},
-                    db=db,
-                )
-            except Exception:
-                pass
-            # H-8: persist and commit the inbound row BEFORE running the Pi turn.
-            # A crash mid-turn must never roll the inbound record back with the
-            # transaction; the outbound reply is written in a fresh session below.
-            await db.commit()
-
-            pi_response = await build_pi_channel_reply(
-                message_channel=message.channel,
-                channel_id=message.channel_id,
-                instance_id=message.instance_id,
-                project_id=project_id,
-                inbound_message_id=inbound_msg.id,
-                inbound_text=message.text,
-                metadata=metadata,
+            return await _route_to_project_agent(
+                db, message, instance, project_id, conversation, inbound_msg, metadata
             )
-            if pi_response is not None and pi_response.text:
-                # Persist the real Pi channel reply in a new session so the
-                # transcript matches what the router sends back.
-                async with async_session() as out_db:
-                    out_db.add(
-                        ChannelMessage(
-                            id=str(uuid.uuid4()),
-                            channel_instance_id=message.instance_id,
-                            project_id=project_id,
-                            direction="outbound",
-                            sender_id="system",
-                            sender_name="Istara",
-                            content=pi_response.text,
-                            content_type="text",
-                            thread_id=conversation.id,
-                            metadata_json=json.dumps(pi_response.metadata or {}),
-                        )
-                    )
-                    out_instance = await out_db.get(ChannelInstance, message.instance_id)
-                    if out_instance is not None:
-                        out_instance.message_count = (out_instance.message_count or 0) + 1
-                    await out_db.commit()
-            await broadcast_channel_status(
-                message.instance_id,
-                "active",
-                f"Recorded message from {message.sender_id}",
-            )
-            return pi_response
 
-        # Research Spine Compliance: persist incoming participant answer
-        # as provisional Nugget & EvidenceUnits
-        if message.text and conversation.state in {"intro", "questions", "probing", "wrap_up"}:
-            questions = _safe_json_list(deployment.questions_json)
-            q_idx = conversation.current_question_index
-            if 0 < q_idx <= len(questions):
-                q_text = questions[q_idx - 1].get("text", f"Question {q_idx}")
-            elif questions:
-                q_text = questions[0].get("text", "Initial Question")
-            else:
-                q_text = "Research Question"
+        conversation_meta = _conversation_metadata(conversation)
+        if message.channel_id:
+            # Kept so a reminder can reach the participant on the same chat later.
+            conversation_meta["channel_id"] = message.channel_id
+        conversation_meta.setdefault("platform", message.channel)
+        update_conversation_metadata(conversation, conversation_meta)
 
-            source_location = (
-                f"channel:{message.channel}:conv:{conversation.id}:msg:{inbound_msg.id}"
-            )
-            source_text = f"Q: {q_text}\nA: {message.text}"
-            nugget = Nugget(
-                id=str(uuid.uuid4()),
-                project_id=project_id,
-                text=source_text,
-                source=f"channel:{message.channel}:{deployment.name}",
-                source_location=source_location,
-                tags=json.dumps(
-                    [deployment.deployment_type, f"channel:{message.channel}", "channel-research"]
-                ),
-                phase="discover",
-            )
-            db.add(nugget)
-            await persist_task_nugget_evidence_units(
+        full = await _turn_away_when_full(
+            db, message, instance, project_id, deployment, conversation, conversation_meta
+        )
+        if full is not None:
+            return full
+
+        questions = _safe_json_list(deployment.questions_json)
+        answered = _answered_prompt(conversation, conversation_meta, questions, message.text)
+        if answered is not None:
+            await _store_answer(
                 db,
-                project_id=project_id,
-                task_id=None,
-                nugget_id=nugget.id,
-                source_text=source_text,
-                source_location=source_location,
-                method=f"deployment:{deployment.deployment_type}",
-                phase="discover",
-                source_type="channel_response",
-                candidate_only=False,
+                message,
+                deployment,
+                project_id,
+                conversation,
+                conversation_meta,
+                inbound_msg,
+                answered,
             )
 
-        action = await get_next_action(conversation, deployment, message.text)
-        action_state = _state_value(action.get("state"), conversation.state)
-        conversation.state = action_state
-
-        if action.get("question_index") is not None:
-            conversation.current_question_index = int(action["question_index"])
-        if action.get("metadata"):
-            update_conversation_metadata(conversation, action["metadata"])
-
-        response_text = action.get("text") or ""
-        response: OutgoingMessage | None = None
-        if action.get("action") in {"send_message", "complete"} and response_text:
-            response = OutgoingMessage(
-                channel=message.channel,
-                channel_id=message.channel_id,
-                text=response_text,
-                instance_id=message.instance_id,
-                metadata={"deployment_id": deployment.id, "conversation_id": conversation.id},
-            )
-            db.add(
-                ChannelMessage(
-                    id=str(uuid.uuid4()),
-                    channel_instance_id=message.instance_id,
-                    project_id=project_id,
-                    direction="outbound",
-                    sender_id="system",
-                    sender_name="Istara",
-                    content=response_text,
-                    content_type="text",
-                    thread_id=conversation.id,
-                    metadata_json=json.dumps(response.metadata),
-                )
-            )
-            instance.message_count += 1
-
-        if action.get("action") == "complete":
-            conversation.completed_at = now
-            deployment.current_responses = (deployment.current_responses or 0) + 1
-
-        try:
-            from app.core.improvement_governance import improvement_governance
-
-            await improvement_governance.record_feature_evidence(
-                feature="whatsapp_telegram_channel_integrations",
-                source_system=f"channel_{message.channel}",
-                source_id=inbound_msg.external_message_id or inbound_msg.id,
-                project_id=project_id,
-                agent_id="channel-router",
-                summary=(
-                    "Inbound channel message was persisted and routed through deployment logic."
-                ),
-                evidence={
-                    "passed": True,
-                    "platform": message.channel,
-                    "instance_id": message.instance_id,
-                    "content_type": inbound_msg.content_type,
-                    "has_attachments": bool(message.attachments),
-                    "deployment_id": deployment.id,
-                    "action": action.get("action"),
-                    "state": action_state,
-                },
-                metrics_after={"message_count": instance.message_count},
-                db=db,
-            )
-        except Exception:
-            pass
+        response, action, action_state = await _advance_study(
+            db, message, instance, project_id, deployment, conversation, conversation_meta, now
+        )
+        await _record_channel_evidence(
+            db,
+            message,
+            instance,
+            inbound_msg,
+            project_id,
+            summary="Inbound channel message was persisted and routed through deployment logic.",
+            evidence={
+                "deployment_id": deployment.id,
+                "action": action.get("action"),
+                "state": action_state,
+            },
+        )
         await db.commit()
         await broadcast_channel_status(
             message.instance_id,

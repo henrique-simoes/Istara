@@ -46,7 +46,9 @@ export class ChannelProtocolSimulator {
   }
 
   getBaseUrl() {
-    const host = this.getReachableHost();
+    // A QA lane whose backend sits on an internal network reaches the runner by a DNS name on that
+    // network (the runner container is attached to it); ISTARA_SIM_PROTOCOL_HOST names it.
+    const host = process.env.ISTARA_SIM_PROTOCOL_HOST || this.getReachableHost();
     return `http://${host}:${this.port}`;
   }
 

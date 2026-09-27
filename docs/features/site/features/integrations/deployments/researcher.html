@@ -246,39 +246,43 @@
   <p class="concept-line"><strong>Concepts:</strong> triangulation</p>
 </header>
 <h2 id="what-it-does">What It Does</h2>
-<p>Deployments configure participant-facing research deployments and link them to channels, questions, findings, and timeline views.</p>
+<p>Runs an interview, survey or diary study through Telegram, Slack or WhatsApp. Each participant who messages one of the study&#x27;s channels is taken through informed consent, optional screening questions, your questions (with optional AI follow-ups), and an optional closing question. Every answer is stored as raw evidence, attributed to the exact question the participant was shown.</p>
 <h2 id="why-it-exists">Why It Exists</h2>
-<p>Research Deployments exists so the work represented by Integrations &gt; Deployments has a stable, discoverable place in Istara&#x27;s project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.</p>
+<p>Some participants will answer a few questions in the messaging app they already use but will never open a survey link. A deployment lets you collect those answers without losing the rigour of a moderated study: consent before collection, eligibility screening, a participant quota, reminders, and a pseudonymous raw-data export.</p>
 <h2 id="where-it-lives">Where It Lives</h2>
 <ul>
 <li>UI path: Integrations &gt; Deployments</li>
 <li>Navigation group: Integrations</li>
-<li>Primary component: <code>DeploymentsTab</code></li>
+<li>Primary components: <code>DeploymentsTab</code>, <code>DeploymentWizard</code>, <code>DeploymentDashboard</code></li>
 </ul>
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
-<ul>
-<li>Open Integrations &gt; Deployments from the Istara navigation or the parent tab.</li>
-<li>Use the visible controls in this surface to work only with research deployments in the active project context.</li>
-<li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
-</ul>
+<p>1. Start at least one channel in Integrations &gt; Messaging (the wizard lists only running channels).</p>
+<p>2. Choose **New Deployment** and pick the study type.</p>
+<p>3. Write your questions.</p>
+<p>4. **Consent &amp; Screening**: consent is on by default; edit the statement to match your study and ethics approval. Add screening questions with the answers that qualify (for example <code>yes</code>); leave the answers empty to accept anything.</p>
+<p>5. Decide whether the AI may ask follow-up questions, and how many per question.</p>
+<p>6. Pick the channels, name the study, set the number of participants you need, and optionally a closing question, a thank-you message and one reminder after a quiet period.</p>
+<p>7. Open the study and choose **Activate**. Activation opens the study; it does not message anyone. Share the bot or channel with your participants; each one is invited when they write to it.</p>
+<p>8. Follow progress on the dashboard, **Pause** or **Complete** the study, and **Export CSV** for the raw answers.</p>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
-<li>Start from Integrations &gt; Deployments when the current research task needs research deployments.</li>
-<li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
-<li>Move to related surfaces when needed: integrations.deployment-dashboard, integrations.surveys, integrations.messaging.</li>
+<li>Consent: participants reply YES or NO. A NO, or two unclear replies, ends the conversation and nothing they sent is stored. Anyone can leave at any point by replying STOP.</li>
+<li>Screening: a participant whose answer does not qualify is thanked and not asked your questions; their screening answers are kept on the conversation for your audit, not as evidence.</li>
+<li>Quota: once the target number of participants have finished, new people are told the study is full; anyone already taking part can finish.</li>
+<li>Reminders: a participant who goes quiet gets one reminder repeating the last question.</li>
+<li>Pause: participants who write are told the study is paused and nothing they send is recorded. A study participant never reaches the project&#x27;s AI agent.</li>
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with research deployments that belong to the active project and the current user&#x27;s authorized access.</li>
-<li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes, filtered to the active project before list rows, counts, or detail views are rendered.</li>
-<li>Deployment detail, lifecycle actions, channels, participant conversations, response handling, transcripts, analytics, and overview counts are accepted only when their deployment and channel records belong to the same active project.</li>
-<li>When no custom intro is configured, activation uses a grammatical article for the deployment type (for example, “an interview”); custom intro text is preserved as entered.</li>
-<li>Stale deployment links or selected deployment ids from another project are treated as not found after the current active project is authorized, so switching projects cannot expose participant activity or mutate another project&#x27;s deployment.</li>
+<li>Inputs: questions, consent statement, screening questions, target, optional closing question, thank-you message and reminder delay.</li>
+<li>Outputs: one provisional nugget and one raw evidence unit per answer (the question is kept as context for coders); a pseudonymous CSV (P01, P02, … with consent status, screener answers, question, answer, time and evidence-unit ID; no chat handles or names).</li>
+<li>Answers are raw evidence, not findings. They reach a report only after analysis through a task: coding, reconciliation and an approved Done task.</li>
 </ul>
 <h2 id="caveats">Caveats</h2>
 <ul>
-<li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
-<li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
+<li>Viewers can follow studies but cannot create, run or export them.</li>
+<li>Channels need their provider credentials (Telegram bot token, Slack app, WhatsApp Business) and, for webhooks, a reachable URL; without them the channel cannot start.</li>
+<li>Diary-study pacing between prompts is not scheduled by Istara; each prompt follows the participant&#x27;s previous reply.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>
@@ -292,9 +296,9 @@
 </ul>
 <h2 id="evidence">Evidence</h2>
 <ul>
-<li>Source files: <code>frontend/src/components/integrations/DeploymentsTab.tsx</code>, <code>frontend/src/components/integrations/DeploymentWizard.tsx</code>, <code>frontend/src/components/integrations/DeploymentDashboard.tsx</code>, <code>frontend/src/components/integrations/ConversationTranscript.tsx</code>, <code>frontend/src/lib/api.ts</code>, <code>backend/app/api/routes/deployments.py</code>, <code>backend/app/services/deployment_service.py</code></li>
+<li>Source files: <code>frontend/src/components/integrations/DeploymentsTab.tsx</code>, <code>frontend/src/components/integrations/DeploymentWizard.tsx</code>, <code>frontend/src/components/integrations/DeploymentDashboard.tsx</code>, <code>backend/app/services/adaptive_interview.py</code>, <code>backend/app/services/inbound_processor.py</code>, <code>backend/app/services/deployment_reminders.py</code></li>
 <li>API references: <code>backend/app/api/routes/deployments.py</code>, <code>backend/app/services/deployment_service.py</code></li>
-<li>Tests: <code>tests/test_deployments.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
+<li>Tests: <code>tests/test_deployment_participant_flow.py</code>, <code>tests/test_deployment_research_ops.py</code>, scenario <code>89-study-participant-journey</code> (27/27 on the QA ui lane, 2026-09-27)</li>
 </ul>
         </article>
         <aside class="toc-panel" aria-label="Page sections">

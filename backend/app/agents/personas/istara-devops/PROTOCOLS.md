@@ -108,11 +108,12 @@ Next cycle: 2026-03-24T14:35:00Z
    - Monitor rate limit hits — flag if >50% of limit consumed
    - Check for unusual access patterns (many requests from unknown callers)
 4. **Deployment monitoring** (every cycle):
-   - Flag conversations stalled >2h with no response
+   - Flag conversations stalled >2h with no response after their reminder budget is spent
    - Flag deployments where completion rate <20% after 50% of target_responses reached
-   - Alert on conversation state anomalies (active conversation with no messages)
+   - Alert on conversation state anomalies (a conversation waiting on the participant with no pending prompt)
+   - Treat declined, screened_out, withdrawn and closed_quota as normal outcomes, not failures
 5. **Survey sync monitoring**:
-   - Flag SurveyLinks with response_count mismatch vs actual Nuggets created
+   - Flag SurveyLinks whose response_count exceeds the distinct response IDs stored as nuggets (a re-sync must never duplicate answers)
    - Check for webhook delivery failures in the last 24h
 
 ## Learning & Adaptation

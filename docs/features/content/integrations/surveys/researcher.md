@@ -8,8 +8,8 @@ related_features: ["integrations.deployments", "findings.evidence"]
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/integrations/SurveysTab.tsx", "frontend/src/components/integrations/SurveySetupWizard.tsx", "backend/app/api/routes/surveys.py"]
 api_references: ["backend/app/api/routes/surveys.py"]
-test_references: ["tests/test_surveys.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
+test_references: ["tests/test_surveys.py", "tests/test_project_scope_contracts.py", "tests/test_deployment_research_ops.py", "tests/simulation/scenarios/89-study-participant-journey.mjs"]
+last_verified: 2026-09-26
 compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-776
 ---
 
@@ -17,42 +17,41 @@ compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-776
 
 ## What It Does
 
-Surveys configures participant question and survey collection flows connected to project research.
+Brings answers from SurveyMonkey, Typeform or Google Forms into the project as raw research evidence, and lets you record answers a participant gave another way (a phone call, a paper form) in the Questionnaire Studio.
 
 ## Why It Exists
 
-Survey Integrations exists so the work represented by Integrations > Surveys has a stable, discoverable place in Istara's project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.
+Survey answers are research data like interview transcripts: they need to be stored exactly as given, traceable to the response they came from, and analysed through the same coding and review gates before they appear in a report.
 
 ## Where It Lives
 
 - UI path: Integrations > Surveys
 - Navigation group: Integrations
-- Primary component: `SurveysTab`
+- Primary components: `SurveysTab`, `SurveySetupWizard`
 
 ## How UX Researchers Use It
 
-- Open Integrations > Surveys from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with survey integrations in the active project context.
-- Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+1. **Connect** a platform (project admins) and link a survey to the project.
+2. **Sync** pulls the survey's responses. Istara reports how many new answers it stored and how many it skipped because they were already stored: syncing again never duplicates answers.
+3. **Export** (download icon) gives a CSV of the stored answers with their response IDs and evidence-unit IDs.
+4. **Questionnaire Studio**: add the survey's questions, type a real participant's answers, and choose **Record response**. Unanswered questions are skipped; the studio refuses to record an empty response.
 
 ## Supported Workflows
 
-- Start from Integrations > Surveys when the current research task needs survey integrations.
-- Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
-- Move to related surfaces when needed: integrations.deployments, findings.evidence.
+- Pull a live survey several times during fieldwork; only new answers are added.
+- Record phone or paper responses alongside platform responses.
+- Export raw answers for your own analysis or archive.
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with survey integrations.
-- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
-- Survey platform connection, integration removal, linked survey sync, and response review operate only on survey records owned by the active project.
+- Each answered question becomes a provisional nugget and one evidence unit holding the answer; the question is kept as context for coders, not coded as participant data.
+- Answers reach a report only after analysis through a task: coding, reconciliation and an approved Done task.
 
 ## Caveats
 
-- No active project means survey platform connection and sync actions are disabled or rejected.
-- A survey integration or link from another project should not appear or be actionable in the current project's Survey tab, even if the same user can administer both projects.
-- Needs interactive verification for exact empty, loading, error, and permission-denied states.
-- Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
+- No active project means connection and sync are disabled.
+- Responses a platform returns without an ID cannot be matched on re-sync; they are stored each time they are pulled.
+- Never enter invented answers in the Questionnaire Studio: whatever it records is stored as participant evidence.
 
 ## Related Features
 
@@ -65,6 +64,6 @@ Survey Integrations exists so the work represented by Integrations > Surveys has
 
 ## Evidence
 
-- Source files: `frontend/src/components/integrations/SurveysTab.tsx`, `frontend/src/components/integrations/SurveySetupWizard.tsx`, `backend/app/api/routes/surveys.py`
+- Source files: `frontend/src/components/integrations/SurveysTab.tsx`, `frontend/src/components/integrations/SurveySetupWizard.tsx`, `backend/app/api/routes/surveys.py`, `backend/app/services/survey_ingestion.py`
 - API references: `backend/app/api/routes/surveys.py`
-- Tests: `tests/test_surveys.py`, `tests/test_project_scope_contracts.py`
+- Tests: `tests/test_surveys.py`, `tests/test_deployment_research_ops.py`, scenario `89-study-participant-journey`

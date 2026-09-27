@@ -8,8 +8,8 @@ related_features: ["integrations.deployments", "findings.evidence"]
 related_glossary: ["triangulation"]
 code_references: ["frontend/src/components/integrations/DeploymentDashboard.tsx", "frontend/src/components/integrations/ConversationTranscript.tsx", "frontend/src/lib/api.ts", "backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
 api_references: ["backend/app/api/routes/deployments.py", "backend/app/services/deployment_service.py"]
-test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py"]
-last_verified: 2026-05-19
+test_references: ["tests/test_deployments.py", "tests/test_project_scope_contracts.py", "tests/test_deployment_participant_flow.py", "tests/test_deployment_research_ops.py", "tests/simulation/scenarios/89-study-participant-journey.mjs"]
+last_verified: 2026-09-26
 compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773
 ---
 
@@ -17,40 +17,41 @@ compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-767; CF-SPEC-60 / CF-773
 
 ## What It Does
 
-The deployment dashboard has sub-tabs for live status, questions, participants, findings, channels, and timeline activity.
+Shows one study while it runs: who is taking part and where each participant is, per-question statistics, and the controls to activate, pause, resume, complete and export it.
 
 ## Why It Exists
 
-Deployment Dashboard exists so the work represented by Integrations > Deployments > Dashboard has a stable, discoverable place in Istara's project workflow. It keeps user actions, generated artifacts, and related follow-up surfaces connected to the active project rather than scattering them across unrelated tools.
+A researcher running a remote study needs to see at a glance whether people are joining, finishing or dropping out, and to stop or pause the study without losing data.
 
 ## Where It Lives
 
-- UI path: Integrations > Deployments > Dashboard
+- UI path: Integrations > Deployments > (a study)
 - Navigation group: Integrations
 - Primary component: `DeploymentDashboard`
 
 ## How UX Researchers Use It
 
-- Open Integrations > Deployments > Dashboard from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with deployment dashboard in the active project context.
-- Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- **Live Feed** lists participants currently taking part and recent activity; the dashboard refreshes every 15 seconds while open (or use the refresh button).
+- **Participant Tracker** names each outcome in plain words: invited, awaiting consent, screening, answering, follow-up, closing question, completed, declined consent, screened out, withdrew, study full.
+- **Question Analytics** shows answers per question.
+- The header shows the study state, whether consent is asked first, and how many participants have finished against the target.
+- **Activate / Pause / Resume / Complete** confirm what happened; a failure is shown, never swallowed.
+- **Export CSV** downloads the raw answers, pseudonymised.
 
 ## Supported Workflows
 
-- Start from Integrations > Deployments > Dashboard when the current research task needs deployment dashboard.
-- Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
-- Move to related surfaces when needed: integrations.deployments, findings.evidence.
+- Watch a study fill, pause it for a fix to a question, resume it, and close it when enough people have finished.
+- Open a participant's transcript from the tracker.
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with deployment dashboard.
-- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
-- Detail views, lifecycle actions, conversation details, transcripts, responses, and analytics are read or updated only when they belong to the same active project as the selected deployment.
+- Outputs: a CSV with one row per stored answer (P01, P02, …, consent, screener answers, prompt kind, question, answer, time, evidence-unit ID).
+- The Findings Pipeline tab explains that answers are raw evidence; findings come from analysing them through a task.
 
 ## Caveats
 
-- Needs interactive verification for exact empty, loading, error, and permission-denied states.
-- Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
+- Activation does not message participants; they are invited when they write to the study's channel.
+- Viewers see the dashboard without the run and export controls.
 
 ## Related Features
 
@@ -65,4 +66,4 @@ Deployment Dashboard exists so the work represented by Integrations > Deployment
 
 - Source files: `frontend/src/components/integrations/DeploymentDashboard.tsx`, `frontend/src/components/integrations/ConversationTranscript.tsx`, `frontend/src/lib/api.ts`, `backend/app/api/routes/deployments.py`, `backend/app/services/deployment_service.py`
 - API references: `backend/app/api/routes/deployments.py`, `backend/app/services/deployment_service.py`
-- Tests: `tests/test_deployments.py`, `tests/test_project_scope_contracts.py`
+- Tests: `tests/test_deployment_research_ops.py`, scenario `89-study-participant-journey`
