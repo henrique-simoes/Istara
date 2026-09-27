@@ -16,6 +16,9 @@ trap 'echo ""; echo "  ✗ Installation failed at line $LINENO. Please report th
 
 REPO="henrique-simoes/Istara"
 INSTALL_DIR="${ISTARA_DIR:-$HOME/.istara}"
+# The branch a source install follows (main unless ISTARA_BRANCH names another, e.g. to verify a
+# change before it merges).
+BRANCH="${ISTARA_BRANCH:-main}"
 VERSION=""
 
 # ── Colours ──────────────────────────────────────────────────────
@@ -270,7 +273,7 @@ sync_repo_to_main() {
         }
     else
         info "Cloning Istara to $INSTALL_DIR..."
-        git clone "https://github.com/${REPO}.git" "$INSTALL_DIR"
+        git clone --branch "$BRANCH" "https://github.com/${REPO}.git" "$INSTALL_DIR"
         cd "$INSTALL_DIR"
         ok "Cloned to $INSTALL_DIR"
     fi

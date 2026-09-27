@@ -240,7 +240,7 @@ def test_startup_bootstraps_profile_before_vector_checks():
 
     source = inspect.getsource(lifespan)
     bootstrap = source.index("bootstrap_embedding_profile")
-    invariant = source.index("assert_vector_space_invariant")
+    invariant = source.index("startup_vector_space_status")
     vector_health = source.index("check_embedding_dimensions")
 
     assert bootstrap < invariant
