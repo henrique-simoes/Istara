@@ -190,7 +190,7 @@ Stale scenarios are architecture debt: if a feature change breaks a scenario's s
 Suites and lanes (commands in `TESTING.md`):
 
 - **Broad suites** (run the ones your change touches; `--engine pi|legacy` where chat is involved):
-   all menus/views (09 plus `test_phase9_broad_24view_sweep.mjs`), agentic chat and real work
+   all menus/views (09, 90 — every sub-tab, both themes, roles — plus `test_phase9_broad_24view_sweep.mjs`), agentic chat and real work
    (05, 12, 17, 21, 48, 70–71, 76, 79), model ensemble (35, 37), research spine (07, 16, 47, 58),
    security/auth/2FA (32, 42, 56, 64, 67, 68, 74), compute donation (34 + `tests/petals_bridge/`),
    voice (77, 78), long-form (`npm --prefix tests/real_user_benchmark run probe:deep`).

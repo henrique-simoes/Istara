@@ -68,10 +68,10 @@ export function showSkillToast(
 export function HealthBadge({ score }: { score: number }) {
   const color =
     score >= 0.7
-      ? "text-green-600"
+      ? "text-green-700 dark:text-green-400"
       : score >= 0.4
-        ? "text-amber-500"
-        : "text-red-500";
+        ? "text-amber-700 dark:text-amber-400"
+        : "text-red-700 dark:text-red-400";
   return (
     <span className={cn("text-xs font-mono font-medium", color)}>
       {(score * 100).toFixed(0)}%

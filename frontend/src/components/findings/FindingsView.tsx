@@ -278,7 +278,7 @@ export default function FindingsView({ navigationFilter = null }: FindingsViewPr
               >
                 💎 {tab.label}
                 {summary && (
-                  <span className="ml-1.5 text-xs text-slate-400">
+                  <span className="ml-1.5 text-xs text-slate-400 dark:text-slate-300">
                     ({tabTotal})
                   </span>
                 )}

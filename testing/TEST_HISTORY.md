@@ -6,6 +6,16 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-27 — Professional-readiness review, Phase 3: menus and UX (branch plan/professional-readiness-p3)
+
+Lifecycle `docs/build-stream/2026-09-26-professional-readiness-review.md`. QA `ui` lane `pr-readiness-0926`, Mac Studio.
+
+| Layer | Result |
+|---|---|
+| Stale verdicts (12 views dated 2026-09-08) | 23 scenarios 435/438 on the first pass (run `2026-09-27T01-44-55-011Z`); scenario 30 15/15 once the runner mounted the source it audits (run `2026-09-27T01-55-57-767Z`) |
+| Scenario 90 (new) menu walk | first full pass: 58 screens with serious/critical axe violations (light 2.3-4.3:1 and dark 2.2-3.8:1 metadata text; unlabelled selects, date inputs, switch, icon button), 7 views reachable only through a fallback, viewers triggering a document sync they may not run, non-admins requesting admin-only governance proposals; after the fixes **16/16** (run `2026-09-27T05-20-27-957Z`) |
+| Frontend | `tsc --noEmit` clean; unit 127/127; eslint 0 errors |
+
 ## 2026-09-27 — Professional-readiness review, Phase 1: surveys, channels, deployments (branch plan/professional-readiness-20260926)
 
 Lifecycle `docs/build-stream/2026-09-26-professional-readiness-review.md`. Studio, `istara-test:1` with `--network none`; QA `ui` lane `pr-readiness-0926`.

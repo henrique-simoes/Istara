@@ -258,13 +258,13 @@ export default function AdminDashboard() {
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between"><span>User invites</span><strong>{connections?.user_invites?.length ?? 0}</strong></div>
               <div className="flex items-center justify-between"><span>Compute donations</span><strong>{connections?.compute_donations?.length ?? 0}</strong></div>
-              <input value={inviteLabel} onChange={(event) => setInviteLabel(event.target.value)} placeholder="Label" className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-950" />
-              <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-950">
+              <input aria-label="Invite label" value={inviteLabel} onChange={(event) => setInviteLabel(event.target.value)} placeholder="Label" className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-950" />
+              <select aria-label="Role for the invite" value={inviteRole} onChange={(event) => setInviteRole(event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-950">
                 <option value="researcher">Researcher invite</option>
                 <option value="viewer">Viewer invite</option>
                 <option value="admin">Admin invite</option>
               </select>
-              <select value={donationProjectId} onChange={(event) => setDonationProjectId(event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-950">
+              <select aria-label="Project for compute donation" value={donationProjectId} onChange={(event) => setDonationProjectId(event.target.value)} className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-950">
                 <option value="">Project for compute donation</option>
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>{project.name}</option>
@@ -294,7 +294,7 @@ export default function AdminDashboard() {
               <div key={item.id} className="rounded-md border border-slate-100 p-3 text-sm dark:border-slate-800">
                 <div className="font-medium text-slate-900 dark:text-white">{item.display_name || item.username}</div>
                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.project_count} projects</div>
-                <select value={item.role} onChange={(event) => updateGlobalRole(item.id, event.target.value as any)} className="mt-2 w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-950">
+                <select aria-label={`Role of ${item.display_name || item.username}`} value={item.role} onChange={(event) => updateGlobalRole(item.id, event.target.value as any)} className="mt-2 w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-950">
                   <option value="admin">Admin</option>
                   <option value="researcher">Researcher</option>
                   <option value="viewer">Viewer</option>
@@ -307,15 +307,15 @@ export default function AdminDashboard() {
         <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><UserCog size={16} /> Project Access</h2>
           <div className="grid gap-2 md:grid-cols-4">
-            <select value={accessProjectId} onChange={(event) => setAccessProjectId(event.target.value)} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+            <select aria-label="Project to grant access to" value={accessProjectId} onChange={(event) => setAccessProjectId(event.target.value)} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
               <option value="">Project</option>
               {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
             </select>
-            <select value={accessUserId} onChange={(event) => setAccessUserId(event.target.value)} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+            <select aria-label="User to grant access" value={accessUserId} onChange={(event) => setAccessUserId(event.target.value)} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
               <option value="">User</option>
               {users.map((item) => <option key={item.id} value={item.id}>{item.display_name || item.username}</option>)}
             </select>
-            <select value={accessRole} onChange={(event) => setAccessRole(event.target.value as any)} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+            <select aria-label="Project role to grant" value={accessRole} onChange={(event) => setAccessRole(event.target.value as any)} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
               <option value="project_admin">Project admin</option>
               <option value="researcher">Researcher</option>
               <option value="viewer">Viewer</option>
@@ -327,7 +327,7 @@ export default function AdminDashboard() {
               <div key={member.id} className="rounded-md border border-slate-100 p-3 text-sm dark:border-slate-800">
                 <div className="font-medium text-slate-900 dark:text-white">{member.project_name || member.project_id}</div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">{member.username || member.user_id}</div>
-                <select value={member.role} onChange={(event) => adminApi.updateProjectMember(member.project_id, member.user_id, event.target.value as any).then(load)} className="mt-2 w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-950">
+                <select aria-label={`Project role of ${member.username || member.user_id} in ${member.project_name || member.project_id}`} value={member.role} onChange={(event) => adminApi.updateProjectMember(member.project_id, member.user_id, event.target.value as any).then(load)} className="mt-2 w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-950">
                   <option value="project_admin">Project admin</option>
                   <option value="researcher">Researcher</option>
                   <option value="viewer">Viewer</option>

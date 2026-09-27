@@ -114,7 +114,7 @@ export default function DesignChatTab() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4" role="log" aria-label="Design chat messages">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4" tabIndex={0} role="log" aria-label="Design chat messages">
         {designMessages.length === 0 && !designStreaming && (
           <div className="flex items-center justify-center h-full text-slate-400">
             <div className="text-center max-w-md">

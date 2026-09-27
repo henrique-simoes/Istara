@@ -220,13 +220,14 @@ export default function DocumentsView() {
       fetchDocuments(activeProjectId);
       fetchTags(activeProjectId);
       fetchStats(activeProjectId);
-      syncDocuments(activeProjectId);
+      // Syncing the project folder writes documents; a viewer may read but not sync (walk: 403).
+      if (canWrite) syncDocuments(activeProjectId);
     } else {
       resetProject(null);
       setPreviewDoc(null);
       setPreviewContent(null);
     }
-  }, [activeProjectId, fetchDocuments, fetchTags, fetchStats, syncDocuments, resetProject]);
+  }, [activeProjectId, canWrite, fetchDocuments, fetchTags, fetchStats, syncDocuments, resetProject]);
 
   useEffect(() => {
     if (activeProjectId) {
@@ -559,7 +560,7 @@ export default function DocumentsView() {
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4" role="list" aria-label="Documents list">
+      <div className="flex-1 overflow-y-auto p-4">
         {error && (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300" role="alert">
             {error}
@@ -584,6 +585,8 @@ export default function DocumentsView() {
           </div>
         ) : (
           <div
+            role="list"
+            aria-label="Documents list"
             className={cn(
               viewMode === "grid"
                 ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"
