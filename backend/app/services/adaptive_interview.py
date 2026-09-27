@@ -70,7 +70,9 @@ DEFAULT_CONSENT_MESSAGE = (
     "Taking part is voluntary, and you can stop at any time by replying STOP."
 )
 CONSENT_INSTRUCTION = "Reply YES to take part, or NO if you'd rather not."
-DEFAULT_DECLINED_MESSAGE = "No problem, thank you for letting us know. We won't ask you anything else."
+DEFAULT_DECLINED_MESSAGE = (
+    "No problem, thank you for letting us know. We won't ask you anything else."
+)
 DEFAULT_SCREENED_OUT_MESSAGE = (
     "Thank you! This study is looking for a different group of participants, so we won't need "
     "anything else from you."
@@ -88,12 +90,42 @@ DEFAULT_PAUSED_MESSAGE = (
 DEFAULT_REMINDER_MESSAGE = "Just a gentle reminder, whenever you have a moment:"
 
 _YES = {
-    "yes", "y", "yeah", "yep", "yes please", "sure", "ok", "okay", "i agree", "agree", "agreed",
-    "i consent", "consent", "sim", "si", "sí", "oui", "ja", "👍",
+    "yes",
+    "y",
+    "yeah",
+    "yep",
+    "yes please",
+    "sure",
+    "ok",
+    "okay",
+    "i agree",
+    "agree",
+    "agreed",
+    "i consent",
+    "consent",
+    "sim",
+    "si",
+    "sí",
+    "oui",
+    "ja",
+    "👍",
 }
 _NO = {
-    "no", "n", "nope", "no thanks", "no thank you", "não", "nao", "non", "nein", "decline",
-    "i decline", "i do not agree", "i don't agree", "i dont agree", "stop",
+    "no",
+    "n",
+    "nope",
+    "no thanks",
+    "no thank you",
+    "não",
+    "nao",
+    "non",
+    "nein",
+    "decline",
+    "i decline",
+    "i do not agree",
+    "i don't agree",
+    "i dont agree",
+    "stop",
 }
 MAX_CONSENT_ATTEMPTS = 2
 
@@ -224,8 +256,12 @@ def _send(
     prompt_text: str | None = None,
     question_index: int | None = None,
 ) -> dict:
-    _prompt(metadata, kind, prompt_text if prompt_text is not None else text,
-            question_index=question_index)
+    _prompt(
+        metadata,
+        kind,
+        prompt_text if prompt_text is not None else text,
+        question_index=question_index,
+    )
     metadata["state"] = state.value
     return _build_action(
         "send_message",
@@ -353,7 +389,10 @@ def _start_screener_or_questions(
         metadata["screener_index"] = 0
         text = screener[0]["text"]
         return _send(
-            metadata, ConversationState.SCREENING, f"{prefix}{text}", kind="screener",
+            metadata,
+            ConversationState.SCREENING,
+            f"{prefix}{text}",
+            kind="screener",
             prompt_text=text,
         )
     return _first_question(config, questions, metadata, lead=lead)
@@ -364,7 +403,11 @@ def _first_question(config: dict, questions: list[dict], metadata: dict, *, lead
         text = _question_text(questions, 0)
         body = f"{lead}\n\nLet's begin:\n{text}" if lead else text
         return _send(
-            metadata, ConversationState.QUESTIONS, body, kind="question", prompt_text=text,
+            metadata,
+            ConversationState.QUESTIONS,
+            body,
+            kind="question",
+            prompt_text=text,
             question_index=1,
         )
     return _handle_wrap_up(config, metadata, lead=lead)
@@ -386,9 +429,7 @@ def _handle_intro(config: dict, questions: list[dict], metadata: dict) -> dict:
     return _start_screener_or_questions(config, questions, metadata, lead=intro_message)
 
 
-def _handle_consent(
-    config: dict, questions: list[dict], metadata: dict, last_message: str
-) -> dict:
+def _handle_consent(config: dict, questions: list[dict], metadata: dict, last_message: str) -> dict:
     """Record the participant's consent decision; nothing they send before a yes is stored."""
     decision = consent_reply(last_message)
     if decision is True:
@@ -424,7 +465,11 @@ def _handle_screening(
     qualified = _screener_accepts(item, last_message)
     answers = list(metadata.get("screener_answers") or [])
     answers.append(
-        {"question": item["text"], "answer": str(last_message or "").strip(), "qualified": qualified}
+        {
+            "question": item["text"],
+            "answer": str(last_message or "").strip(),
+            "qualified": qualified,
+        }
     )
     metadata["screener_answers"] = answers
     if not qualified:
@@ -436,7 +481,9 @@ def _handle_screening(
     index += 1
     metadata["screener_index"] = index
     if index < len(screener):
-        return _send(metadata, ConversationState.SCREENING, screener[index]["text"], kind="screener")
+        return _send(
+            metadata, ConversationState.SCREENING, screener[index]["text"], kind="screener"
+        )
     return _first_question(config, questions, metadata, lead="Thanks, you're a great fit.")
 
 
@@ -533,7 +580,9 @@ def _handle_wrap_up(config: dict, metadata: dict, *, lead: str = "") -> dict:
         body = f"{lead}\n\n{closing}" if lead else closing
         return _send(metadata, ConversationState.CLOSING, body, kind="closing", prompt_text=closing)
     thank_you = _thank_you(config)
-    return _finish(metadata, ConversationState.COMPLETED, f"{lead}\n\n{thank_you}" if lead else thank_you)
+    return _finish(
+        metadata, ConversationState.COMPLETED, f"{lead}\n\n{thank_you}" if lead else thank_you
+    )
 
 
 # ---------------------------------------------------------------------------

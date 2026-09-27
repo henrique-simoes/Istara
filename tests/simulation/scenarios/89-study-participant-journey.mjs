@@ -435,4 +435,3 @@ async function matrix(ctx, checks, state) {
   checks.push({ name: "Dark theme (app toggle): the dashboard renders with its controls", passed: dark && exportVisible, detail: `dark=${dark}` });
   await setTheme(page, "light");
 }
-

@@ -132,7 +132,9 @@ async def send_due_reminders(now: datetime | None = None) -> int:
                     )
                 except Exception:
                     logger.warning(
-                        "Reminder for conversation %s failed to send", conversation.id, exc_info=True
+                        "Reminder for conversation %s failed to send",
+                        conversation.id,
+                        exc_info=True,
                     )
                     continue
                 db.add(

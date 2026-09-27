@@ -247,9 +247,7 @@ async def test_consent_given_then_questions_and_only_answers_are_stored():
 
 @pytest.mark.asyncio
 async def test_unclear_consent_is_asked_again_then_treated_as_no():
-    project_id, instance_id, _ = await _seed(
-        ["What slows you down?"], {"consent_required": True}
-    )
+    project_id, instance_id, _ = await _seed(["What slows you down?"], {"consent_required": True})
     await _say(instance_id, "p1", "hello")
     again = await _say(instance_id, "p1", "what is this?")
     assert again is not None and "YES" in again.text

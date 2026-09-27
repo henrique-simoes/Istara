@@ -34,7 +34,15 @@ QUESTIONS = [
 CLOSING = "Is there anything else you would like to tell us?"
 SCREENER = "Do you export reports every week?"
 CHANNELS = ("telegram", "slack", "whatsapp")
-PATHS = ("complete", "complete", "complete", "decline", "screened_out", "stop_after_1", "quiet_after_2")
+PATHS = (
+    "complete",
+    "complete",
+    "complete",
+    "decline",
+    "screened_out",
+    "stop_after_1",
+    "quiet_after_2",
+)
 
 
 def _participant_script(path: str, n: int) -> tuple[list[str], list[tuple[str, str]]]:
@@ -215,14 +223,21 @@ async def measure_channels(n_per_channel: int = 10, seed: int = 7) -> dict:
         stored_once += sum(1 for pair in wanted if pairs.count(pair) == 1)
         path = next(p[2] for p in participants if p[0] == sender)
         missing += [
-            {"participant": sender, "path": path, "question": q, "times_stored": pairs.count((q, a))}
+            {
+                "participant": sender,
+                "path": path,
+                "question": q,
+                "times_stored": pairs.count((q, a)),
+            }
             for q, a in wanted
             if pairs.count((q, a)) != 1
         ]
     quota_overshoot = sum(1 for sender in turned_away if by_sender.get(sender))
     return {
         "participants": len(participants),
-        "paths": {path: sum(1 for p in participants if p[2] == path) for path in sorted(set(PATHS))},
+        "paths": {
+            path: sum(1 for p in participants if p[2] == path) for path in sorted(set(PATHS))
+        },
         "target_responses": target,
         "turned_away_by_quota": len(turned_away),
         "S1_attribution": {
@@ -254,12 +269,18 @@ async def measure_survey_resync(syncs: int = 3) -> dict:
     await init_db()
     project_id = str(uuid.uuid4())
     integration = SurveyIntegration(
-        id=str(uuid.uuid4()), platform="typeform", name="eval", config_json="{}",
+        id=str(uuid.uuid4()),
+        platform="typeform",
+        name="eval",
+        config_json="{}",
         project_id=project_id,
     )
     link = SurveyLink(
-        id=str(uuid.uuid4()), integration_id=integration.id, project_id=project_id,
-        external_survey_id="form-eval", external_survey_name="S5 survey",
+        id=str(uuid.uuid4()),
+        integration_id=integration.id,
+        project_id=project_id,
+        external_survey_id="form-eval",
+        external_survey_name="S5 survey",
     )
     async with async_session() as db:
         db.add(Project(id=project_id, name="S5 eval"))
@@ -267,8 +288,12 @@ async def measure_survey_resync(syncs: int = 3) -> dict:
         db.add(link)
         await db.commit()
     responses = [
-        {"id": f"r{i}", "answers": [{"question": q, "answer": f"r{i} says {j}"}
-                                    for j, q in enumerate(QUESTIONS)]}
+        {
+            "id": f"r{i}",
+            "answers": [
+                {"question": q, "answer": f"r{i} says {j}"} for j, q in enumerate(QUESTIONS)
+            ],
+        }
         for i in range(30)
     ]
     counts = []
@@ -279,9 +304,9 @@ async def measure_survey_resync(syncs: int = 3) -> dict:
         async with async_session() as db:
             counts.append(
                 await db.scalar(
-                    select(func.count()).select_from(EvidenceUnit).where(
-                        EvidenceUnit.project_id == project_id
-                    )
+                    select(func.count())
+                    .select_from(EvidenceUnit)
+                    .where(EvidenceUnit.project_id == project_id)
                 )
             )
     async with async_session() as db:

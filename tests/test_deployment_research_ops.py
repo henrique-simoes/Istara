@@ -151,8 +151,12 @@ async def test_viewer_cannot_export_raw_participant_data(admin_auth_headers):
         created = await ac.post(
             "/api/deployments",
             headers=admin_auth_headers,
-            json={"project_id": project_id, "name": "Private", "questions": [{"text": "Q?"}],
-                  "channel_instance_ids": [instance_id]},
+            json={
+                "project_id": project_id,
+                "name": "Private",
+                "questions": [{"text": "Q?"}],
+                "channel_instance_ids": [instance_id],
+            },
         )
         original = settings.team_mode
         settings.team_mode = True
@@ -200,8 +204,13 @@ async def test_survey_resync_does_not_duplicate_responses():
         await db.commit()
     link = await _survey_link(project_id)
     responses = [
-        {"id": "r1", "answers": [{"question": "Why?", "answer": "Speed"},
-                                 {"question": "Else?", "answer": "No"}]},
+        {
+            "id": "r1",
+            "answers": [
+                {"question": "Why?", "answer": "Speed"},
+                {"question": "Else?", "answer": "No"},
+            ],
+        },
         {"id": "r2", "answers": [{"question": "Why?", "answer": "Speed"}]},
     ]
     results = []
@@ -216,9 +225,9 @@ async def test_survey_resync_does_not_duplicate_responses():
             select(func.count()).select_from(Nugget).where(Nugget.project_id == project_id)
         )
         unit_count = await db.scalar(
-            select(func.count()).select_from(EvidenceUnit).where(
-                EvidenceUnit.project_id == project_id
-            )
+            select(func.count())
+            .select_from(EvidenceUnit)
+            .where(EvidenceUnit.project_id == project_id)
         )
         refreshed = await db.get(SurveyLink, link.id)
     assert [r["nuggets_created"] for r in results] == [3, 1, 0]
@@ -288,7 +297,9 @@ async def test_coders_see_the_question_as_context_not_as_a_unit():
     async with async_session() as db:
         fresh = await db.get(SurveyLink, link.id)
         await ingest_responses(
-            db, fresh, [{"id": "r9", "answers": [{"question": "Why switch?", "answer": "Price"}]}],
+            db,
+            fresh,
+            [{"id": "r9", "answers": [{"question": "Why switch?", "answer": "Price"}]}],
             project_id,
         )
         units = (
@@ -324,15 +335,25 @@ async def test_overview_counts_conversations_finishers_and_answers(admin_auth_he
         for sender, texts in {"A": ["hi", "answer A"], "B": ["hi"]}.items():
             for text in texts:
                 await process_inbound_channel_message(
-                    IncomingMessage(channel="slack", channel_id=f"D-{sender}", sender_id=sender,
-                                    sender_name=sender, text=text, instance_id=instance_id)
+                    IncomingMessage(
+                        channel="slack",
+                        channel_id=f"D-{sender}",
+                        sender_id=sender,
+                        sender_name=sender,
+                        text=text,
+                        instance_id=instance_id,
+                    )
                 )
         overview = await ac.get(
             f"/api/deployments/overview?project_id={project_id}", headers=admin_auth_headers
         )
     assert overview.status_code == 200
     body = overview.json()
-    assert (body["conversations_started"], body["participants_finished"], body["answers_stored"]) == (
+    assert (
+        body["conversations_started"],
+        body["participants_finished"],
+        body["answers_stored"],
+    ) == (
         2,
         1,
         1,
