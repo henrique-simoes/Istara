@@ -38,6 +38,10 @@ RUN useradd --system --no-create-home istara
 COPY --from=builder /install /usr/local
 COPY --from=builder /build/backend .
 COPY --from=builder /build/pi-runtime ./pi-runtime
+# The running version (D-11): a build stamp when the builder passes one, else the VERSION file.
+ARG ISTARA_VERSION=""
+ENV ISTARA_VERSION=${ISTARA_VERSION}
+COPY VERSION ./VERSION
 RUN mkdir -p data/uploads data/projects data/lance_db data/backups data/channel_audio \
     runtime-state \
     && chown -R istara:istara data runtime-state

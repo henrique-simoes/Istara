@@ -9,6 +9,10 @@ on:
       version:
         description: 'Version override (leave empty for auto CalVer)'
         required: false
+      publish:
+        description: 'Publish a GitHub release (false = build and upload artifacts only)'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -98,6 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      semver: ${{ steps.version.outputs.semver }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -111,6 +116,9 @@ jobs:
             VERSION="${{ github.event.inputs.version }}"
           elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
+          elif python3 scripts/check_version_drift.py --newer-than-latest-tag >/dev/null 2>&1; then
+            # The tree was prepared for a release (scripts/set-version.sh): ship that version.
+            VERSION=$(tr -d '[:space:]' < VERSION)
           else
             # CalVer: YYYY.MM.DD[.N]
             TODAY=$(date -u +%Y.%m.%d)
@@ -123,14 +131,20 @@ jobs:
               VERSION="$TODAY"
             fi
           fi
+          SEMVER=$(bash scripts/set-version.sh --semver-of "$VERSION")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Building Istara $VERSION"
+          echo "semver=$SEMVER" >> "$GITHUB_OUTPUT"
+          echo "Building Istara $VERSION (desktop $SEMVER)"
 
   # ── macOS Build ────────────────────────────────────────────────────
   build-macos:
     needs: version
     if: needs.version.result == 'success'
     runs-on: macos-latest
+    outputs:
+      signing: ${{ steps.dmg.outputs.signing }}
+    env:
+      APPLE_SIGNED: ${{ secrets.APPLE_CERTIFICATE != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -159,124 +173,67 @@ jobs:
         working-directory: desktop
         run: npm install
 
-      - name: Import Apple certificate
-        if: env.APPLE_CERTIFICATE != ''
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        run: |
-          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
-          security create-keychain -p actions build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p actions build.keychain
-          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions build.keychain
-          rm certificate.p12
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Build Tauri app (universal binary)
+      - name: Stage the source the app installs on first run
+        run: python scripts/stage_desktop_bundle.py
+
+      # Developer ID signing and notarisation need the APPLE_* secrets. Without them the app is
+      # ad-hoc signed: it runs, but Gatekeeper asks the user to approve it on first open.
+      - name: Build Tauri app (universal, Developer ID)
+        if: env.APPLE_SIGNED == 'true'
         working-directory: desktop
         run: npx tauri build --target universal-apple-darwin
-        continue-on-error: true
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-
-      - name: Notarize macOS app
-        if: env.APPLE_ID != ''
-        env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+
+      - name: Build Tauri app (universal, ad-hoc signed)
+        if: env.APPLE_SIGNED != 'true'
+        working-directory: desktop
+        run: >-
+          npx tauri build --target universal-apple-darwin
+          --config '{"bundle":{"macOS":{"signingIdentity":"-"}}}'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Verify the bundle
         run: |
-          DMG=$(find desktop/src-tauri/target -name "*.dmg" -type f | head -1)
-          if [ -n "$DMG" ]; then
-            echo "Notarizing $DMG..."
-            xcrun notarytool submit "$DMG" \
-              --apple-id "$APPLE_ID" \
-              --team-id "$APPLE_TEAM_ID" \
-              --password "$APPLE_APP_PASSWORD" \
-              --wait || echo "Notarization failed (non-blocking)"
-            xcrun stapler staple "$DMG" || true
-          fi
-        continue-on-error: true
+          APP=desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/Istara.app
+          test -f "$APP/Contents/Resources/istara/backend/app/main.py"
+          test -f "$APP/Contents/Resources/istara/VERSION"
+          codesign --verify --deep --strict "$APP"
+          codesign -dv "$APP" 2>&1 | grep -E "Signature|Authority|TeamIdentifier" || true
+          ls desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
 
-      - name: Bundle source code into .app
+      - name: Name the DMG for the cask
         run: |
-          # Find the built .app
-          APP=$(find desktop/src-tauri/target -name "Istara.app" -type d | head -1)
-          if [ -z "$APP" ]; then
-            echo "No .app bundle found — skipping source bundling"
-            exit 0
-          fi
-          echo "Bundling source into: $APP"
-
-          RESOURCES="$APP/Contents/Resources/istara"
-          mkdir -p "$RESOURCES"
-
-          # Backend source (no data, no venv, no __pycache__)
-          rsync -a --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' \
-            --exclude='data/' --exclude='venv/' --exclude='.venv/' --exclude='.pytest_cache/' \
-            --exclude='*.db' --exclude='*.sqlite' --exclude='*.sqlite3' --exclude='*.jsonl' \
-            --exclude='*.gguf' --exclude='*.safetensors' --exclude='*.bin' --exclude='*.pt' --exclude='*.pth' \
-            backend/ "$RESOURCES/backend/"
-
-          # Frontend source (no node_modules, no .next build)
-          rsync -a --exclude='node_modules/' --exclude='.next/' --exclude='out/' \
-            --exclude='.env.local' \
-            frontend/ "$RESOURCES/frontend/"
-
-          # Relay
-          rsync -a --exclude='node_modules/' --exclude='.env.local' relay/ "$RESOURCES/relay/"
-
-          # Config files
-          cp .env.example "$RESOURCES/.env.example"
-          cp VERSION "$RESOURCES/VERSION"
-
-          # Agent personas (system only)
-          for p in istara-main istara-devops istara-ui-audit istara-ux-eval istara-sim; do
-            if [ -d "backend/app/agents/personas/$p" ]; then
-              rsync -a "backend/app/agents/personas/$p/" "$RESOURCES/backend/app/agents/personas/$p/"
-            fi
-          done
-
-          echo "Source bundled: $(du -sh "$RESOURCES" | cut -f1)"
-
-      - name: Create DMG with drag-to-Applications
-        run: |
-          brew install create-dmg 2>/dev/null || true
-          APP=$(find desktop/src-tauri/target -name "Istara.app" -type d | head -1)
-          if [ -z "$APP" ]; then exit 0; fi
-          VERSION="${{ needs.version.outputs.version }}"
-
-          create-dmg \
-            --volname "Istara" \
-            --window-size 600 400 \
-            --icon-size 100 \
-            --icon "Istara.app" 150 190 \
-            --app-drop-link 450 190 \
-            --hide-extension "Istara.app" \
-            "installer/macos/Istara-${VERSION}.dmg" "$APP" || true
-
-          # Fallback: if create-dmg fails, use hdiutil
-          if [ ! -f "installer/macos/Istara-${VERSION}.dmg" ]; then
-            hdiutil create -volname "Istara" -srcfolder "$APP" \
-              -ov -format UDZO "installer/macos/Istara-${VERSION}.dmg" || true
-          fi
+          mkdir -p installer/macos
+          DMG=$(find desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -1)
+          cp "$DMG" "installer/macos/Istara-${{ needs.version.outputs.version }}.dmg"
+          echo "signing=$([ "$APPLE_SIGNED" = true ] && echo developer-id || echo ad-hoc)" >> "$GITHUB_OUTPUT"
+        id: dmg
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: Istara-macOS-${{ needs.version.outputs.version }}
           path: |
             installer/macos/Istara-*.dmg
-            desktop/src-tauri/target/*/release/bundle/dmg/*.dmg
-            desktop/src-tauri/target/*/release/bundle/macos/*.tar.gz
-            desktop/src-tauri/target/*/release/bundle/macos/*.tar.gz.sig
+            desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz
+            desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.tar.gz.sig
           retention-days: 30
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # ── Linux Build ───────────────────────────────────────────────────
   build-linux:
@@ -314,21 +271,38 @@ jobs:
         working-directory: desktop
         run: npm install
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Stage the source the app installs on first run
+        run: python scripts/stage_desktop_bundle.py
+
       - name: Build Tauri app
         working-directory: desktop
         run: npx tauri build
-        continue-on-error: true
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Verify the bundles
+        run: |
+          B=desktop/src-tauri/target/release/bundle
+          ls $B/appimage/*.AppImage.sig
+          dpkg-deb -c $B/deb/*.deb | grep -q "istara/backend/app/main.py"
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: Istara-Linux-${{ needs.version.outputs.version }}
           path: |
             desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+            desktop/src-tauri/target/release/bundle/appimage/*.AppImage.sig
             desktop/src-tauri/target/release/bundle/deb/*.deb
+            desktop/src-tauri/target/release/bundle/rpm/*.rpm
           retention-days: 30
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # ── Windows Build ──────────────────────────────────────────────────
   build-windows:
@@ -362,69 +336,46 @@ jobs:
         working-directory: desktop
         run: npm install
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Stage the source the app installs on first run
+        run: python scripts/stage_desktop_bundle.py
+
       - name: Build Tauri app
         working-directory: desktop
         run: npx tauri build
-        continue-on-error: true
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      - name: Bundle source into installer directory
-        shell: pwsh
+      - name: Verify the bundles
+        shell: bash
         run: |
-          $RESOURCES = "desktop\src-tauri\target\release\istara"
-          if (!(Test-Path "desktop\src-tauri\target\release")) {
-            Write-Host "No release build found"
-            exit 0
-          }
-
-          # Backend source (exclude __pycache__, data, venv)
-          robocopy backend "$RESOURCES\backend" /E /XD __pycache__ data venv .venv .pytest_cache /XF *.pyc .env *.db *.sqlite *.sqlite3 *.jsonl *.gguf *.safetensors *.bin *.pt *.pth /NFL /NDL /NJH /NJS /NC /NS /NP
-          if ($LASTEXITCODE -ge 8) { Write-Host "Backend copy warning: $LASTEXITCODE" }
-
-          # Frontend source (exclude node_modules, .next)
-          robocopy frontend "$RESOURCES\frontend" /E /XD node_modules .next out /XF .env.local /NFL /NDL /NJH /NJS /NC /NS /NP
-          if ($LASTEXITCODE -ge 8) { Write-Host "Frontend copy warning: $LASTEXITCODE" }
-
-          # Relay
-          robocopy relay "$RESOURCES\relay" /E /XD node_modules /XF .env.local /NFL /NDL /NJH /NJS /NC /NS /NP
-          if ($LASTEXITCODE -ge 8) { Write-Host "Relay copy warning: $LASTEXITCODE" }
-
-          # Config files
-          Copy-Item ".env.example" "$RESOURCES\.env.example" -Force
-          Copy-Item "VERSION" "$RESOURCES\VERSION" -Force
-
-          # Agent personas
-          foreach ($p in @("istara-main","istara-devops","istara-ui-audit","istara-ux-eval","istara-sim")) {
-            $src = "backend\app\agents\personas\$p"
-            if (Test-Path $src) {
-              robocopy $src "$RESOURCES\backend\app\agents\personas\$p" /E /NFL /NDL /NJH /NJS /NC /NS /NP
-            }
-          }
-
-          $size = (Get-ChildItem -Path $RESOURCES -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-          Write-Host "Windows source bundled: $([math]::Round($size, 1)) MB"
-
-          # Reset exit code (robocopy returns 1 for successful copies)
-          exit 0
+          B=desktop/src-tauri/target/release/bundle
+          ls $B/nsis/*-setup.exe.sig $B/msi/*.msi.sig
+          grep -q "main.py" desktop/src-tauri/target/release/wix/x64/main.wxs
+          grep -q "main.py" desktop/src-tauri/target/release/nsis/x64/installer.nsi
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: Istara-Windows-${{ needs.version.outputs.version }}
           path: |
             desktop/src-tauri/target/release/bundle/nsis/*.exe
             desktop/src-tauri/target/release/bundle/nsis/*.exe.sig
             desktop/src-tauri/target/release/bundle/msi/*.msi
-            desktop/src-tauri/target/release/bundle/msi/*.msi.zip
-            desktop/src-tauri/target/release/bundle/msi/*.msi.zip.sig
+            desktop/src-tauri/target/release/bundle/msi/*.msi.sig
           retention-days: 30
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # ── Release (on release-worthy main push, tag push, or manual) ────
   release:
-    if: needs.detect-release.outputs.should_release == 'true'
+    if: >-
+      needs.detect-release.outputs.should_release == 'true' &&
+      (github.event_name != 'workflow_dispatch' || inputs.publish)
     needs: [detect-release, version, build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
@@ -442,48 +393,72 @@ jobs:
       - name: List all artifacts
         run: find . -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.msi" -o -name "*.tar.gz" -o -name "*.sig" \) | sort
 
+      # The updater compares latest.json's version with the app's own semver, and refuses any
+      # update without a valid signature, so both must be right or nobody updates.
       - name: Generate latest.json for auto-updater
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          SEMVER: ${{ needs.version.outputs.semver }}
         run: |
-          VERSION="${{ needs.version.outputs.version }}"
-          REPO="https://github.com/henrique-simoes/Istara/releases/download/v${VERSION}"
-
-          # Find signature files
-          MAC_SIG=$(find . -name "*.app.tar.gz.sig" -type f | head -1)
-          WIN_SIG=$(find . -name "*-setup.exe.sig" -o -name "*.msi.zip.sig" -type f | head -1)
-
-          MAC_SIG_CONTENT=""
-          WIN_SIG_CONTENT=""
-          if [ -f "$MAC_SIG" ]; then MAC_SIG_CONTENT=$(cat "$MAC_SIG"); fi
-          if [ -f "$WIN_SIG" ]; then WIN_SIG_CONTENT=$(cat "$WIN_SIG"); fi
-
-          # Find artifact filenames
-          MAC_TAR=$(find . -name "*.app.tar.gz" ! -name "*.sig" -type f | head -1 | xargs -I{} basename {})
-          WIN_EXE=$(find . -name "*-setup.exe" ! -name "*.sig" -type f | head -1 | xargs -I{} basename {})
-
-          cat > latest.json << ENDJSON
-          {
-            "version": "${VERSION}",
-            "notes": "Istara ${VERSION} — see release page for details.",
-            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "platforms": {
-              "darwin-aarch64": {
-                "signature": "${MAC_SIG_CONTENT}",
-                "url": "${REPO}/${MAC_TAR:-Istara.app.tar.gz}"
+          python3 - <<'PY'
+          import datetime, json, os, pathlib, sys
+          version, semver = os.environ["VERSION"], os.environ["SEMVER"]
+          base = f"https://github.com/henrique-simoes/Istara/releases/download/v{version}"
+          def one(pattern):
+              found = sorted(p for p in pathlib.Path(".").rglob(pattern) if p.is_file())
+              if not found:
+                  sys.exit(f"No release artifact matches {pattern}")
+              return found[0]
+          def entry(pattern):
+              artifact = one(pattern)
+              signature = pathlib.Path(f"{artifact}.sig")
+              if not signature.is_file() or not signature.read_text().strip():
+                  sys.exit(f"{artifact.name} has no updater signature")
+              return {"signature": signature.read_text().strip(), "url": f"{base}/{artifact.name}"}
+          mac = entry("Istara-macOS-*/**/*.app.tar.gz")
+          latest = {
+              "version": semver,
+              "notes": f"Istara {version}. See the release page for details.",
+              "pub_date": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "platforms": {
+                  "darwin-aarch64": mac,
+                  "darwin-x86_64": mac,
+                  "windows-x86_64": entry("Istara-Windows-*/**/*-setup.exe"),
+                  "linux-x86_64": entry("Istara-Linux-*/**/*.AppImage"),
               },
-              "darwin-x86_64": {
-                "signature": "${MAC_SIG_CONTENT}",
-                "url": "${REPO}/${MAC_TAR:-Istara.app.tar.gz}"
-              },
-              "windows-x86_64": {
-                "signature": "${WIN_SIG_CONTENT}",
-                "url": "${REPO}/${WIN_EXE:-Istara-setup.exe}"
-              }
-            }
           }
-          ENDJSON
+          pathlib.Path("latest.json").write_text(json.dumps(latest, indent=2) + "\n")
+          print(json.dumps(latest, indent=2))
+          PY
 
-          echo "Generated latest.json:"
-          cat latest.json
+      - name: Render the Homebrew cask
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          DMG=$(find Istara-macOS-* -name "Istara-${VERSION}.dmg" | head -1)
+          SHA=$(sha256sum "$DMG" | cut -d' ' -f1)
+          sed -e "s/^  version \".*\"/  version \"${VERSION}\"/" \
+              -e "s/^  sha256 \".*\"/  sha256 \"${SHA}\"/" homebrew/istara.rb > istara.rb
+          grep -E '^  (version|sha256) ' istara.rb
+
+      # The tap (henrique-simoes/homebrew-istara) is updated only when a token that can push to
+      # it is configured; otherwise the rendered cask is attached to the release.
+      - name: Update the Homebrew tap
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN is not set; the tap still serves the previous cask. istara.rb is attached to the release."
+            exit 0
+          fi
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/henrique-simoes/homebrew-istara.git" tap
+          cp istara.rb tap/Casks/istara.rb
+          cd tap
+          git config user.name "istara-release"
+          git config user.email "istara-release@users.noreply.github.com"
+          git add Casks/istara.rb
+          git diff --cached --quiet || { git commit -m "istara ${VERSION}" && git push; }
 
       - name: Generate artifact attestations
         uses: actions/attest-build-provenance@v2
@@ -496,6 +471,7 @@ jobs:
             Istara-Windows-*/**/*.msi
             Istara-Linux-*/**/*.AppImage
             Istara-Linux-*/**/*.deb
+            Istara-Linux-*/**/*.rpm
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -519,7 +495,13 @@ jobs:
 
             **macOS (manual)**: Download the `.dmg`, drag Istara to Applications
 
-            **Windows**: Download the `.exe` installer, run it
+            **Windows**: Download the `-setup.exe` (or `.msi`) installer and run it
+
+            **Linux**: Download the `.AppImage` (or the `.deb` / `.rpm`)
+
+            macOS signing for this build: **${{ needs.build-macos.outputs.signing }}**. An ad-hoc
+            signed app is not notarised: on first open, approve it in System Settings → Privacy &
+            Security ("Open Anyway").
 
             **Docker**:
             ```bash
@@ -534,14 +516,18 @@ jobs:
             *Full changelog and documentation: [Wiki](https://github.com/henrique-simoes/Istara/wiki)*
           files: |
             latest.json
+            istara.rb
             Istara-macOS-*/**/*.dmg
             Istara-macOS-*/**/*.tar.gz
             Istara-macOS-*/**/*.tar.gz.sig
             Istara-Windows-*/**/*.exe
             Istara-Windows-*/**/*.exe.sig
             Istara-Windows-*/**/*.msi
-            Istara-Windows-*/**/*.msi.zip
-            Istara-Windows-*/**/*.msi.zip.sig
+            Istara-Windows-*/**/*.msi.sig
+            Istara-Linux-*/**/*.AppImage
+            Istara-Linux-*/**/*.AppImage.sig
+            Istara-Linux-*/**/*.deb
+            Istara-Linux-*/**/*.rpm
           generate_release_notes: true
           draft: false
           prerelease: false

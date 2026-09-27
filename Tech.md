@@ -1548,12 +1548,16 @@ Built with Tauri v2 (5-15 MB binary, ~20 MB RAM). Process management via Rust `s
 ## Versioning & Auto-Updates
 
 ### CalVer Versioning
-Istara uses date-based CalVer: `YYYY.MM.DD` (e.g., `2026.03.29`). Multiple builds in one day use `YYYY.MM.DD.N` (e.g., `2026.03.29.2`). Version is set across 8 files by `scripts/set-version.sh` and stored in a root `VERSION` file.
+Istara uses date-based CalVer: `YYYY.MM.DD` (e.g., `2026.03.29`). Multiple builds in one day use `YYYY.MM.DD.N` (e.g., `2026.03.29.2`). Version is set across the package files by `scripts/set-version.sh` and stored in a root `VERSION` file.
 
-**Files updated**: `VERSION`, `desktop/src-tauri/tauri.conf.json`, `desktop/package.json`, `desktop/src-tauri/Cargo.toml`, `frontend/package.json`, `relay/package.json`, `backend/pyproject.toml`, `installer/windows/nsis-installer.nsi`
+**Files updated**: `VERSION`, `desktop/src-tauri/tauri.conf.json`, `desktop/package.json`, `desktop/src-tauri/Cargo.toml`, `frontend/package.json`, `relay/package.json`, the three `package-lock.json` files, `backend/pyproject.toml`, `installer/windows/nsis-installer.nsi`
+
+**Desktop semver.** Tauri, Cargo, the Windows MSI and the updater need semver, and the MSI caps MAJOR and MINOR at 255. `set-version.sh --semver-of <CalVer>` maps `YYYY.MM.DD.N` to `(100 + YY).M.(DD*100 + N)`: `2026.09.27.3` → `126.9.2703`. The old mapping (MINOR = month×31 + day) passed 255 on 8 August and failed every Windows build after it; MAJOR starts at 126 so new versions sort above every old `26.x.y` and installed apps still update.
+
+**Running version.** `get_current_version()` returns, in order: the `ISTARA_VERSION` build stamp (Docker build arg), the release tag of a git checkout (`git describe`), then the `VERSION` file. Every release-worthy merge to `main` is tagged but `VERSION` only moves through `set-version.sh`; it lagged four months behind the tags, so Docker installs reported an old version and offered an "update" to the release they were running. Both backend images now ship `VERSION`, and `scripts/check_version_drift.py` (governance job, PRs into `main`) fails when `VERSION` is behind the latest tag. The `version` job ships `VERSION` as the release version when it is newer than the latest tag.
 
 ### Update Check System
-- `GET /api/updates/version` — returns current version from VERSION file (public, no auth). Fixed: resolves VERSION from multiple candidate paths (parents[4], parents[3], CWD, CWD parent) to handle different install layouts.
+- `GET /api/updates/version` — returns the running version (public, no auth): the `ISTARA_VERSION` build stamp, else a checkout's release tag, else the `VERSION` file (resolved from parents[4], parents[3], CWD, CWD parent). Docker images ship `VERSION`; before 2026-09-27 they did not, and the status bar read `Istara vunknown`.
 - `GET /api/updates/check` — queries GitHub Releases API, compares CalVer strings lexicographically, returns `{update_available, latest_version, downloads, changelog}`
 - `POST /api/updates/prepare` — creates pre-update backup (admin-only in team mode), returns backup ID
 - `POST /api/updates/apply` — **one-click auto-update**: creates backup → generates a background shell script → stops services → `git pull` → `pip install` → `npm install && npm run build` → restarts services. The script runs in a detached process (`start_new_session=True`) that survives server shutdown. Returns immediately with `{status: "updating"}`.
@@ -1590,10 +1594,13 @@ Recommended local release prep:
 ./scripts/prepare-release.sh --bump
 ```
 
-On a release-worthy push to `main`, tag push (`v*`), or manual dispatch:
-1. `version` job determines CalVer string
-2. `build-macos` + `build-windows` jobs set version, build Tauri + DMG/EXE
-3. `release` job creates GitHub Release with both artifacts and auto-generated release notes
+On a release-worthy push to `main`, tag push (`v*`), or manual dispatch (`publish: false` builds and uploads artifacts without releasing):
+1. `version` job determines the CalVer string and the desktop semver
+2. `build-macos`, `build-linux` and `build-windows` stage the source the app installs on first run (`scripts/stage_desktop_bundle.py` → `desktop/src-tauri/istara/`, git-tracked files only, bundled as the `istara/` resource), then build Tauri with the updater key (`TAURI_SIGNING_PRIVATE_KEY`). No build step has `continue-on-error`; each job verifies its bundle (source present, updater `.sig` present, macOS `codesign --verify --deep --strict`) and fails on a missing artifact
+3. macOS is Developer ID signed and notarised when the `APPLE_*` secrets exist; otherwise it is ad-hoc signed, runs, and needs one "Open Anyway" approval (stated in the release notes)
+4. `release` writes `latest.json` with the semver and a signature for every platform (darwin, windows, linux) and fails if one is missing, renders the Homebrew cask with the DMG's sha256, pushes it to `henrique-simoes/homebrew-istara` when `HOMEBREW_TAP_TOKEN` exists (else attaches `istara.rb` with a warning), and publishes the DMG, updater archive, NSIS/MSI, AppImage, deb and rpm
+
+Until 2026-09-27 every build step had `continue-on-error`: releases published a DMG made from an unsigned `.app` with the source copied in after signing, no Windows or Linux installer (MSI version overflow; wrong signing-secret name), and a `latest.json` whose version was not semver and whose signatures were empty, so no installed app could update (D-10).
 
 **Files**: `scripts/set-version.sh`, `scripts/prepare-release.sh`, `backend/app/api/routes/updates.py`, `frontend/src/components/settings/UpdateChecker.tsx`, `desktop/src-tauri/src/health.rs`, `.github/workflows/ci.yml`, `.github/workflows/build-installers.yml`
 
