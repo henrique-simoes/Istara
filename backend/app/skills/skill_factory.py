@@ -10,11 +10,9 @@ This factory creates concrete skill classes from config dicts.
 
 import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from app.config import settings
-from app.core.file_processor import process_file
 from app.core.llm_schema_adapter import (
     SchemaBudgetResult,
     extract_json_schema,
@@ -200,21 +198,6 @@ def _normalized_skill_output_response_format(skill_name: str) -> dict:
         ),
         strict=True,
     )
-
-
-def _extract_text_from_files(files: list[str], max_chars: int = 4000) -> str:
-    """Extract text from input files."""
-    texts = []
-    total = 0
-    for f in files:
-        result = process_file(Path(f))
-        if not result.error and result.chunks:
-            for chunk in result.chunks:
-                if total + len(chunk.text) > max_chars:
-                    break
-                texts.append(chunk.text)
-                total += len(chunk.text)
-    return "\n\n".join(texts)
 
 
 def _parse_json_response(text: str) -> dict:
@@ -437,75 +420,6 @@ def _normalize_generated_findings(
     )
 
 
-def _deterministic_findings_from_research_data(
-    research_data: str,
-    *,
-    display: str,
-    source_label: str,
-    item_limit: int,
-) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
-    """Last-resort evidence fallback when the model returns empty findings."""
-
-    lines = [line.strip() for line in (research_data or "").splitlines() if line.strip()]
-    if not lines:
-        return [], [], [], []
-
-    header = lines[0]
-    rows = lines[1:]
-    columns = [part.strip() for part in header.split(",") if part.strip()] if "," in header else []
-    representative = next((line for line in rows if line and not line.startswith("#")), lines[0])
-
-    nuggets = [
-        {
-            "text": _compact_text(representative, limit=360),
-            "source": source_label,
-            "tags": ["deterministic-fallback"],
-        }
-    ]
-    facts = []
-    if columns:
-        facts.append(
-            {
-                "text": (
-                    f"Input for {display} contains {len(rows)} data row(s) with columns: "
-                    f"{', '.join(columns[:8])}."
-                )
-            }
-        )
-    else:
-        facts.append(
-            {"text": f"Input for {display} contains {len(lines)} non-empty evidence line(s)."}
-        )
-
-    has_date_column = any(col.lower() in {"date", "timestamp", "week", "month"} for col in columns)
-    if has_date_column and len(rows) < 6:
-        insight_text = (
-            f"{display} received time-indexed data, but only {len(rows)} row(s); "
-            "trend and anomaly claims should be treated as preliminary."
-        )
-        recommendation_text = (
-            "Collect at least 6-12 comparable time periods before relying on trend, "
-            "control-chart, or seasonality conclusions."
-        )
-    else:
-        insight_text = (
-            f"{display} has usable input evidence, but the model returned no normalized findings; "
-            "the fallback preserved the available evidence for review."
-        )
-        recommendation_text = (
-            "Review the source data and rerun the skill if deeper model synthesis is required."
-        )
-
-    insights = [{"text": insight_text, "confidence": "low"}]
-    recommendations = [{"text": recommendation_text, "priority": "medium"}]
-    return (
-        nuggets[:item_limit],
-        facts[:item_limit],
-        insights[:item_limit],
-        recommendations[:item_limit],
-    )
-
-
 def _fallback_plan(
     *,
     skill_name: str,
@@ -529,6 +443,122 @@ def _fallback_plan(
         "3. Extract evidence-backed findings with source labels and confidence notes.\n"
         "4. Synthesize patterns into actionable insights and recommendations.\n"
         "5. Report limitations, missing data, and next validation steps."
+    )
+
+
+def _coverage_report(sources: list[tuple[str, str]], windows: list, budget: Any) -> dict:
+    """How much of the input reached the model (SK2): source characters placed in windows."""
+    from app.skills.skill_windows import content_chars
+
+    total = sum(content_chars(text) for _, text in sources)
+    delivered = sum(sum(w.source_chars.values()) for w in windows)
+    return {
+        "source_files": len(sources),
+        "source_chars": total,
+        "delivered_chars": delivered,
+        "coverage": round(delivered / total, 4) if total else None,
+        "windows": len(windows),
+        "context_tokens": getattr(budget, "context_tokens", None),
+        "max_output_tokens": getattr(budget, "max_output_tokens", None),
+        "budget_basis": getattr(budget, "basis", ""),
+    }
+
+
+def _attach_coverage(output: SkillOutput, sources: list, windows: list, budget: Any) -> None:
+    output.artifacts = {
+        **(output.artifacts or {}),
+        "input_coverage.json": json.dumps(_coverage_report(sources, windows, budget), indent=2),
+    }
+
+
+def _dedupe_nuggets(nuggets: list[dict]) -> list[dict]:
+    seen: set[tuple[str, str]] = set()
+    unique = []
+    for nugget in nuggets:
+        key = (" ".join(str(nugget.get("text", "")).split()).lower(), str(nugget.get("source", "")))
+        if key[0] and key not in seen:
+            seen.add(key)
+            unique.append(nugget)
+    return unique
+
+
+async def _execute_windows(
+    skill: Any,
+    skill_input: SkillInput,
+    sources: list[tuple[str, str]],
+    windows: list,
+    budget: Any,
+) -> SkillOutput:
+    """Map: one call per window (its nuggets keep their source). Reduce: one synthesis call over
+    the merged nuggets for facts, insights and recommendations (DEC-9)."""
+    from app.skills.skill_windows import nuggets_as_evidence, window_char_budget
+
+    nuggets: list[dict] = []
+    window_facts: list[dict] = []
+    window_insights: list[dict] = []
+    window_recommendations: list[dict] = []
+    errors: list[str] = []
+    failed = 0
+    for window in windows:
+        out = await skill._execute_once(
+            skill_input, content=window.text, source_label=window.source_label, budget=budget
+        )
+        if not out.success:
+            failed += 1
+            errors.extend(f"window {window.index + 1}: {e}" for e in (out.errors or [])[:1])
+            continue
+        nuggets.extend(out.nuggets)
+        window_facts.extend(out.facts)
+        window_insights.extend(out.insights)
+        window_recommendations.extend(out.recommendations)
+    nuggets = _dedupe_nuggets(nuggets)
+
+    facts, insights, recommendations = window_facts, window_insights, window_recommendations
+    synthesis_used = False
+    if nuggets:
+        evidence = nuggets_as_evidence(nuggets, window_char_budget(budget, 1200))
+        synthesis_input = (
+            f"These are the evidence nuggets extracted from all {len(windows)} passages of "
+            f"{len(sources)} source files. Work across all of them: derive facts, insights and "
+            "recommendations only from these nuggets, and do not add new quotes.\n\n" + evidence
+        )
+        synthesis = await skill._execute_once(
+            skill_input,
+            content=synthesis_input,
+            source_label="synthesis across windows",
+            budget=budget,
+            synthesis_of=len(windows),
+        )
+        if synthesis.success and (
+            synthesis.facts or synthesis.insights or synthesis.recommendations
+        ):
+            facts = synthesis.facts
+            insights = synthesis.insights
+            recommendations = synthesis.recommendations
+            synthesis_used = True
+        elif not synthesis.success:
+            errors.extend(f"synthesis: {e}" for e in (synthesis.errors or [])[:1])
+
+    coverage = _coverage_report(sources, windows, budget)
+    coverage["windows_failed"] = failed
+    coverage["synthesis_used"] = synthesis_used
+    succeeded = bool(nuggets or facts)
+    summary = (
+        f"Read {coverage['source_files']} file(s) in {len(windows)} passage(s); "
+        f"{len(nuggets)} nugget(s), {len(facts)} fact(s), {len(insights)} insight(s), "
+        f"{len(recommendations)} recommendation(s)"
+        + (f"; {failed} passage(s) returned nothing usable" if failed else "")
+        + "."
+    )
+    return SkillOutput(
+        success=succeeded,
+        summary=summary,
+        nuggets=nuggets,
+        facts=facts,
+        insights=insights,
+        recommendations=recommendations,
+        artifacts={"input_coverage.json": json.dumps(coverage, indent=2)},
+        errors=errors if not succeeded else errors[:5],
     )
 
 
@@ -618,16 +648,49 @@ def create_skill(
             return {"skill": self.name, "plan": plan}
 
         async def execute(self, skill_input: SkillInput) -> SkillOutput:
-            content = _extract_text_from_files(skill_input.files) if skill_input.files else ""
-            if not content and not skill_input.user_context and not skill_input.urls:
+            """Read all of the input: one call per window, then one synthesis pass (DEC-9)."""
+            from app.skills.skill_windows import (
+                plan_windows,
+                read_sources,
+                resolve_call_budget,
+                window_char_budget,
+            )
+
+            sources = read_sources(skill_input.files) if skill_input.files else []
+            if not sources and not skill_input.user_context and not skill_input.urls:
                 return SkillOutput(
                     success=False,
                     summary="No input provided.",
                     errors=["Provide files, context, or URLs."],
                 )
+            budget = resolve_call_budget(skill_input.project_id)
+            static_tokens = (
+                count_tokens(execute_prompt)
+                + min(count_tokens(output_schema), int(settings.skill_execute_max_schema_tokens))
+                + 600
+            )
+            windows = plan_windows(sources, window_char_budget(budget, static_tokens))
+            if len(windows) <= 1:
+                window = windows[0] if windows else None
+                output = await self._execute_once(
+                    skill_input,
+                    content=window.text if window else "",
+                    source_label=window.source_label if window else self.name,
+                    budget=budget,
+                )
+                _attach_coverage(output, sources, windows, budget)
+                return output
+            return await _execute_windows(self, skill_input, sources, windows, budget)
 
-            file_sources = [Path(f).name for f in skill_input.files] if skill_input.files else []
-            source_label = ", ".join(file_sources[:3]) if file_sources else self.name
+        async def _execute_once(
+            self,
+            skill_input: SkillInput,
+            *,
+            content: str,
+            source_label: str,
+            budget: Any,
+            synthesis_of: int = 0,
+        ) -> SkillOutput:
 
             ctx = "\n".join(
                 filter(
@@ -775,11 +838,8 @@ def create_skill(
                 "Your skill output is candidate/provisional "
                 "until Istara's Research Spine accepts it."
             )
-            skill_context_limit = min(
-                max(settings.max_context_tokens, 2048),
-                max(2048, settings.skill_execute_context_limit_tokens),
-            )
-            max_output_tokens = max(256, int(settings.skill_execute_max_output_tokens))
+            skill_context_limit = int(budget.context_tokens)
+            max_output_tokens = int(budget.max_output_tokens)
 
             static_prompt = _build_full_prompt("", methodology)
             schema_tokens = (
@@ -1022,7 +1082,6 @@ def create_skill(
             )
             repaired_from_empty_findings = False
             empty_findings_repair_content = ""
-            deterministic_findings_fallback = False
 
             def finding_count() -> int:
                 return len(nuggets) + len(facts) + len(insights) + len(recommendations)
@@ -1094,27 +1153,6 @@ def create_skill(
                     logger.warning("Skill %s empty-finding repair failed: %s", self.name, e)
 
             if finding_count() == 0:
-                fallback = _deterministic_findings_from_research_data(
-                    data_content,
-                    display=display,
-                    source_label=source_label,
-                    item_limit=item_limit,
-                )
-                if sum(len(group) for group in fallback) > 0:
-                    nuggets, facts, insights, recommendations = fallback
-                    deterministic_findings_fallback = True
-                    data = {
-                        **data,
-                        "summary": data.get("summary")
-                        or f"{display} completed with deterministic evidence fallback.",
-                        "deterministic_findings_fallback": True,
-                    }
-                    logger.info(
-                        "Skill %s used deterministic evidence fallback after empty model findings.",
-                        self.name,
-                    )
-
-            if finding_count() == 0:
                 logger.warning("Skill %s returned structured JSON without findings.", self.name)
                 return SkillOutput(
                     success=False,
@@ -1160,31 +1198,8 @@ def create_skill(
                         if repaired_from_empty_findings and empty_findings_repair_content
                         else {}
                     ),
-                    **(
-                        {
-                            f"{skill_name}_deterministic_fallback.json": json.dumps(
-                                {
-                                    "reason": "model-returned-empty-findings",
-                                    "nuggets": nuggets,
-                                    "facts": facts,
-                                    "insights": insights,
-                                    "recommendations": recommendations,
-                                },
-                                indent=2,
-                            )
-                        }
-                        if deterministic_findings_fallback
-                        else {}
-                    ),
                 },
-                suggestions=[
-                    *data.get("suggestions", []),
-                    *(
-                        ["Model returned empty findings; deterministic evidence fallback was used."]
-                        if deterministic_findings_fallback
-                        else []
-                    ),
-                ],
+                suggestions=list(data.get("suggestions", [])),
             )
             # Set json_success manually since __init__ may fail in some environments
             out.json_success = json_success

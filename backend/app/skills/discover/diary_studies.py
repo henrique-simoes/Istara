@@ -2,9 +2,7 @@
 
 import json
 import logging
-from pathlib import Path
 
-from app.core.file_processor import process_file
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
 
 logger = logging.getLogger(__name__)
@@ -138,29 +136,12 @@ class DiaryStudiesSkill(BaseSkill):
         plan_text = outcome.text
         return {"skill": self.name, "plan": plan_text}
 
-    async def execute(self, skill_input: SkillInput) -> SkillOutput:
-        texts = []
-        for f in skill_input.files or []:
-            r = process_file(Path(f))
-            if not r.error and r.chunks:
-                texts.append("\n".join(c.text for c in r.chunks))
-
-        # Fallback: use user_context as inline diary data
-        if not texts and skill_input.user_context:
-            texts.append(skill_input.user_context)
-
-        if not texts:
-            return SkillOutput(
-                success=False,
-                summary="No diary entries provided.",
-                errors=["Upload diary entry files."],
-            )
-
-        prompt = f"""Analyze these diary study entries for UX research patterns.
+    def _prompt(self, skill_input: SkillInput, text: str) -> str:
+        return f"""Analyze these diary study entries for UX research patterns.
 Context: {skill_input.project_context or "N/A"}
 
 Entries:
-{chr(10).join(texts)[:8000]}
+{text}
 
 Extract:
 1. Temporal patterns (how behavior/sentiment changes over time)
@@ -182,36 +163,31 @@ JSON format:
 "nuggets": [{{"text": "...", "day": "...", "tags": ["..."]}}],
 "summary": "..."}}"""
 
-        # W5: diary-entry analysis goes through the AgenticDispatcher
-        # (``skill.discover_analyze``) with DIARY_ANALYSIS_SCHEMA driving
-        # the engine.
-        from app.core.agentic import agentic
-        from app.core.agentic.types import TurnParams
+    async def execute(self, skill_input: SkillInput) -> SkillOutput:
+        # Every window of the input is analysed (D-16); nuggets keep the file they came from.
+        from app.skills.skill_windows import analyse_in_windows
 
-        try:
-            outcome = await agentic.structured(
-                purpose="skill.discover_analyze",
-                project_id=skill_input.project_id,
-                system=None,
-                messages=[{"role": "user", "content": prompt}],
-                schema=DIARY_ANALYSIS_SCHEMA,
-                params=TurnParams(temperature=0.3),
-                spine_phase="synthesis",
+        if not skill_input.files and not skill_input.user_context:
+            return SkillOutput(
+                success=False,
+                summary="No input provided.",
+                errors=["Provide files or inline notes."],
             )
-            data = outcome.value if outcome.status == "success" and outcome.value else {}
-        except Exception as e:
-            # F-W5-2: the Pi engine raises PiRuntimeTurnError on invalid
-            # structured output instead of returning status != "success";
-            # degrade to the same empty-result fallback.
-            logger.warning("Diary study analysis raised; degrading to empty analysis: %s", e)
-            data = {}
-
+        data, labelled, coverage = await analyse_in_windows(
+            skill_input,
+            build_prompt=lambda text: self._prompt(skill_input, text),
+            schema=DIARY_ANALYSIS_SCHEMA,
+            empty_label="diary-study",
+        )
         nuggets = [
-            {"text": n["text"], "source": "diary-study", "tags": n.get("tags", [])}
-            for n in data.get("nuggets", [])
+            {"text": n["text"], "source": source, "tags": n.get("tags", [])}
+            for source, window_nuggets in labelled
+            for n in window_nuggets
+            if isinstance(n, dict) and n.get("text")
         ]
+
         return SkillOutput(
-            success=True,
+            success=bool(nuggets),
             summary=data.get(
                 "summary", f"Analyzed diary entries. {len(nuggets)} nuggets extracted."
             ),

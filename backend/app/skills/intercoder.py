@@ -14,7 +14,6 @@ import json
 import logging
 
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
-from app.skills.skill_factory import _extract_text_from_files
 
 logger = logging.getLogger(__name__)
 
@@ -547,7 +546,24 @@ class KappaIntercoderSkill(BaseSkill):
         return {"skill": self.name, "plan": text}
 
     async def execute(self, skill_input: SkillInput) -> SkillOutput:
-        content = _extract_text_from_files(skill_input.files) if skill_input.files else ""
+        # The two coders see one window sized to the serving endpoint; the output states how much
+        # of the input that was. Coding a whole corpus belongs to the governed coding run.
+        from app.skills.skill_windows import (
+            content_chars,
+            plan_windows,
+            read_sources,
+            resolve_call_budget,
+            window_char_budget,
+        )
+
+        sources = read_sources(skill_input.files) if skill_input.files else []
+        windows = plan_windows(
+            sources, window_char_budget(resolve_call_budget(skill_input.project_id), 2000)
+        )
+        content = windows[0].text if windows else ""
+        total_chars = sum(content_chars(text) for _, text in sources)
+        coded_chars = sum(windows[0].source_chars.values()) if windows else 0
+        input_coverage = round(coded_chars / total_chars, 4) if total_chars else None
         if not content and not skill_input.user_context:
             return SkillOutput(
                 success=False, summary="No input provided.", errors=["Provide files or context."]
@@ -822,6 +838,11 @@ class KappaIntercoderSkill(BaseSkill):
             f"{len(codebook_entries)} codes, {len(combined_results)} segments coded, "
             f"{len(disagreements)} disagreements reconciled, {len(themes)} themes identified."
         )
+        if input_coverage is not None and input_coverage < 1:
+            summary += (
+                f" Coded {input_coverage:.0%} of the input (one window); run a governed coding "
+                "run to code all of it."
+            )
 
         return SkillOutput(
             success=True,
@@ -830,5 +851,14 @@ class KappaIntercoderSkill(BaseSkill):
             insights=insights,
             artifacts={
                 "kappa_analysis.json": json.dumps(full_artifact, indent=2),
+                "input_coverage.json": json.dumps(
+                    {
+                        "source_chars": total_chars,
+                        "coded_chars": coded_chars,
+                        "coverage": input_coverage,
+                        "windows_available": len(windows),
+                    },
+                    indent=2,
+                ),
             },
         )

@@ -392,6 +392,9 @@ class Settings(BaseSettings):
     skill_plan_timeout_seconds: float = 180.0
     skill_plan_max_timeout_seconds: float = 300.0
     skill_execute_context_limit_tokens: int = 4096
+    # Upper bound on a skill call's context when the serving endpoint declares a larger window
+    # (DEC-9): skills read all of their input in windows of this size.
+    skill_execute_context_ceiling_tokens: int = 32768
     skill_execute_max_output_tokens: int = 1024
     skill_execute_item_limit: int = 4
     skill_schema_prompt_char_limit: int = 4000

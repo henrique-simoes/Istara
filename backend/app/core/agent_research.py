@@ -788,6 +788,7 @@ class AgentResearchMixin:
         created_insight_ids: list[str] = []
         created_recommendation_ids: list[str] = []
         created_evidence_unit_ids: list[str] = []
+        grounding_docs: dict = {}
         finding_agent_id = task.agent_id or self.agent_id
 
         from app.services.research_finding_links import (
@@ -849,6 +850,17 @@ class AgentResearchMixin:
                 or nugget_data.get("quote")
                 or ""
             ).strip()
+            if not source_document_id:
+                # D-12: a skill names the file a quote came from but not its document id. Ground
+                # the quote in that raw source document by exact span, or leave it a candidate.
+                grounding = await _ground_skill_nugget(
+                    db, project_id, task, nugget_data, grounding_docs
+                )
+                if grounding is not None:
+                    source_document_id = grounding.document_id
+                    source_location = grounding.location
+                    exact_source_text = grounding.text
+                    nugget.source_location = source_location
             has_exact_source_span = bool(
                 source_document_id and source_location and exact_source_text
             )
@@ -1370,3 +1382,26 @@ class AgentResearchMixin:
             )
 
             return await skill.plan(skill_input)
+
+
+async def _ground_skill_nugget(db, project_id: str, task, nugget_data: dict, cache: dict):
+    """Ground one skill nugget in a raw source document (see services/finding_grounding.py)."""
+    from app.services.finding_grounding import ground_quote, load_raw_source_texts
+
+    quote = str(
+        nugget_data.get("source_quote") or nugget_data.get("quote") or nugget_data.get("text") or ""
+    )
+    if not quote.strip():
+        return None
+    if "documents" not in cache:
+        try:
+            cache["documents"] = await load_raw_source_texts(db, project_id)
+        except Exception:
+            cache["documents"] = []
+    preferred = task.get_input_document_ids() if hasattr(task, "get_input_document_ids") else []
+    return ground_quote(
+        quote,
+        str(nugget_data.get("source") or ""),
+        cache["documents"],
+        preferred_ids=preferred,
+    )

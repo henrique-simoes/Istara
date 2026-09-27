@@ -54,6 +54,11 @@ These are hypotheses to prove with failing tests first, not conclusions.
 | D-10 | Installers | `.github/workflows/build-installers.yml` | `tauri build` runs with `continue-on-error`: all three platform builds fail (Windows MSI rejects CalVer minor 305 > 255; Linux lacks the updater signing key; macOS codesign import fails), the workflow is green, and each main push publishes a release with only a DMG and a `latest.json` with empty signatures. |
 | D-11 | Installers | `homebrew/istara.rb`, tap repo | The cask pins 2026.03.30.6; the tap was last pushed 2026-03-30. `VERSION` says 2026.05.27.3 while the latest tag is v2026.09.26.6. |
 | D-12 | Spine | `core/agent_research.py` (skill nugget storage), `research_validity_reconciliation.py::_task_finding_support_diagnostics` | No skill sets `source_document_id` on its nuggets, so every skill nugget is stored as a `candidate_atom`, no coding run starts, and the report gate (every task nugget needs an accepted coded unit) can never pass: skill output may never reach a report through the product path. |
+| D-13 | Channels | `inbound_processor.py` | A participant of a paused or closed study fell through to the project agent path (fixed in Phase 1, DEC-7). |
+| D-14 | Skills | `skills/discover/user_interviews.py` | Each transcript is cut to its first 4,000 characters before analysis; Harbor interviews are 21,000-29,000 characters, so 80-85% of every interview is never read. |
+| D-15 | Skills | `user_interviews.py` | When one input file fails to load, every later transcript's nuggets carry the wrong file name. |
+| D-16 | Skills | `skills/skill_factory.py` (generic runner behind most skills) | Input is capped at 4,000 characters for the whole task across all files, then fitted to a 4,096-token context with 1,024 output tokens: a thematic analysis of the 498,690-character Harbor study reads under 1% of it. |
+| D-17 | Skills | `skill_factory.py::_deterministic_findings_from_research_data` | When a model returns no findings, the runner stores meta-statements ("Input contains N evidence lines", "Review the source data and rerun the skill") as project facts, insights and recommendations. |
 
 ## Pre-registered readiness criteria (DEC-2, fixed before any number)
 
@@ -107,6 +112,9 @@ Measured with synthetic participants driven through the stub Slack, Telegram and
 | A1 | Agents creating agents: a proposal carries evidence, needs human approval, and never self-activates; a created agent inherits the spine gates | tests + audit | pass | yes |
 | E1 | Skills evolving (skill factory, self-evolution, meta-hyperagent, autoresearch) meet the governance contract: no strong signal from raw success, no global mutation from project evidence, no report evidence created | contract-clause audit with a test per clause | every clause has a passing guard test | yes |
 | SK1 | Findings-producing skills: none silently returns zero facts for a valid single input when its schema promises facts | skills with the gap | 0 (or documented) | no |
+| SK2 | A skill reads all of its input: characters of the task's source files delivered to the model across all calls / source characters (Harbor, 16 interviews) | coverage | ≥ 0.99 | yes |
+| SK3 | Analysis finds what is in the data: themes (of 10 planted Harbor themes) with at least one output nugget grounded in a span overlapping a planted quote of that theme; `user-interviews` and `thematic-analysis`, each of the three live models | theme recall; paired randomization before vs after over theme × model (30 pairs), Holm over the two skills | ≥ 0.80 per model, and significantly higher than before | no |
+| SK4 | No finding is written without model content from the data (no deterministic meta-findings) | fabricated findings in a test that forces an empty model answer | 0 | yes |
 | G1 | Evidence-graph links: fact→nugget supported share (judged, validated judge) | re-measure after changes | improve on 0.65; ≥ 0.75 target | no |
 | G2 | Context-DAG summary recall of planted facts | re-measure | improve on 0.48; ≥ 0.60 target | no |
 | G3 | Graph-assisted retrieval ships only by the DEC-2 rule of the graph plan (coverage@10 significantly higher, no v2 style significantly worse, Holm) | paired test | rule | no |
@@ -207,6 +215,31 @@ missing sender allowlist for opt-in channel agent replies is recorded as residua
 fixed in this plan (it is off on every shipped configuration).
 Why: participants must never reach an agent that can read project research data; the allowlist is
 a separate security feature with its own design.
+
+DEC-8 | 2026-09-27 | S2-execute | claude-code (pre-registered before any number)
+Context: recon of the skill engine found D-14, D-16 and D-17 after DEC-2 and DEC-5.
+Decision: add SK2 (Blocker), SK3 and SK4 (Blocker) to Area 3, fixed now. SK3 runs on the 16 Harbor
+interviews (the thematic qrels' planted quotes are the truth; a nugget counts for a theme when its
+grounded span overlaps a planted quote of that theme by at least 40 characters), `user-interviews`
+and `thematic-analysis`, each of the three live identities, before (`main`) and after; $1 cap per
+model and arm, stopping a run that would exceed it and reporting it incomplete.
+Why: an analysis that reads under 1% of a study cannot be professional, however well the gates
+behind it work; theme recall against planted quotes is span-graded truth, like M1-M3.
+
+DEC-9 | 2026-09-27 | S2-execute | claude-code
+Context: how to make skills read all of their input without breaking small local models.
+Decision: size each skill call to the endpoint that serves it: its declared context window, bounded
+by a ceiling (`skill_execute_context_ceiling_tokens`, 32,768) and never below the existing
+`skill_execute_context_limit_tokens`; output up to the endpoint's `max_tokens`, bounded at 8,192.
+Split the full input into windows at paragraph boundaries, each labelled with its source file;
+run the existing single-call path (with its repair chain) once per window; merge window nuggets;
+then one synthesis pass over the merged, labelled nuggets produces facts, insights and
+recommendations, which link to nuggets by meaning as before. The deterministic fallback keeps no
+findings (the run reports that the model returned none).
+Why: map-reduce over labelled windows is the standard way to cover long corpora with bounded
+context (local-first: a 4k local model still works, with more windows); reusing the single-call
+path keeps the proven repair chain; synthesising over nuggets rather than raw windows keeps facts
+tied to evidence.
 
 ## Ledger
 

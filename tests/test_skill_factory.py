@@ -496,7 +496,7 @@ async def test_generated_skill_repairs_valid_json_with_empty_findings(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_generated_skill_attempts_model_repair_before_deterministic_fallback_even_with_classical_setting(
+async def test_generated_skill_repairs_then_reports_no_findings_instead_of_inventing_them(
     monkeypatch,
 ):
     monkeypatch.setattr(settings, "llm_provider", "lmstudio")
@@ -530,15 +530,16 @@ async def test_generated_skill_attempts_model_repair_before_deterministic_fallba
         )
     )
 
-    assert output.success is True
-    assert output.json_success is True
-    assert output.nuggets[0]["tags"] == ["deterministic-fallback"]
-    assert "columns: date, sessions, nps" in output.facts[0]["text"]
-    assert "preliminary" in output.insights[0]["text"]
-    assert "deterministic evidence fallback was used" in output.suggestions[0]
-    assert (
-        "deterministic-fallback-skill_deterministic_fallback.json" in output.artifacts
+    # SK4/D-17: when the model and its repair both return no findings, nothing is invented: no
+    # meta-facts about the input, no "rerun the skill" recommendations.
+    assert output.success is False
+    assert (output.nuggets, output.facts, output.insights, output.recommendations) == (
+        [],
+        [],
+        [],
+        [],
     )
+    assert "deterministic-fallback-skill_deterministic_fallback.json" not in output.artifacts
     assert len(dispatcher_stub.calls) == 2
     assert [method for method, _ in dispatcher_stub.calls] == [
         "structured",
