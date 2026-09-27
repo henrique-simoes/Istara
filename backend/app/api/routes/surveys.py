@@ -523,65 +523,48 @@ async def export_link_responses_csv(
 
     from fastapi import Response
 
-    from app.models.finding import Nugget
-    from app.models.research_validity import EvidenceUnit
-
     _scoped_project_id, link = await _get_project_link_or_404(
         db, request, link_id, project_id, min_role="researcher"
     )
+    from app.services.survey_ingestion import survey_link_answers
+
     link_source = link.external_survey_name or f"survey-{link.external_survey_id}"
-    nuggets = (
-        (
-            await db.execute(
-                select(Nugget)
-                .where(
-                    Nugget.project_id == link.project_id,
-                    Nugget.source == link_source,
-                    Nugget.task_id.is_(None),
-                    Nugget.source_location.like("response_%"),
-                )
-                .order_by(Nugget.created_at.asc())
-            )
-        )
-        .scalars()
-        .all()
-    )
     buffer = io.StringIO()
     columns = ["response_id", "question", "answer", "ingested_at", "evidence_unit_id"]
     writer = csv.DictWriter(buffer, fieldnames=columns)
     writer.writeheader()
-    for nugget in nuggets:
-        text = nugget.text or ""
-        question, answer = ("", text)
-        if text.startswith("Q: ") and "\nA: " in text:
-            question, answer = text[3:].split("\nA: ", 1)
-        location = nugget.source_location or ""
-        response_id = location[len("response_") :]
-        if response_id.startswith("anon-"):
-            response_id = ""
-        unit_id = await db.scalar(
-            select(EvidenceUnit.id)
-            .where(
-                EvidenceUnit.project_id == link.project_id,
-                EvidenceUnit.source_id.like(f"%nugget:{nugget.id}"),
-            )
-            .limit(1)
-        )
-        writer.writerow(
-            {
-                "response_id": response_id,
-                "question": question,
-                "answer": answer,
-                "ingested_at": nugget.created_at.isoformat() if nugget.created_at else "",
-                "evidence_unit_id": unit_id or "",
-            }
-        )
+    for row in await survey_link_answers(db, link):
+        writer.writerow(row)
     safe = "".join(ch if ch.isalnum() or ch in "-_." else "-" for ch in link_source).strip("-")
     return Response(
         content=buffer.getvalue(),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{safe or "survey"}-responses.csv"'},
     )
+
+
+@router.post("/surveys/links/{link_id}/analyse")
+async def analyse_link_responses(
+    link_id: str,
+    request: Request,
+    project_id: str | None = Query(None, description="Active project"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Analyse a survey's stored answers through the Research Spine (researcher+).
+
+    The answers become one pseudonymised transcript document and a Kanban task runs the analysis
+    skill on it; findings stay provisional until coded, reconciled and approved.
+    """
+    from app.services.study_analysis import analyse_survey_link
+    from app.services.survey_ingestion import survey_link_answers
+
+    _scoped_project_id, link = await _get_project_link_or_404(
+        db, request, link_id, project_id, min_role="researcher"
+    )
+    result = await analyse_survey_link(db, link, await survey_link_answers(db, link))
+    if result["status"] == "nothing_to_analyse":
+        raise HTTPException(status_code=409, detail="This survey has no stored answers yet.")
+    return result
 
 
 @router.post("/surveys/responses/ingest")

@@ -463,6 +463,29 @@ async def export_deployment_csv(
     )
 
 
+@router.post("/deployments/{deployment_id}/analyse")
+async def analyse_deployment_responses(
+    deployment_id: str,
+    request: Request,
+    project_id: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Analyse a study's stored answers through the Research Spine (researcher+).
+
+    The answers become one pseudonymised transcript document and a Kanban task runs the study's
+    analysis skill on it; findings stay provisional until coded, reconciled and approved.
+    """
+    from app.services.study_analysis import analyse_deployment
+
+    deployment = await _get_active_project_deployment_or_404(
+        db, request, deployment_id, project_id, min_role="researcher"
+    )
+    result = await analyse_deployment(db, deployment)
+    if result["status"] == "nothing_to_analyse":
+        raise HTTPException(status_code=409, detail="This study has no stored answers yet.")
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Conversations
 # ---------------------------------------------------------------------------

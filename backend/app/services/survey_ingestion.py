@@ -145,3 +145,53 @@ async def ingest_responses(
         "duplicate_answers_skipped": duplicates,
         "empty_answers_skipped": skipped,
     }
+
+
+async def survey_link_answers(db: AsyncSession, link: SurveyLink) -> list[dict]:
+    """Every answer stored for a survey link, in ingestion order, with its evidence unit id."""
+    from app.models.research_validity import EvidenceUnit
+
+    link_source = link.external_survey_name or f"survey-{link.external_survey_id}"
+    nuggets = (
+        (
+            await db.execute(
+                select(Nugget)
+                .where(
+                    Nugget.project_id == link.project_id,
+                    Nugget.source == link_source,
+                    Nugget.task_id.is_(None),
+                    Nugget.source_location.like("response_%"),
+                )
+                .order_by(Nugget.created_at.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    rows = []
+    for nugget in nuggets:
+        text = nugget.text or ""
+        question, answer = ("", text)
+        if text.startswith("Q: ") and "\nA: " in text:
+            question, answer = text[3:].split("\nA: ", 1)
+        response_id = (nugget.source_location or "")[len("response_") :]
+        if response_id.startswith("anon-"):
+            response_id = ""
+        unit_id = await db.scalar(
+            select(EvidenceUnit.id)
+            .where(
+                EvidenceUnit.project_id == link.project_id,
+                EvidenceUnit.source_id.like(f"%nugget:{nugget.id}"),
+            )
+            .limit(1)
+        )
+        rows.append(
+            {
+                "response_id": response_id,
+                "question": question,
+                "answer": answer,
+                "ingested_at": nugget.created_at.isoformat() if nugget.created_at else "",
+                "evidence_unit_id": unit_id or "",
+            }
+        )
+    return rows
