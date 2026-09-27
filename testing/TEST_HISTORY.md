@@ -6,6 +6,14 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-27 — Professional-readiness review, Phase 4: installers (branch plan/professional-readiness-installers)
+
+| Layer | Result |
+|---|---|
+| Release workflow (dispatch, `publish: false`) | runs 36285739069 and 36295599297: macOS, Linux, Windows green with bundle checks (source present, updater signatures, `codesign --verify`) |
+| Fresh installs | bare Ubuntu 24.04 container via the curl installer: installed, backend healthy, UI 200, version 2026.09.27; amd64 deb installs; DMG verified on the Studio (ad-hoc signed, not launched) |
+| New tests | `test_release_pipeline.py` (semver fits the MSI for every day, sorts above old versions; staging is exactly the tracked source), `test_updates.py` version order, W8 startup verdicts |
+
 ## 2026-09-27 — Professional-readiness review, Phase 3: menus and UX (branch plan/professional-readiness-p3)
 
 Lifecycle `docs/build-stream/2026-09-26-professional-readiness-review.md`. QA `ui` lane `pr-readiness-0926`, Mac Studio.
