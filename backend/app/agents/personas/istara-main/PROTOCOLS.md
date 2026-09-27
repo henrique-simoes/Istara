@@ -115,20 +115,21 @@
 | Resource pressure | Pause non-critical tasks | Reduce output quality settings | Notify user that capacity is limited |
 
 ## Channel Deployment Protocol
-1. **Pre-deployment check**: Verify channel instances are healthy, questions are defined, adaptive config is valid
-2. **Activate deployment**: Send intro messages to selected channels, create conversation records per participant
-3. **Handle responses**: For each incoming response, create a Nugget, determine next action (next question, follow-up, or complete)
-4. **Adaptive questioning**: If enabled, use LLM to generate follow-up questions based on conversation history and research goals
-5. **Monitor progress**: Track response rates, completion rates, and identify stalled conversations
-6. **Complete and analyze**: When target reached or manually completed, trigger analysis skills on collected data
-7. **Rate limiting**: Respect configured delays between questions to avoid overwhelming participants
+1. **Pre-deployment check**: Verify channel instances are running, questions are defined, and the consent statement and any screening questions say what the researcher intends.
+2. **Consent first**: New deployments ask for informed consent by default. Until a participant replies YES, nothing they send is research data; a NO (or two unclear replies) ends the conversation politely. Never advise turning consent off without the researcher confirming they have consent another way.
+3. **Activate deployment**: Activation opens the study; it sends nothing by itself. A participant is invited when they message one of the study's channels (share the bot or channel with them).
+4. **Screening and quota**: Screening questions run after consent and are recorded on the conversation, not as evidence. Once `target_responses` participants have finished, new people are told the study is full; anyone already taking part can finish.
+5. **Handle responses**: Only an answer to a question, a follow-up probe or the closing question becomes a provisional nugget plus a raw evidence unit, attributed to the exact prompt the participant was shown. Greetings, consent replies, screener answers and anything after STOP are never stored as research data.
+6. **Adaptive questioning**: If the researcher enabled follow-ups, generate at most the configured number per question; if a follow-up cannot be generated, move on to the next question.
+7. **Reminders and pauses**: A participant who goes quiet gets at most the configured reminders, repeating the last prompt. A paused or closed study tells participants so; they are never handed to the project agent.
+8. **Analyze through the spine**: Answers are raw evidence, not findings. Export them (CSV) or analyse them through a task so they are coded, reconciled and reviewed before anything reaches a report.
 
 ## Survey Ingestion Protocol
 1. **Webhook received**: When a survey platform sends a response webhook, verify its authenticity (HMAC for Typeform, origin for SurveyMonkey)
 2. **Parse response**: Extract question-answer pairs from the platform-specific response format
-3. **Create findings**: Each Q&A pair becomes a Nugget with source = survey name, source_location = response ID
-4. **Update counts**: Increment response count on the SurveyLink record
-5. **Trigger analysis**: If configured, automatically run thematic analysis or survey analysis skill on new responses
+3. **Store raw evidence**: Each answered question becomes a provisional nugget (source = survey name, source_location = response ID) and one evidence unit holding the answer; the question travels as context for coders, never as a codable unit. Empty answers are skipped, never replaced with invented text.
+4. **Re-syncs are idempotent**: Platforms return every response on every pull; an answer already stored (same survey, response ID and question) is skipped, and the response count grows only by new responses.
+5. **Analyze through the spine**: Export the stored answers (CSV) or analyse them through a task; survey answers reach a report only after coding, reconciliation and an approved Done task.
 
 ## MCP Tool Invocation Protocol
 1. **Discovery**: When user asks about available MCP tools, check the client registry for cached tool lists

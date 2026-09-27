@@ -2659,9 +2659,11 @@ Dedicated `/webhooks/*` router for inbound platform events (separate from `/api/
 
 ### Response Ingestion Pipeline
 
-Survey responses flow into the Atomic Research chain: Response → Parse Q&A → Create Nuggets (source = survey name) → Optionally trigger analysis skills → Update response counts.
+Survey responses enter the Research Spine as raw evidence: Response → parse Q&A → one provisional nugget per answered question (source = survey name, source_location = `response_<id>`) and one evidence unit holding the **answer only**; the question is stored on the unit as `prompt_text` and shown to coders as context (`asked`), never coded as participant data. Empty answers are skipped, never replaced with invented text. Re-syncs are idempotent: platforms return every response on every pull, so an answer already stored for the same survey, response ID and question is skipped and `response_count` grows only by new responses (responses without an ID are never merged). Survey answers become report evidence only through a task: coding, reliability/reconciliation and an approved Done task (2026-09-26, professional-readiness review Phase 1).
 
-**API**: `/api/surveys/integrations/*` for platform connections, `/api/surveys/links/*` for survey-project linkage.
+**API**: `/api/surveys/integrations/*` for platform connections, `/api/surveys/links/*` for survey-project linkage, `GET /api/surveys/links/{id}/export.csv` (researcher+) for the stored answers with their evidence-unit IDs.
+
+The Questionnaire Studio records answers a real participant gave another way (phone, paper). It starts empty; it never ships sample answers that could be stored as evidence.
 
 ---
 
@@ -2673,25 +2675,28 @@ Deploy interviews, surveys, and diary studies through messaging channels with ad
 
 **Deployment Types**: Interview (structured/semi-structured), Survey (questionnaire via chat), Diary Study (longitudinal).
 
-**Lifecycle**: Draft → Active → [Paused] → Completed → Analysis triggered.
+**Lifecycle**: Draft → Active → [Paused] → Completed. Activation opens the study; it sends nothing by itself. A participant is invited when they message one of the study's channels. Analysis is a separate, explicit step through a task (answers are raw evidence, not findings).
 
 ### Adaptive Interview Engine (AURA-Style)
 
-- Conversation state machine per participant: intro → questions → probing → wrap-up
-- LLM-driven follow-up generation based on conversation history + research goals
-- Configurable branching rules, rate limiting, completion criteria
-- Audio message support with transcription
-- All responses automatically create Nuggets in real-time
+- Conversation state machine per participant (`services/adaptive_interview.py`): intro → [consent] → [screening] → questions ⇄ probing → [closing] → completed, with the terminal states declined, screened_out, withdrawn (the participant sent STOP) and closed_quota.
+- **Informed consent** is on by default for new deployments (`consent_required`, editable `consent_message`). Nothing a participant sends is research data until they reply YES; a NO, or two unclear replies, ends the conversation.
+- **Screening questions** (`screener`: text plus qualifying answers) run after consent; answers are kept on the conversation for eligibility audit, never as evidence.
+- **Attribution**: every message the engine sends records `pending_prompt` (kind, exact text, question index). The inbound processor stores a reply as research data only when it answers a pending question, follow-up probe or closing question, attributed to the exact text shown. Greetings, consent replies, screener answers and anything after STOP are never stored. The closing question is asked on its own and its answer is kept.
+- **Quota**: once `target_responses` participants have completed, new participants are told the study is full; those already taking part can finish.
+- **Reminders**: `reminder_after_hours` and `max_reminders`; the scheduler tick (`services/deployment_reminders.py`) repeats the pending prompt to a quiet participant through the same channel.
+- **Paused or closed studies** tell an unfinished participant so and send nothing to a finished one; a study participant is never handed to the project agent.
+- Adaptive follow-ups honour both config spellings (`adaptive`/`adaptive_enabled`, `max_probes_per_question`/`max_follow_ups`); a follow-up that cannot be generated moves on to the next question instead of sending nothing.
+- Audio message support with transcription.
 
 ### Analytics Dashboard
 
-- Per-question stats: response count, skip count, avg response time
-- Participant tracker: status, current question, stall detection
-- Findings pipeline: real-time Nuggets → Facts → Insights visualization
-- Channel performance comparison across platforms
-- Timeline with projected vs actual completion
+- Overview counts from the server: conversations started, participants finished, answers stored, active deployments.
+- The dashboard refreshes every 15 seconds while open (and on demand); Activate, Pause, Resume and Complete give visible feedback, and errors are shown.
+- Participant tracker labels each outcome in plain words (answering, awaiting consent, screened out, declined consent, withdrew, study full, completed).
+- **Export CSV** (researcher+): one row per stored answer, participants pseudonymised as P01, P02…, with consent status, screener answers, prompt kind, question, answer, time and evidence-unit ID; chat handles and names are not exported.
 
-**API**: Full CRUD + analytics at `/api/deployments/*`.
+**API**: Full CRUD + analytics at `/api/deployments/*`; `GET /api/deployments/{id}/export.csv`.
 
 ---
 
