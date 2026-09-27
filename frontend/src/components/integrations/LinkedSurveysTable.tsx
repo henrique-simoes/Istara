@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Link2, RefreshCw } from "lucide-react";
+import { Download, Link2, RefreshCw, Search } from "lucide-react";
 import type { SurveyLink } from "@/lib/types";
 
 /** Surveys recorded in the Questionnaire Studio have no platform to pull from. */
@@ -14,13 +14,14 @@ interface LinkedSurveysTableProps {
   error: string | null;
   onSync: (linkId: string) => void;
   onExport: (linkId: string) => void;
+  onAnalyse: (linkId: string) => void;
 }
 
 const HEAD = "px-5 py-2 text-xs font-medium text-slate-500 dark:text-slate-400";
 const ICON_BUTTON =
   "p-1.5 rounded-lg text-slate-500 hover:text-istara-600 hover:bg-istara-50 dark:hover:bg-istara-900/20 transition-colors disabled:opacity-50";
 
-function LinkRows({ links, syncingId, onSync, onExport }: Omit<LinkedSurveysTableProps, "loading" | "notice" | "error">) {
+function LinkRows({ links, syncingId, onSync, onExport, onAnalyse }: Omit<LinkedSurveysTableProps, "loading" | "notice" | "error">) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
@@ -46,6 +47,14 @@ function LinkRows({ links, syncingId, onSync, onExport }: Omit<LinkedSurveysTabl
                   {link.last_response_at ? new Date(link.last_response_at).toLocaleDateString() : "---"}
                 </td>
                 <td className="px-5 py-3 text-right whitespace-nowrap">
+                  <button
+                    onClick={() => onAnalyse(link.id)}
+                    aria-label={`Analyse ${link.external_survey_name} responses`}
+                    title="Analyse the stored answers (creates a task)"
+                    className={ICON_BUTTON}
+                  >
+                    <Search size={14} />
+                  </button>
                   <button
                     onClick={() => onExport(link.id)}
                     aria-label={`Export ${link.external_survey_name} responses as CSV`}

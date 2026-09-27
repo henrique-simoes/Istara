@@ -75,7 +75,7 @@ export async function run(ctx) {
     if (state.projectId) {
       await ctx.page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
       await selectProject(ctx.page, PROJECT_NAME);
-      const steps = [emptyState, createThroughWizard, activateAndRunParticipants, trackerShowsOutcomes, exportCsv, pauseStudy, studioStartsEmpty, matrix];
+      const steps = [emptyState, createThroughWizard, activateAndRunParticipants, trackerShowsOutcomes, exportCsv, analyseResponses, pauseStudy, studioStartsEmpty, matrix];
       for (const step of steps) {
         await step(ctx, checks, state);
       }
@@ -343,6 +343,31 @@ async function exportCsv(ctx, checks) {
   } catch (e) {
     checks.push({ name: "Export CSV downloads from the dashboard", passed: false, detail: e.message });
   }
+}
+
+/** 3c. Analyse responses: a task scoped to one pseudonymised transcript, not findings. */
+async function analyseResponses(ctx, checks, state) {
+  const { page } = ctx;
+  await page.locator("main button", { hasText: "Analyse responses" }).first().click();
+  const notice = await shows(page.locator('[role="status"]', { hasText: "on the Tasks board" }).first(), 15000);
+  let scoped = false;
+  let detail = "";
+  try {
+    // API-behind-browser: read back the task the click created.
+    const tasks = await ctx.api.get(`/api/tasks?project_id=${encodeURIComponent(state.projectId)}`);
+    const list = Array.isArray(tasks) ? tasks : tasks?.tasks || [];
+    const task = list.find((t) => String(t.title || "").startsWith("Analyse responses:"));
+    const inputs = task ? task.input_document_ids || [] : [];
+    scoped = !!task && inputs.length === 1 && task.skill_name === "user-interviews";
+    detail = `task=${!!task} inputs=${inputs.length} skill=${task?.skill_name}`;
+  } catch (e) {
+    detail = e.message;
+  }
+  checks.push({
+    name: "Analyse responses creates one task scoped to the pseudonymised transcript",
+    passed: notice && scoped,
+    detail: `notice=${notice} ${detail}`,
+  });
 }
 
 /** 4. Pause: participants are told, and nothing they send is stored. */

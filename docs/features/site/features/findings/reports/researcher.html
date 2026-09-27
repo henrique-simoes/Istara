@@ -257,26 +257,39 @@
 </ul>
 <h2 id="how-ux-researchers-use-it">How UX Researchers Use It</h2>
 <ul>
-<li>Open Findings &gt; Reports from the Istara navigation or the parent tab.</li>
-<li>Use the visible controls in this surface to work with project reports in the active project context.</li>
-<li>Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.</li>
+<li>Open Findings &gt; Reports. A report exists only for work that passed the Research Spine: a task&#x27;s</li>
 </ul>
+<p>findings reach Reports after its codes are reconciled and the task is approved as Done.</p>
+<ul>
+<li>Open a report to read its executive summary and findings.</li>
+<li>Share it with **Export**: **Markdown** and **Word** give the report with every finding followed by</li>
+</ul>
+<p>its evidence trail (the quoted source text, the document and character range it comes from, and</p>
+<p>whether that coded evidence was accepted); **CSV** gives one row per finding and quote for your own</p>
+<p>analysis or an evidence appendix.</p>
 <h2 id="supported-workflows">Supported Workflows</h2>
 <ul>
-<li>Start from Findings &gt; Reports when the current research task needs project reports.</li>
-<li>Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.</li>
+<li>Hand a report to stakeholders as a Word document whose every claim can be checked against the</li>
+</ul>
+<p>source.</p>
+<ul>
+<li>Build an evidence appendix from the CSV.</li>
 <li>Move to related surfaces when needed: findings.evidence, tasks.send-report, interfaces.handoff.</li>
 </ul>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
 <ul>
-<li>Project-scoped state or artifact updates associated with project reports.</li>
-<li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
-<li>Generated executive summaries keep the report&#x27;s project context attached during LLM routing.</li>
+<li>Input: an approved Done task&#x27;s findings, grounded in evidence units.</li>
+<li>Output: the report in Istara, and exports named after the report.</li>
+<li>Each export states how many of its findings are traced to a source span; a finding with no trail</li>
 </ul>
+<p>is marked &quot;not traced to a source&quot; rather than presented as evidence.</p>
 <h2 id="caveats">Caveats</h2>
 <ul>
-<li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
-<li>Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.</li>
+<li>Exports carry pseudonymous participant labels as they appear in the sources; remove anything</li>
+</ul>
+<p>identifying from sources before sharing.</p>
+<ul>
+<li>PDF export is not offered; print the Word document to PDF.</li>
 </ul>
 <h2 id="related-features">Related Features</h2>
 <ul>

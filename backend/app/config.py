@@ -392,6 +392,9 @@ class Settings(BaseSettings):
     skill_plan_timeout_seconds: float = 180.0
     skill_plan_max_timeout_seconds: float = 300.0
     skill_execute_context_limit_tokens: int = 4096
+    # Upper bound on a skill call's context when the serving endpoint declares a larger window
+    # (DEC-9): skills read all of their input in windows of this size.
+    skill_execute_context_ceiling_tokens: int = 32768
     skill_execute_max_output_tokens: int = 1024
     skill_execute_item_limit: int = 4
     skill_schema_prompt_char_limit: int = 4000
@@ -503,6 +506,12 @@ class Settings(BaseSettings):
     # by default and must be enabled explicitly in the isolated test container;
     # synthetic receipts never satisfy the human/reportability gate.
     research_validity_synthetic_reconciliation_enabled: bool = False
+    # Units per coder call (D-19): a batch must fit the smallest coder, the local model included.
+    research_validity_coding_units_per_call: int = 20
+    research_validity_coding_chars_per_call: int = 12000
+    # Units one coding run may hold (D-24): a task's run codes every grounded unit of its study;
+    # coders take them in batches, so this bounds time and cost, not prompt size.
+    research_validity_max_units_per_run: int = 1500
 
     # Audio is a separate, explicit catalog. Empty provider fails closed;
     # credentials are referenced by opaque keychain/encrypted-store handles.

@@ -149,34 +149,13 @@ Format as Markdown."""
         plan_text = outcome.text
         return {"skill": self.name, "plan": plan_text}
 
-    async def execute(self, skill_input: SkillInput) -> SkillOutput:
-        from pathlib import Path
-
-        from app.core.file_processor import process_file
-
-        all_text = []
-        for f in skill_input.files or []:
-            result = process_file(Path(f))
-            if not result.error and result.chunks:
-                all_text.append("\n".join(c.text for c in result.chunks))
-
-        # Fallback: use user_context as inline observation data
-        if not all_text and skill_input.user_context:
-            all_text.append(skill_input.user_context)
-
-        if not all_text:
-            return SkillOutput(
-                success=False,
-                summary="No observation notes provided.",
-                errors=["Provide observation note files."],
-            )
-
-        prompt = f"""Analyze these contextual inquiry observation notes for UX research.
+    def _prompt(self, skill_input: SkillInput, text: str) -> str:
+        return f"""Analyze these contextual inquiry observation notes for UX research.
 
 Project context: {skill_input.project_context or "Not specified"}
 
 Observation notes:
-{chr(10).join(all_text)[:8000]}
+{text}
 
 Extract and structure:
 1. **Activities observed** — what users were doing, step by step
@@ -198,40 +177,44 @@ Respond in JSON:
 "opportunities": [{{"description": "...", "impact": "low|medium|high"}}],
 "summary": "..."}}"""
 
-        # W5: observation-notes analysis goes through the
-        # AgenticDispatcher (``skill.discover_analyze``) with
-        # CONTEXTUAL_INQUIRY_SCHEMA driving the engine.
-        from app.core.agentic import agentic
-        from app.core.agentic.types import TurnParams
+    async def execute(self, skill_input: SkillInput) -> SkillOutput:
+        # Every window of the input is analysed (D-16); nuggets keep the file they came from.
+        from app.skills.skill_windows import analyse_in_windows, synthesise_findings
 
-        try:
-            outcome = await agentic.structured(
-                purpose="skill.discover_analyze",
-                project_id=skill_input.project_id,
-                system=None,
-                messages=[{"role": "user", "content": prompt}],
-                schema=CONTEXTUAL_INQUIRY_SCHEMA,
-                params=TurnParams(temperature=0.3),
-                spine_phase="synthesis",
+        if not skill_input.files and not skill_input.user_context:
+            return SkillOutput(
+                success=False,
+                summary="No input provided.",
+                errors=["Provide files or inline notes."],
             )
-            data = outcome.value if outcome.status == "success" and outcome.value else {}
-        except Exception as e:
-            # F-W5-2: the Pi engine raises PiRuntimeTurnError on invalid
-            # structured output instead of returning status != "success";
-            # degrade to the same empty-result fallback.
-            logger.warning("Contextual inquiry raised; degrading to empty analysis: %s", e)
-            data = {}
-
+        data, labelled, coverage = await analyse_in_windows(
+            skill_input,
+            build_prompt=lambda text: self._prompt(skill_input, text),
+            schema=CONTEXTUAL_INQUIRY_SCHEMA,
+            empty_label="contextual-inquiry",
+        )
         nuggets = [
-            {"text": n["text"], "source": "contextual-inquiry", "tags": n.get("tags", [])}
-            for n in data.get("nuggets", [])
+            {"text": n["text"], "source": source, "tags": n.get("tags", [])}
+            for source, window_nuggets in labelled
+            for n in window_nuggets
+            if isinstance(n, dict) and n.get("text")
         ]
 
+        facts, insights, recommendations, errors = await synthesise_findings(
+            skill_input, method="contextual inquiry", nuggets=nuggets, analysis=data
+        )
         return SkillOutput(
-            success=True,
+            success=bool(nuggets),
             summary=data.get(
                 "summary", f"Analyzed contextual inquiry notes. Found {len(nuggets)} nuggets."
             ),
             nuggets=nuggets,
-            artifacts={"analysis.json": json.dumps(data, indent=2)},
+            facts=facts,
+            insights=insights,
+            recommendations=recommendations,
+            errors=errors,
+            artifacts={
+                "analysis.json": json.dumps(data, indent=2),
+                "input_coverage.json": json.dumps(coverage, indent=2),
+            },
         )

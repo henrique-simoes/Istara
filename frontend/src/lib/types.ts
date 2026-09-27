@@ -809,6 +809,16 @@ export interface ChannelConversation {
 
 // --- Integrations: Research Deployments ---
 
+/** Result of analysing a study's or survey's stored answers (POST .../analyse). */
+export interface StudyAnalysisResult {
+  status: "created";
+  answers: number;
+  participants: number;
+  document_id: string;
+  task_id: string;
+  skill_name: string;
+}
+
 export interface ResearchDeployment {
   id: string;
   project_id: string;

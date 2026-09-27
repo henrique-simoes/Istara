@@ -260,11 +260,14 @@ runs, code applications, or task-linked findings. Aggregate run-level kappa,
 task-level accepted counts, and "one accepted code exists" diagnostics never
 bulk-promote every finding on the task. Each report dependency must trace
 through accepted/reconciled evidence units and any nugget/fact/insight/
-recommendation parent chain before it can be included. If code applications are
-still unreconciled, if any requested report dependency lacks accepted support,
-or if no accepted/reconciled coded evidence remains after review, report routing
-and explicit task-report creation are blocked until review/reconciliation fixes
-the research-validity state.
+recommendation parent chain before it can be included. The gate is item-level
+(2026-09-27, DEC-13 of the professional-readiness review): a report requests
+only the findings whose own chain is accepted (`reportable_finding_ids`); the
+others are held back, never included, and counted in the report
+(`held_back_finding_count`). If code applications are still unreconciled, or if
+no finding of the task has accepted support, report routing and explicit
+task-report creation are blocked until review/reconciliation fixes the
+research-validity state.
 
 ## Retrieval Contract
 

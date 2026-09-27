@@ -1,7 +1,7 @@
 /** API client for Istara backend. */
 
 import type { DataIntegrityQuarantineRequest, EmbeddingMigrationRequest } from "@/lib/apiRequestTypes";
-import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent, PermissionRequestItem } from "@/lib/types";
+import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent, PermissionRequestItem, StudyAnalysisResult } from "@/lib/types";
 import type { ReasoningMemoryItem, ReasoningBankSummary } from "@/lib/reasoningBankTypes";
 
 import { API_BASE } from "@/lib/runtimeConfig";
@@ -1047,6 +1047,8 @@ export const deployments = {
       `/api/deployments/${id}/export.csv?project_id=${encodeURIComponent(projectId)}`,
       "deployment-raw-responses.csv"
     ),
+  analyse: (id: string, projectId: string) =>
+    post<StudyAnalysisResult>(`/api/deployments/${id}/analyse?project_id=${encodeURIComponent(projectId)}`, {}),
 };
 
 // --- Surveys ---
@@ -1079,6 +1081,8 @@ export const surveys = {
         `/api/surveys/links/${id}/export.csv?project_id=${encodeURIComponent(projectId)}`,
         "survey-responses.csv"
       ),
+    analyse: (id: string, projectId: string) =>
+      post<StudyAnalysisResult>(`/api/surveys/links/${id}/analyse?project_id=${encodeURIComponent(projectId)}`, {}),
   },
 };
 

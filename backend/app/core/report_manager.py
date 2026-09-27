@@ -261,6 +261,7 @@ class ReportManager:
             )
             return 0
 
+        reportable = set(validity.get("reportable_finding_ids") or [])
         finding_ids: list[str] = []
         for model_cls in [Nugget, Fact, Insight, Recommendation]:
             result = await db.execute(
@@ -269,7 +270,8 @@ class ReportManager:
                     model_cls.task_id == task_id,
                 )
             )
-            finding_ids.extend(result.scalars().all())
+            # Only findings whose own chain is accepted are routed (DEC-13).
+            finding_ids.extend(fid for fid in result.scalars().all() if fid in reportable)
 
         if not finding_ids or not skill_name:
             return 0
@@ -356,6 +358,7 @@ class ReportManager:
             from app.services.research_validity_service import assess_task_research_validity
 
             validity_allowed: set[str] = set()
+            reportable_by_task: dict[str, set[str]] = {}
             for task_id in reportable_task_ids:
                 validity = await assess_task_research_validity(
                     db, project_id=project_id, task_id=task_id
@@ -368,6 +371,7 @@ class ReportManager:
                 )
                 if validity["report_allowed"]:
                     validity_allowed.add(task_id)
+                    reportable_by_task[task_id] = set(validity.get("reportable_finding_ids") or [])
             reportable_task_ids = validity_allowed
 
         reportable_finding_ids: list[str] = []
@@ -375,7 +379,9 @@ class ReportManager:
             task_id = task_id_by_finding_id.get(finding_id)
             if not task_id:
                 continue
-            if task_id in reportable_task_ids:
+            if task_id in reportable_task_ids and finding_id in reportable_by_task.get(
+                task_id, set()
+            ):
                 reportable_finding_ids.append(finding_id)
                 await _record_finding_promotion(
                     project_id=project_id,

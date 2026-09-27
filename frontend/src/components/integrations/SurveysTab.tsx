@@ -110,6 +110,7 @@ export default function SurveysTab() {
           error={linked.error}
           onSync={linked.sync}
           onExport={linked.exportLink}
+          onAnalyse={linked.analyse}
         />
       ) : (
         <InlineStatus notice={linked.notice} error={linked.error} />

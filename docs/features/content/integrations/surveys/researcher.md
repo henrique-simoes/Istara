@@ -38,6 +38,7 @@ Survey answers are research data like interview transcripts: they need to be sto
 
 ## Supported Workflows
 
+- **Analyse responses** (magnifier icon on a linked survey): writes the survey's stored answers into one transcript document and creates a thematic-analysis task on it. Nothing reaches a report until coding, reconciliation and an approved Done task.
 - Pull a live survey several times during fieldwork; only new answers are added.
 - Record phone or paper responses alongside platform responses.
 - Export raw answers for your own analysis or archive.

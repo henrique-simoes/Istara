@@ -304,6 +304,12 @@ async def _get_authorized_project_task_or_404(
     return await _get_project_task_or_404(db, task_id, scoped_project_id)
 
 
+def _reviewer(request: Request) -> str:
+    """The signed-in person a review is attributed to; never a client-supplied name."""
+    user = getattr(request.state, "user", None) or {}
+    return str(user.get("username") or user.get("id") or "local")[:36]
+
+
 async def _approve_task(
     db: AsyncSession,
     task: Task,
@@ -558,7 +564,9 @@ async def move_task(
             raise HTTPException(
                 status_code=409, detail="Only tasks in review can be approved as done."
             )
-        event = await _approve_task(db, task, reviewed_by="local", note="Approved via Kanban move.")
+        event = await _approve_task(
+            db, task, reviewed_by=_reviewer(request), note="Approved via Kanban move."
+        )
         if position is not None:
             task.position = position
         await db.commit()
@@ -634,7 +642,7 @@ async def verify_task(
     event = None
     if verified and task.status == TaskStatus.IN_REVIEW:
         event = await _approve_task(
-            db, task, reviewed_by="local", note="Approved via legacy verify endpoint."
+            db, task, reviewed_by=_reviewer(request), note="Approved via legacy verify endpoint."
         )
         await db.commit()
         from app.core.task_review import record_review_side_effects
@@ -666,7 +674,7 @@ async def approve_task_review(
     if task.status != TaskStatus.IN_REVIEW:
         raise HTTPException(status_code=409, detail="Only tasks in review can be approved as done.")
     body = data or ReviewApproveRequest()
-    event = await _approve_task(db, task, body.reviewed_by, body.note)
+    event = await _approve_task(db, task, _reviewer(request), body.note)
     await db.commit()
     from app.core.task_review import record_review_side_effects
 
@@ -733,7 +741,7 @@ async def request_task_revision(
         next_status=data.next_status,
         next_review_state=next_review_state,
         what_to_review=data.what_to_review,
-        created_by=data.reviewed_by,
+        created_by=_reviewer(request),
         failure_category=data.failure_category,
         severity=data.severity,
     )
@@ -853,9 +861,17 @@ async def create_report_from_task(
     from app.models.project_report import ProjectReport
 
     snapshot = await build_atomic_snapshot(db, task)
+    # Only findings whose own chain is accepted go in (DEC-13); the rest are held back and counted.
+    reportable = set(validity.get("reportable_finding_ids") or [])
     finding_ids: list[str] = []
     for key in ("nuggets", "facts", "insights", "recommendations"):
-        finding_ids.extend([item["id"] for item in snapshot.get(key, {}).get("items", [])])
+        finding_ids.extend(
+            [
+                item["id"]
+                for item in snapshot.get(key, {}).get("items", [])
+                if item["id"] in reportable
+            ]
+        )
 
     report = ProjectReport(
         id=str(uuid.uuid4()),
@@ -871,6 +887,7 @@ async def create_report_from_task(
                 "agent_notes": task.agent_notes,
                 "atomic_path": snapshot,
                 "review_state": task.review_state,
+                "held_back_finding_count": int(validity.get("held_back_finding_count") or 0),
             }
         ),
         executive_summary=(task.agent_notes or task.description or task.title)[:2000],

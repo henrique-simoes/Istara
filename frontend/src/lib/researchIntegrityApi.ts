@@ -8,10 +8,18 @@ import type {
   StartCodingRunRequest,
 } from "@/lib/types";
 
-import { apiUrl, del, get, patch, post } from "@/lib/apiClient";
+import { apiUrl, del, downloadFile, get, patch, post } from "@/lib/apiClient";
+
+export type ReportExportFormat = "md" | "docx" | "csv";
 
 export const reports = {
   list: (projectId: string) => get<ProjectReport[]>(`/api/reports/${projectId}`),
+  /** Download a report with the evidence trail of every finding. */
+  exportFile: (projectId: string, reportId: string, format: ReportExportFormat) =>
+    downloadFile(
+      `/api/reports/${encodeURIComponent(projectId)}/${encodeURIComponent(reportId)}/export?format=${format}`,
+      `report.${format}`
+    ),
 };
 
 export const presentation = {

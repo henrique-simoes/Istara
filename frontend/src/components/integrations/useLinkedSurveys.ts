@@ -64,5 +64,19 @@ export function useLinkedSurveys(projectId: string | null) {
     }
   };
 
-  return { links, loading, syncingId, notice, error, setNotice, setError, refresh, sync, exportLink };
+  const analyse = async (linkId: string) => {
+    if (!projectId) return;
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await surveysApi.links.analyse(linkId, projectId);
+      setNotice(
+        `Created an analysis task for ${result.answers} answer${result.answers === 1 ? "" : "s"} on the Tasks board.`
+      );
+    } catch (err) {
+      setError(failure("Could not start the analysis", err));
+    }
+  };
+
+  return { links, loading, syncingId, notice, error, setNotice, setError, refresh, sync, exportLink, analyse };
 }
