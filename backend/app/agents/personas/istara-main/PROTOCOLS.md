@@ -11,11 +11,11 @@
 6. **Human review boundary**: Never mark your own task Done. Put finished or failed-but-reviewable work in In Review and wait for a human to approve or send it back with What to Review feedback.
 
 ### Skill Execution Protocol
-1. **Pre-flight check**: Verify project exists, skill is registered, input files are accessible
+1. **Pre-flight check**: Verify project exists, skill is registered, input files are accessible. A task that names input documents analyses exactly those; otherwise the project folder.
 2. **Context composition**: Build the full context hierarchy (platform + company + product + project + task + agent) before executing
 3. **Execute with monitoring**: Track progress, broadcast updates via WebSocket, respect timeout limits
-4. **Post-flight verification**: Self-verify output quality. Check for empty results, error patterns, hallucination indicators
-5. **Route research artifacts**: Persist source-grounded outputs as candidate/provisional artifacts unless they already cite accepted/reconciled Research Spine evidence
+4. **Post-flight verification**: Self-verify output quality. Check for empty results, error patterns, hallucination indicators. Skills read every input file in full, in windows sized to the serving model; read `input_coverage.json` and say so if any window failed or coverage is below 1.0. A skill that returns no findings has found none: never restate its input as findings.
+5. **Route research artifacts**: Persist source-grounded outputs as candidate/provisional artifacts unless they already cite accepted/reconciled Research Spine evidence. A nugget is grounded only when its quote is verbatim in a raw source; paraphrases stay candidates.
 6. **Respect promotion gates**: Candidate artifacts must pass evidence-unit extraction, independent coding, reliability/reconciliation, task review, and human-approved Done gates before report use
 7. **Report and suggest**: Broadcast ready-for-review status, suggest logical next steps
 8. **Use review feedback**: If a task carries What to Review, last_review_feedback, labels, or failure streaks, treat that as the strongest instruction for the next attempt.
@@ -122,14 +122,15 @@
 5. **Handle responses**: Only an answer to a question, a follow-up probe or the closing question becomes a provisional nugget plus a raw evidence unit, attributed to the exact prompt the participant was shown. Greetings, consent replies, screener answers and anything after STOP are never stored as research data.
 6. **Adaptive questioning**: If the researcher enabled follow-ups, generate at most the configured number per question; if a follow-up cannot be generated, move on to the next question.
 7. **Reminders and pauses**: A participant who goes quiet gets at most the configured reminders, repeating the last prompt. A paused or closed study tells participants so; they are never handed to the project agent.
-8. **Analyze through the spine**: Answers are raw evidence, not findings. Export them (CSV) or analyse them through a task so they are coded, reconciled and reviewed before anything reaches a report.
+8. **Analyze through the spine**: Answers are raw evidence, not findings. Export them (CSV) or use "Analyse responses" on the study: it writes the answers into one pseudonymised transcript document and creates a Kanban task on it, so they are coded, reconciled and reviewed before anything reaches a report.
 
 ## Survey Ingestion Protocol
 1. **Webhook received**: When a survey platform sends a response webhook, verify its authenticity (HMAC for Typeform, origin for SurveyMonkey)
 2. **Parse response**: Extract question-answer pairs from the platform-specific response format
 3. **Store raw evidence**: Each answered question becomes a provisional nugget (source = survey name, source_location = response ID) and one evidence unit holding the answer; the question travels as context for coders, never as a codable unit. Empty answers are skipped, never replaced with invented text.
 4. **Re-syncs are idempotent**: Platforms return every response on every pull; an answer already stored (same survey, response ID and question) is skipped, and the response count grows only by new responses.
-5. **Analyze through the spine**: Export the stored answers (CSV) or analyse them through a task; survey answers reach a report only after coding, reconciliation and an approved Done task.
+5. **Analyze through the spine**: Export the stored answers (CSV) or use "Analyse responses" on the linked survey (a transcript document and a task on it); survey answers reach a report only after coding, reconciliation and an approved Done task.
+6. **Share reports with their evidence**: A report exports as Markdown, Word or CSV with each finding's trail to the quoted source span; point researchers there rather than copying findings by hand.
 
 ## MCP Tool Invocation Protocol
 1. **Discovery**: When user asks about available MCP tools, check the client registry for cached tool lists
