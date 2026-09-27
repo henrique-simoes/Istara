@@ -241,6 +241,17 @@ context (local-first: a 4k local model still works, with more windows); reusing 
 path keeps the proven repair chain; synthesising over nuggets rather than raw windows keeps facts
 tied to evidence.
 
+DEC-10 | 2026-09-27 | S2-execute | claude-code (before any SK3 number)
+Context: DEC-8 grades SK3 on grounded spans, but the `main` arm has no grounding (D-12), so its
+nuggets have no spans to grade.
+Decision: SK3 grades both arms the same way: a theme counts when one of the run's nuggets shares at
+least 40 contiguous characters (case and whitespace aside) with one of that theme's planted quotes
+(`app/evals/skill_theme_eval.py`). The share of nuggets stored as exact source spans is reported
+beside it for the after arm. The pass bar (>= 0.80 per model, significantly above before) is
+unchanged.
+Why: one metric for both arms keeps the comparison paired and fair; grounding is measured
+separately rather than folded into recall.
+
 ## Ledger
 
 ### L-1 | 2026-09-26T21:10:00Z | S0-frame | claude-code | framer | —
