@@ -735,6 +735,11 @@ async def run_independent_coding_run(
                     or "provider_prefix_cache_no_response_reuse",
                     "evidence_unit_id": unit.id,
                     "codes": codes,
+                    # Nominal reliability uses the coder's primary code (protocol); a coder that
+                    # gave one code has that code as its primary.
+                    "primary_code": str(
+                        raw_app.get("primary_code") or (codes[0] if len(codes) == 1 else "")
+                    ),
                 }
             )
             for code_id in codes:

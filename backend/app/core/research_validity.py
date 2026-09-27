@@ -552,8 +552,20 @@ def build_qualitative_coding_prompt(
     )
 
 
+def normalize_code_label(value: object) -> str:
+    """Compare code labels, not their spelling: case, spaces, underscores and hyphens aside."""
+    text = str(value or "").strip().casefold()
+    text = re.sub(r"[\s_\-/]+", "_", text)
+    return re.sub(r"[^\w:]", "", text).strip("_")
+
+
 def normalize_coder_applications(applications: list[dict]) -> dict[str, dict[str, set[str]]]:
-    """Return coder_id -> evidence_unit_id -> code set."""
+    """Return coder_id -> evidence_unit_id -> nominal category.
+
+    The protocol's nominal reliability uses each coder's single ``primary_code`` for a unit; the
+    full code set is compared only when a coder gave no primary code. Labels are normalised so a
+    difference in spelling ("Pricing concern" / "pricing_concern") is not counted as disagreement.
+    """
     coder_units: dict[str, dict[str, set[str]]] = {}
     for app in applications:
         coder_id = str(
@@ -562,10 +574,15 @@ def normalize_coder_applications(applications: list[dict]) -> dict[str, dict[str
         evidence_unit_id = str(app.get("evidence_unit_id") or app.get("unit_id") or "").strip()
         if not coder_id or not evidence_unit_id:
             continue
-        codes = app.get("codes")
-        if codes is None:
-            codes = [app.get("code_id") or app.get("primary_code")]
-        normalized_codes = {str(code).strip() for code in codes if str(code or "").strip()}
+        primary = normalize_code_label(app.get("primary_code"))
+        if primary:
+            normalized_codes = {primary}
+        else:
+            codes = app.get("codes")
+            if codes is None:
+                codes = [app.get("code_id")]
+            normalized_codes = {normalize_code_label(code) for code in codes}
+            normalized_codes.discard("")
         rating_status = str(app.get("rating_status") or "").strip().casefold()
         if app.get("abstained") is True or rating_status in {"abstain", "abstained"}:
             normalized_codes.add("__abstain__")
