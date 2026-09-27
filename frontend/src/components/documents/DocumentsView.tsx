@@ -220,13 +220,14 @@ export default function DocumentsView() {
       fetchDocuments(activeProjectId);
       fetchTags(activeProjectId);
       fetchStats(activeProjectId);
-      syncDocuments(activeProjectId);
+      // Syncing the project folder writes documents; a viewer may read but not sync (walk: 403).
+      if (canWrite) syncDocuments(activeProjectId);
     } else {
       resetProject(null);
       setPreviewDoc(null);
       setPreviewContent(null);
     }
-  }, [activeProjectId, fetchDocuments, fetchTags, fetchStats, syncDocuments, resetProject]);
+  }, [activeProjectId, canWrite, fetchDocuments, fetchTags, fetchStats, syncDocuments, resetProject]);
 
   useEffect(() => {
     if (activeProjectId) {

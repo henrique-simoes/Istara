@@ -21,6 +21,8 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { getApiBase } from "../lib/api-client.mjs";
+import { driveRoleCell, ensureRoleAccounts } from "../lib/role-variants.mjs";
+import { createVariantLedger } from "../lib/variant-obligations.mjs";
 import { selectProject } from "../lib/embedding-settings.mjs";
 import { setTheme } from "../lib/matrix-checks.mjs";
 
@@ -77,6 +79,7 @@ export async function run(ctx) {
     await setTheme(page, "light");
     judge(checks, walk);
     await keyboardReach(page, checks);
+    await roleCells(ctx, checks, apiBase);
   } catch (e) {
     checks.push({ name: "Menu walk completed without an exception", passed: false, detail: e.message });
   } finally {
@@ -91,6 +94,71 @@ export async function run(ctx) {
   }
   const passed = checks.filter((c) => c.passed).length;
   return { checks, passed, failed: checks.length - passed };
+}
+
+/**
+ * Roles: a researcher and a viewer each open every view the product shows them (views it hides are
+ * listed, not failed); no screen shows an error, no Istara request fails with a server error, and
+ * no view the role is shown answers 403. A stranger is held at the login screen.
+ */
+async function roleCells(ctx, checks, apiBase) {
+  const ledger = createVariantLedger(id, [
+    { variantId: "role=researcher", expectation: "researcher opens every view shown to it without an error" },
+    { variantId: "role=viewer", expectation: "viewer opens every view shown to it without an error" },
+    { variantId: "role=stranger", expectation: "unauthenticated stranger is held at the login screen" },
+  ]);
+  const provisioning = await ensureRoleAccounts(ctx);
+  for (const role of ["researcher", "viewer"]) {
+    await driveRoleCell(ctx, {
+      ledger,
+      role,
+      provisioning,
+      shotName: `90-role-${role}`,
+      drive: async (rolePage) => walkAsRole(rolePage, apiBase),
+    });
+  }
+  await driveRoleCell(ctx, { ledger, role: "stranger", provisioning, shotName: "90-role-stranger" });
+  checks.push(...ledger.finalize());
+}
+
+async function walkAsRole(page, apiBase) {
+  const failures = [];
+  const forbidden = [];
+  const hidden = [];
+  let current = "";
+  page.on("response", (res) => {
+    const url = res.url();
+    if (!url.startsWith(`${apiBase}/api/`)) return;
+    if (res.status() >= 500) failures.push(`${current}: ${res.status()} ${url.replace(apiBase, "")}`);
+    if (res.status() === 403) forbidden.push(`${current}: 403 ${url.replace(apiBase, "")}`);
+  });
+  page.on("pageerror", (err) => failures.push(`${current}: ${String(err.message || err).slice(0, 120)}`));
+  for (const [label, viewId] of VIEWS) {
+    current = viewId;
+    const nav = page.locator(`nav[aria-label="Views"] button[aria-label="${label}"]`).first();
+    if (!(await nav.isVisible().catch(() => false))) {
+      const more = page.locator('nav[aria-label="Views"] button[aria-label="More views"]').first();
+      if ((await more.getAttribute("aria-expanded").catch(() => null)) === "false") await more.click().catch(() => {});
+    }
+    const target = (await nav.isVisible().catch(() => false))
+      ? nav
+      : page.locator(`button[aria-label="${label}"]`).first();
+    if (!(await target.isVisible().catch(() => false))) {
+      hidden.push(viewId);
+      continue;
+    }
+    await target.click({ timeout: 10000 }).catch((e) => failures.push(`${viewId}: click ${e.message.slice(0, 80)}`));
+    await page.waitForLoadState("networkidle", { timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    const text = await page.locator("main").first().innerText({ timeout: 3000 }).catch(() => "");
+    if (ERROR_SURFACE.test(text)) failures.push(`${viewId}: error surface`);
+    await closeOverlays(page);
+  }
+  const ok = failures.length === 0 && forbidden.length === 0;
+  return {
+    ok,
+    detail: `opened ${VIEWS.length - hidden.length} views; hidden: ${hidden.join(", ") || "none"}; failures: ${failures.slice(0, 6).join("; ") || "none"}; 403 on a shown view: ${[...new Set(forbidden)].slice(0, 6).join("; ") || "none"}`,
+  };
 }
 
 async function dismissTour(page) {
