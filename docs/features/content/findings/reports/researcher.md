@@ -6,10 +6,10 @@ audience: researcher
 status: documented
 related_features: ["findings.evidence", "tasks.send-report", "interfaces.handoff"]
 related_glossary: ["minto-pyramid", "scr", "triangulation"]
-code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/ProjectReportsView.tsx", "backend/app/api/routes/reports.py", "backend/app/core/report_manager.py", "backend/app/core/reporting_worker.py"]
+code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/ProjectReportsView.tsx", "backend/app/api/routes/reports.py", "backend/app/core/report_manager.py", "backend/app/core/reporting_worker.py", "backend/app/services/report_export.py"]
 api_references: ["backend/app/api/routes/reports.py"]
-test_references: ["tests/test_research_integrity_reports.py"]
-last_verified: 2026-05-19
+test_references: ["tests/test_research_integrity_reports.py", "tests/test_report_export.py"]
+last_verified: 2026-09-27
 compass: CF-SPEC-53 / CF-657; CF-SPEC-60 / CF-773
 ---
 
@@ -31,26 +31,33 @@ Project Reports exists so the work represented by Findings > Reports has a stabl
 
 ## How UX Researchers Use It
 
-- Open Findings > Reports from the Istara navigation or the parent tab.
-- Use the visible controls in this surface to work with project reports in the active project context.
-- Review the output in the same view and follow the related feature links when the workflow moves into another Istara surface.
+- Open Findings > Reports. A report exists only for work that passed the Research Spine: a task's
+  findings reach Reports after its codes are reconciled and the task is approved as Done.
+- Open a report to read its executive summary and findings.
+- Share it with **Export**: **Markdown** and **Word** give the report with every finding followed by
+  its evidence trail (the quoted source text, the document and character range it comes from, and
+  whether that coded evidence was accepted); **CSV** gives one row per finding and quote for your own
+  analysis or an evidence appendix.
 
 ## Supported Workflows
 
-- Start from Findings > Reports when the current research task needs project reports.
-- Use the visible controls to create, inspect, refine, or route project work without leaving the active Istara context.
+- Hand a report to stakeholders as a Word document whose every claim can be checked against the
+  source.
+- Build an evidence appendix from the CSV.
 - Move to related surfaces when needed: findings.evidence, tasks.send-report, interfaces.handoff.
 
 ## Inputs, Outputs, And Expected Outcomes
 
-- Project-scoped state or artifact updates associated with project reports.
-- Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
-- Generated executive summaries keep the report's project context attached during LLM routing.
+- Input: an approved Done task's findings, grounded in evidence units.
+- Output: the report in Istara, and exports named after the report.
+- Each export states how many of its findings are traced to a source span; a finding with no trail
+  is marked "not traced to a source" rather than presented as evidence.
 
 ## Caveats
 
-- Needs interactive verification for exact empty, loading, error, and permission-denied states.
-- Do not expand this documentation beyond the cited source files without adding new code or walkthrough evidence.
+- Exports carry pseudonymous participant labels as they appear in the sources; remove anything
+  identifying from sources before sharing.
+- PDF export is not offered; print the Word document to PDF.
 
 ## Related Features
 

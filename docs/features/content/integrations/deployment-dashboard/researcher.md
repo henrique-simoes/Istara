@@ -40,6 +40,7 @@ A researcher running a remote study needs to see at a glance whether people are 
 
 ## Supported Workflows
 
+- **Analyse responses**: once answers are in, this writes them into one pseudonymised transcript document (each answer with the question it answered) and creates a Kanban task that runs the study's analysis skill on it. Findings stay provisional until their codes are reconciled and the task is approved.
 - Watch a study fill, pause it for a fix to a question, resume it, and close it when enough people have finished.
 - Open a participant's transcript from the tracker.
 
