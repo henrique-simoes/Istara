@@ -158,7 +158,8 @@ def test_w5_skill_factory_carries_dispatcher_paths():
     assert "agentic_core" not in plan_src, "W9 removed the feature-flag gate"
     assert "ollama.chat" not in plan_src, "W9 removed the legacy plan branch"
 
-    exec_src = _function_source("execute")
+    # execute() reads the input in windows (DEC-9); each window runs the single-call chain.
+    exec_src = _function_source("_execute_once")
     assert "agentic.structured" in exec_src
     assert '"skill.execute"' in exec_src
     assert '"skill.repair_native"' in exec_src

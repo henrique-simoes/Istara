@@ -94,3 +94,23 @@ async def test_links_are_planned_from_the_output_before_storage(monkeypatch):
     ]
     plan = await finding_links.plan_links(output)
     assert plan == {"facts": [[0]], "insights": [[0]], "recommendations": [[0]]}
+
+
+async def test_a_fact_that_cites_its_nuggets_links_to_exactly_those(monkeypatch):
+    """The synthesis numbers the nuggets it saw; a fact citing [2] rests on the second nugget, even
+    when its wording is closer to another one. Out-of-range or repeated numbers are ignored."""
+
+    async def semantic(queries, candidates):
+        raise RuntimeError("lexical path")
+
+    monkeypatch.setattr(finding_links, "_semantic_scores", semantic)
+    output = type("O", (), {})()
+    output.nuggets = [{"text": t} for _, t in NUGGETS]
+    output.facts = [
+        {"text": "Receipts get lost in pockets and laundry.", "supporting_nuggets": [2, 2, 9, "x"]},
+        {"text": "Receipts get lost in pockets and laundry."},
+    ]
+    output.insights = []
+    output.recommendations = []
+    plan = await finding_links.plan_links(output)
+    assert plan["facts"] == [[1], [0]]

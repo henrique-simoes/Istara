@@ -161,7 +161,12 @@ class FileWatcher:
 
     @staticmethod
     async def create_research_tasks(
-        file_path: Path, project_id: str, *, display_name: str | None = None, notify: bool = True
+        file_path: Path,
+        project_id: str,
+        *,
+        display_name: str | None = None,
+        notify: bool = True,
+        document_id: str | None = None,
     ) -> int:
         """Create research tasks for a processed file based on its classification.
 
@@ -216,6 +221,8 @@ class FileWatcher:
                     agent_id="istara-main",
                     priority=priority,
                     position=max_pos + 1,
+                    # D-18: the task analyses this file, not every file in the project.
+                    input_document_ids=json.dumps([document_id] if document_id else []),
                 )
                 db.add(task)
                 created += 1
@@ -247,7 +254,7 @@ class FileWatcher:
 
     # ── Document registration ──────────────────────────────────────────
 
-    async def _register_document(self, file_path: Path, project_id: str) -> None:
+    async def _register_document(self, file_path: Path, project_id: str) -> str | None:
         """Register a processed file as a Document in the database.
 
         Ensures every file in the project folder appears in the Documents UI.
@@ -255,7 +262,7 @@ class FileWatcher:
         """
         if await self._is_project_paused(project_id):
             logger.info("Skipping document registration for paused project %s", project_id)
-            return
+            return None
 
         from sqlalchemy import select
 
@@ -274,8 +281,9 @@ class FileWatcher:
                     Document.file_name == file_path.name,
                 )
             )
-            if existing.scalar_one_or_none():
-                return  # Already tracked
+            existing_id = existing.scalar_one_or_none()
+            if existing_id:
+                return existing_id  # Already tracked
 
             stat = file_path.stat()
             suffix = file_path.suffix.lower()
@@ -344,6 +352,7 @@ class FileWatcher:
                 pass
 
             logger.info(f"Registered document: {file_path.name} for project {project_id}")
+            return doc.id
 
     # ── File processing ─────────────────────────────────────────────────
 
@@ -421,8 +430,9 @@ class FileWatcher:
             return None
 
         # Register the Document FIRST so its evidence units exist when the chunks are indexed.
+        document_id: str | None = None
         try:
-            await self._register_document(file_path, project_id)
+            document_id = await self._register_document(file_path, project_id)
         except Exception as e:
             logger.warning(f"Failed to register document for {file_path}: {e}")
 
@@ -453,7 +463,7 @@ class FileWatcher:
 
         # Auto-create research tasks based on file classification
         try:
-            await self.create_research_tasks(file_path, project_id)
+            await self.create_research_tasks(file_path, project_id, document_id=document_id)
         except Exception as e:
             logger.warning(f"Failed to create research tasks for {file_path}: {e}")
 

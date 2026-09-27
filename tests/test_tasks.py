@@ -1,5 +1,6 @@
 """Tests for Tasks API routes — CRUD, move, attach/detach, lock/unlock."""
 
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -589,14 +590,23 @@ async def test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance(
         )
         await db.commit()
 
+    # Item level (D-24, DEC-13): the accepted finding is reported; the unsupported one is held back,
+    # never included, and counted so the researcher sees it.
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        blocked = await ac.post(
+        partial = await ac.post(
             f"/api/tasks/{task_id}/reports?project_id={project.id}",
             headers=auth_headers,
         )
-        assert blocked.status_code == 409
-        assert "without accepted/reconciled source evidence" in blocked.json()["detail"]
+        assert partial.status_code == 200
+        report = partial.json()["report"]
+        assert report["finding_count"] == 1
+        assert report["content"]["held_back_finding_count"] == 1
+    async with async_session() as db:
+        from app.models.project_report import ProjectReport
+
+        stored = await db.get(ProjectReport, report["id"])
+        assert json.loads(stored.finding_ids_json) == [supported_nugget_id]
 
     async with async_session() as db:
         _add_accepted_nugget_support(
@@ -615,6 +625,7 @@ async def test_task_report_gate_blocks_aggregate_reliability_bulk_acceptance(
         )
         assert allowed.status_code == 200
         assert allowed.json()["report"]["finding_count"] == 2
+        assert allowed.json()["report"]["content"]["held_back_finding_count"] == 0
 
 
 @pytest.mark.asyncio

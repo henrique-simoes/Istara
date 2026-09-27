@@ -21,6 +21,7 @@ export const BACKEND_ROUTE_TEMPLATES = [
   "/compliance/{project_id}/radar",
   "/deployments/{deployment_id}",
   "/deployments/{deployment_id}/activate",
+  "/deployments/{deployment_id}/analyse",
   "/deployments/{deployment_id}/analytics",
   "/deployments/{deployment_id}/complete",
   "/deployments/{deployment_id}/conversations",
@@ -75,6 +76,7 @@ export const BACKEND_ROUTE_TEMPLATES = [
   "/surveys/integrations/{integration_id}",
   "/surveys/integrations/{integration_id}/create",
   "/surveys/integrations/{integration_id}/surveys",
+  "/surveys/links/{link_id}/analyse",
   "/surveys/links/{link_id}/export.csv",
   "/surveys/links/{link_id}/responses",
   "/surveys/links/{link_id}/sync",
@@ -84,6 +86,7 @@ export const BACKEND_ROUTE_TEMPLATES = [
   "/{project_id}/bulk-approve",
   "/{project_id}/latest",
   "/{project_id}/pending",
+  "/{project_id}/{report_id}/export",
 ] as const;
 
 export type BackendRouteTemplate = typeof BACKEND_ROUTE_TEMPLATES[number];

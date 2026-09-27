@@ -459,6 +459,7 @@ async def upload_file(
             project_id,
             display_name=_original_name(file.filename),
             notify=False,
+            document_id=doc.id,
         )
     except Exception as exc:
         logger.warning("Research tasks for upload %s not created: %s", safe_filename, exc)

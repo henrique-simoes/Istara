@@ -7,6 +7,7 @@ import json
 import logging
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,6 +38,7 @@ from app.models.task import Task, TaskStatus
 from app.skills.base import SkillInput, SkillOutput
 from app.skills.registry import registry
 from app.skills.skill_manager import skill_manager
+from app.skills.skill_windows import scaled_timeout
 
 logger = logging.getLogger("app.core.agent")
 
@@ -306,15 +308,7 @@ class AgentResearchMixin:
 
         use_project_files = params.get("use_project_files", True)
         if use_project_files is not False:
-            folder = _resolve_project_folder(project, project.id)
-            if folder.exists():
-                skill_input.files = [
-                    str(f)
-                    for f in folder.iterdir()
-                    if f.is_file()
-                    and f.suffix.lower()
-                    in {".txt", ".md", ".pdf", ".docx", ".csv", ".mp3", ".wav", ".m4a", ".ogg"}
-                ]
+            skill_input.files = await _task_skill_files(db, project, task)
 
         output, duration_ms = await execute_ranked_skill_tool(
             skill_name=skill_name,
@@ -323,7 +317,9 @@ class AgentResearchMixin:
             agent_id=self._agent_id,
             project_id=project.id,
             task_id=task.id,
-            timeout_seconds=settings.agent_react_skill_tool_timeout_seconds,
+            timeout_seconds=scaled_timeout(
+                settings.agent_react_skill_tool_timeout_seconds, skill_input.files, project.id
+            ),
         )
         learning_signal = learning_signal_for_research_output(
             execution_success=bool(output.success),
@@ -688,16 +684,24 @@ class AgentResearchMixin:
                         task_context += "\n\nPrevious findings:\n" + "\n".join(
                             f"- {s.description}: {s.result[:150]}" for s in prior if s.result
                         )
+                    async with db_lock:
+                        step_files = await _task_skill_files(db, project, task)
                     skill_input = SkillInput(
                         project_id=project.id,
                         task_id=task.id,
+                        files=step_files,
                         urls=task.get_urls() if hasattr(task, "get_urls") else [],
                         parameters={"mode": "analyze"},
                         user_context=task_context,
                         project_context=project.project_context,
                         company_context=project.company_context,
                     )
-                    output = await asyncio.wait_for(skill.execute(skill_input), timeout=300)
+                    output = await asyncio.wait_for(
+                        skill.execute(skill_input),
+                        timeout=scaled_timeout(
+                            settings.agent_react_skill_tool_timeout_seconds, step_files, project.id
+                        ),
+                    )
                     step.result = output.summary or ""
                     if not output.success:
                         step.status = "failed"
@@ -788,6 +792,7 @@ class AgentResearchMixin:
         created_insight_ids: list[str] = []
         created_recommendation_ids: list[str] = []
         created_evidence_unit_ids: list[str] = []
+        grounding_docs: dict = {}
         finding_agent_id = task.agent_id or self.agent_id
 
         from app.services.research_finding_links import (
@@ -849,6 +854,17 @@ class AgentResearchMixin:
                 or nugget_data.get("quote")
                 or ""
             ).strip()
+            if not source_document_id:
+                # D-12: a skill names the file a quote came from but not its document id. Ground
+                # the quote in that raw source document by exact span, or leave it a candidate.
+                grounding = await _ground_skill_nugget(
+                    db, project_id, task, nugget_data, grounding_docs
+                )
+                if grounding is not None:
+                    source_document_id = grounding.document_id
+                    source_location = grounding.location
+                    exact_source_text = grounding.text
+                    nugget.source_location = source_location
             has_exact_source_span = bool(
                 source_document_id and source_location and exact_source_text
             )
@@ -1370,3 +1386,60 @@ class AgentResearchMixin:
             )
 
             return await skill.plan(skill_input)
+
+
+async def _ground_skill_nugget(db, project_id: str, task, nugget_data: dict, cache: dict):
+    """Ground one skill nugget in a raw source document (see services/finding_grounding.py)."""
+    from app.services.finding_grounding import ground_quote, load_raw_source_texts
+
+    quote = str(
+        nugget_data.get("source_quote") or nugget_data.get("quote") or nugget_data.get("text") or ""
+    )
+    if not quote.strip():
+        return None
+    if "documents" not in cache:
+        try:
+            cache["documents"] = await load_raw_source_texts(db, project_id)
+        except Exception:
+            cache["documents"] = []
+    preferred = task.get_input_document_ids() if hasattr(task, "get_input_document_ids") else []
+    return ground_quote(
+        quote,
+        str(nugget_data.get("source") or ""),
+        cache["documents"],
+        preferred_ids=preferred,
+    )
+
+
+SKILL_INPUT_SUFFIXES = {".txt", ".md", ".pdf", ".docx", ".csv", ".mp3", ".wav", ".m4a", ".ogg"}
+
+
+async def _task_skill_files(db, project, task) -> list[str]:
+    """The files a task's skill reads: the task's own input documents when it names any (D-18),
+    otherwise every source file in the project folder."""
+    from sqlalchemy import select as _select
+
+    from app.models.document import Document
+
+    ids = task.get_input_document_ids() if hasattr(task, "get_input_document_ids") else []
+    if ids:
+        rows = (
+            (
+                await db.execute(
+                    _select(Document).where(Document.project_id == project.id, Document.id.in_(ids))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        chosen = [r.file_path for r in rows if r.file_path and Path(r.file_path).is_file()]
+        if chosen:
+            return chosen
+    folder = _resolve_project_folder(project, project.id)
+    if not folder.exists():
+        return []
+    return [
+        str(f)
+        for f in sorted(folder.iterdir())
+        if f.is_file() and f.suffix.lower() in SKILL_INPUT_SUFFIXES
+    ]

@@ -5,7 +5,8 @@ support as text. Storage used to fill the gap with the most recent rows (the las
 last three facts, the last two insights), which wrote provenance that had nothing to do with the
 claim. Links now go to the candidates from the same run whose text is closest in meaning to the
 claim (or to the support texts the skill named), above a floor; with nothing close enough there is
-no link, and the chain shows the gap.
+no link, and the chain shows the gap. A fact whose synthesis cites the numbered nuggets it rests on
+links to exactly those.
 """
 
 from __future__ import annotations
@@ -97,6 +98,19 @@ async def _indexes(queries: Sequence[str], texts: Sequence[str], k: int) -> list
     return [int(i) for i in await supporting_ids(queries, candidates, k=k)]
 
 
+def _cited(numbers, available: int, k: int) -> list[int]:
+    """0-based indexes of the nuggets a synthesis cited by their 1-based number, in order."""
+    cited: list[int] = []
+    for number in numbers or []:
+        try:
+            index = int(number) - 1
+        except (TypeError, ValueError):
+            continue
+        if 0 <= index < available and index not in cited:
+            cited.append(index)
+    return cited[:k]
+
+
 async def plan_links(output) -> dict[str, list[list[int]]]:
     """Which earlier findings each fact, insight and recommendation rests on, by index.
 
@@ -108,7 +122,11 @@ async def plan_links(output) -> dict[str, list[list[int]]]:
     facts = [str(f.get("text", "")) for f in output.facts or []]
     insights = [str(i.get("text", "")) for i in output.insights or []]
     return {
-        "facts": [await _indexes([t], nuggets, 5) for t in facts],
+        "facts": [
+            _cited(f.get("supporting_nuggets"), len(nuggets), 5)
+            or await _indexes([str(f.get("text", ""))], nuggets, 5)
+            for f in output.facts or []
+        ],
         "insights": [
             await _indexes(i.get("supporting_facts") or [i.get("text", "")], facts, 3)
             for i in output.insights or []

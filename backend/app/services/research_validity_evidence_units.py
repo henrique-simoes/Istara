@@ -265,7 +265,9 @@ async def _load_units(
     evidence_unit_ids: list[str] | None,
     limit: int,
 ) -> list[EvidenceUnit]:
-    max_limit = max(1, min(limit, 200))
+    from app.config import settings
+
+    max_limit = max(1, min(limit, int(settings.research_validity_max_units_per_run)))
     if evidence_unit_ids:
         query = (
             select(EvidenceUnit)
@@ -456,8 +458,24 @@ def _compact_source_text_for_coding(
     return compact, True
 
 
+# What a coder needs to code a unit and echo its identity; the rest of the record (project, task,
+# metadata, timestamps) only inflated every coder prompt (D-19).
+CODER_UNIT_FIELDS = (
+    "id",
+    "stable_id",
+    "unit_index",
+    "source_type",
+    "participant_id",
+    "speaker",
+    "source_location",
+    "source_text",
+)
+
+
 def _coding_unit_payload(unit: EvidenceUnit) -> dict:
-    payload = unit.to_dict()
+    record = unit.to_dict()
+    payload = {k: record[k] for k in CODER_UNIT_FIELDS if record.get(k) not in (None, "")}
+    payload.setdefault("source_text", "")
     try:
         unit_metadata = json.loads(getattr(unit, "metadata_json", None) or "{}")
     except (json.JSONDecodeError, TypeError):
@@ -473,6 +491,32 @@ def _coding_unit_payload(unit: EvidenceUnit) -> dict:
     if truncated:
         payload["source_text_excerpt_policy"] = "head_tail_context_bound"
     return payload
+
+
+def _coding_batches(units: list[EvidenceUnit]) -> list[list[EvidenceUnit]]:
+    """Split a run's units into coder calls a small context can hold (D-19), in order.
+
+    Every coder gets the same batches, so reliability still compares like with like; a batch holds
+    at most ``research_validity_coding_units_per_call`` units and about
+    ``research_validity_coding_chars_per_call`` characters of source text.
+    """
+    from app.config import settings
+
+    max_units = max(1, int(settings.research_validity_coding_units_per_call))
+    max_chars = max(1000, int(settings.research_validity_coding_chars_per_call))
+    batches: list[list[EvidenceUnit]] = []
+    current: list[EvidenceUnit] = []
+    chars = 0
+    for unit in units:
+        size = min(len(unit.source_text or ""), MAX_CODING_SOURCE_TEXT_CHARS)
+        if current and (len(current) >= max_units or chars + size > max_chars):
+            batches.append(current)
+            current, chars = [], 0
+        current.append(unit)
+        chars += size
+    if current:
+        batches.append(current)
+    return batches
 
 
 def _coding_messages(

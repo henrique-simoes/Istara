@@ -586,10 +586,16 @@ async def execute_skill(
         min_role="researcher",
     )
 
+    from app.skills.skill_windows import scaled_timeout
+
+    # A skill reads its whole input in windows (DEC-9), so its ceiling grows with the calls it
+    # must make; each model call keeps its own liveness in the runtime.
     timeout_seconds = _bounded_timeout(
         data.timeout_seconds,
         default_seconds=settings.skill_execute_timeout_seconds,
-        max_seconds=settings.skill_execute_max_timeout_seconds,
+        max_seconds=scaled_timeout(
+            settings.skill_execute_max_timeout_seconds, data.files or [], project_id
+        ),
     )
     try:
         output = await asyncio.wait_for(

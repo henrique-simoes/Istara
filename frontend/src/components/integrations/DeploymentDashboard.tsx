@@ -137,6 +137,22 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
       "Study closed.",
       "Could not close the study."
     );
+  const handleAnalyse = async () => {
+    setActionError(null);
+    setNotice(null);
+    setActionLoading(true);
+    try {
+      const result = await deploymentsApi.analyse(deployment.id, projectId);
+      setNotice(
+        `Created the task "Analyse responses: ${deployment.name}" (${result.answers} answers) on the Tasks board. ` +
+          "Its findings stay provisional until coded, reviewed and approved."
+      );
+    } catch (err) {
+      setActionError(err instanceof Error ? `Could not start the analysis: ${err.message}` : "Could not start the analysis.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
   const handleExport = async () => {
     setActionError(null);
     setNotice(null);
@@ -197,6 +213,7 @@ export default function DeploymentDashboard({ deployment, onBack }: DeploymentDa
             onComplete={handleComplete}
             onRefresh={refresh}
             onExport={handleExport}
+            onAnalyse={handleAnalyse}
           />
         </div>
         {actionError && (
@@ -260,6 +277,7 @@ function StudyActions({
   onComplete,
   onRefresh,
   onExport,
+  onAnalyse,
 }: {
   canWrite: boolean;
   studyState: ResearchDeployment["state"];
@@ -270,6 +288,7 @@ function StudyActions({
   onComplete: () => void;
   onRefresh: () => void;
   onExport: () => void;
+  onAnalyse: () => void;
 }) {
   const running = studyState === "active" || studyState === "paused";
   return (
@@ -303,6 +322,15 @@ function StudyActions({
       >
         <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
       </button>
+      {canWrite && (
+        <button
+          onClick={onAnalyse}
+          disabled={busy}
+          className="flex items-center gap-1 px-3 py-1.5 text-xs border border-istara-300 dark:border-istara-700 text-istara-700 dark:text-istara-300 rounded-lg hover:bg-istara-50 dark:hover:bg-istara-900/20 disabled:opacity-50 transition-colors"
+        >
+          <Search size={12} /> Analyse responses
+        </button>
+      )}
       {canWrite && (
         <button
           onClick={onExport}
@@ -494,8 +522,9 @@ function FindingsPipeline({ analytics }: { analytics: DeploymentAnalytics | null
       <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
         <TrendingUp size={32} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
         <p className="text-sm text-slate-600 dark:text-slate-300 max-w-md mx-auto">
-          Every answer is stored as raw evidence. Findings are not extracted automatically: analyse the
-          responses through a task so they are coded and reviewed before anything reaches a report.
+          Every answer is stored as raw evidence. Findings are not extracted automatically: choose
+          &ldquo;Analyse responses&rdquo; to create a task that analyses them, so they are coded and reviewed
+          before anything reaches a report.
         </p>
         {analytics && (
           <div className="mt-4 flex items-center justify-center gap-6 text-xs text-slate-500 dark:text-slate-400">

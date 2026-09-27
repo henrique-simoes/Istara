@@ -369,3 +369,86 @@ def test_consent_status_names_participants_who_were_never_asked():
     assert _consent_status({"state": "consent"}, required) == "pending"
     assert _consent_status({"state": "closed_quota"}, required) == "not_asked"
     assert _consent_status({}, {"consent_required": False}) == "not_asked"
+
+
+@pytest.mark.asyncio
+async def test_analyse_study_creates_a_transcript_document_and_a_scoped_task(
+    admin_auth_headers, tmp_path, monkeypatch
+):
+    """D-7: collected answers reach analysis through a document and a task, not as findings."""
+    from app.config import settings
+    from app.core.file_encryption import reveal_document_text
+    from app.models.document import Document
+    from app.models.task import Task
+
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    project_id, instance_id = await _project_and_channel()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        created = await ac.post(
+            "/api/deployments",
+            headers=admin_auth_headers,
+            json={"project_id": project_id, "name": "Analysable study",
+                  "questions": [{"text": "What slows you down?"}],
+                  "channel_instance_ids": [instance_id], "config": {"consent_required": False}},
+        )
+        deployment_id = created.json()["id"]
+        empty = await ac.post(
+            f"/api/deployments/{deployment_id}/analyse?project_id={project_id}",
+            headers=admin_auth_headers,
+        )
+        await ac.post(f"/api/deployments/{deployment_id}/activate?project_id={project_id}",
+                      headers=admin_auth_headers)
+        for text in ["hi", "Exports time out on big months"]:
+            await process_inbound_channel_message(
+                IncomingMessage(channel="slack", channel_id="D-A", sender_id="A",
+                                sender_name="Real Name A", text=text, instance_id=instance_id)
+            )
+        analysed = await ac.post(
+            f"/api/deployments/{deployment_id}/analyse?project_id={project_id}",
+            headers=admin_auth_headers,
+        )
+    assert empty.status_code == 409
+    assert analysed.status_code == 200, analysed.text
+    body = analysed.json()
+    assert (body["answers"], body["skill_name"]) == (1, "user-interviews")
+    async with async_session() as db:
+        document = await db.get(Document, body["document_id"])
+        task = await db.get(Task, body["task_id"])
+        units = (
+            (await db.execute(select(EvidenceUnit).where(EvidenceUnit.source_document_id == document.id)))
+            .scalars()
+            .all()
+        )
+    text = reveal_document_text(document.content_text)
+    assert "P01: [Asked: What slows you down?] Exports time out on big months" in text
+    assert "Real Name" not in text and "hi" not in text.split("P01:")[1]
+    assert task.get_input_document_ids() == [document.id]
+    assert any("Exports time out on big months" in u.source_text for u in units)
+
+
+@pytest.mark.asyncio
+async def test_analyse_survey_creates_a_transcript_and_task(admin_auth_headers, tmp_path, monkeypatch):
+    from app.config import settings
+    from app.models.task import Task
+    from app.services.survey_ingestion import ingest_responses
+
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    await init_db()
+    project_id = str(uuid.uuid4())
+    async with async_session() as db:
+        db.add(Project(id=project_id, name="Survey analysis"))
+        await db.commit()
+    link = await _survey_link(project_id)
+    async with async_session() as db:
+        fresh = await db.get(SurveyLink, link.id)
+        await ingest_responses(db, fresh, [{"id": "r1", "answers": [{"question": "Why?", "answer": "Speed"}]}], project_id)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        analysed = await ac.post(
+            f"/api/surveys/links/{link.id}/analyse?project_id={project_id}",
+            headers=admin_auth_headers,
+        )
+    assert analysed.status_code == 200, analysed.text
+    async with async_session() as db:
+        task = await db.get(Task, analysed.json()["task_id"])
+    assert task.skill_name == "thematic-analysis"
+    assert task.get_input_document_ids() == [analysed.json()["document_id"]]

@@ -38,6 +38,7 @@ from app.models.research_validity import (
 # Compatibility re-exports (import seam preserved for product code and tests).
 from app.services.research_validity_evidence_units import (
     _chat_model_names,  # noqa: F401
+    _coding_batches,
     _coding_messages,  # noqa: F401
     _coding_repair_messages,  # noqa: F401
     _coding_unit_payload,  # noqa: F401
@@ -431,6 +432,55 @@ async def settle_interrupted_coding_runs(db: AsyncSession) -> list[str]:
     return [run.id for run in rows]
 
 
+async def _code_batch(
+    coder: Any,
+    batch: list[EvidenceUnit],
+    messages: list[dict],
+    *,
+    codebook: Any,
+    threshold: float,
+    project_id: str,
+    runner: Any,
+    use_pi_qwen_fallback: bool,
+) -> tuple[dict, Any, list]:
+    """One coder codes one batch: the call, up to two coverage repairs, then every unit or fail."""
+
+    async def call(active: Any, batch_messages: list[dict]) -> tuple[dict, Any]:
+        if use_pi_qwen_fallback:
+            return await _run_pi_coder_with_qwen_fallback(
+                active, batch_messages, active.model_name or None, project_id, runner=runner
+            )
+        return await runner(active, batch_messages, active.model_name or None, project_id), active
+
+    unit_by_id = {unit.id: unit for unit in batch}
+    response, active_coder = await call(coder, messages)
+    parsed = _extract_json_payload(response.get("message", {}).get("content", ""))
+    usable = _usable_coding_applications(parsed, unit_by_id=unit_by_id, units=batch)
+    attempts = 0
+    while not _has_complete_unit_coverage(usable, unit_by_id=unit_by_id) and attempts < 2:
+        attempts += 1
+        repair_response, active_coder = await call(
+            active_coder, _coding_repair_messages(batch, codebook, threshold)
+        )
+        repair_parsed = _extract_json_payload(repair_response.get("message", {}).get("content", ""))
+        repair_usable = _usable_coding_applications(
+            repair_parsed, unit_by_id=unit_by_id, units=batch
+        )
+        if repair_usable:
+            response = _merge_coding_route_evidence(response, repair_response)
+            merged_route = dict(response.get("_istara_route", {}) or {})
+            merged_route["coverage_repair"] = "per_unit_union"
+            merged_route["coverage_repair_attempts"] = attempts
+            response = {**response, "_istara_route": merged_route}
+            usable = _merge_coverage_applications(usable, repair_usable)
+    if not _has_complete_unit_coverage(usable, unit_by_id=unit_by_id):
+        raise ValueError(
+            "coder response lacked complete evidence-unit coverage "
+            f"({len({unit.id for _, unit, _ in usable})}/{len(unit_by_id)})"
+        )
+    return response, active_coder, usable
+
+
 async def run_independent_coding_run(
     db: AsyncSession,
     *,
@@ -547,9 +597,15 @@ async def run_independent_coding_run(
             pi_selection_error = str(exc)
     else:
         coders = _select_project_coders(project_id, max_coders=max_coders)
-    messages = _coding_messages(units, codebook, threshold)
+    # Every coder codes the same batches (D-19); the prompt hash covers all of them.
+    batches = _coding_batches(units)
+    batch_messages = [_coding_messages(batch, codebook, threshold) for batch in batches]
     prompt_hash = sha256(
-        json.dumps(messages, sort_keys=True, separators=(",", ":")).encode()
+        json.dumps(
+            batch_messages if len(batches) > 1 else batch_messages[0],
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
     ).hexdigest()
     unit_by_id = {unit.id: unit for unit in units}
     gate_applications: list[dict] = []
@@ -580,63 +636,29 @@ async def run_independent_coding_run(
         )
         active_coder = coder
         try:
-            if use_pi_qwen_fallback:
-                response, active_coder = await _run_pi_coder_with_qwen_fallback(
-                    coder,
+            response = None
+            usable_applications = []
+            for batch, messages in zip(batches, batch_messages, strict=True):
+                batch_response, active_coder, batch_usable = await _code_batch(
+                    active_coder,
+                    batch,
                     messages,
-                    coder.model_name or None,
-                    project_id,
+                    codebook=codebook,
+                    threshold=threshold,
+                    project_id=project_id,
                     runner=runner,
+                    use_pi_qwen_fallback=use_pi_qwen_fallback,
                 )
-            else:
-                response = await runner(coder, messages, coder.model_name or None, project_id)
-            content = response.get("message", {}).get("content", "")
-            parsed = _extract_json_payload(content)
-            usable_applications = _usable_coding_applications(
-                parsed,
-                unit_by_id=unit_by_id,
-                units=units,
-            )
-            coverage_repair_attempts = 0
-            while (
-                not _has_complete_unit_coverage(usable_applications, unit_by_id=unit_by_id)
-                and coverage_repair_attempts < 2
-            ):
-                coverage_repair_attempts += 1
-                repair_messages = _coding_repair_messages(units, codebook, threshold)
-                if use_pi_qwen_fallback:
-                    repair_response, repaired_coder = await _run_pi_coder_with_qwen_fallback(
-                        active_coder,
-                        repair_messages,
-                        active_coder.model_name or None,
-                        project_id,
-                        runner=runner,
-                    )
-                    active_coder = repaired_coder
-                else:
-                    repair_response = await runner(
-                        active_coder,
-                        repair_messages,
-                        active_coder.model_name or None,
-                        project_id,
-                    )
-                repair_content = repair_response.get("message", {}).get("content", "")
-                repair_parsed = _extract_json_payload(repair_content)
-                repair_usable = _usable_coding_applications(
-                    repair_parsed,
-                    unit_by_id=unit_by_id,
-                    units=units,
+                response = (
+                    batch_response
+                    if response is None
+                    else _merge_coding_route_evidence(response, batch_response)
                 )
-                if repair_usable:
-                    response = _merge_coding_route_evidence(response, repair_response)
-                    merged_route = dict(response.get("_istara_route", {}) or {})
-                    merged_route["coverage_repair"] = "per_unit_union"
-                    merged_route["coverage_repair_attempts"] = coverage_repair_attempts
-                    response = {**response, "_istara_route": merged_route}
-                    parsed = repair_parsed
-                    usable_applications = _merge_coverage_applications(
-                        usable_applications, repair_usable
-                    )
+                usable_applications.extend(batch_usable)
+            if len(batches) > 1:
+                merged_route = dict(response.get("_istara_route", {}) or {})
+                merged_route["coding_batches"] = len(batches)
+                response = {**response, "_istara_route": merged_route}
             if not _has_complete_unit_coverage(usable_applications, unit_by_id=unit_by_id):
                 raise ValueError(
                     "coder response lacked complete evidence-unit coverage "
@@ -735,6 +757,11 @@ async def run_independent_coding_run(
                     or "provider_prefix_cache_no_response_reuse",
                     "evidence_unit_id": unit.id,
                     "codes": codes,
+                    # Nominal reliability uses the coder's primary code (protocol); a coder that
+                    # gave one code has that code as its primary.
+                    "primary_code": str(
+                        raw_app.get("primary_code") or (codes[0] if len(codes) == 1 else "")
+                    ),
                 }
             )
             for code_id in codes:

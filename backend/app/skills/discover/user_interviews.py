@@ -11,7 +11,6 @@ import json
 import logging
 from pathlib import Path
 
-from app.core.file_processor import process_file
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
 
 logger = logging.getLogger(__name__)
@@ -398,43 +397,41 @@ class UserInterviewsSkill(BaseSkill):
         all_nuggets = []
         all_errors = []
 
-        # If files provided, process them; otherwise use inline user_context as transcript
-        transcripts_to_analyze = []
+        # D-14/D-15: read every transcript in full, with its own file name, in windows sized to
+        # the model that serves the skill. Nothing is cut at a fixed character count.
+        from app.skills.skill_windows import (
+            plan_windows,
+            read_sources,
+            resolve_call_budget,
+            window_char_budget,
+        )
 
+        sources = read_sources(skill_input.files) if skill_input.files else []
         for file_path_str in skill_input.files or []:
-            file_path = Path(file_path_str)
-            if not file_path.exists():
-                all_errors.append(f"File not found: {file_path_str}")
-                continue
+            if Path(file_path_str).name not in {name for name, _ in sources}:
+                all_errors.append(f"Could not read {Path(file_path_str).name}")
+        if not sources and skill_input.user_context:
+            sources = [("inline-context", skill_input.user_context)]
+        budget = resolve_call_budget(skill_input.project_id)
+        window_chars = window_char_budget(budget, 1500)
+        passages = [
+            (name, window.text)
+            for name, text in sources
+            for window in plan_windows([(name, text)], window_chars)
+        ]
+        coverage = {
+            "source_files": len(sources),
+            "source_chars": sum(len(text) for _, text in sources),
+            "passages": len(passages),
+            "context_tokens": budget.context_tokens,
+            "budget_basis": budget.basis,
+        }
 
-            # Extract text from file
-            processed = process_file(file_path)
-            if processed.error:
-                all_errors.append(f"Error processing {file_path.name}: {processed.error}")
-                continue
-
-            transcripts_to_analyze.append("\n".join(chunk.text for chunk in processed.chunks))
-
-        # Fallback: if no file transcripts, use user_context as inline data
-        if not transcripts_to_analyze and skill_input.user_context:
-            transcripts_to_analyze.append(skill_input.user_context)
-
-        # Track source names for each transcript
-        transcript_sources = []
-        for file_path_str in skill_input.files or []:
-            transcript_sources.append(Path(file_path_str).name)
-        if not transcript_sources and skill_input.user_context:
-            transcript_sources.append("inline-context")
-
-        for idx, transcript in enumerate(transcripts_to_analyze):
-            source_name = (
-                transcript_sources[idx] if idx < len(transcript_sources) else f"transcript-{idx}"
-            )
-
+        for source_name, transcript in passages:
             # Analyze the transcript
             prompt = TRANSCRIPT_ANALYSIS_PROMPT.format(
                 context=context,
-                transcript=transcript[:4000],  # Limit transcript length for context window
+                transcript=transcript,
             )
 
             # W5: transcript analysis goes through the AgenticDispatcher
@@ -478,13 +475,26 @@ class UserInterviewsSkill(BaseSkill):
                     }
                 )
 
-        # If multiple transcripts, synthesize across them
+        # Synthesize facts, insights and recommendations across every analysed passage, also for a
+        # single transcript (SK1): the analyses go in whole when they fit, otherwise the passage
+        # themes and nuggets that fit.
         synthesis = None
-        if len(all_analyses) > 1:
+        # Nothing to synthesise when no passage yielded a nugget (a failed analysis, SK4).
+        if all_analyses and any(a.get("nuggets") for a in all_analyses):
             analyses_text = json.dumps(all_analyses, indent=2)
+            if len(analyses_text) > window_chars:
+                compact = [
+                    {
+                        "source_file": a.get("source_file"),
+                        "themes": a.get("themes", []),
+                        "nuggets": [n.get("text", "") for n in a.get("nuggets", [])],
+                    }
+                    for a in all_analyses
+                ]
+                analyses_text = json.dumps(compact, indent=1)[:window_chars]
             synthesis_prompt = SYNTHESIS_PROMPT.format(
                 context=context,
-                analyses=analyses_text[:12000],
+                analyses=analyses_text,
             )
 
             # W5: cross-interview synthesis goes through the
@@ -549,10 +559,9 @@ class UserInterviewsSkill(BaseSkill):
                 )
 
         # Generate summary
-        num_files = len(skill_input.files)
-        num_analyzed = len(all_analyses)
         summary = (
-            f"Analyzed {num_analyzed}/{num_files} interview transcripts. "
+            f"Analyzed {len(sources)} transcript(s) in full ({len(passages)} passage(s), "
+            f"{len(all_analyses)} analysed). "
             f"Extracted {len(all_nuggets)} nuggets, {len(facts)} facts, "
             f"{len(insights)} insights, {len(recommendations)} recommendations."
         )
@@ -566,6 +575,12 @@ class UserInterviewsSkill(BaseSkill):
             recommendations=recommendations,
             artifacts={
                 "analysis.json": json.dumps(all_analyses, indent=2),
+                "input_coverage.json": json.dumps(
+                    {**coverage, "delivered_chars": coverage["source_chars"], "coverage": 1.0}
+                    if coverage["source_chars"]
+                    else coverage,
+                    indent=2,
+                ),
                 **({"synthesis.json": json.dumps(synthesis, indent=2)} if synthesis else {}),
             },
             suggestions=suggestions,
