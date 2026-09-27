@@ -238,12 +238,14 @@ export default function ConnectionStringPanel() {
       <div className="grid grid-cols-1 gap-2 mb-4 md:grid-cols-[1fr_auto_auto_auto_auto]">
         <input
           type="text"
+          aria-label="Connection string label"
           placeholder={tokenType === "compute_donation" ? "Label (e.g. RTX Workstation)" : "Label (e.g. Researcher Laptop)"}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-istara-500"
         />
         <select
+          aria-label="Connection string type"
           value={tokenType}
           onChange={(e) => setTokenType(e.target.value as "user_invite" | "compute_donation")}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-istara-500"
@@ -253,6 +255,7 @@ export default function ConnectionStringPanel() {
         </select>
         {tokenType === "user_invite" && (
           <select
+            aria-label="Role for the invite"
             value={role}
             onChange={(e) => setRole(e.target.value as "researcher" | "viewer" | "admin")}
             className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-istara-500"
@@ -263,6 +266,7 @@ export default function ConnectionStringPanel() {
           </select>
         )}
         <select
+          aria-label="Expires after"
           value={expiryHours}
           onChange={(e) => setExpiryHours(Number(e.target.value))}
           className="px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-istara-500"

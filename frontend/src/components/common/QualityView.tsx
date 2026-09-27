@@ -233,7 +233,7 @@ export default function QualityView() {
                 <div key={row.label}>
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="font-semibold">{row.label}</span>
-                    <span className="font-mono font-bold text-istara-600">&gt;= {row.val}</span>
+                    <span className="font-mono font-bold text-istara-600 dark:text-istara-400">&gt;= {row.val}</span>
                   </div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400">{row.desc}</div>
                 </div>
@@ -246,7 +246,7 @@ export default function QualityView() {
               <Activity size={16} />
               Game Theory Status
             </h4>
-            <p className="text-xs text-amber-700/80 dark:text-amber-400 leading-relaxed mb-4">
+            <p className="text-xs text-amber-800 dark:text-amber-400 leading-relaxed mb-4">
               Strategic simulation personas are active to stress-test your instruments.
             </p>
             <div className="space-y-2">

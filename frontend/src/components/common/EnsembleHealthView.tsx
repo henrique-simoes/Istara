@@ -625,7 +625,7 @@ function ModelIntelligenceSection({ projectId }: ModelIntelligenceSectionProps) 
                 "inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors",
                 telemetryEnabled
                   ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30"
-                  : "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30"
+                  : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30"
               )}
             >
               {telemetryEnabled ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}

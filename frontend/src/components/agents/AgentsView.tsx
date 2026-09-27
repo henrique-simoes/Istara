@@ -741,7 +741,7 @@ export default function AgentsView() {
                     </button>
                     <button
                       onClick={() => setActiveTab("create")}
-                      className="flex items-center gap-1 text-xs text-istara-600 hover:text-istara-700"
+                      className="flex items-center gap-1 text-xs text-istara-600 hover:text-istara-700 dark:text-istara-400 dark:hover:text-istara-300"
                     >
                       <Plus size={14} /> New Agent
                     </button>

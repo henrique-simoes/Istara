@@ -122,8 +122,9 @@ export default function NotificationListTab() {
 
             {/* Agent dropdown */}
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Agent</label>
+              <label htmlFor="notifications-agent" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Agent</label>
               <select
+                id="notifications-agent"
                 value={filters.agent_id}
                 onChange={(e) => setFilter("agent_id", e.target.value)}
                 className="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-istara-500"
