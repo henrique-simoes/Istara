@@ -10,6 +10,7 @@ import {
   ClipboardCopy,
   Check,
   RefreshCw,
+  Download,
 } from "lucide-react";
 import { reports as reportsApi, presentation as presentationApi } from "@/lib/api";
 import type { ProjectReport } from "@/lib/types";
@@ -87,6 +88,25 @@ export default function ProjectReportsView({
   } | null>(null);
   const [loadingSlides, setLoadingSlides] = useState(false);
   const [slideError, setSlideError] = useState<string | null>(null);
+  const [exportState, setExportState] = useState<{ busy: boolean; message: string | null; error: boolean }>({
+    busy: false,
+    message: null,
+    error: false,
+  });
+
+  const exportReport = async (reportId: string, format: "md" | "docx" | "csv") => {
+    setExportState({ busy: true, message: null, error: false });
+    try {
+      const name = await reportsApi.exportFile(projectId, reportId, format);
+      setExportState({ busy: false, message: `Downloaded ${name}.`, error: false });
+    } catch (err) {
+      setExportState({
+        busy: false,
+        message: err instanceof Error ? `Export failed: ${err.message}` : "Export failed.",
+        error: true,
+      });
+    }
+  };
   const [copied, setCopied] = useState(false);
 
   const loadReports = useCallback(async () => {
@@ -410,6 +430,38 @@ export default function ProjectReportsView({
                   <p className="text-xs text-slate-600 dark:text-slate-400">{report.scope}</p>
                 </div>
               )}
+
+              {/* Export: every finding with its evidence trail */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mb-4">
+                <h4 className="text-xs font-semibold uppercase text-slate-500 mb-2">Export</h4>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ["md", "Markdown"],
+                    ["docx", "Word"],
+                    ["csv", "Evidence CSV"],
+                  ] as const).map(([format, label]) => (
+                    <button
+                      key={format}
+                      onClick={() => exportReport(report.id, format)}
+                      disabled={exportState.busy}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                    >
+                      <Download size={12} /> {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                  Each finding is exported with its quotes, source documents and coding state.
+                </p>
+                {exportState.message && (
+                  <p
+                    role={exportState.error ? "alert" : "status"}
+                    className={cn("mt-1 text-xs", exportState.error ? "text-red-600 dark:text-red-400" : "text-slate-600 dark:text-slate-300")}
+                  >
+                    {exportState.message}
+                  </p>
+                )}
+              </div>
 
               {/* Presentation Feature */}
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-center">
