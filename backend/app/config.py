@@ -434,8 +434,7 @@ class Settings(BaseSettings):
     dag_fresh_tail_size: int = 32
     dag_batch_size: int = 32
     dag_rollup_threshold: int = 4
-    # Room for the "Exact details" line (G2, 2026-09-27); 300 tokens paraphrased codes away.
-    dag_summary_max_tokens: int = 500
+    dag_summary_max_tokens: int = 300
     # Pi endpoint for DAG summaries ("" = the default endpoint); a light model keeps them fast.
     dag_summary_endpoint_id: str = ""
 

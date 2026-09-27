@@ -3317,8 +3317,10 @@ Lifecycle `docs/build-stream/2026-09-26-professional-readiness-review.md`.
   endpoint through the engine's `model_manager()` accessor (a failed lookup is logged, never silent).
   Extraction windows fit both the context and the answer: at most 0.8 characters per output token,
   since a window's nuggets quote the data. Synthesis keeps the full context.
-- **Context-DAG summaries (G2).** Each summary ends with an "Exact details" line copying identifiers,
-  codes, amounts and dates verbatim, within `dag_summary_max_tokens` (500).
+- **Context-DAG summaries (G2, negative result).** An "Exact details" line with a 500-token budget
+  was measured and reverted: planted-fact recall from summaries fell from 0.38 to 0.06 on the same
+  five seeds (17 facts lost, 1 gained, paired p = 0.0003). The prompt and the 300-token budget are
+  back; `grep_history` remains the path for old exact facts (recall 1.00).
 - **Grounding.** A skill nugget becomes a source-span evidence unit only by exact (whitespace-aside)
   substring match in a raw source; the named file wins, then the task's inputs, then a unique match
   (`services/finding_grounding.py`, DEC-5).
