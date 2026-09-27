@@ -83,20 +83,23 @@ async def _documents(project_id: str, prefix: str) -> list[tuple[str, str]]:
     return sorted((n, p) for n, p in rows if n and n.startswith(prefix) and p)
 
 
-async def _run_findings(project_id: str, since: datetime) -> dict:
+async def _run_findings(project_id: str, since: datetime, until: datetime | None = None) -> dict:
     from sqlalchemy import func, select
 
-    from app.models.agentic_usage import AgenticUsage
+    from app.models.agentic_usage import AgenticUsageRow as AgenticUsage
     from app.models.database import async_session
     from app.models.finding import Fact, Insight, Nugget, Recommendation
     from app.models.research_validity import EvidenceUnit
 
+    until = until or datetime.now(UTC)
     async with async_session() as db:
         nuggets = (
             (
                 await db.execute(
                     select(Nugget).where(
-                        Nugget.project_id == project_id, Nugget.created_at >= since
+                        Nugget.project_id == project_id,
+                        Nugget.created_at >= since,
+                        Nugget.created_at <= until,
                     )
                 )
             )
@@ -112,8 +115,17 @@ async def _run_findings(project_id: str, since: datetime) -> dict:
             counts[name] = await db.scalar(
                 select(func.count())
                 .select_from(model)
-                .where(model.project_id == project_id, model.created_at >= since)
+                .where(
+                    model.project_id == project_id,
+                    model.created_at >= since,
+                    model.created_at <= until,
+                )
             )
+        in_window = (
+            AgenticUsage.project_id == project_id,
+            AgenticUsage.created_at >= since,
+            AgenticUsage.created_at <= until,
+        )
         grounded = 0
         for nugget in nuggets:
             unit = await db.scalar(
@@ -126,15 +138,9 @@ async def _run_findings(project_id: str, since: datetime) -> dict:
             )
             grounded += 1 if unit else 0
         cost = await db.scalar(
-            select(func.coalesce(func.sum(AgenticUsage.cost_usd), 0.0)).where(
-                AgenticUsage.project_id == project_id, AgenticUsage.created_at >= since
-            )
+            select(func.coalesce(func.sum(AgenticUsage.cost_usd), 0.0)).where(*in_window)
         )
-        calls = await db.scalar(
-            select(func.count())
-            .select_from(AgenticUsage)
-            .where(AgenticUsage.project_id == project_id, AgenticUsage.created_at >= since)
-        )
+        calls = await db.scalar(select(func.count()).select_from(AgenticUsage).where(*in_window))
     return {
         "nugget_texts": [n.text or "" for n in nuggets],
         "nuggets": len(nuggets),
@@ -155,6 +161,12 @@ def main() -> None:
     parser.add_argument("--prefix", default="HB-IV")
     parser.add_argument("--timeout", type=float, default=7200)
     parser.add_argument("--out", default="")
+    parser.add_argument(
+        "--collect-since",
+        default="",
+        help="ISO time: skip the run and grade what the project stored in [since, until]",
+    )
+    parser.add_argument("--collect-until", default="")
     args = parser.parse_args()
 
     import httpx
@@ -165,6 +177,22 @@ def main() -> None:
     register_models()
     docs = asyncio.run(_documents(args.project, args.prefix))
     themes = theme_quotes(args.qrels)
+    if args.collect_since:
+        since = datetime.fromisoformat(args.collect_since)
+        until = datetime.fromisoformat(args.collect_until) if args.collect_until else None
+        found = asyncio.run(_run_findings(args.project, since, until))
+        report = {
+            "measure": "SK2/SK3 skill theme recall (professional-readiness review, DEC-8)",
+            "label": args.label,
+            "skill": args.skill,
+            "endpoint": args.endpoint,
+            "collected": {"since": args.collect_since, "until": args.collect_until},
+            "files": len(docs),
+            "theme_recall": theme_recall(found.pop("nugget_texts"), themes),
+            **found,
+        }
+        _write(report, args.out)
+        return
     with httpx.Client(base_url=BASE, timeout=args.timeout + 60) as client:
         pinned = client.post("/api/settings/pi-default", json={"endpoint_id": args.endpoint})
         since = datetime.now(UTC)
@@ -189,6 +217,7 @@ def main() -> None:
         "label": args.label,
         "skill": args.skill,
         "endpoint": args.endpoint,
+        "since": since.isoformat(),
         "endpoint_pinned": pinned.status_code,
         "files": len(docs),
         "status": response.status_code,
@@ -199,9 +228,13 @@ def main() -> None:
         "theme_recall": theme_recall(found.pop("nugget_texts"), themes),
         **found,
     }
+    _write(report, args.out)
+
+
+def _write(report: dict, out: str) -> None:
     text = json.dumps(report, indent=2)
-    if args.out:
-        open(args.out, "w", encoding="utf-8").write(text + "\n")
+    if out:
+        open(out, "w", encoding="utf-8").write(text + "\n")
     print(text)
 
 
