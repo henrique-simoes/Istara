@@ -669,12 +669,7 @@ class ContextDAG:
             "- Research findings and data points\n"
             "- Emotional context and user sentiments\n"
             "- File references and sources\n\n"
-            "Be concise but complete. Do not omit details that might be needed later.\n"
-            # G2 (2026-09-27): half of the planted identifiers were paraphrased away. An exact code,
-            # ID or quantity is what a later question asks for, and it cannot be reconstructed.
-            "End with a line 'Exact details:' that copies, character for character, every "
-            "identifier, code, reference number, amount and date in the segment, each with who or "
-            "what it belongs to (for example 'P7 shop code: HX-4471').\n\n"
+            "Be concise but complete. Do not omit details that might be needed later.\n\n"
             f"{transcript}"
         )
 
