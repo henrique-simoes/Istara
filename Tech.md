@@ -3324,6 +3324,13 @@ Lifecycle `docs/build-stream/2026-09-26-professional-readiness-review.md`.
   authenticated reviewer, never a client-supplied name (K1).
 - **Self-improvement boundary.** `tests/test_self_improvement_artifact_boundary.py` fails if a
   self-improvement module imports or names a research-artifact model (E1).
+- **Interface (Phase 3).** Metadata text uses `--ui-ink-subtle` (light `#5b6778`, dark `#a3b1c5`,
+  >= 4.5:1 on every surface in use); `globals.css` maps the legacy `text-slate-400/500` (light),
+  `text-slate-500/600` (dark) and `text-amber-500/600` utilities onto the semantic tokens with
+  `:where()` so explicit variants still win. Viewers never trigger a folder sync; only admins request
+  governance proposals. Scenario 90 walks every view and sub-tab in both themes and three roles
+  (`tests/simulation/scenarios/90-menu-walk.mjs`). The sign-in copy change was revalidated against the
+  security benchmark (`security/SECURITY_BENCHMARK.md`).
 - **Measurement harnesses.** `app/evals/study_capture_eval.py` (S1-S5),
   `skill_theme_eval.py` (SK3 theme recall), `coding_agreement_eval.py` (C2/C3, codebook arms,
   DEC-3), `report_path_eval.py` (R0/R1 end to end).
