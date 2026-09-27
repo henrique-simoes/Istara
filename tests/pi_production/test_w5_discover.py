@@ -129,21 +129,24 @@ def test_w5_discover_sites_carry_dispatcher_path():
     assert "agentic.completion" in ci_plan
     assert "skill.discover_plan" in ci_plan
 
+    # Since D-16/SK1 the discover skills analyse every window through
+    # ``skill_windows.analyse_in_windows`` and synthesise through ``synthesise_findings``;
+    # both dispatch ``agentic.structured`` with ``skill.discover_analyze``.
+    windows_src = (REPO_ROOT / "backend/app/skills/skill_windows.py").read_text(encoding="utf-8")
+    assert windows_src.count("agentic.structured(") >= 2
+    assert windows_src.count('purpose="skill.discover_analyze"') >= 2
+
     ci_exec = _function_source("contextual_inquiry.py", "execute")
-    assert "agentic.structured" in ci_exec
-    assert (
-        "skill.discover_analyze" in ci_exec and "CONTEXTUAL_INQUIRY_SCHEMA" in ci_exec
-    )
+    assert "analyse_in_windows" in ci_exec and "synthesise_findings" in ci_exec
+    assert "CONTEXTUAL_INQUIRY_SCHEMA" in ci_exec
 
     diary_plan = _function_source("diary_studies.py", "plan")
     assert "agentic.completion" in diary_plan
     assert "skill.discover_plan" in diary_plan
 
     diary_exec = _function_source("diary_studies.py", "execute")
-    assert "agentic.structured" in diary_exec
-    assert (
-        "skill.discover_analyze" in diary_exec and "DIARY_ANALYSIS_SCHEMA" in diary_exec
-    )
+    assert "analyse_in_windows" in diary_exec and "synthesise_findings" in diary_exec
+    assert "DIARY_ANALYSIS_SCHEMA" in diary_exec
 
     ui_plan = _function_source("user_interviews.py", "plan")
     assert "agentic.completion" in ui_plan
@@ -433,7 +436,8 @@ async def test_interviews_execute_single_transcript_flag_on_dispatches_structure
         _skill_input(user_context="interview transcript")
     )
 
-    assert len(dispatcher_stub.calls) == 1, "single transcript — no synthesis call"
+    # SK1: a single transcript is synthesised too (facts, insights, recommendations).
+    assert len(dispatcher_stub.calls) == 2, "one transcript analysis + one synthesis"
     method, kwargs = dispatcher_stub.calls[0]
     assert method == "structured"
     assert kwargs["purpose"] == "skill.discover_analyze"
@@ -441,7 +445,7 @@ async def test_interviews_execute_single_transcript_flag_on_dispatches_structure
     assert kwargs["schema"] is TRANSCRIPT_ANALYSIS_SCHEMA
     assert kwargs["params"].temperature == 0.3
     assert output.nuggets[0]["text"] == "dispatcher quote"
-    assert "synthesis.json" not in output.artifacts
+    assert "synthesis.json" in output.artifacts
 
 
 def _two_transcripts(tmp_path: Path) -> list[str]:
@@ -490,7 +494,7 @@ async def test_interviews_synthesis_flag_on_dispatches_structured(
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
     monkeypatch.setattr(
-        "app.skills.discover.user_interviews.process_file", _fake_process_file
+        "app.core.file_processor.process_file", _fake_process_file
     )
 
     output = await _ui_skill().execute(_skill_input(files=_two_transcripts(tmp_path)))
@@ -536,7 +540,7 @@ async def test_interviews_synthesis_flag_on_structured_failure_keeps_raw_fallbac
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
     monkeypatch.setattr(
-        "app.skills.discover.user_interviews.process_file", _fake_process_file
+        "app.core.file_processor.process_file", _fake_process_file
     )
 
     output = await _ui_skill().execute(_skill_input(files=_two_transcripts(tmp_path)))
@@ -624,7 +628,8 @@ async def test_diary_execute_flag_on_structured_raise_keeps_empty_fallback(
     output = await _diary_skill().execute(_skill_input(user_context="day 1: ..."))
 
     assert len(dispatcher_stub.calls) == 1
-    assert output.success is True
+    # A failed analysis is reported as a failed run, never as a successful empty one (SK4).
+    assert output.success is False
     assert output.nuggets == [], "raised structured call must degrade to empty analysis"
 
 
@@ -661,7 +666,7 @@ async def test_interviews_synthesis_flag_on_structured_raise_keeps_raw_fallback(
 
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
     monkeypatch.setattr(
-        "app.skills.discover.user_interviews.process_file", _fake_process_file
+        "app.core.file_processor.process_file", _fake_process_file
     )
 
     output = await _ui_skill().execute(_skill_input(files=_two_transcripts(tmp_path)))

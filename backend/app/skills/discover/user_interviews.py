@@ -479,7 +479,8 @@ class UserInterviewsSkill(BaseSkill):
         # single transcript (SK1): the analyses go in whole when they fit, otherwise the passage
         # themes and nuggets that fit.
         synthesis = None
-        if all_analyses:
+        # Nothing to synthesise when no passage yielded a nugget (a failed analysis, SK4).
+        if all_analyses and any(a.get("nuggets") for a in all_analyses):
             analyses_text = json.dumps(all_analyses, indent=2)
             if len(analyses_text) > window_chars:
                 compact = [
