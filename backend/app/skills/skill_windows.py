@@ -9,6 +9,7 @@ exact source span (``services/finding_grounding.py``).
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass, field
@@ -277,3 +278,129 @@ def scaled_timeout(base_seconds: float, files: list[str], project_id: str | None
     """A skill's wall-clock budget grows with the calls it must make; each call keeps its own
     liveness in the runtime, so a long, steadily progressing analysis is never cut off early."""
     return float(base_seconds) * estimated_calls(files, project_id)
+
+
+SYNTHESIS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "facts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "supporting_nuggets": {"type": "array", "items": {"type": "number"}},
+                },
+            },
+        },
+        "insights": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "supporting_facts": {"type": "array", "items": {"type": "string"}},
+                    "confidence": {"type": "string"},
+                },
+            },
+        },
+        "recommendations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "supporting_insights": {"type": "array", "items": {"type": "string"}},
+                    "priority": {"type": "string"},
+                    "effort": {"type": "string"},
+                },
+            },
+        },
+    },
+    "required": [],
+}
+
+SYNTHESIS_PROMPT = """You are an expert UX researcher synthesising the findings of a {method}.
+
+The evidence nuggets below were extracted from the source data; each is numbered and names the
+file it came from. Use only them: every fact must rest on nuggets you cite by number, every insight
+on facts, every recommendation on insights. Do not add claims the nuggets do not support.
+
+{analysis}<nuggets>
+{nuggets}
+</nuggets>
+
+Return JSON:
+{{"facts": [{{"text": "...", "supporting_nuggets": [1, 2]}}],
+"insights": [{{"text": "...", "supporting_facts": ["fact text"], "confidence": "high|medium|low"}}],
+"recommendations": [{{"text": "...", "supporting_insights": ["insight text"],
+"priority": "low|medium|high|critical", "effort": "low|medium|high"}}]}}"""
+
+
+async def synthesise_findings(
+    skill_input, *, method: str, nuggets: list[dict], analysis: dict | None = None
+) -> tuple[list[dict], list[dict], list[dict], list[str]]:
+    """Facts, insights and recommendations over a skill's labelled nuggets (SK1).
+
+    Used by the custom discover skills, which extract nuggets per window but promised findings
+    too. The synthesis sees only the nuggets (and a compact copy of the skill's own analysis),
+    so what it concludes stays tied to evidence. Returns (facts, insights, recommendations,
+    errors); a failed call returns no findings and says so, never invented ones.
+    """
+    if not nuggets:
+        return [], [], [], []
+    from app.core.agentic import agentic
+    from app.core.agentic.types import TurnParams
+
+    budget = resolve_call_budget(skill_input.project_id)
+    limit = window_char_budget(budget, 1200)
+    extra = ""
+    if analysis:
+        compact = json.dumps(
+            {k: v for k, v in analysis.items() if k not in ("nuggets", "summary") and v},
+            indent=1,
+        )[: limit // 4]
+        if compact and compact != "{}":
+            extra = f"The skill's own analysis of the data (for context):\n{compact}\n\n"
+    prompt = SYNTHESIS_PROMPT.format(
+        method=method,
+        analysis=extra,
+        nuggets=nuggets_as_evidence(nuggets, limit - len(extra)),
+    )
+    try:
+        outcome = await agentic.structured(
+            purpose="skill.discover_analyze",
+            project_id=skill_input.project_id,
+            system=None,
+            messages=[{"role": "user", "content": prompt}],
+            schema=SYNTHESIS_SCHEMA,
+            params=TurnParams(temperature=0.3, max_tokens=budget.max_output_tokens),
+            spine_phase="synthesis",
+        )
+        data = outcome.value if outcome.status == "success" and outcome.value else {}
+    except Exception as exc:  # reported, never replaced by invented findings
+        logger.warning("Synthesis failed: %s", exc)
+        return [], [], [], [f"synthesis: {exc}"]
+    if not data:
+        return [], [], [], ["synthesis: the model returned no findings"]
+    facts = [{"text": f["text"]} for f in data.get("facts", []) if f.get("text")]
+    insights = [
+        {
+            "text": i["text"],
+            "confidence": i.get("confidence", "medium"),
+            "supporting_facts": i.get("supporting_facts", []),
+        }
+        for i in data.get("insights", [])
+        if i.get("text")
+    ]
+    recommendations = [
+        {
+            "text": r["text"],
+            "priority": r.get("priority", "medium"),
+            "effort": r.get("effort", "medium"),
+            "supporting_insights": r.get("supporting_insights", []),
+        }
+        for r in data.get("recommendations", [])
+        if r.get("text")
+    ]
+    return facts, insights, recommendations, []

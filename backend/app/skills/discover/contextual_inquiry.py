@@ -179,7 +179,7 @@ Respond in JSON:
 
     async def execute(self, skill_input: SkillInput) -> SkillOutput:
         # Every window of the input is analysed (D-16); nuggets keep the file they came from.
-        from app.skills.skill_windows import analyse_in_windows
+        from app.skills.skill_windows import analyse_in_windows, synthesise_findings
 
         if not skill_input.files and not skill_input.user_context:
             return SkillOutput(
@@ -200,12 +200,19 @@ Respond in JSON:
             if isinstance(n, dict) and n.get("text")
         ]
 
+        facts, insights, recommendations, errors = await synthesise_findings(
+            skill_input, method="contextual inquiry", nuggets=nuggets, analysis=data
+        )
         return SkillOutput(
             success=bool(nuggets),
             summary=data.get(
                 "summary", f"Analyzed contextual inquiry notes. Found {len(nuggets)} nuggets."
             ),
             nuggets=nuggets,
+            facts=facts,
+            insights=insights,
+            recommendations=recommendations,
+            errors=errors,
             artifacts={
                 "analysis.json": json.dumps(data, indent=2),
                 "input_coverage.json": json.dumps(coverage, indent=2),
