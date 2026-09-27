@@ -383,7 +383,11 @@ async def synthesise_findings(
         return [], [], [], [f"synthesis: {exc}"]
     if not data:
         return [], [], [], ["synthesis: the model returned no findings"]
-    facts = [{"text": f["text"]} for f in data.get("facts", []) if f.get("text")]
+    facts = [
+        {"text": f["text"], "supporting_nuggets": f.get("supporting_nuggets", [])}
+        for f in data.get("facts", [])
+        if f.get("text")
+    ]
     insights = [
         {
             "text": i["text"],
