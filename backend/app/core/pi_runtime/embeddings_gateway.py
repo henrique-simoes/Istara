@@ -91,6 +91,25 @@ async def assert_vector_space_invariant(*, dimension_probe: Any) -> str:
     return model
 
 
+async def startup_vector_space_status(*, dimension_probe: Any) -> dict:
+    """The startup verdict on the shared vector space: ``ok`` or ``unverified``.
+
+    Raises ``VectorSpaceInvariantError`` only for a proven divergence (both engines answered with
+    different models or dimensions). An unreachable embedding model proves nothing either way:
+    both engines embed through this one gateway (``AgenticDispatcher.embed``), so they cannot
+    split the space while it is down, and every stored vector stays bound to the serving model's
+    fingerprint (``app.core.embeddings``). Refusing startup for it locked every fresh install,
+    which has no local model yet, out of the settings it needs to configure one.
+    """
+    try:
+        model = await assert_vector_space_invariant(dimension_probe=dimension_probe)
+    except VectorSpaceInvariantError as exc:
+        if str(exc).startswith("vector_space_invariant_probe_failed"):
+            return {"status": "unverified", "model": default_embed_model(), "reason": str(exc)}
+        raise
+    return {"status": "ok", "model": model}
+
+
 class EmbeddingsGateway:
     """Resolve an embed endpoint from the PiModelManager and call it directly."""
 
