@@ -1,6 +1,5 @@
 """Unit tests for Istara version resolution and update mechanics."""
 
-import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -77,8 +76,18 @@ async def test_check_for_updates_when_current_is_latest(monkeypatch):
     updates_routes._update_cache.clear()
 
     mock_releases = [
-        {"tag_name": "v2026.05.27.3", "name": "Istara 2026.05.27.3", "draft": False, "prerelease": False},
-        {"tag_name": "v2026.04.08.3", "name": "Istara 2026.04.08.3", "draft": False, "prerelease": False},
+        {
+            "tag_name": "v2026.05.27.3",
+            "name": "Istara 2026.05.27.3",
+            "draft": False,
+            "prerelease": False,
+        },
+        {
+            "tag_name": "v2026.04.08.3",
+            "name": "Istara 2026.04.08.3",
+            "draft": False,
+            "prerelease": False,
+        },
     ]
 
     class FakeClient:
@@ -92,6 +101,7 @@ async def test_check_for_updates_when_current_is_latest(monkeypatch):
             return SimpleNamespace(status_code=200, json=lambda: mock_releases)
 
     import httpx
+
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: FakeClient())
     monkeypatch.setattr(updates_routes, "get_current_version", lambda: "2026.05.27.3")
     monkeypatch.setattr(updates_routes, "is_containerized", lambda: False)
@@ -130,6 +140,7 @@ async def test_check_for_updates_when_outdated_in_docker(monkeypatch):
             return SimpleNamespace(status_code=200, json=lambda: mock_releases)
 
     import httpx
+
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: FakeClient())
     monkeypatch.setattr(updates_routes, "get_current_version", lambda: "2026.04.27")
     monkeypatch.setattr(updates_routes, "is_containerized", lambda: True)
@@ -160,9 +171,12 @@ async def test_check_for_updates_rate_limit_git_fallback(monkeypatch):
             return SimpleNamespace(status_code=403)
 
     import httpx
+
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: FakeClient403())
     monkeypatch.setattr(updates_routes, "get_current_version", lambda: "2026.04.27")
-    monkeypatch.setattr(updates_routes, "get_latest_release_version_from_git", lambda: "2026.05.27.3")
+    monkeypatch.setattr(
+        updates_routes, "get_latest_release_version_from_git", lambda: "2026.05.27.3"
+    )
     monkeypatch.setattr(updates_routes, "head_includes_release", lambda *a: False)
 
     res = await check_for_updates()
@@ -177,7 +191,9 @@ async def test_apply_update_refuses_in_container(monkeypatch):
     from fastapi import HTTPException
 
     monkeypatch.setattr(updates_routes, "is_containerized", lambda: True)
-    monkeypatch.setattr("app.api.routes.updates.require_admin_or_localhost_for_destructive_action", lambda *a: None)
+    monkeypatch.setattr(
+        "app.api.routes.updates.require_admin_or_localhost_for_destructive_action", lambda *a: None
+    )
 
     req = MagicMock()
     payload = updates_routes.UpdateConfirmation(confirm="APPLY_UPDATE")
@@ -186,3 +202,26 @@ async def test_apply_update_refuses_in_container(monkeypatch):
 
     assert exc_info.value.status_code == 400
     assert "docker compose pull" in exc_info.value.detail
+
+
+def _stale_checkout(tmp_path, monkeypatch, describe):
+    """A git checkout whose VERSION file lags the release tags (D-11)."""
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "backend").mkdir()
+    (tmp_path / "VERSION").write_text("2026.05.27.3\n")
+    monkeypatch.setattr(updates_routes, "_REPO_ROOT", tmp_path, raising=False)
+    monkeypatch.setattr(updates_routes, "_CANDIDATES", [tmp_path / "VERSION"])
+    monkeypatch.setattr(updates_routes, "_run_git", lambda args, cwd=None, timeout=10: describe)
+    monkeypatch.delenv("ISTARA_VERSION", raising=False)
+
+
+def test_checkout_reports_its_release_tag_not_a_stale_version_file(tmp_path, monkeypatch):
+    _stale_checkout(tmp_path, monkeypatch, "v2026.09.27-4-gabc1234")
+    assert get_current_version() == "2026.09.27"
+
+
+def test_build_stamp_wins_and_version_file_is_the_last_resort(tmp_path, monkeypatch):
+    _stale_checkout(tmp_path, monkeypatch, "")
+    assert get_current_version() == "2026.05.27.3"
+    monkeypatch.setenv("ISTARA_VERSION", "2026.09.27.2")
+    assert get_current_version() == "2026.09.27.2"
