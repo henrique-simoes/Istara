@@ -871,17 +871,21 @@ Istara trades compression ratio for **zero dependencies** and **instant speed** 
 2. Agent orchestrator picks task (highest priority, assigned agent preferred)
 3. Skill selected: "user-interviews" (from task.skill_name or keyword inference)
 4. SkillInput assembled:
-   - Files: interview transcripts from project upload dir
+   - Files: the task's input documents (task.input_document_ids), else the project folder
    - Project context: research questions, participant demographics
    - Company context: terminology, research standards
-5. Skill.execute() runs:
-   - Sends structured prompt to LLM with interview analysis methodology
-   - Parses response into nuggets (quotes), facts (patterns), insights, recommendations
+5. Skill.execute() runs (app/skills/skill_windows.py):
+   - Reads every file in full and splits it into windows sized to the serving endpoint's context,
+     each passage labelled with its source file
+   - One structured call per window extracts nuggets; one synthesis call over the labelled nuggets
+     produces facts, insights and recommendations (also for a single input)
+   - An empty model answer stores no findings (the run says the model returned none)
 6. Findings stored in DB with evidence chains:
-   - Nugget: "P3 said 'I couldn't find the settings menu'" (source: interview_p3.txt)
-   - Fact: "3/5 participants struggled with settings navigation" (nugget_ids: [n1, n3, n5])
-   - Insight: "Settings discoverability is a critical friction point" (fact_ids: [f1])
-   - Recommendation: "Add settings shortcut to main nav" (insight_ids: [i1])
+   - Nugget: a quote that is verbatim in a raw source becomes an exact-span evidence unit of that
+     document (app/services/finding_grounding.py) and starts a governed coding run; anything else
+     stays a candidate
+   - Fact / insight / recommendation: linked to the findings closest in meaning, or to the support
+     the synthesis cites (app/core/finding_links.py)
 7. Self-check verifies claims against source documents
 8. Artifacts (analysis report) ingested into vector store
 9. Task moved to IN_REVIEW, WebSocket broadcasts progress
@@ -3287,6 +3291,38 @@ source does not record is `null` with provenance `unknown`, never 0; `host` is a
 machine name. Standard library only; nothing in the backend imports it. Its tests are
 `tests/test_export_telemetry_v1.py`, and the feature is registered in
 `testing/feature_coverage.yml`.
+
+### Professional-readiness review (2026-09-26/27)
+
+Lifecycle `docs/build-stream/2026-09-26-professional-readiness-review.md`.
+
+- **Studies.** Messaging studies store only answers to a prompt they recorded (`pending_prompt`),
+  ask consent by default, screen, stop at quota, send reminders and export pseudonymous CSV; survey
+  re-sync is idempotent (`services/adaptive_interview.py`, `inbound_processor.py`,
+  `deployment_reminders.py`, `survey_ingestion.py`). "Analyse responses" turns a study's answers
+  into one transcript document and a Kanban task on it (`services/study_analysis.py`,
+  `POST /api/deployments/{id}/analyse`, `POST /api/surveys/links/{id}/analyse`).
+- **Skills read everything.** `app/skills/skill_windows.py` sizes each call to the endpoint
+  (`skill_execute_context_ceiling_tokens`), windows the full input with source labels, synthesises
+  across windows, and reports `input_coverage.json`; skill timeouts scale with the calls a run needs.
+  Contextual inquiry and diary studies synthesise facts too (`synthesise_findings`).
+- **Grounding.** A skill nugget becomes a source-span evidence unit only by exact (whitespace-aside)
+  substring match in a raw source; the named file wins, then the task's inputs, then a unique match
+  (`services/finding_grounding.py`, DEC-5).
+- **Coding.** Nominal reliability uses each coder's normalised `primary_code`
+  (`core/research_validity.py`). Coders receive only the fields they code with, in batches of at
+  most `research_validity_coding_units_per_call` units, so the owner's local model can take part
+  (DEC-11).
+- **Reports.** `GET /api/reports/{project}/{report}/export?format=md|docx|csv` exports a report
+  with the evidence trail of every finding down to the quoted source span
+  (`services/report_export.py`); the share of traced findings is R1.
+- **Review attribution.** Approve, request-revision, verify and Kanban move-to-done record the
+  authenticated reviewer, never a client-supplied name (K1).
+- **Self-improvement boundary.** `tests/test_self_improvement_artifact_boundary.py` fails if a
+  self-improvement module imports or names a research-artifact model (E1).
+- **Measurement harnesses.** `app/evals/study_capture_eval.py` (S1-S5),
+  `skill_theme_eval.py` (SK3 theme recall), `coding_agreement_eval.py` (C2/C3, codebook arms,
+  DEC-3), `report_path_eval.py` (R0/R1 end to end).
 
 ### Research-spine findings and retrieval measurements (2026-09-25)
 
