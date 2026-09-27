@@ -103,6 +103,8 @@ data/_skill_model_config.json
 
 # Rust build output
 desktop/src-tauri/target/
+# Source staged by scripts/stage_desktop_bundle.py before `tauri build`
+desktop/src-tauri/istara/
 
 # Session context and code exports
 session-ses_*.md
