@@ -3313,6 +3313,10 @@ Lifecycle `docs/build-stream/2026-09-26-professional-readiness-review.md`.
   (`skill_execute_context_ceiling_tokens`), windows the full input with source labels, synthesises
   across windows, and reports `input_coverage.json`; skill timeouts scale with the calls a run needs.
   Contextual inquiry and diary studies synthesise facts too (`synthesise_findings`).
+- **Requirements keep the chosen model (D-31).** `PiModelManager.resolve` with a requirement
+  (`min_context`, vision) returns the user's default endpoint when it meets the requirement; only a
+  default that cannot meet it falls through to catalog order. Before, every generic skill (which
+  always states `min_context`) ran on the first capable catalog entry, not the chosen model.
 - **Call budget and extraction windows (D-29, D-30).** A skill's budget comes from the serving
   endpoint through the engine's `model_manager()` accessor (a failed lookup is logged, never silent).
   Extraction windows fit both the context and the answer: at most 0.8 characters per output token,

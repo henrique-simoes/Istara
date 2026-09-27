@@ -601,6 +601,24 @@ class PiModelManager:
                 context_window=entry.context_window,
             )
             return self._materialize(entry)
+        # A stated requirement (vision, a skill's context size) keeps the model the user chose when
+        # that model meets it; only a default that cannot meet it falls through to the catalog
+        # order (D-31: skills otherwise ran on the first capable entry, never the chosen model).
+        if model is None:
+            default_id = str(getattr(settings, "pi_default_endpoint_id", "") or "").strip()
+            default_entry = self._entries.get(default_id) if default_id else None
+            if (
+                default_entry is not None
+                and not _is_contract_stub_chat_entry(default_entry)
+                and self._matches(
+                    default_entry,
+                    model=None,
+                    require_vision=require_vision,
+                    min_context=min_context,
+                    project_id=project_id,
+                )
+            ):
+                return self._materialize(default_entry)
         candidates = [
             entry
             for entry in self._entries.values()

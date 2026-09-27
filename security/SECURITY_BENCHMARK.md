@@ -335,6 +335,12 @@ planes embed the model the profile names, and an endpoint configured for one mod
 A local binding waits for a model that is still loading only within the response-start budget, and
 remote endpoints never wait.
 
+Endpoint selection revalidated (2026-09-27, D-31). A call that states a requirement now keeps the
+user's chosen default endpoint when that endpoint meets it; project scoping, the Petals namespace
+and donor authorisation checks (`_matches`) apply to the default exactly as to any candidate, and
+explicit endpoint pins and model pins are unchanged. The benchmark was re-run on the changed paths
+with no new partial or failure.
+
 Sign-in copy revalidated (2026-09-27, professional-readiness review Phase 3). The login screen's
 username placeholder now reads "Your username" when signing in and "Choose a username" only when
 registering; no field, request, validation, rate limit or session behaviour changed. The benchmark
