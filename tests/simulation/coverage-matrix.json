@@ -38,8 +38,8 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 07 20/20, 16 20/20; run 2026-09-27T01-44-55-011Z). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "17 24/24 + 47 32/32 + 70res 18/18; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "laws": {
@@ -53,8 +53,8 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 65 17/17; run 2026-09-27T01-44-55-011Z). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "65 prior browser; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "tasks": {
@@ -74,8 +74,8 @@
    ],
    "drive": "mixed",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 08 13/13, 13 11/11, 18 10/10, 33 9/9; run 2026-09-27T01-44-55-011Z). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "18 10/10 + 33 9/9; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "interviews": {
@@ -126,8 +126,8 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 24 9/9; run 2026-09-27T01-44-55-011Z). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "23/24 prior browser; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "skills": {
@@ -167,8 +167,8 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 10 28/28, 11 21/21, 21 41/41, 27 55/55, 40 12/12; run 2026-09-27T01-44-55-011Z). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "22 30/30 + 38 13/13 + 44 12/12 + 73 15/15; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "memory": {
@@ -209,8 +209,8 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch2 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 45 35/35, 46 25/25; run 2026-09-27T01-44-55-011Z). Previous: pass (batch2 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "Batch 2 live in nifty_dirac, all PASS first try.; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "integrations": {
@@ -246,8 +246,8 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 49 14/14; run 2026-09-27T01-44-55-011Z). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "batch pilot; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "settings": {
@@ -286,8 +286,8 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 69 13/13; run 2026-09-27T01-44-55-011Z). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "67 18/18; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "autoresearch": {
@@ -303,8 +303,8 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 61 15/15; run 2026-09-27T01-44-55-011Z). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "batch pilot; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "backup": {
@@ -355,8 +355,8 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 34 11/11; run 2026-09-27T01-44-55-011Z). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "batch pilot; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "ensemble": {
@@ -407,8 +407,8 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 81 5/5; run 2026-09-27T01-44-55-011Z). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "81 5/5 — mapping corrected 2026-09-10 (the row listed no scenarios while claiming the 81 verdict); 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "history": {
@@ -423,8 +423,8 @@
    ],
    "drive": "browser",
    "newest_scenario_change": "2026-09-26",
-   "live_verdict": "pass (batch3 live 2026-09-08)",
-   "live_verified_at": "2026-09-08",
+   "live_verdict": "pass (container qa-ui contract-stub lane 2026-09-27, Mac Studio: 30 15/15 (run 2026-09-27T01-55-57-767Z); run 2026-09-27T01-44-55-011Z). Previous: pass (batch3 live 2026-09-08)",
+   "live_verified_at": "2026-09-27",
    "notes": "30 static-by-design; 375 px: 88 11/11 (run 2026-09-26T05-11-14-723Z: nothing cut off at 375 px in 24 views, chat drawer, interview list/tags, keyboard, dark, desktop columns)"
   },
   "notifications": {

@@ -234,7 +234,12 @@ export default function NotificationListTab() {
         )}
 
         {/* Notification list */}
-        <div className="flex-1 overflow-y-auto" role="list" aria-label="Notifications">
+        {/* A list role only when list items are rendered (axe aria-required-children). */}
+        <div
+          className="flex-1 overflow-y-auto"
+          role={!loading && notifications.length > 0 ? "list" : undefined}
+          aria-label={!loading && notifications.length > 0 ? "Notifications" : undefined}
+        >
           {loading ? (
             <div className="flex items-center justify-center py-16 text-slate-400 dark:text-slate-500">
               <RefreshCw size={18} className="animate-spin mr-2" />

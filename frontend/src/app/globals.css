@@ -238,3 +238,19 @@ body {
   0% { transform: translateY(0) rotate(0deg); opacity: 1; }
   100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
 }
+
+/*
+ * WCAG 2.2 AA for legacy text utilities (professional-readiness review U4, 2026-09-27).
+ * About 1,200 elements still use the raw `text-slate-400` primitive for metadata text; on white
+ * it measures 2.6:1 (4.5:1 required), and amber-500/600 warning text 2.2-3.2:1. In the light theme
+ * they take the semantic roles DESIGN.md prescribes (`--ui-ink-subtle`, `--ui-warning`). `:where()`
+ * keeps the specificity of a single utility, so hover and focus variants still win.
+ */
+:where(html:not(.dark)) .text-slate-400 {
+  color: var(--ui-ink-subtle);
+}
+
+:where(html:not(.dark)) .text-amber-500,
+:where(html:not(.dark)) .text-amber-600 {
+  color: var(--ui-warning);
+}
