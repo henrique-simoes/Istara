@@ -307,10 +307,14 @@ def _span_in(target: str, texts: Sequence[str]) -> bool:
 
 
 def theme_coverage(texts: Sequence[str], quotes: Sequence[str], k: int = 10) -> float:
-    """Distinct theme quotes found in the top ``k`` passages / min(k, number of quotes)."""
+    """Distinct theme quotes found in the top ``k`` passages / min(k, number of quotes), at most 1.
+
+    One passage can hold several planted quotes, so the count can pass the one-per-passage
+    denominator (values up to 1.2 were reported on 2026-09-27); the share is capped at 1.
+    """
     top = list(texts)[:k]
     found = sum(1 for q in dict.fromkeys(quotes) if _span_in(q, top))
-    return found / max(1, min(k, len(set(quotes))))
+    return min(1.0, found / max(1, min(k, len(set(quotes)))))
 
 
 def binary_ndcg(texts: Sequence[str], targets: Sequence[str], k: int = 10) -> float:
