@@ -59,6 +59,12 @@ These are hypotheses to prove with failing tests first, not conclusions.
 | D-15 | Skills | `user_interviews.py` | When one input file fails to load, every later transcript's nuggets carry the wrong file name. |
 | D-16 | Skills | `skills/skill_factory.py` (generic runner behind most skills) | Input is capped at 4,000 characters for the whole task across all files, then fitted to a 4,096-token context with 1,024 output tokens: a thematic analysis of the 498,690-character Harbor study reads under 1% of it. |
 | D-17 | Skills | `skill_factory.py::_deterministic_findings_from_research_data` | When a model returns no findings, the runner stores meta-statements ("Input contains N evidence lines", "Review the source data and rerun the skill") as project facts, insights and recommendations. |
+| D-18 | Skills | `core/agent_research.py` (task skill input) | A task's `input_document_ids` never reached its skill (the ReAct path read the whole project folder; the DAG path passed no files), so "analyse these interviews" analysed whatever the folder held. |
+| D-19 | Coding | `services/research_validity_service.py::run_independent_coding_run` | Every unit of a run (up to 200) went to each coder in one prompt as its full database record: about 114,000 input and 40,000-55,000 output tokens per coder on the Harbor study. The owner's local model timed out after 584 s, so a three-model run including it could not complete. |
+| D-20 | Installers | `main.py` lifespan (vector-space invariant) | A fresh native install, which has no local model yet, refused to start: the embedding probe could not reach a model and startup aborted, so the user never reached the settings that configure one. Both engines embed through one gateway, so the refusal protected nothing. |
+| D-21 | Installers | `scripts/install-istara.sh` | On Linux the curl installer offered to install Homebrew for a missing Python or Node ("required ... on macOS"), and used `sudo apt-get` for ffmpeg, which fails as root in a container. |
+| D-22 | Installers | `backend/Dockerfile`, `qa/Dockerfile`, `api/routes/updates.py` | Docker images shipped no `VERSION`, so the status bar read "Istara vunknown"; a checkout read its stale `VERSION` before its release tag, so the update checker offered the release it was running. |
+| D-23 | Skills | `skills/discover/contextual_inquiry.py`, `diary_studies.py` | Both skills computed pain points and opportunities, then stored nuggets only: no facts, insights or recommendations, although their definitions promise them (SK1). |
 
 ## Pre-registered readiness criteria (DEC-2, fixed before any number)
 
@@ -251,6 +257,26 @@ beside it for the after arm. The pass bar (>= 0.80 per model, significantly abov
 unchanged.
 Why: one metric for both arms keeps the comparison paired and fair; grounding is measured
 separately rather than folded into recall.
+
+DEC-11 | 2026-09-27 | S2-execute | claude-code
+Context: D-19; the coding prompt grew with the run and carried whole database records.
+Decision: a coder receives only the fields it codes with (id, stable id, index, source type,
+participant, speaker, location, text, and the question asked), in batches of at most
+`research_validity_coding_units_per_call` (20) units and about
+`research_validity_coding_chars_per_call` (12,000) characters. Every coder codes the same batches;
+each batch keeps the existing repair chain; a coder still has to code every unit of the run or it
+is dropped, as before. The prompt hash covers all batches.
+Why: local-first means the smallest coder, the owner's local model, must be able to take part;
+identical batches keep the reliability comparison like with like.
+
+DEC-12 | 2026-09-27 | S2-execute | claude-code
+Context: D-20; a fresh install without a reachable embedding model refused to start.
+Decision: at startup an unreachable embedding model is recorded as `unverified` with a warning and
+startup continues; a proven divergence (both engines answering with different models or
+dimensions) still refuses to start.
+Why: both engines embed through the one Pi gateway (`AgenticDispatcher.embed`), so they cannot
+diverge while the model is down, and every stored vector stays bound to its model fingerprint; the
+refusal locked out every new native user.
 
 ## Ledger
 
