@@ -134,3 +134,11 @@ async def test_link_support_judges_every_fact_and_insight_link(monkeypatch):
     result = await graph_eval.link_support(GraphSnapshot(rows), "stub")
     assert result["fact_to_nugget"]["share"] == 0.5 and result["fact_to_nugget"]["n"] == 2
     assert result["insight_to_fact"]["n"] == 1 and len(judged) == 3
+
+
+def test_theme_coverage_never_exceeds_one_when_passages_hold_several_quotes():
+    from app.evals.graph_eval import theme_coverage
+
+    quotes = [f"planted quote number {i} about invoices" for i in range(12)]
+    passages = [" ".join(quotes[i : i + 2]) for i in range(0, 12, 2)] * 2  # two quotes per passage
+    assert theme_coverage(passages, quotes, k=10) == 1.0
