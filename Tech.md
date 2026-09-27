@@ -3313,6 +3313,12 @@ Lifecycle `docs/build-stream/2026-09-26-professional-readiness-review.md`.
   (`skill_execute_context_ceiling_tokens`), windows the full input with source labels, synthesises
   across windows, and reports `input_coverage.json`; skill timeouts scale with the calls a run needs.
   Contextual inquiry and diary studies synthesise facts too (`synthesise_findings`).
+- **Call budget and extraction windows (D-29, D-30).** A skill's budget comes from the serving
+  endpoint through the engine's `model_manager()` accessor (a failed lookup is logged, never silent).
+  Extraction windows fit both the context and the answer: at most 0.8 characters per output token,
+  since a window's nuggets quote the data. Synthesis keeps the full context.
+- **Context-DAG summaries (G2).** Each summary ends with an "Exact details" line copying identifiers,
+  codes, amounts and dates verbatim, within `dag_summary_max_tokens` (500).
 - **Grounding.** A skill nugget becomes a source-span evidence unit only by exact (whitespace-aside)
   substring match in a raw source; the named file wins, then the task's inputs, then a unique match
   (`services/finding_grounding.py`, DEC-5).

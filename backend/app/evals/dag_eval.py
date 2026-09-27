@@ -156,6 +156,8 @@ async def run(seeds: list[int], endpoint: str, messages: int) -> dict[str, Any]:
         "dag_nodes": sum(c["dag"]["nodes"] for c in conversations),
         "max_depth": max(c["dag"]["max_depth"] for c in conversations),
         "conversations": [{k: v for k, v in c.items() if k != "flags"} for c in conversations],
+        # One flag per planted fact, in seed order, so two runs on the same seeds pair by fact.
+        "per_fact": pooled,
     }
 
 
