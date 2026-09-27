@@ -148,8 +148,7 @@ async function walkAsRole(page, apiBase) {
       continue;
     }
     await target.click({ timeout: 10000 }).catch((e) => failures.push(`${viewId}: click ${e.message.slice(0, 80)}`));
-    await page.waitForLoadState("networkidle", { timeout: 4000 }).catch(() => {});
-    await page.waitForTimeout(400);
+    await settle(page);
     const text = await page.locator("main").first().innerText({ timeout: 3000 }).catch(() => "");
     if (ERROR_SURFACE.test(text)) failures.push(`${viewId}: error surface`);
     await closeOverlays(page);
@@ -236,9 +235,10 @@ async function closeOverlays(page) {
   }
 }
 
+/** The realtime UI never goes network-idle (websocket); wait for the view's content instead. */
 async function settle(page) {
-  await page.waitForLoadState("networkidle", { timeout: 4000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await page.locator("main").first().waitFor({ state: "visible", timeout: 4000 }).catch(() => {});
+  await page.waitForTimeout(900);
 }
 
 /** Tag the view's sub-tabs (ARIA tabs, or groups of two or more aria-pressed toggles). */

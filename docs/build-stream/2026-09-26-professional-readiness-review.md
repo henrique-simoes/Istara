@@ -459,7 +459,7 @@ the member menu visible on keyboard focus; list roles only with items; the desig
 focusable; viewers no longer sync, non-admins no longer request governance proposals; sign-in
 placeholder; coverage matrix rows refreshed; security benchmark revalidated for the sign-in copy.
 Result: scenario 90 16/16.
-Verified: scenario 90 16/16 (run 2026-09-27T04-18-58-272Z); stale-verdict batch 23 scenarios 435/438
+Verified: scenario 90 16/16 (run 2026-09-27T05-20-27-957Z); stale-verdict batch 23 scenarios 435/438
 (run 2026-09-27T01-44-55-011Z) and 30 15/15 (run 2026-09-27T01-55-57-767Z); simulation static 41/41;
 `tsc` clean, vitest 127/127, eslint 0 errors; `python scripts/check_a11y_contrast.py` pass;
 security benchmark pass (100%); change and feature obligations pass.
