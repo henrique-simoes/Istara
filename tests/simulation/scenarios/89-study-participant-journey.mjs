@@ -29,22 +29,32 @@
 import { readFile } from "fs/promises";
 
 import { ChannelProtocolSimulator } from "../lib/channel-protocol-simulator.mjs";
-import { navigateTo, selectProject } from "../lib/embedding-settings.mjs";
+import { selectProject } from "../lib/embedding-settings.mjs";
 import { keyboardFocusCheck, reflow375Check, setTheme } from "../lib/matrix-checks.mjs";
 import { ensureRoleAccounts, driveRoleCell } from "../lib/role-variants.mjs";
 import { createVariantLedger } from "../lib/variant-obligations.mjs";
-import { NOT_ANSWERS, PARTICIPANT_SCRIPT, parseCsv, shows } from "../lib/study-journey.mjs";
+import {
+  EXPORT_BUTTON,
+  NOT_ANSWERS,
+  PARTICIPANT_SCRIPT,
+  PROJECT_NAME,
+  STUDY_NAME,
+  cleanup,
+  driveRole,
+  openDeployments,
+  parseCsv,
+  say,
+  setup,
+  shows,
+} from "../lib/study-journey.mjs";
 
 export const name = "Research study through messaging channels";
 export const id = "89-study-participant-journey";
 
-const PROJECT_NAME = "[SIM-89] Study journey";
-const STUDY_NAME = "[SIM-89] Export habits";
 const Q1 = "How do you share reports with your team today?";
 const Q2 = "What slows that down?";
 const CLOSING = "Is there anything else you would like to tell us?";
 const SCREENER = "Do you export reports every week?";
-const EXPORT_BUTTON = 'button:has-text("Export CSV")';
 const WIZARD = 'section[aria-label="New deployment wizard"]';
 
 export async function run(ctx) {
@@ -107,40 +117,6 @@ export async function run(ctx) {
   await simulator.stop().catch(() => {});
   const passed = checks.filter((c) => c.passed).length;
   return { checks, passed, failed: checks.length - passed };
-}
-
-/** SETUP (API-behind-browser): a project and three channels started against the simulator. */
-async function setup(ctx, checks, state) {
-  const label = "[API-behind-browser] SETUP: project and three running channels (protocol simulator)";
-  try {
-    const project = await ctx.api.post("/api/projects", { name: PROJECT_NAME, description: "Scenario 89 study journey (synthetic data)" });
-    state.projectId = project.id;
-    const q = `?project_id=${encodeURIComponent(project.id)}`;
-    const configs = {
-      telegram: { bot_token: "123456789:SIM89_TELEGRAM", base_url: `${state.simulatorUrl}/bot`, secret_token: "sim89-tg-secret" },
-      slack: { bot_token: "xoxb-sim89", signing_secret: "sim89-slack-secret", base_url: `${state.simulatorUrl}/` },
-      whatsapp: { phone_number_id: "sim89_phone", access_token: "sim89_wa_token", verify_token: "sim89_verify", app_secret: "sim89_app_secret", graph_api_base: state.simulatorUrl },
-    };
-    const started = [];
-    for (const [platform, config] of Object.entries(configs)) {
-      const channel = await ctx.api.post("/api/channels", { platform, name: `[SIM-89] ${platform}`, config, project_id: project.id });
-      state.channels[platform] = channel.id;
-      const res = await ctx.api.post(`/api/channels/${channel.id}/start${q}`, {});
-      started.push(`${platform}=${res.status}`);
-    }
-    const ok = started.every((s) => s.endsWith("started") || s.endsWith("already_running"));
-    checks.push({ name: label, passed: ok, detail: started.join(" ") });
-  } catch (e) {
-    checks.push({ name: label, passed: false, detail: e.message });
-  }
-}
-
-async function openDeployments(page) {
-  await navigateTo(page, "Integrations", "integrations");
-  const tab = page.locator("main button", { hasText: "Deployments" }).first();
-  await tab.waitFor({ state: "visible", timeout: 15000 });
-  await tab.click();
-  await page.waitForTimeout(800);
 }
 
 /** 1a. Empty state: no deployments yet, honest zero counts, a way to create one. */
@@ -228,16 +204,6 @@ async function clickNext(page) {
   await page.waitForTimeout(300);
 }
 
-async function say(ctx, state, platform, sender, text) {
-  const q = `?project_id=${encodeURIComponent(state.projectId)}`;
-  const res = await ctx.api.post(`/api/channels/${state.channels[platform]}/simulate-inbound${q}`, {
-    text,
-    sender_id: sender,
-    sender_name: `Synthetic ${sender}`,
-  });
-  return res.reply || "";
-}
-
 /** 2. Activate from the dashboard, then six synthetic participants (API-behind-browser). */
 async function activateAndRunParticipants(ctx, checks, state) {
   const { page } = ctx;
@@ -265,25 +231,46 @@ async function runParticipants(ctx, checks, state) {
       replies[sender] = [];
       for (const text of texts) replies[sender].push(await say(ctx, state, platform, sender, text));
     }
-    const p1 = replies.p1;
-    checks.push({
-      name: `${label}: consent first, then screener, then questions, closing question asked on its own`,
-      passed: p1[0].includes("YES") && !p1[0].includes(Q1) && p1[1].includes(SCREENER) && p1[2].includes(Q1) && p1[3] === Q2 && p1[4] === CLOSING,
-      detail: JSON.stringify(p1.map((r) => r.slice(0, 40))),
-    });
-    checks.push({
-      name: `${label}: a NO ends the study for that participant; screened out and STOP are honoured`,
-      passed: !replies.p2[1].includes(Q1) && !replies.p2[2] && !replies.p3[2].includes(Q1) && /left the study/i.test(replies.p4[4]) && !replies.p4[5],
-      detail: `p2=${JSON.stringify(replies.p2)} p3last=${replies.p3[2].slice(0, 40)} p4stop=${replies.p4[4].slice(0, 40)}`,
-    });
-    checks.push({
-      name: `${label}: once 2 participants finished, a new participant is told the study is full`,
-      passed: /all the participants it needs/i.test(replies.p6[0]) && !replies.p6[1],
-      detail: `p6=${JSON.stringify(replies.p6)}`,
-    });
+    checks.push(orderCheck(label, replies.p1), exitsCheck(label, replies), quotaCheck(label, replies.p6));
   } catch (e) {
     checks.push({ name: label, passed: false, detail: e.message });
   }
+}
+
+/** Consent first, then the screener, then the questions; the closing question on its own. */
+function orderCheck(label, p1) {
+  const expected = [
+    (r) => r.includes("YES") && !r.includes(Q1),
+    (r) => r.includes(SCREENER),
+    (r) => r.includes(Q1),
+    (r) => r === Q2,
+    (r) => r === CLOSING,
+  ];
+  return {
+    name: `${label}: consent first, then screener, then questions, closing question asked on its own`,
+    passed: expected.every((test, i) => test(p1[i] || "")),
+    detail: JSON.stringify(p1.map((r) => r.slice(0, 40))),
+  };
+}
+
+/** A NO ends the study; a screened-out participant is not asked the questions; STOP is final. */
+function exitsCheck(label, replies) {
+  const declined = !replies.p2[1].includes(Q1) && !replies.p2[2];
+  const screenedOut = !replies.p3[2].includes(Q1);
+  const withdrew = /left the study/i.test(replies.p4[4]) && !replies.p4[5];
+  return {
+    name: `${label}: a NO ends the study for that participant; screened out and STOP are honoured`,
+    passed: declined && screenedOut && withdrew,
+    detail: `declined=${declined} screenedOut=${screenedOut} withdrew=${withdrew}`,
+  };
+}
+
+function quotaCheck(label, p6) {
+  return {
+    name: `${label}: once 2 participants finished, a new participant is told the study is full`,
+    passed: /all the participants it needs/i.test(p6[0]) && !p6[1],
+    detail: `p6=${JSON.stringify(p6)}`,
+  };
 }
 
 /** 3a. The tracker shows each participant's outcome in words a researcher reads. */
@@ -449,43 +436,3 @@ async function matrix(ctx, checks, state) {
   await setTheme(page, "light");
 }
 
-async function driveRole(page, role) {
-  try {
-    await selectProject(page, PROJECT_NAME);
-    await navigateTo(page, "Integrations", "integrations");
-    await page.locator("main button", { hasText: "Deployments" }).first().click({ timeout: 15000 });
-    await page.waitForTimeout(800);
-    const newButton = page.locator("main button", { hasText: "New Deployment" }).first();
-    const canCreate = await newButton.isEnabled().catch(() => false);
-    const study = page.locator("main button", { hasText: STUDY_NAME }).first();
-    const seesStudy = await shows(study, 10000);
-    if (seesStudy) await study.click();
-    // Wait for the dashboard itself before judging whether Export is offered.
-    const dashboard = seesStudy && (await shows(page.locator("main h2", { hasText: STUDY_NAME }).first(), 10000));
-    await page.waitForTimeout(500);
-    const exportShown = await page.locator(EXPORT_BUTTON).first().isVisible().catch(() => false);
-    if (role === "viewer") {
-      return { ok: dashboard && !canCreate && !exportShown, detail: `dashboard=${dashboard} canCreate=${canCreate} export=${exportShown}` };
-    }
-    return { ok: dashboard && canCreate && exportShown, detail: `dashboard=${dashboard} canCreate=${canCreate} export=${exportShown}` };
-  } catch (e) {
-    return { ok: false, detail: e.message };
-  }
-}
-
-/** CLEANUP (API-behind-browser). */
-async function cleanup(ctx, checks, state) {
-  if (!state.projectId) return;
-  const q = `?project_id=${encodeURIComponent(state.projectId)}`;
-  try {
-    if (state.deploymentId) await ctx.api.delete(`/api/deployments/${state.deploymentId}${q}`).catch(() => {});
-    for (const channelId of Object.values(state.channels)) {
-      await ctx.api.post(`/api/channels/${channelId}/stop${q}`, {}).catch(() => {});
-      await ctx.api.delete(`/api/channels/${channelId}${q}`).catch(() => {});
-    }
-    await ctx.api.delete(`/api/projects/${state.projectId}`);
-    checks.push({ name: "[API-behind-browser] CLEANUP: study, channels and project removed", passed: true, detail: state.projectId });
-  } catch (e) {
-    checks.push({ name: "[API-behind-browser] CLEANUP: study, channels and project removed", passed: false, detail: e.message });
-  }
-}

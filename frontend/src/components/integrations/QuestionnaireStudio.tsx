@@ -12,6 +12,80 @@ interface QuestionnaireStudioProps {
 const FIELD =
   "w-full px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-istara-500";
 
+function SurveyDefinitionCard({
+  title,
+  onTitle,
+  questions,
+  onQuestions,
+}: {
+  title: string;
+  onTitle: (value: string) => void;
+  questions: string[];
+  onQuestions: (value: string[]) => void;
+}) {
+  const [newQuestionText, setNewQuestionText] = useState("");
+  const addQuestion = () => {
+    if (!newQuestionText.trim()) return;
+    onQuestions([...questions, newQuestionText.trim()]);
+    setNewQuestionText("");
+  };
+  return (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <ClipboardList size={16} className="text-purple-600 dark:text-purple-400" />
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Survey Definition</h3>
+            </div>
+            <span className="text-[11px] text-slate-500 font-mono">{questions.length} Questions</span>
+          </div>
+          <div>
+            <label htmlFor="studio-survey-title" className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1">Survey Title</label>
+            <input
+              id="studio-survey-title"
+              type="text"
+              placeholder="e.g., Onboarding phone survey"
+              value={title}
+              onChange={(e) => onTitle(e.target.value)}
+              className={`${FIELD} bg-slate-50 dark:bg-slate-800`}
+            />
+          </div>
+          <div className="space-y-2.5">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">Questions</p>
+            {questions.map((q, idx) => (
+              <div key={idx} className="flex items-start gap-2 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-xs">
+                <span className="font-semibold text-purple-600 dark:text-purple-400 shrink-0">Q{idx + 1}:</span>
+                <span className="text-slate-800 dark:text-slate-200 flex-1">{q}</span>
+                <button
+                  onClick={() => onQuestions(questions.filter((_, i) => i !== idx))}
+                  className="text-slate-400 hover:text-red-500 transition-colors"
+                  aria-label={`Remove question ${idx + 1}`}
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="text"
+                aria-label="New survey question"
+                placeholder="Add a new survey question..."
+                value={newQuestionText}
+                onChange={(e) => setNewQuestionText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addQuestion(); }}
+                className={`flex-1 ${FIELD} bg-white dark:bg-slate-800 placeholder:text-slate-400`}
+              />
+              <button
+                onClick={addQuestion}
+                className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg transition-colors shrink-0"
+              >
+                Add Q
+              </button>
+            </div>
+          </div>
+        </div>
+  );
+}
+
 /**
  * Records answers a real participant gave another way (a phone call, a paper form).
  * It starts empty: pre-filled sample answers would be one click away from becoming fabricated
@@ -20,17 +94,10 @@ const FIELD =
 export default function QuestionnaireStudio({ projectId, onRecorded }: QuestionnaireStudioProps) {
   const [surveyTitle, setSurveyTitle] = useState("");
   const [questions, setQuestions] = useState<string[]>([]);
-  const [newQuestionText, setNewQuestionText] = useState("");
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [studioError, setStudioError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [recorded, setRecorded] = useState<{ nuggets: number; evidence_units: number } | null>(null);
-
-  const addQuestion = () => {
-    if (!newQuestionText.trim()) return;
-    setQuestions([...questions, newQuestionText.trim()]);
-    setNewQuestionText("");
-  };
 
   const record = async () => {
     if (!projectId || submitting) return;
@@ -82,59 +149,12 @@ export default function QuestionnaireStudio({ projectId, onRecorded }: Questionn
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4 shadow-xs">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <ClipboardList size={16} className="text-purple-600 dark:text-purple-400" />
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Survey Definition</h3>
-            </div>
-            <span className="text-[11px] text-slate-500 font-mono">{questions.length} Questions</span>
-          </div>
-          <div>
-            <label htmlFor="studio-survey-title" className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1">Survey Title</label>
-            <input
-              id="studio-survey-title"
-              type="text"
-              placeholder="e.g., Onboarding phone survey"
-              value={surveyTitle}
-              onChange={(e) => setSurveyTitle(e.target.value)}
-              className={`${FIELD} bg-slate-50 dark:bg-slate-800`}
-            />
-          </div>
-          <div className="space-y-2.5">
-            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">Questions</p>
-            {questions.map((q, idx) => (
-              <div key={idx} className="flex items-start gap-2 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-xs">
-                <span className="font-semibold text-purple-600 dark:text-purple-400 shrink-0">Q{idx + 1}:</span>
-                <span className="text-slate-800 dark:text-slate-200 flex-1">{q}</span>
-                <button
-                  onClick={() => setQuestions(questions.filter((_, i) => i !== idx))}
-                  className="text-slate-400 hover:text-red-500 transition-colors"
-                  aria-label={`Remove question ${idx + 1}`}
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            ))}
-            <div className="flex items-center gap-2 pt-2">
-              <input
-                type="text"
-                aria-label="New survey question"
-                placeholder="Add a new survey question..."
-                value={newQuestionText}
-                onChange={(e) => setNewQuestionText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") addQuestion(); }}
-                className={`flex-1 ${FIELD} bg-white dark:bg-slate-800 placeholder:text-slate-400`}
-              />
-              <button
-                onClick={addQuestion}
-                className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg transition-colors shrink-0"
-              >
-                Add Q
-              </button>
-            </div>
-          </div>
-        </div>
+        <SurveyDefinitionCard
+          title={surveyTitle}
+          onTitle={setSurveyTitle}
+          questions={questions}
+          onQuestions={setQuestions}
+        />
 
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4 shadow-xs">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
