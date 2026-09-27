@@ -28,6 +28,7 @@ _CACHE_TTL = 600  # 10 minutes — GitHub allows 60 req/hour unauthenticated
 # Read version from VERSION file at project root.
 # Path: backend/app/api/routes/updates.py → 4 parents up → project root
 # Also tries CWD-based paths for robustness across install methods.
+_REPO_ROOT = Path(__file__).resolve().parents[4]
 _CANDIDATES = [
     Path(__file__).resolve().parents[4] / "VERSION",  # from backend/app/api/routes/
     Path(__file__).resolve().parents[3] / "VERSION",  # fallback (different layout)
@@ -88,8 +89,33 @@ def _parse_calver(v: str) -> tuple[int, ...]:
     return tuple(parts[:4])
 
 
+def _checkout_release_tag() -> str:
+    """The release tag a git checkout of Istara is at or after (``git describe``), else ""."""
+    repo = _REPO_ROOT
+    try:
+        # A worktree's .git is a file, so test existence rather than is_dir().
+        if not (repo / ".git").exists() or not (repo / "backend").is_dir():
+            return ""
+        desc = _run_git(["describe", "--tags", "--match", "v*"], cwd=repo)
+    except Exception:
+        return ""
+    return desc.split("-")[0].lstrip("v") if desc else ""
+
+
 def get_current_version() -> str:
-    """Read the current Istara version from the VERSION file or git metadata."""
+    """The running Istara version (D-11).
+
+    In order: the version stamped into a build (``ISTARA_VERSION``), the release tag of a git
+    checkout, then the VERSION file shipped with a bundle. A checkout's VERSION file only moves
+    when a release is prepared, while every release-worthy merge is tagged, so for a checkout the
+    tag is the truth; a stale VERSION made the update checker offer the release already running.
+    """
+    stamped = os.environ.get("ISTARA_VERSION", "").strip()
+    if stamped:
+        return stamped
+    tagged = _checkout_release_tag()
+    if tagged:
+        return tagged
     for p in _CANDIDATES:
         try:
             if p.exists():
@@ -98,19 +124,6 @@ def get_current_version() -> str:
                     return v
         except Exception:
             continue
-
-    # Fallback to git tag if in a git repository
-    try:
-        install_dir = get_install_dir()
-        if install_dir and (install_dir / ".git").is_dir():
-            desc = _run_git(["describe", "--tags", "--match", "v*"], cwd=install_dir)
-            if desc:
-                base_tag = desc.split("-")[0].lstrip("v")
-                if base_tag:
-                    return base_tag
-    except Exception:
-        pass
-
     return "unknown"
 
 

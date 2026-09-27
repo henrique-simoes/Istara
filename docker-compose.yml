@@ -75,6 +75,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        ISTARA_VERSION: ${ISTARA_VERSION:-}
     container_name: istara-backend
     expose:
       - "8000"

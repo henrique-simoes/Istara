@@ -139,8 +139,10 @@ Cross-surface coupling to check on every change:
   security readiness, security benchmark, production rehearsal, then `set-version.sh`).
   `build-installers.yml` builds macOS/Linux/Windows Tauri installers, `latest.json` for the
   updater, and a `v<CalVer>` GitHub Release.
-- Known drift (fix when touching releases): `VERSION` lags the latest tag; `homebrew/istara.rb`
-  has no automated update; no GHCR images are published; `wiki/` is not deployed.
+- `VERSION` must not fall behind the latest tag (`scripts/check_version_drift.py`, PRs into `main`):
+  run `scripts/set-version.sh --bump` in the promotion. The Homebrew tap updates only when the
+  `HOMEBREW_TAP_TOKEN` secret exists; macOS is ad-hoc signed until `APPLE_*` secrets exist.
+- Known drift: no GHCR images are published; `wiki/` is not deployed.
 - Website: `docs/features/` → `python scripts/feature_docs.py --seed-missing --generate-site --check`
   and `pytest tests/test_feature_docs.py -q` → GitHub Pages via `pages.yml`.
 

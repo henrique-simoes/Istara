@@ -662,6 +662,41 @@ async def test_vector_space_invariant_raises_on_dimension_divergence(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_startup_without_a_reachable_embedding_model_is_unverified_not_refused():
+    """A fresh install has no local model yet; the app must still start so it can be configured."""
+    from app.core.pi_runtime.embeddings_gateway import startup_vector_space_status
+
+    async def probe(*, engine, model, check_stored):
+        return {"status": "error", "message": "Cannot get model dimensions: connection refused"}
+
+    verdict = await startup_vector_space_status(dimension_probe=probe)
+    assert verdict["status"] == "unverified"
+    assert "vector_space_invariant_probe_failed" in verdict["reason"]
+
+
+@pytest.mark.asyncio
+async def test_startup_still_refuses_a_proven_divergence():
+    from app.core.pi_runtime.embeddings_gateway import startup_vector_space_status
+
+    async def probe(*, engine, model, check_stored):
+        return {"status": "ok", "model": model, "model_dim": 2 if engine == "legacy" else 3}
+
+    with pytest.raises(VectorSpaceInvariantError, match="vector_space_invariant_violation"):
+        await startup_vector_space_status(dimension_probe=probe)
+
+
+def test_both_engines_embed_through_the_one_gateway():
+    """Why an unreachable model cannot split the space: legacy and pi share the embed gateway."""
+    import inspect
+
+    from app.core.agentic.dispatcher import AgenticDispatcher
+
+    source = inspect.getsource(AgenticDispatcher.embed)
+    assert 'if selected in ("pi", "legacy"):' in source
+    assert "self._embed_gateway().embed(" in source
+
+
+@pytest.mark.asyncio
 async def test_vector_space_invariant_probe_failure_is_typed(monkeypatch):
     async def probe(*, engine, model, check_stored):
         return {"status": "error", "message": f"{engine} unavailable"}
@@ -1199,8 +1234,7 @@ def test_static_ux_parity_hooks():
     projects = (REPO_ROOT / "backend/app/api/routes/projects.py").read_text(encoding="utf-8")
     assert "agentic_engine" in projects
     main = (REPO_ROOT / "backend/app/main.py").read_text(encoding="utf-8")
-    assert "assert_vector_space_invariant" in main
-    assert "shared_embed_model = await assert_vector_space_invariant(" in main
+    assert "vector_space = await startup_vector_space_status(" in main
     assert "dimension_probe=check_embedding_dimensions" in main
     assert 'raise RuntimeError("vector_space_invariant_violation")' in main
 

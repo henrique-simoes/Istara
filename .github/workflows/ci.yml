@@ -155,6 +155,12 @@ jobs:
       - name: Check security benchmark
         run: python scripts/security_benchmark.py --fail-on-threshold --output security/security_scorecard.json
 
+      # D-11: every release-worthy merge to main is tagged; VERSION must keep up with the tags
+      # (scripts/set-version.sh --bump) so Docker installs report the version they run.
+      - name: Check VERSION is not behind the latest release
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        run: python scripts/check_version_drift.py
+
       - name: Check change obligations
         if: github.event_name == 'pull_request'
         run: |
@@ -671,6 +677,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev
+
+      # tauri.conf.json bundles the staged source as a resource; the build script needs it present.
+      - name: Stage the desktop source bundle
+        run: python3 ../../scripts/stage_desktop_bundle.py
 
       - name: Check Rust compiles (honest status — no continue-on-error; required since the 2026-09-10 owner decision, M-18)
         run: cargo check

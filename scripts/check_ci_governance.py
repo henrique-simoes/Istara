@@ -88,6 +88,10 @@ REQUIRED_SNIPPETS: dict[str, dict[str, str]] = {
     },
     ".github/workflows/build-installers.yml": {
         "Node 24 installer runtime": "node-version: 24",
+        "source staged before the desktop build (D-10)": "scripts/stage_desktop_bundle.py",
+        "desktop semver from set-version (D-10)": "set-version.sh --semver-of",
+        "missing installer artifacts fail the build (D-10)": "if-no-files-found: error",
+        "updater signing key secret (D-10)": "secrets.TAURI_SIGNING_PRIVATE_KEY",
         "production rehearsal release trigger": "scripts/production_rehearsal.py",
         "CI governance release trigger": "scripts/check_ci_governance.py",
         "test harness release trigger": "scripts/check_test_harness.py",
@@ -362,6 +366,9 @@ FORBIDDEN_SNIPPETS: dict[str, dict[str, str]] = {
         "legacy Compass guide release trigger": "SYSTEM_INTEGRITY_GUIDE.md",
         "legacy system prompt release trigger": "SYSTEM_PROMPT.md",
         "Node 20 installer runtime": "node-version: 20",
+        # D-10: a failed desktop build published a release with missing installers.
+        "installer build failure hidden (D-10)": "continue-on-error: true",
+        "wrong updater signing secret name (D-10)": "secrets.TAURI_PRIVATE_KEY",
     },
     "frontend/Dockerfile": {
         "Node 20 frontend image": "node:20-",
