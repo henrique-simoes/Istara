@@ -2,14 +2,14 @@
 
 ```yaml
 item: professional-readiness-review
-branch: plan/professional-readiness-p3
+branch: plan/professional-readiness-installers
 cf: { spec: CF-SPEC-5, tasks: [CF-45, CF-46, CF-47, CF-48, CF-49, CF-50, CF-51, CF-52, CF-53, CF-54, CF-55, CF-56, CF-57, CF-58] }
-phase: "Phase 3 — menus and UX"
+phase: "Phase 4 — installers"
 stage: S2-execute
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-09-27T05:00:00Z, ledger: L-5 }
-next_action: "Merge the Phase 3 PR and its sync PR; rebase and ship Phase 4 (installers); finish SK3, C2, R0 and G1-G3 for the Phase 5 report."
+last: { agent: claude-code, at: 2026-09-27T05:40:00Z, ledger: L-6 }
+next_action: "Merge the installers PR and its sync PR; verify the release it publishes (assets, latest.json signatures, DMG signature) and update the Homebrew tap; then Phase 5."
 ```
 
 ## Plan overview
@@ -464,3 +464,34 @@ Verified: scenario 90 16/16 (run 2026-09-27T05-20-27-957Z); stale-verdict batch 
 `tsc` clean, vitest 127/127, eslint 0 errors; `python scripts/check_a11y_contrast.py` pass;
 security benchmark pass (100%); change and feature obligations pass.
 Next: Phase 3 PR, sync PR.
+
+## Phase 4 — installers
+
+| Criterion | Before (`main`, v2026.09.27) | After (this branch) |
+|---|---|---|
+| I1 a failed platform build fails the release | every `tauri build` had `continue-on-error`; all three failed while the run was green | no `continue-on-error` (CI governance forbids it); each job verifies its bundle and fails on a missing artifact; runs 36285739069 and 36295599297 green on all three platforms |
+| I2 each channel installs the current version | release assets: an unsigned DMG and a `latest.json` naming two files that were never attached, with empty signatures | DMG (ad-hoc signed), updater archive + signature, NSIS and MSI + signatures, AppImage + signature, deb, rpm; `latest.json` with semver and a signature per platform, or the release fails |
+| I3 fresh installs | curl installer on bare Ubuntu 24.04: stops at a Homebrew prompt "required ... on macOS"; with prerequisites preinstalled it installs, then the backend **refuses to start** without a model (D-20) | bare Ubuntu 24.04: git, Python, Node 24, ffmpeg installed by the script; backend healthy, UI 200, version 2026.09.27, a clear warning that no model is configured |
+| I4 VERSION = latest tag; cask updates | VERSION 2026.05.27.3 vs tag v2026.09.27; Docker showed "vunknown"; cask 2026.03.30.6 | VERSION follows the tags (`check_version_drift.py` on PRs into `main`); images ship VERSION; the running version prefers the build stamp, then the checkout's tag; the cask is rendered per release and pushed when `HOMEBREW_TAP_TOKEN` exists |
+| I5 unverifiable stated | — | see below |
+
+Verified on the Studio: the branch DMG mounts with an Applications link, `codesign --verify --deep --strict` passes (ad-hoc), the bundle carries version 126.9.2700 / 2026.09.27 and the source; Gatekeeper rejects it (not notarised). The DMG on the current release is **not signed at all**, which Apple Silicon refuses to run. The deb installs in an amd64 Ubuntu 24.04 container (version 126.9.2700, source under `/usr/lib/Istara/istara`).
+
+Not verified, stated plainly: Windows installers were built and signed in CI but not installed (no Windows machine); the desktop app was not launched on the Studio (its ports 3000 and 8000 belong to another project's running containers); macOS signing with a Developer ID and notarisation need the owner's Apple credentials, so macOS users approve the app once ("Open Anyway"); the Homebrew tap is updated by hand until a `HOMEBREW_TAP_TOKEN` secret exists; the native (curl, desktop) installs run the legacy engine, as pi needs `npm ci` in `pi-runtime`.
+
+### L-6 | 2026-09-27T05:40:00Z | S2-execute | claude-code | executor | Phase 4
+Did: MSI-safe desktop semver `(100+YY).M.(DD*100+N)` in `set-version.sh` (monotonic over every old
+`26.x.y`); `stage_desktop_bundle.py` stages the git-tracked source as the `istara/` resource on every
+platform; signing secrets corrected; macOS ad-hoc signed without Apple secrets; `latest.json` built
+and checked in Python; Linux and Windows artifacts published; Homebrew cask rendered per release;
+`check_version_drift.py`; running-version order and VERSION in both images; curl installer installs
+Linux dependencies and can follow `ISTARA_BRANCH`; startup no longer refuses an unreachable
+embedding model (DEC-12); VERSION 2026.09.27.4.
+Result: see the table.
+Verified: local `tauri build` (aarch64, ad-hoc) with the source resource and updater signature;
+branch installer runs 36285739069 and 36295599297 green on macOS, Linux and Windows with the bundle
+checks; Studio DMG and amd64 deb checks above; Linux bare-container install to a healthy backend
+(`~/cf-remote/eval/measure/readiness-0926/install-bare-branch/result.txt`);
+`tests/test_release_pipeline.py`, `tests/test_updates.py`, W8 startup tests pass; CI governance
+passes.
+Next: installers PR, sync PR, then verify the published release.

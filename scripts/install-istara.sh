@@ -16,6 +16,9 @@ trap 'echo ""; echo "  ✗ Installation failed at line $LINENO. Please report th
 
 REPO="henrique-simoes/Istara"
 INSTALL_DIR="${ISTARA_DIR:-$HOME/.istara}"
+# The branch a source install follows (main unless ISTARA_BRANCH names another, e.g. to verify a
+# change before it merges).
+BRANCH="${ISTARA_BRANCH:-main}"
 VERSION=""
 
 # ── Colours ──────────────────────────────────────────────────────
@@ -270,7 +273,7 @@ sync_repo_to_main() {
         }
     else
         info "Cloning Istara to $INSTALL_DIR..."
-        git clone "https://github.com/${REPO}.git" "$INSTALL_DIR"
+        git clone --branch "$BRANCH" "https://github.com/${REPO}.git" "$INSTALL_DIR"
         cd "$INSTALL_DIR"
         ok "Cloned to $INSTALL_DIR"
     fi
@@ -315,6 +318,39 @@ ensure_homebrew() {
     ok "Homebrew installed"
 }
 
+# Run as root: directly in a root shell (containers, servers), otherwise through sudo.
+as_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo "$@"
+    else
+        fail "Need root to run: $* (install sudo or run the installer as root)"
+        return 1
+    fi
+}
+
+# Install Linux packages with the distribution's package manager: linux_install <apt names> -- <rpm names>
+linux_install() {
+    local apt_pkgs=() rpm_pkgs=() target="apt"
+    for arg in "$@"; do
+        if [ "$arg" = "--" ]; then target="rpm"; continue; fi
+        if [ "$target" = "apt" ]; then apt_pkgs+=("$arg"); else rpm_pkgs+=("$arg"); fi
+    done
+    [ ${#rpm_pkgs[@]} -eq 0 ] && rpm_pkgs=("${apt_pkgs[@]}")
+    if command -v apt-get >/dev/null 2>&1; then
+        as_root apt-get update -qq && as_root env DEBIAN_FRONTEND=noninteractive \
+            apt-get install -y -qq "${apt_pkgs[@]}"
+    elif command -v dnf >/dev/null 2>&1; then
+        as_root dnf install -y -q "${rpm_pkgs[@]}"
+    elif command -v yum >/dev/null 2>&1; then
+        as_root yum install -y -q "${rpm_pkgs[@]}"
+    else
+        fail "No apt-get, dnf or yum found. Install ${apt_pkgs[*]} with your package manager and rerun."
+        return 1
+    fi
+}
+
 ensure_python() {
     local found_py=""
     found_py=$(detect_python 2>/dev/null) || found_py=""
@@ -323,10 +359,36 @@ ensure_python() {
         ok "Python $pyver ($found_py)"
         return 0
     fi
+    if [ "$PLATFORM" = "linux" ]; then
+        info "Installing Python 3 with your package manager..."
+        linux_install python3 python3-venv python3-pip -- python3 python3-pip || exit 1
+        found_py=$(detect_python 2>/dev/null) || {
+            fail "Python 3.11+ is required; your distribution installed an older Python."
+            exit 1
+        }
+        ok "Python $("$found_py" --version 2>&1 | grep -oE '[0-9.]+')"
+        return 0
+    fi
     info "Installing Python 3.12..."
     ensure_homebrew
     brew install python@3.12
     ok "Python 3.12 installed"
+}
+
+# Debian and Ubuntu ship venv (ensurepip) separately from python3; without it the venv step fails.
+ensure_python_venv() {
+    [ "$PLATFORM" = "linux" ] || return 0
+    local py; py=$(detect_python 2>/dev/null) || return 0
+    local probe; probe=$(mktemp -d)
+    if "$py" -m venv "$probe/v" >/dev/null 2>&1; then
+        rm -rf "$probe"
+        return 0
+    fi
+    rm -rf "$probe"
+    info "Installing the Python venv module..."
+    local minor; minor=$("$py" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')
+    linux_install "python${minor}-venv" python3-venv -- python3 || exit 1
+    ok "Python venv module installed"
 }
 
 ensure_node() {
@@ -344,6 +406,20 @@ ensure_node() {
         return 0
     fi
     info "Installing Node.js 24 or newer..."
+    if [ "$PLATFORM" = "linux" ]; then
+        # Distribution packages lag (Ubuntu 24.04 ships Node 18); NodeSource publishes Node 24.
+        if command -v apt-get >/dev/null 2>&1; then
+            linux_install ca-certificates curl gnupg || exit 1
+            curl -fsSL https://deb.nodesource.com/setup_24.x | as_root bash - >/dev/null || exit 1
+            linux_install nodejs || exit 1
+        else
+            curl -fsSL https://rpm.nodesource.com/setup_24.x | as_root bash - >/dev/null || exit 1
+            linux_install nodejs || exit 1
+        fi
+        found_node=$(detect_node 2>/dev/null) || { fail "Node.js 24+ could not be installed."; exit 1; }
+        ok "Node $("$found_node" --version 2>&1) installed"
+        return 0
+    fi
     ensure_homebrew
     # Install 'node' (main formula, links properly). Istara requires Node 24+.
     brew install node 2>/dev/null || {
@@ -383,13 +459,10 @@ ensure_ffmpeg() {
         ensure_homebrew
         brew install ffmpeg
     else
-        sudo apt-get update 2>/dev/null || true
-        sudo apt-get install -y ffmpeg 2>/dev/null || \
-            sudo dnf install -y ffmpeg 2>/dev/null || \
-            sudo yum install -y ffmpeg 2>/dev/null || {
-                fail "Failed to install FFmpeg. Install it with your package manager and rerun the installer."
-                exit 1
-            }
+        linux_install ffmpeg || {
+            fail "Failed to install FFmpeg. Install it with your package manager and rerun the installer."
+            exit 1
+        }
     fi
     found_ffmpeg=$(detect_ffmpeg 2>/dev/null) || found_ffmpeg=""
     [ -n "$found_ffmpeg" ] || { fail "FFmpeg installed but not detected in PATH."; exit 1; }
@@ -402,7 +475,7 @@ ensure_git() {
     if [ "$PLATFORM" = "macos" ]; then
         xcode-select --install 2>/dev/null || true
     else
-        sudo apt-get install -y git 2>/dev/null || sudo yum install -y git 2>/dev/null || true
+        linux_install git || exit 1
     fi
     ok "Git installed"
 }
@@ -446,6 +519,7 @@ ensure_git
 
 if [ "$MODE" = "server" ]; then
     ensure_python
+    ensure_python_venv
     ensure_node
     ensure_ffmpeg
 

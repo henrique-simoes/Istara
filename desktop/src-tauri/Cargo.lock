@@ -1676,7 +1676,7 @@ dependencies = [
 
 [[package]]
 name = "istara-desktop"
-version = "26.151.0"
+version = "126.9.2704"
 dependencies = [
  "base64 0.22.1",
  "dirs 5.0.1",

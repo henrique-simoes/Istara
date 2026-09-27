@@ -45,6 +45,10 @@ RUN useradd --system --no-create-home istara
 COPY --from=builder /install /usr/local
 COPY --from=builder /build/backend /app
 COPY --from=builder /build/pi-runtime ./pi-runtime
+# The running version (D-11): a build stamp when the builder passes one, else the VERSION file.
+ARG ISTARA_VERSION=""
+ENV ISTARA_VERSION=${ISTARA_VERSION}
+COPY VERSION ./VERSION
 # QA tooling: seeder/auditor/resetter scripts + canonical synthetic corpora.
 COPY qa /app/qa
 COPY scripts/istara-qa.sh /app/scripts/istara-qa.sh
