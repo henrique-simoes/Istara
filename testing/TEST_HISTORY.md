@@ -6,6 +6,18 @@ scorecards remain in gitignored artifact directories. Add a compact entry here
 when a run becomes a release baseline or materially changes confidence in the
 system.
 
+## 2026-09-27 — Professional-readiness review, live measurements and follow-ups (#60, #62, #64)
+
+| Measurement | Result |
+|---|---|
+| SK3 theme recall, `thematic-analysis` (DeepSeek, Muse) | before 0.0 / 0.0 -> after 0.9 (37 of 65 windows before the DeepSeek balance ran out) / 1.0; paired over theme x model p = 0.0001 (Holm) |
+| SK3 `user-interviews` | 1.0 in both arms (ceiling); nuggets grounded 0 / 216 before, 1,265 / 1,519 and 1,359 / 1,368 after |
+| G1 link support (DeepSeek judge) | fact -> nugget 0.91 [0.84-0.96] (0.65 before); insight -> fact 0.50 [0.34-0.66] |
+| G2 DAG recall from summaries | 0.38-0.44; an "Exact details" summary line lowered it to 0.06 (p = 0.0003) and was reverted |
+| G3 graph expansion | coverage@10 0.773 -> 0.750 (p = 0.03); does not ship |
+| Release v2026.09.27.4 | all platform installers and updater signatures published; signature verified against the app key |
+| Not run | R0/R1 end to end and C2/C3: DeepSeek balance exhausted (402); local-model SK3 cells stopped to wrap up |
+
 ## 2026-09-27 — Professional-readiness review, Phase 4: installers (branch plan/professional-readiness-installers)
 
 | Layer | Result |
