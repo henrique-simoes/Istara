@@ -120,7 +120,12 @@ def test_istara_qa_sh_never_merges_base_compose():
     # seed must run the compose seeder service, never `docker run $ROOT/backend`.
     assert "run --rm" in script
     assert '"$ROOT/backend"' not in script
-    assert "docker run --rm" not in script
+    # The only direct `docker run` is the pinned busybox used for the disk
+    # check and the persistent-volume backup; never the backend.
+    lines = script.splitlines()
+    for i, line in enumerate(lines):
+        if "docker run --rm" in line:
+            assert "busybox:1.36" in line + lines[i + 1], line
 
 
 def test_istara_qa_sh_exports_generated_run_id():
@@ -334,3 +339,63 @@ def test_base_compose_renders_after_qa_hardening_fix():
         text=True,
     )
     assert result.returncode == 0, f"base compose render failed: {result.stderr}"
+
+
+# --- Docker hygiene (AGENTS.md §5): one kept install, everything else removed ---
+
+PERSISTENT_COMPOSE = ROOT / "docker-compose.qa.persistent.yml"
+QA_SCRIPT = ROOT / "scripts" / "istara-qa.sh"
+
+
+def test_qa_built_images_use_one_fixed_tag_per_purpose():
+    text = QA_COMPOSE.read_text(encoding="utf-8")
+    built = re.findall(r"\n  (qa-[a-z-]+):\n(?:(?!\n  \S).)*?\n    build:", text, re.S)
+    assert built, "expected built QA services"
+    for name in built:
+        block = text[text.index(f"\n  {name}:\n") :].split("\n  qa-", 2)[1]
+        assert re.search(r"image: istara-qa-[a-z-]+:\$\{QA_IMAGE_TAG:-current\}", block), name
+    assert "20260" not in text  # no dated image variants
+
+
+def test_qa_services_carry_run_label():
+    text = QA_COMPOSE.read_text(encoding="utf-8")
+    hardening = text[text.index("x-qa-hardening:") : text.index("services:")]
+    assert "istara.qa.run: ${QA_RUN_ID:-local}" in hardening
+
+
+def test_persistent_overlay_keeps_data_on_external_volume_only():
+    text = PERSISTENT_COMPOSE.read_text(encoding="utf-8")
+    assert "istara-qa-persistent-data:/app/data" in text
+    assert "external: true" in text
+    assert "tmpfs: !override" in text
+    assert "sqlite+aiosqlite:////app/data/istara-qa.db" in text
+    # The default lanes stay ephemeral: the base file never names the volume.
+    assert "istara-qa-persistent-data" not in QA_COMPOSE.read_text(encoding="utf-8")
+
+
+def test_cycle_cleans_up_on_success_failure_and_kill():
+    script = QA_SCRIPT.read_text(encoding="utf-8")
+    cycle = script[script.index("cmd_cycle() {") :]
+    assert "trap cleanup_run EXIT INT TERM" in cycle
+    down = script[script.index("cmd_down() {") : script.index("cleanup_run() {")]
+    assert "down -v --remove-orphans" in down
+
+
+def test_heavy_commands_check_disk_space_and_back_up_persistent_data():
+    script = QA_SCRIPT.read_text(encoding="utf-8")
+    up = script[script.index("cmd_up() {") : script.index("cmd_wait() {")]
+    assert "ensure_disk_space" in up
+    assert "cmd_backup" in up
+    assert 'QA_MIN_FREE_GB:-20' in script
+    assert "never-delete-official-data" in script
+
+
+def test_cleanup_is_dry_run_by_default_and_scoped_to_istara_qa():
+    script = QA_SCRIPT.read_text(encoding="utf-8")
+    cleanup = script[script.index("cmd_cleanup() {") :]
+    assert "QA_CONFIRM:-}\" != \"CLEANUP-ISTARA-QA\"" in cleanup
+    assert "Dry run." in cleanup
+    assert "grep -vx \"$PERSISTENT_VOLUME\"" in cleanup
+    for listing in re.findall(r"grep -E '([^']+)'", cleanup):
+        assert listing == "^istara-qa-", listing
+    assert "system prune" not in script and "volume prune" not in script

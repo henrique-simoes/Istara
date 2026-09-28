@@ -1,0 +1,30 @@
+# Persistent QA overlay — the ONE Istara QA install whose data is kept.
+#
+# Use only through `scripts/istara-qa.sh --persistent ...` (QA_PERSISTENT=1),
+# layered on docker-compose.qa.yml. The default QA lanes stay tmpfs-only and
+# leave nothing behind; this overlay moves /app/data (and the SQLite database)
+# onto the external named volume `istara-qa-persistent-data`, so every live
+# model run accumulates into the same install: research data, ensemble health,
+# telemetry, stored provider keys, model endpoints and preferences.
+#
+# The volume is `external`, so `docker compose down -v` never removes it and no
+# QA command creates a second one. Containers and images stay disposable: a
+# rebuild replaces them and re-attaches the same volume. `istara-qa.sh` backs
+# the volume up to ~/never-delete-official-data/istara-qa-persistent-data/
+# before every `up` (AGENTS.md §5).
+#
+# Keep QA_DATA_ENCRYPTION_KEY stable across runs, or stored keys become
+# unreadable.
+
+services:
+  qa-backend:
+    tmpfs: !override
+      - /tmp:noexec,nosuid,size=100M
+    volumes:
+      - istara-qa-persistent-data:/app/data
+    environment:
+      DATABASE_URL: ${QA_DATABASE_URL:-sqlite+aiosqlite:////app/data/istara-qa.db}
+
+volumes:
+  istara-qa-persistent-data:
+    external: true

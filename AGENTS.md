@@ -155,20 +155,50 @@ Cross-surface coupling to check on every change:
 | `docker-compose.vps.yml` | VPS test deploy (provider stub, optional donor) |
 | `tests/real_user_benchmark/docker-compose.benchmark.yml` | long-form benchmark |
 
-### Protected QA Containers and Databases (Never Delete)
+### Docker hygiene: keep records, never containers
 
-The Mac Studio QA host keeps containers that hold research results from testing and multi-model runs used for consultation. They carry the `never-delete-official-` name prefix and must never be deleted:
+The Mac Studio's Docker disk is shared with other projects; filling it breaks their CI. Rules for
+every agent and script that creates Docker resources:
 
-- `never-delete-official-istara-qa-readiness5-20260910-qa-backend` — QA backend run data (DB in tmpfs `/tmp/istara-qa.db`, feature tree in `/app/data`).
-- `never-delete-official-w3-live-backend`, `never-delete-official-w3-live-backend-fix` — W3 candidate live runs (`istara-w3.db` + run artifacts in `/app/data`).
-- `never-delete-official-w4-live-pi`, `never-delete-official-w4-live-legacy` — W4 long-horizon multi-model telemetry (host dataset at `~/w4-scratch-20260910/data`).
+1. **One kept install.** Live-model QA runs use `scripts/istara-qa.sh --persistent ...`, which
+   layers `docker-compose.qa.persistent.yml`: project `istara-qa-persistent`, data on the external
+   volume `istara-qa-persistent-data` (SQLite DB, research data, ensemble health, telemetry, stored
+   provider keys, model endpoints, preferences). Runs accumulate into it; a code update rebuilds
+   the images and re-attaches the same volume. Keep `QA_DATA_ENCRYPTION_KEY` stable across runs.
+   Never remove this volume.
+2. **Everything else is disposable and removed every time.** Default lanes stay tmpfs-only.
+   `istara-qa.sh cycle` traps `EXIT INT TERM` and runs `down -v --remove-orphans` plus a prune
+   of dangling `istara-qa-*` images on success, failure and kill. Every service carries the label
+   `istara.qa.run=<run-id>`.
+3. **One image tag per purpose.** Built images are `istara-qa-<service>:${QA_IMAGE_TAG:-current}`;
+   a rebuild replaces the tag. Never add dated or `-<run-id>` image variants.
+4. **Records leave Docker as files.** Before an image upgrade (`up`) and on demand
+   (`istara-qa.sh backup`) the persistent volume is archived to
+   `~/never-delete-official-data/istara-qa-persistent-data/<UTC>/app-data.tar.gz`. Logs, sign-offs
+   and one-off images worth keeping are exported (`docker logs`, `docker save | gzip`) into
+   `~/never-delete-official-data/`. Stopped containers are never kept as records.
+5. **Check free space first.** `up`/`cycle` refuse (exit 3) under `QA_MIN_FREE_GB` (default 20)
+   free on the Docker disk; stop and report instead of building.
+6. **Clean up with the script, scoped to Istara.** `istara-qa.sh cleanup` lists every
+   `istara-qa-*` container, volume, network and image not on the keep list (current image tag,
+   the persistent volume, running containers); `--apply` with `QA_CONFIRM=CLEANUP-ISTARA-QA`
+   removes them. Never `docker system prune`, `volume prune`, or remove another project's
+   resources (`kairos-*`, `cf-*`, …) — list them by name for the owner instead.
 
-Rules:
+### Protected records (never delete)
 
-1. Never run `docker rm`, `docker container prune`, or `docker system prune` against these containers, and never delete their databases or images.
-2. Their data surfaces are **tmpfs (in RAM)**: before stopping any protected container, snapshot `/app/data` and `/tmp/*.db*` to `~/never-delete-official-data/<container>/<UTC-timestamp>/` on the host. Snapshots are permanent records — never delete, move, or prune them.
-3. Code updates happen by renewing the codebase with new commits only: rebuild images from repo HEAD into a new QA run (`QA_RUN_ID=<branch>-<date>`, unique project per `docker-compose.qa.yml` contract). All existing databases and data snapshots for all features must be kept across redeploys — a redeploy never erases prior run data.
-4. The W4 multi-model telemetry dataset at `~/w4-scratch-20260910/data` (`istara-w4-pi.db`, `istara-w4-legacy.db`, run JSONs/logs) is protected research data: never delete, move, or prune it.
+These are permanent records. Never delete, move, or prune them:
+
+- `~/never-delete-official-data/` — tmpfs snapshots of the retired W3/readiness5 QA containers,
+  their saved logs and `inspect.json`, the exported images in `images/`
+  (`istara-qa-w4-backend_w4candidate`, `istara-qa-readiness5-20260910-qa-backend_{latest,w3d-postfix}`,
+  restorable with `docker load`), and every `istara-qa-persistent-data` backup.
+- `~/w4-scratch-20260910/data` — W4 long-horizon multi-model telemetry (`istara-w4-pi.db`,
+  `istara-w4-legacy.db`, run JSONs/logs).
+- The Docker volume `istara-qa-persistent-data`.
+
+The former `never-delete-official-*` containers were retired on 2026-09-27 after their data,
+logs and images were exported above (owner-approved); the containers held nothing else.
 
 ### Protected Local Artifact Folders
 
