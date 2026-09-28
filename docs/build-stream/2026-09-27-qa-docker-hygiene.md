@@ -9,8 +9,8 @@ phase: "—"
 stage: S5-ship
 status: done
 blocked_on: null
-last: { agent: claude-opus-5-5, at: 2026-09-28T02:45:00Z, ledger: L-5 }
-next_action: "Owner: approve push + PR of chore/docker-hygiene into testing. Follow-up: seeder 403 on the ephemeral lane."
+last: { agent: claude-opus-5-5, at: 2026-09-28T03:30:00Z, ledger: L-6 }
+next_action: "Owner: approve push + PR of chore/docker-hygiene into testing."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -107,10 +107,25 @@ tests/test_feature_obligations.py tests/test_qa_reset_seed.py -q` 55 passed, 7 s
 Review coverage: self-only (no independent review; owner rule).
 Next: owner approval to push and open a PR into testing.
 
+### L-6 | 2026-09-28T03:30:00Z | S5-ship | claude-opus-5-5 | executor | —
+Did: fixed the seeder 403 (DEC-4) in QA code only: `qa/scripts/seed_synthetic.py` sends
+`X-Access-Token` (local mode, `QA_NETWORK_ACCESS_TOKEN`) or logs in as the disposable QA admin
+(team mode); `qa-seeder` gets those env vars; `cycle` generates a random per-cycle token in local
+mode and runs seed -> qa -> collect again (persistent runs still never seed). No backend change.
+Result: Studio run j exit 0: seed manifest written, obligations passed, `audit_pass: true`, cleanup
+on exit 0; Istara footprint before = after (4 images, 0 containers, 0 networks, 0 dangling,
+1 volume); token absent from the run log.
+Verified: `scripts/istara-qa.sh cycle --run-id hygiene-20260927-j --profile ui` rc=0
+(`~/cf-remote/eval/istara-hygiene-j.log`); `pytest tests/test_qa_seed_ingestion.py
+tests/test_qa_stack_contract.py tests/test_qa_reset_seed.py tests/test_feature_obligations.py -q`
+65 passed, 7 skipped; `security_benchmark.py --fail-on-threshold` pass; change/feature obligations,
+QA capabilities, CI governance, public-repo audit passed. Review coverage: self-only.
+Next: owner approval to push and open a PR into testing.
+
 ## Summary
 
 Outcome met. Residual: build cache (42 GB, shared with other projects) is not scoped by
-`cleanup`; the synthetic seeder 403 on the ephemeral lane is a separate task.
+`cleanup`. The seeder 403 (DEC-4) was fixed in L-6.
 
 Retro: the proof found three pre-existing `istara-qa.sh` bugs that no test covered, because the
 container lane had never been run end to end on the Studio. Run `cycle` on the Studio after any
