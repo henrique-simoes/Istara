@@ -292,7 +292,7 @@ jobs:
         run: pytest ../tests/test_harness_config.py ../tests/test_agentic_eval_contract.py ../tests/test_harness_project_scope_contracts.py ../tests/test_marathon_config_integrity.py -q
 
       - name: Run QA contract tests (moved from the renamed qa-contract-render job — render proves parse, not behavior)
-        run: pytest ../tests/test_qa_stack_contract.py ../tests/test_qa_reset_seed.py ../tests/test_qa_artifacts.py ../tests/test_feature_obligations.py ../tests/test_qa_capabilities.py -q
+        run: pytest ../tests/test_qa_stack_contract.py ../tests/test_qa_reset_seed.py ../tests/test_qa_seed_ingestion.py ../tests/test_qa_artifacts.py ../tests/test_feature_obligations.py ../tests/test_qa_capabilities.py -q
 
       - name: Run property-based contract tests
         run: pytest ../tests/test_property_contracts.py -q
