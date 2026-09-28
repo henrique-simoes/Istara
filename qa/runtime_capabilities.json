@@ -74,6 +74,7 @@
       "paths": [
         "docker-compose.yml",
         "docker-compose.qa.yml",
+        "docker-compose.qa.persistent.yml",
         "qa/scripts/**",
         "scripts/istara-qa.sh"
       ],
