@@ -228,6 +228,11 @@ services:
       QA_SLICE: ${QA_SLICE:-coding-reliability}
       QA_RUNS_DIR: /qa/runs
       QA_API_BASE: ${QA_API_BASE:-http://qa-backend:8000}
+      # The seeder is a remote client of qa-backend: it authenticates with the
+      # run's network token (local mode) or the disposable QA admin (team mode).
+      QA_NETWORK_ACCESS_TOKEN: ${QA_NETWORK_ACCESS_TOKEN:-}
+      QA_ADMIN_USERNAME: ${QA_ADMIN_USERNAME:-admin}
+      QA_ADMIN_PASSWORD: ${QA_ADMIN_PASSWORD:-}
     volumes:
       # Bind the gitignored artifact dir so host-side collect/audit can read
       # the seed manifest; the QA runtime never mounts the Docker socket.

@@ -399,3 +399,16 @@ def test_cleanup_is_dry_run_by_default_and_scoped_to_istara_qa():
     for listing in re.findall(r"grep -E '([^']+)'", cleanup):
         assert listing == "^istara-qa-", listing
     assert "system prune" not in script and "volume prune" not in script
+
+
+def test_cycle_seeds_only_ephemeral_runs_with_a_per_cycle_token():
+    script = QA_SCRIPT.read_text(encoding="utf-8")
+    cycle = script[script.index("cmd_cycle() {") : script.index("cmd_cleanup() {")]
+    persistent = cycle[cycle.index('if [ -n "${QA_PERSISTENT:-}" ]') : cycle.index("return 0")]
+    assert "cmd_seed" not in persistent
+    assert "cmd_seed" in cycle and "cmd_collect" in cycle
+    assert "/dev/urandom" in cycle and "export QA_NETWORK_ACCESS_TOKEN" in cycle
+    text = QA_COMPOSE.read_text(encoding="utf-8")
+    seeder = text[text.index("  qa-seeder:") : text.index("  qa-resetter:")]
+    for var in ("QA_NETWORK_ACCESS_TOKEN", "QA_ADMIN_USERNAME", "QA_ADMIN_PASSWORD"):
+        assert var in seeder

@@ -12,7 +12,8 @@
 #   collect  Export sanitized JSON/JUnit evidence + provenance manifest.
 #   reset    Tear down ONLY this run's project namespace (confirmation token).
 #   down     Remove the run's containers, networks and anonymous volumes.
-#   cycle    up -> wait -> qa, cleaned up on success, failure or kill.
+#   cycle    up -> wait -> seed -> qa -> collect (persistent: up -> wait -> qa),
+#            cleaned up on success, failure or kill.
 #   backup   Snapshot the persistent QA volume to ~/never-delete-official-data/.
 #   cleanup  List (default) or remove (--apply + QA_CONFIRM=CLEANUP-ISTARA-QA)
 #            every istara-qa-* Docker resource not on the keep list.
@@ -60,7 +61,7 @@ if [ -n "${QA_PERSISTENT:-}" ]; then
 fi
 
 usage() {
-  sed -n '2,28p' "${BASH_SOURCE[0]}"
+  sed -n '2,29p' "${BASH_SOURCE[0]}"
 }
 
 # Refuse heavy work when the Docker disk is nearly full: a full disk breaks
@@ -233,12 +234,24 @@ prune_dangling_images() {
 
 cmd_cycle() {
   trap cleanup_run EXIT INT TERM
+  if [ -n "${QA_PERSISTENT:-}" ]; then
+    cmd_up
+    cmd_wait
+    # Never seed the synthetic corpus into the kept install.
+    cmd_qa
+    return 0
+  fi
+  if [ "${QA_TEAM_MODE:-false}" != "true" ] && [ -z "${QA_NETWORK_ACCESS_TOKEN:-}" ]; then
+    # Local mode: the seeder is a non-loopback client, so the backend needs a
+    # network token. One random token per cycle, never persisted or printed.
+    QA_NETWORK_ACCESS_TOKEN="qa-$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+    export QA_NETWORK_ACCESS_TOKEN
+  fi
   cmd_up
   cmd_wait
-  # seed/collect stay separate commands: the synthetic seeder is never run
-  # against the persistent install, and it is currently refused (403) by the
-  # backend network guard on the ephemeral lane (tracked separately).
+  cmd_seed
   cmd_qa
+  cmd_collect
 }
 
 # Keep list: the current image set (istara-qa-*:${QA_IMAGE_TAG:-current}),

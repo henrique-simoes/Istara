@@ -185,6 +185,33 @@ def _list_evidence_units(client: Any, project_id: str) -> list[dict[str, Any]]:
     return list(response.json() or [])
 
 
+def _qa_auth_headers(client: Any, env: dict[str, str] | None = None) -> dict[str, str]:
+    """Authenticate the seeder the way any remote QA client must.
+
+    The seeder reaches the backend over the internal QA network, never from
+    loopback, so the backend's network guard applies. Local mode: present the
+    run's NETWORK_ACCESS_TOKEN (``QA_NETWORK_ACCESS_TOKEN``). Team mode: log in
+    as the disposable QA admin (``QA_ADMIN_USERNAME``/``QA_ADMIN_PASSWORD``)
+    and use the issued JWT. No credential is invented or logged.
+    """
+    env = dict(os.environ) if env is None else env
+    token = env.get("QA_NETWORK_ACCESS_TOKEN", "").strip()
+    if token:
+        return {"X-Access-Token": token}
+    password = env.get("QA_ADMIN_PASSWORD", "")
+    if password:
+        response = client.post(
+            "/api/auth/login",
+            json={"username": env.get("QA_ADMIN_USERNAME") or "admin", "password": password},
+        )
+        response.raise_for_status()
+        jwt = str(response.json().get("token") or "")
+        if not jwt:
+            raise RuntimeError("QA admin login returned no token")
+        return {"Authorization": f"Bearer {jwt}"}
+    return {}
+
+
 def ingest_slice_via_api(
     *,
     api_base: str,
@@ -227,6 +254,7 @@ def ingest_slice_via_api(
     if transport is not None:
         client_kwargs["transport"] = transport
     with httpx.Client(**client_kwargs) as client:
+        client.headers.update(_qa_auth_headers(client))
         project = _find_or_create_project(client, project_name, description)
         project_id = str(project.get("id") or "")
         if not project_id:
