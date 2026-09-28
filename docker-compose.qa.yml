@@ -30,11 +30,17 @@ x-qa-hardening: &qa-hardening
   cap_drop:
     - ALL
   restart: "no"
+  # Every QA resource carries its run id so `istara-qa.sh cleanup` and the
+  # EXIT trap can find and remove it (AGENTS.md §5, Docker hygiene).
+  labels:
+    istara.qa.run: ${QA_RUN_ID:-local}
 
 services:
   qa-backend:
     # One QA image built from the repo root: the product backend PLUS the QA
     # tooling (qa/scripts, qa/corpora) the seeder/resetter/auditor need.
+    # One tag per purpose: a rebuild replaces it instead of adding a variant.
+    image: istara-qa-backend:${QA_IMAGE_TAG:-current}
     build:
       context: .
       dockerfile: qa/Dockerfile
@@ -138,6 +144,8 @@ services:
       - ui
 
   qa-frontend:
+    # One tag per purpose: a rebuild replaces it instead of adding a variant.
+    image: istara-qa-frontend:${QA_IMAGE_TAG:-current}
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -164,6 +172,8 @@ services:
   # It implements a tiny Ollama-compatible wire surface but never loads a model
   # or makes an outbound request.
   qa-provider-stub:
+    # One tag per purpose: a rebuild replaces it instead of adding a variant.
+    image: istara-qa-provider-stub:${QA_IMAGE_TAG:-current}
     build:
       context: .
       dockerfile: qa/provider-stub.Dockerfile
@@ -195,6 +205,8 @@ services:
   # named slice through the REAL evidence-unit path (POST /api/documents on
   # the running qa-backend) and writes the seed manifest with live handles.
   qa-seeder:
+    # One tag per purpose: a rebuild replaces it instead of adding a variant.
+    image: istara-qa-backend:${QA_IMAGE_TAG:-current}
     build:
       context: .
       dockerfile: qa/Dockerfile
@@ -216,6 +228,11 @@ services:
       QA_SLICE: ${QA_SLICE:-coding-reliability}
       QA_RUNS_DIR: /qa/runs
       QA_API_BASE: ${QA_API_BASE:-http://qa-backend:8000}
+      # The seeder is a remote client of qa-backend: it authenticates with the
+      # run's network token (local mode) or the disposable QA admin (team mode).
+      QA_NETWORK_ACCESS_TOKEN: ${QA_NETWORK_ACCESS_TOKEN:-}
+      QA_ADMIN_USERNAME: ${QA_ADMIN_USERNAME:-admin}
+      QA_ADMIN_PASSWORD: ${QA_ADMIN_PASSWORD:-}
     volumes:
       # Bind the gitignored artifact dir so host-side collect/audit can read
       # the seed manifest; the QA runtime never mounts the Docker socket.
@@ -230,6 +247,8 @@ services:
 
   # Resetter: wipes ONLY this project's volumes/networks and reseeds.
   qa-resetter:
+    # One tag per purpose: a rebuild replaces it instead of adding a variant.
+    image: istara-qa-backend:${QA_IMAGE_TAG:-current}
     build:
       context: .
       dockerfile: qa/Dockerfile
@@ -250,6 +269,8 @@ services:
 
   # Auditor: provenance/retention/redaction evidence for the gate bundle.
   qa-auditor:
+    # One tag per purpose: a rebuild replaces it instead of adding a variant.
+    image: istara-qa-backend:${QA_IMAGE_TAG:-current}
     build:
       context: .
       dockerfile: qa/Dockerfile
@@ -290,6 +311,8 @@ services:
 
   # UI profile: publish the frontend on loopback only (127.0.0.1).
   qa-ui:
+    # One tag per purpose: a rebuild replaces it instead of adding a variant.
+    image: istara-qa-ui:${QA_IMAGE_TAG:-current}
     build:
       context: ./frontend
       dockerfile: Dockerfile

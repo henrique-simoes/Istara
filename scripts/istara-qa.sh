@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Public, provider-agnostic Istara QA developer entrypoint.
 #
-# Usage: scripts/istara-qa.sh <command> [--run-id <id>] [--profile <p>]
+# Usage: scripts/istara-qa.sh <command> [--run-id <id>] [--profile <p>] [--persistent] [--apply]
 #
 # Commands:
 #   render   Validate the QA compose contract (CI-safe, no services started).
@@ -11,13 +11,34 @@
 #   qa       Run registry-selected deterministic QA obligations.
 #   collect  Export sanitized JSON/JUnit evidence + provenance manifest.
 #   reset    Tear down ONLY this run's project namespace (confirmation token).
-#   down     Stop the run's project (keeps volumes).
+#   down     Remove the run's containers, networks and anonymous volumes.
+#   cycle    up -> wait -> seed -> qa -> collect (persistent: up -> wait -> qa),
+#            cleaned up on success, failure or kill.
+#   backup   Snapshot the persistent QA volume to ~/never-delete-official-data/.
+#   cleanup  List (default) or remove (--apply + QA_CONFIRM=CLEANUP-ISTARA-QA)
+#            every istara-qa-* Docker resource not on the keep list.
+#
+# --persistent (QA_PERSISTENT=1) layers docker-compose.qa.persistent.yml: the
+# one kept QA install, on the external volume istara-qa-persistent-data.
+# Heavy commands refuse when Docker has under QA_MIN_FREE_GB (20) free.
 #   staging  Placeholder: owner-local staging adapters live outside this file.
 #
 # No command here starts ollama/lmstudio/multivac, loads models, publishes
 # beyond loopback, or touches LLMs/ and Model_Finetuning/. The `live` profile
 # refuses to start without QA_LIVE_PROVIDER_TARGET.
 set -euo pipefail
+
+ARGS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --run-id) QA_RUN_ID="$2"; shift 2 ;;
+    --profile) QA_PROFILE="$2"; shift 2 ;;
+    --persistent) QA_PERSISTENT=1; shift ;;
+    --apply) QA_APPLY=1; shift ;;
+    *) ARGS+=("$1"); shift ;;
+  esac
+done
+set -- "${ARGS[@]+"${ARGS[@]}"}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_ID="${QA_RUN_ID:-$(date -u +%Y%m%d%H%M%S)}"
@@ -31,9 +52,39 @@ PROFILE="${QA_PROFILE:-contract}"
 # reintroduce ollama and the fixed istara-* container names.
 COMPOSE=(docker compose -f "$ROOT/docker-compose.qa.yml")
 PROJECT="istara-qa-${RUN_ID}"
+PERSISTENT_VOLUME="istara-qa-persistent-data"
+RECORDS_DIR="${QA_RECORDS_DIR:-$HOME/never-delete-official-data}"
+if [ -n "${QA_PERSISTENT:-}" ]; then
+  # The one kept install: fixed project name, external data volume.
+  COMPOSE+=(-f "$ROOT/docker-compose.qa.persistent.yml")
+  PROJECT="istara-qa-persistent"
+fi
 
 usage() {
-  sed -n '2,20p' "${BASH_SOURCE[0]}"
+  sed -n '2,29p' "${BASH_SOURCE[0]}"
+}
+
+# Refuse heavy work when the Docker disk is nearly full: a full disk breaks
+# every other project on the host, not just this run.
+ensure_disk_space() {
+  local min="${QA_MIN_FREE_GB:-20}" free
+  free="$(docker run --rm busybox:1.36 df -Pk / | awk 'NR==2 {print int($4 / 1048576)}')"
+  if [ "${free:-0}" -lt "$min" ]; then
+    echo "refusing: Docker disk has ${free:-0} GB free (< ${min} GB). Run 'scripts/istara-qa.sh cleanup' and report." >&2
+    exit 3
+  fi
+  echo "Docker disk free: ${free} GB (minimum ${min} GB)."
+}
+
+cmd_backup() {
+  docker volume inspect "$PERSISTENT_VOLUME" >/dev/null 2>&1 || {
+    echo "no $PERSISTENT_VOLUME volume yet; nothing to back up."; return 0; }
+  local dest
+  dest="$RECORDS_DIR/$PERSISTENT_VOLUME/$(date -u +%Y%m%dT%H%M%SZ)"
+  mkdir -p "$dest"
+  docker run --rm -v "$PERSISTENT_VOLUME:/data:ro" -v "$dest:/backup" busybox:1.36 \
+    tar -czf /backup/app-data.tar.gz -C /data .
+  echo "Backed up $PERSISTENT_VOLUME to $dest (a record: never delete)."
 }
 
 # Run QA Python tooling in the disposable QA image. The Mac Studio shell may
@@ -50,8 +101,12 @@ run_qa_python() {
   if [ -d "$ROOT/qa/runs" ]; then
     mounts+=( -v "$ROOT/qa/runs:/workspace/qa/runs:rw" )
   fi
-  "${COMPOSE[@]}" -p "$PROJECT" run --rm -T --no-deps --build \
-    "${mounts[@]}" -w /workspace qa-backend \
+  # --profile keeps profile-gated depends_on targets (qa-provider-stub)
+  # resolvable; --no-deps still stops them from starting.
+  "${COMPOSE[@]}" -p "$PROJECT" --profile "$PROFILE" run --rm -T --no-deps --build \
+    "${mounts[@]}" -w /workspace \
+    -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/workspace \
+    qa-backend \
     python "/workspace/$script" "$@"
 }
 
@@ -61,7 +116,12 @@ cmd_render() {
 }
 
 cmd_up() {
-  "${COMPOSE[@]}" -p "$PROJECT" --profile "$PROFILE" up -d
+  ensure_disk_space
+  if [ -n "${QA_PERSISTENT:-}" ]; then
+    docker volume create --label istara.qa.keep=true "$PERSISTENT_VOLUME" >/dev/null
+    cmd_backup
+  fi
+  "${COMPOSE[@]}" -p "$PROJECT" --profile "$PROFILE" up -d --build
   echo "QA stack up: project=$PROJECT profile=$PROFILE"
 }
 
@@ -139,8 +199,98 @@ cmd_reset() {
 }
 
 cmd_down() {
-  "${COMPOSE[@]}" -p "$PROJECT" down
-  echo "QA project $PROJECT stopped (volumes retained)."
+  # -v removes only this project's anonymous/declared volumes; the persistent
+  # volume is external and survives by construction.
+  "${COMPOSE[@]}" -p "$PROJECT" --profile "*" down -v --remove-orphans
+  echo "QA project $PROJECT removed (persistent data volume, if any, kept)."
+}
+
+# Removes a run's containers, networks and anonymous volumes, and any image a
+# rebuild left dangling. Registered as the EXIT/INT/TERM trap of `cycle`.
+cleanup_run() {
+  local rc=$?
+  trap - EXIT INT TERM
+  echo "Cleaning up QA project $PROJECT (exit $rc)."
+  cmd_down || true
+  prune_dangling_images || true
+  exit "$rc"
+}
+
+# Dangling images a rebuild left behind, limited to istara-qa-* compose projects.
+dangling_istara_images() {
+  local id
+  for id in $(docker images -q --filter dangling=true); do
+    case "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$id" 2>/dev/null)" in
+      istara-qa-*) echo "$id" ;;
+    esac
+  done
+}
+
+prune_dangling_images() {
+  local ids
+  ids="$(dangling_istara_images)"
+  [ -z "$ids" ] || docker rmi $ids
+}
+
+cmd_cycle() {
+  trap cleanup_run EXIT INT TERM
+  if [ -n "${QA_PERSISTENT:-}" ]; then
+    cmd_up
+    cmd_wait
+    # Never seed the synthetic corpus into the kept install.
+    cmd_qa
+    return 0
+  fi
+  if [ "${QA_TEAM_MODE:-false}" != "true" ] && [ -z "${QA_NETWORK_ACCESS_TOKEN:-}" ]; then
+    # Local mode: the seeder is a non-loopback client, so the backend needs a
+    # network token. One random token per cycle, never persisted or printed.
+    QA_NETWORK_ACCESS_TOKEN="qa-$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+    export QA_NETWORK_ACCESS_TOKEN
+  fi
+  cmd_up
+  cmd_wait
+  cmd_seed
+  cmd_qa
+  cmd_collect
+}
+
+# Keep list: the current image set (istara-qa-*:${QA_IMAGE_TAG:-current}),
+# the persistent volume, running containers, and anything outside the
+# istara-qa- namespace (other projects are listed, never touched).
+cmd_cleanup() {
+  local tag="${QA_IMAGE_TAG:-current}" apply=""
+  if [ -n "${QA_APPLY:-}" ]; then
+    if [ "${QA_CONFIRM:-}" != "CLEANUP-ISTARA-QA" ]; then
+      echo "cleanup --apply requires QA_CONFIRM=CLEANUP-ISTARA-QA" >&2
+      exit 2
+    fi
+    apply=1
+  fi
+  local containers volumes networks images dangling
+  containers="$(docker ps -a --filter status=exited --filter status=created --filter status=dead \
+    --format '{{.Names}}' | grep -E '^istara-qa-' || true)"
+  volumes="$(docker volume ls --format '{{.Name}}' | grep -E '^istara-qa-' \
+    | grep -vx "$PERSISTENT_VOLUME" || true)"
+  networks="$(docker network ls --format '{{.Name}}' | grep -E '^istara-qa-' || true)"
+  images="$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^istara-qa-' \
+    | grep -v ":${tag}\$" || true)"
+  dangling="$(dangling_istara_images)"
+  echo "== Istara QA resources not on the keep list"
+  printf 'container %s\n' $containers
+  printf 'volume    %s\n' $volumes
+  printf 'network   %s\n' $networks
+  printf 'image     %s\n' $images $dangling
+  echo "== Other projects (never touched here)"
+  docker ps -a --format '{{.Names}}' | grep -vE '^istara-qa-' | sed 's/^/  /' || true
+  if [ -z "$apply" ]; then
+    echo "Dry run. Re-run with --apply and QA_CONFIRM=CLEANUP-ISTARA-QA to remove the list above."
+    return 0
+  fi
+  [ -z "$containers" ] || docker rm -v $containers
+  [ -z "$networks" ] || docker network rm $networks || true
+  [ -z "$volumes" ] || docker volume rm $volumes
+  [ -z "$images$dangling" ] || docker rmi $images $dangling
+  echo "Cleanup done. Kept: istara-qa-*:${tag}, $PERSISTENT_VOLUME, running containers."
 }
 
 cmd_staging() {
@@ -151,6 +301,6 @@ cmd_staging() {
 
 CMD="${1:-}"
 case "$CMD" in
-  render|up|wait|seed|qa|collect|reset|down|staging) "cmd_$CMD" ;;
+  render|up|wait|seed|qa|collect|reset|down|cycle|backup|cleanup|staging) "cmd_$CMD" ;;
   *) usage; exit 2 ;;
 esac

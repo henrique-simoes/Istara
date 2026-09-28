@@ -35,9 +35,10 @@ lifecycle file under `docs/build-stream/`.
   and check console/network while walking the user flow. Codex agents use their browser
   extension equivalently. Playwright is for the committed, repeatable scenarios in
   `tests/simulation/`, not for ad-hoc inspection.
-- Target a disposable QA stack (`scripts/istara-qa.sh up --run-id <branch>-<date> --profile ui`),
-  never the protected `never-delete-official-*` containers. Starting servers or making live
-  model calls still needs owner permission (`AGENTS.md` §9).
+- Target a disposable QA stack (`scripts/istara-qa.sh cycle --run-id <branch>-<date> --profile ui`,
+  which cleans up after itself), or `--persistent` for live-model runs that should accumulate into
+  the one kept install. Follow the Docker hygiene rules in `AGENTS.md` §5. Starting servers or
+  making live model calls still needs owner permission (`AGENTS.md` §9).
 - Walk every menu and sub-menu the change can reach: happy path, empty/loading/error states,
   role differences, light/dark, 375px width, keyboard focus. Report what you saw, with
   screenshots, not what the code implies.

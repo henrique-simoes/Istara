@@ -176,3 +176,40 @@ def test_offline_plan_mode_has_no_ingestion():
     plan = seed_plan(SLICE, _manifest(), "offline-run-001")
     assert "ingestion" not in plan
     assert plan["is_qa_provisional"] is True
+
+
+# --- Seeder authentication: the seeder is a non-loopback client of qa-backend ---
+
+from qa.scripts.seed_synthetic import _qa_auth_headers  # noqa: E402
+
+
+def test_seeder_presents_network_token_in_local_mode():
+    with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(500))) as client:
+        headers = _qa_auth_headers(client, {"QA_NETWORK_ACCESS_TOKEN": "qa-run-token"})
+    assert headers == {"X-Access-Token": "qa-run-token"}
+
+
+def test_seeder_logs_in_as_qa_admin_in_team_mode():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"token": "jwt-abc"})
+
+    with httpx.Client(base_url="http://qa-backend:8000", transport=httpx.MockTransport(handler)) as client:
+        headers = _qa_auth_headers(client, {"QA_ADMIN_USERNAME": "admin", "QA_ADMIN_PASSWORD": "pw"})
+    assert seen == {"path": "/api/auth/login", "body": {"username": "admin", "password": "pw"}}
+    assert headers == {"Authorization": "Bearer jwt-abc"}
+
+
+def test_seeder_login_failure_is_raised_not_swallowed():
+    handler = lambda r: httpx.Response(401, json={"detail": "bad"})  # noqa: E731
+    with httpx.Client(base_url="http://qa-backend:8000", transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(httpx.HTTPStatusError):
+            _qa_auth_headers(client, {"QA_ADMIN_PASSWORD": "wrong"})
+
+
+def test_seeder_sends_no_credentials_when_none_configured():
+    with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(500))) as client:
+        assert _qa_auth_headers(client, {}) == {}
