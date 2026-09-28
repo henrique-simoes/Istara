@@ -2865,6 +2865,17 @@ Istara's public release testing is now provider-agnostic and human-gated:
   adapter that returns exact identities and fixed-dimension vectors so the real
   provider and `assert_vector_space_invariant` gates execute without contacting
   a host provider. `scripts/istara-qa.sh` is the developer entrypoint.
+- **QA Docker hygiene (2026-09-27):** built QA images carry one fixed tag
+  (`istara-qa-<service>:${QA_IMAGE_TAG:-current}`) and every service the label
+  `istara.qa.run`. `istara-qa.sh cycle` cleans up containers, networks,
+  anonymous volumes and dangling images on success, failure and kill (trap
+  `EXIT INT TERM`); `up` refuses under 20 GB free Docker disk; `cleanup` lists
+  (or, confirmed, removes) every `istara-qa-*` resource off the keep list.
+  The one kept install is `--persistent`: `docker-compose.qa.persistent.yml`
+  moves `/app/data` and the SQLite DB onto the external volume
+  `istara-qa-persistent-data`, backed up to `~/never-delete-official-data/`
+  before each `up`. Records leave Docker as files; stopped containers are not
+  kept (`AGENTS.md` §5).
 - **Human-gated promotion:** `promote-testing.yml` is the only workflow that
   may create a promotion PR to `main`, and only after a protected-environment
   approval that binds the exact source SHA, evidence manifest, and image
