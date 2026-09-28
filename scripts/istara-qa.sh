@@ -103,7 +103,9 @@ run_qa_python() {
   # --profile keeps profile-gated depends_on targets (qa-provider-stub)
   # resolvable; --no-deps still stops them from starting.
   "${COMPOSE[@]}" -p "$PROJECT" --profile "$PROFILE" run --rm -T --no-deps --build \
-    "${mounts[@]}" -w /workspace qa-backend \
+    "${mounts[@]}" -w /workspace \
+    -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/workspace \
+    qa-backend \
     python "/workspace/$script" "$@"
 }
 
