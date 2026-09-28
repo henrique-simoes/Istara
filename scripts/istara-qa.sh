@@ -100,7 +100,9 @@ run_qa_python() {
   if [ -d "$ROOT/qa/runs" ]; then
     mounts+=( -v "$ROOT/qa/runs:/workspace/qa/runs:rw" )
   fi
-  "${COMPOSE[@]}" -p "$PROJECT" run --rm -T --no-deps --build \
+  # --profile keeps profile-gated depends_on targets (qa-provider-stub)
+  # resolvable; --no-deps still stops them from starting.
+  "${COMPOSE[@]}" -p "$PROJECT" --profile "$PROFILE" run --rm -T --no-deps --build \
     "${mounts[@]}" -w /workspace qa-backend \
     python "/workspace/$script" "$@"
 }
