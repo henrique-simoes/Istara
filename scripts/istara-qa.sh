@@ -12,8 +12,7 @@
 #   collect  Export sanitized JSON/JUnit evidence + provenance manifest.
 #   reset    Tear down ONLY this run's project namespace (confirmation token).
 #   down     Remove the run's containers, networks and anonymous volumes.
-#   cycle    up -> wait -> seed -> qa -> collect (persistent: up -> wait -> qa),
-#            cleaned up on success, failure or kill.
+#   cycle    up -> wait -> qa, cleaned up on success, failure or kill.
 #   backup   Snapshot the persistent QA volume to ~/never-delete-official-data/.
 #   cleanup  List (default) or remove (--apply + QA_CONFIRM=CLEANUP-ISTARA-QA)
 #            every istara-qa-* Docker resource not on the keep list.
@@ -61,7 +60,7 @@ if [ -n "${QA_PERSISTENT:-}" ]; then
 fi
 
 usage() {
-  sed -n '2,29p' "${BASH_SOURCE[0]}"
+  sed -n '2,28p' "${BASH_SOURCE[0]}"
 }
 
 # Refuse heavy work when the Docker disk is nearly full: a full disk breaks
@@ -236,14 +235,10 @@ cmd_cycle() {
   trap cleanup_run EXIT INT TERM
   cmd_up
   cmd_wait
-  if [ -n "${QA_PERSISTENT:-}" ]; then
-    # Never seed the synthetic corpus into the kept install.
-    cmd_qa
-  else
-    cmd_seed
-    cmd_qa
-    cmd_collect
-  fi
+  # seed/collect stay separate commands: the synthetic seeder is never run
+  # against the persistent install, and it is currently refused (403) by the
+  # backend network guard on the ephemeral lane (tracked separately).
+  cmd_qa
 }
 
 # Keep list: the current image set (istara-qa-*:${QA_IMAGE_TAG:-current}),
