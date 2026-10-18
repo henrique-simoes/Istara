@@ -91,17 +91,21 @@ class DecisionPolicyRunner(BaseLoopRunner):
         project_id = self.require_project_id()
         async with async_session() as session:
             rows = (
-                await session.execute(
-                    select(DecisionTrajectory)
-                    .where(
-                        DecisionTrajectory.project_id == project_id,
-                        DecisionTrajectory.endpoint_id == target,
-                        DecisionTrajectory.question_set_id == QUESTION_SET_ID,
-                        DecisionTrajectory.human_label.is_not(None),
+                (
+                    await session.execute(
+                        select(DecisionTrajectory)
+                        .where(
+                            DecisionTrajectory.project_id == project_id,
+                            DecisionTrajectory.endpoint_id == target,
+                            DecisionTrajectory.question_set_id == QUESTION_SET_ID,
+                            DecisionTrajectory.human_label.is_not(None),
+                        )
+                        .limit(MAX_ITEMS)
                     )
-                    .limit(MAX_ITEMS)
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             items = []
             for row in rows:
                 application = await session.get(CodeApplication, row.subject_id)
