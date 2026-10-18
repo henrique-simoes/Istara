@@ -7,12 +7,12 @@
 item: decision-model-judge
 branch: feat/decision-model-judge
 cf: { spec: CF-SPEC-1, tasks: [CF-2] }
-phase: "Phase 0 — math core (plan in S0 frame)"
-stage: S5-ship
-status: blocked
-blocked_on: "owner — commit and push of feat/decision-model-judge (outward-facing), so CI runs ruff format/check and pytest on Python 3.12 for Phase 0; nothing else blocks"
-last: { agent: claude-code, at: 2026-10-18T01:07:11Z, ledger: L-7 }
-next_action: "After the owner approves a push: commit Phase 0 with the docs, push, read CI backend-format/backend-lint/tests for Phase 0 files; if green, mark roadmap Phase 0 done, record the blind-coverage registry row as self-only, and start Phase 1 (adapter + JEV)."
+phase: "Phase 1 — adapter + JEV"
+stage: S1-plan
+status: in-progress
+blocked_on: null
+last: { agent: claude-code, at: 2026-10-18T01:44:18Z, ledger: L-8 }
+next_action: "Phase 1 S1: design the `systemone_http` adapter, decider registry and egress authorization (read the JEV API/SDK docs saved under the research references, `backend/app/core/agentic` dispatcher conventions and the security control matrix first), then implement against a stub `/v1/systemone` server."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -156,8 +156,8 @@ three phases make no product-path change.
 
 | # | Phase | Goal | Acceptance (Given/When/Then) | Verification | Status |
 |---|---|---|---|---|---|
-| 0 | Math core | pure, network-free math: confidence recompute, temperature scaling, Bayes risk + Chow, order-flip merge, ECE (plain and Horvitz–Thompson weighted), Brier + Murphy, n_eff, cross-fitted T fit, Beta reliability posterior (lower bound), Learn-then-Test τ, Dawid–Skene EM, pairwise error correlation + Yule's Q + J_eff | **Given** the JEV docs' worked examples (choice 0.9/0.06/0.04 → 0.85; score 0/0.57/0.43 → ≈0.35) and hand-computed fixtures for every estimator, **when** the core runs, **then** it reproduces them to 1e-9; τ* = C_FP/(C_FP+C_FN); temperature scaling preserves argmax and lowers held-out ECE on a miscalibrated fixture; LTT never returns τ below τ*; Dawid–Skene recovers planted confusion matrices on synthetic data | `pytest tests/test_decision_math.py -q` | in-progress |
-| 1 | Adapter + JEV | `systemone_http` adapter (TypeSafe JEV primary; llama.cpp / Kev / Laya / Standard One compatible), registry, admissibility rule (full probability vector + served versioned id), secrets in Keychain/env, per-project egress authorization | **Given** a stub `/v1/systemone` server, **when** Istara decides, **then** the request matches the JEV schema, the served versioned id is recorded, aliases are refused for trusted scopes, 429/529 back off honoring `retry-after`, 400 `max_tokens_exceeded` / empty / partial answers are `not_runnable`, a missing probability vector refuses registration, and a project without opt-in never reaches the hosted endpoint | `pytest tests/test_decider_adapter.py tests/test_decider_registry.py -q`; `python3 scripts/security_benchmark.py --fail-on-threshold` | planned |
+| 0 | Math core | pure, network-free math: confidence recompute, temperature scaling, Bayes risk + Chow, order-flip merge, ECE (plain and Horvitz–Thompson weighted), Brier + Murphy, n_eff, cross-fitted T fit, Beta reliability posterior (lower bound), Learn-then-Test τ, Dawid–Skene EM, pairwise error correlation + Yule's Q + J_eff | **Given** the JEV docs' worked examples (choice 0.9/0.06/0.04 → 0.85; score 0/0.57/0.43 → ≈0.35) and hand-computed fixtures for every estimator, **when** the core runs, **then** it reproduces them to 1e-9; τ* = C_FP/(C_FP+C_FN); temperature scaling preserves argmax and lowers held-out ECE on a miscalibrated fixture; LTT never returns τ below τ*; Dawid–Skene recovers planted confusion matrices on synthetic data | `pytest tests/test_decision_math.py -q` | done |
+| 1 | Adapter + JEV | `systemone_http` adapter (TypeSafe JEV primary; llama.cpp / Kev / Laya / Standard One compatible), registry, admissibility rule (full probability vector + served versioned id), secrets in Keychain/env, per-project egress authorization | **Given** a stub `/v1/systemone` server, **when** Istara decides, **then** the request matches the JEV schema, the served versioned id is recorded, aliases are refused for trusted scopes, 429/529 back off honoring `retry-after`, 400 `max_tokens_exceeded` / empty / partial answers are `not_runnable`, a missing probability vector refuses registration, and a project without opt-in never reaches the hosted endpoint | `pytest tests/test_decider_adapter.py tests/test_decider_registry.py -q`; `python3 scripts/security_benchmark.py --fail-on-threshold` | in-progress |
 | 2 | Trajectory store + calibration gate | `DecisionTrajectory` (alembic, content-free handles, §5 of the research doc), versioned human-label mapping from `ReconciliationDecision` / review outcomes / `classify_review_feedback`, blind random audit sampling (rate ρ, propensity π), `app.evals.decision_eval` trust gate per scope with cross-fitting, shadow mode (DEC-2) | **Given** labelled trajectories with a known audit design, **when** a scope is evaluated, **then** weighted ECE/Brier/κ/order-flip/risk–coverage are reported on held-out folds, `trusted` requires n_eff ≥ 50 and the DEC-1 ceilings, audit items hide the decider verdict from the reviewer, and an untrusted scope has no routing effect | `pytest tests/test_decision_trajectory.py tests/test_decision_eval.py -q` | planned |
 | 3 | Assurance modes | project-level assurance policy (`auto`, `llm_judges`, `decision_models`, `both`, `none`) honoured by `validation.py` and `validation_executor.py`; Self-MoA stays the single-endpoint fallback; AV-1 fix (reward = human outcome, Thompson sampling constrained to the mode); research-validity contract + governance contract + ensemble-method matrix updated | **Given** each mode, **when** a task is validated, **then** only the evaluators the mode allows are called (dispatcher call log proves no LLM-judge call in `decision_models` mode), `none` marks the task `unvalidated` and still requires human review, outputs from `both` are shown side by side and never vote-merged, and the coding-run reliability gate is unchanged in every mode | `pytest tests/test_assurance_modes.py tests/test_adaptive_validation.py tests/pi_production/test_w7_validation.py tests/test_research_validity_contract.py -q` | planned |
 | 4 | Spine seam (code applications) | decider triage after the deterministic quote check; routing and priority into `CodeReviewQueue`; trajectory written per application | **Given** a governed coding run, **when** applications are admitted, **then** each gets a trajectory; with a trusted scope, abstentions and `factual_hallucination` / `methodological_violation` route to review with priority; no acceptance state changes because of the decider; κ inputs are byte-identical with the decider on vs off; telemetry is content-free | `pytest tests/test_research_validity_contract.py tests/test_code_applications.py tests/test_decision_spine_seam.py -q`; credential-free simulation scenario with a stub decider; UI walk | planned |
@@ -312,6 +312,12 @@ Result: F-1…F-5 fixed; F-6 (ruff/pytest not run) stays open until CI runs, whi
 Verified: stdlib runner → "25 passed, 0 failed, 25 total"; mutation script → 6/6 killed; formatter-collapse heuristic → none; `gate after --task CF-2` → comparable, new issues 0, new failures 0, new warnings 0.
 Next: owner approves commit + push → CI → close F-6 → Phase 0 done → Phase 1.
 
+### L-8 | 2026-10-18T01:44:18Z | S5-ship | claude-opus-5-5 | executor | Phase 0
+Did: Committed `e72875df` (owner-approved, no attribution lines per the owner's global rule) and pushed `feat/decision-model-judge`. A feature-branch push does not trigger `ci.yml` (push/PR only on main/staging/testing), so I dispatched it (`gh workflow run ci.yml --ref feat/decision-model-judge`, runs 39085727702 and 39086661581). The first run showed `feature-obligations` red; running the classifier locally against `origin/testing` revealed the real obligation F-7, fixed in `4e0c534e` by registering `research.decision-models` in `testing/feature_coverage.yml`.
+Result: F-6 and F-7 fixed; Phase 0 done; CI-1 (dispatch-only crash in `feature-obligations`) logged as an out-of-scope defect.
+Verified: run 39086661581 at `4e0c534e` → backend-format success, backend-lint success, backend-test "2699 passed, 7 skipped, 1 deselected" (59 PASSED lines across `test_decision_math.py` and `test_research_validity_contract.py`); every other job green except `feature-obligations` (`CalledProcessError: git rev-parse ''`) and the `release-gate` aggregator that follows it. `python3 scripts/check_feature_obligations.py --base origin/testing --head HEAD` → "Feature-obligation classification passed"; `check_change_obligations.py` → "Change-governance check passed". CF-2 evidence row 3 recorded.
+Next: Phase 1 S1.
+
 ## Phase 0 — math core
 
 ### Design (S1)
@@ -369,10 +375,25 @@ Method: re-reading against the design, plus edge-case probes.
 | F-3 | Minor | Bugs | `ensemble.py` `dawid_skene` | An out-of-range label raised `IndexError` | CF-2 | fixed |
 | F-4 | Nit | Bugs | `calibration.py` | `bins < 1` raised `IndexError` | CF-2 | fixed |
 | F-5 | Nit | Docs | `decision_rule.py` `merge_order_flip` | An exact tie can read as order disagreement; abstaining is the conservative outcome, now documented | CF-2 | fixed |
-| F-6 | Major | Tests | toolchain | ruff and pytest have not run on this code (no installs allowed locally or on the Mac Studio) | CF-2 | open (closes on the first CI run) |
+| F-6 | Major | Tests | toolchain | ruff and pytest have not run on this code (no installs allowed locally or on the Mac Studio) | CF-2 | fixed (CI, L-8) |
+| F-7 | Major | Integration | `testing/feature_coverage.yml` | The new package was unclassified, so `check_feature_obligations` failed closed | CF-2 | fixed (L-8) |
+| CI-1 | Major | Integration (out of scope) | `.github/workflows/ci.yml` feature-obligations step | On `workflow_dispatch` the base SHA is empty and `git rev-parse ''` crashes, so `release-gate` is always red on dispatched runs | — | open: separate task (not this plan's scope) |
 
 ### Remediation (S4)
 
 F-1: `CrossFitResult.temperatures_at_bound` counts unidentified fits so the Phase 2 trust gate can
 refuse them. F-2/F-3/F-4: consistent `ValueError`s. F-5: docstring. Regression tests:
 `test_degenerate_inputs_fail_with_value_errors`, `test_cross_fit_reports_unidentified_temperatures`.
+
+### Ship (S5)
+
+Phase 0 is done. Commits `e72875df` (package, tests, docs) and `4e0c534e` (feature-coverage entry)
+are pushed on `feat/decision-model-judge`, with no PR (owner, 2026-10-17). CI on Python 3.12 is green for
+every job that judges this change. Review coverage: **self-only** (the owner's no-subagent rule).
+The skills library's `docs/build-stream/blind-coverage-registry.md` does not exist, so the row is
+recorded here instead. Residual risk: the decider math is unused until Phase 1–4 wire it in;
+Dawid–Skene estimates for three-evaluator panels are imprecise by construction (DEC-7).
+
+## Phase 1 — adapter + JEV
+
+Not started. Next: S1 design (see Status Block `next_action`).
