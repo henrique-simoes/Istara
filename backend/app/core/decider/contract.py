@@ -28,7 +28,7 @@ _ALIAS_SUFFIXES = ("-latest", "-preview", "-stable")
 _RETRY_AFTER_CAP_S = 60.0
 
 
-class ContractViolation(ValueError):
+class ContractViolationError(ValueError):
     """A response that does not satisfy the contract; ``reason`` is a stable code."""
 
     def __init__(self, reason: str, detail: str = "") -> None:
@@ -165,20 +165,20 @@ def not_runnable(reason: str, **fields: Any) -> DecisionOutcome:
 
 def _distribution(raw: Any, expected: Sequence[str], qid: str) -> dict[str, float]:
     if not isinstance(raw, Mapping):
-        raise ContractViolation("missing_probabilities", qid)
+        raise ContractViolationError("missing_probabilities", qid)
     if set(raw) != set(expected):
-        raise ContractViolation("probability_keys_mismatch", qid)
+        raise ContractViolationError("probability_keys_mismatch", qid)
     values: dict[str, float] = {}
     for key in expected:
         value = raw[key]
         if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise ContractViolation("probability_not_numeric", qid)
+            raise ContractViolationError("probability_not_numeric", qid)
         value = float(value)
         if not math.isfinite(value) or value < 0.0:
-            raise ContractViolation("probability_out_of_range", qid)
+            raise ContractViolationError("probability_out_of_range", qid)
         values[key] = value
     if abs(sum(values.values()) - 1.0) > PROBABILITY_SUM_TOLERANCE:
-        raise ContractViolation("probabilities_do_not_sum_to_one", qid)
+        raise ContractViolationError("probabilities_do_not_sum_to_one", qid)
     return values
 
 
@@ -193,10 +193,10 @@ def _parse_answer(
     qid: str, question: Choice | Score | Noul, answer: Any
 ) -> tuple[dict[str, float], Any]:
     if not isinstance(answer, Mapping):
-        raise ContractViolation("missing_answer", qid)
+        raise ContractViolationError("missing_answer", qid)
     expected_type = _question_body(question)["type"]
     if answer.get("type") != expected_type:
-        raise ContractViolation("answer_type_mismatch", qid)
+        raise ContractViolationError("answer_type_mismatch", qid)
     if isinstance(question, Choice):
         dist = _distribution(answer.get("probabilities"), list(question.options), qid)
         return dist, _confidence(answer)
@@ -205,27 +205,27 @@ def _parse_answer(
         return _distribution(answer.get("probabilities"), keys, qid), _confidence(answer)
     p_yes = answer.get("noul")
     if isinstance(p_yes, bool) or not isinstance(p_yes, (int, float)):
-        raise ContractViolation("missing_probabilities", qid)
+        raise ContractViolationError("missing_probabilities", qid)
     p_yes = float(p_yes)
     if not math.isfinite(p_yes) or not 0.0 <= p_yes <= 1.0:
-        raise ContractViolation("probability_out_of_range", qid)
+        raise ContractViolationError("probability_out_of_range", qid)
     return {NOUL_TRUE: p_yes, NOUL_FALSE: 1.0 - p_yes}, None
 
 
 def parse_response(body: Any, questions: Mapping[str, Choice | Score | Noul]) -> DecisionOutcome:
-    """Validate a 200 response strictly; any gap raises :class:`ContractViolation`.
+    """Validate a 200 response strictly; any gap raises :class:`ContractViolationError`.
 
     Every requested question must be answered with its type and a full probability vector. A
     decider that cannot return the vector cannot be calibrated, so it is not admissible.
     """
     if not isinstance(body, Mapping):
-        raise ContractViolation("malformed_body")
+        raise ContractViolationError("malformed_body")
     served = body.get("model")
     if not isinstance(served, str) or not served.strip():
-        raise ContractViolation("missing_served_model")
+        raise ContractViolationError("missing_served_model")
     answers = body.get("answers")
     if not isinstance(answers, Mapping):
-        raise ContractViolation("missing_answers")
+        raise ContractViolationError("missing_answers")
     outcome = DecisionOutcome(status="ok", served_model=served.strip())
     for qid, question in questions.items():
         dist, confidence = _parse_answer(qid, question, answers.get(qid))

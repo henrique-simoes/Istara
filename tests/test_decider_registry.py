@@ -11,7 +11,7 @@ from app.core.decider.access import open_decider
 from app.core.decider.credentials import resolve_api_key
 from app.core.decider.registry import (
     DeciderEndpoint,
-    DeciderUnavailable,
+    DeciderUnavailableError,
     parse_endpoints,
     require_egress_authorization,
 )
@@ -37,7 +37,7 @@ def _value_error(fn) -> bool:
 def _unavailable(fn) -> str:
     try:
         fn()
-    except DeciderUnavailable as error:
+    except DeciderUnavailableError as error:
         return error.reason
     return "allowed"
 
@@ -104,7 +104,7 @@ def test_open_decider_refuses_unknown_and_unauthorized_before_any_request():
     async def reason(endpoint_id: str, project_id: str) -> str:
         try:
             await open_decider(endpoint_id, project_id, endpoints=endpoints)
-        except DeciderUnavailable as error:
+        except DeciderUnavailableError as error:
             return error.reason
         return "opened"
 

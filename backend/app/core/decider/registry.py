@@ -25,7 +25,7 @@ _LOCAL_SCOPES = frozenset({"loopback", "private"})
 MAX_RETRIES_LIMIT = 5
 
 
-class DeciderUnavailable(RuntimeError):
+class DeciderUnavailableError(RuntimeError):
     """A decider cannot be used for this call; ``reason`` is a stable code."""
 
     def __init__(self, reason: str) -> None:
@@ -122,6 +122,6 @@ def require_egress_authorization(
     opt-in; hosted endpoints need the project to list the endpoint id.
     """
     if not str(project_id or "").strip():
-        raise DeciderUnavailable("project_required")
+        raise DeciderUnavailableError("project_required")
     if endpoint.is_hosted and endpoint.endpoint_id not in set(authorized_endpoint_ids):
-        raise DeciderUnavailable("hosted_egress_not_authorized")
+        raise DeciderUnavailableError("hosted_egress_not_authorized")

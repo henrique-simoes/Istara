@@ -13,7 +13,7 @@ from app.core.decider.client import SystemOneClient
 from app.core.decider.credentials import resolve_api_key
 from app.core.decider.registry import (
     DeciderEndpoint,
-    DeciderUnavailable,
+    DeciderUnavailableError,
     configured_endpoints,
     require_egress_authorization,
 )
@@ -35,11 +35,11 @@ async def open_decider(
     endpoints: dict[str, DeciderEndpoint] | None = None,
     transport: Any = None,
 ) -> SystemOneClient:
-    """A client for ``endpoint_id`` that this project may use, or :class:`DeciderUnavailable`."""
+    """A client for ``endpoint_id`` this project may use, or :class:`DeciderUnavailableError`."""
     catalog = configured_endpoints() if endpoints is None else endpoints
     endpoint = catalog.get(endpoint_id)
     if endpoint is None:
-        raise DeciderUnavailable("unknown_endpoint")
+        raise DeciderUnavailableError("unknown_endpoint")
     authorized: list[str] = []
     if endpoint.is_hosted and str(project_id or "").strip():
         if session is None:
@@ -56,5 +56,5 @@ async def open_decider(
         env_var=endpoint.api_key_env,
     )
     if endpoint.is_hosted and not api_key:
-        raise DeciderUnavailable("missing_api_key")
+        raise DeciderUnavailableError("missing_api_key")
     return SystemOneClient(endpoint, api_key=api_key, transport=transport)

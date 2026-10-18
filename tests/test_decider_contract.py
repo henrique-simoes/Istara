@@ -10,7 +10,7 @@ from app.core.decider.contract import (
     NOUL_FALSE,
     NOUL_TRUE,
     Choice,
-    ContractViolation,
+    ContractViolationError,
     Noul,
     Score,
     build_request,
@@ -56,7 +56,7 @@ DOCUMENTED_RESPONSE = {
 def _reason(body, questions=QUESTIONS) -> str:
     try:
         parse_response(body, questions)
-    except ContractViolation as violation:
+    except ContractViolationError as violation:
         return violation.reason
     return "accepted"
 

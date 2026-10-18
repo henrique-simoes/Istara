@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.core.decider.access import open_decider
 from app.core.decider.client import SystemOneClient
 from app.core.decider.contract import Choice, Noul
-from app.core.decider.registry import DeciderEndpoint, DeciderUnavailable, parse_endpoints
+from app.core.decider.registry import DeciderEndpoint, DeciderUnavailableError, parse_endpoints
 from app.models.decision_policy import DecisionModelProjectPolicy
 
 QUESTIONS = {
@@ -168,7 +168,7 @@ async def test_open_decider_enforces_hosted_opt_in_and_key(monkeypatch):
     )
     try:
         async with maker() as session:
-            with pytest.raises(DeciderUnavailable) as denied:
+            with pytest.raises(DeciderUnavailableError) as denied:
                 await open_decider("jev", "p1", session=session, endpoints=endpoints)
             assert denied.value.reason == "hosted_egress_not_authorized"
 
@@ -179,7 +179,7 @@ async def test_open_decider_enforces_hosted_opt_in_and_key(monkeypatch):
             assert policy.hosted_egress_endpoint_ids() == ["jev"]
 
             monkeypatch.delenv("ISTARA_TEST_TYPESAFE_KEY", raising=False)
-            with pytest.raises(DeciderUnavailable) as no_key:
+            with pytest.raises(DeciderUnavailableError) as no_key:
                 await open_decider("jev", "p1", session=session, endpoints=endpoints)
             assert no_key.value.reason == "missing_api_key"
 
@@ -187,7 +187,7 @@ async def test_open_decider_enforces_hosted_opt_in_and_key(monkeypatch):
             client = await open_decider("jev", "p1", session=session, endpoints=endpoints)
             assert isinstance(client, SystemOneClient) and "sk-from-env" not in repr(client)
 
-            with pytest.raises(DeciderUnavailable) as other_project:
+            with pytest.raises(DeciderUnavailableError) as other_project:
                 await open_decider("jev", "p2", session=session, endpoints=endpoints)
             assert other_project.value.reason == "hosted_egress_not_authorized"
     finally:

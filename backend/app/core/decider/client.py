@@ -16,7 +16,7 @@ from typing import Any
 from app.core.decider.contract import (
     RETRYABLE_STATUSES,
     Choice,
-    ContractViolation,
+    ContractViolationError,
     DecisionOutcome,
     Noul,
     Score,
@@ -109,7 +109,7 @@ class SystemOneClient:
             return not_runnable("malformed_body")
         try:
             outcome = parse_response(payload, questions)
-        except ContractViolation as violation:
+        except ContractViolationError as violation:
             return not_runnable(violation.reason)
         mismatch = check_served_identity(self.endpoint.model, outcome.served_model or "")
         if mismatch:
