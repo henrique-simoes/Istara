@@ -458,3 +458,60 @@ async def test_stop_autoresearch_requests_stop(monkeypatch):
 
     assert response.status_code == 200
     assert fake_engine.stopped is True
+
+
+# ── CF-SPEC-1 Phase 6: how a runner scores (decision model, pinned judge, or not runnable) ──
+
+
+class _Runner:
+    def __init__(self, project_id: str = "project-judge-plan"):
+        self.project_id = project_id
+
+    def require_project_id(self) -> str:
+        return self.project_id
+
+
+def _assurance(monkeypatch, mode: str, deciders=()):
+    from app.core.assurance import ProjectAssurance
+
+    async def load(_project_id):
+        return ProjectAssurance(mode=mode, decider_endpoint_ids=tuple(deciders))
+
+    monkeypatch.setattr("app.services.assurance_policies.load_project_assurance", load)
+
+
+def _catalog(monkeypatch, endpoint_ids):
+    manager = SimpleNamespace(
+        catalog=lambda project_id=None: [SimpleNamespace(endpoint_id=e) for e in endpoint_ids]
+    )
+    monkeypatch.setattr("app.core.agentic.agentic.model_manager", lambda: manager)
+
+
+async def test_plan_judge_uses_the_decider_when_the_mode_excludes_llm_judges(monkeypatch):
+    from app.core.autoresearch_runners import scoring
+
+    _assurance(monkeypatch, "decision_models", deciders=["kev"])
+
+    async def decider_score(project_id, skill_name, output):
+        return 0.75
+
+    monkeypatch.setattr(scoring, "_decider_score", decider_score)
+    plan = await scoring.plan_judge(_Runner(), skill_name="s", output="o")
+    assert plan.use_llm is False and plan.score == 0.75
+
+
+async def test_plan_judge_pins_a_judge_other_than_the_endpoint_under_test(monkeypatch):
+    from app.core.autoresearch_runners import scoring
+
+    _assurance(monkeypatch, "auto")
+    _catalog(monkeypatch, ["under-test", "judge"])
+    plan = await scoring.plan_judge(
+        _Runner(), skill_name="s", output="o", avoid_endpoint_ids=["under-test"]
+    )
+    assert plan.use_llm is True and plan.endpoint_id == "judge"
+
+    _catalog(monkeypatch, ["under-test"])
+    alone = await scoring.plan_judge(
+        _Runner(), skill_name="s", output="o", avoid_endpoint_ids=["under-test"]
+    )
+    assert alone.use_llm is False and alone.score is None  # not runnable, never a guess
