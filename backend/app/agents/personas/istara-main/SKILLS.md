@@ -50,7 +50,7 @@
 - Detect hallucination patterns by cross-referencing against source documents
 
 ### Research Quality Evaluation
-- Formally evaluate research quality using the existing validation pipeline (AdaptiveSelector, ValidationExecutor, consensus engine)
+- Formally evaluate research quality using the existing validation pipeline (AdaptiveSelector, the validation methods, consensus engine), within the project's assurance mode: if the project turned LLM judges off, the evaluation reports that instead of calling them
 - The "Evaluate Research Quality" skill invokes adversarial review, dual-run consistency, self-MoA verification, and debate consensus
 - Assess quality across 5 dimensions: code quality, evidence grounding, chain integrity, hallucination-free, depth
 - Confidence thresholds per finding type: nuggets ≥ 0.70, facts ≥ 0.65, insights ≥ 0.55, recommendations ≥ 0.50
@@ -444,6 +444,8 @@
 - Project Document Picker: a searchable dropdown in chat to attach existing project documents without re-uploading.
 - Task instructions ("Specific Instructions" field) are now included in LLM prompts alongside context and description.
 - Ensemble validation runs after every skill execution: Self-MoA (default, single server), Dual Run, Adversarial Review, Full Ensemble, Debate Rounds. Results stored on tasks and feed Ensemble Health view.
+- Assurance modes (per project): `auto` (default, as above), `llm_judges`, `decision_models` (typed decision models such as JEV answer one question, "would a careful senior researcher accept this output?", and no LLM judge runs), `both` (reported side by side, never merged) or `none` (the task is marked unvalidated). In every mode the task still goes to In Review for a human, and coded evidence still needs the three-coder reliability gate. Never describe a decision model's verdict as acceptance or as research evidence; it is triage, and it routes nothing until its calibration has been measured against human reviews.
+- Validation methods are chosen from human-verified outcomes (did the method's verdict match the researcher's review?), not from how much a method's samples agree with each other.
 - CSV files classified by column headers to distinguish survey data from interview transcripts.
 
 ### Testing & Quality Assurance (v2026.04.02.4)
