@@ -3436,3 +3436,13 @@ design and derivations in `docs/scientific_audit/decision-model-judge-research.m
   `access.open_decider`, the only entry point. Security control AI-005. Tests: `tests/test_decider_contract.py`,
   `tests/test_decider_registry.py`, `tests/test_decider_client.py` (stub servers via
   `httpx.MockTransport`).
+- **Phase 2: decision trajectories and the trust gate.** `models/decision_trajectory.py`
+  (`decision_trajectories`, `decision_trust_evaluations`, migration 035; content-free handles and
+  numbers) and `services/decision_trajectories.py` (`record_trajectory`, `attach_human_label`,
+  `evaluate_scope`, `scope_is_trusted`). Pure parts in `core/decision/`: `labels` (mapping v1: only
+  `human_review` reconciliation decisions label anything; binary acceptable/not), `sampling`
+  (deterministic 10% blind audit draw, Horvitz–Thompson weights, trust-scope keys over provider,
+  served model version, question set, task family, language and label mapping) and `trust` (the
+  gate: cross-fitted held-out ECE ≤ 0.05, κ ≥ 0.60, n_eff ≥ 50, order-flip ≤ 5%, identified
+  temperature, no alias scope). No scope routes anything until Phase 4, and none without a passing
+  evaluation. Tests: `tests/test_decision_trust.py`, `tests/test_decision_trajectory_store.py`.

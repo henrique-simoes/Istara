@@ -475,4 +475,27 @@ has not yet covered `decider/__init__.py`, `decider/credentials.py`, the Phase 0
 
 ## Phase 2 — trajectory store + calibration gate
 
-Not started. Next: S1 design (see Status Block `next_action`).
+### Design (S1)
+
+Phase 2 adds storage, labels, sampling and the trust gate. It makes **no change to Research Spine
+services**: wiring into coding runs and reconciliation is Phase 4, where trajectories start being
+written. Pure parts sit in `app/core/decision/`; persistence sits in a model plus a service.
+
+| Unit | Contents |
+|---|---|
+| `core/decision/labels.py` (pure) | `LABEL_MAPPING_VERSION = "v1"`. Only `ReconciliationDecision` rows with `source == "human_review"` label anything (synthetic benchmark, debate and adversarial sources never do). v1 is **binary**: `accepted` → 1 and `rejected`/`revised` → 0 for the positive event of a question (for example relation-to-span = `supports`, code-applies noul = `true`); `needs_human_review` → no label. The review UI does not yet capture the four-way class (grounded / speculative / hallucination / violation), so v1 cannot claim it; a richer label needs a UI change (Phase 7) and a v2 mapping. |
+| `core/decision/sampling.py` (pure) | `audit_draw(project_id, subject_id, rate, salt)`: a deterministic SHA-256 draw, reproducible and independent of the decider's output; returns `(sampled, propensity)`. `inclusion_weight(routed, sampled, rate)`: Horvitz–Thompson weight 1 for routed items, 1/ρ for audit-sampled ones, and unlabelled otherwise. ρ = 0.10 (DEC-4). `scope_key(...)`: a stable hash of provider, served versioned model, question-set version, task family and language. |
+| `core/decision/trust.py` (pure) | `TrustPolicy` with the DEC-1 defaults (ECE ≤ 0.05, κ ≥ 0.60, n_eff ≥ 50, order-flip disagreement ≤ 5%). `evaluate_trust(items, policy, alias_scope)` → `TrustReport(trusted, reasons, metrics)`. Metrics on cross-fitted held-out calibrated probabilities: weighted ECE, Brier + decomposition, Cohen κ vs labels, risk–coverage at τ*, order-flip rate, n_eff, folds stopped at the temperature bound. Any reason refuses trust: alias scope, too little data, a ceiling exceeded, or an unidentified temperature. |
+| `models/decision_trajectory.py` | `DecisionTrajectory`, content-free per research doc §5: handles (project, subject kind and id, task, coding run, evidence unit), endpoint, requested and served model, alias flag, question-set id/version, task family, language, `scope_key`, status/reason, raw and calibrated distributions (numbers keyed by option names from the versioned question set), T, τ, action, order-flip agreement, audit sampled/propensity/blind, label mapping version, human label, its source decision id and time, latency, tokens. `DecisionTrustEvaluation`: scope key, trusted, reasons, metrics JSON, policy JSON, evaluated time and n. Migration `035_decision_trajectories`. |
+| `services/decision_trajectories.py` | `record_trajectory(...)`; `attach_human_label(session, decision)`, which labels every trajectory for that code application and is a no-op for non-human sources; `evaluate_scope(session, scope_key)`, which loads labelled trajectories, runs `evaluate_trust` and stores a `DecisionTrustEvaluation`; `scope_is_trusted(session, scope_key)`, true only for the latest evaluation, so a missing evaluation means shadow mode (DEC-2). |
+
+**Deviation (DEC-9).** The roadmap named the gate `app.evals.decision_eval`. It lives in
+`app/core/decision/trust.py` instead, because Phase 4 routing must read trust at request time;
+`app/evals/` holds offline measurement harnesses. Same contract, different home.
+
+**Verification.** Pure: `tests/test_decision_trust.py` (labels, sampling, the trust gate on seeded
+planted data: a well-calibrated decider is trusted, and over-confidence beyond the ECE ceiling,
+small n, alias scope, order-flip disagreement and an unidentified T are each refused with their
+reason), run locally and in CI. Persistence: `tests/test_decision_trajectory_store.py` (CI only,
+in-memory aiosqlite), plus the alembic fresh-database test bumped to 035. CF `gate before`/`after`
+on CF-4.

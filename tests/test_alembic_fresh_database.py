@@ -32,7 +32,7 @@ def test_upgrade_head_succeeds_on_fresh_sqlite(tmp_path: Path) -> None:
         revision = connection.execute(
             "SELECT version_num FROM alembic_version"
         ).fetchone()
-    assert revision == ("034_decision_model_project_policies",)
+    assert revision == ("035_decision_trajectories",)
     with sqlite3.connect(database_path) as connection:
         columns = {row[1]: row for row in connection.execute("PRAGMA table_info(embedding_profiles)")}
     # Profiles from before prompt schemes existed were built from raw text.
@@ -42,3 +42,8 @@ def test_upgrade_head_succeeds_on_fresh_sqlite(tmp_path: Path) -> None:
         policy_columns = {row[1] for row in rows}
     # Hosted decision-model egress is opt-in per project (no row = denied).
     assert {"project_id", "hosted_egress_endpoint_ids_json", "updated_by"} <= policy_columns
+    with sqlite3.connect(database_path) as connection:
+        tables = {
+            row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    assert {"decision_trajectories", "decision_trust_evaluations"} <= tables

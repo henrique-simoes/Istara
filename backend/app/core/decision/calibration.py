@@ -258,6 +258,7 @@ def risk_coverage(
 class CrossFitResult:
     """Held-out calibration of a temperature fitted on the other folds.
 
+    ``held_out_rows`` are each item's probabilities from the temperature fitted without it.
     ``temperatures_at_bound`` counts folds whose fit stopped at the edge of the search bracket.
     That happens when the likelihood keeps improving as probabilities sharpen (for example when
     every training label matches the argmax), so the temperature is not identified; a trust gate
@@ -266,6 +267,7 @@ class CrossFitResult:
 
     temperatures: list[float]
     temperatures_at_bound: int
+    held_out_rows: list[list[float]]
     held_out_ece: float
     held_out_brier: float
     effective_sample_size: float
@@ -318,6 +320,7 @@ def cross_fit_calibration(
     return CrossFitResult(
         temperatures=temperatures,
         temperatures_at_bound=sum(1 for t in temperatures if _at_bound(t)),
+        held_out_rows=calibrated,
         held_out_ece=expected_calibration_error(confidences, correct, w, bins=bins),
         held_out_brier=brier_score(calibrated, labels, w),
         effective_sample_size=effective_sample_size(w),

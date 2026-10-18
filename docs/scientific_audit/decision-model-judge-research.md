@@ -118,6 +118,21 @@ A scope is **trusted** only when, on a labelled set of at least $n_{\min}=50$ it
 * **order-flip disagreement** is at most 5%;
 * the **risk–coverage curve** [R13] is reported at $\tau$.
 
+**Calibration is necessary, not sufficient** (found while testing the Phase 2 gate, 2026-10-18).
+On planted data where the reported probability equals the true probability, a decider whose latent
+score has spread σ = 2 is perfectly calibrated (held-out ECE 0.013) yet right only 77% of the time,
+with κ = 0.55 against labels, so the gate refuses it. At σ = 4 it reaches 87% accuracy and κ = 0.74 and
+is trusted. Over-confidence (reported logit ×3) is repaired by the fitted temperature (T ≈ 3.1) and
+then trusted; a constant logit shift of 2.5 is not repairable by temperature scaling and is refused on
+ECE. The gate therefore separates calibration (ECE, Brier reliability) from discrimination (κ,
+Brier resolution), as the thesis's Murphy decomposition suggests.
+
+**Label mapping v1 is binary.** Istara's review control records accept / reject / revise, so v1 labels
+the event "the item was acceptable to the researcher" (accept = 1; reject or revise = 0). The four-way
+class of §2 (grounded evidence, speculative inference, factual hallucination, methodological
+violation) needs a richer review control (Phase 7) and a v2 mapping. Until then, per-class calibration
+cannot be measured, and the article should say so.
+
 **Shadow mode** (DEC-2). An untrusted scope records verdicts but has no routing effect. A decider
 can only add scrutiny, so shadow mode is the fail-closed state, and turning the feature off restores
 today's behaviour exactly.
