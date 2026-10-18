@@ -3524,3 +3524,7 @@ design and derivations in `docs/scientific_audit/decision-model-judge-research.m
   `max_cost_usd`, because its cost is known to be zero and the worker would otherwise fail the run
   as `cost_budget_unpriced`. Remote endpoints, and local ones with any price set, keep the ceiling
   and its fail-closed check. Test: `tests/test_pi_local_liveness.py`.
+- **Aliases earn trust per served version (2026-10-18, DEC-20).** A decider asked for a moving
+  alias (`jev-latest`) names the versioned model that answered, and trust scopes are keyed by that
+  served model, so `core/decision/trust.unversioned_alias_scope` refuses only an alias answered
+  under an alias name. A new version behind the alias starts a new, untrusted scope.
