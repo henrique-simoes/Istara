@@ -13,7 +13,7 @@ import logging
 from collections.abc import Awaitable, Callable
 
 from app.core.autoresearch_runners import BaseLoopRunner
-from app.core.autoresearch_runners.scoring import judge_score
+from app.core.autoresearch_runners.scoring import judge_messages, parse_unit_score, plan_judge
 
 logger = logging.getLogger(__name__)
 
@@ -259,21 +259,34 @@ class QuestionBankRunner(BaseLoopRunner):
         if not responses or len(responses.strip()) < 30:
             return 0.0
 
-        return await judge_score(
-            self,
-            purpose="autoresearch.question_bank.score",
-            system=(
-                "You are a UX research quality evaluator. Score how well these "
-                "research questions elicited useful, actionable responses from "
-                "a simulated participant on 0.0-1.0 scale:\n"
-                "- Response depth: detailed vs superficial answers\n"
-                "- Coverage: all questions adequately addressed\n"
-                "- Actionability: responses contain specific, usable insights\n"
-                "- Engagement: natural flow, no confusion or misunderstanding\n"
-                "- Bias avoidance: questions did not lead to biased responses\n"
-                "Respond with ONLY a decimal number."
-            ),
-            skill_name="question bank",
-            output=f"Questions:\n{questions_text}\n\nResponses:\n{responses}",
-            avoid_endpoint_ids=(),
-        )
+        subject = "question bank"
+        text = f"Questions:\n{questions_text}\n\nResponses:\n{responses}"
+        plan = await plan_judge(self, skill_name=subject, output=text, avoid_endpoint_ids=())
+        if not plan.use_llm:
+            return plan.score
+        try:
+            from app.core.agentic import agentic
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.question_bank.score",
+                project_id=self.require_project_id(),
+                system=(
+                    "You are a UX research quality evaluator. Score how well these "
+                    "research questions elicited useful, actionable responses from "
+                    "a simulated participant on 0.0-1.0 scale:\n"
+                    "- Response depth: detailed vs superficial answers\n"
+                    "- Coverage: all questions adequately addressed\n"
+                    "- Actionability: responses contain specific, usable insights\n"
+                    "- Engagement: natural flow, no confusion or misunderstanding\n"
+                    "- Bias avoidance: questions did not lead to biased responses\n"
+                    "Respond with ONLY a decimal number."
+                ),
+                messages=judge_messages(subject, text),
+                params=plan.params(),
+                spine_phase="review",
+                engine=self.engine,
+            )
+        except Exception as exc:
+            logger.debug("Judge call failed: %s", exc)
+            return None
+        return parse_unit_score(getattr(outcome, "text", None))

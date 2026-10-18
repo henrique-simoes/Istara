@@ -13,7 +13,7 @@ from app.core.autoresearch_runners.decision_policy import MIN_ITEMS, VARIANTS, D
 
 def _items(n: int, seed: int = 1):
     rng = random.Random(seed)
-    return [{"id": f"i{k}", "application": None, "label": rng.randint(0, 1)} for k in range(n)]
+    return [{"id": f"i{k}", "code_name": "c", "state": {}, "label": rng.randint(0, 1)} for k in range(n)]
 
 
 def _runner(items, quality):

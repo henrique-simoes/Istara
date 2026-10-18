@@ -255,3 +255,59 @@ async def triage_coding_run_safely(project_id: str, run_id: str) -> dict[str, An
     except Exception as exc:
         logger.debug("Decider triage skipped for run %s: %s", run_id, exc)
         return None
+
+
+async def labelled_triage_states(
+    project_id: str, endpoint_id: str, *, limit: int = 120
+) -> list[dict[str, Any]]:
+    """Read-only: human-labelled triage items of one project and decider, as decider inputs.
+
+    Each item is ``{"id", "label", "code_name", "state"}``: the trajectory id, the human label, the
+    code's name and the same state the triage sends. It lets the autoresearch ``decision_policy``
+    loop compare question wordings without touching research models itself (governance contract:
+    self-improvement never reads or edits research artifacts directly).
+    """
+    from sqlalchemy import select
+
+    from app.models.code_application import CodeApplication
+    from app.models.database import async_session
+    from app.models.decision_trajectory import DecisionTrajectory
+    from app.models.research_validity import EvidenceUnit
+
+    async with async_session() as session:
+        rows = (
+            (
+                await session.execute(
+                    select(DecisionTrajectory)
+                    .where(
+                        DecisionTrajectory.project_id == project_id,
+                        DecisionTrajectory.endpoint_id == endpoint_id,
+                        DecisionTrajectory.question_set_id == QUESTION_SET_ID,
+                        DecisionTrajectory.human_label.is_not(None),
+                    )
+                    .limit(limit)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        items: list[dict[str, Any]] = []
+        for row in rows:
+            application = await session.get(CodeApplication, row.subject_id)
+            if application is None:
+                continue
+            code = await _code_context(session, application.code_id, project_id)
+            unit = (
+                await session.get(EvidenceUnit, application.evidence_unit_id)
+                if application.evidence_unit_id
+                else None
+            )
+            items.append(
+                {
+                    "id": row.id,
+                    "label": row.human_label,
+                    "code_name": code["name"],
+                    "state": _state(application, unit.source_text if unit else "", code),
+                }
+            )
+    return items

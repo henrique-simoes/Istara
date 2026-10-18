@@ -1,11 +1,12 @@
 """Autoresearch loop for decision models: search the triage question's wording against human labels.
 
-Target: a decider endpoint id. The runner reuses the code-application triage question set
-(``app.services.decider_triage``) and the project's own labelled triage trajectories (human
-reconciliation decisions). Each variant of the question is asked once per labelled item and cached;
-each measurement scores a fresh random half of those items by ``1 - binary Brier`` of
-P(supports) against the label, a strictly proper scoring rule that the wording cannot inflate
-without improving the probabilities (governance critique #11). Kept variants are governed
+Target: a decider endpoint id. The runner reuses the code-application triage question set and the
+project's own labelled triage trajectories (human reconciliation decisions), which
+``app.services.decider_triage.labelled_triage_states`` prepares read-only. Each variant of the
+question is asked once per labelled item and cached; each measurement scores a fresh random half
+of those items by ``1 - binary Brier`` of P(supports) against the label, a strictly proper
+scoring rule that the wording cannot inflate without improving the probabilities (governance
+critique #11). Kept variants are governed
 proposals like every autoresearch result; nothing changes the production question by itself.
 
 It calls the decider (live, metered), so it runs only when a researcher starts the experiment.
@@ -78,43 +79,19 @@ class DecisionPolicyRunner(BaseLoopRunner):
         self._draws = random.Random(20261018)
 
     async def _load_items(self, target: str) -> list[dict[str, Any]]:
-        """Labelled code-application triage trajectories of this project and decider."""
+        """Labelled code-application triage items of this project and decider (read-only).
+
+        The triage service prepares them, so this self-improvement module never reads research
+        models itself (``tests/test_self_improvement_artifact_boundary.py``).
+        """
         if self._items is not None:
             return self._items
-        from sqlalchemy import select
+        from app.services.decider_triage import labelled_triage_states
 
-        from app.models.code_application import CodeApplication
-        from app.models.database import async_session
-        from app.models.decision_trajectory import DecisionTrajectory
-        from app.services.decider_triage import QUESTION_SET_ID
-
-        project_id = self.require_project_id()
-        async with async_session() as session:
-            rows = (
-                (
-                    await session.execute(
-                        select(DecisionTrajectory)
-                        .where(
-                            DecisionTrajectory.project_id == project_id,
-                            DecisionTrajectory.endpoint_id == target,
-                            DecisionTrajectory.question_set_id == QUESTION_SET_ID,
-                            DecisionTrajectory.human_label.is_not(None),
-                        )
-                        .limit(MAX_ITEMS)
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            items = []
-            for row in rows:
-                application = await session.get(CodeApplication, row.subject_id)
-                if application is not None:
-                    items.append(
-                        {"id": row.id, "application": application, "label": row.human_label}
-                    )
-        self._items = items
-        return items
+        self._items = await labelled_triage_states(
+            self.require_project_id(), target, limit=MAX_ITEMS
+        )
+        return self._items
 
     async def _p_supports(self, variant: int, item: dict[str, Any]) -> float | None:
         key = (variant, item["id"])
@@ -126,24 +103,11 @@ class DecisionPolicyRunner(BaseLoopRunner):
 
     async def _ask(self, variant: int, item: dict[str, Any]) -> float | None:
         from app.core.decider.contract import Choice
-        from app.models.database import async_session
-        from app.models.research_validity import EvidenceUnit
-        from app.services import decider_triage
 
-        application = item["application"]
-        async with async_session() as session:
-            code = await decider_triage._code_context(
-                session, application.code_id, self.require_project_id()
-            )
-            unit = (
-                await session.get(EvidenceUnit, application.evidence_unit_id)
-                if application.evidence_unit_id
-                else None
-            )
         spec = VARIANTS[variant]
-        question = Choice(spec["instructions"].format(code=code["name"]), dict(spec["options"]))
-        state = decider_triage._state(application, unit.source_text if unit else "", code)
-        outcome = await self._client.decide(state, {"relation": question})
+        instructions = spec["instructions"].format(code=item["code_name"])
+        question = Choice(instructions, dict(spec["options"]))
+        outcome = await self._client.decide(item["state"], {"relation": question})
         if not outcome.ok:
             return None
         return outcome.answers["relation"]["supports"]

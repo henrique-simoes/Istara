@@ -19,7 +19,7 @@ import logging
 from collections.abc import Awaitable, Callable
 
 from app.core.autoresearch_runners import BaseLoopRunner
-from app.core.autoresearch_runners.scoring import judge_score
+from app.core.autoresearch_runners.scoring import judge_messages, parse_unit_score, plan_judge
 
 logger = logging.getLogger(__name__)
 
@@ -280,20 +280,33 @@ class SkillPromptRunner(BaseLoopRunner):
         if not output or len(output.strip()) < 30:
             return 0.0
 
-        return await judge_score(
-            self,
-            purpose="autoresearch.skill_prompt.score",
-            system=(
-                "You are a strict quality evaluator for UX research skill outputs. "
-                "Score the output on a 0.0-1.0 scale considering:\n"
-                "- Completeness: Does it cover all expected output sections?\n"
-                "- Evidence quality: Are findings grounded in specific observations?\n"
-                "- Actionability: Are recommendations concrete and implementable?\n"
-                "- Structure: Is the output well-organized with clear sections?\n"
-                "- Source attribution: Are claims traced to specific data points?\n"
-                "Respond with ONLY a decimal number between 0.0 and 1.0."
-            ),
-            skill_name=skill_name,
-            output=output,
-            avoid_endpoint_ids=(),
-        )
+        subject = skill_name
+        text = output
+        plan = await plan_judge(self, skill_name=subject, output=text, avoid_endpoint_ids=())
+        if not plan.use_llm:
+            return plan.score
+        try:
+            from app.core.agentic import agentic
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.skill_prompt.score",
+                project_id=self.require_project_id(),
+                system=(
+                    "You are a strict quality evaluator for UX research skill outputs. "
+                    "Score the output on a 0.0-1.0 scale considering:\n"
+                    "- Completeness: Does it cover all expected output sections?\n"
+                    "- Evidence quality: Are findings grounded in specific observations?\n"
+                    "- Actionability: Are recommendations concrete and implementable?\n"
+                    "- Structure: Is the output well-organized with clear sections?\n"
+                    "- Source attribution: Are claims traced to specific data points?\n"
+                    "Respond with ONLY a decimal number between 0.0 and 1.0."
+                ),
+                messages=judge_messages(subject, text),
+                params=plan.params(),
+                spine_phase="review",
+                engine=self.engine,
+            )
+        except Exception as exc:
+            logger.debug("Judge call failed: %s", exc)
+            return None
+        return parse_unit_score(getattr(outcome, "text", None))

@@ -27,7 +27,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.core.autoresearch_runners import BaseLoopRunner
-from app.core.autoresearch_runners.scoring import judge_score
+from app.core.autoresearch_runners.scoring import judge_messages, parse_unit_score, plan_judge
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +66,7 @@ class ModelTempRunner(BaseLoopRunner):
 
     loop_type = "model_temp"
     needs_persona_lock = False
+    _judge_avoid: tuple[str, ...] = ()
 
     def __init__(self) -> None:
         self._current: SweepCandidate | None = None
@@ -311,9 +312,9 @@ class ModelTempRunner(BaseLoopRunner):
             return None
 
         # Score the output quality via LLM self-evaluation
-        score = await self._score_output(
-            content, skill_name, avoid_endpoint_ids=(endpoint_id,) if endpoint_id else ()
-        )
+        # The judge must not be the endpoint under test (audit AR-6).
+        self._judge_avoid = (endpoint_id,) if endpoint_id else ()
+        score = await self._score_output(content, skill_name)
         if score is None:
             return None
 
@@ -340,26 +341,39 @@ class ModelTempRunner(BaseLoopRunner):
             return f"{base}@{endpoint_id}"
         return base
 
-    async def _score_output(
-        self, output: str, skill_name: str, avoid_endpoint_ids: tuple[str, ...] = ()
-    ) -> float | None:
+    async def _score_output(self, output: str, skill_name: str) -> float | None:
         """Use LLM to score skill output quality on a 0-1 scale."""
         if not output or len(output.strip()) < 20:
             return 0.0
 
-        return await judge_score(
-            self,
-            purpose="autoresearch.model_temp.score",
-            system=(
-                "You are a quality evaluator for UX research skill outputs. "
-                "Score the following output on a scale of 0.0 to 1.0 based on: "
-                "completeness, relevance, actionability, and evidence quality. "
-                "Respond with ONLY a decimal number between 0.0 and 1.0."
-            ),
-            skill_name=skill_name,
-            output=output,
-            avoid_endpoint_ids=avoid_endpoint_ids,
+        subject = skill_name
+        text = output
+        plan = await plan_judge(
+            self, skill_name=subject, output=text, avoid_endpoint_ids=self._judge_avoid
         )
+        if not plan.use_llm:
+            return plan.score
+        try:
+            from app.core.agentic import agentic
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.model_temp.score",
+                project_id=self.require_project_id(),
+                system=(
+                    "You are a quality evaluator for UX research skill outputs. "
+                    "Score the following output on a scale of 0.0 to 1.0 based on: "
+                    "completeness, relevance, actionability, and evidence quality. "
+                    "Respond with ONLY a decimal number between 0.0 and 1.0."
+                ),
+                messages=judge_messages(subject, text),
+                params=plan.params(),
+                spine_phase="review",
+                engine=self.engine,
+            )
+        except Exception as exc:
+            logger.debug("Judge call failed: %s", exc)
+            return None
+        return parse_unit_score(getattr(outcome, "text", None))
 
     async def _record_stats(
         self,

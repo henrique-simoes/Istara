@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -76,16 +77,37 @@ async def _decider_score(project_id: str, skill_name: str, output: str) -> float
     return None
 
 
-async def judge_score(
+@dataclass(frozen=True)
+class JudgePlan:
+    """How to score one output. ``use_llm`` False means ``score`` is final (None: unmeasurable)."""
+
+    use_llm: bool
+    endpoint_id: str | None = None
+    score: float | None = None
+
+    def params(self) -> Any:
+        from app.core.agentic.types import TurnParams
+
+        return TurnParams(endpoint_id=self.endpoint_id, temperature=0.1, max_tokens=10)
+
+
+def judge_messages(subject: str, output: str) -> list[dict[str, str]]:
+    return [{"role": "user", "content": f"Skill: {subject}\n\nOutput:\n{output[:2000]}"}]
+
+
+async def plan_judge(
     runner: Any,
     *,
-    purpose: str,
-    system: str,
     skill_name: str,
     output: str,
     avoid_endpoint_ids: Iterable[str] = (),
-) -> float | None:
-    """Score ``output`` in [0, 1], or None when no honest measurement was possible."""
+) -> JudgePlan:
+    """Choose the measurement for ``output``.
+
+    A decision model scores it when the project's assurance mode excludes LLM judges. Otherwise
+    the caller runs its own LLM judge through the dispatcher (``agentic.completion``), on the
+    endpoint named here, which is never one under test.
+    """
     project_id = runner.require_project_id()
     try:
         from app.core.assurance import plan_validation
@@ -96,29 +118,9 @@ async def judge_score(
         plan = None
     if plan is not None and not plan.run_llm:
         try:
-            return await _decider_score(project_id, skill_name, output)
+            return JudgePlan(False, score=await _decider_score(project_id, skill_name, output))
         except Exception as exc:
             logger.debug("Decider scoring failed: %s", exc)
-            return None
+            return JudgePlan(False)
     ok, endpoint_id = await _judge_endpoint(project_id, {e for e in avoid_endpoint_ids if e})
-    if not ok:
-        return None
-    try:
-        from app.core.agentic import agentic
-        from app.core.agentic.types import TurnParams
-
-        outcome = await agentic.completion(
-            purpose=purpose,
-            project_id=project_id,
-            system=system,
-            messages=[
-                {"role": "user", "content": f"Skill: {skill_name}\n\nOutput:\n{output[:2000]}"}
-            ],
-            params=TurnParams(endpoint_id=endpoint_id, temperature=0.1, max_tokens=10),
-            spine_phase="review",
-            engine=runner.engine,
-        )
-    except Exception as exc:
-        logger.debug("Judge call failed: %s", exc)
-        return None
-    return parse_unit_score(getattr(outcome, "text", None))
+    return JudgePlan(True, endpoint_id=endpoint_id) if ok else JudgePlan(False)

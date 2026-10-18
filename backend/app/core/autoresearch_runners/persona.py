@@ -14,7 +14,7 @@ from collections.abc import Awaitable, Callable
 
 from app.core.agent_identity import persona_file_path, writeable_persona_path
 from app.core.autoresearch_runners import BaseLoopRunner
-from app.core.autoresearch_runners.scoring import judge_score
+from app.core.autoresearch_runners.scoring import judge_messages, parse_unit_score, plan_judge
 
 logger = logging.getLogger(__name__)
 
@@ -231,19 +231,32 @@ class PersonaRunner(BaseLoopRunner):
         if not output or len(output.strip()) < 30:
             return 0.0
 
-        return await judge_score(
-            self,
-            purpose="autoresearch.persona.score",
-            system=(
-                "Score this UX research analysis on 0.0-1.0 considering:\n"
-                "- Evidence grounding: claims linked to specific data points\n"
-                "- Structure: clear sections (nuggets, insights, recommendations)\n"
-                "- Actionability: specific, implementable recommendations\n"
-                "- Analytical depth: goes beyond surface observations\n"
-                "- Professional tone: appropriate for research reports\n"
-                "Respond with ONLY a decimal number."
-            ),
-            skill_name="agent persona analysis",
-            output=output,
-            avoid_endpoint_ids=(),
-        )
+        subject = "agent persona analysis"
+        text = output
+        plan = await plan_judge(self, skill_name=subject, output=text, avoid_endpoint_ids=())
+        if not plan.use_llm:
+            return plan.score
+        try:
+            from app.core.agentic import agentic
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.persona.score",
+                project_id=self.require_project_id(),
+                system=(
+                    "Score this UX research analysis on 0.0-1.0 considering:\n"
+                    "- Evidence grounding: claims linked to specific data points\n"
+                    "- Structure: clear sections (nuggets, insights, recommendations)\n"
+                    "- Actionability: specific, implementable recommendations\n"
+                    "- Analytical depth: goes beyond surface observations\n"
+                    "- Professional tone: appropriate for research reports\n"
+                    "Respond with ONLY a decimal number."
+                ),
+                messages=judge_messages(subject, text),
+                params=plan.params(),
+                spine_phase="review",
+                engine=self.engine,
+            )
+        except Exception as exc:
+            logger.debug("Judge call failed: %s", exc)
+            return None
+        return parse_unit_score(getattr(outcome, "text", None))

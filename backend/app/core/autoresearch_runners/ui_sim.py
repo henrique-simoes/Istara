@@ -13,7 +13,7 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from app.core.autoresearch_runners import BaseLoopRunner
-from app.core.autoresearch_runners.scoring import judge_score
+from app.core.autoresearch_runners.scoring import judge_messages, parse_unit_score, plan_judge
 
 logger = logging.getLogger(__name__)
 
@@ -176,20 +176,34 @@ class UISimRunner(BaseLoopRunner):
         if not code.strip():
             return 0.0
 
-        return await judge_score(
-            self,
-            purpose="autoresearch.ui_sim.evaluate",
-            system=(
-                "You are a WCAG 2.1 accessibility auditor. Evaluate this UI "
-                "component and score it on 0.0-1.0 based on:\n\n"
-                "1. ARIA attributes (0.2): Proper labels, roles, live regions\n"
-                "2. Keyboard access (0.2): Tab order, focus indicators, shortcuts\n"
-                "3. Semantic HTML (0.15): Correct element usage, heading hierarchy\n"
-                "4. Visual a11y (0.15): Contrast hints, responsive text, icons\n"
-                "5. Error handling (0.15): Accessible error messages, form validation\n"
-                "6. Touch targets (0.15): Adequate size, spacing for mobile\n\n"
-                "Respond with ONLY a decimal number between 0.0 and 1.0."
-            ),
-            skill_name=filepath.name,
-            output=code[:3000],
-        )
+        subject = filepath.name
+        text = code[:3000]
+        plan = await plan_judge(self, skill_name=subject, output=text, avoid_endpoint_ids=())
+        if not plan.use_llm:
+            return plan.score
+        try:
+            from app.core.agentic import agentic
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.ui_sim.evaluate",
+                project_id=self.require_project_id(),
+                system=(
+                    "You are a WCAG 2.1 accessibility auditor. Evaluate this UI "
+                    "component and score it on 0.0-1.0 based on:\n\n"
+                    "1. ARIA attributes (0.2): Proper labels, roles, live regions\n"
+                    "2. Keyboard access (0.2): Tab order, focus indicators, shortcuts\n"
+                    "3. Semantic HTML (0.15): Correct element usage, heading hierarchy\n"
+                    "4. Visual a11y (0.15): Contrast hints, responsive text, icons\n"
+                    "5. Error handling (0.15): Accessible error messages, form validation\n"
+                    "6. Touch targets (0.15): Adequate size, spacing for mobile\n\n"
+                    "Respond with ONLY a decimal number between 0.0 and 1.0."
+                ),
+                messages=judge_messages(subject, text),
+                params=plan.params(),
+                spine_phase="review",
+                engine=self.engine,
+            )
+        except Exception as exc:
+            logger.debug("Judge call failed: %s", exc)
+            return None
+        return parse_unit_score(getattr(outcome, "text", None))
