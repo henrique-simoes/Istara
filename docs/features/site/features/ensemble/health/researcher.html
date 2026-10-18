@@ -275,6 +275,14 @@
 <li>W8 now routes embedding-based comparison through <code>agentic.embed</code>: Pi uses the <code>EmbeddingsGateway</code>, while legacy keeps the unchanged <code>ollama.embed*</code> plane. This preserves the vector-space and fail-closed boundaries for both engines.</li>
 <li>Self-healing signals in Ensemble Health express a bounded failed-attempt fraction over the rolling 15-minute window. A displayed percentage is never allowed to exceed 100%, even when the panel is reopened or refreshed repeatedly.</li>
 </ul>
+<h2 id="choosing-how-outputs-are-validated">Choosing How Outputs Are Validated</h2>
+<p>Each project has an assurance mode. By default (<code>auto</code>) Istara picks LLM judges from the models you</p>
+<p>have, as before. A project can instead use only LLM judges with a method you choose, only typed</p>
+<p>decision models (such as JEV) that answer one question (&quot;would a careful senior researcher accept</p>
+<p>this output?&quot;) without any LLM-as-judge call, both side by side, or no validation at all, in which</p>
+<p>case the task is marked unvalidated. Whatever the mode, every task still comes to you In Review, and</p>
+<p>coded evidence still needs the three-coder reliability gate. The setting is not yet in the interface;</p>
+<p>it arrives with the decision-model onboarding.</p>
 <h2 id="rollback">Rollback</h2>
 <p>Choose the <code>legacy</code> engine for the project (or keep the legacy global default) to return validation calls to the dispatcher&#x27;s preserved legacy route. Engine selection changes the executor, not the product call-site path.</p>
 <h2 id="inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</h2>
@@ -312,6 +320,7 @@
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
 <li class="toc-level-2"><a href="#how-validation-confidence-is-established">How Validation Confidence Is Established</a></li>
+<li class="toc-level-2"><a href="#choosing-how-outputs-are-validated">Choosing How Outputs Are Validated</a></li>
 <li class="toc-level-2"><a href="#rollback">Rollback</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>

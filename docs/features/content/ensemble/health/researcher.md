@@ -50,6 +50,16 @@ Ensemble Health exists so the work represented by Ensemble Health has a stable, 
 - W8 now routes embedding-based comparison through `agentic.embed`: Pi uses the `EmbeddingsGateway`, while legacy keeps the unchanged `ollama.embed*` plane. This preserves the vector-space and fail-closed boundaries for both engines.
 - Self-healing signals in Ensemble Health express a bounded failed-attempt fraction over the rolling 15-minute window. A displayed percentage is never allowed to exceed 100%, even when the panel is reopened or refreshed repeatedly.
 
+## Choosing How Outputs Are Validated
+
+Each project has an assurance mode. By default (`auto`) Istara picks LLM judges from the models you
+have, as before. A project can instead use only LLM judges with a method you choose, only typed
+decision models (such as JEV) that answer one question ("would a careful senior researcher accept
+this output?") without any LLM-as-judge call, both side by side, or no validation at all, in which
+case the task is marked unvalidated. Whatever the mode, every task still comes to you In Review, and
+coded evidence still needs the three-coder reliability gate. The setting is not yet in the interface;
+it arrives with the decision-model onboarding.
+
 ## Rollback
 
 Choose the `legacy` engine for the project (or keep the legacy global default) to return validation calls to the dispatcher's preserved legacy route. Engine selection changes the executor, not the product call-site path.
