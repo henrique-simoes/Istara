@@ -34,9 +34,11 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: istara-test-caddy
+    # ISTARA_PUBLISH_HOST binds both ports to one host address (for example the VPS's tailnet
+    # address, so only the owner's devices can reach the stack). Unset = all interfaces, as before.
     ports:
-      - "13080:80"
-      - "13081:443"
+      - "${ISTARA_PUBLISH_HOST:-0.0.0.0}:13080:80"
+      - "${ISTARA_PUBLISH_HOST:-0.0.0.0}:13081:443"
     networks: [frontend-net, backend-net]
     volumes:
       - ./deploy/Caddyfile.testing:/etc/caddy/Caddyfile:ro
