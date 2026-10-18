@@ -25,12 +25,14 @@ const LINES = [
   ["performance", "Search is slow on big projects; sometimes it times out before showing anything."],
   ["support", "The chat support was friendly but nobody could fix the billing sync."],
 ];
-const THEME_WORDS = {
-  pricing: ["price", "pricing", "cost", "plan", "billing", "value", "expens", "cheap"],
-  onboarding: ["onboard", "setup", "set_up", "getting_started", "invite", "first_use", "learn"],
-  performance: ["perform", "slow", "speed", "load", "latency", "timeout", "time_out", "lag"],
-  support: ["support", "help", "service", "response", "ticket", "assist"],
-};
+// The project codebook (Research Spine: deductive coding against governed definitions).
+const CODEBOOK = [
+  ["pricing-value", "Pricing and value", "The participant judges price, cost or plan value against what they get.", "Mentions of price, cost, plans or billing as a value judgement.", "Billing sync bugs (that is a support or product failure)."],
+  ["onboarding-friction", "Onboarding friction", "Getting started or bringing others in takes effort or guidance is missing.", "Setup, first project, invitations, unclear next steps.", "Ongoing slowness after setup."],
+  ["performance-latency", "Performance and latency", "The product is slow, times out or makes people avoid it.", "Load times, search speed, timeouts.", "Slow human replies from support."],
+  ["support-quality", "Support quality", "Help from the vendor is slow, generic or does not fix the problem.", "Response time, canned answers, unresolved tickets.", "Self-serve setup confusion."],
+];
+const THEME_CODE = { pricing: "pricing-value", onboarding: "onboarding-friction", performance: "performance-latency", support: "support-quality" };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -88,18 +90,40 @@ export async function run(ctx) {
   check("Evidence units created from the interview", units.length > 0, `${units.length} unit(s)`);
   if (!units.length) return finish("no evidence units");
 
-  // 2. Governed coding run with the research models; triage runs after it commits.
+  // 2. Codebook version for the project, then a governed coding run that applies it.
+  let codebookVersionId = null;
+  try {
+    const version = await api.post("/api/codebook-versions", {
+      project_id: projectId,
+      version: `${MARKER}-${Date.now()}`,
+      methodology: "codebook_ta",
+      change_log: "Scenario 94 codebook for the planted interview themes",
+      codes: CODEBOOK.map(([code_id, label, definition, inclusion, exclusion]) => ({
+        code_id,
+        label,
+        definition,
+        inclusion_criteria: inclusion,
+        exclusion_criteria: exclusion,
+      })),
+    });
+    codebookVersionId = version.id || version.version_id || version.codebook_version?.id;
+    check("Codebook version created", Boolean(codebookVersionId), `id=${codebookVersionId}`);
+  } catch (e) {
+    check("Codebook version created", false, e.message);
+    return finish("codebook failed");
+  }
   let runInfo = null;
   try {
     runInfo = await api.post(`/api/research-validity/${projectId}/coding-runs`, {
       evidence_unit_ids: units.map((unit) => unit.id),
+      codebook_version_id: codebookVersionId,
       max_coders: 3,
       limit: 12,
     });
     check(
       "Coding run with three model coders",
       runInfo.code_application_count > 0,
-      `run=${runInfo.id} applications=${runInfo.code_application_count} kappa=${runInfo.kappa} status=${runInfo.status}`
+      `run=${runInfo.id} applications=${runInfo.code_application_count} kappa=${runInfo.kappa} alpha=${runInfo.alpha} status=${runInfo.status}`
     );
   } catch (e) {
     check("Coding run with three model coders", false, e.message);
@@ -125,8 +149,9 @@ export async function run(ctx) {
   let rejected = 0;
   for (const item of items) {
     const theme = themeOf(String(item.source_text || ""));
-    const code = String(item.code_id || "").toLowerCase();
-    const matches = theme && THEME_WORDS[theme].some((word) => code.includes(word));
+    const code = String(item.code_id || "");
+    // A researcher accepts only the governed code that fits the line; anything else is rejected.
+    const matches = Boolean(theme) && code === THEME_CODE[theme];
     const status = matches ? "approved" : "rejected";
     try {
       await api.patch(`/api/code-applications/${item.id}/review?project_id=${projectId}`, {
