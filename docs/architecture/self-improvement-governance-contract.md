@@ -47,6 +47,11 @@ Telemetry observes process events
   provisional signal, never a success; reading ReasoningBank memories is side-effect free (use is
   counted when a memory reaches a prompt); persona learnings promoted from one project are stored
   and composed for that project only.
+- Validation-method selection learns only from human-verified outcomes (2026-10-18): a method is
+  credited when its verdict matched the researcher's task review, and agreement among a method's own
+  samples is never a reward (it favours copies of one model). Decider trajectories are labelled only
+  by a researcher's own review; a decider scope gains routing power only through the calibration
+  trust gate, never by accumulating agreement.
 - The RAG tuning objective is relevance on span-graded judgments over sandbox indices, never a
   score the tuned parameters can raise by themselves; candidates are never written to process-wide
   settings, and the loop fails closed without a benchmark.

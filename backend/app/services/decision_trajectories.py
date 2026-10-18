@@ -109,11 +109,33 @@ async def attach_human_label(session: AsyncSession, decision: Any) -> int:
     label = label_from_reconciliation(decision.decision_type, decision.source)
     if label is None or not decision.code_application_id:
         return 0
+    return await label_subject(
+        session,
+        project_id=decision.project_id,
+        subject_kind=CODE_APPLICATION,
+        subject_id=decision.code_application_id,
+        label=label,
+        source_id=decision.id,
+    )
+
+
+async def label_subject(
+    session: AsyncSession,
+    *,
+    project_id: str,
+    subject_kind: str,
+    subject_id: str,
+    label: int,
+    source_id: str,
+) -> int:
+    """Label a subject's unlabelled successful trajectories; earlier labels are never rewritten."""
+    if label not in (0, 1):
+        raise ValueError("label must be 0 or 1")
     result = await session.execute(
         select(DecisionTrajectory).where(
-            DecisionTrajectory.project_id == decision.project_id,
-            DecisionTrajectory.subject_kind == CODE_APPLICATION,
-            DecisionTrajectory.subject_id == decision.code_application_id,
+            DecisionTrajectory.project_id == project_id,
+            DecisionTrajectory.subject_kind == subject_kind,
+            DecisionTrajectory.subject_id == subject_id,
             DecisionTrajectory.status == "ok",
             DecisionTrajectory.human_label.is_(None),
         )
@@ -123,7 +145,7 @@ async def attach_human_label(session: AsyncSession, decision: Any) -> int:
     for row in rows:
         row.human_label = label
         row.label_mapping_version = LABEL_MAPPING_VERSION
-        row.label_decision_id = decision.id
+        row.label_decision_id = source_id
         row.labelled_at = now
     await session.flush()
     return len(rows)

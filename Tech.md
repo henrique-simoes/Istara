@@ -3446,3 +3446,14 @@ design and derivations in `docs/scientific_audit/decision-model-judge-research.m
   gate: cross-fitted held-out ECE ≤ 0.05, κ ≥ 0.60, n_eff ≥ 50, order-flip ≤ 5%, identified
   temperature, no alias scope). No scope routes anything until Phase 4, and none without a passing
   evaluation. Tests: `tests/test_decision_trust.py`, `tests/test_decision_trajectory_store.py`.
+- **Phase 3: assurance modes.** `core/assurance.py` (`ProjectAssurance`, `plan_validation`, the
+  human-agreement rule and Thompson sampling), `models/assurance_policy.py`
+  (`project_assurance_policies`, migration 036, which also adds `human_agree_count` /
+  `human_disagree_count` to `method_metrics`; existing databases get the columns through the
+  `init_db` ALTER list), and `services/operational_validation.py`. The validation block of
+  `agent_execution.py` now calls it: LLM judges, decision models (question set `operational-output`
+  v1, one `acceptable` noul, stored as `task_output` trajectories), both, or none. Task review
+  (`task_review.record_review_side_effects`) labels decider trajectories and records whether the LLM
+  method agreed with the researcher; `AdaptiveSelector.select_method(allowed=...)` learns only from
+  those outcomes (AV-1). `evaluation_skill` skips its LLM judges when the mode excludes them. Tests:
+  `tests/test_assurance_modes.py`, `tests/test_operational_validation.py`.

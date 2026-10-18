@@ -32,7 +32,7 @@ def test_upgrade_head_succeeds_on_fresh_sqlite(tmp_path: Path) -> None:
         revision = connection.execute(
             "SELECT version_num FROM alembic_version"
         ).fetchone()
-    assert revision == ("035_decision_trajectories",)
+    assert revision == ("036_project_assurance_policies",)
     with sqlite3.connect(database_path) as connection:
         columns = {row[1]: row for row in connection.execute("PRAGMA table_info(embedding_profiles)")}
     # Profiles from before prompt schemes existed were built from raw text.
@@ -47,3 +47,7 @@ def test_upgrade_head_succeeds_on_fresh_sqlite(tmp_path: Path) -> None:
             row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
     assert {"decision_trajectories", "decision_trust_evaluations"} <= tables
+    assert "project_assurance_policies" in tables
+    with sqlite3.connect(database_path) as connection:
+        metric_columns = {row[1] for row in connection.execute("PRAGMA table_info(method_metrics)")}
+    assert {"human_agree_count", "human_disagree_count"} <= metric_columns

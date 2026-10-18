@@ -438,6 +438,13 @@ async def record_review_side_effects(event: TaskReviewEvent, score: float | None
     except Exception as exc:
         logger.debug(f"Review telemetry side effect failed: {exc}")
 
+    try:
+        from app.services.operational_validation import record_assurance_review_signals
+
+        await record_assurance_review_signals(event)
+    except Exception as exc:
+        logger.debug(f"Review assurance learning side effect failed: {exc}")
+
     if event.agent_id and event.outcome != APPROVED:
         try:
             from app.core.agent_learning import agent_learning

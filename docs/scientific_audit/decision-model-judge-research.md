@@ -299,9 +299,11 @@ assurance mode allows (§8).
 | `both` | user-chosen | user-chosen | outputs reported side by side; error correlation shown in ensemble health |
 | `none` | off | off | validation skipped and labelled `unvalidated`; human review still required (agents never mark Done) |
 
-Scope (pending owner confirmation, Q1 in the lifecycle file): modes govern *operational validation*
-(`core/validation.py`) and *reconciliation assistance* (`core/validation_executor.py`). They do not
-replace the formal coding-run reliability gate, which requires three or more distinct model coders
+Scope (DEC-6, corrected 2026-10-18): modes govern *operational validation* of skill outputs
+(`services/operational_validation.py`, which calls `core/validation.py`) and the research-quality
+skill's LLM-judge calls. An earlier draft also named `core/validation_executor.py`; Phase 3
+orientation found that it is not called by product code. Modes do not replace the formal coding-run
+reliability gate, which requires three or more distinct model coders
 and computes Fleiss/Krippendorff on evidence-unit matrices. A decider is not a coder (Invariant 2 in
 the lifecycle file; [R6]).
 

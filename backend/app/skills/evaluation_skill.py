@@ -7,6 +7,7 @@ research quality using multi-model consensus and adversarial review.
 import logging
 
 from app.core import validation
+from app.core.assurance import ProjectAssurance, plan_validation
 from app.skills.base import BaseSkill, SkillInput, SkillOutput, SkillPhase, SkillType
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,20 @@ class EvaluationSkill(BaseSkill):
     async def execute(self, skill_input: SkillInput) -> SkillOutput:
         """Evaluate the provided research content."""
         content = skill_input.user_context or ""
+        plan = plan_validation(await _project_assurance(skill_input.project_id))
+        if not plan.run_llm:
+            report = (
+                "## Quality Audit Report\n\n"
+                f"**Assurance mode**: {plan.mode}\n\n"
+                "LLM-as-judge review is turned off by this project's assurance mode, so no "
+                "adversarial critique or ensemble rating was produced. The output still needs "
+                "human review before it can count as research evidence."
+            )
+            return SkillOutput(
+                success=True,
+                summary="Research quality evaluation skipped: LLM judges are off for this project.",
+                artifacts={"evaluation_report.md": report},
+            )
         logger.info("EvaluationSkill executing LLM-as-Judge benchmark...")
 
         # 1. Run Adversarial Review (one model critiques the content)
@@ -69,6 +84,7 @@ class EvaluationSkill(BaseSkill):
             prompt=ensemble_prompt,
             system="You are a research quality rater.",
             project_id=skill_input.project_id,
+            min_responses=plan.llm_judges,
         )
 
         # ``full_ensemble`` is an operational response-level quality signal.
@@ -88,6 +104,7 @@ class EvaluationSkill(BaseSkill):
         # 3. Combine results
         combined_report = (
             f"## Quality Audit Report\n\n"
+            f"**Assurance mode**: {plan.mode}\n"
             f"**Consensus Score**: {ens_result.consensus.agreement_score:.2f}\n"
             f"**{agreement_label}**: {ens_result.consensus.kappa or 'N/A'}\n"
             f"**Validation scope**: "
@@ -102,3 +119,16 @@ class EvaluationSkill(BaseSkill):
             summary="Research quality evaluation completed.",
             artifacts={"evaluation_report.md": combined_report},
         )
+
+
+async def _project_assurance(project_id: str | None) -> ProjectAssurance:
+    """The project's assurance mode, or ``auto`` when there is none or it cannot be read."""
+    if not project_id:
+        return ProjectAssurance()
+    try:
+        from app.services.operational_validation import load_project_assurance
+
+        return await load_project_assurance(project_id)
+    except Exception as exc:
+        logger.debug("Assurance mode lookup failed; using auto: %s", exc)
+        return ProjectAssurance()

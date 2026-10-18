@@ -191,100 +191,31 @@ class AgentExecutionMixin:
             )
 
             # ── Operational response validation (if available) ──
-            # This is a quality signal over the candidate summary, not formal
-            # qualitative-coding reliability. Task-linked coding runs happen
-            # after findings are stored through research_validity_service.
+            # A quality signal over the candidate summary, governed by the project's assurance
+            # mode (LLM judges, decision models, both or none; app.core.assurance). It is not
+            # formal qualitative-coding reliability: task-linked coding runs happen after
+            # findings are stored through research_validity_service, in every mode.
             try:
-                import json as _json
+                if output.summary:
+                    from app.services.operational_validation import run_operational_validation
 
-                from app.core.adaptive_validation import AdaptiveSelector
-                from app.core.validation import (
-                    adversarial_review,
-                    debate_rounds,
-                    dual_run,
-                    full_ensemble,
-                    self_moa,
-                )
+                    async def _progress(label: str) -> None:
+                        await broadcast_task_progress(
+                            task.id, 0.5, label, project_id=task.project_id
+                        )
 
-                selector = AdaptiveSelector()
-                method = await selector.select_method(project.id, skill.name, self.agent_id)
-
-                if method and method != "skip" and output.summary:
-                    await broadcast_task_progress(
-                        task.id,
-                        0.5,
-                        f"Validating ({method})...",
-                        project_id=task.project_id,
+                    validation = await run_operational_validation(
+                        project_id=project.id,
+                        skill_name=skill.name,
+                        agent_id=self.agent_id,
+                        task_id=task.id,
+                        task_text=skill_input.user_context or task.description,
+                        candidate=output.summary,
+                        progress=_progress,
                     )
-                    validation_fns = {
-                        "self_moa": self_moa,
-                        "adversarial_review": adversarial_review,
-                        "dual_run": dual_run,
-                        "full_ensemble": full_ensemble,
-                        "debate_rounds": debate_rounds,
-                    }
-                    fn = validation_fns.get(method)
-                    if fn:
-                        from app.config import settings
-
-                        validation_prompt = skill_input.user_context or task.description
-                        validation_system = (
-                            "Validate the candidate UX research output for accuracy, "
-                            "completeness, evidence fit, and actionability."
-                        )
-                        validation_kwargs = {
-                            "prompt": validation_prompt,
-                            "system": validation_system,
-                            "project_id": project.id,
-                        }
-                        if method == "adversarial_review":
-                            validation_kwargs["initial_response"] = output.summary
-                        else:
-                            validation_kwargs["prompt"] = (
-                                f"Task:\n{validation_prompt}\n\n"
-                                f"Candidate output to validate:\n{output.summary}"
-                            )
-
-                        val_result = await asyncio.wait_for(
-                            fn(**validation_kwargs),
-                            timeout=max(
-                                1, int(getattr(settings, "validation_timeout_seconds", 120))
-                            ),
-                        )
-                        actual_method = val_result.method or method
-                        task.validation_method = actual_method
-                        task.validation_result = _json.dumps(
-                            {
-                                "requested_method": method,
-                                "actual_method": actual_method,
-                                "agreement_score": val_result.consensus.agreement_score,
-                                "kappa": val_result.consensus.kappa,
-                                "cosine_sim": val_result.consensus.cosine_sim,
-                                "confidence": val_result.consensus.confidence,
-                                "best_response": val_result.best_response,
-                                "response_count": len(val_result.responses),
-                                "route_evidence": val_result.metadata.get("route_evidence", []),
-                                "models_used": val_result.metadata.get("models_used", []),
-                                "assurance": val_result.metadata.get("assurance", actual_method),
-                            }
-                        )
-                        task.consensus_score = val_result.consensus.agreement_score
-
-                        # Record metrics for adaptive learning
-                        await selector.record_outcome(
-                            project.id,
-                            skill.name,
-                            self.agent_id,
-                            actual_method,
-                            val_result.consensus.agreement_score,
-                            val_result.consensus.agreement_score >= 0.5,
-                        )
-                        logger.info(
-                            "Validation [%s]: score=%.2f",
-                            actual_method,
-                            val_result.consensus.agreement_score,
-                        )
-
+                    if validation.should_record:
+                        validation.apply_to(task)
+                    if validation.hook_payload is not None:
                         await agent_hooks.fire(
                             "post_validation",
                             {
@@ -294,13 +225,7 @@ class AgentExecutionMixin:
                                 "agent_id": self.agent_id,
                                 "project_id": project.id,
                                 "task_id": task.id,
-                                "validation_method": actual_method,
-                                "requested_validation_method": method,
-                                "validation_passed": val_result.consensus.agreement_score >= 0.5,
-                                "consensus_score": val_result.consensus.agreement_score,
-                                "validation_quality": val_result.consensus.agreement_score,
-                                "route_evidence": val_result.metadata.get("route_evidence", []),
-                                "models_used": val_result.metadata.get("models_used", []),
+                                **validation.hook_payload,
                             },
                         )
             except Exception as e:

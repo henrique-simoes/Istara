@@ -144,6 +144,7 @@ def register_models() -> None:
         "app.models.pi_tool_execution",
         "app.models.decision_policy",
         "app.models.decision_trajectory",
+        "app.models.assurance_policy",
     ):
         import_module(module_name)
 
@@ -342,6 +343,9 @@ async def init_db() -> None:
             "ALTER TABLE project_reports ADD COLUMN slide_instructions TEXT",
             # Task-level codebook assignment
             "ALTER TABLE tasks ADD COLUMN codebook_id VARCHAR(36)",
+            # Validation methods learn only from researcher-verified outcomes (AV-1).
+            "ALTER TABLE method_metrics ADD COLUMN human_agree_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE method_metrics ADD COLUMN human_disagree_count INTEGER NOT NULL DEFAULT 0",
             "CREATE INDEX IF NOT EXISTS ix_tasks_codebook_id ON tasks(codebook_id)",
         ]
         for ddl in migrations:

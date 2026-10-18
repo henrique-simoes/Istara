@@ -269,6 +269,25 @@ no finding of the task has accepted support, report routing and explicit
 task-report creation are blocked until review/reconciliation fixes the
 research-validity state.
 
+## Assurance Modes And Typed Decision Models (2026-10-18)
+
+Operational validation of a candidate output (after a skill runs) follows the project's assurance
+mode (`app/core/assurance.py`): `auto` (default, compute-aware LLM judges), `llm_judges`,
+`decision_models`, `both` or `none`. These modes govern only that quality signal. In every mode the
+task ends In Review and only a human moves it to Done, and the coding-run reliability gate (three or
+more distinct model coders, Fleiss/Krippendorff on evidence-unit matrices) is unchanged. A typed
+decision model is not an independent rater and never counts in that gate; decider coding exists only
+as a research arm (CF-SPEC-1 DEC-6).
+
+Typed decision models (`app/core/decider/`, JEV and compatible `/v1/systemone` servers) triage; they
+never accept or promote evidence. Hosted deciders receive a project's data only after that project's
+opt-in. Each verdict is stored as a content-free decision trajectory and later labelled only by a
+researcher's own review (reconciliation decisions with source `human_review`, or the task review);
+synthetic, debate and adversarial sources never label. A decider scope may affect routing only after
+the calibration trust gate passes (`app/core/decision/trust.py`); otherwise it runs in shadow mode.
+Validation-method selection learns only from whether a method's verdict matched the researcher's
+review, never from agreement among its own samples.
+
 ## Retrieval Contract
 
 Hybrid RAG is responsible for exact evidence recall: source, page/section,

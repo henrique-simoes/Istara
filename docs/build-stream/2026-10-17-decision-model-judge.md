@@ -541,4 +541,67 @@ label mapping is binary (F-14). Nothing routes on trust until Phase 4.
 
 ## Phase 3 — assurance modes
 
-Not started. Next: S1 design (see Status Block `next_action`).
+### Design (S1)
+
+**What exists (orientation, 2026-10-18).** LLM-as-judge runs in two product places: operational
+validation after every skill run (`core/agent_execution.py` → `AdaptiveSelector.select_method` →
+`core/validation.py` method), and the research-quality skill (`skills/evaluation_skill.py`, which calls
+`adversarial_review` and `full_ensemble` directly). A borderline consensus (0.4–0.6) also starts an A2A
+debate that rewrites the summary. `core/validation_executor.py` is **not called by product code**
+(only by tests); research doc §8 said otherwise and is corrected. No user setting chooses the method
+today: the selector picks it from compute, and when compute is constrained it falls back on history
+scored by self-agreement (AV-1).
+
+**Modes** (`core/assurance.py`, pure): `ProjectAssurance(mode, llm_method, llm_judges,
+decider_endpoint_ids)` and `plan_validation(policy) -> ValidationPlan(run_llm, llm_methods, llm_judges,
+run_deciders, decider_endpoint_ids, reason)`.
+
+| mode | LLM judges | deciders | when nothing can run |
+|---|---|---|---|
+| `auto` (no policy row: exactly today) | compute-aware choice among all methods | only if the project lists decider endpoints | — |
+| `llm_judges` | `llm_method` fixed (`self_moa`, `dual_run`, `full_ensemble` with `llm_judges ≥ 3`, `adversarial_review`, `debate_rounds`) or `auto` | none | Self-MoA stays the single-endpoint fallback inside the methods |
+| `decision_models` | **none** (no LLM-as-judge call at all, so no consensus and no A2A debate) | the listed endpoints | `unvalidated`, reason `no_decider_configured` |
+| `both` | as `llm_judges` | as `decision_models` | each half reports on its own |
+| `none` | none | none | `unvalidated`, reason `assurance_disabled` |
+
+In every mode the task still ends In Review and only a human moves it to Done; the coding-run
+reliability gate is untouched (DEC-6). Outputs of `both` sit side by side under `llm` and `deciders` in
+`task.validation_result` and are never merged into one verdict.
+
+**Persistence.** `ProjectAssurancePolicy` (`project_assurance_policies`: project_id PK, mode,
+llm_method, llm_judges, decider_endpoint_ids_json, updated_by, timestamps). No row = `auto`. Migration
+036 also adds `human_agree_count` and `human_disagree_count` to `method_metrics`. The API and UI to set
+the policy come in Phase 7 with the egress opt-in.
+
+**Operational validation service** (`services/operational_validation.py`). The validation block moves
+out of `agent_execution.py` behind one call, so it can be tested and the agent loop stays readable.
+Decider validation uses question set `operational-output` v1: one noul, `acceptable` ("Would a
+careful senior UX researcher accept this candidate output as it stands, given the task and its
+evidence?"), whose label is exactly the researcher's approve / send-back decision. One question gives
+exact labels, where several diagnostic questions would get noisy ones. Each decider verdict is stored
+as a `task_output` trajectory; its action is `shadow`, or `advisory` when the scope is trusted.
+Operational validation never routes, because every task already goes to human review.
+
+**AV-1 fix.** `AdaptiveSelector.select_method(..., allowed=...)` chooses only among the methods the
+mode allows. History counts only **human-verified** outcomes: at task review, a method *agreed* with
+the researcher when its verdict (consensus ≥ 0.5 = passed) matched the decision (approved = pass;
+needs revision or rejected after Done = fail); `system_failed` gives no label. Selection is a
+Beta–Bernoulli Thompson sample over those counts (seeded RNG injectable for tests). With no human
+outcomes it uses the compute-aware default within the allowed set. The self-agreement score is
+removed. `record_outcome` still records runs and mean consensus for Ensemble Health, but no longer
+feeds selection.
+
+**Labels for decider trajectories** at task review: approved → 1, needs revision or rejected after
+Done → 0, system failed → none (`task_review.record_review_side_effects` → `services/decision_trajectories`).
+
+**Docs.** Research-validity contract (assurance modes section), self-improvement governance contract
+(AV-1: learning signal = human outcome), `docs/scientific_audit/ensemble-method-matrix.md`, research doc
+§8 correction, Tech.md.
+
+**Verification.** `tests/test_assurance_modes.py` (pure plan matrix; selector with seeded Thompson;
+the agreement rule) runs locally and in CI. `tests/test_operational_validation.py` (CI) monkeypatches
+the validation functions and the decider client and records every dispatcher purpose: `decision_models`
+and `none` make **zero** `validation.*` LLM calls, `both` returns both halves, `auto` with no policy row
+behaves as before, and task-review labelling works. Existing `test_adaptive_validation.py`,
+`pi_production/test_w7_validation.py`, `test_evaluation_skill.py`, `test_task_review_history.py` and
+`test_tasks.py` must stay green.
