@@ -6,10 +6,10 @@ audience: researcher
 status: needs-verification
 related_features: ["quality.dashboard", "compute.pool"]
 related_glossary: ["fleiss-kappa"]
-code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/core/self_healing_rules.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py"]
+code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/core/self_healing_rules.py", "backend/app/services/research_validity_service.py", "backend/app/core/agentic/dispatcher.py", "frontend/src/components/common/DecisionModelHealthPanel.tsx"]
 api_references: ["backend/app/api/routes/metrics.py", "backend/app/api/routes/settings.py"]
 test_references: ["tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_w7_validation.py", "tests/test_validation_project_scope.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py", "tests/test_self_healing_rules.py"]
-last_verified: 2026-07-22
+last_verified: 2026-10-18
 compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-53 / CF-657
 ---
 
@@ -88,3 +88,7 @@ Choose the `legacy` engine for the project (or keep the legacy global default) t
 - Source files: `frontend/src/components/common/EnsembleHealthView.tsx`, `backend/app/core/consensus.py`, `backend/app/core/validation.py`, `backend/app/core/validation_executor.py`, `backend/app/services/research_validity_service.py`, `backend/app/core/agentic/dispatcher.py`
 - API references: `backend/app/api/routes/metrics.py`
 - Tests: `tests/pi_production/test_w7_validation.py`, `tests/test_validation_project_scope.py`, `tests/test_research_validity_contract.py`, `tests/test_metrics.py`
+
+## Evaluator health against your reviews
+
+The **Evaluator health** panel compares decision models and LLM judges with your own review decisions on the same items: each decision model's trust status (calibrating, shadow or trusted), how many of its items you reviewed, its calibration error (ECE), Brier score and agreement (kappa); each LLM judge method's agreement with you; and whether the evaluators fail together. Evaluators that make the same mistakes add little, so the panel reports how many are effectively independent. Empty until automated reviewers have run and you have reviewed their items.

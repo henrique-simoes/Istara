@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["quality.dashboard", "compute.pool"]
 related_glossary: ["fleiss-kappa"]
-code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/core/adaptive_validation.py", "backend/app/core/pi_runtime/model_manager.py", "backend/app/core/agent_execution.py", "backend/app/core/compute_route_evidence.py", "backend/app/core/self_healing_rules.py", "backend/app/services/research_validity_service.py", "backend/app/services/synthetic_reconciliation_service.py", "backend/app/core/research_validity.py", "backend/app/models/research_validity.py", "backend/app/api/routes/settings.py", "backend/app/api/routes/code_applications.py", "backend/app/core/agentic/dispatcher.py", "tests/real_user_benchmark/package.json", "tests/real_user_benchmark/run.mjs"]
+code_references: ["frontend/src/components/common/EnsembleHealthView.tsx", "backend/app/core/consensus.py", "backend/app/core/validation.py", "backend/app/core/validation_executor.py", "backend/app/core/adaptive_validation.py", "backend/app/core/pi_runtime/model_manager.py", "backend/app/core/agent_execution.py", "backend/app/core/compute_route_evidence.py", "backend/app/core/self_healing_rules.py", "backend/app/services/research_validity_service.py", "backend/app/services/synthetic_reconciliation_service.py", "backend/app/core/research_validity.py", "backend/app/models/research_validity.py", "backend/app/api/routes/settings.py", "backend/app/api/routes/code_applications.py", "backend/app/core/agentic/dispatcher.py", "tests/real_user_benchmark/package.json", "tests/real_user_benchmark/run.mjs", "frontend/src/components/common/DecisionModelHealthPanel.tsx"]
 api_references: ["backend/app/api/routes/metrics.py", "backend/app/api/routes/settings.py", "backend/app/api/routes/research_validity.py", "backend/app/api/routes/code_applications.py"]
 test_references: ["tests/test_adaptive_validation.py", "tests/test_validation_project_scope.py", "tests/test_evaluation_skill.py", "tests/test_research_validity_contract.py", "tests/test_metrics.py", "tests/test_code_applications.py", "tests/test_self_healing_rules.py", "tests/pi_production/test_w1_dispatcher_authority.py", "tests/pi_production/test_pi_model_manager_health.py", "tests/pi_production/test_legacy_long_horizon.py", "tests/pi_production/test_ensemble_identity_parity.py", "tests/pi_production/test_w7_validation.py", "tests/pi_production/test_w7_pi_manager_integration.py", "tests/pi_production/test_runtime_hardening.py", "tests/petals_bridge/test_petals_bridge.py", "tests/pi_production/test_research_spine_donor_routing.py", "tests/pi_benchmark/live_driver.py", "tests/pi_benchmark/test_live_driver.py", "tests/real_user_benchmark/lib/research-spine-probes.test.mjs"]
-last_verified: 2026-08-27
+last_verified: 2026-10-18
 compass: CF-SPEC-8 / FIX-pi-full-20260720-w7-REVIEW-r1-docs; CF-SPEC-53 / CF-657; CF-SPEC-92 / CF-1170; CF-SPEC-122; CF-SPEC-123 / CF-1581; CF-SPEC-124 / CF-1590
 ---
 
@@ -151,3 +151,7 @@ Ensemble Health surfaces health and consensus signals for Istara's multi-model o
 
 - Update this page whenever the listed UI components, stores, routes, model behavior, permissions, or tests change.
 - Regenerate the site and machine manifests with `python scripts/feature_docs.py --seed-missing --generate-site --check`.
+
+## Decision-model health panel (CF-SPEC-1, Phase 7)
+
+`DecisionModelHealthPanel.tsx` reads `GET /api/metrics/{project_id}/decision-models` through `validation.decisionModels` and renders the scope table, LLM-method human agreement, and the error structure (mean error correlation, J_eff, pairwise Yule's Q, Dawid–Skene status with its identifiability note). It is mounted in `EnsembleHealthView` above Model Intelligence and shows loading, unavailable and empty states.

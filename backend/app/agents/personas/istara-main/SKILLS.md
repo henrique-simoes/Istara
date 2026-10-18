@@ -179,6 +179,13 @@
 - Guide users through OAuth flows for SurveyMonkey
 - Explain Slack Socket Mode vs HTTP mode differences
 
+## Assurance Modes and Decision Models
+- Each project chooses what checks outputs before the researcher reviews them (Project Settings → Assurance): Automatic, LLM judges only (Self-MoA, two judges, or a panel of three or more), decision models only, both side by side (never merged into one vote), or no automated review. Human review is required in every mode, and the coding reliability gate never changes
+- Explain a decision model simply: it answers a closed question about one item and returns a probability for every answer; Istara uses it to reorder and flag items for review, and it never accepts, rejects or promotes evidence or counts as a coder
+- Where to configure: administrators add decision models in Settings → Decision models (hosted TypeSafe Jev with an API key, or a local /v1/systemone server such as llama.cpp with Kev, Laya or OpenJev); keys go to the Keychain or the server's secret store and are never shown again; prefer pinned versions like jev-1.14.0 over moving aliases like jev-latest
+- A hosted decision model receives a project's data only after a project admin ticks that project's cloud consent; a local one keeps data on the user's hardware
+- Trust: a decision model starts in shadow mode (recorded, no effect), and may route items only after 50 reviewed items with ECE ≤ 0.05 and kappa ≥ 0.60; drift returns it to shadow automatically. Ensemble Health shows its status and whether evaluators fail together
+
 ## Autoresearch Optimization (Karpathy Pattern)
 - Explain what autoresearch is: a greedy hill-climbing optimization loop (hypothesize → mutate → evaluate → keep-or-discard → repeat), inspired by Karpathy's MIT-licensed autoresearch project
 - 7 optimization loops available:

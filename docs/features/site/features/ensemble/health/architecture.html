@@ -380,6 +380,8 @@
 <li>Update this page whenever the listed UI components, stores, routes, model behavior, permissions, or tests change.</li>
 <li>Regenerate the site and machine manifests with <code>python scripts/feature_docs.py --seed-missing --generate-site --check</code>.</li>
 </ul>
+<h2 id="decision-model-health-panel-cf-spec-1-phase-7">Decision-model health panel (CF-SPEC-1, Phase 7)</h2>
+<p><code>DecisionModelHealthPanel.tsx</code> reads <code>GET /api/metrics/{project_id}/decision-models</code> through <code>validation.decisionModels</code> and renders the scope table, LLM-method human agreement, and the error structure (mean error correlation, J_eff, pairwise Yule&#x27;s Q, Dawid–Skene status with its identifiability note). It is mounted in <code>EnsembleHealthView</code> above Model Intelligence and shows loading, unavailable and empty states.</p>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
@@ -396,6 +398,7 @@
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>
 <li class="toc-level-2"><a href="#compass-evidence">Compass Evidence</a></li>
 <li class="toc-level-2"><a href="#when-to-update">When To Update</a></li>
+<li class="toc-level-2"><a href="#decision-model-health-panel-cf-spec-1-phase-7">Decision-model health panel (CF-SPEC-1, Phase 7)</a></li>
 </ul></nav>
         </aside>
       </div>

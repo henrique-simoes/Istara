@@ -6,13 +6,13 @@
 ```yaml
 item: decision-model-judge
 branch: feat/decision-model-judge
-cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8] }
+cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8, CF-9] }
 phase: "Phase 6 — autoresearch"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-10-18T06:30:00Z, ledger: L-19 }
-next_action: "Commit Phase 6, push, dispatch ci.yml, read backend-test (test_autoresearch_hill_climbing, test_autoresearch_engine, test_autoresearch_statistics, test_decision_policy_runner, test_w6_engine_selection); if green, finish CF-8, mark Phase 6 done, start Phase 7 (onboarding + configuration UX)."
+last: { agent: claude-code, at: 2026-10-18T08:30:00Z, ledger: L-20 }
+next_action: "Push the Phase 6 fixes and Phase 7, dispatch ci.yml, read backend-test (test_w6_autoresearch_runners, test_self_improvement_artifact_boundary, test_decision_model_settings, test_autoresearch_*), frontend-typecheck/lint/unit and ui-journeys import; if green finish CF-8 and CF-9 (F-40 stays open for the QA lane), then start Phase 8."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -394,6 +394,21 @@ Context: The audit's AR-1 fix says "compare every candidate with a fresh paired 
 Decision: Each iteration measures the incumbent and the candidate `max(2, autoresearch_measurement_repeats)` times in alternating blocks and keeps the candidate only if the lower end of the 95% Welch interval on the difference of means exceeds `autoresearch_min_improvement_delta`, and then again on an independent confirmation block. Unmeasurable samples (`None`) make the iteration `not_runnable`. Accepted mutations are still reverted; stacking them stays a governed proposal, not a loop mode.
 Why: Welch is honest about unequal variances without a pairing it cannot guarantee. The confirmation block removes the winner's-curse bias of selecting on the same samples that pass the test (AR-2). Rejected: a z interval (n ≤ 10), a paired t on unpaired draws, and ratcheting `best_score` (AR-1).
 
+DEC-16 | 2026-10-18 | S1-plan | claude-opus-5-5
+Context: Phase 7 needs a place to enter a decider key in the UI. The earlier sketch stored it in an encrypted database column; the roadmap acceptance says the key lives only in Keychain/env, and Istara already custodies Pi endpoint keys that way (`pi_runtime.endpoint_policy._custody_api_key`).
+Decision: Keys entered in Settings go to macOS Keychain (service `istara-decider`, account = endpoint id) or, without Keychain, to the endpoint-scoped `ISTARA_DECIDER_SECRET_<ID>` runtime env value; endpoints persist in `DECIDER_ENDPOINTS_JSON`, which holds no secret. No new table or migration.
+Why: One custody model across providers, matching the acceptance criterion; no second copy of a secret in the database. Rejected: an `EncryptedType` column (a new secret store to rotate and audit).
+
+DEC-17 | 2026-10-18 | S2-execute | claude-opus-5-5
+Context: The owner asked that general onboarding and first activation teach decision models. The guided tour indexes its steps by position, with role and team-mode skips.
+Decision: Add an informational, skippable last step to the onboarding wizard (assurance modes and the decision-model explainer, nothing enabled), a first-activation guide in Settings → Decision models shown while none is configured, and an expandable explainer in Project Settings → Assurance. The guided tour is unchanged.
+Why: Inserting a tour step shifts every index-based skip rule for little gain. Rejected: a tour step for Decision models (fragile), and enabling anything from onboarding (DEC-1: no decider by default).
+
+DEC-18 | 2026-10-18 | S2-execute | claude-opus-5-5
+Context: The Phase 7 acceptance asks for a UI walk by role, light/dark, 375px and keyboard. This machine has no Node, Docker or QA stack, and installs are forbidden; `ui-journeys` runs only scenarios listed as proven with dated evidence.
+Decision: Register scenario `91-decision-models` (credential-free; never calls a decider) so CI proves it imports and records it as not run; typecheck, lint and unit tests run in CI. The walk itself stays open as F-40 until it runs on the QA lane.
+Why: Listing an unrun scenario as proven would violate the lane's honesty contract. Rejected: claiming the walk.
+
 ### L-15 | 2026-10-18T05:01:02Z | S4-remediate | claude-opus-5-5 | executor | Phase 4
 Did: Orientation (coding-run commit point, review queue, reconciliation, codebook fields); S1 design; `gate before --task CF-6` (baseline 13). Implemented `services/decider_triage.py`, the post-commit hook in `run_independent_coding_run`, the label hook in `create_reconciliation_decision`, `routed_triage` and the pending-route field and order, `CodeApplicationType.decider_triage`, `services/assurance_policies.py`, AI-005 evidence and triggers, docs (Tech.md, research-validity contract, review feature docs + site), and `tests/test_decider_triage.py`. Commits `fc1dab1c`, `b8d1d5f7` (local).
 Result: Phase 4 code complete; F-22…F-24 fixed; F-25 waits on CI.
@@ -423,6 +438,12 @@ Did: Implemented Phase 6 (see the Phase 6 section): `core/autoresearch_statistic
 Result: AR-1…AR-8 fixed in code; F-32…F-34 fixed; F-35 waits on CI.
 Verified: stdlib runner → statistics "6 passed", decision-policy runner "3 passed", math "25 passed"; collapse checker → 0 candidates; no added line over 100 columns; `gate after --task CF-8` → comparable, 0 new issues, failures and warnings; `feature_docs.py --seed-missing --generate-site --check` → passed.
 Next: commit, push, dispatch CI.
+
+### L-20 | 2026-10-18T08:30:00Z | S4-remediate | claude-opus-5-5 | executor | Phase 6, Phase 7
+Did: Phase 6 CI run 39102947318: backend-test failed 14 (F-41 W6 dispatcher contract, F-42 artifact boundary), backend-format failed (F-37); fixed in `a342baf9` and `cd843554`. Implemented Phase 7 (see its section): decision-model settings and project-policy routes, key custody, Settings and Project Settings sections, Ensemble Health panel, review-queue note, onboarding step, feature docs, Tech.md, persona, AI-005, scenario 91. A usage-limit pause interrupted the session mid-Phase 7; work resumed from the working tree.
+Result: F-37, F-41, F-42 fixed in code (F-35 still closes on CI); Phase 7 code complete with F-38…F-40 open.
+Verified: local boundary scan (same rules as `test_self_improvement_artifact_boundary`) → no hits; stdlib runner → `test_decision_policy_runner` "3 passed"; collapse checker → 0; no line over 100 columns in changed backend files; `gate after --task CF-9` → comparable, 0 new issues (after splitting components and adding route/type hints; first run showed 12 warnings); `feature_docs.py --seed-missing --generate-site --check` → passed (86).
+Next: commit Phase 7, push, dispatch CI.
 
 ## Phase 0 — math core
 
@@ -829,4 +850,37 @@ covered the Phase 4 code on dispatch (CI-2).
 | F-33 | Minor | Tests | `tests/test_autoresearch_engine.py` | Keep-rule tests asserted the old single-sample guard (δ ≥ 0.01 with one repeat is kept) | CF-8 | fixed: rewritten for the Welch rule |
 | F-34 | Minor | Code | `core/autoresearch_statistics.py`, `tests/test_autoresearch_hill_climbing.py` | Two lines over 100 columns | CF-8 | fixed |
 | F-36 | Major | Governance | `core/improvement_governance_contracts.py` | `decision_policy` proposals named a `decision_models` surface that governance did not know, so they classified as medium-risk approval instead of admin review | CF-8 | fixed: `decision_models` is an admin, behavioural, high-risk surface (`decider` aliases it); test in `test_improvement_governance.py` |
+| F-41 | Major | Integration | `autoresearch_runners/*` | CI run 39102947318: the W6 contract (`tests/pi_production/test_w6_autoresearch_runners.py`) requires each runner's scoring function to call `agentic.completion` itself with its purpose slug, spine phase and `engine=self.engine`; the shared `judge_score` hid that, and `model_temp._score_output` gained a keyword the W6 stubs do not take | CF-8 | fixed: `scoring.plan_judge` decides decider vs pinned LLM judge, each runner keeps its own dispatcher call; the judge exclusion travels as `ModelTempRunner._judge_avoid` |
+| F-42 | Major | Governance | `autoresearch_runners/decision_policy.py` | CI run 39102947318: `test_self_improvement_artifact_boundary` forbids self-improvement modules from naming research models; the runner read `CodeApplication`/`EvidenceUnit` | CF-8 | fixed: `services/decider_triage.labelled_triage_states` prepares the labelled states read-only on the spine side |
 | F-35 | Major | Tests | toolchain | `test_autoresearch_hill_climbing.py` and `test_autoresearch_engine.py` need the full backend stack | CF-8 | open (closes on CI) |
+
+## Phase 7 — onboarding + configuration UX
+
+### Design and build (S1–S4; autonomous, 2026-10-18)
+
+Mode: interface-design `build` inside Istara's existing system (no Figma file; existing
+`ui-panel`, `primary-action`/`secondary-action`, radio-card and badge patterns from
+`AgenticCoreSection`).
+
+- **Backend** (`api/routes/decision_models.py`, `decider/credentials.py`): global-admin endpoint
+  CRUD and a connection check (one constant probe question); keys write-only (DEC-16). Project
+  policy `GET` (viewer) and `PUT` (project admin) over `ProjectAssurancePolicy` and
+  `DecisionModelProjectPolicy`; a hosted decider is refused unless the same request lists it in the
+  egress opt-in, and the opt-in only accepts hosted endpoints. Trust status reuses
+  `decision_health.scope_summaries` (calibrating, shadow, trusted).
+- **Frontend**: `lib/decisionModelCopy.ts` (one wording for every surface), `DecisionModelsSection`
+  (explainer, first-activation steps, presets for hosted Jev `jev-1.14.0` and a local
+  `/v1/systemone` server, alias warning, check, two-step remove), `ProjectAssuranceSection` (mode
+  radio cards, LLM method and panel size, decider checklist with a separate consent checkbox per
+  hosted endpoint, trust list, explicit save), `DecisionModelHealthPanel` in Ensemble Health, the
+  decider note in `CodeReviewQueue` (routed, non-blind items only), and the onboarding step
+  (DEC-17).
+- **Tests**: `tests/test_decision_model_settings.py` (keys never returned, admin-only, egress rule,
+  role split), `frontend/src/lib/decisionModelCopy.test.ts`, scenario `91-decision-models` (DEC-18).
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|----|-----|-----|-------|---------|---------|--------|
+| F-37 | Minor | Code | `autoresearch_runners/decision_policy.py` | Phase 6 CI run 39102947318: `ruff format` wanted the query chain split; the local collapse heuristic misses this shape | CF-8 | fixed (`a342baf9`) |
+| F-38 | Major | Tests | toolchain | No Node here: typecheck, lint and the new unit test run only in CI | CF-9 | open (closes on CI) |
+| F-39 | Major | Tests | toolchain | `test_decision_model_settings.py` needs the full backend stack | CF-9 | open (closes on CI) |
+| F-40 | Major | Quality | UI | No UI walk by role, theme, 375px and keyboard yet (DEC-18) | CF-9 | open (QA lane) |

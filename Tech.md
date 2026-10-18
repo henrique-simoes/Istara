@@ -3495,3 +3495,14 @@ design and derivations in `docs/scientific_audit/decision-model-judge-research.m
   wording against labelled code applications by 1 − Brier. Tests:
   `tests/test_autoresearch_statistics.py`, `tests/test_autoresearch_hill_climbing.py`,
   `tests/test_decision_policy_runner.py`.
+- **Phase 7: configuration and onboarding.** `api/routes/decision_models.py`: global-admin
+  `GET/POST /api/settings/decision-models`, `DELETE` and `POST .../{endpoint_id}/check` (one constant
+  probe, no research data); endpoints persist in `DECIDER_ENDPOINTS_JSON` and keys go to Keychain
+  service `istara-decider` or `ISTARA_DECIDER_SECRET_<ID>` (`decider/credentials.store_api_key`),
+  never back to a client. `GET/PUT /api/projects/{project_id}/decision-models` (viewer reads, project
+  admin writes) set the assurance mode, deciders and the hosted-egress opt-in, and refuse a hosted
+  decider without that opt-in. UI: `settings/DecisionModelsSection.tsx` (explainer and
+  first-activation guide), `settings/ProjectAssuranceSection.tsx`, `common/DecisionModelHealthPanel.tsx`
+  in Ensemble Health, the decider note in `CodeReviewQueue.tsx`, and an informational onboarding step;
+  shared wording in `lib/decisionModelCopy.ts`. Tests: `tests/test_decision_model_settings.py`,
+  `frontend/src/lib/decisionModelCopy.test.ts`.

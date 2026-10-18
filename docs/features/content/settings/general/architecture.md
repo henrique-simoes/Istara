@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["settings.llm-servers", "compute.pool"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "frontend/src/app/globals.css", "frontend/src/components/layout/StatusBar.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py", "backend/app/core/runtime_freshness.py", "frontend/src/components/settings/EmbeddingModelSection.tsx", "backend/app/services/embedding_migration.py", "backend/app/core/embedding_prompts.py", "backend/app/core/vector_identity.py", "backend/app/core/pi_runtime/embedding_profile.py"]
-api_references: ["backend/app/api/routes/settings.py"]
-test_references: ["tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "frontend/src/lib/modelCatalog.test.ts", "tests/test_embedding_migration.py", "tests/test_embedding_prompts.py", "frontend/src/components/settings/EmbeddingModelSection.test.ts"]
-last_verified: 2026-09-26
+code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "frontend/src/app/globals.css", "frontend/src/components/layout/StatusBar.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py", "backend/app/core/runtime_freshness.py", "frontend/src/components/settings/EmbeddingModelSection.tsx", "backend/app/services/embedding_migration.py", "backend/app/core/embedding_prompts.py", "backend/app/core/vector_identity.py", "backend/app/core/pi_runtime/embedding_profile.py", "frontend/src/components/settings/DecisionModelsSection.tsx", "backend/app/api/routes/decision_models.py", "backend/app/core/decider/credentials.py", "backend/app/core/decider/registry.py"]
+api_references: ["backend/app/api/routes/settings.py", "backend/app/api/routes/decision_models.py"]
+test_references: ["tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "frontend/src/lib/modelCatalog.test.ts", "tests/test_embedding_migration.py", "tests/test_embedding_prompts.py", "frontend/src/components/settings/EmbeddingModelSection.test.ts", "tests/test_decision_model_settings.py"]
+last_verified: 2026-10-18
 compass: CF-SPEC-55 / CF-684; CF-SPEC-66 / CF-856; CF-SPEC-91 / CF-1156
 ---
 
@@ -120,3 +120,7 @@ Settings shows backend and LLM health, a first-class Agentic Core comparison and
 
 - Update this page whenever the listed UI components, stores, routes, model behavior, permissions, or tests change.
 - Regenerate the site and machine manifests with `python scripts/feature_docs.py --seed-missing --generate-site --check`.
+
+## Decision-model endpoints API (CF-SPEC-1, Phase 7)
+
+Global-admin routes in `backend/app/api/routes/decision_models.py`: `GET /api/settings/decision-models` (endpoints with locality, alias flag and `credential_status`, plus presets), `POST` (validates through `DeciderEndpoint`, so public hosts need HTTPS and metadata hosts are refused; a hosted endpoint needs a key), `DELETE /{endpoint_id}` (also removes the stored key) and `POST /{endpoint_id}/check` (one constant probe question, no research data). Endpoints persist in `DECIDER_ENDPOINTS_JSON`, which holds no secret; `credentials.store_api_key` writes the key to Keychain service `istara-decider` on macOS or to `ISTARA_DECIDER_SECRET_<ID>` elsewhere, mirroring Pi endpoint custody. Control AI-005.

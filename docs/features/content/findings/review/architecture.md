@@ -9,7 +9,7 @@ related_glossary: ["triangulation", "fleiss-kappa"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodeReviewQueue.tsx", "frontend/src/lib/researchIntegrityApi.ts", "backend/app/api/routes/research_validity.py", "backend/app/services/research_validity_service.py", "backend/app/core/research_validity.py", "backend/app/models/code_application.py"]
 api_references: ["backend/app/api/routes/code_applications.py", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/research_validity.py"]
 test_references: ["tests/test_code_applications.py", "tests/test_project_scope_contracts.py", "tests/test_research_validity_contract.py"]
-last_verified: 2026-08-26
+last_verified: 2026-10-18
 compass: CF-SPEC-78 / CF-1005; CF-SPEC-124 / CF-1590
 ---
 
@@ -80,3 +80,7 @@ The Review tab presents code review queues for validating and adjudicating quali
 
 - Update this page whenever the listed UI components, stores, routes, model behavior, permissions, or tests change.
 - Regenerate the site and machine manifests with `python scripts/feature_docs.py --seed-missing --generate-site --check`.
+
+## Decider triage badge (CF-SPEC-1, Phase 7)
+
+`CodeReviewQueue.tsx` renders `decider_triage` (from `GET /api/code-applications/{project_id}/pending`, built by `services/decision_trajectories.routed_triage`) as an informational note. The backend includes it only for `ok`, routed, non-blind trajectories, so shadow verdicts and blind audit items never reach the reviewer.

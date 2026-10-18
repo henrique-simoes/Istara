@@ -49,6 +49,7 @@ from app.api.routes import autoresearch as autoresearch_routes
 from app.api.routes import backup as backup_routes
 from app.api.routes import code_applications as code_applications_routes
 from app.api.routes import codebook_versions as codebook_versions_routes
+from app.api.routes import decision_models as decision_models_routes
 from app.api.routes import compute as compute_routes
 from app.api.routes import connections as connection_routes
 from app.api.routes import (
@@ -842,6 +843,7 @@ app.include_router(reports_routes.router, prefix="/api", tags=["Reports"])
 app.include_router(research_validity_routes.router, prefix="/api", tags=["Research Validity"])
 app.include_router(presentation_routes.router, prefix="/api", tags=["Presentation"])
 app.include_router(code_applications_routes.router, prefix="/api", tags=["Code Applications"])
+app.include_router(decision_models_routes.router, prefix="/api", tags=["Decision Models"])
 app.include_router(codebook_versions_routes.router, prefix="/api", tags=["Codebook Versions"])
 app.include_router(laws_routes.router, prefix="/api", tags=["Laws of UX"])
 app.include_router(webhook_routes.router, tags=["Webhooks"])

@@ -3,7 +3,15 @@
 import type { DataIntegrityQuarantineRequest, EmbeddingMigrationRequest } from "@/lib/apiRequestTypes";
 import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent, PermissionRequestItem, StudyAnalysisResult } from "@/lib/types";
 import type { ReasoningMemoryItem, ReasoningBankSummary } from "@/lib/reasoningBankTypes";
-import type { DecisionModelHealth } from "@/lib/catalogTypes";
+import type {
+  DecisionModelCheckResult,
+  DecisionModelEndpoint,
+  DecisionModelEndpointRequest,
+  DecisionModelHealth,
+  DecisionModelPreset,
+  ProjectDecisionPolicy,
+  ProjectDecisionPolicyRequest,
+} from "@/lib/catalogTypes";
 
 import { API_BASE } from "@/lib/runtimeConfig";
 import { authHeaders as _getAuthHeaders, del, downloadFile, get, patch, post, request } from "@/lib/apiClient";
@@ -1400,6 +1408,34 @@ export const piEndpoints = {
       method: "PUT",
       body: JSON.stringify({ endpoint_ids: endpointIds }),
     }),
+};
+
+// Decision models (typed deciders such as TypeSafe Jev). Keys are write-only.
+// Route coverage hints (decision models): /settings/decision-models /settings/decision-models/{endpoint_id}
+// /settings/decision-models/{endpoint_id}/check /projects/{project_id}/decision-models
+export const decisionModels = {
+  list: () =>
+    get<{ endpoints: DecisionModelEndpoint[]; presets: DecisionModelPreset[] }>(
+      "/api/settings/decision-models"
+    ),
+  add: (endpoint: DecisionModelEndpointRequest) =>
+    post<{ status: string; endpoint: DecisionModelEndpoint; persisted: boolean }>(
+      "/api/settings/decision-models",
+      endpoint
+    ),
+  remove: (endpointId: string) =>
+    del<{ status: string }>(`/api/settings/decision-models/${encodeURIComponent(endpointId)}`),
+  check: (endpointId: string) =>
+    post<DecisionModelCheckResult>(
+      `/api/settings/decision-models/${encodeURIComponent(endpointId)}/check`
+    ),
+  projectPolicy: (projectId: string) =>
+    get<ProjectDecisionPolicy>(`/api/projects/${encodeURIComponent(projectId)}/decision-models`),
+  setProjectPolicy: (projectId: string, policy: ProjectDecisionPolicyRequest) =>
+    request<ProjectDecisionPolicy>(
+      `/api/projects/${encodeURIComponent(projectId)}/decision-models`,
+      { method: "PUT", body: JSON.stringify(policy) }
+    ),
 };
 
 export const audit = {

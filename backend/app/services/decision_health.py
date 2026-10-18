@@ -22,7 +22,7 @@ from app.models.decision_trajectory import DecisionTrajectory, DecisionTrustEval
 _TRUST_METRICS = ("effective_n", "held_out_ece", "held_out_brier", "kappa", "order_flip_rate")
 
 
-async def _scopes(session: AsyncSession, project_id: str) -> list[dict[str, Any]]:
+async def scope_summaries(session: AsyncSession, project_id: str) -> list[dict[str, Any]]:
     rows = (
         (
             await session.execute(
@@ -144,7 +144,7 @@ async def decision_model_health(session: AsyncSession, project_id: str) -> dict[
     verdicts, labels = await _verdicts(session, project_id)
     return {
         "project_id": project_id,
-        "scopes": await _scopes(session, project_id),
+        "scopes": await scope_summaries(session, project_id),
         "llm_methods": await _llm_methods(session, project_id),
         "error_structure": error_structure(verdicts, labels),
     }

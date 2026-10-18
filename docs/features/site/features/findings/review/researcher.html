@@ -300,6 +300,8 @@
 <li>API references: <code>backend/app/api/routes/code_applications.py</code>, <code>backend/app/api/routes/codebooks.py</code></li>
 <li>Tests: <code>tests/test_code_applications.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
+<h2 id="decision-model-flags">Decision-model flags</h2>
+<p>When a project&#x27;s decision model is trusted, items it flagged or was unsure about move up the code review queue and carry a short note with its probability that the excerpt supports the code. The note never appears for items it is still being measured on, or for the random audit sample, so it cannot influence how you judge them. Your reconciliation decision is the only one that counts.</p>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
@@ -315,6 +317,7 @@
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>
 <li class="toc-level-2"><a href="#evidence">Evidence</a></li>
+<li class="toc-level-2"><a href="#decision-model-flags">Decision-model flags</a></li>
 </ul></nav>
         </aside>
       </div>

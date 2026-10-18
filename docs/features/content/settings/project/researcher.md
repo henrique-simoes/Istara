@@ -6,10 +6,10 @@ audience: researcher
 status: documented
 related_features: ["shell.projects", "settings.general"]
 related_glossary: ["compass-forge"]
-code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/layout/Sidebar.tsx", "frontend/src/lib/types.ts", "frontend/src/lib/utils.ts", "backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py", "backend/app/core/agentic/dispatcher.py"]
-api_references: ["backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py"]
-test_references: ["tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/simulation/scenarios/79-engine-selector.mjs"]
-last_verified: 2026-07-22
+code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/layout/Sidebar.tsx", "frontend/src/lib/types.ts", "frontend/src/lib/utils.ts", "backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py", "backend/app/core/agentic/dispatcher.py", "frontend/src/components/settings/ProjectAssuranceSection.tsx", "frontend/src/lib/decisionModelCopy.ts"]
+api_references: ["backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py", "backend/app/api/routes/decision_models.py"]
+test_references: ["tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/simulation/scenarios/79-engine-selector.mjs", "tests/test_decision_model_settings.py"]
+last_verified: 2026-10-18
 compass: CF-SPEC-53 / CF-657; CF-SPEC-72 / CF-927; CF-SPEC-8
 ---
 
@@ -73,3 +73,9 @@ Project Settings exists so the work represented by Project Settings has a stable
 - Source files: `frontend/src/components/settings/ProjectSettingsView.tsx`, `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/lib/types.ts`, `frontend/src/lib/utils.ts`, `backend/app/api/routes/projects.py`
 - API references: `backend/app/api/routes/projects.py`
 - Tests: `tests/test_project_rbac.py`, `tests/test_project_scope_contracts.py`, `tests/pi_production/test_w8_embeddings_gateway.py`, `tests/simulation/scenarios/79-engine-selector.mjs`
+
+## Assurance and decision models
+
+The **Assurance** panel chooses what checks this project's outputs before you review them: LLM judges only (Self-MoA, two judges, or a panel of three or more), decision models only, both side by side, or no automated review. Human review is required in every mode, and the coding reliability gate never changes.
+
+A decision model answers a closed question about one item and returns a probability for each answer. It only reorders and flags items for review; it never accepts, rejects or promotes evidence. A hosted decision model, such as TypeSafe Jev, can receive this project's data only after you tick the cloud consent for it here; a local one keeps data on your hardware. Trust status shows each model as calibrating, shadow (recorded, no effect) or trusted (calibrated against at least 50 of your reviews). Project researchers and viewers can read the panel; only project admins can change it.

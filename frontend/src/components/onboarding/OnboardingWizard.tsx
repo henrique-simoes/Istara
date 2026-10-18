@@ -11,12 +11,14 @@ import {
   Building2,
   Cpu,
   FolderOpen,
+  ShieldCheck,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { files as filesApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import LLMCheckStep from "./LLMCheckStep";
 import FolderLinkStep from "./FolderLinkStep";
+import AssuranceStep from "./AssuranceStep";
 
 interface OnboardingWizardProps {
   onComplete: () => void;
@@ -29,6 +31,7 @@ const STEPS = [
   { id: "folder", title: "Link Research Folder", icon: FolderOpen },
   { id: "context", title: "Set Your Context", icon: Building2 },
   { id: "upload", title: "Upload Research Data", icon: Upload },
+  { id: "assurance", title: "How Outputs Are Checked", icon: ShieldCheck },
 ];
 
 export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
@@ -86,7 +89,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto">
         {/* Progress */}
         <div className="flex gap-1 p-4 pb-0">
           {STEPS.map((s, i) => (
@@ -342,13 +345,18 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                   <ArrowLeft size={14} /> Back
                 </button>
                 <button
-                  onClick={onComplete}
+                  onClick={() => setStep(6)}
                   className="flex items-center gap-2 px-5 py-2.5 bg-istara-600 text-white rounded-xl hover:bg-istara-700 font-medium text-sm"
                 >
-                  {uploadedFiles.length > 0 ? "Start Researching" : "Skip & Explore"} <Sparkles size={14} />
+                  Continue <ArrowRight size={14} />
                 </button>
               </div>
             </div>
+          )}
+
+          {/* Step 6: Assurance and decision models (CF-SPEC-1). Informational: nothing is enabled. */}
+          {step === 6 && (
+            <AssuranceStep hasUploads={uploadedFiles.length > 0} onBack={() => setStep(5)} onFinish={onComplete} />
           )}
         </div>
       </div>

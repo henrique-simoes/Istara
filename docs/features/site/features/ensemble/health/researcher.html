@@ -310,6 +310,8 @@
 <li>API references: <code>backend/app/api/routes/metrics.py</code></li>
 <li>Tests: <code>tests/pi_production/test_w7_validation.py</code>, <code>tests/test_validation_project_scope.py</code>, <code>tests/test_research_validity_contract.py</code>, <code>tests/test_metrics.py</code></li>
 </ul>
+<h2 id="evaluator-health-against-your-reviews">Evaluator health against your reviews</h2>
+<p>The **Evaluator health** panel compares decision models and LLM judges with your own review decisions on the same items: each decision model&#x27;s trust status (calibrating, shadow or trusted), how many of its items you reviewed, its calibration error (ECE), Brier score and agreement (kappa); each LLM judge method&#x27;s agreement with you; and whether the evaluators fail together. Evaluators that make the same mistakes add little, so the panel reports how many are effectively independent. Empty until automated reviewers have run and you have reviewed their items.</p>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
@@ -327,6 +329,7 @@
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>
 <li class="toc-level-2"><a href="#evidence">Evidence</a></li>
+<li class="toc-level-2"><a href="#evaluator-health-against-your-reviews">Evaluator health against your reviews</a></li>
 </ul></nav>
         </aside>
       </div>

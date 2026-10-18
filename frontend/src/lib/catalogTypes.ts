@@ -304,3 +304,65 @@ export interface DecisionModelHealth {
     } | null;
   };
 }
+
+// Decision-model configuration. Mirrors backend/app/api/routes/decision_models.py
+// (DeciderEndpointRequest, ProjectDecisionPolicyRequest); keys never appear in any of these shapes.
+export type DecisionModelLocality = "local" | "hosted";
+
+export interface DecisionModelEndpoint {
+  endpoint_id: string;
+  base_url: string;
+  model: string;
+  model_is_alias: boolean;
+  locality: DecisionModelLocality;
+  timeout_s: number;
+  max_retries: number;
+  credential_status: "configured" | "missing" | "not_needed";
+}
+
+export interface DecisionModelPreset {
+  preset_id: string;
+  label: string;
+  base_url: string;
+  model: string;
+  locality: DecisionModelLocality;
+  needs_api_key: boolean;
+  docs_url: string;
+}
+
+export interface DecisionModelEndpointRequest {
+  endpoint_id: string;
+  base_url: string;
+  model: string;
+  api_key?: string;
+}
+
+export interface DecisionModelCheckResult {
+  ok: boolean;
+  reason: string | null;
+  served_model?: string | null;
+  requested_model?: string;
+}
+
+export type AssuranceMode = "auto" | "llm_judges" | "decision_models" | "both" | "none";
+
+export interface ProjectDecisionPolicyRequest {
+  mode: AssuranceMode;
+  llm_method: string;
+  llm_judges: number;
+  decider_endpoint_ids: string[];
+  hosted_egress_endpoint_ids: string[];
+}
+
+export interface ProjectDecisionPolicy extends ProjectDecisionPolicyRequest {
+  available_endpoints: Array<{
+    endpoint_id: string;
+    model: string;
+    locality: DecisionModelLocality;
+    model_is_alias: boolean;
+  }>;
+  unknown_endpoint_ids: string[];
+  choices: { modes: AssuranceMode[]; llm_methods: string[]; llm_judges: [number, number] };
+  trust?: Array<DecisionModelScope & { status: "calibrating" | "shadow" | "trusted" }>;
+  can_edit?: boolean;
+}
