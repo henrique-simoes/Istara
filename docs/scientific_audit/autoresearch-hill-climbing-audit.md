@@ -4,8 +4,10 @@ Spec: CF-SPEC-1. Scope: `backend/app/core/autoresearch_engine.py`, `backend/app/
 and `backend/app/core/adaptive_validation.py` with its caller in `backend/app/core/agent_execution.py`.
 Method: source reading at `origin/testing` `bfbca9a5`. No experiments were run.
 
-Status: **findings, unverified by execution.** Each one gets a failing regression test before its fix
-(lifecycle Phase 2b). Severity follows build-stream (Blocker / Major / Minor). Nothing is a Blocker,
+Status: **fixed in CF-SPEC-1 Phase 6 (2026-10-18)**, each with a regression test
+(`tests/test_autoresearch_statistics.py`, `tests/test_autoresearch_hill_climbing.py`); AV-1 was fixed
+in Phase 3 (`tests/test_assurance_modes.py`, `tests/test_operational_validation.py`). SV-1
+(`spine.verify` verbalized confidence) is addressed in Phase 8. Severity follows build-stream (Blocker / Major / Minor). Nothing is a Blocker,
 because autoresearch candidates are sandboxed and reverted, and "kept" means proposal-ready rather
 than live (`AUTORESEARCH_SPINE_POLICY`).
 

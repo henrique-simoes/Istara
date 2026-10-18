@@ -6,13 +6,13 @@
 ```yaml
 item: decision-model-judge
 branch: feat/decision-model-judge
-cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4, CF-5, CF-6] }
-phase: "Phase 5 — learning loop + ensemble health"
+cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8] }
+phase: "Phase 6 — autoresearch"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-10-18T05:36:43Z, ledger: L-17 }
-next_action: "Commit Phase 5, push, dispatch ci.yml, read backend-test (test_decision_learning, test_decision_drift_health, test_decision_trust, test_decider_triage, test_operational_validation, test_reasoning_bank, test_meta_hyperagent); if green, finish CF-7, mark Phase 5 done, start Phase 6 (autoresearch fixes AR-1..AR-8 + decision_policy runner)."
+last: { agent: claude-code, at: 2026-10-18T06:30:00Z, ledger: L-19 }
+next_action: "Commit Phase 6, push, dispatch ci.yml, read backend-test (test_autoresearch_hill_climbing, test_autoresearch_engine, test_autoresearch_statistics, test_decision_policy_runner, test_w6_engine_selection); if green, finish CF-8, mark Phase 6 done, start Phase 7 (onboarding + configuration UX)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -161,8 +161,8 @@ three phases make no product-path change.
 | 2 | Trajectory store + calibration gate | `DecisionTrajectory` (alembic, content-free handles, §5 of the research doc), versioned human-label mapping from `ReconciliationDecision` / review outcomes / `classify_review_feedback`, blind random audit sampling (rate ρ, propensity π), `app.evals.decision_eval` trust gate per scope with cross-fitting, shadow mode (DEC-2) | **Given** labelled trajectories with a known audit design, **when** a scope is evaluated, **then** weighted ECE/Brier/κ/order-flip/risk–coverage are reported on held-out folds, `trusted` requires n_eff ≥ 50 and the DEC-1 ceilings, audit items hide the decider verdict from the reviewer, and an untrusted scope has no routing effect | `pytest tests/test_decision_trajectory.py tests/test_decision_eval.py -q` | done |
 | 3 | Assurance modes | project-level assurance policy (`auto`, `llm_judges`, `decision_models`, `both`, `none`) honoured by `validation.py` and `validation_executor.py`; Self-MoA stays the single-endpoint fallback; AV-1 fix (reward = human outcome, Thompson sampling constrained to the mode); research-validity contract + governance contract + ensemble-method matrix updated | **Given** each mode, **when** a task is validated, **then** only the evaluators the mode allows are called (dispatcher call log proves no LLM-judge call in `decision_models` mode), `none` marks the task `unvalidated` and still requires human review, outputs from `both` are shown side by side and never vote-merged, and the coding-run reliability gate is unchanged in every mode | `pytest tests/test_assurance_modes.py tests/test_adaptive_validation.py tests/pi_production/test_w7_validation.py tests/test_research_validity_contract.py -q` | done |
 | 4 | Spine seam (code applications) | decider triage after the deterministic quote check; routing and priority into `CodeReviewQueue`; trajectory written per application | **Given** a governed coding run, **when** applications are admitted, **then** each gets a trajectory; with a trusted scope, abstentions and `factual_hallucination` / `methodological_violation` route to review with priority; no acceptance state changes because of the decider; κ inputs are byte-identical with the decider on vs off; telemetry is content-free | `pytest tests/test_research_validity_contract.py tests/test_code_applications.py tests/test_decision_spine_seam.py -q`; credential-free simulation scenario with a stub decider; UI walk | done |
-| 5 | Learning loop + ensemble health | ReasoningBank `decision_review` lessons (aggregate, content-free, after human label only); scheduled recalibration with cross-fitting; CUSUM drift → shadow; self-evolution proposals for question sets and τ overrides via improvement governance (protected values excluded); ensemble health shows per-evaluator calibration, error correlation, Yule's Q, J_eff, Dawid–Skene reliabilities | **Given** a history of labelled trajectories, **when** the loop runs, **then** lessons cite only handles, a recalibration changes T only if held-out ECE improves, drift returns a scope to shadow with a recorded reason, governance refuses proposals that touch κ ≥ 0.60 / the ECE ceiling / n_min / the never-promote rule, and Ensemble Health renders the new metrics in all roles, light/dark, 375px, keyboard | `pytest tests/test_decision_learning_loop.py tests/test_spine_learning_loops.py tests/test_meta_hyperagent.py -q`; ensemble-health scenario; UI walk | in-progress |
-| 6 | Autoresearch | fix AR-1…AR-8 (each with a failing regression test first); new `decision_policy` runner (objective: held-out weighted Brier, coverage at fixed risk); decider `score` as an optional measurement instrument per assurance mode; judges pinned away from the endpoint under test | **Given** a deterministic fake runner with known noise, **when** the loop runs, **then** a candidate whose true effect is zero is kept at most at the nominal error rate, the incumbent is re-measured paired, failed measurements are `not_runnable` (never 0.5), `mutation_diff` persists, and a `decision_policy` experiment stays a governed proposal | `pytest tests/test_autoresearch_engine.py tests/test_autoresearch_statistics.py tests/test_decision_policy_runner.py tests/pi_production/test_w6_engine_selection.py -q` | planned |
+| 5 | Learning loop + ensemble health | ReasoningBank `decision_review` lessons (aggregate, content-free, after human label only); scheduled recalibration with cross-fitting; CUSUM drift → shadow; self-evolution proposals for question sets and τ overrides via improvement governance (protected values excluded); ensemble health shows per-evaluator calibration, error correlation, Yule's Q, J_eff, Dawid–Skene reliabilities | **Given** a history of labelled trajectories, **when** the loop runs, **then** lessons cite only handles, a recalibration changes T only if held-out ECE improves, drift returns a scope to shadow with a recorded reason, governance refuses proposals that touch κ ≥ 0.60 / the ECE ceiling / n_min / the never-promote rule, and Ensemble Health renders the new metrics in all roles, light/dark, 375px, keyboard | `pytest tests/test_decision_learning_loop.py tests/test_spine_learning_loops.py tests/test_meta_hyperagent.py -q`; ensemble-health scenario; UI walk | done |
+| 6 | Autoresearch | fix AR-1…AR-8 (each with a failing regression test first); new `decision_policy` runner (objective: held-out weighted Brier, coverage at fixed risk); decider `score` as an optional measurement instrument per assurance mode; judges pinned away from the endpoint under test | **Given** a deterministic fake runner with known noise, **when** the loop runs, **then** a candidate whose true effect is zero is kept at most at the nominal error rate, the incumbent is re-measured paired, failed measurements are `not_runnable` (never 0.5), `mutation_diff` persists, and a `decision_policy` experiment stays a governed proposal | `pytest tests/test_autoresearch_engine.py tests/test_autoresearch_statistics.py tests/test_decision_policy_runner.py tests/pi_production/test_w6_engine_selection.py -q` | in-progress |
 | 7 | Onboarding + configuration UX | general Istara onboarding and first-activation flow for decision models (DEC-1): what a decision model is (closed answers in, label + probabilities out; triage, never authority), when it helps, cloud-egress consequences, where to configure the JEV API key and endpoint or a local `/v1/systemone` server, per-project opt-in, assurance-mode selection, trust status (shadow / calibrating / trusted) and how calibration works | **Given** a new install, **when** the user goes through onboarding, **then** decision models and assurance modes are introduced with skippable guidance and no decider is enabled; **given** a project with none configured, **when** the user first opens decision-model settings, **then** a first-activation flow explains the concept, the egress choice and the two configuration paths, stores the key only in Keychain/env, never enables egress without explicit project opt-in, and shows trust status; walked by role (admin/researcher/viewer), light/dark, 375px, keyboard; empty/loading/error states | new + updated simulation scenarios (onboarding, settings, `09`/`90` sweeps); `python3 scripts/feature_docs.py --seed-missing --generate-site --check`; `python3 scripts/check_a11y_contrast.py`; UI walk with screenshots | planned |
 | 8 | More adapters, trajectory audit, further integrations | OpenAI Decisions / OpenRouter / Cloudflare adapters; per-transition (s,a,o) tool-call audit (Wang & Gao; benchmark axes 1, 4, 9); integrations I4–I14 (all four groups, DEC-4); decider-coder research arm on the canonical corpus with human gold codes, never counted in the gate (DEC-6, research doc §13); live runs only with owner permission | **Given** each adapter's stub, **then** it passes the shared adapter conformance suite; trajectory audit flags schema-invalid calls and observations that do not support the next state | `pytest tests/test_decider_conformance.py tests/test_trajectory_audit.py -q`; live calibration run **only with owner permission** (AGENTS.md §9) | planned |
 ### Doc impact
@@ -389,6 +389,11 @@ Result: Phase 3 done; F-21 fixed.
 Verified: backend-format, backend-lint and backend-test success; "2763 passed, 7 skipped"; PASSED counts: test_operational_validation 9, test_assurance_modes 6, test_alembic_fresh_database 1, test_adaptive_validation 4, test_w7_validation 49, test_evaluation_skill 2, test_task_review_history 6, tests/test_tasks.py 23. feature-obligations failed only from CI-1.
 Next: Phase 4 S1.
 
+DEC-15 | 2026-10-18 | S1-plan | claude-opus-5-5
+Context: The audit's AR-1 fix says "compare every candidate with a fresh paired measurement of the incumbent". Runners measure live systems (skill runs, judges), so a candidate and the incumbent cannot share random seeds, and a single sample per side has no variance estimate.
+Decision: Each iteration measures the incumbent and the candidate `max(2, autoresearch_measurement_repeats)` times in alternating blocks and keeps the candidate only if the lower end of the 95% Welch interval on the difference of means exceeds `autoresearch_min_improvement_delta`, and then again on an independent confirmation block. Unmeasurable samples (`None`) make the iteration `not_runnable`. Accepted mutations are still reverted; stacking them stays a governed proposal, not a loop mode.
+Why: Welch is honest about unequal variances without a pairing it cannot guarantee. The confirmation block removes the winner's-curse bias of selecting on the same samples that pass the test (AR-2). Rejected: a z interval (n ≤ 10), a paired t on unpaired draws, and ratcheting `best_score` (AR-1).
+
 ### L-15 | 2026-10-18T05:01:02Z | S4-remediate | claude-opus-5-5 | executor | Phase 4
 Did: Orientation (coding-run commit point, review queue, reconciliation, codebook fields); S1 design; `gate before --task CF-6` (baseline 13). Implemented `services/decider_triage.py`, the post-commit hook in `run_independent_coding_run`, the label hook in `create_reconciliation_decision`, `routed_triage` and the pending-route field and order, `CodeApplicationType.decider_triage`, `services/assurance_policies.py`, AI-005 evidence and triggers, docs (Tech.md, research-validity contract, review feature docs + site), and `tests/test_decider_triage.py`. Commits `fc1dab1c`, `b8d1d5f7` (local).
 Result: Phase 4 code complete; F-22…F-24 fixed; F-25 waits on CI.
@@ -406,6 +411,18 @@ Did: Implemented Phase 5 as above (drift, health, learning loop, project-scoped 
 Result: F-27…F-30 fixed; F-31 waits on CI.
 Verified: stdlib runner → drift/health "5 passed", trust "15 passed"; collapse checker → 0; no added backend line over 100 columns; `gate after --task CF-7` → comparable, 0 new issues, failures and warnings (after F-29); `feature_docs.py --seed-missing --generate-site --check` → passed (86).
 Next: commit, push, CI.
+
+### L-18 | 2026-10-18T06:20:00Z | S5-ship | claude-opus-5-5 | executor | Phase 5
+Did: Pushed Phase 5 (`c1b6ce8b`, `e1486eeb`) and dispatched CI run 39101172867: tests green, backend-format and hygiene failed (formatting, trailing blank line). Fixed in `84690189`, pushed, dispatched run 39101996713; finished CF-7.
+Result: Phase 5 done; F-31 fixed.
+Verified: run 39101996713 → backend-format, backend-lint, hygiene, backend-test success, "2780 passed, 7 skipped"; `feature-obligations` and the dependent `release-gate` failed only from CI-1.
+Next: Phase 6: commit the autoresearch work, push, CI.
+
+### L-19 | 2026-10-18T06:30:00Z | S4-remediate | claude-opus-5-5 | executor | Phase 6
+Did: Implemented Phase 6 (see the Phase 6 section): `core/autoresearch_statistics.py`, the engine rewrite, `autoresearch_runners/scoring.py`, strict scoring in every runner, the `decision_policy` runner and its registration, leaderboard lower bound (backend and frontend), docs (Tech.md, audit status, governance contract, autoresearch feature docs + site). Tests `test_autoresearch_statistics.py`, `test_decision_policy_runner.py` (local + CI), `test_autoresearch_hill_climbing.py` and the updated `test_autoresearch_engine.py` (CI).
+Result: AR-1…AR-8 fixed in code; F-32…F-34 fixed; F-35 waits on CI.
+Verified: stdlib runner → statistics "6 passed", decision-policy runner "3 passed", math "25 passed"; collapse checker → 0 candidates; no added line over 100 columns; `gate after --task CF-8` → comparable, 0 new issues, failures and warnings; `feature_docs.py --seed-missing --generate-site --check` → passed.
+Next: commit, push, dispatch CI.
 
 ## Phase 0 — math core
 
@@ -776,4 +793,39 @@ covered the Phase 4 code on dispatch (CI-2).
 | F-28 | Minor | Process | CF-7 | `gate before` was not recorded before editing | CF-7 | fixed: baseline 16 recorded on the stashed clean tree (DEC-14) |
 | F-29 | Minor | Integration | `frontend/src/lib/decisionModelTypes.ts` | A new `*types*.ts` file changed the evidence of 12 inherited type-drift issues, so they read as new | CF-7 | fixed: types moved into `catalogTypes.ts` |
 | F-30 | Minor | Tests | `tests/test_decision_drift_health.py` | Exact float equality in a Brier test | CF-7 | fixed (`math.isclose`) |
-| F-31 | Major | Tests | toolchain | `test_decision_learning.py` needs the full backend stack | CF-7 | open (closes on CI) |
+| F-31 | Major | Tests | toolchain | `test_decision_learning.py` needs the full backend stack | CF-7 | fixed: CI run 39101996713 (L-18) |
+
+## Phase 6 — autoresearch
+
+### Design and build (S1–S4; autonomous, 2026-10-18)
+
+- **Keep rule (AR-1, AR-2; DEC-15).** `core/autoresearch_statistics.py`: `welch_interval` (Welch–
+  Satterthwaite df, a two-sided 97.5% t table under `# fmt: off`, fractional df rounded down so the
+  interval is conservative) and `keep_decision(incumbent, candidate, min_delta)`, which refuses fewer
+  than two samples per side. The engine re-measures the incumbent each iteration through the new
+  `BaseLoopRunner.measure_incumbent` (default: `measure` on the reverted state), measures the
+  candidate the same number of times, and confirms a passing candidate on a fresh block before
+  `proposal_ready`. The persisted `baseline_score` is the incumbent mean of that iteration.
+- **No fabricated scores (AR-4, AR-5).** `autoresearch_runners/scoring.py`: `parse_unit_score`
+  accepts only a bare number in [0, 1]; `judge_score` pins a judge endpoint distinct from the
+  endpoints under test (AR-6) and, when the project's assurance mode excludes LLM judges, asks the
+  project's decider a `score` question instead. A failed run or judge call returns `None`, and one
+  `None` makes the iteration `not_runnable`; output too short to judge is a real 0.0, not 0.1.
+- **Records (AR-3, AR-7).** `mutation_diff` persists `candidate_mutation`; a meta-hyperagent
+  conflict is recorded as `skipped_meta_conflict` with telemetry.
+- **Leaderboard (AR-8).** Ranked by `quality_lower_bound_95` (mean − t·s/√n, n ≥ 2); `quality_ema`
+  is computed as an EMA. The frontend sorts by the same bound.
+- **`decision_policy` runner.** Target is a decider endpoint. Variants of the code-application
+  triage question are each asked once per labelled trajectory of that project and decider (cached);
+  each measurement scores a fresh random half by 1 − binary Brier of P(supports) against the human
+  label (a strictly proper scoring rule, so wording cannot inflate it without improving the
+  probabilities). It needs at least 20 labels, calls the decider only when a researcher starts the
+  experiment, and its results are governed proposals like every other runner. Registered in
+  `_RUNNER_SPECS`, the governance evidence mapping and the engine's conflict prefixes.
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|----|-----|-----|-------|---------|---------|--------|
+| F-32 | Minor | Integration | `autoresearch_runners/__init__.py` | PEP 604 annotations in the runner base broke import on Python 3.9 (the local stdlib runner) | CF-8 | fixed (`from __future__ import annotations`) |
+| F-33 | Minor | Tests | `tests/test_autoresearch_engine.py` | Keep-rule tests asserted the old single-sample guard (δ ≥ 0.01 with one repeat is kept) | CF-8 | fixed: rewritten for the Welch rule |
+| F-34 | Minor | Code | `core/autoresearch_statistics.py`, `tests/test_autoresearch_hill_climbing.py` | Two lines over 100 columns | CF-8 | fixed |
+| F-35 | Major | Tests | toolchain | `test_autoresearch_hill_climbing.py` and `test_autoresearch_engine.py` need the full backend stack | CF-8 | open (closes on CI) |

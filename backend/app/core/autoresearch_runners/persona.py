@@ -14,6 +14,7 @@ from collections.abc import Awaitable, Callable
 
 from app.core.agent_identity import persona_file_path, writeable_persona_path
 from app.core.autoresearch_runners import BaseLoopRunner
+from app.core.autoresearch_runners.scoring import judge_score
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +35,14 @@ class PersonaRunner(BaseLoopRunner):
     # BaseLoopRunner interface
     # ------------------------------------------------------------------
 
-    async def measure_baseline(self, target: str) -> float:
+    async def measure_baseline(self, target: str) -> float | None:
         """Run a simulated task through the agent and measure quality.
 
         *target* is an agent_id.
         """
         return await self._evaluate_agent(target)
 
-    async def measure(self, target: str) -> float:
+    async def measure(self, target: str) -> float | None:
         """Re-evaluate after persona mutation."""
         return await self._evaluate_agent(target)
 
@@ -177,14 +178,14 @@ class PersonaRunner(BaseLoopRunner):
         except Exception:
             pass
 
-    async def _evaluate_agent(self, agent_id: str) -> float:
+    async def _evaluate_agent(self, agent_id: str) -> float | None:
         """Evaluate agent quality by running a simulated UX research task."""
         from app.core.agent_identity import load_agent_identity
 
         identity = load_agent_identity(agent_id)
         if not identity:
             logger.warning(f"PersonaRunner: no identity for agent '{agent_id}'")
-            return 0.0
+            return None
 
         # Simulate a UX research task
         messages = [
@@ -221,53 +222,28 @@ class PersonaRunner(BaseLoopRunner):
             content = outcome.text
         except Exception as e:
             logger.warning(f"Agent evaluation failed: {e}")
-            return 0.0
+            return None
 
         return await self._score_response(content)
 
-    async def _score_response(self, output: str) -> float:
+    async def _score_response(self, output: str) -> float | None:
         """Score the agent response quality."""
         if not output or len(output.strip()) < 30:
-            return 0.1
+            return 0.0
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "Score this UX research analysis on 0.0-1.0 considering:\n"
-                    "- Evidence grounding: claims linked to specific data points\n"
-                    "- Structure: clear sections (nuggets, insights, recommendations)\n"
-                    "- Actionability: specific, implementable recommendations\n"
-                    "- Analytical depth: goes beyond surface observations\n"
-                    "- Professional tone: appropriate for research reports\n"
-                    "Respond with ONLY a decimal number."
-                ),
-            },
-            {"role": "user", "content": f"Analysis output:\n{output[:2000]}"},
-        ]
-
-        try:
-            # W6/W9: the response-quality score goes through the
-            # AgenticDispatcher (``autoresearch.persona.score``).
-            from app.core.agentic import agentic
-            from app.core.agentic.types import TurnParams
-
-            outcome = await agentic.completion(
-                purpose="autoresearch.persona.score",
-                project_id=self.require_project_id(),
-                system=messages[0]["content"],
-                messages=messages[1:],
-                params=TurnParams(temperature=0.1, max_tokens=10),
-                spine_phase="review",
-                engine=self.engine,
-            )
-            score_text = (outcome.text or "").strip()
-            for token in score_text.replace(",", ".").split():
-                try:
-                    val = float(token)
-                    return max(0.0, min(1.0, val))
-                except ValueError:
-                    continue
-            return 0.5
-        except Exception:
-            return 0.5
+        return await judge_score(
+            self,
+            purpose="autoresearch.persona.score",
+            system=(
+                "Score this UX research analysis on 0.0-1.0 considering:\n"
+                "- Evidence grounding: claims linked to specific data points\n"
+                "- Structure: clear sections (nuggets, insights, recommendations)\n"
+                "- Actionability: specific, implementable recommendations\n"
+                "- Analytical depth: goes beyond surface observations\n"
+                "- Professional tone: appropriate for research reports\n"
+                "Respond with ONLY a decimal number."
+            ),
+            skill_name="agent persona analysis",
+            output=output,
+            avoid_endpoint_ids=(),
+        )

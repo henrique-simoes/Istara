@@ -19,6 +19,7 @@ import logging
 from collections.abc import Awaitable, Callable
 
 from app.core.autoresearch_runners import BaseLoopRunner
+from app.core.autoresearch_runners.scoring import judge_score
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +48,11 @@ class SkillPromptRunner(BaseLoopRunner):
     # BaseLoopRunner interface
     # ------------------------------------------------------------------
 
-    async def measure_baseline(self, target: str) -> float:
+    async def measure_baseline(self, target: str) -> float | None:
         """Run skill 3 times on test data, average quality."""
         return await self._multi_eval(target)
 
-    async def measure(self, target: str) -> float:
+    async def measure(self, target: str) -> float | None:
         """Run skill 3 times after mutation, average quality."""
         return await self._multi_eval(target)
 
@@ -216,29 +217,30 @@ class SkillPromptRunner(BaseLoopRunner):
     # Evaluation
     # ------------------------------------------------------------------
 
-    async def _multi_eval(self, skill_name: str) -> float:
-        """Run the skill multiple times and return average quality."""
+    async def _multi_eval(self, skill_name: str) -> float | None:
+        """Run the skill multiple times; the mean of the runs that could be measured, else None."""
         scores: list[float] = []
         for _ in range(EVAL_RUNS):
             try:
                 score = await self._single_eval(skill_name)
-                scores.append(score)
             except Exception as e:
                 logger.debug(f"Eval run failed: {e}")
-                scores.append(0.0)
-        return sum(scores) / len(scores) if scores else 0.0
+                score = None
+            if score is not None:
+                scores.append(score)
+        return sum(scores) / len(scores) if scores else None
 
-    async def _single_eval(self, skill_name: str) -> float:
+    async def _single_eval(self, skill_name: str) -> float | None:
         """Execute skill once and score the output quality."""
         from app.skills.skill_manager import skill_manager
 
         defn = skill_manager.get(skill_name)
         if not defn:
-            return 0.0
+            return None
 
         prompt = defn.data.get("execute_prompt", "")
         if not prompt:
-            return 0.0
+            return None
 
         messages = [
             {"role": "system", "content": prompt},
@@ -269,57 +271,29 @@ class SkillPromptRunner(BaseLoopRunner):
             )
             content = outcome.text
         except Exception:
-            return 0.0
+            return None
 
         return await self._score_output(content, skill_name)
 
-    async def _score_output(self, output: str, skill_name: str) -> float:
+    async def _score_output(self, output: str, skill_name: str) -> float | None:
         """LLM-based quality scoring on [0, 1] scale."""
         if not output or len(output.strip()) < 30:
-            return 0.1
+            return 0.0
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a strict quality evaluator for UX research skill outputs. "
-                    "Score the output on a 0.0-1.0 scale considering:\n"
-                    "- Completeness: Does it cover all expected output sections?\n"
-                    "- Evidence quality: Are findings grounded in specific observations?\n"
-                    "- Actionability: Are recommendations concrete and implementable?\n"
-                    "- Structure: Is the output well-organized with clear sections?\n"
-                    "- Source attribution: Are claims traced to specific data points?\n"
-                    "Respond with ONLY a decimal number between 0.0 and 1.0."
-                ),
-            },
-            {
-                "role": "user",
-                "content": f"Skill: {skill_name}\n\nOutput:\n{output[:2000]}",
-            },
-        ]
-
-        try:
-            # W6/W9: the skill-output score goes through the AgenticDispatcher
-            # (``autoresearch.skill_prompt.score``).
-            from app.core.agentic import agentic
-            from app.core.agentic.types import TurnParams
-
-            outcome = await agentic.completion(
-                purpose="autoresearch.skill_prompt.score",
-                project_id=self.require_project_id(),
-                system=messages[0]["content"],
-                messages=messages[1:],
-                params=TurnParams(temperature=0.1, max_tokens=10),
-                spine_phase="review",
-                engine=self.engine,
-            )
-            score_text = (outcome.text or "").strip()
-            for token in score_text.replace(",", ".").split():
-                try:
-                    val = float(token)
-                    return max(0.0, min(1.0, val))
-                except ValueError:
-                    continue
-            return 0.5
-        except Exception:
-            return 0.5
+        return await judge_score(
+            self,
+            purpose="autoresearch.skill_prompt.score",
+            system=(
+                "You are a strict quality evaluator for UX research skill outputs. "
+                "Score the output on a 0.0-1.0 scale considering:\n"
+                "- Completeness: Does it cover all expected output sections?\n"
+                "- Evidence quality: Are findings grounded in specific observations?\n"
+                "- Actionability: Are recommendations concrete and implementable?\n"
+                "- Structure: Is the output well-organized with clear sections?\n"
+                "- Source attribution: Are claims traced to specific data points?\n"
+                "Respond with ONLY a decimal number between 0.0 and 1.0."
+            ),
+            skill_name=skill_name,
+            output=output,
+            avoid_endpoint_ids=(),
+        )

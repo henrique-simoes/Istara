@@ -34,9 +34,9 @@ def test_autoresearch_keep_rule_rejects_noise_below_minimum_delta():
 
     engine = AutoresearchEngine()
     keep, reason = engine._should_keep_candidate(
-        0.005,
+        [0.50, 0.51, 0.49],
+        [0.505, 0.515, 0.495],
         min_delta=0.01,
-        confidence_interval_95=None,
     )
     assert keep is False
     assert "below minimum" in reason
@@ -46,10 +46,11 @@ def test_autoresearch_keep_rule_rejects_delta_inside_confidence_interval():
     from app.core.autoresearch_engine import AutoresearchEngine
 
     engine = AutoresearchEngine()
+    # Mean gain 0.03, but the samples are noisy enough that the interval reaches below 0.01.
     keep, reason = engine._should_keep_candidate(
-        0.03,
+        [0.40, 0.55, 0.50],
+        [0.46, 0.57, 0.51],
         min_delta=0.01,
-        confidence_interval_95=0.04,
     )
     assert keep is False
     assert "95% CI" in reason

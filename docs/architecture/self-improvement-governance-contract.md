@@ -55,6 +55,11 @@ Telemetry observes process events
   CUSUM on new labels) only ever removes routing power; `decision_review` ReasoningBank lessons are
   content-free process memory; proposals that would weaken a decider, the trust gate or calibration
   need governed review.
+- Autoresearch keeps a candidate only when a 95% interval of its gain over a freshly measured,
+  unmutated incumbent clears the minimum and an independent confirmation block agrees; an
+  unmeasurable sample is `not_runnable`, never a made-up score (2026-10-18). The `decision_policy`
+  loop optimises decision-model question wording by a proper scoring rule (1 − Brier) on human
+  labels, and its results are governed proposals.
 - The RAG tuning objective is relevance on span-graded judgments over sandbox indices, never a
   score the tuned parameters can raise by themselves; candidates are never written to process-wide
   settings, and the loop fails closed without a benchmark.

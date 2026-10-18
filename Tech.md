@@ -3481,3 +3481,17 @@ design and derivations in `docs/scientific_audit/decision-model-judge-research.m
   error correlation, Yule's Q, effective number of evaluators, Dawid–Skene for panels of three or
   more). Self-evolution treats decider, decision model, calibration and trust gate as protected
   terms. Tests: `tests/test_decision_drift_health.py`, `tests/test_decision_learning.py`.
+- **Phase 6: autoresearch statistics and the decision_policy loop.** The engine
+  (`core/autoresearch_engine.py`, `core/autoresearch_statistics.py`) re-measures the unmutated
+  incumbent every iteration (`BaseLoopRunner.measure_incumbent`; model sweeps override it), uses
+  at least two samples per side, keeps a candidate only when the 95% Welch interval of its gain
+  clears the minimum improvement and an independent confirmation block agrees, records
+  unmeasurable iterations as `not_runnable` and meta-hyperagent conflicts as
+  `skipped_meta_conflict`, and persists the real mutation. Runners score through
+  `core/autoresearch_runners/scoring.py`: strict `[0, 1]` parsing, no fabricated 0.5, the model
+  sweep's judge pinned away from the endpoint under test, and a decision-model score when the
+  project's assurance mode excludes LLM judges. The leaderboard ranks by a 95% lower bound. New loop
+  `decision_policy` (`core/autoresearch_runners/decision_policy.py`) searches the triage question's
+  wording against labelled code applications by 1 − Brier. Tests:
+  `tests/test_autoresearch_statistics.py`, `tests/test_autoresearch_hill_climbing.py`,
+  `tests/test_decision_policy_runner.py`.

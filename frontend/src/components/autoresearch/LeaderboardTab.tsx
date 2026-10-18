@@ -21,9 +21,12 @@ export default function LeaderboardTab() {
     return acc;
   }, {});
 
-  // Sort each skill's entries by best_quality descending
+  // Rank each skill's entries by the 95% lower bound of mean quality: a single best run is
+  // mostly luck. Older payloads without the bound fall back to the mean.
+  const rankScore = (entry: (typeof leaderboard)[number]) =>
+    entry.quality_lower_bound_95 ?? entry.avg_quality;
   Object.values(bySkill).forEach((entries) =>
-    entries.sort((a, b) => b.best_quality - a.best_quality)
+    entries.sort((a, b) => rankScore(b) - rankScore(a))
   );
 
   const skillNames = Object.keys(bySkill).sort();

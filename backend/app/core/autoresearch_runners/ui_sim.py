@@ -13,6 +13,7 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from app.core.autoresearch_runners import BaseLoopRunner
+from app.core.autoresearch_runners.scoring import judge_score
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +28,14 @@ class UISimRunner(BaseLoopRunner):
     # BaseLoopRunner interface
     # ------------------------------------------------------------------
 
-    async def measure_baseline(self, target: str) -> float:
+    async def measure_baseline(self, target: str) -> float | None:
         """Run accessibility evaluation on the component.
 
         *target* is a component file path (relative or absolute).
         """
         return await self._evaluate_component(target)
 
-    async def measure(self, target: str) -> float:
+    async def measure(self, target: str) -> float | None:
         """Re-evaluate after component modification."""
         return await self._evaluate_component(target)
 
@@ -160,65 +161,35 @@ class UISimRunner(BaseLoopRunner):
     # Evaluation
     # ------------------------------------------------------------------
 
-    async def _evaluate_component(self, target: str) -> float:
-        """Evaluate component accessibility and UX quality via LLM analysis."""
+    async def _evaluate_component(self, target: str) -> float | None:
+        """Evaluate component accessibility and UX quality; None when it cannot be measured."""
         filepath = Path(target)
         if not filepath.exists():
             logger.warning(f"UISimRunner: component not found: {target}")
-            return 0.0
+            return None
 
         try:
             code = filepath.read_text(encoding="utf-8")
         except Exception:
-            return 0.0
+            return None
 
         if not code.strip():
             return 0.0
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a WCAG 2.1 accessibility auditor. Evaluate this UI "
-                    "component and score it on 0.0-1.0 based on:\n\n"
-                    "1. ARIA attributes (0.2): Proper labels, roles, live regions\n"
-                    "2. Keyboard access (0.2): Tab order, focus indicators, shortcuts\n"
-                    "3. Semantic HTML (0.15): Correct element usage, heading hierarchy\n"
-                    "4. Visual a11y (0.15): Contrast hints, responsive text, icons\n"
-                    "5. Error handling (0.15): Accessible error messages, form validation\n"
-                    "6. Touch targets (0.15): Adequate size, spacing for mobile\n\n"
-                    "Respond with ONLY a decimal number between 0.0 and 1.0."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (f"Component: {filepath.name}\n\nCode:\n{code[:3000]}"),
-            },
-        ]
-
-        try:
-            # W6/W9: the WCAG-style component score goes through the
-            # AgenticDispatcher (``autoresearch.ui_sim.evaluate``).
-            from app.core.agentic import agentic
-            from app.core.agentic.types import TurnParams
-
-            outcome = await agentic.completion(
-                purpose="autoresearch.ui_sim.evaluate",
-                project_id=self.require_project_id(),
-                system=messages[0]["content"],
-                messages=messages[1:],
-                params=TurnParams(temperature=0.1, max_tokens=10),
-                spine_phase="review",
-                engine=self.engine,
-            )
-            score_text = (outcome.text or "").strip()
-            for token in score_text.replace(",", ".").split():
-                try:
-                    val = float(token)
-                    return max(0.0, min(1.0, val))
-                except ValueError:
-                    continue
-            return 0.5
-        except Exception as e:
-            logger.warning(f"Component evaluation failed: {e}")
-            return 0.5
+        return await judge_score(
+            self,
+            purpose="autoresearch.ui_sim.evaluate",
+            system=(
+                "You are a WCAG 2.1 accessibility auditor. Evaluate this UI "
+                "component and score it on 0.0-1.0 based on:\n\n"
+                "1. ARIA attributes (0.2): Proper labels, roles, live regions\n"
+                "2. Keyboard access (0.2): Tab order, focus indicators, shortcuts\n"
+                "3. Semantic HTML (0.15): Correct element usage, heading hierarchy\n"
+                "4. Visual a11y (0.15): Contrast hints, responsive text, icons\n"
+                "5. Error handling (0.15): Accessible error messages, form validation\n"
+                "6. Touch targets (0.15): Adequate size, spacing for mobile\n\n"
+                "Respond with ONLY a decimal number between 0.0 and 1.0."
+            ),
+            skill_name=filepath.name,
+            output=code[:3000],
+        )

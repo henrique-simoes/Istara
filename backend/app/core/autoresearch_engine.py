@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 
 from app.config import settings
 from app.core.autoresearch_isolation import autoresearch_context
+from app.core.autoresearch_statistics import MIN_SAMPLES, keep_decision
 from app.core.autoresearch_rate_limiter import check_experiment_limit
 from app.models.autoresearch_experiment import AutoresearchExperiment
 from app.models.database import async_session
@@ -106,8 +107,11 @@ class AutoresearchEngine:
         baseline = 0.0
         best_score = baseline
         min_delta = max(0.0, float(getattr(settings, "autoresearch_min_improvement_delta", 0.01)))
+        # At least two samples per side: a single sample has no variance, so noise would pass as
+        # improvement (AR-2). The setting can raise this, never lower it below two.
         measurement_repeats = max(
-            1, min(10, int(getattr(settings, "autoresearch_measurement_repeats", 1)))
+            MIN_SAMPLES,
+            min(10, int(getattr(settings, "autoresearch_measurement_repeats", MIN_SAMPLES))),
         )
 
         try:
@@ -127,155 +131,37 @@ class AutoresearchEngine:
                     )
                     return []
 
-                # Measure baseline under isolation so experiment probes cannot
-                # pollute learning or self-improvement stores.
-                baseline = await runner.measure_baseline(target)
+                # Measure the baseline under isolation so experiment probes cannot pollute
+                # learning or self-improvement stores. Every candidate is reverted, so the
+                # incumbent is always this unmutated state (AR-1).
+                baseline_samples = await self._baseline_samples(runner, target, measurement_repeats)
+                if baseline_samples is None:
+                    logger.info("Autoresearch [%s]: baseline not measurable", runner.loop_type)
+                    return []
+                baseline = statistics.fmean(baseline_samples)
                 best_score = baseline
                 logger.info(
                     f"Autoresearch [{runner.loop_type}] baseline for '{target}': {baseline:.4f}"
                 )
 
                 for i in range(max_iterations):
-                    if self._stop_requested:
-                        logger.info("Autoresearch stop requested")
+                    if not await self._may_continue(project_id, target, i):
                         break
-                    if not await self._is_project_active(project_id):
-                        logger.info(
-                            "Autoresearch stopped before iteration %s "
-                            "because project %s is paused or missing",
-                            i + 1,
-                            project_id,
-                        )
-                        break
-
-                    # Check rate limits
-                    async with async_session() as db:
-                        allowed, reason = await check_experiment_limit(db, target)
-                    if not allowed:
-                        logger.info(f"Rate limit: {reason}")
-                        break
-
-                    # Check mutual exclusion with meta-hyperagent
-                    if self._conflicts_with_meta(runner, project_id):
-                        logger.info(
-                            "Skipping — meta-hyperagent has active variant on target parameters"
-                        )
-                        continue
-
-                    # Create experiment record
-                    experiment_id = str(uuid.uuid4())
-                    experiment: dict = {
-                        "id": experiment_id,
-                        "loop_type": runner.loop_type,
-                        "target_name": target,
-                        "project_id": project_id,
-                        "engine": resolved_engine,
-                        "iteration": i + 1,
-                        "baseline_score": best_score,
-                        "research_spine_policy": dict(AUTORESEARCH_SPINE_POLICY),
-                    }
-                    self._current_experiment = experiment
-
-                    try:
-                        # Hypothesize
-                        hypothesis, mutation = await runner.hypothesize(target, best_score, results)
-                        experiment["hypothesis"] = hypothesis
-                        experiment["mutation_description"] = str(mutation.get("description", ""))
-
-                        experiment["candidate_mutation"] = mutation
-                        experiment["sandboxed"] = True
-                        experiment["governance_required"] = True
-                        experiment["mutation_live_after_measurement"] = False
-
-                        # Apply mutation only inside the measurement sandbox.
-                        # Even "kept" candidates are reverted and become
-                        # governed proposals; production state changes happen
-                        # only after approval through improvement governance.
-                        revert_fn = await runner.apply_mutation(target, mutation)
-                        reverted = False
-
-                        # Measure
-                        try:
-                            measurement = await self._measure_candidate(
-                                runner,
-                                target,
-                                repeats=measurement_repeats,
-                            )
-                            score = measurement["mean"]
-                            delta = score - best_score
-                            experiment["experiment_score"] = score
-                            experiment["delta"] = delta
-                            experiment["score_samples"] = measurement["samples"]
-                            experiment["score_stddev"] = measurement["stddev"]
-                            experiment["confidence_interval_95"] = measurement[
-                                "confidence_interval_95"
-                            ]
-                            experiment["minimum_delta"] = min_delta
-                            experiment["measurement_repeats"] = measurement_repeats
-
-                            # Keep or revert
-                            should_keep, decision_reason = self._should_keep_candidate(
-                                delta,
-                                min_delta=min_delta,
-                                confidence_interval_95=measurement["confidence_interval_95"],
-                            )
-                            await revert_fn()
-                            reverted = True
-                            experiment["mutation_live_after_measurement"] = False
-                            experiment["decision_reason"] = decision_reason
-                            if should_keep:
-                                best_score = score
-                                experiment["kept"] = True
-                                experiment["status"] = "proposal_ready"
-                                logger.info(
-                                    f"  [{i + 1}/{max_iterations}] PROPOSED: "
-                                    f"{hypothesis[:60]} "
-                                    f"(delta=+{delta:.4f}, reason={decision_reason})"
-                                )
-                            else:
-                                experiment["kept"] = False
-                                experiment["status"] = "reverted"
-                                logger.info(
-                                    f"  [{i + 1}/{max_iterations}] REVERTED: "
-                                    f"{hypothesis[:60]} "
-                                    f"(delta={delta:.4f}, reason={decision_reason})"
-                                )
-                        except Exception as e:
-                            if not reverted:
-                                await revert_fn()
-                            experiment["kept"] = False
-                            experiment["status"] = "failed"
-                            experiment["error_message"] = str(e)[:500]
-                            logger.warning(f"  [{i + 1}/{max_iterations}] FAILED: {e}")
-                    except Exception as e:
-                        experiment["kept"] = False
-                        experiment["status"] = "failed"
-                        experiment["error_message"] = str(e)[:500]
-                        logger.warning(f"  [{i + 1}/{max_iterations}] HYPOTHESIS FAILED: {e}")
-
-                    # Persist experiment
-                    experiment["completed_at"] = datetime.now(UTC).isoformat()
-                    await self._persist_experiment(experiment, project_id)
-                    await self._record_validity_telemetry(experiment, project_id)
-                    experiment["reasoning_memory_ids"] = await self._record_reasoning_memory(
-                        experiment,
-                        project_id,
+                    experiment = await self._run_iteration(
+                        runner,
+                        target,
+                        iteration=i + 1,
+                        project_id=project_id,
+                        engine=resolved_engine,
+                        baseline_samples=baseline_samples,
+                        repeats=measurement_repeats,
+                        min_delta=min_delta,
+                        history=results,
                     )
-                    experiment[
-                        "improvement_proposal_ids"
-                    ] = await self._register_improvement_proposals(
-                        experiment,
-                        project_id,
-                    )
+                    if experiment.get("kept"):
+                        best_score = max(best_score, experiment.get("experiment_score") or 0.0)
+                    await self._finish_experiment(experiment, project_id)
                     results.append(experiment)
-
-                    # Broadcast progress
-                    try:
-                        from app.api.websocket import manager
-
-                        await manager.broadcast("autoresearch_progress", experiment)
-                    except Exception:
-                        pass
 
             logger.info(
                 f"Autoresearch [{runner.loop_type}] complete: "
@@ -316,6 +202,179 @@ class AutoresearchEngine:
 
         return results
 
+    async def _may_continue(self, project_id: str, target: str, index: int) -> bool:
+        if self._stop_requested:
+            logger.info("Autoresearch stop requested")
+            return False
+        if not await self._is_project_active(project_id):
+            logger.info(
+                "Autoresearch stopped before iteration %s because project %s is paused or missing",
+                index + 1,
+                project_id,
+            )
+            return False
+        async with async_session() as db:
+            allowed, reason = await check_experiment_limit(db, target)
+        if not allowed:
+            logger.info(f"Rate limit: {reason}")
+            return False
+        return True
+
+    @staticmethod
+    async def _samples(measure, target: str, repeats: int) -> list[float] | None:
+        """``repeats`` measurements, or None as soon as one could not be measured (AR-4)."""
+        samples: list[float] = []
+        for _ in range(repeats):
+            value = await measure(target)
+            if value is None:
+                return None
+            samples.append(float(value))
+        return samples
+
+    async def _baseline_samples(self, runner, target: str, repeats: int) -> list[float] | None:
+        first = await runner.measure_baseline(target)
+        if first is None:
+            return None
+        extra_measure = getattr(runner, "measure_incumbent", None) or runner.measure_baseline
+        extra = await self._samples(extra_measure, target, repeats - 1)
+        return None if extra is None else [float(first), *extra]
+
+    async def _run_iteration(
+        self,
+        runner,
+        target: str,
+        *,
+        iteration: int,
+        project_id: str,
+        engine: str,
+        baseline_samples: list[float],
+        repeats: int,
+        min_delta: float,
+        history: list[dict],
+    ) -> dict:
+        experiment: dict = {
+            "id": str(uuid.uuid4()),
+            "loop_type": runner.loop_type,
+            "target_name": target,
+            "project_id": project_id,
+            "engine": engine,
+            "iteration": iteration,
+            "research_spine_policy": dict(AUTORESEARCH_SPINE_POLICY),
+            "sandboxed": True,
+            "governance_required": True,
+            "mutation_live_after_measurement": False,
+            "kept": False,
+            "minimum_delta": min_delta,
+            "measurement_repeats": repeats,
+        }
+        self._current_experiment = experiment
+        if self._conflicts_with_meta(runner, project_id):
+            experiment["status"] = "skipped_meta_conflict"
+            experiment["decision_reason"] = "meta-hyperagent has an active variant on them"
+            return experiment
+        incumbent_measure = getattr(runner, "measure_incumbent", None)
+        incumbent = (
+            await self._samples(incumbent_measure, target, repeats)
+            if incumbent_measure
+            else list(baseline_samples)
+        )
+        if incumbent is None:
+            return self._not_runnable(experiment, "incumbent not measurable")
+        experiment["incumbent_samples"] = incumbent
+        experiment["baseline_score"] = statistics.fmean(incumbent)
+        try:
+            hypothesis, mutation = await runner.hypothesize(
+                target, experiment["baseline_score"], history
+            )
+        except Exception as e:
+            experiment["status"] = "failed"
+            experiment["error_message"] = str(e)[:500]
+            logger.warning(f"  [{iteration}] HYPOTHESIS FAILED: {e}")
+            return experiment
+        experiment["hypothesis"] = hypothesis
+        experiment["mutation_description"] = str(mutation.get("description", ""))
+        experiment["candidate_mutation"] = mutation
+        # Apply the mutation only inside the measurement sandbox. Even kept candidates are
+        # reverted and become governed proposals; production changes need approval.
+        revert_fn = await runner.apply_mutation(target, mutation)
+        try:
+            await self._measure_candidate_block(runner, target, experiment, incumbent)
+        except Exception as e:
+            experiment["kept"] = False
+            experiment["status"] = "failed"
+            experiment["error_message"] = str(e)[:500]
+            logger.warning(f"  [{iteration}] FAILED: {e}")
+        finally:
+            await revert_fn()
+        logger.info(
+            "  [%s] %s: %s (%s)",
+            iteration,
+            experiment.get("status"),
+            str(hypothesis)[:60],
+            experiment.get("decision_reason", ""),
+        )
+        return experiment
+
+    async def _measure_candidate_block(
+        self, runner, target: str, experiment: dict, incumbent: list[float]
+    ) -> None:
+        """Measure and decide; confirm a kept candidate on an independent block (winner's curse)."""
+        repeats = experiment["measurement_repeats"]
+        candidate = await self._samples(runner.measure, target, repeats)
+        if candidate is None:
+            self._not_runnable(experiment, "candidate not measurable")
+            return
+        keep, reason, comparison = keep_decision(incumbent, candidate, experiment["minimum_delta"])
+        experiment["score_samples"] = candidate
+        experiment["experiment_score"] = statistics.fmean(candidate)
+        experiment["score_stddev"] = statistics.stdev(candidate)
+        if comparison is not None:
+            experiment["delta"] = comparison.delta
+            experiment["delta_ci_95"] = [comparison.low, comparison.high]
+            experiment["confidence_interval_95"] = (comparison.high - comparison.low) / 2.0
+        if keep:
+            confirmation = await self._samples(runner.measure, target, repeats)
+            if confirmation is None:
+                keep, reason = False, "confirmation block not measurable"
+            else:
+                confirmed, why, second = keep_decision(
+                    incumbent, confirmation, experiment["minimum_delta"]
+                )
+                experiment["confirmation_samples"] = confirmation
+                experiment["confirmation_ci_95"] = [second.low, second.high] if second else None
+                if not confirmed:
+                    keep, reason = False, f"not confirmed on an independent block: {why}"
+        experiment["kept"] = keep
+        experiment["status"] = "proposal_ready" if keep else "reverted"
+        experiment["decision_reason"] = reason
+
+    @staticmethod
+    def _not_runnable(experiment: dict, reason: str) -> dict:
+        experiment["kept"] = False
+        experiment["status"] = "not_runnable"
+        experiment["decision_reason"] = reason
+        return experiment
+
+    async def _finish_experiment(self, experiment: dict, project_id: str) -> None:
+        """Persist, record telemetry and memory, register proposals, and broadcast."""
+        experiment["completed_at"] = datetime.now(UTC).isoformat()
+        await self._persist_experiment(experiment, project_id)
+        await self._record_validity_telemetry(experiment, project_id)
+        experiment["reasoning_memory_ids"] = await self._record_reasoning_memory(
+            experiment,
+            project_id,
+        )
+        experiment["improvement_proposal_ids"] = await self._register_improvement_proposals(
+            experiment,
+            project_id,
+        )
+        try:
+            from app.api.websocket import manager
+
+            await manager.broadcast("autoresearch_progress", experiment)
+        except Exception:
+            pass
+
     async def _require_active_project_id(self, project_id: str) -> str:
         """Validate project ownership before any runner can touch models."""
         scoped_project_id = str(project_id or "").strip()
@@ -330,37 +389,12 @@ class AutoresearchEngine:
             project = await db.get(Project, project_id)
             return bool(project and not project.is_paused)
 
-    async def _measure_candidate(self, runner, target: str, repeats: int) -> dict:
-        """Measure a candidate once or repeatedly and summarize uncertainty."""
-        samples = [float(await runner.measure(target)) for _ in range(repeats)]
-        mean = statistics.fmean(samples)
-        stddev = statistics.stdev(samples) if len(samples) > 1 else 0.0
-        confidence_interval_95 = (
-            1.96 * (stddev / (len(samples) ** 0.5)) if len(samples) > 1 else None
-        )
-        return {
-            "samples": samples,
-            "mean": mean,
-            "stddev": stddev,
-            "confidence_interval_95": confidence_interval_95,
-        }
-
     def _should_keep_candidate(
-        self,
-        delta: float,
-        *,
-        min_delta: float,
-        confidence_interval_95: float | None,
+        self, incumbent: list[float], candidate: list[float], *, min_delta: float
     ) -> tuple[bool, str]:
-        """Use a conservative improvement rule instead of accepting any noise."""
-        if delta < min_delta:
-            return False, f"delta {delta:.4f} below minimum {min_delta:.4f}"
-        if confidence_interval_95 is not None and delta <= confidence_interval_95:
-            return (
-                False,
-                f"delta {delta:.4f} does not exceed 95% CI half-width {confidence_interval_95:.4f}",
-            )
-        return True, "delta exceeds configured minimum and uncertainty guard"
+        """Keep only when the 95% Welch interval of the gain clears ``min_delta``."""
+        keep, reason, _ = keep_decision(incumbent, candidate, min_delta)
+        return keep, reason
 
     def _conflicts_with_meta(self, runner, project_id: str) -> bool:
         """Check if meta-hyperagent has active variants on parameters this runner modifies."""
@@ -378,6 +412,7 @@ class AutoresearchEngine:
                 "model_temp": [],
                 "question_bank": [],
                 "ui_sim": [],
+                "decision_policy": [],
             }
             prefixes = conflict_prefixes.get(runner.loop_type, [])
             for variant in variants:
@@ -397,7 +432,7 @@ class AutoresearchEngine:
                 target_name=experiment["target_name"],
                 hypothesis=experiment.get("hypothesis", ""),
                 mutation_description=experiment.get("mutation_description", ""),
-                mutation_diff=json.dumps(experiment.get("mutation_diff", {})),
+                mutation_diff=json.dumps(experiment.get("candidate_mutation", {}), default=str),
                 baseline_score=experiment.get("baseline_score", 0),
                 experiment_score=experiment.get("experiment_score"),
                 delta=experiment.get("delta", 0),
@@ -511,7 +546,11 @@ class AutoresearchEngine:
             return record.to_dict() if record else None
 
     async def get_leaderboard(self, project_id: str) -> list[dict]:
-        """Get best model+temp per skill from project-scoped telemetry."""
+        """Best model+temp per skill from project-scoped telemetry, by a 95% lower bound.
+
+        Ranking by the single best score rewarded one lucky sample (AR-8). The lower bound of the
+        mean (normal approximation, at least 3 executions) rewards consistent quality.
+        """
         from sqlalchemy import func, select
 
         from app.models.telemetry_span import TelemetrySpan
@@ -525,6 +564,7 @@ class AutoresearchEngine:
                     func.count(TelemetrySpan.id),
                     func.avg(TelemetrySpan.quality_score),
                     func.max(TelemetrySpan.quality_score),
+                    func.avg(TelemetrySpan.quality_score * TelemetrySpan.quality_score),
                 )
                 .where(
                     TelemetrySpan.project_id == project_id,
@@ -538,7 +578,6 @@ class AutoresearchEngine:
                     TelemetrySpan.temperature,
                 )
                 .having(func.count(TelemetrySpan.id) >= 3)
-                .order_by(func.max(TelemetrySpan.quality_score).desc())
             )
             stats = result.all()
             # Group by skill, pick best
@@ -548,18 +587,23 @@ class AutoresearchEngine:
                 model_name = str(s[1] or "")
                 avg_quality = float(s[4] or 0.0)
                 best_quality = float(s[5] or 0.0)
+                executions = int(s[3] or 0)
+                variance = max(0.0, float(s[6] or 0.0) - avg_quality**2)
+                lower = avg_quality - 1.96 * (variance / max(1, executions)) ** 0.5
                 entry = {
                     "skill_name": skill_name,
                     "model_name": model_name,
                     "temperature": float(s[2] or 0.0),
-                    "executions": int(s[3] or 0),
+                    "executions": executions,
                     "avg_quality": avg_quality,
+                    # Kept for older readers; it is the plain mean, not an exponential average.
                     "quality_ema": avg_quality,
                     "best_quality": best_quality,
+                    "quality_lower_bound_95": lower,
                 }
                 if (
                     skill_name not in best_per_skill
-                    or best_quality > best_per_skill[skill_name]["best_quality"]
+                    or lower > best_per_skill[skill_name]["quality_lower_bound_95"]
                 ):
                     best_per_skill[skill_name] = entry
             return list(best_per_skill.values())

@@ -264,6 +264,7 @@
 </ul>
 <h2 id="architecture-notes">Architecture Notes</h2>
 <ul>
+<li>Ranking (2026-10-18, CF-SPEC-1 Phase 6): each skill&#x27;s best model and temperature is chosen by the 95% lower bound of mean quality (<code>quality_lower_bound_95</code>, at least three executions), not by the single best run, which mostly measures luck. <code>quality_ema</code> is kept for older readers and holds the plain mean.</li>
 <li>The feature is mounted through <code>frontend/src/components/autoresearch/AutoresearchView.tsx</code> and the UI navigation path recorded in the inventory.</li>
 <li>The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.</li>
 <li>When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.</li>
