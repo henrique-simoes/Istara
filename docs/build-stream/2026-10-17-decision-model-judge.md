@@ -6,13 +6,13 @@
 ```yaml
 item: decision-model-judge
 branch: feat/decision-model-judge
-cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4, CF-5] }
+cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4, CF-5, CF-6] }
 phase: "Phase 4 — spine seam (code applications)"
-stage: S1-plan
-status: in-progress
-blocked_on: null
-last: { agent: claude-code, at: 2026-10-18T03:52:42Z, ledger: L-14 }
-next_action: "Phase 4 S1: design decider triage of code applications after the quote check (question set: relation-to-span choice with order flip + codebook nouls), trajectory writes, reconciliation hook (attach_human_label), trust-gated routing into CodeReviewQueue, and the guard test that acceptance states and kappa inputs are identical with the decider on or off."
+stage: S5-ship
+status: blocked
+blocked_on: "owner — push of feat/decision-model-judge for Phase 4 (fc1dab1c, b8d1d5f7 and the lifecycle commit); CI must run test_decider_triage.py (guard test) and the spine suites, which cannot run locally"
+last: { agent: claude-code, at: 2026-10-18T05:01:02Z, ledger: L-15 }
+next_action: "After the owner approves: push, dispatch ci.yml, read backend-test (test_decider_triage, test_research_validity_contract, test_code_applications, test_research_spine_end_to_end, test_interrupted_coding_runs, test_operational_validation); if green, finish CF-6, mark Phase 4 done, start Phase 5 (learning loop + ensemble health)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -279,6 +279,11 @@ Context: Phase 3 needed (a) a learning signal for method selection that is not s
 Decision: (a) A method is credited when its verdict (consensus ≥ 0.5) matched the researcher's task review, with Thompson sampling within the mode's methods. (b) Operational deciders answer one `acceptable` noul, labelled by approve vs send-back. (c) No policy row means `auto`; a failed LLM run in `auto` leaves the task fields untouched as before; the validation block moved verbatim into `services/operational_validation.py`.
 Why: (a) agreement among copies of one model is what thesis axis 10 measured as uninformative; (b) one question with an exact label beats several with noisy ones; (c) zero-surprise rollout. Rejected: diagnostic multi-question sets for v1 (their labels would be noisy until the review UI captures reasons).
 
+DEC-12 | 2026-10-18 | S1-plan | claude-opus-5-5
+Context: The roadmap's Phase 4 acceptance included a UI walk of the review queue. This machine and the Mac Studio have no Docker or QA stack, and the owner forbids installs (2026-10-17).
+Decision: Phase 4 delivers the backend and API seam: triage, hooks, the `decider_triage` field and routed-first order, and the frontend type. The queue badge and its UI walk move to Phase 7, where all decision-model UI is designed together (interface-design skill) and walked on a QA stack.
+Why: An honest split: nothing visible changes until a decider scope is trusted, and the UI work belongs with the onboarding and settings UI it depends on. Rejected: shipping an unwalked UI change.
+
 ## Ledger
 
 ### L-1 | 2026-10-18T00:10:18Z | S0-frame | claude-code | framer | —
@@ -373,6 +378,12 @@ Did: Pushed the Phase 3 commits (owner-approved), dispatched CI run 39094290764,
 Result: Phase 3 done; F-21 fixed.
 Verified: backend-format, backend-lint and backend-test success; "2763 passed, 7 skipped"; PASSED counts: test_operational_validation 9, test_assurance_modes 6, test_alembic_fresh_database 1, test_adaptive_validation 4, test_w7_validation 49, test_evaluation_skill 2, test_task_review_history 6, tests/test_tasks.py 23. feature-obligations failed only from CI-1.
 Next: Phase 4 S1.
+
+### L-15 | 2026-10-18T05:01:02Z | S4-remediate | claude-opus-5-5 | executor | Phase 4
+Did: Orientation (coding-run commit point, review queue, reconciliation, codebook fields); S1 design; `gate before --task CF-6` (baseline 13). Implemented `services/decider_triage.py`, the post-commit hook in `run_independent_coding_run`, the label hook in `create_reconciliation_decision`, `routed_triage` and the pending-route field and order, `CodeApplicationType.decider_triage`, `services/assurance_policies.py`, AI-005 evidence and triggers, docs (Tech.md, research-validity contract, review feature docs + site), and `tests/test_decider_triage.py`. Commits `fc1dab1c`, `b8d1d5f7` (local).
+Result: Phase 4 code complete; F-22…F-24 fixed; F-25 waits on CI.
+Verified: stdlib runner → assurance 6, trust 15, math 25, contract 8, registry 6 passed; collapse/E501 → 0; `gate after --task CF-6` → comparable, 0 new issues, failures and warnings (after F-23); feature and change obligations → passed; security benchmark → pass 100.0; `feature_docs.py --check` → passed (86); repo audit → passed.
+Next: owner approves push → CI → close F-25 → Phase 4 done.
 
 ## Phase 0 — math core
 
@@ -694,3 +705,14 @@ blind audit, the pending-route field and order, the label hook on human vs synth
 and the per-run bound. Existing `test_research_validity_contract.py`, `test_code_applications.py`,
 `test_research_spine_end_to_end.py` and `test_interrupted_coding_runs.py` must stay green. Security
 benchmark (research data to hosted deciders goes only through `open_decider`).
+
+### Execute, review and remediate (S2–S4)
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|----|-----|-----|-------|---------|---------|--------|
+| F-22 | Major | Code | `services/decider_triage.py` | First draft sent the coder's quote as the evidence unit: `CodeApplication.source_text` holds the quote, not the unit | CF-6 | fixed (unit text loaded from `EvidenceUnit`) |
+| F-23 | Major | Code | `decider_triage → operational_validation` | Three new import cycles through the LLM validation stack (gate after) | CF-6 | fixed (`services/assurance_policies.py`) |
+| F-24 | Minor | Docs | review feature docs | Queue order and triage not described | CF-6 | fixed (`b8d1d5f7`) |
+| F-25 | Major | Tests | toolchain | Guard test and spine suites need the full backend stack | CF-6 | open (closes on CI) |
+
+Review coverage: self-only. The spine edits are two never-raising calls placed after the existing commits; no gate logic changed.
