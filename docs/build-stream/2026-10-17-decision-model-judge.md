@@ -6,13 +6,13 @@
 ```yaml
 item: decision-model-judge
 branch: feat/decision-model-judge
-cf: { spec: CF-SPEC-1, tasks: [CF-2] }
+cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3] }
 phase: "Phase 1 — adapter + JEV"
-stage: S1-plan
-status: in-progress
-blocked_on: null
-last: { agent: claude-code, at: 2026-10-18T01:44:18Z, ledger: L-8 }
-next_action: "Phase 1 S1: design the `systemone_http` adapter, decider registry and egress authorization (read the JEV API/SDK docs saved under the research references, `backend/app/core/agentic` dispatcher conventions and the security control matrix first), then implement against a stub `/v1/systemone` server."
+stage: S5-ship
+status: blocked
+blocked_on: "owner — push of feat/decision-model-judge for Phase 1 (bd743f96); CI must run test_decider_client.py, the alembic fresh-database test and the security-benchmark tests, which cannot run locally"
+last: { agent: claude-code, at: 2026-10-18T02:13:21Z, ledger: L-9 }
+next_action: "After the owner approves: push, dispatch ci.yml on the branch, read backend-format/backend-lint/backend-test; if green, finish CF-3, mark Phase 1 done and start Phase 2 (trajectory store + calibration gate)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -259,6 +259,11 @@ Context: Phase 0 design and execution choices.
 Decision: (1) Stdlib-only package `backend/app/core/decision/` in the style of `app/evals/stats.py`. (2) Temperature scaling on log-probabilities with a 1e-12 floor, because hosted deciders return no logits. (3) Exact binned Brier decomposition with Stephenson et al.'s within-bin terms. (4) J_eff caps negative correlation at zero. (5) Learn-then-Test takes iid labelled pairs; stratum assembly belongs to Phase 2. (6) `DawidSkeneResult` exposes its log-likelihood trace and documents that three binary evaluators are barely identifiable. (7) Local verification on Python 3.9 with a stdlib runner, because the owner forbids installs here and on the Mac Studio (2026-10-17) and neither host has Python ≥ 3.11, pytest, ruff or Docker; the code avoids 3.10+ runtime syntax so the same tests run in CI on 3.12.
 Why: (1)–(5) per the Phase 0 design section; (6) the planted three-evaluator test showed EM converging to biased estimates (prior 0.59 vs 0.65), while five evaluators recovered within 0.04 with a monotone likelihood, so the implementation is right and the limitation is statistical; (7) the owner's instruction.
 
+DEC-8 | 2026-10-17 | S2-execute | claude-opus-5-5
+Context: `gate after --task CF-3` reported two new Python import cycles caused by the decider package `__init__` re-exporting from `client`, while `client` and `registry` import their siblings through the package.
+Decision: The package `__init__` holds only a docstring; `open_decider` and `authorized_hosted_endpoint_ids` move to `app/core/decider/access.py`; callers import submodules directly.
+Why: It removes the cycles rather than suppressing them, and makes `access.open_decider` visibly the single entry point. Rejected: suppressing the cycle, or lazy imports inside `__init__`, which would hide the coupling.
+
 ## Ledger
 
 ### L-1 | 2026-10-18T00:10:18Z | S0-frame | claude-code | framer | —
@@ -317,6 +322,12 @@ Did: Committed `e72875df` (owner-approved, no attribution lines per the owner's 
 Result: F-6 and F-7 fixed; Phase 0 done; CI-1 (dispatch-only crash in `feature-obligations`) logged as an out-of-scope defect.
 Verified: run 39086661581 at `4e0c534e` → backend-format success, backend-lint success, backend-test "2699 passed, 7 skipped, 1 deselected" (59 PASSED lines across `test_decision_math.py` and `test_research_validity_contract.py`); every other job green except `feature-obligations` (`CalledProcessError: git rev-parse ''`) and the `release-gate` aggregator that follows it. `python3 scripts/check_feature_obligations.py --base origin/testing --head HEAD` → "Feature-obligation classification passed"; `check_change_obligations.py` → "Change-governance check passed". CF-2 evidence row 3 recorded.
 Next: Phase 1 S1.
+
+### L-9 | 2026-10-18T02:13:21Z | S4-remediate | claude-opus-5-5 | executor | Phase 1
+Did: S1 design written; CF-3 scoped by comment; `gate before --task CF-3` (baseline record 4). Implemented `backend/app/core/decider/` (`contract`, `registry`, `credentials`, `client`, `access`), `DecisionModelProjectPolicy` + migration 034 + `register_models` entry, the `decider_endpoints_json` setting, tests (`test_decider_contract.py`, `test_decider_registry.py`, `test_decider_client.py`), an alembic-test head bump, control AI-005 plus benchmark triggers and a detection test, a SECURITY_BENCHMARK.md entry, a feature-coverage paths and security obligation, and a Tech.md entry. Self-review via the gate found F-8 (fixed, DEC-8) and F-9 (suppressed to 2026-12-31). Committed `bd743f96` locally; not pushed.
+Result: Phase 1 code complete; CI verification pending (F-10).
+Verified: stdlib runner → contract "8 passed", registry "6 passed", math "25 passed"; mutation script → 5/5 killed (egress, served identity, alias detection, probability sum, retry-after); `security_benchmark.py --fail-on-threshold --changed-paths-file` → status pass, score 100.0, change detected (12 paths), no blocked controls; `check_feature_obligations.py --base origin/testing --head HEAD` → passed; `check_change_obligations.py` → passed; `public_repo_quality_audit.py --check` → passed; `gate after --task CF-3` → comparable, new issues 0, new failures 0, new warnings 0 (after F-8 and F-9); CF-3 evidence recorded (asserted). Not run locally: `test_decider_client.py`, `test_alembic_fresh_database.py`, `test_security_benchmark.py` under pytest, ruff.
+Next: owner approves push → CI → close F-10 → Phase 1 done.
 
 ## Phase 0 — math core
 
@@ -396,4 +407,50 @@ Dawid–Skene estimates for three-evaluator panels are imprecise by construction
 
 ## Phase 1 — adapter + JEV
 
-Not started. Next: S1 design (see Status Block `next_action`).
+### Design (S1)
+
+**Packages.** The math package stays pure. Provider access goes in a separate package,
+`backend/app/core/decider/`:
+
+| Module | Contents | Testable without backend deps |
+|---|---|---|
+| `contract.py` | `Choice`/`Score`/`Noul` question types; `build_request` (JEV `/v1/systemone` body); `parse_response` (strict validation: every requested answer present with the right type; probabilities non-negative, summing to 1 ± 1e-6 and covering exactly the requested options or levels; noul turned into a two-outcome distribution `{"true": p, "false": 1 - p}`); `is_versioned_model_id`; `retry_delay` (honours `retry-after`, else capped exponential backoff); `DecisionOutcome` with `status` `ok` / `not_runnable` and a reason code | yes (stdlib) |
+| `registry.py` | `DeciderEndpoint` (stdlib dataclass parsed from the `decider_endpoints_json` setting: `endpoint_id`, `base_url`, `model`, `keychain_service`, `keychain_account`, `api_key_env`, `timeout_s`, `max_retries`); URL validated with `endpoint_security.normalized_service_url` (HTTPS required for public hosts); locality from `classify_host_scope` (loopback/private = local, public = hosted); `require_egress_authorization(endpoint, project_id, authorized_ids)` fails closed for a hosted endpoint without a project opt-in | yes |
+| `client.py` | `SystemOneClient` over `httpx.AsyncClient` (imported lazily); bounded retries on 429/529; 400 `max_tokens_exceeded`, 401, 413, 415, 422, transport errors, timeouts, malformed JSON and incomplete answers all become `not_runnable` with a reason. It **never** returns a fabricated verdict. Served-model provenance: for a versioned request, `served != requested` is `not_runnable("served_model_mismatch")` (spine rule on served identity); for an alias the served versioned id is recorded and the outcome is marked `alias_requested` so the Phase 2 trust gate can refuse it | transport tests need httpx (CI) |
+| `secrets.py` | API key from macOS Keychain (`/usr/bin/security`, as in `config._read_macos_keychain_secret`) or a named env var; never logged; `repr` of endpoints redacts | yes |
+
+**Per-project egress authorization (DEC-1).** New table `decision_model_project_policies`
+(`project_id` PK, `hosted_egress_endpoint_ids` JSON list, `updated_by`, timestamps;
+`backend/app/models/decision_policy.py`, alembic `034_decision_model_project_policies.py`). The
+default is no row, which means hosted endpoints are denied. Local endpoints need no opt-in. The API
+and UI for setting it come in Phase 7, so Phase 1 is backend only.
+
+**Setting.** `decider_endpoints_json: str = ""` in `Settings` (env `DECIDER_ENDPOINTS_JSON`). It
+holds no secret; keys come from Keychain or env names only.
+
+**Not in Phase 1.** Telemetry spans and the trajectory store (Phase 2; OpenTelemetry GenAI
+attributes are added there with the store); content-guard wrapping of `state` (callers in Phase
+4+); OpenAI Decisions / OpenRouter / Cloudflare adapters (Phase 8).
+
+**Security** (AGENTS.md §9: new LLM-provider credential and egress). New control AI-005 in
+`security/control_matrix.json`; decider paths added to the benchmark's `changed_path_patterns`;
+`security/SECURITY_BENCHMARK.md` and `tests/test_security_benchmark.py` updated if they enumerate
+controls; `python3 scripts/security_benchmark.py --fail-on-threshold` run.
+
+**Verification.** `tests/test_decider_contract.py` and `tests/test_decider_registry.py` (stdlib; run
+locally with the stdlib runner and in CI), `tests/test_decider_client.py` (`httpx.MockTransport`
+stub `/v1/systemone`, covering JEV and a llama.cpp-shaped server; CI only), and
+`tests/test_decision_policy_model.py` (CI). CF `gate before`/`gate after` on CF-3.
+
+### Execute, review and remediate (S2–S4)
+
+Implemented as designed, with one structural change (DEC-8): `open_decider` lives in
+`app/core/decider/access.py`, and the package `__init__` holds only a docstring.
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|----|-----|-----|-------|---------|---------|--------|
+| F-8 | Major | Code | `app/core/decider/__init__.py` | Re-exports created two import cycles (`__init__ → client → __init__`, `__init__ → client → registry → __init__`), flagged by `gate after` | CF-3 | fixed (DEC-8) |
+| F-9 | Minor | Integration | `app/models/decision_policy.py` | `type_drift`: the new ORM model has no frontend type yet | CF-3 | accepted-risk: expiring suppression to 2026-12-31; the type arrives with the Phase 7 settings API |
+| F-10 | Major | Tests | toolchain | `test_decider_client.py`, the alembic fresh-database test and the security-benchmark pytest tests need httpx/SQLAlchemy/pytest, unavailable locally | CF-3 | open (closes on CI) |
+
+Review coverage: self-only (the owner's no-subagent rule).
