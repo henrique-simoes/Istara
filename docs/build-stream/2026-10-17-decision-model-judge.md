@@ -777,4 +777,3 @@ covered the Phase 4 code on dispatch (CI-2).
 | F-29 | Minor | Integration | `frontend/src/lib/decisionModelTypes.ts` | A new `*types*.ts` file changed the evidence of 12 inherited type-drift issues, so they read as new | CF-7 | fixed: types moved into `catalogTypes.ts` |
 | F-30 | Minor | Tests | `tests/test_decision_drift_health.py` | Exact float equality in a Brier test | CF-7 | fixed (`math.isclose`) |
 | F-31 | Major | Tests | toolchain | `test_decision_learning.py` needs the full backend stack | CF-7 | open (closes on CI) |
-

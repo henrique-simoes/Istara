@@ -45,9 +45,7 @@ def error_structure(verdicts: dict[str, dict[str, int]], labels: dict[str, int])
         "dawid_skene": None,
     }
     if len(names) >= 3 and labels:
-        items = [
-            {name: verdicts[name][s] for name in names if s in verdicts[name]} for s in labels
-        ]
+        items = [{name: verdicts[name][s] for name in names if s in verdicts[name]} for s in labels]
         result = dawid_skene([item for item in items if item], classes=2)
         report["dawid_skene"] = {
             "panel_size": len(names),
