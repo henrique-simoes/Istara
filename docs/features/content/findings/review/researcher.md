@@ -49,6 +49,14 @@ Findings Code Review exists so the work represented by Findings > Review has a s
 - High confidence does not authorize bulk acceptance. The old bulk-approve compatibility route refuses the request without changing data; use the per-application review controls so each decision is recorded in the reconciliation ledger.
 - Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.
 
+## Decision-Model Triage
+
+If your project uses decision models (for example JEV), they look at each coded quote after a
+coding run finishes and ask whether the evidence unit really supports the code. Once a decision
+model has been calibrated against enough of your own reviews, items it doubts can appear first in
+the queue. It never accepts or rejects a code for you, and it never changes the reliability result.
+Your review decision is what teaches Istara how far to trust it.
+
 ## Caveats
 
 - Needs interactive verification for exact empty, loading, error, and permission-denied states.
