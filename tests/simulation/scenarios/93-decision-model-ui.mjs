@@ -159,7 +159,7 @@ async function health(ctx, checks, decider) {
     await navigateTo(page, "Ensemble Health", "ensemble");
     const panel = page.locator('section[aria-labelledby="decision-model-health-title"]');
     check(checks, "Ensemble Health: evaluator-health panel", await visible(panel, 20000));
-    if (decider) check(checks, `Ensemble Health: ${decider} listed`, await visible(panel.getByText(decider, { exact: true })));
+    if (decider) check(checks, `Ensemble Health: ${decider} listed`, await visible(panel.getByText(decider, { exact: true }).first()));
   } catch (e) {
     check(checks, "Ensemble Health: walk completed", false, e.message.split("\n")[0]);
   }
