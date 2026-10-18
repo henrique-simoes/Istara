@@ -300,12 +300,19 @@ TASK_REVIEW_LABELS = {"approved": 1, "needs_revision": 0, "rejected_after_done":
 
 
 async def record_assurance_review_signals(event: Any) -> None:
-    """Learn from a researcher's task review (``TaskReviewEvent``).
+    """Learn from a researcher's task review (``TaskReviewEvent``); never raises.
 
     Labels the task's decision-model trajectories (approved = acceptable) and tells the adaptive
     selector whether the LLM method's verdict matched the review. ``system_failed`` and other
     outcomes are not human judgements of the output and teach nothing.
     """
+    try:
+        await _record_assurance_review_signals(event)
+    except Exception as exc:
+        logger.debug("Review assurance learning side effect failed: %s", exc)
+
+
+async def _record_assurance_review_signals(event: Any) -> None:
     from app.core.adaptive_validation import AdaptiveSelector
     from app.core.assurance import LLM_METHODS, method_agreed_with_human
     from app.models.database import async_session
