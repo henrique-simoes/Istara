@@ -1,9 +1,11 @@
 /** Scenario 91 — Decision models (CF-SPEC-1 Phase 7): admin configuration, the project assurance
  * policy and its cloud-egress rule, and the Settings / Project Settings surfaces.
  *
- * Credential-free: it configures a loopback endpoint that is never called (no connection check),
- * so no data leaves the QA stack and no decider is needed. The hosted-endpoint branch is exercised
- * only through the refusal path, which is decided before any request is built. */
+ * Credential-free by default: it configures a loopback endpoint that is never called, so no data
+ * leaves the QA stack. The hosted-endpoint branch is exercised only through the refusal path.
+ * With ISTARA_SIM_DECIDER_ENDPOINTS set (a live stack with real deciders), it also checks those
+ * endpoints are configured with a key and runs one connection check per endpoint: one constant
+ * probe question, no research data. The project's previous policy is always restored. */
 
 import { navigateTo } from "../lib/embedding-settings.mjs";
 
@@ -41,6 +43,39 @@ export async function run(ctx) {
     } catch (e) {
       checks.push({ name: "Probe project created", passed: false, detail: e.message });
       return result(checks, "no project");
+    }
+  }
+
+  const policyUrl = `/api/projects/${projectId}/decision-models`;
+  let previous = null;
+  try {
+    previous = await api.get(policyUrl);
+  } catch (e) {
+    checks.push({ name: "Project policy readable", passed: false, detail: e.message });
+  }
+
+  // 0. Live stack: the configured deciders answer a constant probe (one metered call each).
+  const liveDeciders = String(process.env.ISTARA_SIM_DECIDER_ENDPOINTS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  for (const endpointId of liveDeciders) {
+    try {
+      const listing = await api.get("/api/settings/decision-models");
+      const endpoint = (listing.endpoints || []).find((item) => item.endpoint_id === endpointId);
+      checks.push({
+        name: `Live decider ${endpointId} configured with a key`,
+        passed: Boolean(endpoint) && endpoint.credential_status !== "missing",
+        detail: endpoint ? `${endpoint.locality}, model=${endpoint.model}, alias=${endpoint.model_is_alias}` : "not configured",
+      });
+      const probe = await api.post(`/api/settings/decision-models/${endpointId}/check`, {});
+      checks.push({
+        name: `Live decider ${endpointId} answers the connection check`,
+        passed: probe.ok === true,
+        detail: probe.ok ? `served_model=${probe.served_model}` : `reason=${probe.reason}`,
+      });
+    } catch (e) {
+      checks.push({ name: `Live decider ${endpointId} answers the connection check`, passed: false, detail: e.message });
     }
   }
 
@@ -89,7 +124,6 @@ export async function run(ctx) {
   });
 
   // 4. API: the project policy accepts the local decider and reports it.
-  const policyUrl = `/api/projects/${projectId}/decision-models`;
   try {
     const saved = await api.put(policyUrl, {
       mode: "both",
@@ -160,10 +194,17 @@ export async function run(ctx) {
     checks.push({ name: "Project Settings: assurance mode reflects the saved choice", passed: false, detail: e.message });
   }
 
-  // Leave the project and the stack as they were.
-  await api
-    .put(policyUrl, { mode: "auto", llm_method: "auto", llm_judges: 3, decider_endpoint_ids: [], hosted_egress_endpoint_ids: [] })
-    .catch(() => null);
+  // Leave the project and the stack as they were (a live run keeps its deciders on).
+  const restore = previous
+    ? {
+        mode: previous.mode,
+        llm_method: previous.llm_method,
+        llm_judges: previous.llm_judges,
+        decider_endpoint_ids: previous.decider_endpoint_ids,
+        hosted_egress_endpoint_ids: previous.hosted_egress_endpoint_ids,
+      }
+    : { mode: "auto", llm_method: "auto", llm_judges: 3, decider_endpoint_ids: [], hosted_egress_endpoint_ids: [] };
+  await api.put(policyUrl, restore).catch(() => null);
   await api.delete(`/api/settings/decision-models/${ENDPOINT_ID}`).catch(() => null);
 
   return result(checks, `${checks.filter((c) => c.passed).length}/${checks.length} decision-model checks`);
