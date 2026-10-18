@@ -6,13 +6,13 @@
 ```yaml
 item: decision-model-judge
 branch: feat/decision-model-judge
-cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3] }
+cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4] }
 phase: "Phase 2 — trajectory store + calibration gate"
-stage: S1-plan
-status: in-progress
-blocked_on: null
-last: { agent: claude-code, at: 2026-10-18T02:56:58Z, ledger: L-10 }
-next_action: "Phase 2 S1: design the DecisionTrajectory table (content-free handles, research doc §5), the versioned human-label mapping, blind audit sampling (rho = 10%, DEC-4) and the decision_eval trust gate (cross-fitted; DEC-1 ceilings; shadow mode DEC-2), then implement with tests."
+stage: S5-ship
+status: blocked
+blocked_on: "owner — push of feat/decision-model-judge for Phase 2 (3821e1c8 and the lifecycle commit); CI must run test_decision_trajectory_store.py and the alembic 035 test, which cannot run locally"
+last: { agent: claude-code, at: 2026-10-18T03:04:42Z, ledger: L-11 }
+next_action: "After the owner approves: push, dispatch ci.yml, read backend-format/backend-lint/backend-test (strict lint covers only the last commit's files on dispatch, CI-2); if green, finish CF-4, mark Phase 2 done, start Phase 3 (assurance modes)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -264,6 +264,16 @@ Context: `gate after --task CF-3` reported two new Python import cycles caused b
 Decision: The package `__init__` holds only a docstring; `open_decider` and `authorized_hosted_endpoint_ids` move to `app/core/decider/access.py`; callers import submodules directly.
 Why: It removes the cycles rather than suppressing them, and makes `access.open_decider` visibly the single entry point. Rejected: suppressing the cycle, or lazy imports inside `__init__`, which would hide the coupling.
 
+DEC-9 | 2026-10-18 | S1-plan | claude-opus-5-5
+Context: The roadmap named the trust gate `app.evals.decision_eval`.
+Decision: The gate lives in `app/core/decision/trust.py`, with persistence in `app/services/decision_trajectories.py`.
+Why: Phase 4 routing reads trust at request time, while `app/evals/` holds offline measurement harnesses. Same contract and tests, different module.
+
+DEC-10 | 2026-10-18 | S2-execute | claude-opus-5-5
+Context: Testing the gate on planted data showed a perfectly calibrated decider with weak discrimination (latent spread 2: accuracy 0.77, κ 0.55) is refused on κ, while spread 4 (accuracy 0.87, κ 0.74) is trusted.
+Decision: Keep κ ≥ 0.60 as a separate requirement from ECE (DEC-1 unchanged). The trust tests use spread 4 for an informative decider and keep spread 2 as an explicit "calibrated but not good enough" case.
+Why: The thesis asks for calibrated *and* useful triage; a calibrated coin flip should not route research items. This is documented in research doc §4 for the article.
+
 ## Ledger
 
 ### L-1 | 2026-10-18T00:10:18Z | S0-frame | claude-code | framer | —
@@ -334,6 +344,12 @@ Did: Pushed the Phase 1 commits (owner-approved) and dispatched CI three times. 
 Result: Phase 1 done. CI-2 recorded alongside CI-1.
 Verified: run 39091047564 at `2e28e7d6` → backend-format success; backend-lint success (strict on `decider/access.py`, `client.py`, `contract.py`, `registry.py`); backend-test "2729 passed, 7 skipped, 1 deselected", 87 PASSED across `test_decider_*`, `test_decision_math`, `test_alembic_fresh_database` and `test_security_benchmark`; `feature-obligations` failed only with `CalledProcessError: git rev-parse ''` (CI-1); local `check_feature_obligations.py --base origin/testing --head HEAD` → passed; stdlib runner on Python 3.9 → 8 + 6 + 25 passed after the rename; `finish-task CF-3` → finished.
 Next: Phase 2 S1.
+
+### L-11 | 2026-10-18T03:04:42Z | S4-remediate | claude-opus-5-5 | executor | Phase 2
+Did: S1 design; CF-4 scoped; `gate before --task CF-4` (baseline 8); spine impact read for `research_validity_reconciliation.py` and `models/research_validity.py` (30 dependents each; read-only by design). Implemented `core/decision/labels.py`, `sampling.py`, `trust.py`, `CrossFitResult.held_out_rows`, `models/decision_trajectory.py`, migration 035, `services/decision_trajectories.py`, tests, the Tech.md entry and research doc §4 additions. Committed `3821e1c8` locally.
+Result: Phase 2 code complete; F-13 fixed; F-14 accepted-risk; F-15 waits on CI.
+Verified: stdlib runner → trust "15 passed", math "25 passed", contract "8 passed", registry "6 passed"; formatter/lint heuristics → 0 candidates; `gate after --task CF-4` → comparable, 0 new issues, failures and warnings; `check_feature_obligations` and `check_change_obligations` against `origin/testing` → passed; `security_benchmark.py` → pass, 100.0, nothing blocked; `public_repo_quality_audit.py --check` → passed. Not run locally: `test_decision_trajectory_store.py`, `test_alembic_fresh_database.py`, ruff.
+Next: owner approves push → CI → close F-15 → Phase 2 done.
 
 ## Phase 0 — math core
 
@@ -499,3 +515,13 @@ small n, alias scope, order-flip disagreement and an unidentified T are each ref
 reason), run locally and in CI. Persistence: `tests/test_decision_trajectory_store.py` (CI only,
 in-memory aiosqlite), plus the alembic fresh-database test bumped to 035. CF `gate before`/`after`
 on CF-4.
+
+### Execute, review and remediate (S2–S4)
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|----|-----|-----|-------|---------|---------|--------|
+| F-13 | Minor | Tests | `tests/test_decision_trust.py` | First fixtures used an uninformative latent spread (κ ≈ 0.55), and the "weighted small sample" had n_eff 60.8, not below 50 | CF-4 | fixed (DEC-10) |
+| F-14 | Major | Product | `core/decision/labels.py` | Mapping v1 is binary because the review control does not capture the four-way class; per-class calibration cannot be measured yet | CF-4 | accepted-risk: Phase 7 review control + v2 mapping; stated in research doc §4 |
+| F-15 | Major | Tests | toolchain | `test_decision_trajectory_store.py` and the alembic 035 test need SQLAlchemy/aiosqlite/pytest | CF-4 | open (closes on CI) |
+
+Review coverage: self-only (the owner's no-subagent rule). No Research Spine service was edited in Phase 2.
