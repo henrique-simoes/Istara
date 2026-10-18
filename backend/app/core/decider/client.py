@@ -1,4 +1,6 @@
-"""HTTP client for ``/v1/systemone`` deciders (TypeSafe JEV and compatible servers).
+"""HTTP client for deciders: ``/v1/systemone`` (TypeSafe JEV, OpenRouter, compatible servers) and
+OpenAI's ``/v1/decisions``. The endpoint's ``protocol`` picks the wire format; outcomes are the
+same canonical distributions either way.
 
 Every failure becomes a ``not_runnable`` outcome with a reason code: transport errors, timeouts,
 HTTP errors, malformed or incomplete bodies, and a served model that breaks provenance. Retries
@@ -28,11 +30,19 @@ from app.core.decider.contract import (
     parse_response,
     retry_delay,
 )
+from app.core.decider.openai_decisions import (
+    build_decisions_request,
+    parse_decisions_response,
+    served_matches,
+)
 from app.core.decider.registry import DeciderEndpoint
 
 
 class SystemOneClient:
-    """One endpoint, one call per :meth:`decide`; build it with ``open_decider``."""
+    """One endpoint, one call per :meth:`decide`; build it with ``open_decider``.
+
+    The name predates the second protocol; it serves every protocol in ``registry.PROTOCOLS``.
+    """
 
     def __init__(
         self,
@@ -68,7 +78,7 @@ class SystemOneClient:
     ) -> DecisionOutcome:
         import httpx
 
-        body = build_request(state, questions, self.endpoint.model)
+        body = self._build(state, questions)
         started = time.monotonic()
         attempts = 0
         outcome: DecisionOutcome | None = None
@@ -98,6 +108,20 @@ class SystemOneClient:
             setattr(outcome, key, value)
         return outcome
 
+    @property
+    def _openai(self) -> bool:
+        return self.endpoint.protocol == "openai_decisions"
+
+    def _build(self, state: Any, questions: Mapping[str, Choice | Score | Noul]) -> dict[str, Any]:
+        if self._openai:
+            return build_decisions_request(state, questions, self.endpoint.model)
+        return build_request(state, questions, self.endpoint.model)
+
+    def _served_mismatch(self, served: str) -> str | None:
+        if self._openai:
+            return None if served_matches(self.endpoint.model, served) else "served_model_mismatch"
+        return check_served_identity(self.endpoint.model, served)
+
     def _interpret(
         self, response: Any, questions: Mapping[str, Choice | Score | Noul]
     ) -> DecisionOutcome:
@@ -108,10 +132,11 @@ class SystemOneClient:
         except ValueError:
             return not_runnable("malformed_body")
         try:
-            outcome = parse_response(payload, questions)
+            parse = parse_decisions_response if self._openai else parse_response
+            outcome = parse(payload, questions)
         except ContractViolationError as violation:
             return not_runnable(violation.reason)
-        mismatch = check_served_identity(self.endpoint.model, outcome.served_model or "")
+        mismatch = self._served_mismatch(outcome.served_model or "")
         if mismatch:
             return not_runnable(mismatch, served_model=outcome.served_model)
         return outcome

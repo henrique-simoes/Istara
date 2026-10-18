@@ -84,3 +84,5 @@ keeps working throughout, and nothing is deleted.
 ## Decision models
 
 Administrators add decision models here. The section explains what a decision model is and, when none exists yet, walks through the first activation: choose a hosted model (TypeSafe Jev, with an API key) or a local `/v1/systemone` server (llama.cpp with Kev, Laya or OpenJev), add it with a pinned model version, check the connection with one fixed test question that carries no research data, then turn it on per project in Project Settings. API keys go to the macOS Keychain, or the server's secret store elsewhere, and are never shown again. Moving aliases such as `jev-latest` are accepted but labelled, because they never become trusted. Nothing is enabled for any project from here.
+
+Presets cover TypeSafe Jev directly, Jev through OpenRouter, OpenAI Decisions (public beta) and a local server. Each decision model shows which wire protocol it uses: `systemone` for Jev, OpenRouter and local servers, `openai_decisions` for OpenAI.

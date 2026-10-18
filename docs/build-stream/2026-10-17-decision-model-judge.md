@@ -6,13 +6,13 @@
 ```yaml
 item: decision-model-judge
 branch: feat/decision-model-judge
-cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8, CF-9] }
-phase: "Phase 6 — autoresearch"
+cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8, CF-9, CF-10] }
+phase: "Phase 8 — protocols, advisory integrations, research arm"
 stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-10-18T08:30:00Z, ledger: L-20 }
-next_action: "Push the Phase 6 fixes and Phase 7, dispatch ci.yml, read backend-test (test_w6_autoresearch_runners, test_self_improvement_artifact_boundary, test_decision_model_settings, test_autoresearch_*), frontend-typecheck/lint/unit and ui-journeys import; if green finish CF-8 and CF-9 (F-40 stays open for the QA lane), then start Phase 8."
+last: { agent: claude-code, at: 2026-10-18T10:30:00Z, ledger: L-22 }
+next_action: "Commit Phase 8, push, dispatch ci.yml, read backend-test (test_decider_conformance, test_decider_advisory, test_decider_openai_decisions, test_trajectory_audit, test_decider_coding_eval, test_w5_interview_services, test_reasoning_bank, test_upload_security*), fix failures, then finish CF-10 and write the whole-plan summary."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -162,9 +162,9 @@ three phases make no product-path change.
 | 3 | Assurance modes | project-level assurance policy (`auto`, `llm_judges`, `decision_models`, `both`, `none`) honoured by `validation.py` and `validation_executor.py`; Self-MoA stays the single-endpoint fallback; AV-1 fix (reward = human outcome, Thompson sampling constrained to the mode); research-validity contract + governance contract + ensemble-method matrix updated | **Given** each mode, **when** a task is validated, **then** only the evaluators the mode allows are called (dispatcher call log proves no LLM-judge call in `decision_models` mode), `none` marks the task `unvalidated` and still requires human review, outputs from `both` are shown side by side and never vote-merged, and the coding-run reliability gate is unchanged in every mode | `pytest tests/test_assurance_modes.py tests/test_adaptive_validation.py tests/pi_production/test_w7_validation.py tests/test_research_validity_contract.py -q` | done |
 | 4 | Spine seam (code applications) | decider triage after the deterministic quote check; routing and priority into `CodeReviewQueue`; trajectory written per application | **Given** a governed coding run, **when** applications are admitted, **then** each gets a trajectory; with a trusted scope, abstentions and `factual_hallucination` / `methodological_violation` route to review with priority; no acceptance state changes because of the decider; κ inputs are byte-identical with the decider on vs off; telemetry is content-free | `pytest tests/test_research_validity_contract.py tests/test_code_applications.py tests/test_decision_spine_seam.py -q`; credential-free simulation scenario with a stub decider; UI walk | done |
 | 5 | Learning loop + ensemble health | ReasoningBank `decision_review` lessons (aggregate, content-free, after human label only); scheduled recalibration with cross-fitting; CUSUM drift → shadow; self-evolution proposals for question sets and τ overrides via improvement governance (protected values excluded); ensemble health shows per-evaluator calibration, error correlation, Yule's Q, J_eff, Dawid–Skene reliabilities | **Given** a history of labelled trajectories, **when** the loop runs, **then** lessons cite only handles, a recalibration changes T only if held-out ECE improves, drift returns a scope to shadow with a recorded reason, governance refuses proposals that touch κ ≥ 0.60 / the ECE ceiling / n_min / the never-promote rule, and Ensemble Health renders the new metrics in all roles, light/dark, 375px, keyboard | `pytest tests/test_decision_learning_loop.py tests/test_spine_learning_loops.py tests/test_meta_hyperagent.py -q`; ensemble-health scenario; UI walk | done |
-| 6 | Autoresearch | fix AR-1…AR-8 (each with a failing regression test first); new `decision_policy` runner (objective: held-out weighted Brier, coverage at fixed risk); decider `score` as an optional measurement instrument per assurance mode; judges pinned away from the endpoint under test | **Given** a deterministic fake runner with known noise, **when** the loop runs, **then** a candidate whose true effect is zero is kept at most at the nominal error rate, the incumbent is re-measured paired, failed measurements are `not_runnable` (never 0.5), `mutation_diff` persists, and a `decision_policy` experiment stays a governed proposal | `pytest tests/test_autoresearch_engine.py tests/test_autoresearch_statistics.py tests/test_decision_policy_runner.py tests/pi_production/test_w6_engine_selection.py -q` | in-progress |
-| 7 | Onboarding + configuration UX | general Istara onboarding and first-activation flow for decision models (DEC-1): what a decision model is (closed answers in, label + probabilities out; triage, never authority), when it helps, cloud-egress consequences, where to configure the JEV API key and endpoint or a local `/v1/systemone` server, per-project opt-in, assurance-mode selection, trust status (shadow / calibrating / trusted) and how calibration works | **Given** a new install, **when** the user goes through onboarding, **then** decision models and assurance modes are introduced with skippable guidance and no decider is enabled; **given** a project with none configured, **when** the user first opens decision-model settings, **then** a first-activation flow explains the concept, the egress choice and the two configuration paths, stores the key only in Keychain/env, never enables egress without explicit project opt-in, and shows trust status; walked by role (admin/researcher/viewer), light/dark, 375px, keyboard; empty/loading/error states | new + updated simulation scenarios (onboarding, settings, `09`/`90` sweeps); `python3 scripts/feature_docs.py --seed-missing --generate-site --check`; `python3 scripts/check_a11y_contrast.py`; UI walk with screenshots | planned |
-| 8 | More adapters, trajectory audit, further integrations | OpenAI Decisions / OpenRouter / Cloudflare adapters; per-transition (s,a,o) tool-call audit (Wang & Gao; benchmark axes 1, 4, 9); integrations I4–I14 (all four groups, DEC-4); decider-coder research arm on the canonical corpus with human gold codes, never counted in the gate (DEC-6, research doc §13); live runs only with owner permission | **Given** each adapter's stub, **then** it passes the shared adapter conformance suite; trajectory audit flags schema-invalid calls and observations that do not support the next state | `pytest tests/test_decider_conformance.py tests/test_trajectory_audit.py -q`; live calibration run **only with owner permission** (AGENTS.md §9) | planned |
+| 6 | Autoresearch | fix AR-1…AR-8 (each with a failing regression test first); new `decision_policy` runner (objective: held-out weighted Brier, coverage at fixed risk); decider `score` as an optional measurement instrument per assurance mode; judges pinned away from the endpoint under test | **Given** a deterministic fake runner with known noise, **when** the loop runs, **then** a candidate whose true effect is zero is kept at most at the nominal error rate, the incumbent is re-measured paired, failed measurements are `not_runnable` (never 0.5), `mutation_diff` persists, and a `decision_policy` experiment stays a governed proposal | `pytest tests/test_autoresearch_engine.py tests/test_autoresearch_statistics.py tests/test_decision_policy_runner.py tests/pi_production/test_w6_engine_selection.py -q` | done |
+| 7 | Onboarding + configuration UX | general Istara onboarding and first-activation flow for decision models (DEC-1): what a decision model is (closed answers in, label + probabilities out; triage, never authority), when it helps, cloud-egress consequences, where to configure the JEV API key and endpoint or a local `/v1/systemone` server, per-project opt-in, assurance-mode selection, trust status (shadow / calibrating / trusted) and how calibration works | **Given** a new install, **when** the user goes through onboarding, **then** decision models and assurance modes are introduced with skippable guidance and no decider is enabled; **given** a project with none configured, **when** the user first opens decision-model settings, **then** a first-activation flow explains the concept, the egress choice and the two configuration paths, stores the key only in Keychain/env, never enables egress without explicit project opt-in, and shows trust status; walked by role (admin/researcher/viewer), light/dark, 375px, keyboard; empty/loading/error states | new + updated simulation scenarios (onboarding, settings, `09`/`90` sweeps); `python3 scripts/feature_docs.py --seed-missing --generate-site --check`; `python3 scripts/check_a11y_contrast.py`; UI walk with screenshots | done |
+| 8 | More adapters, trajectory audit, further integrations | OpenAI Decisions / OpenRouter / Cloudflare adapters; per-transition (s,a,o) tool-call audit (Wang & Gao; benchmark axes 1, 4, 9); integrations I4–I14 (all four groups, DEC-4); decider-coder research arm on the canonical corpus with human gold codes, never counted in the gate (DEC-6, research doc §13); live runs only with owner permission | **Given** each adapter's stub, **then** it passes the shared adapter conformance suite; trajectory audit flags schema-invalid calls and observations that do not support the next state | `pytest tests/test_decider_conformance.py tests/test_trajectory_audit.py -q`; live calibration run **only with owner permission** (AGENTS.md §9) | in-progress |
 ### Doc impact
 
 Research write-ups (new, this frame): `docs/scientific_audit/decision-model-judge-research.md`,
@@ -409,6 +409,11 @@ Context: The Phase 7 acceptance asks for a UI walk by role, light/dark, 375px an
 Decision: Register scenario `91-decision-models` (credential-free; never calls a decider) so CI proves it imports and records it as not run; typecheck, lint and unit tests run in CI. The walk itself stays open as F-40 until it runs on the QA lane.
 Why: Listing an unrun scenario as proven would violate the lane's honesty contract. Rejected: claiming the walk.
 
+DEC-19 | 2026-10-18 | S1-plan | claude-opus-5-5
+Context: Phase 8 named three adapters and eleven integration sites. Official docs: OpenAI's Decisions guide was readable (its API reference returned 404); OpenRouter's Jev guide says it serves TypeSafe's `/v1/systemone`; Cloudflare's model page returned 404 and search found no confirmation. Most integration sites have no exact human label for their question.
+Decision: (1) Add an `openai_decisions` protocol from the official guide; unknown response shapes (refusals, usage) fail closed. OpenRouter is a `systemone` preset, not new code. No Cloudflare adapter until an official page is read (R39). (2) All sites go through one advisory seam (`services/decider_advisory.py`): opt-in by assurance mode, a shadow trajectory per answer, never raising, advice only. Only I5 (`task_output`, labelled by task review) can calibrate today; I13 reorders and I14 escalates only from a trusted scope, and I14 can only add caution. I10 (UI audit) was not in the owner's four groups. (3) The trajectory audit (I8) is a deterministic checker plus an advisory decider question, offered as a service function; wiring it into the agent loop needs a transition log that does not exist yet. (4) The decider-coder research arm is an offline eval that never writes code applications or touches the gate (DEC-6).
+Why: Building against unread or unreachable documentation would be a fabricated contract. A single seam keeps every site's failure mode identical and testable, and refusing noisy labels keeps calibration honest (DEC-11). Rejected: per-site decider clients; labelling advisory scopes with the whole-task review outcome.
+
 ### L-15 | 2026-10-18T05:01:02Z | S4-remediate | claude-opus-5-5 | executor | Phase 4
 Did: Orientation (coding-run commit point, review queue, reconciliation, codebook fields); S1 design; `gate before --task CF-6` (baseline 13). Implemented `services/decider_triage.py`, the post-commit hook in `run_independent_coding_run`, the label hook in `create_reconciliation_decision`, `routed_triage` and the pending-route field and order, `CodeApplicationType.decider_triage`, `services/assurance_policies.py`, AI-005 evidence and triggers, docs (Tech.md, research-validity contract, review feature docs + site), and `tests/test_decider_triage.py`. Commits `fc1dab1c`, `b8d1d5f7` (local).
 Result: Phase 4 code complete; F-22…F-24 fixed; F-25 waits on CI.
@@ -444,6 +449,18 @@ Did: Phase 6 CI run 39102947318: backend-test failed 14 (F-41 W6 dispatcher cont
 Result: F-37, F-41, F-42 fixed in code (F-35 still closes on CI); Phase 7 code complete with F-38…F-40 open.
 Verified: local boundary scan (same rules as `test_self_improvement_artifact_boundary`) → no hits; stdlib runner → `test_decision_policy_runner` "3 passed"; collapse checker → 0; no line over 100 columns in changed backend files; `gate after --task CF-9` → comparable, 0 new issues (after splitting components and adding route/type hints; first run showed 12 warnings); `feature_docs.py --seed-missing --generate-site --check` → passed (86).
 Next: commit Phase 7, push, dispatch CI.
+
+### L-21 | 2026-10-18T09:40:00Z | S5-ship | claude-opus-5-5 | executor | Phase 6, Phase 7
+Did: Pushed `a342baf9`, `cd843554`, `ef021948`, `03c093fc` and dispatched CI run 39117088982; finished CF-8 and CF-9.
+Result: Phases 6 and 7 done; F-35, F-38, F-39 fixed; F-40 accepted-risk (UI walk needs a QA stack).
+Verified: run 39117088982 → backend-format, backend-lint, hygiene, backend-test ("2805 passed, 7 skipped"), frontend-typecheck, frontend-lint, frontend-unit, frontend-build, ui-journeys (scenario 91 imports), governance success; `feature-obligations` and the dependent `release-gate` failed only from CI-1.
+Next: Phase 8.
+
+### L-22 | 2026-10-18T10:30:00Z | S4-remediate | claude-opus-5-5 | executor | Phase 8
+Did: Read the official OpenAI Decisions guide and OpenRouter Jev guide; Cloudflare page 404 (DEC-19). `gate before --task CF-10` on the clean tree. Implemented `decider/openai_decisions.py`, `protocol` on endpoints, client dispatch, OpenRouter and OpenAI presets (backend and UI), `services/decider_advisory.py` with I4–I9, I11–I14 wired, `core/decision/trajectory_audit.py`, `evals/decider_coding_eval.py`, the saturation fix, docs (Tech.md, research doc §11, references R27/R38/R39, settings feature docs, persona, AI-005, SECURITY_BENCHMARK). Tests: `test_decider_openai_decisions.py`, `test_trajectory_audit.py`, `test_decider_coding_eval.py` (local + CI), `test_decider_conformance.py`, `test_decider_advisory.py` (CI).
+Result: Phase 8 code complete; F-43 fixed; F-44 waits on CI.
+Verified: stdlib runner → openai_decisions "4 passed", trajectory audit "2 passed", coding eval "3 passed", contract "8 passed", registry "6 passed", decision-policy runner "3 passed"; collapse checker → 0; no added backend line over 100 columns; security benchmark → pass 100.0; `feature_docs.py --seed-missing --generate-site --check` → passed (86).
+Next: gate after, commit, push, CI.
 
 ## Phase 0 — math core
 
@@ -852,7 +869,7 @@ covered the Phase 4 code on dispatch (CI-2).
 | F-36 | Major | Governance | `core/improvement_governance_contracts.py` | `decision_policy` proposals named a `decision_models` surface that governance did not know, so they classified as medium-risk approval instead of admin review | CF-8 | fixed: `decision_models` is an admin, behavioural, high-risk surface (`decider` aliases it); test in `test_improvement_governance.py` |
 | F-41 | Major | Integration | `autoresearch_runners/*` | CI run 39102947318: the W6 contract (`tests/pi_production/test_w6_autoresearch_runners.py`) requires each runner's scoring function to call `agentic.completion` itself with its purpose slug, spine phase and `engine=self.engine`; the shared `judge_score` hid that, and `model_temp._score_output` gained a keyword the W6 stubs do not take | CF-8 | fixed: `scoring.plan_judge` decides decider vs pinned LLM judge, each runner keeps its own dispatcher call; the judge exclusion travels as `ModelTempRunner._judge_avoid` |
 | F-42 | Major | Governance | `autoresearch_runners/decision_policy.py` | CI run 39102947318: `test_self_improvement_artifact_boundary` forbids self-improvement modules from naming research models; the runner read `CodeApplication`/`EvidenceUnit` | CF-8 | fixed: `services/decider_triage.labelled_triage_states` prepares the labelled states read-only on the spine side |
-| F-35 | Major | Tests | toolchain | `test_autoresearch_hill_climbing.py` and `test_autoresearch_engine.py` need the full backend stack | CF-8 | open (closes on CI) |
+| F-35 | Major | Tests | toolchain | `test_autoresearch_hill_climbing.py` and `test_autoresearch_engine.py` need the full backend stack | CF-8 | fixed: CI run 39117088982 (L-21) |
 
 ## Phase 7 — onboarding + configuration UX
 
@@ -881,6 +898,37 @@ Mode: interface-design `build` inside Istara's existing system (no Figma file; e
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |----|-----|-----|-------|---------|---------|--------|
 | F-37 | Minor | Code | `autoresearch_runners/decision_policy.py` | Phase 6 CI run 39102947318: `ruff format` wanted the query chain split; the local collapse heuristic misses this shape | CF-8 | fixed (`a342baf9`) |
-| F-38 | Major | Tests | toolchain | No Node here: typecheck, lint and the new unit test run only in CI | CF-9 | open (closes on CI) |
-| F-39 | Major | Tests | toolchain | `test_decision_model_settings.py` needs the full backend stack | CF-9 | open (closes on CI) |
-| F-40 | Major | Quality | UI | No UI walk by role, theme, 375px and keyboard yet (DEC-18) | CF-9 | open (QA lane) |
+| F-38 | Major | Tests | toolchain | No Node here: typecheck, lint and the new unit test run only in CI | CF-9 | fixed: CI run 39117088982 frontend-typecheck, lint, unit, build success (L-21) |
+| F-39 | Major | Tests | toolchain | `test_decision_model_settings.py` needs the full backend stack | CF-9 | fixed: CI run 39117088982 backend-test success (L-21) |
+| F-40 | Major | Quality | UI | No UI walk by role, theme, 375px and keyboard yet (DEC-18) | CF-9 | accepted-risk: needs a QA stack this machine cannot run (no Docker, installs forbidden); scenario 91 is registered and imports in CI; carried to the final summary as residual risk |
+
+## Phase 8 — protocols, advisory integrations, research arm
+
+### Design and build (S1–S4; autonomous, 2026-10-18; DEC-19)
+
+- **Protocols.** `DeciderEndpoint.protocol` is `systemone` (TypeSafe JEV, OpenRouter, llama.cpp,
+  Kev, Laya, OpenJev) or `openai_decisions`. `decider/openai_decisions.py` maps Istara's choice,
+  score and yes/no questions to OpenAI's named `choice` / `score` / `predicate` questions and back
+  to the same canonical distributions; a dated snapshot of the requested model counts as served.
+  `tests/test_decider_conformance.py` runs one set of assertions over TypeSafe, OpenRouter and
+  OpenAI stubs (same answer, key only in the header, partial vector and wrong model refused,
+  429 retried with `retry-after`).
+- **Advisory seam** (`services/decider_advisory.py`): `advise(project, site, subject, state,
+  question)` returns `Advice` or None. Sites: I4 grounding (`agent_research._record_grounding_advice`),
+  I5 `spine.verify` (and its verbalized confidence is now logged as uncalibrated, audit SV-1),
+  I6 `self_check.verify_claim` (`decider_advice` on the result), I7 interview saturation, I9
+  report weakest section, I11 task routing (`decider_advice` in the routing result), I12 review
+  feedback, I13 ReasoningBank relevance (reorders only from trusted scopes), I14 upload
+  prompt-injection screen (adds caution only, trusted scope, P ≥ 0.9).
+- **I8 trajectory audit**: `core/decision/trajectory_audit.py` (pure) plus
+  `decider_advisory.audit_trajectory_with_decider`.
+- **Research arm** (`evals/decider_coding_eval.py`, DEC-6): yes/no per code from the codebook,
+  per-code ECE/Brier/coverage at risk 0.10, error correlation and Yule's Q with each LLM coder,
+  Fleiss κ without and with the decider; `counted_in_reliability_gate: false`.
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|----|-----|-----|-------|---------|---------|--------|
+| F-43 | Major | Bugs | `services/adaptive_interview._is_saturated` | `"SATURATED" in content` is true for "NOT_SATURATED", so with the LLM saturation check on, every probe ended as saturated (the W5 test noted it) | CF-10 | fixed: `saturation_verdict` reads only an explicit SATURATED; regression in `test_decider_advisory.py` |
+| F-44 | Major | Tests | toolchain | conformance and advisory tests need httpx and the database | CF-10 | open (closes on CI) |
+| F-45 | Minor | Integration | I8 | No per-transition tool log exists to feed the trajectory audit automatically | CF-10 | accepted-risk: service function shipped; wiring is follow-up work |
+| F-46 | Minor | Integration | Cloudflare | No adapter: official page unreachable (R39) | CF-10 | accepted-risk (DEC-19) |

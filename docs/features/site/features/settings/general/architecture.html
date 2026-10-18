@@ -359,6 +359,8 @@
 </ul>
 <h2 id="decision-model-endpoints-api-cf-spec-1-phase-7">Decision-model endpoints API (CF-SPEC-1, Phase 7)</h2>
 <p>Global-admin routes in <code>backend/app/api/routes/decision_models.py</code>: <code>GET /api/settings/decision-models</code> (endpoints with locality, alias flag and <code>credential_status</code>, plus presets), <code>POST</code> (validates through <code>DeciderEndpoint</code>, so public hosts need HTTPS and metadata hosts are refused; a hosted endpoint needs a key), <code>DELETE /{endpoint_id}</code> (also removes the stored key) and <code>POST /{endpoint_id}/check</code> (one constant probe question, no research data). Endpoints persist in <code>DECIDER_ENDPOINTS_JSON</code>, which holds no secret; <code>credentials.store_api_key</code> writes the key to Keychain service <code>istara-decider</code> on macOS or to <code>ISTARA_DECIDER_SECRET_&lt;ID&gt;</code> elsewhere, mirroring Pi endpoint custody. Control AI-005.</p>
+<h3 id="protocols-and-advisory-integrations-phase-8">Protocols and advisory integrations (Phase 8)</h3>
+<p>Endpoints carry <code>protocol</code> (<code>systemone</code> default, or <code>openai_decisions</code>); <code>decider/openai_decisions.py</code> translates OpenAI&#x27;s <code>/v1/decisions</code> request and answers into the same canonical distributions, and <code>tests/test_decider_conformance.py</code> holds every protocol to one contract. Once a project opts in, other checks ask a decider through <code>services/decider_advisory.advise</code>, which records a shadow trajectory and returns advice that never accepts or promotes evidence.</p>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
@@ -377,6 +379,7 @@
 <li class="toc-level-2"><a href="#compass-evidence">Compass Evidence</a></li>
 <li class="toc-level-2"><a href="#when-to-update">When To Update</a></li>
 <li class="toc-level-2"><a href="#decision-model-endpoints-api-cf-spec-1-phase-7">Decision-model endpoints API (CF-SPEC-1, Phase 7)</a></li>
+<li class="toc-level-3"><a href="#protocols-and-advisory-integrations-phase-8">Protocols and advisory integrations (Phase 8)</a></li>
 </ul></nav>
         </aside>
       </div>

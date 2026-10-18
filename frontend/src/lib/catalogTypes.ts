@@ -308,6 +308,7 @@ export interface DecisionModelHealth {
 // Decision-model configuration. Mirrors backend/app/api/routes/decision_models.py
 // (DeciderEndpointRequest, ProjectDecisionPolicyRequest); keys never appear in any of these shapes.
 export type DecisionModelLocality = "local" | "hosted";
+export type DecisionModelProtocol = "systemone" | "openai_decisions";
 
 export interface DecisionModelEndpoint {
   endpoint_id: string;
@@ -315,6 +316,7 @@ export interface DecisionModelEndpoint {
   model: string;
   model_is_alias: boolean;
   locality: DecisionModelLocality;
+  protocol: DecisionModelProtocol;
   timeout_s: number;
   max_retries: number;
   credential_status: "configured" | "missing" | "not_needed";
@@ -328,6 +330,7 @@ export interface DecisionModelPreset {
   locality: DecisionModelLocality;
   needs_api_key: boolean;
   docs_url: string;
+  protocol: DecisionModelProtocol;
 }
 
 export interface DecisionModelEndpointRequest {
@@ -335,6 +338,7 @@ export interface DecisionModelEndpointRequest {
   base_url: string;
   model: string;
   api_key?: string;
+  protocol?: DecisionModelProtocol;
 }
 
 export interface DecisionModelCheckResult {

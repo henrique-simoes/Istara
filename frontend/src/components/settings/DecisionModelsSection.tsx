@@ -99,15 +99,23 @@ interface FormState {
   model: string;
   api_key: string;
   locality: "local" | "hosted";
+  protocol: DecisionModelPreset["protocol"];
 }
+
+const PRESET_NAMES: Record<string, string> = {
+  "typesafe-jev": "jev",
+  "openrouter-jev": "openrouter-jev",
+  "openai-decisions": "openai-decisions",
+};
 
 function formFromPreset(preset: DecisionModelPreset): FormState {
   return {
-    endpoint_id: preset.preset_id === "typesafe-jev" ? "jev" : "local-decider",
+    endpoint_id: PRESET_NAMES[preset.preset_id] || "local-decider",
     base_url: preset.base_url,
     model: preset.model,
     api_key: "",
     locality: preset.locality,
+    protocol: preset.protocol,
   };
 }
 
@@ -222,7 +230,7 @@ function EndpointRow({ endpoint, onRemoved }: { endpoint: DecisionModelEndpoint;
             <CredentialBadge status={endpoint.credential_status} />
           </p>
           <p className="mt-1 break-all font-mono text-xs text-slate-500 dark:text-slate-400">
-            {endpoint.model} · {endpoint.base_url}
+            {endpoint.model} · {endpoint.base_url} · {endpoint.protocol}
           </p>
           {endpoint.model_is_alias && (
             <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-800 dark:text-amber-200">
@@ -256,7 +264,7 @@ function PresetPicker({ presets, onPick }: { presets: DecisionModelPreset[]; onP
               <span className="block text-sm font-semibold text-slate-900 dark:text-white">Add {preset.label}</span>
               <span className="mt-1 block text-xs leading-5 text-slate-600 dark:text-slate-300">
                 {hosted
-                  ? "Needs an API key from TypeSafe. Projects must opt in before any data is sent."
+                  ? "Needs an API key from the provider. Projects must opt in before any data is sent."
                   : "Runs on your own hardware. No key and no cloud consent needed."}
               </span>
             </span>
@@ -285,6 +293,7 @@ function EndpointForm({ initial, onSaved, onCancel }: { initial: FormState; onSa
         base_url: form.base_url.trim(),
         model: form.model.trim(),
         api_key: form.api_key,
+        protocol: form.protocol,
       });
       onSaved();
     } catch (err) {
@@ -327,7 +336,8 @@ function EndpointForm({ initial, onSaved, onCancel }: { initial: FormState; onSa
           Server address
           <input required type="url" value={form.base_url} onChange={field("base_url")} className={inputClass} />
           <span className="mt-1 block font-normal text-slate-500 dark:text-slate-400">
-            Istara calls this address at /v1/systemone. Public addresses must use HTTPS.
+            Istara calls this address at {form.protocol === "openai_decisions" ? "/v1/decisions" : "/v1/systemone"}. Public
+            addresses must use HTTPS.
           </span>
         </label>
         <label className="text-xs font-medium text-slate-700 dark:text-slate-200 md:col-span-2">

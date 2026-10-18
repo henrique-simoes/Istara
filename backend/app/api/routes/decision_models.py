@@ -53,6 +53,27 @@ PRESETS: tuple[dict[str, Any], ...] = (
         "locality": "hosted",
         "needs_api_key": True,
         "docs_url": "https://docs.typesafe.ai/models",
+        "protocol": "systemone",
+    },
+    {
+        "preset_id": "openrouter-jev",
+        "label": "Jev through OpenRouter (hosted)",
+        "base_url": "https://openrouter.ai/api",
+        "model": "typesafe/jev-1.14",
+        "locality": "hosted",
+        "needs_api_key": True,
+        "docs_url": "https://openrouter.ai/docs/guides/community/jev",
+        "protocol": "systemone",
+    },
+    {
+        "preset_id": "openai-decisions",
+        "label": "OpenAI Decisions (hosted, public beta)",
+        "base_url": "https://api.openai.com",
+        "model": "gpt-6-luna",
+        "locality": "hosted",
+        "needs_api_key": True,
+        "docs_url": "https://developers.openai.com/api/docs/guides/decisions",
+        "protocol": "openai_decisions",
     },
     {
         "preset_id": "local-systemone",
@@ -62,6 +83,7 @@ PRESETS: tuple[dict[str, Any], ...] = (
         "locality": "local",
         "needs_api_key": False,
         "docs_url": "https://github.com/ggml-org/llama.cpp",
+        "protocol": "systemone",
     },
 )
 
@@ -73,6 +95,7 @@ class DeciderEndpointRequest(BaseModel):
     api_key: str = Field(default="", max_length=4096)
     timeout_s: float = 30.0
     max_retries: int = 2
+    protocol: str = "systemone"
 
 
 class ProjectDecisionPolicyRequest(BaseModel):
@@ -103,6 +126,7 @@ def endpoint_view(endpoint: DeciderEndpoint) -> dict[str, Any]:
         "model": endpoint.model,
         "model_is_alias": is_alias_model_id(endpoint.model),
         "locality": endpoint.locality,
+        "protocol": endpoint.protocol,
         "timeout_s": endpoint.timeout_s,
         "max_retries": endpoint.max_retries,
         "credential_status": credential_status(endpoint),
@@ -159,6 +183,7 @@ async def add_decision_model_endpoint(data: DeciderEndpointRequest, request: Req
         "model": data.model.strip(),
         "timeout_s": data.timeout_s,
         "max_retries": data.max_retries,
+        "protocol": data.protocol,
         **custody_fields(endpoint_id),
     }
     try:

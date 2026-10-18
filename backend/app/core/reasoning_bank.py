@@ -179,6 +179,45 @@ def format_memory_context(memories: list[dict], *, max_chars: int = 1500) -> str
     return "\n".join(lines)
 
 
+RERANK_TOP = 3
+
+
+async def _rerank_with_decider(project_id: str, query: str, memories: list[dict]) -> list[dict]:
+    """I13: a decision model's yes/no relevance for the top lexical matches (opt-in per project).
+
+    Each answer is recorded and attached as ``decider_relevance``. The order changes only when
+    every answer comes from a trusted scope; otherwise lexical ranking stands. Memories are process
+    lessons, never research evidence, so nothing here touches the Research Spine.
+    """
+    import hashlib
+
+    from app.core.decider.contract import Noul
+    from app.services.decider_advisory import advise
+
+    head, tail = memories[:RERANK_TOP], memories[RERANK_TOP:]
+    advices = []
+    for memory in head:
+        key = f"{project_id}\n{query}\n{memory.get('id', '')}"
+        advice = await advise(
+            project_id,
+            site="reasoning_bank.relevance",
+            subject_kind="memory_relevance",
+            subject_id=hashlib.sha256(key.encode()).hexdigest()[:32],
+            state={
+                "query": query[:2000],
+                "lesson": f"{memory.get('title', '')}\n{memory.get('description', '')}"[:2000],
+            },
+            question=Noul("Is this process lesson relevant to the query?"),
+        )
+        if advice is None:
+            return memories
+        memory["decider_relevance"] = advice.p_true
+        advices.append(advice)
+    if advices and all(advice.trusted for advice in advices):
+        head = sorted(head, key=lambda memory: memory.get("decider_relevance") or 0.0, reverse=True)
+    return head + tail
+
+
 class ReasoningMemoryService:
     """Persist, retrieve, and summarize distilled reasoning memories."""
 
@@ -535,9 +574,13 @@ class ReasoningMemoryService:
             ]
 
         if db is not None:
-            return await _retrieve(db)
-        async with async_session() as session:
-            return await _retrieve(session)
+            selected = await _retrieve(db)
+        else:
+            async with async_session() as session:
+                selected = await _retrieve(session)
+        if project_id and selected:
+            selected = await _rerank_with_decider(project_id, query, selected)
+        return selected
 
     async def record_usage(self, memory_ids: list[str]) -> None:
         """Command: count one use of each memory that was actually put into a prompt."""

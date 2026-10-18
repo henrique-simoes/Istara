@@ -1,8 +1,10 @@
 """Configured decider endpoints and the per-project egress rule.
 
 Endpoints come from the ``decider_endpoints_json`` setting: a JSON list of objects with
-``endpoint_id``, ``base_url`` and ``model``, plus optional ``keychain_service``,
-``keychain_account``, ``api_key_env``, ``timeout_s`` and ``max_retries``. The JSON holds no secret.
+``endpoint_id``, ``base_url`` and ``model``, plus optional ``protocol`` (``systemone``, the default,
+for TypeSafe JEV, OpenRouter and ``/v1/systemone`` servers; ``openai_decisions`` for OpenAI's
+``/v1/decisions``), ``keychain_service``, ``keychain_account``, ``api_key_env``, ``timeout_s`` and
+``max_retries``. The JSON holds no secret.
 
 Locality follows the URL host (``endpoint_security.classify_host_scope``): loopback and private
 addresses are local, and anything else, including hosts given by name, is hosted. Sending research
@@ -18,9 +20,11 @@ from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
 from app.core.decider.contract import SYSTEMONE_PATH
+from app.core.decider.openai_decisions import DECISIONS_PATH
 from app.core.endpoint_security import EndpointPolicy, classify_host_scope, normalized_service_url
 
 _POLICY = EndpointPolicy(service_name="Decision model")
+PROTOCOLS = ("systemone", "openai_decisions")
 _LOCAL_SCOPES = frozenset({"loopback", "private"})
 MAX_RETRIES_LIMIT = 5
 
@@ -43,11 +47,14 @@ class DeciderEndpoint:
     api_key_env: str = ""
     timeout_s: float = 30.0
     max_retries: int = 2
+    protocol: str = "systemone"
     locality: str = field(init=False, default="hosted")
 
     def __post_init__(self) -> None:
         if not self.endpoint_id.strip() or not self.model.strip():
             raise ValueError("decider endpoint_id and model must be non-empty")
+        if self.protocol not in PROTOCOLS:
+            raise ValueError(f"decider protocol must be one of {', '.join(PROTOCOLS)}")
         url = normalized_service_url(self.base_url, _POLICY)
         object.__setattr__(self, "base_url", url)
         scope = classify_host_scope((urlparse(url).hostname or "").lower().strip("[]"))
@@ -59,9 +66,10 @@ class DeciderEndpoint:
 
     @property
     def request_url(self) -> str:
-        if self.base_url.endswith(SYSTEMONE_PATH):
+        path = DECISIONS_PATH if self.protocol == "openai_decisions" else SYSTEMONE_PATH
+        if self.base_url.endswith(path):
             return self.base_url
-        return self.base_url + SYSTEMONE_PATH
+        return self.base_url + path
 
     @property
     def is_hosted(self) -> bool:
@@ -70,7 +78,7 @@ class DeciderEndpoint:
     def __repr__(self) -> str:
         return (
             f"DeciderEndpoint(endpoint_id={self.endpoint_id!r}, model={self.model!r}, "
-            f"locality={self.locality!r})"
+            f"locality={self.locality!r}, protocol={self.protocol!r})"
         )
 
 
@@ -83,6 +91,7 @@ _FIELDS = (
     "api_key_env",
     "timeout_s",
     "max_retries",
+    "protocol",
 )
 
 

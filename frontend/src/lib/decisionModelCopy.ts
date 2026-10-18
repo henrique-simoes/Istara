@@ -28,7 +28,7 @@ export const DECISION_MODEL_EXPLAINER = {
 export const FIRST_ACTIVATION_STEPS = [
   {
     title: "Choose where it runs",
-    body: "Use TypeSafe Jev through its hosted API, or a /v1/systemone server on your own machine (llama.cpp with Kev, Laya or OpenJev).",
+    body: "Use TypeSafe Jev through its hosted API or through OpenRouter, OpenAI Decisions (public beta), or a /v1/systemone server on your own machine (llama.cpp with Kev, Laya or OpenJev).",
   },
   {
     title: "Add it here",

@@ -3506,3 +3506,16 @@ design and derivations in `docs/scientific_audit/decision-model-judge-research.m
   in Ensemble Health, the decider note in `CodeReviewQueue.tsx`, and an informational onboarding step;
   shared wording in `lib/decisionModelCopy.ts`. Tests: `tests/test_decision_model_settings.py`,
   `frontend/src/lib/decisionModelCopy.test.ts`.
+- **Phase 8: protocols, advisory integrations, research arm.** `decider/openai_decisions.py` adds
+  OpenAI's `/v1/decisions` (`protocol: openai_decisions` on an endpoint); OpenRouter's Jev is a
+  `systemone` preset. `tests/test_decider_conformance.py` runs the same assertions over every
+  protocol. `services/decider_advisory.advise` is the one seam the integration sites use (claim
+  and grounding checks, `spine.verify`, `spine.self_check`, interview saturation, report
+  weakest-section, task routing, review feedback, ReasoningBank relevance, upload prompt-injection
+  screening): opt-in by assurance mode, shadow trajectory per answer, never raises, advice only;
+  the injection screen can only add caution from a trusted scope. `core/decision/trajectory_audit.py`
+  audits tool-call transitions (unknown tool, schema-invalid arguments, error observations, success
+  claimed after an error). `evals/decider_coding_eval.py` is the decider-coder research arm (DEC-6),
+  never counted in the reliability gate. Interview saturation no longer reads "NOT_SATURATED" as
+  saturated. Tests: `test_decider_openai_decisions.py`, `test_decider_conformance.py`,
+  `test_decider_advisory.py`, `test_trajectory_audit.py`, `test_decider_coding_eval.py`.

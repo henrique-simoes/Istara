@@ -352,8 +352,15 @@ held-out inputs to counter the winner's curse of taking a maximum over noisy ite
 
 ## 11. Other integration points found in the architecture survey
 
-Ranked by research-validity value. The first three are in this plan; the rest are candidates
-(owner question Q2).
+Ranked by research-validity value. I1–I3 shipped in Phases 4–6. The owner chose all four remaining
+groups for Phase 8 (DEC-4); they shipped as **advice** through one seam,
+`services/decider_advisory.py` (2026-10-18): opt-in by assurance mode, a shadow trajectory per
+answer, never raising, never accepting or promoting evidence. Only I5 (`task_output`, labelled by
+human task review) and I13/I14 (whose effect waits for a trusted scope) can ever change anything;
+the other sites have no exact human label yet, so their trajectories stay unlabelled measurements
+(DEC-11: one exact label beats several noisy ones). I10 (UI audit) is non-research and was not
+selected. Interview saturation (I7) also exposed a parsing bug: `"SATURATED" in "NOT_SATURATED"`
+is true, so every probe read as saturated; fixed with a regression test.
 
 | # | Site | Today | Decider form | Spine relevance |
 |---|---|---|---|---|
