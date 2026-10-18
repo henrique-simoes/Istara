@@ -50,9 +50,13 @@ def _dist(supports, contradicts, says_nothing):
 
 
 @pytest.fixture
-async def maker(monkeypatch):
+async def maker(monkeypatch, tmp_path):
+    # A file, not :memory:: triage opens concurrent sessions, and every :memory: connection would
+    # get its own empty database.
     database.register_models()
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{tmp_path / 'triage.db'}", connect_args={"timeout": 30}
+    )
     async with engine.begin() as conn:
         await conn.run_sync(database.Base.metadata.create_all)
     factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -157,7 +161,7 @@ async def test_untrusted_scope_is_shadow_and_never_shown(maker, monkeypatch):
     run_id = await _seed(maker, ["q"])
     _use(monkeypatch, FakeDecider({"q": (_dist(0.0, 0.0, 1.0), _dist(0.0, 0.0, 1.0))}))
     summary = await decider_triage.triage_coding_run("p1", run_id, policy=POLICY)
-    assert summary["counts"] == {"shadow": 1}
+    assert summary["counts"] == {"shadow": 1}, summary
     async with maker() as session:
         row = (await session.execute(select(DecisionTrajectory))).scalars().one()
         assert row.action == "shadow" and not row.routed and row.order_flip_agree is True
@@ -174,7 +178,8 @@ async def test_trusted_actions_follow_tau_and_order_flip(maker, monkeypatch):
     run_id = await _seed(maker, list(answers))
     await _trust(maker)
     _use(monkeypatch, FakeDecider(answers))
-    await decider_triage.triage_coding_run("p1", run_id, policy=POLICY)
+    summary = await decider_triage.triage_coding_run("p1", run_id, policy=POLICY)
+    assert "error" not in summary["counts"], summary
     async with maker() as session:
         rows = (await session.execute(select(DecisionTrajectory))).scalars().all()
         by_app = {r.subject_id: r for r in rows}
@@ -194,7 +199,7 @@ async def test_inactive_modes_and_the_per_run_bound(maker, monkeypatch):
         summary = await decider_triage.triage_coding_run("p1", run_id, policy=policy)
         assert summary.get("inactive") is True
     bounded = await decider_triage.triage_coding_run("p1", run_id, policy=POLICY, max_items=2)
-    assert bounded["skipped"] == 1 and sum(bounded["counts"].values()) == 2
+    assert bounded["skipped"] == 1 and bounded["counts"] == {"shadow": 2}
 
 
 async def test_reconciliation_labels_only_human_reviews(maker, monkeypatch):
