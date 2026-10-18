@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.core.assurance import ProjectAssurance, ValidationPlan, plan_validation
+from app.services.assurance_policies import load_project_assurance
 
 logger = logging.getLogger(__name__)
 
@@ -79,23 +80,6 @@ class OperationalValidation:
         task.validation_method = self.validation_method
         task.validation_result = json.dumps(self.result())
         task.consensus_score = self.consensus_score
-
-
-async def load_project_assurance(project_id: str) -> ProjectAssurance:
-    """The project's stored choice, or ``auto`` (the pre-modes behaviour) when it has none."""
-    from app.models.assurance_policy import ProjectAssurancePolicy
-    from app.models.database import async_session
-
-    async with async_session() as session:
-        row = await session.get(ProjectAssurancePolicy, project_id)
-    if row is None:
-        return ProjectAssurance()
-    return ProjectAssurance(
-        mode=row.mode,
-        llm_method=row.llm_method,
-        llm_judges=row.llm_judges,
-        decider_endpoint_ids=tuple(row.decider_endpoint_ids()),
-    )
 
 
 def _validation_functions() -> dict[str, Callable[..., Awaitable[Any]]]:

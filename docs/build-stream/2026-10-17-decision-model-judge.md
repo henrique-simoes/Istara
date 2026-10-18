@@ -644,4 +644,53 @@ files (CI-2); there is no UI for choosing a mode yet (Phase 7).
 
 ## Phase 4 — spine seam (code applications)
 
-Not started. Next: S1 design (see Status Block `next_action`).
+### Design (S1)
+
+**Where.** `run_independent_coding_run` commits the run's code applications, the reliability gate
+result and the item statuses in one transaction. Triage runs **after that commit**, as a separate step
+on its own session, so it cannot alter acceptance states or the κ matrix by construction.
+Reconciliation (`create_reconciliation_decision`) commits the human decision; the label hook runs
+after it, and both hooks never raise.
+
+**Question set `code-application-triage` v1.** A single `choice` per application, `relation`:
+"How does the evidence unit relate to applying code ‹name›?", with options `supports` (the unit
+expresses the code as defined), `contradicts` (it expresses the opposite or meets an exclusion
+criterion) and `says_nothing` (it does not address the code). State: the evidence unit text, the
+coder's quote, and the code name, definition and inclusion/exclusion criteria (resolved by code id,
+then by name within the project's codebooks; an unresolved code is sent by name only and the
+trajectory records it). Asked in both option orders in one request (order-flip). The positive
+outcome is `supports`, labelled by the researcher's `human_review` reconciliation (accepted → 1,
+rejected or revised → 0).
+
+**Decision** (`services/decider_triage.py`) per application, for each decider listed in the project's
+assurance policy when the mode is `auto`, `decision_models` or `both`:
+- not runnable → recorded, nothing else;
+- untrusted scope → `shadow` (recorded, no effect, verdict never shown to reviewers);
+- trusted scope → calibrated with the scope's fitted temperature; the order flip disagrees, or the top
+  probability is below τ* = 0.90 → `abstain`; the top outcome is `contradicts` or `says_nothing` →
+  `flag`; otherwise `none`. `abstain` and `flag` set `routed`. Audit-sampled items (ρ = 0.10) that were
+  not routed are `audit_blind`.
+
+**What routing means.** It changes nothing in the Research Spine. `GET
+/api/code-applications/{project}/pending` adds a `decider_triage` field
+(`{action, top_outcome, p_supports, endpoint_id}`) **only** for routed, trusted, non-blind items, and
+orders routed items first (then the existing lowest-confidence-first order). With no trusted scope,
+the response and its order are exactly as before.
+
+**Deviation (DEC-12).** The roadmap's Phase 4 UI walk moves to Phase 7, where all decision-model UI
+(onboarding, settings, the review-queue badge) is designed together with the `interface-design` skill
+and walked on a QA stack. Phase 4 is backend + API: this machine and the Mac Studio have no Docker or
+QA stack, and nothing may be installed (owner, 2026-10-17). `frontend/src/lib/types.ts` gains the
+optional field so the type contract stays in step.
+
+**Bound.** At most 200 applications are triaged per coding run (`DECIDER_TRIAGE_MAX_PER_RUN`); the
+rest are counted and skipped, never guessed.
+
+**Verification.** `tests/test_decider_triage.py` (CI): the **guard test** runs a coding run's
+post-commit triage with a decider that flags everything and asserts every application's
+`promotion_status`, `reliability_status`, `review_status` and the run's `matrix_json`/`kappa` are
+byte-identical to the run without triage; plus shadow vs trusted actions, order-flip abstention, the
+blind audit, the pending-route field and order, the label hook on human vs synthetic reconciliation,
+and the per-run bound. Existing `test_research_validity_contract.py`, `test_code_applications.py`,
+`test_research_spine_end_to_end.py` and `test_interrupted_coding_runs.py` must stay green. Security
+benchmark (research data to hosted deciders goes only through `open_decider`).

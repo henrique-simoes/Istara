@@ -266,7 +266,9 @@
         "tests/test_security_benchmark.py",
         "backend/app/core/decider/*.py",
         "backend/app/models/decision_policy.py",
-        "tests/test_decider_*.py"
+        "tests/test_decider_*.py",
+        "backend/app/services/decider_triage.py",
+        "backend/app/services/operational_validation.py"
       ]
     }
   },
@@ -1118,10 +1120,13 @@
         "backend/app/core/endpoint_security.py",
         "tests/test_decider_registry.py",
         "tests/test_decider_client.py",
-        "tests/test_decider_contract.py"
+        "tests/test_decider_contract.py",
+        "backend/app/services/decider_triage.py",
+        "backend/app/services/operational_validation.py",
+        "tests/test_decider_triage.py"
       ],
       "future_change_trigger": true,
-      "notes": "Decision models (TypeSafe JEV via /v1/systemone, and compatible open-weight servers) are reached only through open_decider. A hosted endpoint receives a project's data only when that project lists the endpoint in decision_model_project_policies (no row = denied, owner decision 2026-10-17); every call must name its project; local loopback/private endpoints need no opt-in. Endpoint URLs pass endpoint_security (HTTPS for public hosts, no embedded credentials, no metadata hosts). Keys come only from macOS Keychain or a named environment variable, never from configuration, outcomes or reprs, and appear only in the Authorization header. A pinned model must be served by exactly that model; aliases are recorded as such. Every failure (HTTP error, timeout, malformed or incomplete answer, missing probability vector, served-model mismatch) is not_runnable with a reason code, never a fabricated verdict. Deciders triage for human review and never accept or promote research evidence."
+      "notes": "Decision models (TypeSafe JEV via /v1/systemone, and compatible open-weight servers) are reached only through open_decider. A hosted endpoint receives a project's data only when that project lists the endpoint in decision_model_project_policies (no row = denied, owner decision 2026-10-17); every call must name its project; local loopback/private endpoints need no opt-in. Endpoint URLs pass endpoint_security (HTTPS for public hosts, no embedded credentials, no metadata hosts). Keys come only from macOS Keychain or a named environment variable, never from configuration, outcomes or reprs, and appear only in the Authorization header. A pinned model must be served by exactly that model; aliases are recorded as such. Every failure (HTTP error, timeout, malformed or incomplete answer, missing probability vector, served-model mismatch) is not_runnable with a reason code, never a fabricated verdict. Deciders triage for human review and never accept or promote research evidence. Research data reaches a decider only through open_decider: operational validation (operational_validation.py) and code-application triage (decider_triage.py), which runs after a coding run commits and cannot change acceptance or reliability state."
     },
     {
       "id": "AUDIT-001",

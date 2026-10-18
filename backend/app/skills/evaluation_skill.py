@@ -126,7 +126,7 @@ async def _project_assurance(project_id: str | None) -> ProjectAssurance:
     if not project_id:
         return ProjectAssurance()
     try:
-        from app.services.operational_validation import load_project_assurance
+        from app.services.assurance_policies import load_project_assurance
 
         return await load_project_assurance(project_id)
     except Exception as exc:

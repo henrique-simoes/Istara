@@ -288,6 +288,12 @@ the calibration trust gate passes (`app/core/decision/trust.py`); otherwise it r
 Validation-method selection learns only from whether a method's verdict matched the researcher's
 review, never from agreement among its own samples.
 
+Decider triage of code applications (`app/services/decider_triage.py`) runs only after a coding run
+has committed its applications, reliability gate and item statuses, on its own session. It can mark
+an item for priority human review (shown in the review queue only for trusted, non-blind verdicts);
+it never changes `promotion_status`, `reliability_status`, `reconciliation_status`, `review_status`,
+the run's κ, or its matrix. A guard test (`tests/test_decider_triage.py`) asserts this.
+
 ## Retrieval Contract
 
 Hybrid RAG is responsible for exact evidence recall: source, page/section,

@@ -3457,3 +3457,15 @@ design and derivations in `docs/scientific_audit/decision-model-judge-research.m
   method agreed with the researcher; `AdaptiveSelector.select_method(allowed=...)` learns only from
   those outcomes (AV-1). `evaluation_skill` skips its LLM judges when the mode excludes them. Tests:
   `tests/test_assurance_modes.py`, `tests/test_operational_validation.py`.
+- **Phase 4: decider triage of code applications.** `services/decider_triage.py` runs after
+  `run_independent_coding_run` has committed the run, its reliability gate and item statuses (one
+  never-raising call), so it cannot change acceptance or the κ matrix. Question set
+  `code-application-triage` v1: one `choice` (supports / contradicts / says_nothing) over the evidence
+  unit, the coder's quote and the code's definition and criteria, asked in both option orders. An
+  untrusted scope records `shadow`; a trusted one calibrates with its fitted temperature and marks
+  `abstain` (order flip disagrees or top probability below τ* = 0.90) or `flag` (top outcome not
+  `supports`) for priority review. `GET /api/code-applications/{project}/pending` adds
+  `decider_triage` for routed, non-blind items only and lists them first; with no trusted scope the
+  response is unchanged. Human reconciliation labels the trajectories
+  (`label_after_reconciliation`). At most 200 applications per run, 8 concurrent calls, a 120 s budget.
+  Tests: `tests/test_decider_triage.py` (including the spine guard test).

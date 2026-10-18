@@ -141,6 +141,14 @@ export interface CodeApplicationType {
   reviewed_by?: string | null;
   reviewed_at?: string | null;
   created_at: string;
+  /** Present only when a trusted decision model routed this item for priority review. */
+  decider_triage?: {
+    action: "abstain" | "flag" | string;
+    top_outcome: "supports" | "contradicts" | "says_nothing" | string | null;
+    p_supports: number | null;
+    endpoint_id: string;
+    served_model: string;
+  };
 }
 
 export interface ReconciliationDecisionType {

@@ -8,6 +8,7 @@ scope without a passing evaluation stays in shadow mode (owner decision DEC-2).
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Any
@@ -25,6 +26,7 @@ from app.core.decision.trust import LabelledDecision, TrustPolicy, TrustReport, 
 from app.models.decision_trajectory import DecisionTrajectory, DecisionTrustEvaluation
 
 CODE_APPLICATION = "code_application"
+logger = logging.getLogger(__name__)
 
 
 async def record_trajectory(
@@ -117,6 +119,20 @@ async def attach_human_label(session: AsyncSession, decision: Any) -> int:
         label=label,
         source_id=decision.id,
     )
+
+
+async def label_after_reconciliation(decision: Any) -> int:
+    """Spine hook after a committed reconciliation decision; never raises."""
+    try:
+        from app.models.database import async_session
+
+        async with async_session() as session:
+            labelled = await attach_human_label(session, decision)
+            await session.commit()
+        return labelled
+    except Exception as exc:
+        logger.debug("Decision trajectory labelling skipped: %s", exc)
+        return 0
 
 
 async def label_subject(
@@ -214,3 +230,41 @@ async def scope_is_trusted(session: AsyncSession, key: str) -> bool:
     )
     latest = result.scalar_one_or_none()
     return bool(latest and latest.trusted)
+
+
+async def routed_triage(
+    session: AsyncSession, project_id: str, subject_ids: list[str]
+) -> dict[str, dict[str, Any]]:
+    """Latest routed verdict per code application, for the review queue.
+
+    Only items a trusted scope routed (``abstain`` or ``flag``) appear; shadow verdicts and blind
+    audit items are never shown to reviewers, so they cannot anchor the human label.
+    """
+    if not subject_ids:
+        return {}
+    result = await session.execute(
+        select(DecisionTrajectory)
+        .where(
+            DecisionTrajectory.project_id == project_id,
+            DecisionTrajectory.subject_kind == CODE_APPLICATION,
+            DecisionTrajectory.subject_id.in_(subject_ids),
+            DecisionTrajectory.routed.is_(True),
+            DecisionTrajectory.audit_blind.is_(False),
+            DecisionTrajectory.status == "ok",
+        )
+        .order_by(DecisionTrajectory.created_at.desc())
+    )
+    triage: dict[str, dict[str, Any]] = {}
+    for row in result.scalars().all():
+        if row.subject_id in triage:
+            continue
+        calibrated = json.loads(row.calibrated_distribution_json or "{}")
+        top = max(calibrated, key=lambda name: calibrated[name]) if calibrated else None
+        triage[row.subject_id] = {
+            "action": row.action,
+            "top_outcome": top,
+            "p_supports": calibrated.get("supports"),
+            "endpoint_id": row.endpoint_id,
+            "served_model": row.served_model,
+        }
+    return triage
