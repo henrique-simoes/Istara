@@ -109,6 +109,7 @@ async def _seed(factory, quotes, statuses=("accepted", "needs_reconciliation")):
 
 async def _trust(factory, temperature=1.0):
     key = scope_key(
+        project_id="p1",
         provider="kev",
         served_model="kev-4b",
         question_set_id=decider_triage.QUESTION_SET_ID,

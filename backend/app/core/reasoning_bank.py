@@ -32,6 +32,7 @@ PROCESS_ONLY_SOURCE_KINDS = {
     "candidate_atom",
     "codebook_revision",
     "coding_run",
+    "decision_review",
     "donor_model_performance",
     "evidence_unit_extraction",
     "graph_synthesis",

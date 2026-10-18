@@ -3469,3 +3469,15 @@ design and derivations in `docs/scientific_audit/decision-model-judge-research.m
   response is unchanged. Human reconciliation labels the trajectories
   (`label_after_reconciliation`). At most 200 applications per run, 8 concurrent calls, a 120 s budget.
   Tests: `tests/test_decider_triage.py` (including the spine guard test).
+- **Phase 5: learning loop and decision-model health.** Trust scopes are project-scoped (the scope
+  key includes the project), so one project's reviews never earn a decider routing power in another.
+  `services/decision_learning.py`: after a human label lands (reconciliation or task review), a
+  scope is evaluated when it first reaches 50 labels and again every 10 new ones; a trusted scope
+  whose new labels drift above its trusted Brier score (one-sided CUSUM, `core/decision/drift.py`)
+  returns to shadow mode with reason `calibration_drift`; each evaluation leaves a content-free
+  ReasoningBank lesson (`decision_review`, process memory only). `services/decision_health.py` and
+  `GET /api/metrics/{project}/decision-models` (project viewer) report decider scopes, LLM methods'
+  human-verified accuracy, and the evaluators' error structure (`core/decision/health.py`: pairwise
+  error correlation, Yule's Q, effective number of evaluators, Dawid–Skene for panels of three or
+  more). Self-evolution treats decider, decision model, calibration and trust gate as protected
+  terms. Tests: `tests/test_decision_drift_health.py`, `tests/test_decision_learning.py`.

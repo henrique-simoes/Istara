@@ -73,6 +73,7 @@ async def record_trajectory(
         task_family=task_family,
         language=language,
         scope_key=scope_key(
+            project_id=project_id,
             provider=outcome.endpoint_id,
             served_model=served,
             question_set_id=question_set_id,

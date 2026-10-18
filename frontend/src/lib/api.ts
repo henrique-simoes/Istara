@@ -3,6 +3,7 @@
 import type { DataIntegrityQuarantineRequest, EmbeddingMigrationRequest } from "@/lib/apiRequestTypes";
 import type { ReclawDocument, DocumentContent, DocumentTag, DocumentStats, InterfacesStatus, MetaProposal, MetaVariant, MetaHyperagentStatus, ChannelInstance, ChannelMessage, ChannelConversation, ResearchDeployment, DeploymentAnalytics, SurveyIntegration, SurveyLink, MCPServerConfig, MCPAccessPolicy, MCPAuditEntry, AutoresearchStatus, AutoresearchExperiment, AutoresearchConfig, ModelSkillLeaderboard, UXLaw, LawMatch, ComplianceProfile, RadarChartData, FeaturedMCPServer, ReclawUser, ProjectReport, Task, TaskStatus, TaskAtomicPath, TaskQualitySummary, TaskReviewEvent, PermissionRequestItem, StudyAnalysisResult } from "@/lib/types";
 import type { ReasoningMemoryItem, ReasoningBankSummary } from "@/lib/reasoningBankTypes";
+import type { DecisionModelHealth } from "@/lib/catalogTypes";
 
 import { API_BASE } from "@/lib/runtimeConfig";
 import { authHeaders as _getAuthHeaders, del, downloadFile, get, patch, post, request } from "@/lib/apiClient";
@@ -282,6 +283,8 @@ export const validation = {
         samples: number;
       }>;
     }>(`/api/metrics/${projectId}/model-intelligence?limit=${limit}`),
+  decisionModels: (projectId: string) =>
+    request<DecisionModelHealth>(`/api/metrics/${projectId}/decision-models`),
 };
 
 // --- Findings ---
@@ -1219,7 +1222,7 @@ export const users = {
   changeRole: (id: string, role: string) =>
     patch<ReclawUser>(`/api/auth/users/${id}/role`, { role }),
 };
-// Route coverage hints (platform/security): /auth/users /auth/users/{user_id} /auth/users/{user_id}/role /connections /connections/{conn_id} /connections/generate /connections/compute-donation/generate /connections/validate /connections/redeem /connections/rotate-network-token /metrics/{project_id} /metrics/{project_id}/validation /metrics/{project_id}/model-intelligence
+// Route coverage hints (platform/security): /auth/users /auth/users/{user_id} /auth/users/{user_id}/role /connections /connections/{conn_id} /connections/generate /connections/compute-donation/generate /connections/validate /connections/redeem /connections/rotate-network-token /metrics/{project_id} /metrics/{project_id}/validation /metrics/{project_id}/model-intelligence /metrics/{project_id}/decision-models
 
 // --- Admin Dashboard ---
 

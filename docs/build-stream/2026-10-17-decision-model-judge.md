@@ -8,11 +8,11 @@ item: decision-model-judge
 branch: feat/decision-model-judge
 cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4, CF-5, CF-6] }
 phase: "Phase 5 — learning loop + ensemble health"
-stage: S1-plan
+stage: S4-remediate
 status: in-progress
 blocked_on: null
-last: { agent: claude-code, at: 2026-10-18T05:28:37Z, ledger: L-16 }
-next_action: "Phase 5 S1: design scheduled scope evaluation (evaluate_scope over scopes with new labels), CUSUM drift back to shadow, ReasoningBank decision_review lessons (aggregate, content-free), self-evolution proposals via improvement governance with protected values refused, and ensemble-health metrics (per-evaluator calibration, error correlation, Yule Q, J_eff, Dawid-Skene) exposed by an API for Phase 7 UI."
+last: { agent: claude-code, at: 2026-10-18T05:36:43Z, ledger: L-17 }
+next_action: "Commit Phase 5, push, dispatch ci.yml, read backend-test (test_decision_learning, test_decision_drift_health, test_decision_trust, test_decider_triage, test_operational_validation, test_reasoning_bank, test_meta_hyperagent); if green, finish CF-7, mark Phase 5 done, start Phase 6 (autoresearch fixes AR-1..AR-8 + decision_policy runner)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -284,6 +284,16 @@ Context: The roadmap's Phase 4 acceptance included a UI walk of the review queue
 Decision: Phase 4 delivers the backend and API seam: triage, hooks, the `decider_triage` field and routed-first order, and the frontend type. The queue badge and its UI walk move to Phase 7, where all decision-model UI is designed together (interface-design skill) and walked on a QA stack.
 Why: An honest split: nothing visible changes until a decider scope is trusted, and the UI work belongs with the onboarding and settings UI it depends on. Rejected: shipping an unwalked UI change.
 
+DEC-13 | 2026-10-18 | S2-execute | claude-opus-5-5
+Context: Phase 5 learning made scope-level trust consequential, and scopes were keyed without the project.
+Decision: `scope_key` takes `project_id`; every caller and test updated.
+Why: The self-improvement governance contract rejects cross-project learned statistics (critique #5). The cost is that each project needs its own 50 labels before a decider routes anything, which is the conservative choice.
+
+DEC-14 | 2026-10-18 | S2-execute | claude-opus-5-5
+Context: The CF-7 `gate before` baseline was not taken before Phase 5 edits began.
+Decision: Stash all changes (`git stash -u`), record `gate before --task CF-7` on the clean tree (record 16), restore, then `gate after`.
+Why: That baseline is identical to one taken before editing, so the comparison stays honest.
+
 ## Ledger
 
 ### L-1 | 2026-10-18T00:10:18Z | S0-frame | claude-code | framer | —
@@ -390,6 +400,12 @@ Did: Pushed the Phase 4 commits (owner-approved) and dispatched CI run 390991050
 Result: Phase 4 done; F-25 and F-26 fixed.
 Verified: run 39099977103 → backend-format, backend-lint, backend-test success, "2769 passed, 7 skipped"; `test_decider_triage` 6 PASSED; run 39099105094 → `test_research_validity_contract` 34, `test_code_applications` 13, `test_research_spine_end_to_end` 2, `test_interrupted_coding_runs` 2, `test_operational_validation` 9, `test_security_benchmark` 32 PASSED; `feature-obligations` failed only from CI-1.
 Next: Phase 5 S1.
+
+### L-17 | 2026-10-18T05:36:43Z | S4-remediate | claude-opus-5-5 | executor | Phase 5
+Did: Implemented Phase 5 as above (drift, health, learning loop, project-scoped scopes, protected terms, metrics route, frontend client and types, docs: Tech.md, governance contract, SECURITY_BENCHMARK route list, research doc scope, Ensemble Health feature docs and site). Tests `test_decision_drift_health.py` (local + CI) and `test_decision_learning.py` (CI).
+Result: F-27…F-30 fixed; F-31 waits on CI.
+Verified: stdlib runner → drift/health "5 passed", trust "15 passed"; collapse checker → 0; no added backend line over 100 columns; `gate after --task CF-7` → comparable, 0 new issues, failures and warnings (after F-29); `feature_docs.py --seed-missing --generate-site --check` → passed (86).
+Next: commit, push, CI.
 
 ## Phase 0 — math core
 
@@ -733,4 +749,32 @@ covered the Phase 4 code on dispatch (CI-2).
 
 ## Phase 5 — learning loop + ensemble health
 
-Not started. Next: S1 design (see Status Block `next_action`).
+### Design and build (S1–S4; owner asked for autonomous delivery, 2026-10-18)
+
+- **Project-scoped trust (DEC-13).** The scope key now includes the project.
+- **Re-evaluation** (`services/decision_learning.py`): after a human label lands (reconciliation →
+  `learn_from_reconciliation`; task review → `reevaluate_subject_scopes_safely`), each touched scope is
+  evaluated when it first reaches 50 labels and again every 10 new labels. Hooks never raise.
+- **Drift** (`core/decision/drift.py`): one-sided CUSUM (slack 0.05, threshold 1.5) on new labels'
+  binary Brier contributions of calibrated probabilities against half the trusted held-out Brier
+  (the gate reports two-class Brier). An alarm stores an untrusted evaluation with reason
+  `calibration_drift`, so the scope returns to shadow.
+- **Lessons**: each evaluation records a ReasoningBank memory, source kind `decision_review`
+  (added to the process-only kinds), with scope key, trusted flag and headline metrics only.
+- **Protected terms**: self-evolution's governed-review check now also covers `decider`,
+  `decision model`, `calibration` and `trust gate`.
+- **Health** (`core/decision/health.py` pure + `services/decision_health.py` + `GET
+  /api/metrics/{project}/decision-models`, project viewer): scopes with trust status and reasons;
+  LLM methods' human agreement; on reviewed task outputs, pairwise error correlation, Yule's Q, mean
+  correlation, J_eff, and Dawid–Skene for panels of three or more (with the identifiability note).
+  Frontend: `metrics.decisionModels` and `DecisionModelHealth` types in `catalogTypes.ts`; the view
+  is Phase 7.
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|----|-----|-----|-------|---------|---------|--------|
+| F-27 | Major | Governance | `core/decision/sampling.py` | Trust scopes were not project-scoped, so one project's labels could earn a decider routing power in another (governance contract critique #5) | CF-7 | fixed (DEC-13) |
+| F-28 | Minor | Process | CF-7 | `gate before` was not recorded before editing | CF-7 | fixed: baseline 16 recorded on the stashed clean tree (DEC-14) |
+| F-29 | Minor | Integration | `frontend/src/lib/decisionModelTypes.ts` | A new `*types*.ts` file changed the evidence of 12 inherited type-drift issues, so they read as new | CF-7 | fixed: types moved into `catalogTypes.ts` |
+| F-30 | Minor | Tests | `tests/test_decision_drift_health.py` | Exact float equality in a Brier test | CF-7 | fixed (`math.isclose`) |
+| F-31 | Major | Tests | toolchain | `test_decision_learning.py` needs the full backend stack | CF-7 | open (closes on CI) |
+

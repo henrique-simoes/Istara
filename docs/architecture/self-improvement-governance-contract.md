@@ -51,7 +51,10 @@ Telemetry observes process events
   credited when its verdict matched the researcher's task review, and agreement among a method's own
   samples is never a reward (it favours copies of one model). Decider trajectories are labelled only
   by a researcher's own review; a decider scope gains routing power only through the calibration
-  trust gate, never by accumulating agreement.
+  trust gate, never by accumulating agreement. Trust scopes are project-scoped; drift (one-sided
+  CUSUM on new labels) only ever removes routing power; `decision_review` ReasoningBank lessons are
+  content-free process memory; proposals that would weaken a decider, the trust gate or calibration
+  need governed review.
 - The RAG tuning objective is relevance on span-graded judgments over sandbox indices, never a
   score the tuned parameters can raise by themselves; candidates are never written to process-wide
   settings, and the loop fails closed without a benchmark.

@@ -53,7 +53,10 @@ $$
 p_k(x;T_s)=\frac{\exp(\log\tilde p_k(x)/T_s)}{\sum_j \exp(\log\tilde p_j(x)/T_s)}=\frac{\tilde p_k(x)^{1/T_s}}{\sum_j \tilde p_j(x)^{1/T_s}}
 $$
 
-$T_s>0$ is fitted per **trust scope** $s=(\text{provider},\ \text{versioned model},\ \text{question-set version},\ \text{task family},\ \text{language})$.
+$T_s>0$ is fitted per **trust scope** $s=(\text{project},\ \text{provider},\ \text{versioned model},\ \text{question-set version},\ \text{task family},\ \text{language},\ \text{label mapping})$.
+The project is part of the scope (DEC-13, 2026-10-18): one project's reviews never earn a decider
+routing power in another, as the self-improvement governance contract requires for every learned
+model statistic.
 The transform is monotone, so it preserves the argmax and therefore accuracy. Only the
 probabilities change, as the thesis notes for Laya.
 

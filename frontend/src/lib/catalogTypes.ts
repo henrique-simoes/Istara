@@ -251,3 +251,56 @@ export interface StartCodingRunRequest {
   max_coders?: number;
   limit?: number;
 }
+
+// Decision models (typed deciders such as JEV) and LLM judges on one error model.
+// Mirrors GET /api/metrics/{project_id}/decision-models (backend/app/services/decision_health.py).
+export interface DecisionModelScope {
+  scope_key: string;
+  endpoint_id: string;
+  served_model: string;
+  question_set: string;
+  task_family: string;
+  verdicts: number;
+  labelled: number;
+  routed: number;
+  trusted: boolean;
+  reasons: string[];
+  metrics: Partial<
+    Record<"effective_n" | "held_out_ece" | "held_out_brier" | "kappa" | "order_flip_rate", number | null>
+  >;
+}
+
+export interface LlmJudgeMethodAccuracy {
+  method: string;
+  human_agree: number;
+  human_disagree: number;
+  human_accuracy: number | null;
+}
+
+export interface EvaluatorPair {
+  a: string;
+  b: string;
+  n: number;
+  error_correlation: number | null;
+  yules_q: number | null;
+}
+
+export interface DecisionModelHealth {
+  project_id: string;
+  scopes: DecisionModelScope[];
+  llm_methods: LlmJudgeMethodAccuracy[];
+  error_structure: {
+    evaluators: string[];
+    labelled_items: number;
+    accuracy_vs_human: Record<string, number>;
+    pairs: EvaluatorPair[];
+    mean_error_correlation: number | null;
+    effective_evaluators: number | null;
+    dawid_skene: {
+      panel_size: number;
+      converged: boolean;
+      confusion: Record<string, number[][]>;
+      note: string;
+    } | null;
+  };
+}

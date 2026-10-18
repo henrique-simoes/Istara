@@ -101,6 +101,7 @@ def test_inclusion_weights_follow_horvitz_thompson():
 
 def test_scope_key_changes_with_every_scope_field():
     base = dict(
+        project_id="p1",
         provider="jev",
         served_model="jev-1.13.0",
         question_set_id="code-application-triage",
@@ -112,6 +113,7 @@ def test_scope_key_changes_with_every_scope_field():
     key = scope_key(**base)
     assert key == scope_key(**{**base, "served_model": " JEV-1.13.0 "})
     for field, value in (
+        ("project_id", "p2"),
         ("served_model", "jev-1.14.0"),
         ("question_set_version", "2"),
         ("language", "en"),

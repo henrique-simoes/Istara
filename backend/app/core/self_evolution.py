@@ -95,8 +95,11 @@ _PROTECTED_RESEARCH_TERMS = (
     "accepted evidence",
     "auth constraint",
     "backend authorization",
+    "calibration",
     "codebook",
     "cohen",
+    "decider",
+    "decision model",
     "done task",
     "fleiss",
     "human review",
@@ -107,6 +110,7 @@ _PROTECTED_RESEARCH_TERMS = (
     "reliability threshold",
     "report gate",
     "research spine",
+    "trust gate",
 )
 _RISKY_METHOD_MUTATION_TERMS = (
     "auto-approve",

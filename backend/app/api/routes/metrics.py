@@ -262,6 +262,22 @@ async def get_project_metrics(
     }
 
 
+@router.get("/metrics/{project_id}/decision-models")
+async def get_decision_model_health(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Decision models and LLM judges on one error model (trust, accuracy, coinciding errors).
+
+    Handles and numbers only. Project-scoped: viewers of the project only.
+    """
+    await require_project_access(db, request, project_id, min_role="viewer")
+    from app.services.decision_health import decision_model_health
+
+    return await decision_model_health(db, project_id)
+
+
 @router.get("/metrics/{project_id}/validation")
 async def get_validation_metrics(
     project_id: str,

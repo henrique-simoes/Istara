@@ -306,7 +306,7 @@ async def _record_assurance_review_signals(event: Any) -> None:
     if label is None or not event.task_id or not event.project_id:
         return
     async with async_session() as session:
-        await label_subject(
+        labelled = await label_subject(
             session,
             project_id=event.project_id,
             subject_kind="task_output",
@@ -315,6 +315,10 @@ async def _record_assurance_review_signals(event: Any) -> None:
             source_id=str(event.id),
         )
         await session.commit()
+    if labelled:
+        from app.services.decision_learning import reevaluate_subject_scopes_safely
+
+        await reevaluate_subject_scopes_safely(event.project_id, "task_output", event.task_id)
     method = getattr(event, "validation_method", None)
     consensus = getattr(event, "consensus_score", None)
     if method in LLM_METHODS and consensus is not None:

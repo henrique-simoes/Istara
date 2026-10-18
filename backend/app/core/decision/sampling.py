@@ -42,6 +42,7 @@ def inclusion_weight(routed: bool, audit_sampled: bool, rate: float) -> float | 
 
 def scope_key(
     *,
+    project_id: str,
     provider: str,
     served_model: str,
     question_set_id: str,
@@ -52,10 +53,12 @@ def scope_key(
 ) -> str:
     """Stable id of a trust scope.
 
-    Any change of model version, questions, task, language or label mapping is a new scope that
-    must earn trust again.
+    Any change of project, model version, questions, task, language or label mapping is a new
+    scope that must earn trust again. Scopes are project-scoped: one project's reviews never earn a
+    decider routing power in another (self-improvement governance contract).
     """
     parts = {
+        "project_id": project_id,
         "provider": provider,
         "served_model": served_model.strip().casefold(),
         "question_set_id": question_set_id,
