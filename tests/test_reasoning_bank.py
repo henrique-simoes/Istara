@@ -79,6 +79,25 @@ async def test_reasoning_bank_redacts_and_retrieves_project_scoped_memory():
 
 
 @pytest.mark.asyncio
+async def test_decision_review_lessons_are_process_memory_only():
+    """Decision-model trust evaluations (CF-SPEC-1 Phase 5) are lessons, never evidence."""
+    await init_db()
+
+    item = await reasoning_bank.record_memory(
+        project_id="reasoning-project-decision-review",
+        source_kind="decision_review",
+        source_id="scope-abc",
+        outcome="observed",
+        title="Decision-model scope scope-ab not trusted: ece_above_ceiling",
+        content='{"scope_key": "scope-abc", "trusted": false, "held_out_ece": 0.09}',
+        tags=["decision_model", "trust_gate"],
+        domain="decision_models",
+    )
+
+    assert "process-memory-only" in item.get_tags()
+    assert item.source_kind == "decision_review"
+
+
 async def test_reasoning_bank_records_content_free_validity_telemetry(monkeypatch):
     await init_db()
     record = AsyncMock()
