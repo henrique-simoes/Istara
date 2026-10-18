@@ -6,13 +6,13 @@
 ```yaml
 item: decision-model-judge
 branch: feat/decision-model-judge
-cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4] }
+cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4, CF-5] }
 phase: "Phase 3 — assurance modes"
-stage: S1-plan
-status: in-progress
-blocked_on: null
-last: { agent: claude-code, at: 2026-10-18T03:21:17Z, ledger: L-12 }
-next_action: "Phase 3 S1: design the project assurance policy (auto, llm_judges, decision_models, both, none) and how validation.py, validation_executor.py and AdaptiveSelector honour it (AV-1: reward from the human task outcome, Thompson sampling within the mode); read agent_execution.py validation block, adaptive_validation.py and MethodMetric first."
+stage: S5-ship
+status: blocked
+blocked_on: "owner — push of feat/decision-model-judge for Phase 3 (43434f69..dadced65 plus the lifecycle commit); CI must run test_operational_validation.py, alembic 036 and the existing validation suites, which cannot run locally"
+last: { agent: claude-code, at: 2026-10-18T03:35:08Z, ledger: L-13 }
+next_action: "After the owner approves: push, dispatch ci.yml, read backend-format/backend-lint/backend-test (watch test_adaptive_validation, test_w7_validation, test_evaluation_skill, test_task_review_history, test_tasks); if green, finish CF-5, mark Phase 3 done, start Phase 4 (spine seam)."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -274,6 +274,11 @@ Context: Testing the gate on planted data showed a perfectly calibrated decider 
 Decision: Keep κ ≥ 0.60 as a separate requirement from ECE (DEC-1 unchanged). The trust tests use spread 4 for an informative decider and keep spread 2 as an explicit "calibrated but not good enough" case.
 Why: The thesis asks for calibrated *and* useful triage; a calibrated coin flip should not route research items. This is documented in research doc §4 for the article.
 
+DEC-11 | 2026-10-18 | S2-execute | claude-opus-5-5
+Context: Phase 3 needed (a) a learning signal for method selection that is not self-agreement, (b) exact labels for operational decider verdicts, and (c) unchanged behaviour for projects that never choose a mode.
+Decision: (a) A method is credited when its verdict (consensus ≥ 0.5) matched the researcher's task review, with Thompson sampling within the mode's methods. (b) Operational deciders answer one `acceptable` noul, labelled by approve vs send-back. (c) No policy row means `auto`; a failed LLM run in `auto` leaves the task fields untouched as before; the validation block moved verbatim into `services/operational_validation.py`.
+Why: (a) agreement among copies of one model is what thesis axis 10 measured as uninformative; (b) one question with an exact label beats several with noisy ones; (c) zero-surprise rollout. Rejected: diagnostic multi-question sets for v1 (their labels would be noisy until the review UI captures reasons).
+
 ## Ledger
 
 ### L-1 | 2026-10-18T00:10:18Z | S0-frame | claude-code | framer | —
@@ -356,6 +361,12 @@ Did: Pushed the Phase 2 commits (owner-approved) and dispatched CI run 390924959
 Result: Phase 2 done; F-15 fixed.
 Verified: run 39092495962 at `ca44d999` → backend-format success, backend-lint success, backend-test "2748 passed, 7 skipped, 1 deselected". PASSED counts: `test_decision_trajectory_store` 4, `test_decision_trust` 15, `test_alembic_fresh_database` 1, `test_decision_math` 25, `test_decider_*` 29. `feature-obligations` failed only with `CalledProcessError: git rev-parse ''` (CI-1). `finish-task CF-4` → finished.
 Next: Phase 3 S1.
+
+### L-13 | 2026-10-18T03:35:08Z | S4-remediate | claude-opus-5-5 | executor | Phase 3
+Did: Orientation (validation callers, selector, task review, evaluation skill; CF impact: `agent_execution` and `task_review` 30 dependents, `adaptive_validation` 20). S1 design; `gate before --task CF-5` (baseline 10). Implemented `core/assurance.py`, `models/assurance_policy.py`, migration 036 + `init_db` ALTERs, `MethodMetric.human_*`, the selector rewrite (allowed set, Thompson on human outcomes, `record_human_outcome`, stats), `services/operational_validation.py` (the validation block moved out of `agent_execution`), `services/decision_trajectories.label_subject`, the task-review hook, and the evaluation skill honouring the mode. Tests `test_assurance_modes.py` (local + CI) and `test_operational_validation.py` (CI). Docs: research-validity and governance contracts, ensemble-method matrix, research doc §8 correction, Tech.md, persona, Ensemble Health feature docs + regenerated site. Commits `43434f69`, persona, `194011de`, `dadced65` (local).
+Result: Phase 3 code complete; F-16…F-19 fixed; F-20 accepted; F-21 waits on CI.
+Verified: stdlib runner → assurance "6 passed", trust "15 passed", math "25 passed", contract "8 passed", registry "6 passed"; collapse checker over all branch backend files → 0 candidates (checked against a measured 102-column case); `feature_docs.py --seed-missing --generate-site --check` → "passed for 86 feature(s)"; `check_change_obligations` → passed (failed first on the persona rule, F-18); `check_feature_obligations` → passed; security benchmark → pass 100.0; repo audit → passed; `gate after --task CF-5` → comparable, 0 new failures, 1 warning (F-20).
+Next: owner approves push → CI → close F-21 → Phase 3 done.
 
 ## Phase 0 — math core
 
@@ -605,3 +616,16 @@ and `none` make **zero** `validation.*` LLM calls, `both` returns both halves, `
 behaves as before, and task-review labelling works. Existing `test_adaptive_validation.py`,
 `pi_production/test_w7_validation.py`, `test_evaluation_skill.py`, `test_task_review_history.py` and
 `test_tasks.py` must stay green.
+
+### Execute, review and remediate (S2–S4)
+
+| ID | Sev | Dim | Where | Finding | CF task | Status |
+|----|-----|-----|-------|---------|---------|--------|
+| F-16 | Major | Docs | research doc §8 | Claimed `validation_executor.py` governs reconciliation assistance; it is not called by product code | CF-5 | fixed (doc corrected) |
+| F-17 | Major | Integration | `models/database.py` | Existing databases get new columns only through the `init_db` ALTER list; without it `method_metrics.human_*` would be missing on upgrade | CF-5 | fixed (ALTERs added) |
+| F-18 | Major | Governance | `check_change_obligations` | Agent-loop change required a persona update | CF-5 | fixed (`istara-main/SKILLS.md`) |
+| F-19 | Minor | Quality | `core/task_review.py` | `record_review_side_effects` complexity rose from 23 to 24 | CF-5 | fixed (`dadced65`, back to 23) |
+| F-20 | Minor | Quality | `core/agent_execution.py` `_execute_task` | Complexity 69 over the limit of 20 (inherited; 72 before this phase) | CF-5 | accepted-risk: inherited debt, improved |
+| F-21 | Major | Tests | toolchain | `test_operational_validation.py`, alembic 036 and the existing validation suites need the full backend stack | CF-5 | open (closes on CI) |
+
+Review coverage: self-only. Not in Phase 3: the API/UI to set a mode (Phase 7), and trust-based routing (Phase 4).
