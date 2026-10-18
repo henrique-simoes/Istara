@@ -117,7 +117,7 @@ def build_request(
 
 
 def with_reversed_choices(
-    questions: Mapping[str, Choice | Score | Noul]
+    questions: Mapping[str, Choice | Score | Noul],
 ) -> dict[str, Choice | Score | Noul]:
     """Add, for every choice, the same question with its options in reverse order.
 
