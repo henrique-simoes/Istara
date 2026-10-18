@@ -6,7 +6,6 @@ both option orders for choices, never raise, and let a security screen only add 
 """
 
 import uuid
-from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import select
@@ -174,27 +173,6 @@ async def test_injection_screen_only_adds_caution_from_a_trusted_scope(
         rule_flagged, project_id="p", text="x", subject_id="f2"
     )
     assert kept.threat_level == "high" and kept.threats == ["role_override"]
-
-
-async def test_reasoning_bank_rerank_only_reorders_from_trusted_scopes(monkeypatch):
-    from app.core import reasoning_bank
-
-    memories = [{"id": "a", "title": "a"}, {"id": "b", "title": "b"}]
-    relevance = {"a": 0.2, "b": 0.9}
-
-    def fake(trusted):
-        async def advise(project_id, **kwargs):
-            memory_id = kwargs["state"]["lesson"].split("\n")[0]
-            return SimpleNamespace(p_true=relevance[memory_id], trusted=trusted)
-
-        return advise
-
-    monkeypatch.setattr(decider_advisory, "advise", fake(False))
-    untrusted = await reasoning_bank._rerank_with_decider("p", "q", [dict(m) for m in memories])
-    assert [m["id"] for m in untrusted] == ["a", "b"] and untrusted[1]["decider_relevance"] == 0.9
-    monkeypatch.setattr(decider_advisory, "advise", fake(True))
-    trusted = await reasoning_bank._rerank_with_decider("p", "q", [dict(m) for m in memories])
-    assert [m["id"] for m in trusted] == ["b", "a"]
 
 
 def test_saturation_reply_parsing_reads_not_saturated_correctly():
