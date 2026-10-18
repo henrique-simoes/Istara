@@ -73,10 +73,16 @@ export async function run(ctx) {
     check("Interview uploaded", false, e.message);
     return finish("upload failed");
   }
+  // The project may already hold many units; page through all of them for this document's.
   let units = [];
   for (let attempt = 0; attempt < 10 && units.length === 0; attempt += 1) {
-    const all = await api.get(`/api/research-validity/${projectId}/evidence-units?limit=500`).catch(() => []);
-    units = (all || []).filter((unit) => JSON.stringify(unit).includes(MARKER) || unit.source_id === docId);
+    for (let offset = 0; ; offset += 500) {
+      const page = await api
+        .get(`/api/research-validity/${projectId}/evidence-units?limit=500&offset=${offset}`)
+        .catch(() => []);
+      units.push(...(page || []).filter((unit) => unit.source_document_id === docId));
+      if (!page || page.length < 500) break;
+    }
     if (!units.length) await sleep(3000);
   }
   check("Evidence units created from the interview", units.length > 0, `${units.length} unit(s)`);
