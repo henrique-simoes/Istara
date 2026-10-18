@@ -1101,6 +1101,28 @@ features:
     introduced_in: "spine-findings-20260925"
     last_verified_sha: "pending"
 
+  - id: research.decision-models
+    status: active
+    owner: research-platform
+    paths:
+      - "backend/app/core/decision/*.py"
+    exceptions: []
+    requires_human_review: true
+    docs_features_update: false
+    obligations:
+      deterministic:
+        - governance
+        - research_spine_contract
+      live: []
+      docs: []
+    commands:
+      deterministic:
+        - check_integrity
+        - pytest_research_validity
+    acceptance: "Typed decision-model mathematics (confidence, Bayes risk with a reject option, calibration, reliability posteriors, ensemble error structure) reproduces closed-form fixtures in tests/test_decision_math.py, has no I/O, and is never a path by which a decider accepts or promotes research evidence."
+    introduced_in: "decision-model-judge-20261017"
+    last_verified_sha: "pending"
+
   - id: release.installers
     status: active
     owner: platform
