@@ -80,7 +80,7 @@ async def _labelled(factory, n, seed, *, subject_kind="task_output", flip_labels
                 positive_outcomes=frozenset({"true"}),
                 task_family="operational_validation",
                 language="und",
-                routed=True,
+                routed=False,  # shadow mode: blind labels (DEC-21)
             )
             key = row.scope_key
             await label_subject(

@@ -179,8 +179,8 @@ async def _triage_one(client: Any, application: Any, project_id: str, run_id: st
             row.tau = _TAU if trusted else None
             if action in ("abstain", "flag"):
                 row.routed = True
-                row.audit_sampled = False
-                row.audit_blind = False
+                # A routed item in the audit sample keeps its verdict hidden (blind audit, DEC-21).
+                row.audit_blind = bool(row.audit_sampled)
         if not code["found"]:
             row.reason = (row.reason or "code_not_found")[:60]
         action = row.action if outcome.ok else "not_runnable"

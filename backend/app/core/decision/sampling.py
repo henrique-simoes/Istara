@@ -28,12 +28,15 @@ def audit_draw(
 
 
 def inclusion_weight(routed: bool, audit_sampled: bool, rate: float) -> float | None:
-    """Horvitz-Thompson weight for a labelled item; None when the item could not be labelled.
+    """Horvitz-Thompson weight for a human label; None when it must not count (DEC-21).
 
-    Routed items always reach a human (probability 1). Non-routed items reach one only through
-    the audit (probability ``rate``).
+    Every code application gets a human decision, so a non-routed item is always reviewed without
+    the decider's verdict in view (inclusion probability 1). A routed item shows its verdict and may
+    anchor the reviewer (Berzak et al. 2016; Beck et al. 2025), so only the blind audit sample of
+    routed items, whose verdict is hidden, counts, at weight ``1 / rate``. Stratified
+    Horvitz-Thompson: unbiased in both strata.
     """
-    if routed:
+    if not routed:
         return 1.0
     if audit_sampled:
         return 1.0 / rate

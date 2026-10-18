@@ -128,7 +128,8 @@ async def test_scope_without_evaluation_is_shadow_then_trusted_when_calibrated()
             for i in range(400):
                 z = rng.gauss(0.0, 4.0)
                 p = 1.0 / (1.0 + math.exp(-z))
-                row = await _record(session, f"ca-{i}", p)
+                # Shadow mode: nothing is routed, so every label is blind and counts (DEC-21).
+                row = await _record(session, f"ca-{i}", p, routed=False)
                 key = row.scope_key
                 decision_type = "accepted" if rng.random() < p else "rejected"
                 await attach_human_label(session, _decision(f"ca-{i}", decision_type))
@@ -142,18 +143,23 @@ async def test_scope_without_evaluation_is_shadow_then_trusted_when_calibrated()
         await engine.dispose()
 
 
-async def test_unlabelled_route_items_without_known_inclusion_are_excluded():
+async def test_blind_labels_count_and_shown_verdicts_do_not():
+    """DEC-21: every application gets a human decision, so non-routed labels count (weight 1);
+    a routed item shows its verdict, so only its blind audit sample counts."""
     engine, maker = await _maker()
     try:
         async with maker() as session:
             key = None
             for i in range(30):
-                row = await _record(session, f"ca-{i}", 0.9, routed=False)
+                row = await _record(session, f"blind-{i}", 0.9, routed=False)
                 key = row.scope_key
-                await attach_human_label(session, _decision(f"ca-{i}", "accepted"))
+                await attach_human_label(session, _decision(f"blind-{i}", "accepted"))
+            for i in range(30):
+                await _record(session, f"shown-{i}", 0.9, routed=True)
+                await attach_human_label(session, _decision(f"shown-{i}", "accepted"))
             report = await evaluate_scope(session, key)
-            # Only audit-sampled ones (about 10%) count; the rest reached a human by other means.
             assert report.reasons == ["insufficient_labelled_data"]
-            assert report.metrics["n"] < 30
+            # 30 blind labels plus only the audit-sampled routed ones (about 10% of 30).
+            assert 30 <= report.metrics["n"] < 40
     finally:
         await engine.dispose()

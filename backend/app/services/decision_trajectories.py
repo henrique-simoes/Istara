@@ -98,9 +98,9 @@ async def record_trajectory(
         action=action,
         routed=routed,
         order_flip_agree=order_flip_agree,
-        audit_sampled=sampled and not routed,
+        audit_sampled=sampled,
         audit_rate=rate,
-        audit_blind=sampled and not routed,
+        audit_blind=sampled and routed,
         latency_ms=int(round(outcome.latency_s * 1000)),
         input_tokens=int(outcome.usage.get("input_tokens", 0)),
     )

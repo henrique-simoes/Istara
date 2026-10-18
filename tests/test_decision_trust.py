@@ -94,9 +94,12 @@ def test_audit_draw_is_deterministic_and_hits_the_rate():
 
 
 def test_inclusion_weights_follow_horvitz_thompson():
-    assert inclusion_weight(True, False, 0.1) == 1.0
-    assert math.isclose(inclusion_weight(False, True, 0.1), 10.0)
-    assert inclusion_weight(False, False, 0.1) is None
+    # Non-routed: always reviewed blind (weight 1), sampled or not.
+    assert inclusion_weight(False, False, 0.1) == 1.0
+    assert inclusion_weight(False, True, 0.1) == 1.0
+    # Routed: only the blind audit sample counts; a shown verdict never does.
+    assert math.isclose(inclusion_weight(True, True, 0.1), 10.0)
+    assert inclusion_weight(True, False, 0.1) is None
 
 
 def test_scope_key_changes_with_every_scope_field():
