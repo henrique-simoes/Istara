@@ -864,6 +864,12 @@ async function main() {
       "--use-fake-ui-for-media-stream",
       "--use-fake-device-for-media-stream",
       "--mute-audio",
+      // A test stack served over HTTPS with a self-signed certificate (the VPS testing stack)
+      // needs this so Secure session cookies, and therefore reload persistence, can be tested.
+      // Opt-in only: ISTARA_SIM_IGNORE_HTTPS_ERRORS=1.
+      ...(/^(1|true|yes)$/i.test(String(process.env.ISTARA_SIM_IGNORE_HTTPS_ERRORS || ""))
+        ? ["--ignore-certificate-errors"]
+        : []),
     ],
   });
   const context = await browser.newContext({
