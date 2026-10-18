@@ -55,7 +55,7 @@ class ImprovementPolicyMixin:
         surfaces = set(normalize_surfaces(affected_surfaces))
         if surfaces & {"backend_code", "security", "connection_strings"}:
             return RISK["critical"]
-        if surfaces & {"integrations", "mcp", "compute"}:
+        if surfaces & {"integrations", "mcp", "compute", "decision_models"}:
             return RISK["high"]
         if surfaces & {"prompts", "configs", "skills", "agents", "ui", "orchestration"}:
             return RISK["medium"]

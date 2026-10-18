@@ -278,6 +278,20 @@ async def test_autoresearch_kept_experiment_registers_governance_proposal():
     assert skipped == []
 
 
+def test_decision_model_surfaces_require_admin_approval():
+    # A changed decider question or threshold changes what reaches human review (CF-SPEC-1).
+    policy = improvement_governance.classify_policy(
+        affected_surfaces=["decider", "prompts"], source_system="autoresearch"
+    )
+    assert policy["affected_surfaces"] == ["decision_models", "prompts"]
+    assert policy["approval_policy"] == "admin_required"
+    assert policy["risk_level"] == "high" and policy["behavioral_change"] is True
+    assert improvement_governance.infer_autoresearch_surfaces("decision_policy") == [
+        "decision_models",
+        "prompts",
+    ]
+
+
 @pytest.mark.asyncio
 async def test_hyperagent_proposal_registers_governance_contract():
     await init_db()

@@ -59,7 +59,9 @@ Telemetry observes process events
   unmutated incumbent clears the minimum and an independent confirmation block agrees; an
   unmeasurable sample is `not_runnable`, never a made-up score (2026-10-18). The `decision_policy`
   loop optimises decision-model question wording by a proper scoring rule (1 − Brier) on human
-  labels, and its results are governed proposals.
+  labels, and its results are governed proposals on the `decision_models` surface, which is
+  admin-required and high risk because a changed question or threshold changes what reaches human
+  review.
 - The RAG tuning objective is relevance on span-graded judgments over sandbox indices, never a
   score the tuned parameters can raise by themselves; candidates are never written to process-wide
   settings, and the loop fails closed without a benchmark.

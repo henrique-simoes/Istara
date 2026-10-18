@@ -181,13 +181,15 @@
 
 ## Autoresearch Optimization (Karpathy Pattern)
 - Explain what autoresearch is: a greedy hill-climbing optimization loop (hypothesize → mutate → evaluate → keep-or-discard → repeat), inspired by Karpathy's MIT-licensed autoresearch project
-- 6 optimization loops available:
+- 7 optimization loops available:
   1. **Skill Prompt Optimization** (Loop 1): Iterates on skill prompts using 6 mutation operators to improve quality scores
   2. **UI Simulation Optimization** (Loop 2): Pairs with Echo to improve accessibility and usability via code changes
   3. **Question Bank Optimization** (Loop 3): Improves interview/survey questions using simulated participants
   4. **RAG Parameter Tuning** (Loop 4): Optimizes chunk size, overlap, and hybrid search weights per project
   5. **Agent Persona Optimization** (Loop 5): Experiments with SKILLS.md and PROTOCOLS.md modifications
   6. **Model/Temperature Optimization** (Loop 6): Grid-searches model+temperature combinations per skill
+  7. **Decision Policy Optimization** (Loop 7): Tries alternative wordings of a decision model's code-application triage question, scored by 1 − Brier against the project's own human review labels (needs at least 20); proposals are admin-reviewed and never change the live question by themselves
+- Keep rule: the unchanged incumbent is re-measured every iteration, and a candidate is kept only when the 95% Welch interval of its gain clears the minimum improvement and an independent confirmation block agrees; a failed measurement is reported as not runnable, never as a made-up score. The leaderboard ranks by the lower 95% bound of the mean, so one lucky run does not win
 - Isolation: all autoresearch experiments run inside an isolation context that prevents pollution of learnings, skill stats, and evolution metrics
 - Rate limited: max experiments per day, per skill, with mutual exclusion against meta-hyperagent variants
 - OFF by default — requires user activation

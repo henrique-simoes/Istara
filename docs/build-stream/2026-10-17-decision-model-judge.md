@@ -828,4 +828,5 @@ covered the Phase 4 code on dispatch (CI-2).
 | F-32 | Minor | Integration | `autoresearch_runners/__init__.py` | PEP 604 annotations in the runner base broke import on Python 3.9 (the local stdlib runner) | CF-8 | fixed (`from __future__ import annotations`) |
 | F-33 | Minor | Tests | `tests/test_autoresearch_engine.py` | Keep-rule tests asserted the old single-sample guard (δ ≥ 0.01 with one repeat is kept) | CF-8 | fixed: rewritten for the Welch rule |
 | F-34 | Minor | Code | `core/autoresearch_statistics.py`, `tests/test_autoresearch_hill_climbing.py` | Two lines over 100 columns | CF-8 | fixed |
+| F-36 | Major | Governance | `core/improvement_governance_contracts.py` | `decision_policy` proposals named a `decision_models` surface that governance did not know, so they classified as medium-risk approval instead of admin review | CF-8 | fixed: `decision_models` is an admin, behavioural, high-risk surface (`decider` aliases it); test in `test_improvement_governance.py` |
 | F-35 | Major | Tests | toolchain | `test_autoresearch_hill_climbing.py` and `test_autoresearch_engine.py` need the full backend stack | CF-8 | open (closes on CI) |
