@@ -7,12 +7,12 @@
 item: decision-model-judge
 branch: feat/decision-model-judge
 cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8, CF-9, CF-10] }
-phase: "Phase 8 — protocols, advisory integrations, research arm"
-stage: S4-remediate
-status: in-progress
+phase: "—"
+stage: S5-ship
+status: done
 blocked_on: null
-last: { agent: claude-code, at: 2026-10-18T10:30:00Z, ledger: L-22 }
-next_action: "Commit Phase 8, push, dispatch ci.yml, read backend-test (test_decider_conformance, test_decider_advisory, test_decider_openai_decisions, test_trajectory_audit, test_decider_coding_eval, test_w5_interview_services, test_reasoning_bank, test_upload_security*), fix failures, then finish CF-10 and write the whole-plan summary."
+last: { agent: claude-code, at: 2026-10-18T11:20:00Z, ledger: L-23 }
+next_action: "Plan done. Owner: review the branch, run the QA-lane UI walk (F-40) and a live calibration run when ready, then ask for a PR into testing."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -164,7 +164,7 @@ three phases make no product-path change.
 | 5 | Learning loop + ensemble health | ReasoningBank `decision_review` lessons (aggregate, content-free, after human label only); scheduled recalibration with cross-fitting; CUSUM drift → shadow; self-evolution proposals for question sets and τ overrides via improvement governance (protected values excluded); ensemble health shows per-evaluator calibration, error correlation, Yule's Q, J_eff, Dawid–Skene reliabilities | **Given** a history of labelled trajectories, **when** the loop runs, **then** lessons cite only handles, a recalibration changes T only if held-out ECE improves, drift returns a scope to shadow with a recorded reason, governance refuses proposals that touch κ ≥ 0.60 / the ECE ceiling / n_min / the never-promote rule, and Ensemble Health renders the new metrics in all roles, light/dark, 375px, keyboard | `pytest tests/test_decision_learning_loop.py tests/test_spine_learning_loops.py tests/test_meta_hyperagent.py -q`; ensemble-health scenario; UI walk | done |
 | 6 | Autoresearch | fix AR-1…AR-8 (each with a failing regression test first); new `decision_policy` runner (objective: held-out weighted Brier, coverage at fixed risk); decider `score` as an optional measurement instrument per assurance mode; judges pinned away from the endpoint under test | **Given** a deterministic fake runner with known noise, **when** the loop runs, **then** a candidate whose true effect is zero is kept at most at the nominal error rate, the incumbent is re-measured paired, failed measurements are `not_runnable` (never 0.5), `mutation_diff` persists, and a `decision_policy` experiment stays a governed proposal | `pytest tests/test_autoresearch_engine.py tests/test_autoresearch_statistics.py tests/test_decision_policy_runner.py tests/pi_production/test_w6_engine_selection.py -q` | done |
 | 7 | Onboarding + configuration UX | general Istara onboarding and first-activation flow for decision models (DEC-1): what a decision model is (closed answers in, label + probabilities out; triage, never authority), when it helps, cloud-egress consequences, where to configure the JEV API key and endpoint or a local `/v1/systemone` server, per-project opt-in, assurance-mode selection, trust status (shadow / calibrating / trusted) and how calibration works | **Given** a new install, **when** the user goes through onboarding, **then** decision models and assurance modes are introduced with skippable guidance and no decider is enabled; **given** a project with none configured, **when** the user first opens decision-model settings, **then** a first-activation flow explains the concept, the egress choice and the two configuration paths, stores the key only in Keychain/env, never enables egress without explicit project opt-in, and shows trust status; walked by role (admin/researcher/viewer), light/dark, 375px, keyboard; empty/loading/error states | new + updated simulation scenarios (onboarding, settings, `09`/`90` sweeps); `python3 scripts/feature_docs.py --seed-missing --generate-site --check`; `python3 scripts/check_a11y_contrast.py`; UI walk with screenshots | done |
-| 8 | More adapters, trajectory audit, further integrations | OpenAI Decisions / OpenRouter / Cloudflare adapters; per-transition (s,a,o) tool-call audit (Wang & Gao; benchmark axes 1, 4, 9); integrations I4–I14 (all four groups, DEC-4); decider-coder research arm on the canonical corpus with human gold codes, never counted in the gate (DEC-6, research doc §13); live runs only with owner permission | **Given** each adapter's stub, **then** it passes the shared adapter conformance suite; trajectory audit flags schema-invalid calls and observations that do not support the next state | `pytest tests/test_decider_conformance.py tests/test_trajectory_audit.py -q`; live calibration run **only with owner permission** (AGENTS.md §9) | in-progress |
+| 8 | More adapters, trajectory audit, further integrations | OpenAI Decisions / OpenRouter / Cloudflare adapters; per-transition (s,a,o) tool-call audit (Wang & Gao; benchmark axes 1, 4, 9); integrations I4–I14 (all four groups, DEC-4); decider-coder research arm on the canonical corpus with human gold codes, never counted in the gate (DEC-6, research doc §13); live runs only with owner permission | **Given** each adapter's stub, **then** it passes the shared adapter conformance suite; trajectory audit flags schema-invalid calls and observations that do not support the next state | `pytest tests/test_decider_conformance.py tests/test_trajectory_audit.py -q`; live calibration run **only with owner permission** (AGENTS.md §9) | done |
 ### Doc impact
 
 Research write-ups (new, this frame): `docs/scientific_audit/decision-model-judge-research.md`,
@@ -462,6 +462,12 @@ Result: Phase 8 code complete; F-43 fixed; F-44 waits on CI.
 Verified: stdlib runner → openai_decisions "4 passed", trajectory audit "2 passed", coding eval "3 passed", contract "8 passed", registry "6 passed", decision-policy runner "3 passed"; collapse checker → 0; no added backend line over 100 columns; security benchmark → pass 100.0; `feature_docs.py --seed-missing --generate-site --check` → passed (86).
 Next: gate after, commit, push, CI.
 
+### L-23 | 2026-10-18T11:20:00Z | S5-ship | claude-opus-5-5 | executor | Phase 8, —
+Did: Pushed `215a26e1` and `4d86a8cb` and dispatched CI run 39118127320; finished CF-10, CF-1 and CF-11; `spec accept CF-SPEC-1` → accepted. Wrote the whole-plan summary.
+Result: Phase 8 done; F-44 fixed; plan done with the residual risks listed in the summary.
+Verified: run 39118127320 → backend-format, backend-lint, hygiene, backend-test ("2832 passed, 7 skipped"), frontend-typecheck, frontend-lint, frontend-unit, frontend-build, ui-journeys, governance success; `feature-obligations` and `release-gate` failed only from CI-1. Both lifecycle verifiers pass.
+Next: none in this plan; owner review, the QA-lane UI walk (F-40), a live calibration run with owner permission, and a PR into `testing` when the owner asks.
+
 ## Phase 0 — math core
 
 ### Design (S1)
@@ -521,7 +527,7 @@ Method: re-reading against the design, plus edge-case probes.
 | F-5 | Nit | Docs | `decision_rule.py` `merge_order_flip` | An exact tie can read as order disagreement; abstaining is the conservative outcome, now documented | CF-2 | fixed |
 | F-6 | Major | Tests | toolchain | ruff and pytest have not run on this code (no installs allowed locally or on the Mac Studio) | CF-2 | fixed (CI, L-8) |
 | F-7 | Major | Integration | `testing/feature_coverage.yml` | The new package was unclassified, so `check_feature_obligations` failed closed | CF-2 | fixed (L-8) |
-| CI-1 | Major | Integration (out of scope) | `.github/workflows/ci.yml` feature-obligations step | On `workflow_dispatch` the base SHA is empty and `git rev-parse ''` crashes, so `release-gate` is always red on dispatched runs | — | open: separate task (not this plan's scope) |
+| CI-1 | Major | Integration (out of scope) | `.github/workflows/ci.yml` feature-obligations step | On `workflow_dispatch` the base SHA is empty and `git rev-parse ''` crashes, so `release-gate` is always red on dispatched runs | — | accepted-risk: outside this plan's scope; handed to the separate CI-fix session; every dispatched run shows it, and every other job is read directly |
 
 ### Remediation (S4)
 
@@ -587,7 +593,7 @@ Implemented as designed, with one structural change (DEC-8): `open_decider` live
 | F-10 | Major | Tests | toolchain | `test_decider_client.py`, the alembic fresh-database test and the security-benchmark pytest tests need httpx/SQLAlchemy/pytest, unavailable locally | CF-3 | fixed (CI, L-10) |
 | F-11 | Major | Code | `decider/contract.py` | ruff format wanted a trailing comma on a split single-parameter signature | CF-3 | fixed (`1e25278b`) |
 | F-12 | Major | Code | `decider/contract.py`, `decider/registry.py` | N818: exception classes need an `Error` suffix | CF-3 | fixed (`2e28e7d6`) |
-| CI-2 | Major | Integration (out of scope) | `.github/workflows/ci.yml` strict-lint step | On `workflow_dispatch` the strict lint covers only files changed in the last commit, so earlier green runs never strictly linted most of Phase 0/1; full coverage comes only with a PR into `testing` | — | open: belongs with CI-1's fix |
+| CI-2 | Major | Integration (out of scope) | `.github/workflows/ci.yml` strict-lint step | On `workflow_dispatch` the strict lint covers only files changed in the last commit, so earlier green runs never strictly linted most of Phase 0/1; full coverage comes only with a PR into `testing` | — | accepted-risk: outside this plan's scope; a PR into `testing` lints the whole diff, and every changed backend file was checked locally for ruff format shapes and line length |
 
 Review coverage: self-only (the owner's no-subagent rule).
 
@@ -929,6 +935,61 @@ Mode: interface-design `build` inside Istara's existing system (no Figma file; e
 | ID | Sev | Dim | Where | Finding | CF task | Status |
 |----|-----|-----|-------|---------|---------|--------|
 | F-43 | Major | Bugs | `services/adaptive_interview._is_saturated` | `"SATURATED" in content` is true for "NOT_SATURATED", so with the LLM saturation check on, every probe ended as saturated (the W5 test noted it) | CF-10 | fixed: `saturation_verdict` reads only an explicit SATURATED; regression in `test_decider_advisory.py` |
-| F-44 | Major | Tests | toolchain | conformance and advisory tests need httpx and the database | CF-10 | open (closes on CI) |
+| F-44 | Major | Tests | toolchain | conformance and advisory tests need httpx and the database | CF-10 | fixed: CI run 39118127320 backend-test success (L-23) |
 | F-45 | Minor | Integration | I8 | No per-transition tool log exists to feed the trajectory audit automatically | CF-10 | accepted-risk: service function shipped; wiring is follow-up work |
 | F-46 | Minor | Integration | Cloudflare | No adapter: official page unreachable (R39) | CF-10 | accepted-risk (DEC-19) |
+
+## Summary (whole plan)
+
+**Outcome against the S0 goal.** Istara now has the thesis's missing Layer 2: a provider-neutral
+typed-decider layer with JEV primary. Deciders are reached through one adapter
+(`systemone`: TypeSafe JEV, OpenRouter, llama.cpp-style servers with Kev, Laya or OpenJev;
+`openai_decisions`: OpenAI) under a per-project cloud-egress opt-in, every verdict is a stored
+trajectory, trust is earned per project scope from human labels (n_eff ≥ 50, ECE ≤ 0.05,
+κ ≥ 0.60, order flip ≤ 5%, τ* = 0.90) with drift returning a scope to shadow, and deciders
+never accept or promote evidence or count as coders. Researchers choose an assurance mode per
+project (Automatic, LLM judges, decision models, both side by side, none), configure deciders in
+Settings and Project Settings with onboarding and first-activation guidance, and see evaluator
+health against their own reviews. Autoresearch's keep rule is now a confirmed Welch interval
+over a re-measured incumbent, with no fabricated scores, and has a `decision_policy` loop.
+
+| Phase | Shipped | CI evidence |
+|---|---|---|
+| 0 Math core | calibration, decision rule, reliability, ensemble estimators | L-8 |
+| 1 Adapter + JEV | contract, client, registry, Keychain/env keys, egress rule | L-10 |
+| 2 Trajectories + trust gate | store, labels, blind audit, cross-fitted gate | L-12 |
+| 3 Assurance modes | five modes, Thompson sampling on human outcome (AV-1) | L-14 |
+| 4 Spine seam | code-application triage, routed-first review queue | L-16 |
+| 5 Learning + health | re-evaluation, CUSUM drift, lessons, health metrics | L-18 |
+| 6 Autoresearch | AR-1…AR-8 fixed, `decision_policy` runner | L-21 |
+| 7 Onboarding + UX | settings, project assurance panel, onboarding, health panel | L-21 |
+| 8 Protocols + integrations | OpenAI Decisions, advisory seam I4–I14, trajectory audit, research arm | L-23 |
+
+**Findings.** F-1…F-46 are disposed in their phase registers: all Blocker and Major findings are
+fixed except F-40 (accepted-risk). Accepted risks: F-40, F-45, F-46, and CI-1 and CI-2 (CI
+defects outside this plan, handed to the separate CI-fix session).
+
+**Residual risk (read before relying on it).**
+1. **No live run yet.** Every decider call in tests is a stub; no JEV, OpenRouter, OpenAI or local
+   server has been called (AGENTS.md §9). A first calibration run needs owner permission and a key.
+2. **No UI walk** by role, theme, 375px and keyboard (F-40). Typecheck, lint, unit tests, build and
+   scenario import are green; the walk needs the QA lane.
+3. **Self-review only.** The owner forbids subagents; no independent S3 review was run, so review
+   coverage is self-only (CLAUDE.md). Security-relevant parts (AI-005: egress, keys, injection
+   screen) are self-verified.
+4. **Advisory scopes mostly unlabelled.** Only `task_output` advice (I5) and code-application
+   triage get exact human labels; the other sites record measurements that cannot become trusted
+   until a label path exists (DEC-11, DEC-19).
+5. **OpenAI Decisions is a public beta** read from its guide only; its reference page returned 404,
+   so refusal and usage shapes are unconfirmed (fail closed). No Cloudflare adapter (F-46).
+6. **Branch not merged.** All work is on `feat/decision-model-judge`; no PR was opened.
+
+**Retro (blameless).** Worked: one lifecycle file and one ledger let the work resume after a
+usage-limit pause from the working tree alone; pure math first made later phases cheap to test
+locally; a single advisory seam kept eleven integrations to one failure mode. Did not work: the
+local stand-ins for CI (collapse heuristic, Python 3.9 runner) missed two ruff shapes and two
+source-contract tests (F-37, F-41, F-42), costing three CI rounds; scanning the repository's own
+guard tests (`tests/pi_production/`, `test_self_improvement_artifact_boundary.py`) before
+refactoring a shared surface would have caught them. Change obligations (persona, governed tests)
+were met reactively; checking `check_change_obligations.py` before the first commit of a phase
+is cheaper.
