@@ -267,7 +267,35 @@ def _cached_llm_readiness() -> tuple[bool, bool]:
         # It is deliberately invisible to every chat/model-source resolver and
         # must not become user-visible chat readiness through cached node state.
         chat_ready = False
+    # Pi Model Management endpoints serve chat on both engines (chat.py admits them on stub-marked
+    # stacks too), so a configured endpoint with its credential in place is chat-ready. Passive:
+    # credential presence only, no provider call. Local endpoints are skipped on a stub-marked
+    # stack, as the legacy-plane resolver skips them (agentic/model_source.py).
+    if not chat_ready and _pi_endpoint_chat_ready():
+        reachable = True
+        chat_ready = True
     return reachable, chat_ready
+
+
+def _pi_endpoint_chat_ready() -> bool:
+    try:
+        from urllib.parse import urlparse
+
+        from app.core.endpoint_security import classify_host_scope
+        from app.core.pi_runtime.endpoint_policy import pi_endpoint_credential_status
+    except Exception:
+        return False
+    for endpoint in getattr(settings, "pi_api_endpoints", None) or []:
+        host = (urlparse(endpoint.base_url).hostname or "").lower()
+        local = endpoint.locality == "local" or classify_host_scope(host) in {"loopback", "private"}
+        if settings.llm_provider_contract_stub and local:
+            continue
+        try:
+            if pi_endpoint_credential_status(endpoint) in {"ready", "stored"}:
+                return True
+        except Exception:
+            continue
+    return False
 
 
 @router.get("/settings/hardware")
