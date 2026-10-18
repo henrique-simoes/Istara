@@ -83,6 +83,7 @@ async function settings(ctx, checks, decider) {
   const { page } = ctx;
   try {
     await page.goto(ctx.frontendUrl, { waitUntil: "domcontentloaded" });
+    await page.locator('nav[aria-label="Views"]').first().waitFor({ state: "visible", timeout: 20000 });
     await navigateTo(page, "Settings", "settings");
     const section = page.locator("#tour-target-decision-models");
     await section.waitFor({ state: "visible", timeout: 20000 });
@@ -156,7 +157,7 @@ async function health(ctx, checks, decider) {
   const { page } = ctx;
   try {
     await navigateTo(page, "Ensemble Health", "ensemble");
-    const panel = page.locator("section", { has: page.locator("#decision-model-health-title") });
+    const panel = page.locator('section[aria-labelledby="decision-model-health-title"]');
     check(checks, "Ensemble Health: evaluator-health panel", await visible(panel, 20000));
     if (decider) check(checks, `Ensemble Health: ${decider} listed`, await visible(panel.getByText(decider, { exact: true })));
   } catch (e) {
