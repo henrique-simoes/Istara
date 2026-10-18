@@ -11,7 +11,7 @@ phase: "—"
 stage: S5-ship
 status: done
 blocked_on: null
-last: { agent: claude-code, at: 2026-10-18T11:20:00Z, ledger: L-23 }
+last: { agent: claude-code, at: 2026-10-18T18:30:00Z, ledger: L-24 }
 next_action: "Plan done. Owner: review the branch, run the QA-lane UI walk (F-40) and a live calibration run when ready, then ask for a PR into testing."
 ```
 <!-- /STATUS BLOCK -->
@@ -468,6 +468,12 @@ Result: Phase 8 done; F-44 fixed; plan done with the residual risks listed in th
 Verified: run 39118127320 → backend-format, backend-lint, hygiene, backend-test ("2832 passed, 7 skipped"), frontend-typecheck, frontend-lint, frontend-unit, frontend-build, ui-journeys, governance success; `feature-obligations` and `release-gate` failed only from CI-1. Both lifecycle verifiers pass.
 Next: none in this plan; owner review, the QA-lane UI walk (F-40), a live calibration run with owner permission, and a PR into `testing` when the owner asks.
 
+### L-24 | 2026-10-18T18:30:00Z | S5-ship | claude-opus-5-5 | executor | Phase 7, Phase 8
+Did: Owner asked for testing on the VPS with live models. Deployed PR #69 as a Dokploy compose service (tailnet only, `ISTARA_PUBLISH_HOST`; deploy environment passed whole to the backend), a fresh install (database recreated; Istara created its own first admin), three Pi endpoints (Muse Spark 1.3 contributor, GLM 5.3 Flash, multivac Qwen3.8 27B over the tailnet) and Jev (`jev-latest`) from the deploy environment. Ran the simulation suites by script in disposable Playwright containers (no socket, frontend network only): UI pass on GLM with Jev on, chat and agent turns on Muse, Qwen and the legacy engine. Fixed what the runs found: F-47, F-48, two runner options (`ISTARA_SIM_DEFAULT_ENDPOINT`, `ISTARA_SIM_DECIDER_ENDPOINTS`), scenario 91 and new scenario 92, a URL-aware machine-text rule, and an opt-in certificate bypass for HTTPS test stacks. F-49 recorded.
+Result: F-40 fixed; F-47, F-48 fixed; F-49 accepted-risk.
+Verified: final run on commit `9351496`: 26 of 27 UI-pass scenarios green (01, 02, 03, 05, 07, 09 80/80, 10, 12, 16, 21 41/41, 26, 32, 35, 37, 47, 67, 70, 79, 81, 82, 83, 88, 90 16/16, 91 10/10, 92 5/5), all turn passes green on all three models and both engines; 84 green 13/13 over HTTPS on `91f0004` (Secure session cookies need HTTPS). Jev: connection check served `jev-1.13.0`; one live verdict recorded (upload injection screen), scope untrusted with `not_evaluated`; no coding-run triage verdict because no scenario starts a governed coding run. Exposure: listeners only on the tailnet address; 13080/13081 unreachable on the public IPv4 (IPv6 not probeable from this Mac; no IPv6 listener). VPS audit chain valid, anchored at event 1874.
+Next: owner review of PR #69 with this evidence; a governed coding-run scenario to exercise Jev triage end to end.
+
 ## Phase 0 — math core
 
 ### Design (S1)
@@ -906,7 +912,7 @@ Mode: interface-design `build` inside Istara's existing system (no Figma file; e
 | F-37 | Minor | Code | `autoresearch_runners/decision_policy.py` | Phase 6 CI run 39102947318: `ruff format` wanted the query chain split; the local collapse heuristic misses this shape | CF-8 | fixed (`a342baf9`) |
 | F-38 | Major | Tests | toolchain | No Node here: typecheck, lint and the new unit test run only in CI | CF-9 | fixed: CI run 39117088982 frontend-typecheck, lint, unit, build success (L-21) |
 | F-39 | Major | Tests | toolchain | `test_decision_model_settings.py` needs the full backend stack | CF-9 | fixed: CI run 39117088982 backend-test success (L-21) |
-| F-40 | Major | Quality | UI | No UI walk by role, theme, 375px and keyboard yet (DEC-18) | CF-9 | accepted-risk: needs a QA stack this machine cannot run (no Docker, installs forbidden); scenario 91 is registered and imports in CI; carried to the final summary as residual risk |
+| F-40 | Major | Quality | UI | No UI walk by role, theme, 375px and keyboard yet (DEC-18) | CF-9 | fixed: the owner's VPS testing stack (Dokploy, tailnet only) ran the simulation suites by script on 2026-10-18 (L-24): every view and sub-tab in light and dark for admin, researcher, viewer and stranger with axe WCAG AA (90, 16/16), every view at 375 px (88, 11/11), decision-model settings and project assurance (91, 10/10), decider evidence in Ensemble Health (92, 5/5) |
 
 ## Phase 8 — protocols, advisory integrations, research arm
 
@@ -937,6 +943,9 @@ Mode: interface-design `build` inside Istara's existing system (no Figma file; e
 | F-43 | Major | Bugs | `services/adaptive_interview._is_saturated` | `"SATURATED" in content` is true for "NOT_SATURATED", so with the LLM saturation check on, every probe ended as saturated (the W5 test noted it) | CF-10 | fixed: `saturation_verdict` reads only an explicit SATURATED; regression in `test_decider_advisory.py` |
 | F-44 | Major | Tests | toolchain | conformance and advisory tests need httpx and the database | CF-10 | fixed: CI run 39118127320 backend-test success (L-23) |
 | F-45 | Minor | Integration | I8 | No per-transition tool log exists to feed the trajectory audit automatically | CF-10 | accepted-risk: service function shipped; wiring is follow-up work |
+| F-47 | Major | Bugs | `api/routes/settings.py` `_cached_llm_readiness` | On a stub-marked stack with credentialed Pi endpoints, `/api/settings/status` reported `chat_ready: false` (it read only legacy model-server nodes), so status bars and the simulation suite treated a chat-capable stack as unable to chat | CF-10 | fixed (`76d248dc`): passive credential check of configured endpoints; local ones skipped on stub stacks, as the legacy resolver does; test in `test_settings.py` |
+| F-48 | Minor | Quality | `settings/UpdateChecker.tsx` | "Up to date" line was `text-green-600` on white (about 3.3:1, below WCAG AA) | CF-10 | fixed (`9351496d`) |
+| F-49 | Minor | Integration | `frontend/src/lib/runtimeConfig.ts` | With no `NEXT_PUBLIC_API_URL`, a page on a default port (80/443) calls the API at `:8000`; behind Caddy on 443 that host has no API. Pinned by `runtimeConfig.test.ts`, so it is a product decision, not a silent fix | — | accepted-risk: owner to confirm that production builds set `NEXT_PUBLIC_API_URL`; the VPS stack uses explicit ports |
 | F-46 | Minor | Integration | Cloudflare | No adapter: official page unreachable (R39) | CF-10 | accepted-risk (DEC-19) |
 
 ## Summary (whole plan)
