@@ -438,6 +438,10 @@ class Settings(BaseSettings):
     # Pi endpoint for DAG summaries ("" = the default endpoint); a light model keeps them fast.
     dag_summary_endpoint_id: str = ""
 
+    # Typed decision models (app.core.decider): a JSON list of /v1/systemone endpoints. No secrets:
+    # keys come from Keychain or a named env var, and hosted endpoints need a per-project opt-in.
+    decider_endpoints_json: str = ""
+
     # Design integrations
     stitch_api_key: str = ""
     stitch_api_host: str = "https://generativelanguage.googleapis.com"

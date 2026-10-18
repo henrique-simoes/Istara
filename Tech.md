@@ -3426,3 +3426,13 @@ design and derivations in `docs/scientific_audit/decision-model-judge-research.m
   yet; adapters, the trajectory store, assurance modes and the spine seam follow in Phases 1–4.
 - **Tests:** `tests/test_decision_math.py` (exact fixtures where a closed form exists; seeded
   planted-parameter recovery otherwise).
+- **Phase 1: decider providers, `backend/app/core/decider/`.** `contract` (the `/v1/systemone`
+  request body and strict response validation: every answer typed and carrying a full probability
+  vector, noul as a two-outcome distribution, choices re-asked in reversed option order), `registry`
+  (endpoints from `decider_endpoints_json`; locality from the URL host; hosted endpoints need the
+  project's opt-in in `decision_model_project_policies`, migration 034), `credentials` (Keychain or a
+  named env var only), `client` (`SystemOneClient` over httpx; bounded retries on 429/503/529 honouring
+  `retry-after`; served-model provenance; every failure `not_runnable`), and
+  `access.open_decider`, the only entry point. Security control AI-005. Tests: `tests/test_decider_contract.py`,
+  `tests/test_decider_registry.py`, `tests/test_decider_client.py` (stub servers via
+  `httpx.MockTransport`).

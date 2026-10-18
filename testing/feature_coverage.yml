@@ -1106,6 +1106,7 @@ features:
     owner: research-platform
     paths:
       - "backend/app/core/decision/*.py"
+      - "backend/app/core/decider/*.py"
     exceptions: []
     requires_human_review: true
     docs_features_update: false
@@ -1113,13 +1114,16 @@ features:
       deterministic:
         - governance
         - research_spine_contract
+        - security_benchmark
       live: []
       docs: []
     commands:
       deterministic:
         - check_integrity
         - pytest_research_validity
-    acceptance: "Typed decision-model mathematics (confidence, Bayes risk with a reject option, calibration, reliability posteriors, ensemble error structure) reproduces closed-form fixtures in tests/test_decision_math.py, has no I/O, and is never a path by which a decider accepts or promotes research evidence."
+        - security_benchmark
+        - pytest_security_benchmark
+    acceptance: "Typed decision-model mathematics (confidence, Bayes risk with a reject option, calibration, reliability posteriors, ensemble error structure) reproduces closed-form fixtures in tests/test_decision_math.py and has no I/O. Decider providers (app.core.decider) send a project's data to a hosted endpoint only after that project's opt-in, take keys only from Keychain or a named env var, require the served model to match a pinned request, and turn every failure into not_runnable (tests/test_decider_*.py, control AI-005). Neither is a path by which a decider accepts or promotes research evidence."
     introduced_in: "decision-model-judge-20261017"
     last_verified_sha: "pending"
 

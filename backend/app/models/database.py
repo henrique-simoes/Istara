@@ -142,6 +142,7 @@ def register_models() -> None:
         "app.models.permission_request",
         "app.models.task_review",
         "app.models.pi_tool_execution",
+        "app.models.decision_policy",
     ):
         import_module(module_name)
 
