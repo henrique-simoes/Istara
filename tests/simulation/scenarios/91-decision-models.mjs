@@ -7,6 +7,7 @@
  * endpoints are configured with a key and runs one connection check per endpoint: one constant
  * probe question, no research data. The project's previous policy is always restored. */
 
+import { getApiBase } from "../lib/api-client.mjs";
 import { navigateTo } from "../lib/embedding-settings.mjs";
 
 export const name = "Decision Models";
@@ -23,13 +24,20 @@ function result(checks, summary) {
   };
 }
 
-async function refusal(promise) {
-  try {
-    await promise;
-    return "accepted";
-  } catch (e) {
-    return String(e.message || e);
-  }
+// The shared client reports only the status code; a refusal check needs the server's reason code.
+async function refusal(api, method, path, body) {
+  const response = await fetch(`${getApiBase()}${path}`, {
+    method,
+    headers: api._headers(),
+    body: JSON.stringify(body),
+  });
+  if (response.ok) return "accepted";
+  const payload = await response.json().catch(() => ({}));
+  return `${response.status} ${typeof payload.detail === "string" ? payload.detail : JSON.stringify(payload.detail)}`;
+}
+
+async function shows(locator, timeout = 10000) {
+  return locator.waitFor({ state: "visible", timeout }).then(() => true).catch(() => false);
 }
 
 export async function run(ctx) {
@@ -110,13 +118,11 @@ export async function run(ctx) {
   }
 
   // 3. API: a hosted endpoint without a key is refused before anything is stored.
-  const hosted = await refusal(
-    api.post("/api/settings/decision-models", {
-      endpoint_id: "sim-hosted-without-key",
-      base_url: "https://api.typesafe.ai",
-      model: "jev-1.14.0",
-    })
-  );
+  const hosted = await refusal(api, "POST", "/api/settings/decision-models", {
+    endpoint_id: "sim-hosted-without-key",
+    base_url: "https://api.typesafe.ai",
+    model: "jev-1.14.0",
+  });
   checks.push({
     name: "Hosted decision model without a key is refused",
     passed: /decider_api_key_required/.test(hosted),
@@ -140,9 +146,13 @@ export async function run(ctx) {
   } catch (e) {
     checks.push({ name: "Project assurance mode 'both' saved with a local decider", passed: false, detail: e.message });
   }
-  const noDecider = await refusal(
-    api.put(policyUrl, { mode: "decision_models", llm_method: "auto", llm_judges: 3, decider_endpoint_ids: [], hosted_egress_endpoint_ids: [] })
-  );
+  const noDecider = await refusal(api, "PUT", policyUrl, {
+    mode: "decision_models",
+    llm_method: "auto",
+    llm_judges: 3,
+    decider_endpoint_ids: [],
+    hosted_egress_endpoint_ids: [],
+  });
   checks.push({
     name: "Decision-model mode without a decider is refused",
     passed: /mode_needs_a_decider/.test(noDecider),
@@ -160,13 +170,13 @@ export async function run(ctx) {
     const explainer = page.getByText("What is a decision model?", { exact: true }).first();
     checks.push({
       name: "Settings: Decision models section with explainer",
-      passed: await explainer.isVisible({ timeout: 3000 }).catch(() => false),
+      passed: await shows(explainer),
       detail: "",
     });
     const listed = page.getByText(ENDPOINT_ID, { exact: true }).first();
     checks.push({
       name: "Settings: configured local decision model listed",
-      passed: await listed.isVisible({ timeout: 3000 }).catch(() => false),
+      passed: await shows(listed, 15000),
       detail: "",
     });
     await screenshot("91-settings-decision-models");

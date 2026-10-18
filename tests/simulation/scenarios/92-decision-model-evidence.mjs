@@ -91,7 +91,7 @@ export async function run(ctx) {
     const row = page.getByText(deciders[0], { exact: true }).first();
     checks.push({
       name: "Ensemble Health shows the decider's scope",
-      passed: await row.isVisible({ timeout: 5000 }).catch(() => false),
+      passed: await row.waitFor({ state: "visible", timeout: 20000 }).then(() => true).catch(() => false),
       detail: "",
     });
     await screenshot("92-ensemble-health-decision-models");
