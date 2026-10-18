@@ -11,6 +11,9 @@ Files:
 - `compute-donation-matrix.md`: compute manager, relay donation, and Petals-inspired architecture classification.
 - `readme-claim-truth-matrix.md`: README and README.pt-BR claim audit.
 - `bibliography-audit.md`: primary source references and wording guidance.
+- `decision-model-judge-research.md`: typed decision models (JEV and open-weight deciders) as the thesis's layer-2 judge: decision math, calibration gate, decision trajectories, learning without self-confirmation, assurance modes, ensemble error correlation (CF-SPEC-1, design stage).
+- `decision-model-references.md`: references log for the decision-model work, with what was read and when.
+- `autoresearch-hill-climbing-audit.md`: source-reading audit of the autoresearch loop and adaptive validation selector (findings AR-1…AR-8, AV-1, SV-1).
 - `../architecture/research-validity-contract.md`: non-negotiable source-of-truth contract for qualitative coding, reliability, retrieval, telemetry, review, and reporting.
 
 Key outcome:

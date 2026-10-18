@@ -3406,3 +3406,23 @@ Branch `fix/spine-findings-measurements-20260925`; evidence in
   `app/services/embedding_migration.py`): the model is probed, a new profile version becomes active,
   every project's tables are re-embedded from their stored text and rebound; BM25 is untouched. The
   default embedder is chosen by the pre-registered rule in `app/evals/embedder_compare.py` (DEC-15).
+
+### Typed decision models: decision math core (2026-10-17)
+
+Branch `feat/decision-model-judge`; lifecycle `docs/build-stream/2026-10-17-decision-model-judge.md`;
+design and derivations in `docs/scientific_audit/decision-model-judge-research.md`.
+
+- **Layer 2 of the evaluation stack.** Typed decision models (TypeSafe JEV through its hosted
+  `/v1/systemone` API as the primary one; open-weight deciders such as Kev, Laya and OpenJev through
+  the same contract) return a probability vector over a closed set of answers. They triage research
+  items to human review and never accept or promote evidence.
+- **Phase 0 (this entry): `backend/app/core/decision/`**, pure standard-library mathematics with no
+  I/O. `confidence` (TypeSafe's documented confidence statistics), `decision_rule` (Bayes risk,
+  Chow reject threshold, cost-derived τ* = C_FP/(C_FP+C_FN), order-flip merge against first-option
+  bias), `calibration` (temperature scaling fitted by weighted NLL, ECE, Brier with an exact binned
+  decomposition, Horvitz–Thompson weights and Kish n_eff, risk–coverage, cross-fitted held-out
+  calibration), `reliability` (Beta posterior lower bound, Learn-then-Test thresholds), `ensemble`
+  (error correlation, Yule's Q, effective number of evaluators, Dawid–Skene EM). Nothing calls it
+  yet; adapters, the trajectory store, assurance modes and the spine seam follow in Phases 1–4.
+- **Tests:** `tests/test_decision_math.py` (exact fixtures where a closed form exists; seeded
+  planted-parameter recovery otherwise).
