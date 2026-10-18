@@ -7,12 +7,12 @@
 item: decision-model-judge
 branch: feat/decision-model-judge
 cf: { spec: CF-SPEC-1, tasks: [CF-2, CF-3] }
-phase: "Phase 1 — adapter + JEV"
-stage: S5-ship
-status: blocked
-blocked_on: "owner — push of feat/decision-model-judge for Phase 1 (bd743f96); CI must run test_decider_client.py, the alembic fresh-database test and the security-benchmark tests, which cannot run locally"
-last: { agent: claude-code, at: 2026-10-18T02:13:21Z, ledger: L-9 }
-next_action: "After the owner approves: push, dispatch ci.yml on the branch, read backend-format/backend-lint/backend-test; if green, finish CF-3, mark Phase 1 done and start Phase 2 (trajectory store + calibration gate)."
+phase: "Phase 2 — trajectory store + calibration gate"
+stage: S1-plan
+status: in-progress
+blocked_on: null
+last: { agent: claude-code, at: 2026-10-18T02:56:58Z, ledger: L-10 }
+next_action: "Phase 2 S1: design the DecisionTrajectory table (content-free handles, research doc §5), the versioned human-label mapping, blind audit sampling (rho = 10%, DEC-4) and the decision_eval trust gate (cross-fitted; DEC-1 ceilings; shadow mode DEC-2), then implement with tests."
 ```
 <!-- /STATUS BLOCK -->
 
@@ -157,8 +157,8 @@ three phases make no product-path change.
 | # | Phase | Goal | Acceptance (Given/When/Then) | Verification | Status |
 |---|---|---|---|---|---|
 | 0 | Math core | pure, network-free math: confidence recompute, temperature scaling, Bayes risk + Chow, order-flip merge, ECE (plain and Horvitz–Thompson weighted), Brier + Murphy, n_eff, cross-fitted T fit, Beta reliability posterior (lower bound), Learn-then-Test τ, Dawid–Skene EM, pairwise error correlation + Yule's Q + J_eff | **Given** the JEV docs' worked examples (choice 0.9/0.06/0.04 → 0.85; score 0/0.57/0.43 → ≈0.35) and hand-computed fixtures for every estimator, **when** the core runs, **then** it reproduces them to 1e-9; τ* = C_FP/(C_FP+C_FN); temperature scaling preserves argmax and lowers held-out ECE on a miscalibrated fixture; LTT never returns τ below τ*; Dawid–Skene recovers planted confusion matrices on synthetic data | `pytest tests/test_decision_math.py -q` | done |
-| 1 | Adapter + JEV | `systemone_http` adapter (TypeSafe JEV primary; llama.cpp / Kev / Laya / Standard One compatible), registry, admissibility rule (full probability vector + served versioned id), secrets in Keychain/env, per-project egress authorization | **Given** a stub `/v1/systemone` server, **when** Istara decides, **then** the request matches the JEV schema, the served versioned id is recorded, aliases are refused for trusted scopes, 429/529 back off honoring `retry-after`, 400 `max_tokens_exceeded` / empty / partial answers are `not_runnable`, a missing probability vector refuses registration, and a project without opt-in never reaches the hosted endpoint | `pytest tests/test_decider_adapter.py tests/test_decider_registry.py -q`; `python3 scripts/security_benchmark.py --fail-on-threshold` | in-progress |
-| 2 | Trajectory store + calibration gate | `DecisionTrajectory` (alembic, content-free handles, §5 of the research doc), versioned human-label mapping from `ReconciliationDecision` / review outcomes / `classify_review_feedback`, blind random audit sampling (rate ρ, propensity π), `app.evals.decision_eval` trust gate per scope with cross-fitting, shadow mode (DEC-2) | **Given** labelled trajectories with a known audit design, **when** a scope is evaluated, **then** weighted ECE/Brier/κ/order-flip/risk–coverage are reported on held-out folds, `trusted` requires n_eff ≥ 50 and the DEC-1 ceilings, audit items hide the decider verdict from the reviewer, and an untrusted scope has no routing effect | `pytest tests/test_decision_trajectory.py tests/test_decision_eval.py -q` | planned |
+| 1 | Adapter + JEV | `systemone_http` adapter (TypeSafe JEV primary; llama.cpp / Kev / Laya / Standard One compatible), registry, admissibility rule (full probability vector + served versioned id), secrets in Keychain/env, per-project egress authorization | **Given** a stub `/v1/systemone` server, **when** Istara decides, **then** the request matches the JEV schema, the served versioned id is recorded, aliases are refused for trusted scopes, 429/529 back off honoring `retry-after`, 400 `max_tokens_exceeded` / empty / partial answers are `not_runnable`, a missing probability vector refuses registration, and a project without opt-in never reaches the hosted endpoint | `pytest tests/test_decider_adapter.py tests/test_decider_registry.py -q`; `python3 scripts/security_benchmark.py --fail-on-threshold` | done |
+| 2 | Trajectory store + calibration gate | `DecisionTrajectory` (alembic, content-free handles, §5 of the research doc), versioned human-label mapping from `ReconciliationDecision` / review outcomes / `classify_review_feedback`, blind random audit sampling (rate ρ, propensity π), `app.evals.decision_eval` trust gate per scope with cross-fitting, shadow mode (DEC-2) | **Given** labelled trajectories with a known audit design, **when** a scope is evaluated, **then** weighted ECE/Brier/κ/order-flip/risk–coverage are reported on held-out folds, `trusted` requires n_eff ≥ 50 and the DEC-1 ceilings, audit items hide the decider verdict from the reviewer, and an untrusted scope has no routing effect | `pytest tests/test_decision_trajectory.py tests/test_decision_eval.py -q` | in-progress |
 | 3 | Assurance modes | project-level assurance policy (`auto`, `llm_judges`, `decision_models`, `both`, `none`) honoured by `validation.py` and `validation_executor.py`; Self-MoA stays the single-endpoint fallback; AV-1 fix (reward = human outcome, Thompson sampling constrained to the mode); research-validity contract + governance contract + ensemble-method matrix updated | **Given** each mode, **when** a task is validated, **then** only the evaluators the mode allows are called (dispatcher call log proves no LLM-judge call in `decision_models` mode), `none` marks the task `unvalidated` and still requires human review, outputs from `both` are shown side by side and never vote-merged, and the coding-run reliability gate is unchanged in every mode | `pytest tests/test_assurance_modes.py tests/test_adaptive_validation.py tests/pi_production/test_w7_validation.py tests/test_research_validity_contract.py -q` | planned |
 | 4 | Spine seam (code applications) | decider triage after the deterministic quote check; routing and priority into `CodeReviewQueue`; trajectory written per application | **Given** a governed coding run, **when** applications are admitted, **then** each gets a trajectory; with a trusted scope, abstentions and `factual_hallucination` / `methodological_violation` route to review with priority; no acceptance state changes because of the decider; κ inputs are byte-identical with the decider on vs off; telemetry is content-free | `pytest tests/test_research_validity_contract.py tests/test_code_applications.py tests/test_decision_spine_seam.py -q`; credential-free simulation scenario with a stub decider; UI walk | planned |
 | 5 | Learning loop + ensemble health | ReasoningBank `decision_review` lessons (aggregate, content-free, after human label only); scheduled recalibration with cross-fitting; CUSUM drift → shadow; self-evolution proposals for question sets and τ overrides via improvement governance (protected values excluded); ensemble health shows per-evaluator calibration, error correlation, Yule's Q, J_eff, Dawid–Skene reliabilities | **Given** a history of labelled trajectories, **when** the loop runs, **then** lessons cite only handles, a recalibration changes T only if held-out ECE improves, drift returns a scope to shadow with a recorded reason, governance refuses proposals that touch κ ≥ 0.60 / the ECE ceiling / n_min / the never-promote rule, and Ensemble Health renders the new metrics in all roles, light/dark, 375px, keyboard | `pytest tests/test_decision_learning_loop.py tests/test_spine_learning_loops.py tests/test_meta_hyperagent.py -q`; ensemble-health scenario; UI walk | planned |
@@ -329,6 +329,12 @@ Result: Phase 1 code complete; CI verification pending (F-10).
 Verified: stdlib runner → contract "8 passed", registry "6 passed", math "25 passed"; mutation script → 5/5 killed (egress, served identity, alias detection, probability sum, retry-after); `security_benchmark.py --fail-on-threshold --changed-paths-file` → status pass, score 100.0, change detected (12 paths), no blocked controls; `check_feature_obligations.py --base origin/testing --head HEAD` → passed; `check_change_obligations.py` → passed; `public_repo_quality_audit.py --check` → passed; `gate after --task CF-3` → comparable, new issues 0, new failures 0, new warnings 0 (after F-8 and F-9); CF-3 evidence recorded (asserted). Not run locally: `test_decider_client.py`, `test_alembic_fresh_database.py`, `test_security_benchmark.py` under pytest, ruff.
 Next: owner approves push → CI → close F-10 → Phase 1 done.
 
+### L-10 | 2026-10-18T02:56:58Z | S5-ship | claude-opus-5-5 | executor | Phase 1
+Did: Pushed the Phase 1 commits (owner-approved) and dispatched CI three times. Run 39089349304 failed backend-format on one missing trailing comma (F-11, fixed in `1e25278b`). Run 39090202504 then strict-linted `contract.py` and failed N818 (F-12, fixed in `2e28e7d6` by renaming both exception classes). That run also revealed that dispatch-run strict lint covers only the last commit's files (CI-2). Before the rename commit I ran an AST review of every branch backend file (unused imports, N802/N803/N806/N818, E711/E712, E741), which found nothing beyond the N818 pair. Finished CF-3.
+Result: Phase 1 done. CI-2 recorded alongside CI-1.
+Verified: run 39091047564 at `2e28e7d6` → backend-format success; backend-lint success (strict on `decider/access.py`, `client.py`, `contract.py`, `registry.py`); backend-test "2729 passed, 7 skipped, 1 deselected", 87 PASSED across `test_decider_*`, `test_decision_math`, `test_alembic_fresh_database` and `test_security_benchmark`; `feature-obligations` failed only with `CalledProcessError: git rev-parse ''` (CI-1); local `check_feature_obligations.py --base origin/testing --head HEAD` → passed; stdlib runner on Python 3.9 → 8 + 6 + 25 passed after the rename; `finish-task CF-3` → finished.
+Next: Phase 2 S1.
+
 ## Phase 0 — math core
 
 ### Design (S1)
@@ -451,6 +457,22 @@ Implemented as designed, with one structural change (DEC-8): `open_decider` live
 |----|-----|-----|-------|---------|---------|--------|
 | F-8 | Major | Code | `app/core/decider/__init__.py` | Re-exports created two import cycles (`__init__ → client → __init__`, `__init__ → client → registry → __init__`), flagged by `gate after` | CF-3 | fixed (DEC-8) |
 | F-9 | Minor | Integration | `app/models/decision_policy.py` | `type_drift`: the new ORM model has no frontend type yet | CF-3 | accepted-risk: expiring suppression to 2026-12-31; the type arrives with the Phase 7 settings API |
-| F-10 | Major | Tests | toolchain | `test_decider_client.py`, the alembic fresh-database test and the security-benchmark pytest tests need httpx/SQLAlchemy/pytest, unavailable locally | CF-3 | open (closes on CI) |
+| F-10 | Major | Tests | toolchain | `test_decider_client.py`, the alembic fresh-database test and the security-benchmark pytest tests need httpx/SQLAlchemy/pytest, unavailable locally | CF-3 | fixed (CI, L-10) |
+| F-11 | Major | Code | `decider/contract.py` | ruff format wanted a trailing comma on a split single-parameter signature | CF-3 | fixed (`1e25278b`) |
+| F-12 | Major | Code | `decider/contract.py`, `decider/registry.py` | N818: exception classes need an `Error` suffix | CF-3 | fixed (`2e28e7d6`) |
+| CI-2 | Major | Integration (out of scope) | `.github/workflows/ci.yml` strict-lint step | On `workflow_dispatch` the strict lint covers only files changed in the last commit, so earlier green runs never strictly linted most of Phase 0/1; full coverage comes only with a PR into `testing` | — | open: belongs with CI-1's fix |
 
 Review coverage: self-only (the owner's no-subagent rule).
+
+### Ship (S5)
+
+Phase 1 is done. Pushed commits `bd743f96`, `1222ea27`, `1e25278b`, `2e28e7d6` on
+`feat/decision-model-judge`, with no PR (owner). Dispatch run 39091047564 is green for backend-format,
+backend-lint and backend-test. CF-3 is finished. Review coverage: self-only. Residual risk: strict lint
+has not yet covered `decider/__init__.py`, `decider/credentials.py`, the Phase 0 `decision/` package or
+`models/decision_policy.py` (CI-2); my own AST review found no issues, and the first PR into
+`testing` will lint them all. The decider is not called by product code until Phase 4.
+
+## Phase 2 — trajectory store + calibration gate
+
+Not started. Next: S1 design (see Status Block `next_action`).
