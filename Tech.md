@@ -3519,3 +3519,8 @@ design and derivations in `docs/scientific_audit/decision-model-judge-research.m
   never counted in the reliability gate. Interview saturation no longer reads "NOT_SATURATED" as
   saturated. Tests: `test_decider_openai_decisions.py`, `test_decider_conformance.py`,
   `test_decider_advisory.py`, `test_trajectory_audit.py`, `test_decider_coding_eval.py`.
+- **Cost-free local endpoints (2026-10-18).** A Pi endpoint that is local and has all four
+  prices at zero is `cost_free` (`pi_runtime/engine._session_limits`): its worker session gets no
+  `max_cost_usd`, because its cost is known to be zero and the worker would otherwise fail the run
+  as `cost_budget_unpriced`. Remote endpoints, and local ones with any price set, keep the ceiling
+  and its fail-closed check. Test: `tests/test_pi_local_liveness.py`.
