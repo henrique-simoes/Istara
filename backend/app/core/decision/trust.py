@@ -8,7 +8,7 @@ effect (DEC-2). The gate works on the binary event the v1 labels describe: wheth
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field
 
 from app.core.decision.calibration import (
@@ -140,6 +140,20 @@ def _reasons(
     elif flip is not None and flip > policy.max_order_flip_rate:
         reasons.append("order_flip_above_ceiling")
     return reasons
+
+
+def unversioned_alias_scope(calls: Iterable[tuple[bool, str]]) -> bool:
+    """True when a scope's evidence cannot be tied to one model version.
+
+    ``calls`` holds ``(alias_requested, served_model)`` per verdict. Scopes are keyed by the served
+    model, so asking for a moving alias such as ``jev-latest`` is fine when the provider names the
+    versioned model that answered (``jev-1.13.0``): that version earns its own trust, and a new
+    version behind the alias starts a new, untrusted scope. Only an alias answered under an alias
+    name could mix versions in one scope, and only that is refused.
+    """
+    from app.core.decider.contract import is_alias_model_id
+
+    return any(requested and is_alias_model_id(served or "") for requested, served in calls)
 
 
 def evaluate_trust(

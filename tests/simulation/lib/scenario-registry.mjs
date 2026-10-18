@@ -123,4 +123,5 @@ export const scenarioFiles = Object.freeze([
   "92-decision-model-evidence",
   "93-decision-model-ui",
   "94-coding-run-triage",
+  "95-guided-tour",
 ]);

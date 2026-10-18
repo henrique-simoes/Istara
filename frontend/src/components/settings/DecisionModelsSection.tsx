@@ -235,8 +235,8 @@ function EndpointRow({ endpoint, onRemoved }: { endpoint: DecisionModelEndpoint;
           {endpoint.model_is_alias && (
             <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-800 dark:text-amber-200">
               <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
-              This is a moving alias. Its behaviour can change without notice, so it will never become trusted. Pin a version such
-              as jev-1.14.0.
+              This is a moving alias. Istara records which version answered each call and earns trust per version, so when
+              the alias moves to a new version, trust starts over for it.
             </p>
           )}
         </div>
@@ -328,7 +328,7 @@ function EndpointForm({ initial, onSaved, onCancel }: { initial: FormState; onSa
           />
           {alias && (
             <span id={`${formId}-alias`} className="mt-1 block font-normal text-amber-800 dark:text-amber-200">
-              Moving aliases can change without notice and never become trusted. Prefer a pinned version.
+              A moving alias works: trust is earned per answering version and starts over when the alias moves.
             </span>
           )}
         </label>

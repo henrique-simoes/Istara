@@ -22,7 +22,13 @@ from app.core.decision.labels import (
     positive_probability,
 )
 from app.core.decision.sampling import AUDIT_RATE, audit_draw, inclusion_weight, scope_key
-from app.core.decision.trust import LabelledDecision, TrustPolicy, TrustReport, evaluate_trust
+from app.core.decision.trust import (
+    LabelledDecision,
+    TrustPolicy,
+    TrustReport,
+    evaluate_trust,
+    unversioned_alias_scope,
+)
 from app.models.decision_trajectory import DecisionTrajectory, DecisionTrustEvaluation
 
 CODE_APPLICATION = "code_application"
@@ -204,7 +210,9 @@ async def evaluate_scope(
     report = evaluate_trust(
         items,
         policy,
-        alias_scope=any(row.alias_requested for row in rows),
+        alias_scope=unversioned_alias_scope(
+            (bool(row.alias_requested), row.served_model) for row in rows
+        ),
         needs_order_flip=needs_order_flip,
     )
     session.add(

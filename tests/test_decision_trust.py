@@ -208,3 +208,13 @@ def test_policy_is_recorded_and_tightening_it_refuses_more():
     items = _planted(800, seed=1)
     strict = evaluate_trust(items, TrustPolicy(max_ece=0.001))
     assert strict.policy["max_ece"] == 0.001 and "ece_above_ceiling" in strict.reasons
+
+
+def test_an_alias_is_trusted_per_served_version_unless_the_version_is_unknown():
+    from app.core.decision.trust import unversioned_alias_scope
+
+    # jev-latest answered by a versioned model: that version earns trust like a pinned id.
+    assert unversioned_alias_scope([(True, "jev-1.13.0"), (True, "jev-1.13.0")]) is False
+    assert unversioned_alias_scope([(False, "kev-4b")]) is False
+    # An alias answered under an alias name could mix versions in one scope: refused.
+    assert unversioned_alias_scope([(True, "jev-1.13.0"), (True, "jev-latest")]) is True
