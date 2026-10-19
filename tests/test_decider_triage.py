@@ -114,7 +114,7 @@ async def _trust(factory, temperature=1.0):
         served_model="kev-4b",
         question_set_id=decider_triage.QUESTION_SET_ID,
         question_set_version=decider_triage.QUESTION_SET_VERSION,
-        task_family=decider_triage.TASK_FAMILY,
+        task_family=f"{decider_triage.TASK_FAMILY}:open",
         language=decider_triage.UNDETERMINED_LANGUAGE,
         label_mapping_version=LABEL_MAPPING_VERSION,
     )
@@ -226,3 +226,15 @@ async def test_safe_hook_never_raises(monkeypatch):
 
     monkeypatch.setattr(decider_triage, "triage_coding_run", boom)
     assert await decider_triage.triage_coding_run_safely("p1", "run") is None
+
+
+def test_each_codebook_version_has_its_own_trust_scope():
+    from types import SimpleNamespace
+
+    from app.services.decider_triage import TASK_FAMILY, task_family_for
+
+    v1 = task_family_for(SimpleNamespace(codebook_version_id="cb-1"))
+    v2 = task_family_for(SimpleNamespace(codebook_version_id="cb-2"))
+    open_coding = task_family_for(SimpleNamespace(codebook_version_id=None))
+    assert len({v1, v2, open_coding}) == 3
+    assert open_coding == f"{TASK_FAMILY}:open" and v1.endswith("cb-1")

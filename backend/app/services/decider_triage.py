@@ -92,6 +92,17 @@ def _state(application: Any, unit_text: str, code: dict[str, str]) -> dict[str, 
     }
 
 
+def task_family_for(application: Any) -> str:
+    """The trust scope's task family: one per codebook version, open coding apart (DEC-22).
+
+    Under a codebook the question carries that version's code definitions and the human decision
+    means "is this the governed code?"; under open coding it does not. Grading them together
+    describes neither, so each codebook version earns trust on its own labels.
+    """
+    version = getattr(application, "codebook_version_id", None)
+    return f"{TASK_FAMILY}:cb:{version}" if version else f"{TASK_FAMILY}:open"
+
+
 def decide_action(
     merged: dict[str, float], order_flip_agree: bool, temperature: float | None, trusted: bool
 ) -> tuple[str, dict[str, float]]:
@@ -165,7 +176,7 @@ async def _triage_one(client: Any, application: Any, project_id: str, run_id: st
             question_set_version=QUESTION_SET_VERSION,
             question_id=QUESTION_ID,
             positive_outcomes=POSITIVE,
-            task_family=TASK_FAMILY,
+            task_family=task_family_for(application),
             language=UNDETERMINED_LANGUAGE,
             order_flip_agree=flip,
         )

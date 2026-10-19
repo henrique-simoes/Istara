@@ -424,6 +424,11 @@ Context: Live grading counted 64 labels as 6 effective: the weights assumed a no
 Decision: Stratified Horvitz-Thompson. Non-routed items are reviewed with the verdict hidden: weight 1. Routed items show the verdict, so only their blind audit sample (verdict hidden, rate 10%) counts, at weight 10; a shown verdict never counts. The audit now samples routed items.
 Why: Inclusion probability is 1 under complete review, so the selective-labels bias (R42) does not arise; shown suggestions anchor reviewers (R40, R41), so those labels are excluded; importance weighting is needed only where labels are sampled (R43). Rejected: the previous rule (unreachable trust) and counting shown-verdict labels (anchoring).
 
+DEC-22 | 2026-10-18 | S4-remediate | owner (approved) + claude-opus-5-5
+Context: Live grading mixed triage labels from open coding and from a codebook in one scope, so the stored grade described neither; a correct grade had to be computed by hand.
+Decision: The triage scope's task family carries the codebook version (`deductive_coding:cb:<version>`, open coding `deductive_coding:open`), so each codebook version earns trust on its own labels and a revision starts over.
+Why: Under a codebook the question includes that version's definitions and the human decision means "is this the governed code?" (Research Spine deductive coding); calibration is a property of one task. Rejected: filtering labels at grading time (the system would still store a wrong grade).
+
 ### L-15 | 2026-10-18T05:01:02Z | S4-remediate | claude-opus-5-5 | executor | Phase 4
 Did: Orientation (coding-run commit point, review queue, reconciliation, codebook fields); S1 design; `gate before --task CF-6` (baseline 13). Implemented `services/decider_triage.py`, the post-commit hook in `run_independent_coding_run`, the label hook in `create_reconciliation_decision`, `routed_triage` and the pending-route field and order, `CodeApplicationType.decider_triage`, `services/assurance_policies.py`, AI-005 evidence and triggers, docs (Tech.md, research-validity contract, review feature docs + site), and `tests/test_decider_triage.py`. Commits `fc1dab1c`, `b8d1d5f7` (local).
 Result: Phase 4 code complete; F-22…F-24 fixed; F-25 waits on CI.

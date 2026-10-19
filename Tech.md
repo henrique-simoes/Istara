@@ -3531,3 +3531,5 @@ design and derivations in `docs/scientific_audit/decision-model-judge-research.m
 - **Label weights (2026-10-18, DEC-21).** `core/decision/sampling.inclusion_weight`: a non-routed
   item is reviewed blind (weight 1); a routed item counts only in the blind audit sample, its verdict
   hidden, at weight `1/rate`; a shown verdict never counts. Triage keeps the audit flag on routed items.
+- **Triage scopes per codebook version (DEC-22).** `decider_triage.task_family_for`: each codebook
+  version earns trust on its own labels; open coding is a separate scope.
