@@ -24,6 +24,8 @@ const LINES = [
   ["onboarding", "New hires still ask me how to invite people because the setup steps are buried."],
   ["performance", "Search is slow on big projects; sometimes it times out before showing anything."],
   ["support", "The chat support was friendly but nobody could fix the billing sync."],
+  ["none", "I would love a dark mode and a calendar view for the boards."],
+  ["none", "Our team mostly works remotely across three time zones."],
 ];
 // The project codebook (Research Spine: deductive coding against governed definitions).
 const CODEBOOK = [
@@ -91,25 +93,32 @@ export async function run(ctx) {
   if (!units.length) return finish("no evidence units");
 
   // 2. Codebook version for the project, then a governed coding run that applies it.
+  // One fixed codebook version, reused across runs: trust is earned per codebook version (DEC-22).
+  const CODEBOOK_VERSION = `${MARKER}-v1`;
   let codebookVersionId = null;
   try {
-    const version = await api.post("/api/codebook-versions", {
-      project_id: projectId,
-      version: `${MARKER}-${Date.now()}`,
-      methodology: "codebook_ta",
-      change_log: "Scenario 94 codebook for the planted interview themes",
-      codes: CODEBOOK.map(([code_id, label, definition, inclusion, exclusion]) => ({
-        code_id,
-        label,
-        definition,
-        inclusion_criteria: inclusion,
-        exclusion_criteria: exclusion,
-      })),
-    });
-    codebookVersionId = version.id || version.version_id || version.codebook_version?.id;
-    check("Codebook version created", Boolean(codebookVersionId), `id=${codebookVersionId}`);
+    const versions = await api.get(`/api/codebook-versions/${projectId}`).catch(() => []);
+    const list = Array.isArray(versions) ? versions : versions.versions || [];
+    const existing = list.find((item) => item.version === CODEBOOK_VERSION);
+    const version =
+      existing ||
+      (await api.post("/api/codebook-versions", {
+        project_id: projectId,
+        version: CODEBOOK_VERSION,
+        methodology: "codebook_ta",
+        change_log: "Scenario 94 codebook for the planted interview themes",
+        codes: CODEBOOK.map(([code_id, label, definition, inclusion, exclusion]) => ({
+          code_id,
+          label,
+          definition,
+          inclusion_criteria: inclusion,
+          exclusion_criteria: exclusion,
+        })),
+      }));
+    codebookVersionId = version.id;
+    check("Codebook version ready", Boolean(codebookVersionId), `${CODEBOOK_VERSION} id=${codebookVersionId}`);
   } catch (e) {
-    check("Codebook version created", false, e.message);
+    check("Codebook version ready", false, e.message);
     return finish("codebook failed");
   }
   let runInfo = null;
