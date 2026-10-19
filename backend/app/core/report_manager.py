@@ -101,6 +101,40 @@ def _finding_count(report) -> int:
     return len(_safe_json_list(getattr(report, "finding_ids_json", None)))
 
 
+async def _record_weakest_section_advice(project_id: str, report, sections: list[str]) -> None:
+    """I9: a decision model's pick of the weakest section, recorded beside the LLM's 1-10 scores.
+
+    Advisory and opt-in per project (``services/decider_advisory.py``); the refinement loop keeps
+    using the LLM's choice. Reports compose only from findings that already passed the gates.
+    """
+    from app.core.decider.contract import Choice
+    from app.services.decider_advisory import advise
+
+    names = []
+    for section in sections:
+        name = section.split("\n", 1)[0].removeprefix("## ").strip()
+        if name and name not in names:
+            names.append(name)
+    report_id = str(getattr(report, "id", "") or "")[:36]
+    if len(names) < 2 or not report_id:
+        return
+    await advise(
+        project_id,
+        site="report.weakest_section",
+        subject_kind="report",
+        subject_id=report_id,
+        state={
+            "title": str(getattr(report, "title", "") or ""),
+            "sections": [section[:2000] for section in sections],
+        },
+        question=Choice(
+            "Which section of this research report most needs improvement?",
+            {name: f"The '{name}' section." for name in names},
+        ),
+        positive_outcomes=frozenset(),
+    )
+
+
 async def _record_report_promotion_gate(
     *,
     project_id: str,
@@ -816,6 +850,7 @@ class ReportManager:
 
             # Assemble full document
             full_doc = f"# {report_snapshot.title}\n\n" + "\n\n---\n\n".join(sections)
+            await _record_weakest_section_advice(project_id, report_snapshot, sections)
 
             # ── Iterative refinement loop (max 2 passes) ──
             # LLM scores each section, identifies the weakest, and re-composes it.

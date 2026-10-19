@@ -233,7 +233,7 @@ export default function UpdateChecker() {
 
       {/* No update */}
       {updateInfo && !updateInfo.update_available && !updateInfo.error && updateStatus === "idle" && (
-        <div className="flex items-center justify-between text-sm text-green-600 dark:text-green-400">
+        <div className="flex items-center justify-between text-sm text-green-700 dark:text-green-400">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={16} />
             <span>You're running the latest version (v{updateInfo.current_version}).</span>

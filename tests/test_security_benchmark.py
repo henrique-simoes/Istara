@@ -570,6 +570,22 @@ def test_security_benchmark_detects_audit_metrics_evidence_paths() -> None:
     assert result.scorecard["triggered_paths"] == sorted(changed_paths)
 
 
+def test_security_benchmark_detects_decision_model_provider_paths() -> None:
+    matrix = load_matrix(ROOT / "security" / "control_matrix.json")
+
+    changed_paths = [
+        "backend/app/core/decider/client.py",
+        "backend/app/core/decider/registry.py",
+        "backend/app/models/decision_policy.py",
+        "tests/test_decider_client.py",
+    ]
+    result = evaluate_matrix(matrix, changed_paths=changed_paths)
+
+    assert result.passed is True
+    assert result.scorecard["auth_security_change_detected"] is True
+    assert result.scorecard["triggered_paths"] == sorted(changed_paths)
+
+
 def test_security_benchmark_blocks_failed_control() -> None:
     matrix = load_matrix(ROOT / "security" / "control_matrix.json")
     modified = copy.deepcopy(matrix)

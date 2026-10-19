@@ -1,0 +1,25 @@
+# Autoresearch Hill-Climbing Audit (2026-10-17)
+
+Spec: CF-SPEC-1. Scope: `backend/app/core/autoresearch_engine.py`, `backend/app/core/autoresearch_runners/*`,
+and `backend/app/core/adaptive_validation.py` with its caller in `backend/app/core/agent_execution.py`.
+Method: source reading at `origin/testing` `bfbca9a5`. No experiments were run.
+
+Status: **fixed in CF-SPEC-1 Phase 6 (2026-10-18)**, each with a regression test
+(`tests/test_autoresearch_statistics.py`, `tests/test_autoresearch_hill_climbing.py`); AV-1 was fixed
+in Phase 3 (`tests/test_assurance_modes.py`, `tests/test_operational_validation.py`). SV-1
+(`spine.verify` verbalized confidence) is addressed in Phase 8. Severity follows build-stream (Blocker / Major / Minor). Nothing is a Blocker,
+because autoresearch candidates are sandboxed and reverted, and "kept" means proposal-ready rather
+than live (`AUTORESEARCH_SPINE_POLICY`).
+
+| ID | Sev | Where | Finding | Consequence | Proposed fix |
+|---|---|---|---|---|---|
+| AR-1 | Major | `autoresearch_engine.py` keep branch (`best_score = score` after `await revert_fn()`) | A kept candidate is reverted, yet `best_score` ratchets to its score. The next candidate is applied to the *unchanged baseline state* but must beat the previous candidate's score. | Not hill climbing: it is random search against a rising bar set by noisy maxima. The persisted `baseline_score` is that bar, not the measured baseline. | Compare every candidate with a fresh paired measurement of the incumbent state; persist the incumbent and the candidate separately. Hill climbing proper (stacking accepted mutations) only becomes possible once a governed proposal is applied, and that is a separate, explicit loop mode. |
+| AR-2 | Major | `_measure_candidate`, `_should_keep_candidate` | The baseline is measured once, candidates `measurement_repeats` times (default 1). The guard compares δ with the candidate mean's CI only (z = 1.96 on n ≤ 10), ignoring baseline variance. With the default of 1 repeat there is no CI, so any δ ≥ 0.01 is kept. | Noise is accepted as improvement. Taking the maximum over iterations adds a winner's-curse bias. | Paired design with common inputs, a t interval on the mean paired difference, and confirmation of the best candidate on held-out inputs before `proposal_ready`. |
+| AR-3 | Minor | `_persist_experiment` | Persists `experiment.get("mutation_diff", {})`, but the loop stores the mutation under `candidate_mutation`. | `AutoresearchExperiment.mutation_diff` is always `"{}"`; the DB record cannot reproduce the mutation (governance evidence does read `candidate_mutation`). | Persist `candidate_mutation` as `mutation_diff`. |
+| AR-4 | Major | `skill_prompt._score_output`, `model_temp` scorer, `question_bank._score_responses` | A failed or unparsable judge call returns **0.5**. A failed skill run scores 0.0, and output under 30 characters scores 0.1. | Fabricated measurements enter means and keep/revert decisions. This violates "never fabricate; `not_runnable`" (AGENTS.md §6). | A failed measurement becomes `not_runnable`, the iteration is recorded as such, and it is excluded from statistics. |
+| AR-5 | Major | same scorers | Takes the first float token of free text and clamps it to [0, 1]. "8/10" → 1.0; "1. Completeness…" → 1.0; "Score: 0.7" → 0.7. | Systematic upward bias that depends on output formatting. | Structured output (`agentic.structured` with a number schema) for LLM judges, or a decider `score` question (Phase 2c). |
+| AR-6 | Major (verify) | `model_temp` scoring uses no `endpoint_id` | The judge routes to the default endpoint, which can be the endpoint under test. | Self-preference bias (contrast `answer_eval`: "a judge must never be the model under test"). | Pin a judge endpoint distinct from every candidate, and refuse otherwise. |
+| AR-7 | Minor | meta-conflict branch `continue` | Skips an iteration without a record or telemetry. | Silent loss of iterations; the user sees fewer experiments than requested with no reason given. | Record a `skipped_meta_conflict` experiment row. |
+| AR-8 | Minor | `get_leaderboard` | Ranks by `max(quality_score)` and reports `quality_ema` equal to the plain average. | One lucky sample wins; the label misdescribes the statistic. | Rank by a lower confidence bound of the mean; rename or compute a real EMA. |
+| AV-1 | Major | `agent_execution.py` → `AdaptiveSelector.record_outcome(..., agreement_score >= 0.5)` | Validation "success" is defined as self-agreement. | The selector learns to prefer the most self-consistent method (Self-MoA). This is self-certification, which the governance contract forbids, and it ignores evidence that same-model committees repeat their biases (thesis axis 10, consensus 0.1245). | Reward = human task outcome (approved, no false-positive or hallucination review category). Thompson sampling within the user's assurance mode. |
+| SV-1 | Minor | `agent_research.py` `spine.verify` | Asks the model to self-report `"confidence": 0.85`. | Verbalized confidence is poorly calibrated (Xiong et al. 2024). | Decider noul/choice with calibrated probability (integration I5), or label the field as uncalibrated. |

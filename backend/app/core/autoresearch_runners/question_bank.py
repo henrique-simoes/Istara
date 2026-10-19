@@ -13,6 +13,7 @@ import logging
 from collections.abc import Awaitable, Callable
 
 from app.core.autoresearch_runners import BaseLoopRunner
+from app.core.autoresearch_runners.scoring import judge_messages, parse_unit_score, plan_judge
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +28,14 @@ class QuestionBankRunner(BaseLoopRunner):
     # BaseLoopRunner interface
     # ------------------------------------------------------------------
 
-    async def measure_baseline(self, target: str) -> float:
+    async def measure_baseline(self, target: str) -> float | None:
         """Simulate a participant and measure response quality.
 
         *target* is a deployment_id.
         """
         return await self._evaluate_questions(target)
 
-    async def measure(self, target: str) -> float:
+    async def measure(self, target: str) -> float | None:
         """Evaluate after question mutation."""
         return await self._evaluate_questions(target)
 
@@ -199,13 +200,13 @@ class QuestionBankRunner(BaseLoopRunner):
             deployment.config_json = config_json
             await db.commit()
 
-    async def _evaluate_questions(self, deployment_id: str) -> float:
+    async def _evaluate_questions(self, deployment_id: str) -> float | None:
         """Simulate a participant going through the question bank and score quality."""
         deployment = await self._load_deployment(deployment_id)
         questions = json.loads(deployment.questions_json or "[]")
 
         if not questions:
-            return 0.0
+            return None
 
         # Format questions for the simulated participant
         questions_text = "\n".join(
@@ -248,20 +249,28 @@ class QuestionBankRunner(BaseLoopRunner):
             participant_response = outcome.text
         except Exception as e:
             logger.warning(f"Participant simulation failed: {e}")
-            return 0.0
+            return None
 
         # Score the response quality
         return await self._score_responses(questions_text, participant_response)
 
-    async def _score_responses(self, questions_text: str, responses: str) -> float:
+    async def _score_responses(self, questions_text: str, responses: str) -> float | None:
         """Score how well the questions elicited useful research responses."""
         if not responses or len(responses.strip()) < 30:
-            return 0.1
+            return 0.0
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
+        subject = "question bank"
+        text = f"Questions:\n{questions_text}\n\nResponses:\n{responses}"
+        plan = await plan_judge(self, skill_name=subject, output=text, avoid_endpoint_ids=())
+        if not plan.use_llm:
+            return plan.score
+        try:
+            from app.core.agentic import agentic
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.question_bank.score",
+                project_id=self.require_project_id(),
+                system=(
                     "You are a UX research quality evaluator. Score how well these "
                     "research questions elicited useful, actionable responses from "
                     "a simulated participant on 0.0-1.0 scale:\n"
@@ -272,38 +281,12 @@ class QuestionBankRunner(BaseLoopRunner):
                     "- Bias avoidance: questions did not lead to biased responses\n"
                     "Respond with ONLY a decimal number."
                 ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"Questions:\n{questions_text[:1000]}\n\n"
-                    f"Participant responses:\n{responses[:1500]}"
-                ),
-            },
-        ]
-
-        try:
-            # W6/W9: the elicited-response score goes through the
-            # AgenticDispatcher (``autoresearch.question_bank.score``).
-            from app.core.agentic import agentic
-            from app.core.agentic.types import TurnParams
-
-            outcome = await agentic.completion(
-                purpose="autoresearch.question_bank.score",
-                project_id=self.require_project_id(),
-                system=messages[0]["content"],
-                messages=messages[1:],
-                params=TurnParams(temperature=0.1, max_tokens=10),
+                messages=judge_messages(subject, text),
+                params=plan.params(),
                 spine_phase="review",
                 engine=self.engine,
             )
-            score_text = (outcome.text or "").strip()
-            for token in score_text.replace(",", ".").split():
-                try:
-                    val = float(token)
-                    return max(0.0, min(1.0, val))
-                except ValueError:
-                    continue
-            return 0.5
-        except Exception:
-            return 0.5
+        except Exception as exc:
+            logger.debug("Judge call failed: %s", exc)
+            return None
+        return parse_unit_score(getattr(outcome, "text", None))

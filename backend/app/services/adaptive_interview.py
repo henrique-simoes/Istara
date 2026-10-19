@@ -688,12 +688,46 @@ async def _is_saturated(
                 params=TurnParams(),
             )
             content = outcome.text.strip().upper()
-            return "SATURATED" in content
+            await _record_saturation_advice(response, project_id)
+            return saturation_verdict(content)
         except Exception:
             pass
 
     # Heuristic fallback: very short probe responses suggest saturation
     return len(response.split()) < 5
+
+
+def saturation_verdict(text: str) -> bool:
+    """True only for an explicit SATURATED reply.
+
+    ``"SATURATED" in "NOT_SATURATED"`` is true, so a substring test read every "not saturated"
+    reply as saturated and ended probing early (found 2026-10-18, CF-SPEC-1 Phase 8).
+    """
+    words = text.strip().upper().replace("-", "_").split()
+    return bool(words) and words[0].strip(".\"'") == "SATURATED"
+
+
+async def _record_saturation_advice(response: str, project_id: str | None) -> None:
+    """I7: a decision model's yes/no on the same probe reply (advisory, opt-in, recorded only)."""
+    import hashlib
+
+    from app.core.decider.contract import Noul
+    from app.services.decider_advisory import advise
+
+    if not project_id:
+        return
+    await advise(
+        project_id,
+        site="channel.saturation",
+        subject_kind="interview_probe",
+        subject_id=hashlib.sha256(f"{project_id}\n{response}".encode()).hexdigest()[:32],
+        state={"probe_reply": response[:4000]},
+        question=Noul(
+            "Does this reply to a follow-up probe add meaningful new information?",
+            true_criterion="It gives new detail, examples or reasons.",
+            false_criterion="It repeats earlier answers or is minimal.",
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

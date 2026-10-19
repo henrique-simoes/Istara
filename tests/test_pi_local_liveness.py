@@ -90,7 +90,7 @@ def test_the_session_carries_the_endpoint_budgets_and_the_supervisor_waits_longe
 
     resolved = _resolved(_endpoint("http://127.0.0.1:8080/v1"))
     limits = _session_limits(resolved)
-    assert limits == {"max_wall_clock_ms": 3_600_000, "max_idle_ms": 300_000}
+    assert limits == {"max_wall_clock_ms": 3_600_000, "max_idle_ms": 300_000, "cost_free": True}
 
     sup = PiRuntimeSupervisor(run_timeout=120.0)
     sent: list[dict] = []
@@ -129,3 +129,37 @@ def test_a_local_binding_waits_for_a_model_that_is_still_loading():
     remote = _bind_payload(_resolved(_endpoint("https://api.meta.ai/v1")))
     assert local["load_wait_ms"] == LOCAL_RESPONSE_START_MS == 300_000
     assert "load_wait_ms" not in remote
+
+
+def test_a_zero_priced_local_endpoint_runs_without_a_cost_ceiling():
+    """Its cost is known to be zero, so the worker gets no ceiling it would fail as unpriced.
+    Any price, or a remote endpoint, keeps the ceiling and its fail-closed check."""
+    from app.core.pi_runtime.engine import _session_limits
+    from app.core.pi_runtime.supervisor import PiRuntimeSupervisor
+
+    free = _session_limits(_resolved(_endpoint("http://100.68.0.10:8080/v1", locality="local")))
+    priced = _session_limits(
+        _resolved(_endpoint("http://127.0.0.1:8080/v1", cost_input_per_mtok=0.01))
+    )
+    remote = _session_limits(_resolved(_endpoint("https://api.example.com/v1")))
+    assert free.get("cost_free") is True
+    assert "cost_free" not in priced and "cost_free" not in remote
+
+    sup = PiRuntimeSupervisor(run_timeout=120.0, max_cost_usd=0.5)
+    sent: list[dict] = []
+
+    async def _send(frame):
+        sent.append(frame)
+        sup._sessions[frame["session_key"]].put_nowait({"type": "session.opened"})
+
+    sup._send = _send
+
+    async def _open(key, limits):
+        await sup.open_session(
+            key, system_prompt="", history=[], revision=None, catalog=[], limits=limits
+        )
+
+    asyncio.run(_open("free", free))
+    asyncio.run(_open("priced", priced))
+    assert sent[0]["limits"]["max_cost_usd"] is None
+    assert sent[1]["limits"]["max_cost_usd"] == 0.5

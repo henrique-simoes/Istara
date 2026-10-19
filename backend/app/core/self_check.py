@@ -24,6 +24,9 @@ class VerificationResult:
     supporting_sources: list[str] = field(default_factory=list)
     contradicting_sources: list[str] = field(default_factory=list)
     notes: str = ""
+    # I6: a decision model's calibrated answer on the same claim and sources (advisory; recorded
+    # for calibration, never used to change ``confidence``). None unless the project opted in.
+    decider_advice: dict | None = None
 
 
 async def verify_claim(
@@ -122,6 +125,7 @@ Respond with the structured object:
         s.strip() for s in (value.get("contradicting") or []) if isinstance(s, str) and s.strip()
     ]
     notes = str(value.get("notes") or "")
+    advice = await _claim_advice(claim, project_id, rag_context.context_text)
 
     return VerificationResult(
         claim=claim,
@@ -129,6 +133,32 @@ Respond with the structured object:
         supporting_sources=supporting,
         contradicting_sources=contradicting,
         notes=notes,
+        decider_advice=advice.as_dict() if advice is not None else None,
+    )
+
+
+async def _claim_advice(claim: str, project_id: str, sources: str):
+    import hashlib
+
+    from app.core.decider.contract import Choice
+    from app.services.decider_advisory import advise
+
+    digest = hashlib.sha256(f"{project_id}\n{claim}".encode()).hexdigest()[:32]
+    return await advise(
+        project_id,
+        site="spine.self_check",
+        subject_kind="claim",
+        subject_id=digest,
+        state={"claim": claim, "sources": sources[:6000]},
+        question=Choice(
+            "How do the source documents relate to the claim?",
+            {
+                "supports": "The sources state what the claim says.",
+                "contradicts": "The sources state the opposite of the claim.",
+                "says_nothing": "The sources do not address the claim.",
+            },
+        ),
+        positive_outcomes=frozenset({"supports"}),
     )
 
 

@@ -884,6 +884,11 @@ async def run_independent_coding_run(
         coding_run_id=run_id,
         codebook_version_id=coding_run.codebook_version_id or "",
     )
+    # Decision-model triage runs only after the run, its gate and its item statuses are committed,
+    # on its own session, so it cannot change acceptance or the reliability matrix. Never raises.
+    from app.services.decider_triage import triage_coding_run_safely
+
+    await triage_coding_run_safely(project_id, run_id)
     payload = coding_run.to_dict()
     payload["code_application_count"] = persisted_count
     return payload

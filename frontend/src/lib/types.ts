@@ -1050,6 +1050,8 @@ export interface ModelSkillLeaderboard {
   quality_ema: number;
   executions: number;
   avg_quality: number;
+  /** 95% lower bound of the mean quality; the leaderboard ranks by this, not by one lucky run. */
+  quality_lower_bound_95?: number;
 }
 
 export type {

@@ -1,6 +1,7 @@
 """Tests for ReasoningBank memory service and API."""
 
 import uuid
+from types import SimpleNamespace
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -79,6 +80,25 @@ async def test_reasoning_bank_redacts_and_retrieves_project_scoped_memory():
 
 
 @pytest.mark.asyncio
+async def test_decision_review_lessons_are_process_memory_only():
+    """Decision-model trust evaluations (CF-SPEC-1 Phase 5) are lessons, never evidence."""
+    await init_db()
+
+    item = await reasoning_bank.record_memory(
+        project_id="reasoning-project-decision-review",
+        source_kind="decision_review",
+        source_id="scope-abc",
+        outcome="observed",
+        title="Decision-model scope scope-ab not trusted: ece_above_ceiling",
+        content='{"scope_key": "scope-abc", "trusted": false, "held_out_ece": 0.09}',
+        tags=["decision_model", "trust_gate"],
+        domain="decision_models",
+    )
+
+    assert "process-memory-only" in item.get_tags()
+    assert item.source_kind == "decision_review"
+
+
 async def test_reasoning_bank_records_content_free_validity_telemetry(monkeypatch):
     await init_db()
     record = AsyncMock()
@@ -351,3 +371,26 @@ async def test_reasoning_bank_counts_use_only_when_a_memory_reaches_a_prompt(mon
     monkeypatch.setattr(reasoning_bank, "record_usage", _broken)
     again = await reasoning_bank.context_for_query(project_id=project_id, query="late invoices")
     assert memory_id in again
+
+
+# CF-SPEC-1 Phase 8 (I13): decision-model relevance is advice until its scope is trusted.
+async def test_reasoning_bank_rerank_only_reorders_from_trusted_scopes(monkeypatch):
+    from app.core import reasoning_bank
+    from app.services import decider_advisory
+
+    memories = [{"id": "a", "title": "a"}, {"id": "b", "title": "b"}]
+    relevance = {"a": 0.2, "b": 0.9}
+
+    def fake(trusted):
+        async def advise(project_id, **kwargs):
+            memory_id = kwargs["state"]["lesson"].split("\n")[0]
+            return SimpleNamespace(p_true=relevance[memory_id], trusted=trusted)
+
+        return advise
+
+    monkeypatch.setattr(decider_advisory, "advise", fake(False))
+    untrusted = await reasoning_bank._rerank_with_decider("p", "q", [dict(m) for m in memories])
+    assert [m["id"] for m in untrusted] == ["a", "b"] and untrusted[1]["decider_relevance"] == 0.9
+    monkeypatch.setattr(decider_advisory, "advise", fake(True))
+    trusted = await reasoning_bank._rerank_with_decider("p", "q", [dict(m) for m in memories])
+    assert [m["id"] for m in trusted] == ["b", "a"]

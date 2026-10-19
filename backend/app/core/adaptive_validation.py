@@ -1,16 +1,20 @@
-"""Adaptive Validation — learns the best validation method per context.
+"""Adaptive Validation — chooses a validation method per context.
 
-Tracks method performance per project/skill/agent combination and uses
-weighted scoring with exponential decay (recency bias, half-life 30 days)
-to recommend the most effective validation strategy.
+The choice is constrained by the project's assurance mode (``app.core.assurance``) and learns only
+from human-verified outcomes: whether a method's verdict matched the researcher's task review
+(Thompson sampling over those counts). Run counts and mean consensus are still recorded for
+Ensemble Health, but self-agreement never rewards a method (AV-1).
 """
 
 import inspect
 import logging
 import math
+import random
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
+from app.core.assurance import thompson_choice
 from app.models.database import async_session
 
 logger = logging.getLogger(__name__)
@@ -76,80 +80,116 @@ def _sample_confidence_weight(total_runs: int) -> float:
 class AdaptiveSelector:
     """Selects the best validation method based on historical performance."""
 
-    async def select_method(self, project_id: str, skill_name: str = "", agent_id: str = "") -> str:
-        """Select the best validation method for the given context."""
-        compute_default = await _compute_aware_default_method(project_id)
-        if compute_default != DEFAULT_METHOD:
-            logger.debug(
-                "Adaptive: selected '%s' from the project-scoped Pi catalog for project=%s",
-                compute_default,
-                project_id,
-            )
-            return compute_default
+    async def select_method(
+        self,
+        project_id: str,
+        skill_name: str = "",
+        agent_id: str = "",
+        *,
+        allowed: Sequence[str] | None = None,
+        rng: random.Random | None = None,
+    ) -> str:
+        """Choose a validation method among those the project's assurance mode allows.
 
+        Learning uses only human-verified outcomes (did the method's verdict match the researcher's
+        review?), via Thompson sampling. Self-agreement between samples is never a reward (AV-1):
+        copies of one model agree most and would always win. Without human outcomes the choice is
+        the compute-aware default, as before assurance modes existed.
+        """
+        choices = [m for m in (allowed or AVAILABLE_METHODS) if m in AVAILABLE_METHODS]
+        if not choices:
+            return DEFAULT_METHOD
+        if len(choices) == 1:
+            return choices[0]
+        counts = await self._human_counts(project_id, skill_name, agent_id)
+        learned = thompson_choice(choices, counts, rng or random.Random())
+        if learned is not None:
+            logger.debug("Adaptive: %s from human-verified outcomes %s", learned, counts)
+            return learned
+        compute_default = await _compute_aware_default_method(project_id)
+        if compute_default in choices:
+            return compute_default
+        return DEFAULT_METHOD if DEFAULT_METHOD in choices else choices[0]
+
+    async def _human_counts(
+        self, project_id: str, skill_name: str, agent_id: str
+    ) -> dict[str, tuple[int, int]]:
+        """(agree, disagree) per method for this context, else for the whole project."""
         try:
             from sqlalchemy import select
 
             from app.models.method_metric import MethodMetric
 
             async with async_session() as db:
-                # Query metrics for this context (project + skill + agent)
-                query = select(MethodMetric).where(
-                    MethodMetric.project_id == project_id,
-                )
+                query = select(MethodMetric).where(MethodMetric.project_id == project_id)
+                scoped = query
                 if skill_name:
-                    query = query.where(MethodMetric.skill_name == skill_name)
+                    scoped = scoped.where(MethodMetric.skill_name == skill_name)
                 if agent_id:
-                    query = query.where(MethodMetric.agent_id == agent_id)
-
-                result = await db.execute(query)
-                metrics = result.scalars().all()
-
-                if not metrics:
-                    # No history — fall back to project-level metrics
-                    result = await db.execute(
-                        select(MethodMetric).where(
-                            MethodMetric.project_id == project_id,
-                            MethodMetric.total_runs > 0,
-                        )
-                    )
-                    metrics = result.scalars().all()
-
-                if not metrics:
-                    return DEFAULT_METHOD
-
-                # Score each method with recency-weighted success rate
-                method_scores: dict[str, float] = {}
-                for m in metrics:
-                    if m.total_runs == 0:
-                        continue
-                    success_rate = m.success_count / m.total_runs
-                    recency = _recency_weight(m.last_used)
-                    sample_confidence = _sample_confidence_weight(m.total_runs)
-                    score = (
-                        (success_rate * 0.5 + m.avg_consensus_score * 0.5)
-                        * recency
-                        * m.weight
-                        * sample_confidence
-                    )
-                    if m.method in method_scores:
-                        method_scores[m.method] = max(method_scores[m.method], score)
-                    else:
-                        method_scores[m.method] = score
-
-                if not method_scores:
-                    return DEFAULT_METHOD
-
-                best = max(method_scores, key=method_scores.get)
-                logger.debug(
-                    f"Adaptive: selected '{best}' for project={project_id} "
-                    f"skill={skill_name} (scores: {method_scores})"
+                    scoped = scoped.where(MethodMetric.agent_id == agent_id)
+                rows = (await db.execute(scoped)).scalars().all()
+                scoped_has_outcomes = any(
+                    (r.human_agree_count or 0) + (r.human_disagree_count or 0) for r in rows
                 )
-                return best
+                if not scoped_has_outcomes:
+                    rows = (await db.execute(query)).scalars().all()
+        except Exception as exc:
+            logger.warning("Adaptive human-outcome lookup failed: %s", exc)
+            return {}
+        counts: dict[str, tuple[int, int]] = {}
+        for row in rows:
+            agree, disagree = counts.get(row.method, (0, 0))
+            counts[row.method] = (
+                agree + (row.human_agree_count or 0),
+                disagree + (row.human_disagree_count or 0),
+            )
+        return {method: c for method, c in counts.items() if sum(c) > 0}
 
-        except Exception as e:
-            logger.warning(f"Adaptive selection failed: {e}")
-            return DEFAULT_METHOD
+    async def record_human_outcome(
+        self,
+        project_id: str,
+        skill_name: str,
+        agent_id: str,
+        method: str,
+        agreed: bool,
+    ) -> None:
+        """Record whether a method's verdict matched the researcher's review (AV-1 signal)."""
+        if method not in AVAILABLE_METHODS:
+            return
+        try:
+            from sqlalchemy import select
+
+            from app.models.method_metric import MethodMetric
+
+            async with async_session() as db:
+                result = await db.execute(
+                    select(MethodMetric).where(
+                        MethodMetric.project_id == project_id,
+                        MethodMetric.skill_name == skill_name,
+                        MethodMetric.agent_id == agent_id,
+                        MethodMetric.method == method,
+                    )
+                )
+                metric = result.scalars().first()
+                if metric is None:
+                    metric = MethodMetric(
+                        id=str(uuid.uuid4()),
+                        project_id=project_id,
+                        skill_name=skill_name,
+                        agent_id=agent_id,
+                        method=method,
+                        total_runs=0,
+                        human_agree_count=0,
+                        human_disagree_count=0,
+                    )
+                    db.add(metric)
+                if agreed:
+                    metric.human_agree_count = (metric.human_agree_count or 0) + 1
+                else:
+                    metric.human_disagree_count = (metric.human_disagree_count or 0) + 1
+                await db.commit()
+        except Exception as exc:
+            logger.warning("Failed to record human-verified validation outcome: %s", exc)
 
     async def record_outcome(
         self,
@@ -260,6 +300,8 @@ class AdaptiveSelector:
                         "sample_confidence_weight": round(
                             _sample_confidence_weight(m.total_runs), 4
                         ),
+                        "human_agree_count": m.human_agree_count or 0,
+                        "human_disagree_count": m.human_disagree_count or 0,
                     }
                     for m in metrics
                 ]

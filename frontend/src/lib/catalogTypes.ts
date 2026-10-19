@@ -141,6 +141,14 @@ export interface CodeApplicationType {
   reviewed_by?: string | null;
   reviewed_at?: string | null;
   created_at: string;
+  /** Present only when a trusted decision model routed this item for priority review. */
+  decider_triage?: {
+    action: "abstain" | "flag" | string;
+    top_outcome: "supports" | "contradicts" | "says_nothing" | string | null;
+    p_supports: number | null;
+    endpoint_id: string;
+    served_model: string;
+  };
 }
 
 export interface ReconciliationDecisionType {
@@ -242,4 +250,123 @@ export interface StartCodingRunRequest {
   threshold?: number;
   max_coders?: number;
   limit?: number;
+}
+
+// Decision models (typed deciders such as JEV) and LLM judges on one error model.
+// Mirrors GET /api/metrics/{project_id}/decision-models (backend/app/services/decision_health.py).
+export interface DecisionModelScope {
+  scope_key: string;
+  endpoint_id: string;
+  served_model: string;
+  question_set: string;
+  task_family: string;
+  verdicts: number;
+  labelled: number;
+  routed: number;
+  trusted: boolean;
+  reasons: string[];
+  metrics: Partial<
+    Record<"effective_n" | "held_out_ece" | "held_out_brier" | "kappa" | "order_flip_rate", number | null>
+  >;
+}
+
+export interface LlmJudgeMethodAccuracy {
+  method: string;
+  human_agree: number;
+  human_disagree: number;
+  human_accuracy: number | null;
+}
+
+export interface EvaluatorPair {
+  a: string;
+  b: string;
+  n: number;
+  error_correlation: number | null;
+  yules_q: number | null;
+}
+
+export interface DecisionModelHealth {
+  project_id: string;
+  scopes: DecisionModelScope[];
+  llm_methods: LlmJudgeMethodAccuracy[];
+  error_structure: {
+    evaluators: string[];
+    labelled_items: number;
+    accuracy_vs_human: Record<string, number>;
+    pairs: EvaluatorPair[];
+    mean_error_correlation: number | null;
+    effective_evaluators: number | null;
+    dawid_skene: {
+      panel_size: number;
+      converged: boolean;
+      confusion: Record<string, number[][]>;
+      note: string;
+    } | null;
+  };
+}
+
+// Decision-model configuration. Mirrors backend/app/api/routes/decision_models.py
+// (DeciderEndpointRequest, ProjectDecisionPolicyRequest); keys never appear in any of these shapes.
+export type DecisionModelLocality = "local" | "hosted";
+export type DecisionModelProtocol = "systemone" | "openai_decisions";
+
+export interface DecisionModelEndpoint {
+  endpoint_id: string;
+  base_url: string;
+  model: string;
+  model_is_alias: boolean;
+  locality: DecisionModelLocality;
+  protocol: DecisionModelProtocol;
+  timeout_s: number;
+  max_retries: number;
+  credential_status: "configured" | "missing" | "not_needed";
+}
+
+export interface DecisionModelPreset {
+  preset_id: string;
+  label: string;
+  base_url: string;
+  model: string;
+  locality: DecisionModelLocality;
+  needs_api_key: boolean;
+  docs_url: string;
+  protocol: DecisionModelProtocol;
+}
+
+export interface DecisionModelEndpointRequest {
+  endpoint_id: string;
+  base_url: string;
+  model: string;
+  api_key?: string;
+  protocol?: DecisionModelProtocol;
+}
+
+export interface DecisionModelCheckResult {
+  ok: boolean;
+  reason: string | null;
+  served_model?: string | null;
+  requested_model?: string;
+}
+
+export type AssuranceMode = "auto" | "llm_judges" | "decision_models" | "both" | "none";
+
+export interface ProjectDecisionPolicyRequest {
+  mode: AssuranceMode;
+  llm_method: string;
+  llm_judges: number;
+  decider_endpoint_ids: string[];
+  hosted_egress_endpoint_ids: string[];
+}
+
+export interface ProjectDecisionPolicy extends ProjectDecisionPolicyRequest {
+  available_endpoints: Array<{
+    endpoint_id: string;
+    model: string;
+    locality: DecisionModelLocality;
+    model_is_alias: boolean;
+  }>;
+  unknown_endpoint_ids: string[];
+  choices: { modes: AssuranceMode[]; llm_methods: string[]; llm_judges: [number, number] };
+  trust?: Array<DecisionModelScope & { status: "calibrating" | "shadow" | "trusted" }>;
+  can_edit?: boolean;
 }

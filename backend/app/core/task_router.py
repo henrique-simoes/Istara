@@ -220,8 +220,14 @@ async def route_task(
     task_description: str,
     skill_name: str | None = None,
     explicit_agent_id: str | None = None,
+    *,
+    project_id: str | None = None,
+    task_id: str | None = None,
 ) -> dict:
     """Route a task to the best agent(s).
+
+    With ``project_id`` and ``task_id``, a decision model's specialty pick is recorded beside the
+    keyword routing (I11, advisory and opt-in per project); the keyword routing still decides.
 
     Returns:
         {
@@ -283,9 +289,42 @@ async def route_task(
     if collaborators:
         reason_parts.append(f"Collaborators: {', '.join(collaborators)}")
 
+    advice = None
+    if project_id and task_id:
+        advice = await _routing_advice(project_id, task_id, task_title, task_description)
+
     return {
         "primary_agent_id": primary_agent,
         "collaborators": collaborators,
         "specialties_needed": specialties,
         "routing_reason": "; ".join(reason_parts),
+        "decider_advice": advice.as_dict() if advice is not None else None,
     }
+
+
+_SPECIALTY_DESCRIPTIONS = {
+    "devops": "System health, infrastructure, security, deployment or data integrity work.",
+    "ui": "Interface, component, layout, visual design or accessibility work.",
+    "ux": "Usability evaluation, heuristics or interaction design review.",
+    "simulation": "Simulated participants, synthetic sessions or scenario testing.",
+    "research": "UX research analysis: interviews, surveys, synthesis or reporting.",
+}
+
+
+async def _routing_advice(project_id: str, task_id: str, title: str, description: str):
+    from app.core.decider.contract import Choice
+    from app.services.decider_advisory import advise
+
+    options = {domain: _SPECIALTY_DESCRIPTIONS.get(domain, domain) for domain in SPECIALTY_KEYWORDS}
+    if "research" not in options:
+        options["research"] = _SPECIALTY_DESCRIPTIONS["research"]
+    return await advise(
+        project_id,
+        site="task.routing",
+        subject_kind="task_routing",
+        subject_id=task_id,
+        task_id=task_id,
+        state={"title": title, "description": (description or "")[:4000]},
+        question=Choice("Which specialty should handle this task?", options),
+        positive_outcomes=frozenset(),
+    )

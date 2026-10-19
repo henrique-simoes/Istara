@@ -181,6 +181,7 @@ class ImprovementGovernanceEvidenceMixin:
             "persona": ["agents", "prompts"],
             "question_bank": ["interviews", "documents"],
             "ui_sim": ["ui"],
+            "decision_policy": ["decision_models", "prompts"],
         }
         return mapping.get(loop_type, ["configs"])
 

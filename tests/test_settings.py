@@ -143,6 +143,7 @@ async def test_settings_status_uses_cached_llm_readiness_without_probes(monkeypa
 
     fake_registry = _PassiveCachedRegistry()
     monkeypatch.setattr(settings_routes, "ollama", fake_registry)
+    monkeypatch.setattr(settings, "pi_api_endpoints", [])
     monkeypatch.setattr(
         settings_routes,
         "detect_runtime_freshness",
@@ -168,12 +169,47 @@ async def test_settings_status_never_calls_contract_stub_chat_ready(monkeypatch)
     fake_registry._nodes = {"node": _CachedNode(reachable=True, ready=True)}
     monkeypatch.setattr(settings_routes, "ollama", fake_registry)
     monkeypatch.setattr(settings, "llm_provider_contract_stub", True)
+    monkeypatch.setattr(settings, "pi_api_endpoints", [])
 
     response = await settings_routes.system_status()
 
     assert response["llm_readiness"] == {"reachable": True, "chat_ready": False}
     assert response["services"]["llm"] == "connected"
     assert response["status"] == "degraded"
+
+
+@pytest.mark.asyncio
+async def test_settings_status_counts_ready_pi_endpoints_as_chat_ready(monkeypatch):
+    """A stub-marked stack with a configured, credentialed Pi endpoint can chat (chat.py admits
+    it), so the passive status must say so; a local endpoint alone does not count there."""
+    from app.api.routes import settings as settings_routes
+    from app.config import PiApiEndpoint
+
+    monkeypatch.setattr(settings_routes, "ollama", _PassiveCachedRegistry())
+    monkeypatch.setattr(settings, "llm_provider_contract_stub", True)
+    monkeypatch.setattr(
+        "app.core.pi_runtime.endpoint_policy.pi_endpoint_credential_status",
+        lambda endpoint: "ready",
+    )
+    remote = PiApiEndpoint(
+        endpoint_id="remote-model",
+        base_url="https://api.example.com/v1",
+        model="m",
+        keychain_service="istara-pi",
+    )
+    local = PiApiEndpoint(
+        endpoint_id="local-model",
+        base_url="http://127.0.0.1:8080/v1",
+        model="q",
+        keychain_service="istara-pi",
+        locality="local",
+    )
+    monkeypatch.setattr(settings, "pi_api_endpoints", [local])
+    assert (await settings_routes.system_status())["llm_readiness"]["chat_ready"] is False
+    monkeypatch.setattr(settings, "pi_api_endpoints", [local, remote])
+    status = await settings_routes.system_status()
+    assert status["llm_readiness"] == {"reachable": True, "chat_ready": True}
+    assert status["status"] == "healthy"
 
 
 @pytest.mark.asyncio

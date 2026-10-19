@@ -486,6 +486,11 @@ async def create_reconciliation_decision(
     await db.commit()
     await db.refresh(row)
     await db.refresh(decision)
+    # A researcher's own review labels decision-model verdicts on this application; synthetic,
+    # debate and adversarial sources never do. Runs after the commit and never raises.
+    from app.services.decision_learning import learn_from_reconciliation
+
+    await learn_from_reconciliation(decision)
     await telemetry_recorder.record_research_validity_event(
         trace_id=uuid.uuid4().hex[:36],
         operation="reconciliation_decision.create",

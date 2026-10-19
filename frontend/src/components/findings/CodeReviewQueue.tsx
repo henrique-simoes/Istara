@@ -14,6 +14,7 @@ import {
 import { codeApplications as codeAppApi } from "@/lib/api";
 import type { CodeApplicationType } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import DeciderTriageNote from "@/components/findings/DeciderTriageNote";
 
 interface CodeReviewQueueProps {
   projectId: string;
@@ -322,6 +323,8 @@ export default function CodeReviewQueue({ projectId }: CodeReviewQueueProps) {
                     </p>
                   </div>
                 </div>
+
+                <DeciderTriageNote triage={item.decider_triage} />
 
                 {/* Reasoning */}
                 {item.reasoning && (

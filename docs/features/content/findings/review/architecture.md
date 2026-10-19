@@ -9,7 +9,7 @@ related_glossary: ["triangulation", "fleiss-kappa"]
 code_references: ["frontend/src/components/findings/FindingsView.tsx", "frontend/src/components/findings/CodeReviewQueue.tsx", "frontend/src/lib/researchIntegrityApi.ts", "backend/app/api/routes/research_validity.py", "backend/app/services/research_validity_service.py", "backend/app/core/research_validity.py", "backend/app/models/code_application.py"]
 api_references: ["backend/app/api/routes/code_applications.py", "backend/app/api/routes/codebooks.py", "backend/app/api/routes/research_validity.py"]
 test_references: ["tests/test_code_applications.py", "tests/test_project_scope_contracts.py", "tests/test_research_validity_contract.py"]
-last_verified: 2026-08-26
+last_verified: 2026-10-18
 compass: CF-SPEC-78 / CF-1005; CF-SPEC-124 / CF-1590
 ---
 
@@ -49,6 +49,7 @@ The Review tab presents code review queues for validating and adjudicating quali
 - Code review is a project-content surface. Pending queues and review mutations must stay inside the caller's authorized active project and must not infer project scope from a globally unique application id.
 - The legacy `bulk-approve` compatibility route is deliberately fail-closed with no database side effects. Confidence and accepted reliability/promotion status are review signals, never a reconciliation decision; each application must be accepted, rejected, or revised through the individual auditable review route.
 - Researchers review coded evidence units, not keyword tags. Code applications should point at stable evidence units and coding runs whenever the corrected pipeline produced them.
+- Decision-model triage (2026-10-18, CF-SPEC-1 Phase 4): after a coding run commits, configured decision models judge each code application (does the evidence unit support, contradict, or say nothing about the code?). The pending queue (`GET /api/code-applications/{project}/pending`) adds a `decider_triage` field and lists the item first only when a trusted decider scope routed it (`abstain` or `flag`) and it is not a blind audit item; otherwise the response and order are unchanged. Triage never changes promotion, reliability, reconciliation or review state, and a researcher's review labels the decider's verdict. The badge in the queue UI arrives with the decision-model onboarding (Phase 7).
 - Governed coding runs are started from the project-scoped research-validity route with researcher access. The service persists model coder identities, route evidence, reliability matrix output, and promotion state so the review queue can distinguish accepted coding from low-consensus or lower-assurance output.
 - Approving, rejecting, or revising a disputed code application creates a `ReconciliationDecision`, updates the code application's reconciliation/promotion state, and links the decision back into the Evidence Graph with a `reconciled_by` edge. A task remains blocked while any low-agreement code application is still unreconciled.
 - Project code-application reads accept `coding_run_id` so benchmark and review clients can prove that every application in one run has an explicit accepted/revised reconciliation decision without mixing rows from another run.
@@ -79,3 +80,7 @@ The Review tab presents code review queues for validating and adjudicating quali
 
 - Update this page whenever the listed UI components, stores, routes, model behavior, permissions, or tests change.
 - Regenerate the site and machine manifests with `python scripts/feature_docs.py --seed-missing --generate-site --check`.
+
+## Decider triage badge (CF-SPEC-1, Phase 7)
+
+`CodeReviewQueue.tsx` renders `decider_triage` (from `GET /api/code-applications/{project_id}/pending`, built by `services/decision_trajectories.routed_triage`) as an informational note. The backend includes it only for `ok`, routed, non-blind trajectories, so shadow verdicts and blind audit items never reach the reviewer.

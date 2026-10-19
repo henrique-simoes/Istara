@@ -22,6 +22,10 @@ class MethodMetric(Base):
     )  # dual_run, adversarial_review, etc.
     success_count: Mapped[int] = mapped_column(Integer, default=0)
     fail_count: Mapped[int] = mapped_column(Integer, default=0)
+    # Human-verified outcomes (AV-1): the method's verdict matched / did not match the researcher's
+    # review. Only these drive method selection; success/fail above count validation passes.
+    human_agree_count: Mapped[int] = mapped_column(Integer, default=0)
+    human_disagree_count: Mapped[int] = mapped_column(Integer, default=0)
     avg_consensus_score: Mapped[float] = mapped_column(Float, default=0.0)
     total_runs: Mapped[int] = mapped_column(Integer, default=0)
     weight: Mapped[float] = mapped_column(Float, default=1.0)  # Adaptive weight with recency bias

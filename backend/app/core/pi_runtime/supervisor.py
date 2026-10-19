@@ -346,10 +346,11 @@ class PiRuntimeSupervisor:
         history: list[dict[str, Any]],
         revision: str | None,
         catalog: list[dict[str, Any]],
-        limits: dict[str, int] | None = None,
+        limits: dict[str, Any] | None = None,
     ) -> None:
         """Open a worker session. ``limits`` carries the endpoint's run budgets
-        (``max_wall_clock_ms``, ``max_idle_ms``) over the supervisor defaults."""
+        (``max_wall_clock_ms``, ``max_idle_ms``) over the supervisor defaults, and
+        ``cost_free`` for a zero-priced local endpoint, which then has no cost ceiling."""
         session_limits: dict[str, Any] = {
             "max_turns": self._max_turns,
             "max_wall_clock_ms": int(self._run_timeout * 1000),
@@ -358,6 +359,9 @@ class PiRuntimeSupervisor:
         for key in ("max_wall_clock_ms", "max_idle_ms"):
             if limits and limits.get(key):
                 session_limits[key] = int(limits[key])
+        if limits and limits.get("cost_free"):
+            # A local endpoint priced at zero costs nothing; the worker skips the ceiling on null.
+            session_limits["max_cost_usd"] = None
         lock = self._session_locks.setdefault(session_key, asyncio.Lock())
         async with lock:
             # A caller must close a successful session before reusing its key.

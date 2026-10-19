@@ -34,9 +34,11 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: istara-test-caddy
+    # ISTARA_PUBLISH_HOST binds both ports to one host address (for example the VPS's tailnet
+    # address, so only the owner's devices can reach the stack). Unset = all interfaces, as before.
     ports:
-      - "13080:80"
-      - "13081:443"
+      - "${ISTARA_PUBLISH_HOST:-0.0.0.0}:13080:80"
+      - "${ISTARA_PUBLISH_HOST:-0.0.0.0}:13081:443"
     networks: [frontend-net, backend-net]
     volumes:
       - ./deploy/Caddyfile.testing:/etc/caddy/Caddyfile:ro
@@ -65,6 +67,13 @@ services:
     container_name: istara-test-backend
     expose: ["8000"]
     networks: [backend-net, data-net, provider-net]
+    # The deploy environment's own .env (Dokploy writes it next to this file) reaches the backend
+    # as a whole, so endpoint lists and keys named by the operator (PI_API_ENDPOINTS,
+    # DECIDER_ENDPOINTS_JSON, ISTARA_PI_SECRET_*, a decider's api_key_env) need no new line here.
+    # The explicit entries below still win for the keys they name. Optional: absent = old behaviour.
+    env_file:
+      - path: .env
+        required: false
     environment:
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - OLLAMA_HOST=http://provider-stub:11434

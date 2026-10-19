@@ -26,6 +26,7 @@ import {
 } from "@/lib/modelCatalog";
 import AgenticCoreSection from "@/components/settings/AgenticCoreSection";
 import PiModelManagement from "@/components/settings/PiModelManagement";
+import DecisionModelsSection from "@/components/settings/DecisionModelsSection";
 import { providerLabel } from "@/lib/modelProviders";
 
 function formatGb(value?: number | null): string {
@@ -334,6 +335,9 @@ export default function SettingsView() {
 
       {/* Pi Model Management — replaces the legacy LLM Servers section (owner decision 2026-08-23) */}
       {capabilities.canManageLlmInfrastructure && <PiModelManagement />}
+
+      {/* Decision models (typed deciders): admin configuration and first-activation guide */}
+      <DecisionModelsSection />
 
       {/* Telemetry (Local-first, No phone-home) */}
       {capabilities.canManageTelemetry && <TelemetrySection />}

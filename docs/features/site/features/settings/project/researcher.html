@@ -299,6 +299,9 @@
 <li>API references: <code>backend/app/api/routes/projects.py</code></li>
 <li>Tests: <code>tests/test_project_rbac.py</code>, <code>tests/test_project_scope_contracts.py</code>, <code>tests/pi_production/test_w8_embeddings_gateway.py</code>, <code>tests/simulation/scenarios/79-engine-selector.mjs</code></li>
 </ul>
+<h2 id="assurance-and-decision-models">Assurance and decision models</h2>
+<p>The **Assurance** panel chooses what checks this project&#x27;s outputs before you review them: LLM judges only (Self-MoA, two judges, or a panel of three or more), decision models only, both side by side, or no automated review. Human review is required in every mode, and the coding reliability gate never changes.</p>
+<p>A decision model answers a closed question about one item and returns a probability for each answer. It only reorders and flags items for review; it never accepts, rejects or promotes evidence. A hosted decision model, such as TypeSafe Jev, can receive this project&#x27;s data only after you tick the cloud consent for it here; a local one keeps data on your hardware. Trust status shows each model as calibrating, shadow (recorded, no effect) or trusted (calibrated against at least 50 of your reviews). Project researchers and viewers can read the panel; only project admins can change it.</p>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
@@ -314,6 +317,7 @@
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>
 <li class="toc-level-2"><a href="#evidence">Evidence</a></li>
+<li class="toc-level-2"><a href="#assurance-and-decision-models">Assurance and decision models</a></li>
 </ul></nav>
         </aside>
       </div>

@@ -50,7 +50,7 @@
 - Detect hallucination patterns by cross-referencing against source documents
 
 ### Research Quality Evaluation
-- Formally evaluate research quality using the existing validation pipeline (AdaptiveSelector, ValidationExecutor, consensus engine)
+- Formally evaluate research quality using the existing validation pipeline (AdaptiveSelector, the validation methods, consensus engine), within the project's assurance mode: if the project turned LLM judges off, the evaluation reports that instead of calling them
 - The "Evaluate Research Quality" skill invokes adversarial review, dual-run consistency, self-MoA verification, and debate consensus
 - Assess quality across 5 dimensions: code quality, evidence grounding, chain integrity, hallucination-free, depth
 - Confidence thresholds per finding type: nuggets ≥ 0.70, facts ≥ 0.65, insights ≥ 0.55, recommendations ≥ 0.50
@@ -179,15 +179,25 @@
 - Guide users through OAuth flows for SurveyMonkey
 - Explain Slack Socket Mode vs HTTP mode differences
 
+## Assurance Modes and Decision Models
+- Each project chooses what checks outputs before the researcher reviews them (Project Settings → Assurance): Automatic, LLM judges only (Self-MoA, two judges, or a panel of three or more), decision models only, both side by side (never merged into one vote), or no automated review. Human review is required in every mode, and the coding reliability gate never changes
+- Explain a decision model simply: it answers a closed question about one item and returns a probability for every answer; Istara uses it to reorder and flag items for review, and it never accepts, rejects or promotes evidence or counts as a coder
+- Where to configure: administrators add decision models in Settings → Decision models (hosted TypeSafe Jev directly or through OpenRouter, OpenAI Decisions in public beta, or a local /v1/systemone server such as llama.cpp with Kev, Laya or OpenJev); keys go to the Keychain or the server's secret store and are never shown again; a moving alias like jev-latest works: Istara records the version that answered and earns trust per version, starting over when the alias moves
+- A hosted decision model receives a project's data only after a project admin ticks that project's cloud consent; a local one keeps data on the user's hardware
+- When a project opts in, decision models also give recorded advice at other checks (claim and quote checks, output self-verification, interview saturation, report section scoring, task routing, review-feedback categories, memory relevance and upload prompt-injection screening); advice never accepts or rejects evidence, and a security screen can only add caution
+- Trust: a decision model starts in shadow mode (recorded, no effect), and may route items only after 50 reviewed items with ECE ≤ 0.05 and kappa ≥ 0.60; drift returns it to shadow automatically. Ensemble Health shows its status and whether evaluators fail together
+
 ## Autoresearch Optimization (Karpathy Pattern)
 - Explain what autoresearch is: a greedy hill-climbing optimization loop (hypothesize → mutate → evaluate → keep-or-discard → repeat), inspired by Karpathy's MIT-licensed autoresearch project
-- 6 optimization loops available:
+- 7 optimization loops available:
   1. **Skill Prompt Optimization** (Loop 1): Iterates on skill prompts using 6 mutation operators to improve quality scores
   2. **UI Simulation Optimization** (Loop 2): Pairs with Echo to improve accessibility and usability via code changes
   3. **Question Bank Optimization** (Loop 3): Improves interview/survey questions using simulated participants
   4. **RAG Parameter Tuning** (Loop 4): Optimizes chunk size, overlap, and hybrid search weights per project
   5. **Agent Persona Optimization** (Loop 5): Experiments with SKILLS.md and PROTOCOLS.md modifications
   6. **Model/Temperature Optimization** (Loop 6): Grid-searches model+temperature combinations per skill
+  7. **Decision Policy Optimization** (Loop 7): Tries alternative wordings of a decision model's code-application triage question, scored by 1 − Brier against the project's own human review labels (needs at least 20); proposals are admin-reviewed and never change the live question by themselves
+- Keep rule: the unchanged incumbent is re-measured every iteration, and a candidate is kept only when the 95% Welch interval of its gain clears the minimum improvement and an independent confirmation block agrees; a failed measurement is reported as not runnable, never as a made-up score. The leaderboard ranks by the lower 95% bound of the mean, so one lucky run does not win
 - Isolation: all autoresearch experiments run inside an isolation context that prevents pollution of learnings, skill stats, and evolution metrics
 - Rate limited: max experiments per day, per skill, with mutual exclusion against meta-hyperagent variants
 - OFF by default — requires user activation
@@ -444,6 +454,8 @@
 - Project Document Picker: a searchable dropdown in chat to attach existing project documents without re-uploading.
 - Task instructions ("Specific Instructions" field) are now included in LLM prompts alongside context and description.
 - Ensemble validation runs after every skill execution: Self-MoA (default, single server), Dual Run, Adversarial Review, Full Ensemble, Debate Rounds. Results stored on tasks and feed Ensemble Health view.
+- Assurance modes (per project): `auto` (default, as above), `llm_judges`, `decision_models` (typed decision models such as JEV answer one question, "would a careful senior researcher accept this output?", and no LLM judge runs), `both` (reported side by side, never merged) or `none` (the task is marked unvalidated). In every mode the task still goes to In Review for a human, and coded evidence still needs the three-coder reliability gate. Never describe a decision model's verdict as acceptance or as research evidence; it is triage, and it routes nothing until its calibration has been measured against human reviews.
+- Validation methods are chosen from human-verified outcomes (did the method's verdict match the researcher's review?), not from how much a method's samples agree with each other.
 - CSV files classified by column headers to distinguish survey data from interview transcripts.
 
 ### Testing & Quality Assurance (v2026.04.02.4)

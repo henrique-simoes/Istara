@@ -201,13 +201,31 @@ def _enforce_test_provider_network_policy(endpoint: ResolvedPiEndpoint) -> None:
     enforce_test_provider_network_policy(endpoint)
 
 
-def _session_limits(endpoint: ResolvedPiEndpoint) -> dict[str, int]:
+def _session_limits(endpoint: ResolvedPiEndpoint) -> dict[str, Any]:
     """The endpoint's run budgets for the worker session (DEC-10): progress-based idle plus a
-    total backstop, larger for local endpoints."""
-    return {
+    total backstop, larger for local endpoints.
+
+    A local endpoint with every price at zero is ``cost_free``: its cost is known to be zero, so
+    the session carries no cost ceiling instead of one the worker would fail as unpriced. A
+    remote endpoint, or a local one with any price set, keeps the ceiling and its fail-closed check.
+    """
+    limits: dict[str, Any] = {
         "max_wall_clock_ms": int(endpoint.max_run_ms),
         "max_idle_ms": int(endpoint.idle_timeout_ms),
     }
+    if _cost_free(endpoint):
+        limits["cost_free"] = True
+    return limits
+
+
+def _cost_free(endpoint: ResolvedPiEndpoint) -> bool:
+    prices = (
+        endpoint.cost_input_per_mtok,
+        endpoint.cost_output_per_mtok,
+        endpoint.cost_cache_read_per_mtok,
+        endpoint.cost_cache_write_per_mtok,
+    )
+    return bool(endpoint.is_local) and endpoint.provider_kind != "faux" and not any(prices)
 
 
 def _turn_bind_params(params: Any, endpoint: ResolvedPiEndpoint) -> dict[str, Any]:

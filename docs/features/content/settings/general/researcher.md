@@ -6,10 +6,10 @@ audience: researcher
 status: documented
 related_features: ["settings.llm-servers", "compute.pool"]
 related_glossary: ["rag"]
-code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py", "frontend/src/components/settings/EmbeddingModelSection.tsx", "backend/app/services/embedding_migration.py", "backend/app/core/embedding_prompts.py", "backend/app/core/vector_identity.py", "backend/app/core/pi_runtime/embedding_profile.py"]
-api_references: ["backend/app/api/routes/settings.py"]
-test_references: ["tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/test_embedding_migration.py", "tests/test_embedding_prompts.py", "frontend/src/components/settings/EmbeddingModelSection.test.ts"]
-last_verified: 2026-09-26
+code_references: ["frontend/src/components/common/SettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/settings/PiModelManagement.tsx", "backend/app/api/routes/settings.py", "backend/app/core/pi_runtime/endpoint_policy.py", "backend/app/core/pi_runtime/catalog.py", "backend/app/core/pi_runtime/oauth.py", "frontend/src/components/settings/EmbeddingModelSection.tsx", "backend/app/services/embedding_migration.py", "backend/app/core/embedding_prompts.py", "backend/app/core/vector_identity.py", "backend/app/core/pi_runtime/embedding_profile.py", "frontend/src/components/settings/DecisionModelsSection.tsx", "frontend/src/lib/decisionModelCopy.ts"]
+api_references: ["backend/app/api/routes/settings.py", "backend/app/api/routes/decision_models.py"]
+test_references: ["tests/test_settings.py", "tests/test_settings_agentic_pi_endpoints.py", "tests/pi_production/test_pi_catalog_ux.py", "tests/test_embedding_migration.py", "tests/test_embedding_prompts.py", "frontend/src/components/settings/EmbeddingModelSection.test.ts", "tests/test_decision_model_settings.py"]
+last_verified: 2026-10-18
 compass: CF-SPEC-53 / CF-657
 ---
 
@@ -80,3 +80,9 @@ keeps working throughout, and nothing is deleted.
 - Source files: `frontend/src/components/common/SettingsView.tsx`, `frontend/src/components/settings/AgenticCoreSection.tsx`, `frontend/src/components/settings/PiModelManagement.tsx`, `backend/app/api/routes/settings.py`, `backend/app/core/pi_runtime/endpoint_policy.py`, `backend/app/core/pi_runtime/catalog.py`, `backend/app/core/pi_runtime/oauth.py`
 - API references: `backend/app/api/routes/settings.py`
 - Tests: `tests/test_settings.py`, `tests/test_settings_agentic_pi_endpoints.py`, `tests/pi_production/test_pi_catalog_ux.py`
+
+## Decision models
+
+Administrators add decision models here. The section explains what a decision model is and, when none exists yet, walks through the first activation: choose a hosted model (TypeSafe Jev, with an API key) or a local `/v1/systemone` server (llama.cpp with Kev, Laya or OpenJev), add it with a pinned model version, check the connection with one fixed test question that carries no research data, then turn it on per project in Project Settings. API keys go to the macOS Keychain, or the server's secret store elsewhere, and are never shown again. Moving aliases such as `jev-latest` are accepted but labelled, because they never become trusted. Nothing is enabled for any project from here.
+
+Presets cover TypeSafe Jev directly, Jev through OpenRouter, OpenAI Decisions (public beta) and a local server. Each decision model shows which wire protocol it uses: `systemone` for Jev, OpenRouter and local servers, `openai_decisions` for OpenAI.

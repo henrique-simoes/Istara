@@ -25,6 +25,7 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useRoleCapabilities } from "@/hooks/useRoleCapabilities";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 import ToolAuditTrailTable, { ToolAuditEntry } from "@/components/common/ToolAuditTrailTable";
+import DecisionModelHealthPanel from "@/components/common/DecisionModelHealthPanel";
 
 interface MethodStatRow {
   method: string;
@@ -459,6 +460,9 @@ export default function EnsembleHealthView() {
             "Istara automatically learns which validation method works best for each project, skill, and agent combination. Methods are scored with recency-weighted performance metrics and conservative sample weighting."}
         </p>
       </div>
+
+      {/* Decision models and LLM judges against human review (CF-SPEC-1) */}
+      <DecisionModelHealthPanel projectId={projectId} />
 
       {/* Model Intelligence Section */}
       <ModelIntelligenceSection projectId={projectId} />

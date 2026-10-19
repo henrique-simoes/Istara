@@ -357,6 +357,8 @@ class MetaOrchestrator:
                         task.title,
                         task.description or "",
                         task.skill_name,
+                        project_id=task.project_id,
+                        task_id=task.id,
                     )
 
                     task.agent_id = routing["primary_agent_id"]

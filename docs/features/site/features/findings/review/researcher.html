@@ -274,6 +274,12 @@
 <li>High confidence does not authorize bulk acceptance. The old bulk-approve compatibility route refuses the request without changing data; use the per-application review controls so each decision is recorded in the reconciliation ledger.</li>
 <li>Visible status, lists, forms, generated artifacts, or review results shown by the referenced component and routes.</li>
 </ul>
+<h2 id="decision-model-triage">Decision-Model Triage</h2>
+<p>If your project uses decision models (for example JEV), they look at each coded quote after a</p>
+<p>coding run finishes and ask whether the evidence unit really supports the code. Once a decision</p>
+<p>model has been calibrated against enough of your own reviews, items it doubts can appear first in</p>
+<p>the queue. It never accepts or rejects a code for you, and it never changes the reliability result.</p>
+<p>Your review decision is what teaches Istara how far to trust it.</p>
 <h2 id="caveats">Caveats</h2>
 <ul>
 <li>Needs interactive verification for exact empty, loading, error, and permission-denied states.</li>
@@ -294,6 +300,8 @@
 <li>API references: <code>backend/app/api/routes/code_applications.py</code>, <code>backend/app/api/routes/codebooks.py</code></li>
 <li>Tests: <code>tests/test_code_applications.py</code>, <code>tests/test_project_scope_contracts.py</code></li>
 </ul>
+<h2 id="decision-model-flags">Decision-model flags</h2>
+<p>When a project&#x27;s decision model is trusted, items it flagged or was unsure about move up the code review queue and carry a short note with its probability that the excerpt supports the code. The note never appears for items it is still being measured on, or for the random audit sample, so it cannot influence how you judge them. Your reconciliation decision is the only one that counts.</p>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
@@ -304,10 +312,12 @@
 <li class="toc-level-2"><a href="#how-ux-researchers-use-it">How UX Researchers Use It</a></li>
 <li class="toc-level-2"><a href="#supported-workflows">Supported Workflows</a></li>
 <li class="toc-level-2"><a href="#inputs-outputs-and-expected-outcomes">Inputs, Outputs, And Expected Outcomes</a></li>
+<li class="toc-level-2"><a href="#decision-model-triage">Decision-Model Triage</a></li>
 <li class="toc-level-2"><a href="#caveats">Caveats</a></li>
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>
 <li class="toc-level-2"><a href="#evidence">Evidence</a></li>
+<li class="toc-level-2"><a href="#decision-model-flags">Decision-model flags</a></li>
 </ul></nav>
         </aside>
       </div>

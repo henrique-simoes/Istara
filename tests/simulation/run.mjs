@@ -864,6 +864,12 @@ async function main() {
       "--use-fake-ui-for-media-stream",
       "--use-fake-device-for-media-stream",
       "--mute-audio",
+      // A test stack served over HTTPS with a self-signed certificate (the VPS testing stack)
+      // needs this so Secure session cookies, and therefore reload persistence, can be tested.
+      // Opt-in only: ISTARA_SIM_IGNORE_HTTPS_ERRORS=1.
+      ...(/^(1|true|yes)$/i.test(String(process.env.ISTARA_SIM_IGNORE_HTTPS_ERRORS || ""))
+        ? ["--ignore-certificate-errors"]
+        : []),
     ],
   });
   const context = await browser.newContext({
@@ -1050,6 +1056,48 @@ async function main() {
     }
   } catch (e) {
     console.log(`  Project setup failed: ${e.message} — scenarios will create as needed`);
+  }
+
+  // ── Live-run options (CF-SPEC-1, VPS testing): no UI clicks, everything by API ──
+  // ISTARA_SIM_DEFAULT_ENDPOINT switches Pi Model Management's default endpoint before the
+  // scenarios, so a pass runs every chat turn on one configured model.
+  // ISTARA_SIM_DECIDER_ENDPOINTS (comma-separated decider ids) turns decision models on for the
+  // simulation project before any scenario runs, so coding runs and validation exercise them;
+  // hosted ones get the project's explicit cloud opt-in. Mode: ISTARA_SIM_ASSURANCE_MODE (both).
+  const simDefaultEndpoint = String(process.env.ISTARA_SIM_DEFAULT_ENDPOINT || "").trim();
+  if (simDefaultEndpoint) {
+    try {
+      const switched = await apiClient.post("/api/settings/pi-default", { endpoint_id: simDefaultEndpoint });
+      console.log(`  Default endpoint for this pass: ${switched.default_endpoint_id} (${switched.default_model})`);
+    } catch (e) {
+      throw new Error(`Could not set the default endpoint ${simDefaultEndpoint}: ${e.message}`);
+    }
+  }
+  const simDeciders = String(process.env.ISTARA_SIM_DECIDER_ENDPOINTS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (simProjectId && simDeciders.length) {
+    try {
+      const listing = await apiClient.get("/api/settings/decision-models");
+      const known = new Map((listing.endpoints || []).map((item) => [item.endpoint_id, item]));
+      const missing = simDeciders.filter((id) => !known.has(id));
+      if (missing.length) throw new Error(`not configured: ${missing.join(", ")}`);
+      const hosted = simDeciders.filter((id) => known.get(id).locality === "hosted");
+      const policy = await apiClient.put(`/api/projects/${simProjectId}/decision-models`, {
+        mode: process.env.ISTARA_SIM_ASSURANCE_MODE || "both",
+        llm_method: "auto",
+        llm_judges: 3,
+        decider_endpoint_ids: simDeciders,
+        hosted_egress_endpoint_ids: hosted,
+      });
+      console.log(
+        `  Decision models on for the simulation project: mode=${policy.mode} ` +
+          `deciders=${policy.decider_endpoint_ids.join(",")} hosted opt-in=${policy.hosted_egress_endpoint_ids.join(",") || "none"}`
+      );
+    } catch (e) {
+      throw new Error(`Could not enable decision models for the simulation project: ${e.message}`);
+    }
   }
 
   // Context shared across scenarios

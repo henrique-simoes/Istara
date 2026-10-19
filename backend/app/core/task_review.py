@@ -438,6 +438,11 @@ async def record_review_side_effects(event: TaskReviewEvent, score: float | None
     except Exception as exc:
         logger.debug(f"Review telemetry side effect failed: {exc}")
 
+    from app.services.operational_validation import record_assurance_review_signals
+
+    await record_assurance_review_signals(event)  # never raises
+    await _record_feedback_advice(event)  # never raises; only for rejected reviews with feedback
+
     if event.agent_id and event.outcome != APPROVED:
         try:
             from app.core.agent_learning import agent_learning
@@ -482,6 +487,50 @@ async def record_review_side_effects(event: TaskReviewEvent, score: float | None
                 )
         except Exception as exc:
             logger.debug(f"Approved task report-routing side effect failed: {exc}")
+
+
+FEEDBACK_CATEGORY_DESCRIPTIONS = {
+    "missing_evidence": "The output lacks evidence, sources or quotes for its claims.",
+    "ignored_user_instructions": "The output did not follow the user's instructions.",
+    "wrong_skill": "The wrong research method or skill was used.",
+    "wrong_agent": "The task went to the wrong agent or specialist.",
+    "hallucination_or_unsupported_claim": "The output invents or asserts unsupported content.",
+    "bad_synthesis": "The synthesis is shallow or misses the patterns.",
+    "insufficient_documents": "The input documents were missing or insufficient.",
+    "url_or_tool_failure": "A URL, website or tool failed.",
+    "validation_false_positive": "Automated validation called a bad output good.",
+    "user_changed_requirements": "The user changed what they wanted.",
+    "unclear_task": "The task itself was unclear or ambiguous.",
+    "other": "None of the above.",
+}
+
+
+async def _record_feedback_advice(event: TaskReviewEvent) -> None:
+    """I12: a decision model's category for the reviewer's feedback, beside the keyword rule.
+
+    The deterministic ``classify_review_feedback`` stays the floor that metrics use; this only
+    records a refinement (advisory, opt-in per project) to compare against it.
+    """
+    from app.core.decider.contract import Choice
+    from app.services.decider_advisory import advise
+
+    event_id = str(getattr(event, "id", "") or "")
+    feedback = (getattr(event, "feedback_summary", "") or "").strip()
+    if event.outcome == APPROVED or not feedback or not event_id:
+        return
+    await advise(
+        event.project_id,
+        site="task.review_feedback",
+        subject_kind="review_feedback",
+        subject_id=event_id,
+        task_id=event.task_id,
+        state={"feedback": feedback[:4000], "outcome": event.outcome},
+        question=Choice(
+            "Which category best describes this reviewer feedback?",
+            FEEDBACK_CATEGORY_DESCRIPTIONS,
+        ),
+        positive_outcomes=frozenset(),
+    )
 
 
 async def record_kanban_status_transition(

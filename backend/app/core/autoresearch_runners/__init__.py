@@ -1,6 +1,8 @@
 # Inspired by Karpathy's autoresearch (MIT) — https://github.com/karpathy/autoresearch
 """Base runner interface for autoresearch optimization loops."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
 
@@ -79,14 +81,23 @@ class BaseLoopRunner(ABC):
         return self.engine == "pi"
 
     @abstractmethod
-    async def measure_baseline(self, target: str) -> float:
+    async def measure_baseline(self, target: str) -> float | None:
         """Measure the current score before any mutations."""
         ...
 
     @abstractmethod
-    async def measure(self, target: str) -> float:
-        """Measure the score after a mutation has been applied."""
+    async def measure(self, target: str) -> float | None:
+        """Measure the score after a mutation has been applied; None when it could not be."""
         ...
+
+    async def measure_incumbent(self, target: str) -> float | None:
+        """Measure the unmutated state (called while no candidate is applied).
+
+        Every candidate is reverted after measurement, so for runners whose revert restores state
+        this is the same call as :meth:`measure`. Runners whose revert does not restore state
+        override it.
+        """
+        return await self.measure(target)
 
     @abstractmethod
     async def hypothesize(

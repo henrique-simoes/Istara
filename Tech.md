@@ -3406,3 +3406,130 @@ Branch `fix/spine-findings-measurements-20260925`; evidence in
   `app/services/embedding_migration.py`): the model is probed, a new profile version becomes active,
   every project's tables are re-embedded from their stored text and rebound; BM25 is untouched. The
   default embedder is chosen by the pre-registered rule in `app/evals/embedder_compare.py` (DEC-15).
+
+### Typed decision models: decision math core (2026-10-17)
+
+Branch `feat/decision-model-judge`; lifecycle `docs/build-stream/2026-10-17-decision-model-judge.md`;
+design and derivations in `docs/scientific_audit/decision-model-judge-research.md`.
+
+- **Layer 2 of the evaluation stack.** Typed decision models (TypeSafe JEV through its hosted
+  `/v1/systemone` API as the primary one; open-weight deciders such as Kev, Laya and OpenJev through
+  the same contract) return a probability vector over a closed set of answers. They triage research
+  items to human review and never accept or promote evidence.
+- **Phase 0 (this entry): `backend/app/core/decision/`**, pure standard-library mathematics with no
+  I/O. `confidence` (TypeSafe's documented confidence statistics), `decision_rule` (Bayes risk,
+  Chow reject threshold, cost-derived τ* = C_FP/(C_FP+C_FN), order-flip merge against first-option
+  bias), `calibration` (temperature scaling fitted by weighted NLL, ECE, Brier with an exact binned
+  decomposition, Horvitz–Thompson weights and Kish n_eff, risk–coverage, cross-fitted held-out
+  calibration), `reliability` (Beta posterior lower bound, Learn-then-Test thresholds), `ensemble`
+  (error correlation, Yule's Q, effective number of evaluators, Dawid–Skene EM). Nothing calls it
+  yet; adapters, the trajectory store, assurance modes and the spine seam follow in Phases 1–4.
+- **Tests:** `tests/test_decision_math.py` (exact fixtures where a closed form exists; seeded
+  planted-parameter recovery otherwise).
+- **Phase 1: decider providers, `backend/app/core/decider/`.** `contract` (the `/v1/systemone`
+  request body and strict response validation: every answer typed and carrying a full probability
+  vector, noul as a two-outcome distribution, choices re-asked in reversed option order), `registry`
+  (endpoints from `decider_endpoints_json`; locality from the URL host; hosted endpoints need the
+  project's opt-in in `decision_model_project_policies`, migration 034), `credentials` (Keychain or a
+  named env var only), `client` (`SystemOneClient` over httpx; bounded retries on 429/503/529 honouring
+  `retry-after`; served-model provenance; every failure `not_runnable`), and
+  `access.open_decider`, the only entry point. Security control AI-005. Tests: `tests/test_decider_contract.py`,
+  `tests/test_decider_registry.py`, `tests/test_decider_client.py` (stub servers via
+  `httpx.MockTransport`).
+- **Phase 2: decision trajectories and the trust gate.** `models/decision_trajectory.py`
+  (`decision_trajectories`, `decision_trust_evaluations`, migration 035; content-free handles and
+  numbers) and `services/decision_trajectories.py` (`record_trajectory`, `attach_human_label`,
+  `evaluate_scope`, `scope_is_trusted`). Pure parts in `core/decision/`: `labels` (mapping v1: only
+  `human_review` reconciliation decisions label anything; binary acceptable/not), `sampling`
+  (deterministic 10% blind audit draw, Horvitz–Thompson weights, trust-scope keys over provider,
+  served model version, question set, task family, language and label mapping) and `trust` (the
+  gate: cross-fitted held-out ECE ≤ 0.05, κ ≥ 0.60, n_eff ≥ 50, order-flip ≤ 5%, identified
+  temperature, no alias scope). No scope routes anything until Phase 4, and none without a passing
+  evaluation. Tests: `tests/test_decision_trust.py`, `tests/test_decision_trajectory_store.py`.
+- **Phase 3: assurance modes.** `core/assurance.py` (`ProjectAssurance`, `plan_validation`, the
+  human-agreement rule and Thompson sampling), `models/assurance_policy.py`
+  (`project_assurance_policies`, migration 036, which also adds `human_agree_count` /
+  `human_disagree_count` to `method_metrics`; existing databases get the columns through the
+  `init_db` ALTER list), and `services/operational_validation.py`. The validation block of
+  `agent_execution.py` now calls it: LLM judges, decision models (question set `operational-output`
+  v1, one `acceptable` noul, stored as `task_output` trajectories), both, or none. Task review
+  (`task_review.record_review_side_effects`) labels decider trajectories and records whether the LLM
+  method agreed with the researcher; `AdaptiveSelector.select_method(allowed=...)` learns only from
+  those outcomes (AV-1). `evaluation_skill` skips its LLM judges when the mode excludes them. Tests:
+  `tests/test_assurance_modes.py`, `tests/test_operational_validation.py`.
+- **Phase 4: decider triage of code applications.** `services/decider_triage.py` runs after
+  `run_independent_coding_run` has committed the run, its reliability gate and item statuses (one
+  never-raising call), so it cannot change acceptance or the κ matrix. Question set
+  `code-application-triage` v1: one `choice` (supports / contradicts / says_nothing) over the evidence
+  unit, the coder's quote and the code's definition and criteria, asked in both option orders. An
+  untrusted scope records `shadow`; a trusted one calibrates with its fitted temperature and marks
+  `abstain` (order flip disagrees or top probability below τ* = 0.90) or `flag` (top outcome not
+  `supports`) for priority review. `GET /api/code-applications/{project}/pending` adds
+  `decider_triage` for routed, non-blind items only and lists them first; with no trusted scope the
+  response is unchanged. Human reconciliation labels the trajectories
+  (`label_after_reconciliation`). At most 200 applications per run, 8 concurrent calls, a 120 s budget.
+  Tests: `tests/test_decider_triage.py` (including the spine guard test).
+- **Phase 5: learning loop and decision-model health.** Trust scopes are project-scoped (the scope
+  key includes the project), so one project's reviews never earn a decider routing power in another.
+  `services/decision_learning.py`: after a human label lands (reconciliation or task review), a
+  scope is evaluated when it first reaches 50 labels and again every 10 new ones; a trusted scope
+  whose new labels drift above its trusted Brier score (one-sided CUSUM, `core/decision/drift.py`)
+  returns to shadow mode with reason `calibration_drift`; each evaluation leaves a content-free
+  ReasoningBank lesson (`decision_review`, process memory only). `services/decision_health.py` and
+  `GET /api/metrics/{project}/decision-models` (project viewer) report decider scopes, LLM methods'
+  human-verified accuracy, and the evaluators' error structure (`core/decision/health.py`: pairwise
+  error correlation, Yule's Q, effective number of evaluators, Dawid–Skene for panels of three or
+  more). Self-evolution treats decider, decision model, calibration and trust gate as protected
+  terms. Tests: `tests/test_decision_drift_health.py`, `tests/test_decision_learning.py`.
+- **Phase 6: autoresearch statistics and the decision_policy loop.** The engine
+  (`core/autoresearch_engine.py`, `core/autoresearch_statistics.py`) re-measures the unmutated
+  incumbent every iteration (`BaseLoopRunner.measure_incumbent`; model sweeps override it), uses
+  at least two samples per side, keeps a candidate only when the 95% Welch interval of its gain
+  clears the minimum improvement and an independent confirmation block agrees, records
+  unmeasurable iterations as `not_runnable` and meta-hyperagent conflicts as
+  `skipped_meta_conflict`, and persists the real mutation. Runners score through
+  `core/autoresearch_runners/scoring.py`: strict `[0, 1]` parsing, no fabricated 0.5, the model
+  sweep's judge pinned away from the endpoint under test, and a decision-model score when the
+  project's assurance mode excludes LLM judges. The leaderboard ranks by a 95% lower bound. New loop
+  `decision_policy` (`core/autoresearch_runners/decision_policy.py`) searches the triage question's
+  wording against labelled code applications by 1 − Brier. Tests:
+  `tests/test_autoresearch_statistics.py`, `tests/test_autoresearch_hill_climbing.py`,
+  `tests/test_decision_policy_runner.py`.
+- **Phase 7: configuration and onboarding.** `api/routes/decision_models.py`: global-admin
+  `GET/POST /api/settings/decision-models`, `DELETE` and `POST .../{endpoint_id}/check` (one constant
+  probe, no research data); endpoints persist in `DECIDER_ENDPOINTS_JSON` and keys go to Keychain
+  service `istara-decider` or `ISTARA_DECIDER_SECRET_<ID>` (`decider/credentials.store_api_key`),
+  never back to a client. `GET/PUT /api/projects/{project_id}/decision-models` (viewer reads, project
+  admin writes) set the assurance mode, deciders and the hosted-egress opt-in, and refuse a hosted
+  decider without that opt-in. UI: `settings/DecisionModelsSection.tsx` (explainer and
+  first-activation guide), `settings/ProjectAssuranceSection.tsx`, `common/DecisionModelHealthPanel.tsx`
+  in Ensemble Health, the decider note in `CodeReviewQueue.tsx`, and an informational onboarding step;
+  shared wording in `lib/decisionModelCopy.ts`. Tests: `tests/test_decision_model_settings.py`,
+  `frontend/src/lib/decisionModelCopy.test.ts`.
+- **Phase 8: protocols, advisory integrations, research arm.** `decider/openai_decisions.py` adds
+  OpenAI's `/v1/decisions` (`protocol: openai_decisions` on an endpoint); OpenRouter's Jev is a
+  `systemone` preset. `tests/test_decider_conformance.py` runs the same assertions over every
+  protocol. `services/decider_advisory.advise` is the one seam the integration sites use (claim
+  and grounding checks, `spine.verify`, `spine.self_check`, interview saturation, report
+  weakest-section, task routing, review feedback, ReasoningBank relevance, upload prompt-injection
+  screening): opt-in by assurance mode, shadow trajectory per answer, never raises, advice only;
+  the injection screen can only add caution from a trusted scope. `core/decision/trajectory_audit.py`
+  audits tool-call transitions (unknown tool, schema-invalid arguments, error observations, success
+  claimed after an error). `evals/decider_coding_eval.py` is the decider-coder research arm (DEC-6),
+  never counted in the reliability gate. Interview saturation no longer reads "NOT_SATURATED" as
+  saturated. Tests: `test_decider_openai_decisions.py`, `test_decider_conformance.py`,
+  `test_decider_advisory.py`, `test_trajectory_audit.py`, `test_decider_coding_eval.py`.
+- **Cost-free local endpoints (2026-10-18).** A Pi endpoint that is local and has all four
+  prices at zero is `cost_free` (`pi_runtime/engine._session_limits`): its worker session gets no
+  `max_cost_usd`, because its cost is known to be zero and the worker would otherwise fail the run
+  as `cost_budget_unpriced`. Remote endpoints, and local ones with any price set, keep the ceiling
+  and its fail-closed check. Test: `tests/test_pi_local_liveness.py`.
+- **Aliases earn trust per served version (2026-10-18, DEC-20).** A decider asked for a moving
+  alias (`jev-latest`) names the versioned model that answered, and trust scopes are keyed by that
+  served model, so `core/decision/trust.unversioned_alias_scope` refuses only an alias answered
+  under an alias name. A new version behind the alias starts a new, untrusted scope.
+- **Label weights (2026-10-18, DEC-21).** `core/decision/sampling.inclusion_weight`: a non-routed
+  item is reviewed blind (weight 1); a routed item counts only in the blind audit sample, its verdict
+  hidden, at weight `1/rate`; a shown verdict never counts. Triage keeps the audit flag on routed items.
+- **Triage scopes per codebook version (DEC-22).** `decider_triage.task_family_for`: each codebook
+  version earns trust on its own labels; open coding is a separate scope.

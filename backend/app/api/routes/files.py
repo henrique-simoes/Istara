@@ -371,6 +371,11 @@ async def upload_file(
     content_verdict.scanner_exit_code = initial_verdict.scanner_exit_code
     content_verdict.scanner_output = initial_verdict.scanner_output
     content_verdict.warnings = sorted(set([*initial_verdict.warnings, *content_verdict.warnings]))
+    from app.core.upload_security import apply_decider_injection_screen
+
+    content_verdict = await apply_decider_injection_screen(
+        content_verdict, project_id=project_id, text=content_text, subject_id=file_id
+    )
     if not content_verdict.allowed:
         doc = await _store_quarantined_document(
             db,

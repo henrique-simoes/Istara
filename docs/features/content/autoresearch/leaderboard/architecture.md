@@ -38,6 +38,7 @@ The leaderboard ranks automated research experiment outcomes for comparison.
 
 ## Architecture Notes
 
+- Ranking (2026-10-18, CF-SPEC-1 Phase 6): each skill's best model and temperature is chosen by the 95% lower bound of mean quality (`quality_lower_bound_95`, at least three executions), not by the single best run, which mostly measures luck. `quality_ema` is kept for older readers and holds the plain mean.
 - The feature is mounted through `frontend/src/components/autoresearch/AutoresearchView.tsx` and the UI navigation path recorded in the inventory.
 - The frontmatter and manifest entries are the durable contract for agents updating this page after code changes.
 - When the referenced component, store, route, agent, skill, or test behavior changes, regenerate and validate the feature documentation.

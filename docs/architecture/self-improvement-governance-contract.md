@@ -47,6 +47,21 @@ Telemetry observes process events
   provisional signal, never a success; reading ReasoningBank memories is side-effect free (use is
   counted when a memory reaches a prompt); persona learnings promoted from one project are stored
   and composed for that project only.
+- Validation-method selection learns only from human-verified outcomes (2026-10-18): a method is
+  credited when its verdict matched the researcher's task review, and agreement among a method's own
+  samples is never a reward (it favours copies of one model). Decider trajectories are labelled only
+  by a researcher's own review; a decider scope gains routing power only through the calibration
+  trust gate, never by accumulating agreement. Trust scopes are project-scoped; drift (one-sided
+  CUSUM on new labels) only ever removes routing power; `decision_review` ReasoningBank lessons are
+  content-free process memory; proposals that would weaken a decider, the trust gate or calibration
+  need governed review.
+- Autoresearch keeps a candidate only when a 95% interval of its gain over a freshly measured,
+  unmutated incumbent clears the minimum and an independent confirmation block agrees; an
+  unmeasurable sample is `not_runnable`, never a made-up score (2026-10-18). The `decision_policy`
+  loop optimises decision-model question wording by a proper scoring rule (1 − Brier) on human
+  labels, and its results are governed proposals on the `decision_models` surface, which is
+  admin-required and high risk because a changed question or threshold changes what reaches human
+  review.
 - The RAG tuning objective is relevance on span-graded judgments over sandbox indices, never a
   score the tuned parameters can raise by themselves; candidates are never written to process-wide
   settings, and the loop fails closed without a benchmark.

@@ -263,7 +263,12 @@
         "tests/test_improvement_governance.py",
         "tests/test_meta_hyperagent.py",
         "tests/test_reasoning_bank.py",
-        "tests/test_security_benchmark.py"
+        "tests/test_security_benchmark.py",
+        "backend/app/core/decider/*.py",
+        "backend/app/models/decision_policy.py",
+        "tests/test_decider_*.py",
+        "backend/app/services/decider_triage.py",
+        "backend/app/services/operational_validation.py"
       ]
     }
   },
@@ -1090,6 +1095,48 @@
       ],
       "future_change_trigger": true,
       "notes": "The non-/api A2A protocol now uses route-level auth, optional team-mode agent-card auth, local-mode network-token semantics, request size caps, metadata limits, per-client rate limits, replay rejection, audit events, actor traceability, project-authorized discovery, project-resolved realtime delivery, project-resolved background agent inboxes, project-bound conversation/debate thread reconstruction, and active-project guarded LLM-callable task/A2A actions. A2A service writes persist first-class project ids, reject missing active project scope, and reject conflicting metadata aliases before records or websocket broadcasts can be created. Metadata, row, task, and project-scoped sender/recipient agent project claims must agree before A2A records or realtime events are considered project-resolved; conflicting claims are excluded rather than trusted."
+    },
+    {
+      "id": "AI-005",
+      "title": "Typed decision-model providers keep research data, credentials and provenance inside explicit boundaries",
+      "category": "ai-security",
+      "required_level": "high_risk",
+      "severity": "high",
+      "status": "pass",
+      "standards": [
+        "owasp-llm:sensitive-information-disclosure",
+        "owasp-asvs:V14",
+        "owasp-logging:data-to-exclude",
+        "nist-ai-rmf:govern"
+      ],
+      "evidence": [
+        "backend/app/core/decider/access.py",
+        "backend/app/core/decider/registry.py",
+        "backend/app/core/decider/client.py",
+        "backend/app/core/decider/contract.py",
+        "backend/app/core/decider/credentials.py",
+        "backend/app/models/decision_policy.py",
+        "backend/alembic/versions/034_decision_model_project_policies.py",
+        "backend/app/core/endpoint_security.py",
+        "tests/test_decider_registry.py",
+        "tests/test_decider_client.py",
+        "tests/test_decider_contract.py",
+        "backend/app/services/decider_triage.py",
+        "backend/app/services/operational_validation.py",
+        "tests/test_decider_triage.py",
+        "backend/app/core/autoresearch_runners/decision_policy.py",
+        "backend/app/core/autoresearch_runners/scoring.py",
+        "tests/test_decision_policy_runner.py",
+        "backend/app/api/routes/decision_models.py",
+        "tests/test_decision_model_settings.py",
+        "backend/app/core/decider/openai_decisions.py",
+        "backend/app/services/decider_advisory.py",
+        "tests/test_decider_conformance.py",
+        "tests/test_decider_openai_decisions.py",
+        "tests/test_decider_advisory.py"
+      ],
+      "future_change_trigger": true,
+      "notes": "Decision models (TypeSafe JEV via /v1/systemone, and compatible open-weight servers) are reached only through open_decider. A hosted endpoint receives a project's data only when that project lists the endpoint in decision_model_project_policies (no row = denied, owner decision 2026-10-17); every call must name its project; local loopback/private endpoints need no opt-in. Endpoint URLs pass endpoint_security (HTTPS for public hosts, no embedded credentials, no metadata hosts). Keys come only from macOS Keychain or a named environment variable, never from configuration, outcomes or reprs, and appear only in the Authorization header. A pinned model must be served by exactly that model; aliases are recorded as such. Every failure (HTTP error, timeout, malformed or incomplete answer, missing probability vector, served-model mismatch) is not_runnable with a reason code, never a fabricated verdict. Deciders triage for human review and never accept or promote research evidence. Research data reaches a decider only through open_decider: operational validation (operational_validation.py) code-application triage (decider_triage.py), which runs after a coding run commits and cannot change acceptance or reliability state, and the autoresearch decision_policy runner and decider-scored measurements (autoresearch_runners/decision_policy.py, scoring.py), which an admin starts explicitly, read only the project's own labelled trajectories, and produce governed proposals that change nothing by themselves. Endpoints are configured only by global admins (routes/decision_models.py); a key entered there goes to Keychain or an endpoint-scoped env secret and is never returned; a project admin sets the assurance mode and deciders, and the API refuses a hosted decider unless the same request lists it in the project's egress opt-in. The connection check sends only a constant probe text. Two wire protocols exist (systemone: TypeSafe JEV, OpenRouter, local servers; openai_decisions: OpenAI /v1/decisions) and both pass the same conformance suite: full probability vectors, served-model provenance, key only in the Authorization header. Integration sites (claim and grounding checks, spine.verify, self_check, interview saturation, report scoring, task routing, review feedback, ReasoningBank relevance, upload prompt-injection screening) reach a decider only through services/decider_advisory.advise, which runs only in the decision_models or both assurance modes, records a shadow trajectory, never raises and never accepts or promotes evidence; the upload injection screen can only add caution (trusted scope, P >= 0.9) and never clears a rule finding."
     },
     {
       "id": "AUDIT-001",

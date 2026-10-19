@@ -304,6 +304,9 @@
 <li>API references: <code>backend/app/api/routes/settings.py</code></li>
 <li>Tests: <code>tests/test_settings.py</code>, <code>tests/test_settings_agentic_pi_endpoints.py</code>, <code>tests/pi_production/test_pi_catalog_ux.py</code></li>
 </ul>
+<h2 id="decision-models">Decision models</h2>
+<p>Administrators add decision models here. The section explains what a decision model is and, when none exists yet, walks through the first activation: choose a hosted model (TypeSafe Jev, with an API key) or a local <code>/v1/systemone</code> server (llama.cpp with Kev, Laya or OpenJev), add it with a pinned model version, check the connection with one fixed test question that carries no research data, then turn it on per project in Project Settings. API keys go to the macOS Keychain, or the server&#x27;s secret store elsewhere, and are never shown again. Moving aliases such as <code>jev-latest</code> are accepted but labelled, because they never become trusted. Nothing is enabled for any project from here.</p>
+<p>Presets cover TypeSafe Jev directly, Jev through OpenRouter, OpenAI Decisions (public beta) and a local server. Each decision model shows which wire protocol it uses: <code>systemone</code> for Jev, OpenRouter and local servers, <code>openai_decisions</code> for OpenAI.</p>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
@@ -319,6 +322,7 @@
 <li class="toc-level-2"><a href="#related-features">Related Features</a></li>
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>
 <li class="toc-level-2"><a href="#evidence">Evidence</a></li>
+<li class="toc-level-2"><a href="#decision-models">Decision models</a></li>
 </ul></nav>
         </aside>
       </div>

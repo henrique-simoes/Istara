@@ -40,7 +40,9 @@ export const VIEWS = [
   ["Ensemble Health", "ensemble"], ["Quality Dashboard", "quality"], ["Compute Pool", "compute"],
   ["Autoresearch", "autoresearch"], ["Project Settings", "project-settings"], ["Admin", "admin"],
 ];const PROJECT_NAME = "[SIM-90] Menu walk";
-const MACHINE_TEXT = /\b(undefined|NaN)\b|\[object Object\]|\b[a-z]+(?:\.[a-z][a-zA-Z_]+){2,}\b/;
+// Raw i18n keys look like `settings.general.title`; a hostname inside a URL (`https://api.x.ai`)
+// is real data on admin screens, so a match right after `/` or `@` is not machine text.
+const MACHINE_TEXT = /\b(undefined|NaN)\b|\[object Object\]|(?<![/@\w.-])[a-z]+(?:\.[a-z][a-zA-Z_]+){2,}\b/;
 const ERROR_SURFACE = /Something went wrong|Application error|Unhandled Runtime Error|Minified React error/i;
 
 export async function run(ctx) {

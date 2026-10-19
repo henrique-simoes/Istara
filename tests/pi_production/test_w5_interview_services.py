@@ -151,9 +151,9 @@ async def test_generate_clarification_flag_on_empty_project_scope(
 async def test_is_saturated_flag_on_dispatches_channel_saturation(
     monkeypatch, _agentic_core_on
 ):
-    # NB: the check is the substring test ``"SATURATED" in content``,
-    # which also matches "NOT_SATURATED" — use a reply without the substring
-    # to exercise the not-saturated path.
+    # A reply that is not an explicit SATURATED sentinel is not saturated
+    # (``saturation_verdict``; "NOT_SATURATED" is covered in
+    # tests/test_decider_advisory.py).
     dispatcher_stub = _StubAgentic(text="still adding new information")
     monkeypatch.setattr("app.core.agentic.agentic", dispatcher_stub)
 

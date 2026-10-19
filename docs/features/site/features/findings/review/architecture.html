@@ -275,6 +275,7 @@
 <li>Code review is a project-content surface. Pending queues and review mutations must stay inside the caller&#x27;s authorized active project and must not infer project scope from a globally unique application id.</li>
 <li>The legacy <code>bulk-approve</code> compatibility route is deliberately fail-closed with no database side effects. Confidence and accepted reliability/promotion status are review signals, never a reconciliation decision; each application must be accepted, rejected, or revised through the individual auditable review route.</li>
 <li>Researchers review coded evidence units, not keyword tags. Code applications should point at stable evidence units and coding runs whenever the corrected pipeline produced them.</li>
+<li>Decision-model triage (2026-10-18, CF-SPEC-1 Phase 4): after a coding run commits, configured decision models judge each code application (does the evidence unit support, contradict, or say nothing about the code?). The pending queue (<code>GET /api/code-applications/{project}/pending</code>) adds a <code>decider_triage</code> field and lists the item first only when a trusted decider scope routed it (<code>abstain</code> or <code>flag</code>) and it is not a blind audit item; otherwise the response and order are unchanged. Triage never changes promotion, reliability, reconciliation or review state, and a researcher&#x27;s review labels the decider&#x27;s verdict. The badge in the queue UI arrives with the decision-model onboarding (Phase 7).</li>
 <li>Governed coding runs are started from the project-scoped research-validity route with researcher access. The service persists model coder identities, route evidence, reliability matrix output, and promotion state so the review queue can distinguish accepted coding from low-consensus or lower-assurance output.</li>
 <li>Approving, rejecting, or revising a disputed code application creates a <code>ReconciliationDecision</code>, updates the code application&#x27;s reconciliation/promotion state, and links the decision back into the Evidence Graph with a <code>reconciled_by</code> edge. A task remains blocked while any low-agreement code application is still unreconciled.</li>
 <li>Project code-application reads accept <code>coding_run_id</code> so benchmark and review clients can prove that every application in one run has an explicit accepted/revised reconciliation decision without mixing rows from another run.</li>
@@ -306,6 +307,8 @@
 <li>Update this page whenever the listed UI components, stores, routes, model behavior, permissions, or tests change.</li>
 <li>Regenerate the site and machine manifests with <code>python scripts/feature_docs.py --seed-missing --generate-site --check</code>.</li>
 </ul>
+<h2 id="decider-triage-badge-cf-spec-1-phase-7">Decider triage badge (CF-SPEC-1, Phase 7)</h2>
+<p><code>CodeReviewQueue.tsx</code> renders <code>decider_triage</code> (from <code>GET /api/code-applications/{project_id}/pending</code>, built by <code>services/decision_trajectories.routed_triage</code>) as an informational note. The backend includes it only for <code>ok</code>, routed, non-blind trajectories, so shadow verdicts and blind audit items never reach the reviewer.</p>
         </article>
         <aside class="toc-panel" aria-label="Page sections">
           <h2>On This Page</h2>
@@ -322,6 +325,7 @@
 <li class="toc-level-2"><a href="#related-concepts">Related Concepts</a></li>
 <li class="toc-level-2"><a href="#compass-evidence">Compass Evidence</a></li>
 <li class="toc-level-2"><a href="#when-to-update">When To Update</a></li>
+<li class="toc-level-2"><a href="#decider-triage-badge-cf-spec-1-phase-7">Decider triage badge (CF-SPEC-1, Phase 7)</a></li>
 </ul></nav>
         </aside>
       </div>

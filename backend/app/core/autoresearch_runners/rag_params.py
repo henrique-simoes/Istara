@@ -61,7 +61,7 @@ class RAGParamsRunner(BaseLoopRunner):
     # BaseLoopRunner interface
     # ------------------------------------------------------------------
 
-    async def measure_baseline(self, target: str) -> float:
+    async def measure_baseline(self, target: str) -> float | None:
         """nDCG@10 of the current configuration on the retrieval benchmark (fails closed)."""
         self._bind_target_scope(target)
         self._snapshot_current_params()
@@ -76,7 +76,7 @@ class RAGParamsRunner(BaseLoopRunner):
         self.objective = RetrievalObjective(qrels)
         return await self._evaluate_retrieval()
 
-    async def measure(self, target: str) -> float:
+    async def measure(self, target: str) -> float | None:
         """nDCG@10 of the candidate configuration, on its own sandbox index."""
         self._bind_target_scope(target)
         return await self._evaluate_retrieval()

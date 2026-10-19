@@ -26,7 +26,15 @@ RISK = {"low": "low", "medium": "medium", "high": "high", "critical": "critical"
 
 SURFACES = {
     "auto": {"memory", "telemetry", "evaluation", "documentation"},
-    "admin": {"backend_code", "integrations", "mcp", "compute", "security", "connection_strings"},
+    "admin": {
+        "backend_code",
+        "integrations",
+        "mcp",
+        "compute",
+        "security",
+        "connection_strings",
+        "decision_models",
+    },
     "behavior": {
         "prompts",
         "configs",
@@ -40,6 +48,7 @@ SURFACES = {
         "security",
         "orchestration",
         "connection_strings",
+        "decision_models",
     },
 }
 
@@ -239,6 +248,8 @@ def normalize_surface(surface: str) -> str:
         "whatsapp": "channels",
         "telegram": "channels",
         "aura": "integrations",
+        "decider": "decision_models",
+        "deciders": "decision_models",
     }
     return aliases.get(normalized, normalized)
 

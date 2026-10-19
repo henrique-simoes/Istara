@@ -6,10 +6,10 @@ audience: architecture
 status: documented
 related_features: ["shell.projects", "settings.general"]
 related_glossary: ["compass-forge"]
-code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/layout/Sidebar.tsx", "frontend/src/lib/types.ts", "frontend/src/lib/utils.ts", "backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py", "backend/app/api/routes/autoresearch.py", "backend/app/api/routes/loops.py", "backend/app/api/routes/meta_hyperagent.py", "backend/app/api/routes/skills.py", "backend/app/core/agent_lifecycle.py", "backend/app/core/agent_execution.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/autoresearch_engine.py", "backend/app/core/self_evolution.py", "backend/app/core/sub_agent_worker.py", "backend/app/core/scheduler.py", "backend/app/core/file_watcher.py"]
-api_references: ["backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py"]
-test_references: ["tests/test_tasks.py", "tests/test_loops.py", "tests/test_autoresearch.py", "tests/test_agent_learning_scope.py", "tests/test_meta_hyperagent.py", "tests/test_skills.py", "tests/test_file_watcher_config.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/simulation/scenarios/79-engine-selector.mjs"]
-last_verified: 2026-07-22
+code_references: ["frontend/src/components/settings/ProjectSettingsView.tsx", "frontend/src/components/settings/AgenticCoreSection.tsx", "frontend/src/components/layout/Sidebar.tsx", "frontend/src/lib/types.ts", "frontend/src/lib/utils.ts", "backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py", "backend/app/api/routes/autoresearch.py", "backend/app/api/routes/loops.py", "backend/app/api/routes/meta_hyperagent.py", "backend/app/api/routes/skills.py", "backend/app/core/agent_lifecycle.py", "backend/app/core/agent_execution.py", "backend/app/core/agentic/dispatcher.py", "backend/app/core/autoresearch_engine.py", "backend/app/core/self_evolution.py", "backend/app/core/sub_agent_worker.py", "backend/app/core/scheduler.py", "backend/app/core/file_watcher.py", "frontend/src/components/settings/ProjectAssuranceSection.tsx", "frontend/src/lib/decisionModelCopy.ts", "backend/app/api/routes/decision_models.py", "backend/app/models/assurance_policy.py", "backend/app/models/decision_policy.py"]
+api_references: ["backend/app/api/routes/projects.py", "backend/app/api/routes/permission_requests.py", "backend/app/api/routes/decision_models.py"]
+test_references: ["tests/test_tasks.py", "tests/test_loops.py", "tests/test_autoresearch.py", "tests/test_agent_learning_scope.py", "tests/test_meta_hyperagent.py", "tests/test_skills.py", "tests/test_file_watcher_config.py", "tests/test_project_rbac.py", "tests/test_project_scope_contracts.py", "tests/pi_production/test_w8_embeddings_gateway.py", "tests/simulation/scenarios/79-engine-selector.mjs", "tests/test_decision_model_settings.py"]
+last_verified: 2026-10-18
 compass: CF-SPEC-55 / CF-684; CF-SPEC-72 / CF-927; CF-SPEC-8 (Pi replacement W8 engine selector)
 ---
 
@@ -143,3 +143,7 @@ Project Settings configure project-specific metadata and operational preferences
 
 - Update this page whenever the listed UI components, stores, routes, model behavior, permissions, or tests change.
 - Regenerate the site and machine manifests with `python scripts/feature_docs.py --seed-missing --generate-site --check`.
+
+## Assurance policy API (CF-SPEC-1, Phase 7)
+
+`GET /api/projects/{project_id}/decision-models` (project viewer) returns the stored `ProjectAssurancePolicy` (mode, LLM method, judge count, decider endpoint ids), the `DecisionModelProjectPolicy` hosted-egress opt-in, the configured endpoints (no secrets), per-scope trust status from `services/decision_health.scope_summaries`, and `can_edit`. `PUT` (project admin) validates with `core/assurance.ProjectAssurance` and refuses `unknown_decider_endpoint`, `mode_needs_a_decider`, `egress_opt_in_is_for_hosted_endpoints` and `hosted_decider_needs_egress_opt_in`: choosing a hosted decider never opts the project in to cloud egress by itself (owner decision DEC-1). `ProjectAssuranceSection.tsx` renders the mode radio group, LLM method, decider checklist with a separate per-endpoint consent checkbox, and the trust list.

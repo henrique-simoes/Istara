@@ -251,7 +251,20 @@ async def get_pending_reviews(
         )
         .order_by(CodeApplication.confidence.asc())  # Lowest confidence first
     )
-    return [ca.to_dict() for ca in result.scalars().all()]
+    rows = result.scalars().all()
+    # A trusted decision model may route an item for priority review (CF-SPEC-1 Phase 4). Only
+    # routed, non-blind verdicts are shown; with none, the response is exactly as before.
+    from app.services.decision_trajectories import routed_triage
+
+    triage = await routed_triage(db, project_id, [ca.id for ca in rows])
+    items = []
+    for ca in rows:
+        item = ca.to_dict()
+        if ca.id in triage:
+            item["decider_triage"] = triage[ca.id]
+        items.append(item)
+    items.sort(key=lambda item: 0 if "decider_triage" in item else 1)
+    return items
 
 
 @router.patch("/{application_id}/review")

@@ -24,6 +24,7 @@ import { permissionRequests, users as usersApi } from "@/lib/api";
 import type { PermissionRequestItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import AgenticCoreSection from "@/components/settings/AgenticCoreSection";
+import ProjectAssuranceSection from "@/components/settings/ProjectAssuranceSection";
 import ViewOnboarding from "@/components/common/ViewOnboarding";
 
 import { API_BASE } from "@/lib/runtimeConfig";
@@ -386,6 +387,9 @@ export default function ProjectSettingsView() {
             await updateProject(activeProjectId, { agentic_engine: engine });
           }}
         />
+
+        {/* Assurance mode and decision models (CF-SPEC-1): what reviews outputs before a human does */}
+        <ProjectAssuranceSection projectId={activeProjectId} />
 
         {canRequestProjectAdmin && (
           <div id="tour-target-project-requests" className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">

@@ -43,6 +43,10 @@ _RUNNER_SPECS = {
     "persona": ("app.core.autoresearch_runners.persona", "PersonaRunner"),
     "question_bank": ("app.core.autoresearch_runners.question_bank", "QuestionBankRunner"),
     "ui_sim": ("app.core.autoresearch_runners.ui_sim", "UISimRunner"),
+    "decision_policy": (
+        "app.core.autoresearch_runners.decision_policy",
+        "DecisionPolicyRunner",
+    ),
 }
 
 
@@ -52,7 +56,8 @@ _RUNNER_SPECS = {
 
 
 class StartExperimentRequest(BaseModel):
-    loop_type: str  # skill_prompt|model_temp|rag_params|persona|question_bank|ui_sim
+    # skill_prompt|model_temp|rag_params|persona|question_bank|ui_sim|decision_policy
+    loop_type: str
     target: str  # skill name, agent id, deployment id, or component path
     max_iterations: int = 20
     project_id: str = ""

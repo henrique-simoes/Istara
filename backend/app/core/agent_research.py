@@ -1231,12 +1231,15 @@ class AgentResearchMixin:
                 task_id=task.id,
                 spine_phase="review",
             )
+            await _record_verify_advice(task, output, total)
             if outcome.status == "success" and outcome.value:
                 result = outcome.value
                 verified = bool(result.get("verified", True))
                 reason = str(result.get("reason") or "LLM reflection passed")
+                # The model's own "confidence" is verbalized and uncalibrated (audit SV-1); it is
+                # logged as such and never used as a probability.
                 logger.info(
-                    "LLM reflection: verified=%s, confidence=%s, reason=%s",
+                    "LLM reflection: verified=%s, verbalized_confidence_uncalibrated=%s, reason=%s",
                     verified,
                     result.get("confidence", "?"),
                     reason,
@@ -1388,6 +1391,37 @@ class AgentResearchMixin:
             return await skill.plan(skill_input)
 
 
+async def _record_verify_advice(task, output, total: int) -> None:
+    """I5: a decision model's yes/no on the same output, recorded beside the LLM reflection.
+
+    Advisory only (``services/decider_advisory.py``): it runs only when the project's assurance mode
+    includes decision models, never changes the reflection's result, and is labelled later by the
+    human task review (subject ``task_output``), which is what calibrates it.
+    """
+    from app.core.decider.contract import Noul
+    from app.services.decider_advisory import advise
+
+    await advise(
+        task.project_id,
+        site="spine.verify",
+        subject_kind="task_output",
+        subject_id=task.id,
+        task_id=task.id,
+        state={
+            "task": task.title,
+            "description": task.description or "",
+            "output_summary": (output.summary or "")[:1500],
+            "candidate_findings": total,
+        },
+        question=Noul(
+            "Does the output address the task with specific, source-grounded candidate findings "
+            "and no evident unsupported claims?",
+            true_criterion="A reviewer would accept it for human review as it is.",
+            false_criterion="It misses the task, is generic, or makes unsupported claims.",
+        ),
+    )
+
+
 async def _ground_skill_nugget(db, project_id: str, task, nugget_data: dict, cache: dict):
     """Ground one skill nugget in a raw source document (see services/finding_grounding.py)."""
     from app.services.finding_grounding import ground_quote, load_raw_source_texts
@@ -1403,11 +1437,49 @@ async def _ground_skill_nugget(db, project_id: str, task, nugget_data: dict, cac
         except Exception:
             cache["documents"] = []
     preferred = task.get_input_document_ids() if hasattr(task, "get_input_document_ids") else []
-    return ground_quote(
+    grounding = ground_quote(
         quote,
         str(nugget_data.get("source") or ""),
         cache["documents"],
         preferred_ids=preferred,
+    )
+    if grounding is not None:
+        await _record_grounding_advice(project_id, task, nugget_data, grounding)
+    return grounding
+
+
+async def _record_grounding_advice(project_id: str, task, nugget_data: dict, grounding) -> None:
+    """I4: after the exact-span match, does the grounded span support the candidate's own text?
+
+    The exact match stays the deterministic gate; this only records a decision model's answer
+    (advisory, opt-in per project) so paraphrase drift between a nugget and its quote is measured.
+    """
+    import hashlib
+
+    from app.core.decider.contract import Choice
+    from app.services.decider_advisory import advise
+
+    claim = str(nugget_data.get("text") or "")
+    if not claim.strip():
+        return
+    task_id = str(getattr(task, "id", "") or "")
+    key = f"{task_id}\n{grounding.document_id}\n{grounding.start}:{grounding.end}\n{claim}"
+    await advise(
+        project_id,
+        site="grounding.claim",
+        subject_kind="nugget_grounding",
+        subject_id=hashlib.sha256(key.encode()).hexdigest()[:32],
+        task_id=task_id or None,
+        state={"candidate": claim, "quoted_span": grounding.text[:4000]},
+        question=Choice(
+            "How does the quoted span relate to the candidate finding?",
+            {
+                "supports": "The span states what the candidate says.",
+                "contradicts": "The span states the opposite of the candidate.",
+                "says_nothing": "The span does not address what the candidate says.",
+            },
+        ),
+        positive_outcomes=frozenset({"supports"}),
     )
 
 

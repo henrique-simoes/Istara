@@ -27,6 +27,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.core.autoresearch_runners import BaseLoopRunner
+from app.core.autoresearch_runners.scoring import judge_messages, parse_unit_score, plan_judge
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,7 @@ class ModelTempRunner(BaseLoopRunner):
 
     loop_type = "model_temp"
     needs_persona_lock = False
+    _judge_avoid: tuple[str, ...] = ()
 
     def __init__(self) -> None:
         self._current: SweepCandidate | None = None
@@ -172,14 +174,14 @@ class ModelTempRunner(BaseLoopRunner):
     # BaseLoopRunner interface
     # ------------------------------------------------------------------
 
-    async def measure_baseline(self, target: str) -> float:
+    async def measure_baseline(self, target: str) -> float | None:
         """Execute skill with default model/temp and return quality score."""
         self._tested.clear()
         self._grid = await self._build_grid()
         self._grid_index = 0
         return await self._evaluate_skill(target, endpoint_id=None, model=None, temperature=0.7)
 
-    async def measure(self, target: str) -> float:
+    async def measure(self, target: str) -> float | None:
         """Execute skill with the current test endpoint/temp."""
         candidate = self._current
         if candidate is None:
@@ -190,6 +192,10 @@ class ModelTempRunner(BaseLoopRunner):
             model=candidate.model,
             temperature=candidate.temperature,
         )
+
+    async def measure_incumbent(self, target: str) -> float | None:
+        """The default configuration; this runner's revert does not reset the swept candidate."""
+        return await self._evaluate_skill(target, endpoint_id=None, model=None, temperature=0.7)
 
     async def hypothesize(
         self, target: str, current_score: float, history: list[dict]
@@ -247,7 +253,7 @@ class ModelTempRunner(BaseLoopRunner):
         endpoint_id: str | None = None,
         model: str | None = None,
         temperature: float = 0.7,
-    ) -> float:
+    ) -> float | None:
         """Execute a skill once and return a quality score in [0, 1].
 
         The swept candidate is pinned by exact ``endpoint_id``
@@ -303,10 +309,14 @@ class ModelTempRunner(BaseLoopRunner):
             content = outcome.text
         except Exception as e:
             logger.warning(f"Skill evaluation failed: {e}")
-            return 0.0
+            return None
 
         # Score the output quality via LLM self-evaluation
+        # The judge must not be the endpoint under test (audit AR-6).
+        self._judge_avoid = (endpoint_id,) if endpoint_id else ()
         score = await self._score_output(content, skill_name)
+        if score is None:
+            return None
 
         # Record to model_skill_stats under the exact swept identity so
         # same-model endpoints do not collapse in the stat evidence.
@@ -331,53 +341,39 @@ class ModelTempRunner(BaseLoopRunner):
             return f"{base}@{endpoint_id}"
         return base
 
-    async def _score_output(self, output: str, skill_name: str) -> float:
+    async def _score_output(self, output: str, skill_name: str) -> float | None:
         """Use LLM to score skill output quality on a 0-1 scale."""
         if not output or len(output.strip()) < 20:
-            return 0.1
+            return 0.0
 
-        scoring_messages = [
-            {
-                "role": "system",
-                "content": (
+        subject = skill_name
+        text = output
+        plan = await plan_judge(
+            self, skill_name=subject, output=text, avoid_endpoint_ids=self._judge_avoid
+        )
+        if not plan.use_llm:
+            return plan.score
+        try:
+            from app.core.agentic import agentic
+
+            outcome = await agentic.completion(
+                purpose="autoresearch.model_temp.score",
+                project_id=self.require_project_id(),
+                system=(
                     "You are a quality evaluator for UX research skill outputs. "
                     "Score the following output on a scale of 0.0 to 1.0 based on: "
                     "completeness, relevance, actionability, and evidence quality. "
                     "Respond with ONLY a decimal number between 0.0 and 1.0."
                 ),
-            },
-            {
-                "role": "user",
-                "content": (f"Skill: {skill_name}\n\nOutput to score:\n{output[:2000]}"),
-            },
-        ]
-
-        try:
-            # W6/W9: the LLM-as-judge score goes through the AgenticDispatcher
-            # (``autoresearch.model_temp.score``).
-            from app.core.agentic import agentic
-            from app.core.agentic.types import TurnParams
-
-            outcome = await agentic.completion(
-                purpose="autoresearch.model_temp.score",
-                project_id=self.require_project_id(),
-                system=scoring_messages[0]["content"],
-                messages=scoring_messages[1:],
-                params=TurnParams(temperature=0.1, max_tokens=10),
+                messages=judge_messages(subject, text),
+                params=plan.params(),
                 spine_phase="review",
                 engine=self.engine,
             )
-            score_text = (outcome.text or "").strip()
-            # Parse the score — extract first float-like token
-            for token in score_text.replace(",", ".").split():
-                try:
-                    val = float(token)
-                    return max(0.0, min(1.0, val))
-                except ValueError:
-                    continue
-            return 0.5
-        except Exception:
-            return 0.5
+        except Exception as exc:
+            logger.debug("Judge call failed: %s", exc)
+            return None
+        return parse_unit_score(getattr(outcome, "text", None))
 
     async def _record_stats(
         self,
