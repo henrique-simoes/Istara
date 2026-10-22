@@ -1731,6 +1731,7 @@ System tray application for macOS, Windows, and Linux. **Mode-aware manager only
 `.github/workflows/ci.yml` enforces repository governance on pushes to `main` and pull requests:
 - Active governance docs must be coherent: `python scripts/check_integrity.py`
 - CI/CD governance must be self-consistent: `python scripts/check_ci_governance.py`
+  - It also forbids end-of-life Node 20 bases in the frontend, relay, and benchmark-runner (`scripts/runner/Dockerfile`) images; the runner moved to `node:24-bookworm` after the 2026-10-21 Node.js security release, which shipped no Node 20 fix
 - The required-checks manifest must match the job graph: `python scripts/check_required_checks.py`
 - The industry-standard security benchmark must pass: `python scripts/security_benchmark.py --fail-on-threshold`
 - Change obligations must be satisfied: `python scripts/check_change_obligations.py`

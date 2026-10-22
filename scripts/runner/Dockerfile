@@ -1,4 +1,4 @@
-FROM node:20-bookworm
+FROM node:24-bookworm
 
 # The runner needs a Linux Docker CLI because tests/real_user_benchmark/run.mjs starts
 # disposable donor/model/relay containers through the Docker API socket. Installing the CLI

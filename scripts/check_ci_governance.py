@@ -376,6 +376,9 @@ FORBIDDEN_SNIPPETS: dict[str, dict[str, str]] = {
     "relay/Dockerfile": {
         "Node 20 relay image": "node:20-",
     },
+    "scripts/runner/Dockerfile": {
+        "Node 20 benchmark runner image": "node:20-",
+    },
     "desktop/src/index.html": {
         "Node 20 setup wizard label": "Node.js 20",
     },
