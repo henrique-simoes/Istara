@@ -65,7 +65,7 @@ case "${ISTARA_MARATHON_ENGINE:-both}" in
 esac
 
 RUN_GROUP="${ISTARA_BENCHMARK_RUN_GROUP:-docker-comparison-$(date -u +%Y%m%dT%H%M%SZ)}"
-RUNNER_IMAGE_REQUEST="${ISTARA_RUNNER_IMAGE:-istara-benchmark-runner:node20-docker-cli}"
+RUNNER_IMAGE_REQUEST="${ISTARA_RUNNER_IMAGE:-istara-benchmark-runner:node24-docker-cli}"
 : "${ISTARA_BENCHMARK_SOURCE_SNAPSHOT_SHA256:?set the sha256 of the exact source snapshot copied to the Mac Studio}"
 SOURCE_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)" || {
   echo "unable to resolve the exact source commit for benchmark provenance" >&2

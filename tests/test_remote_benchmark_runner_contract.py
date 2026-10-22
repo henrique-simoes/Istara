@@ -26,6 +26,16 @@ def test_remote_runner_uses_one_disposable_container_per_engine():
     assert "probe:pi" not in inner
 
 
+
+def test_remote_runner_image_is_on_a_supported_node_line():
+    """Node 20 is end of life and got no fix in the 2026-10-21 security release."""
+    dockerfile = (ROOT / "scripts/runner/Dockerfile").read_text(encoding="utf-8")
+    outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
+
+    assert dockerfile.splitlines()[0] == "FROM node:24-bookworm"
+    assert "istara-benchmark-runner:node24-docker-cli" in outer
+    assert "node20" not in outer
+
 def test_remote_runner_collects_both_arms_before_returning_failure():
     outer = (ROOT / "scripts/runner/docker-run.sh").read_text(encoding="utf-8")
 
